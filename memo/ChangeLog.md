@@ -61,7 +61,7 @@
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
 - main: fix a bug that unset `IFS` is not correctly restored `#D1489` 808f6f7
   - edit: fix error messages on accessing undo records in emacs mode (reported by rux616) `#D1497`  61a57c0 e9be69e
-- canvas: fix a glitch that SGR at the end of command line is applied to new lines `#D1498` 0000000
+- canvas: fix a glitch that SGR at the end of command line is applied to new lines `#D1498` 4bdfdbf
 
 ## Compatibility
 
@@ -85,6 +85,8 @@
 - decode: move `{keymap/*. => lib/core-decode.*-}rlfunc.txt` and clean up files `#D1486` f7323b4
   - Makefile: fix up f7323b4: restore rule for `keymap/*.txt` `#D1496` 054e5c1
 - util, etc: ensure each function to work with arbitrary `IFS` `#D1490` `#D1491` 5f9adfe
+- tui, canvas (`ble/canvas/trace`): support `opts=clip` `#D1493` 0000000
+
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

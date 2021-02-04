@@ -601,6 +601,13 @@ function ble/canvas/put-clear-lines.draw {
 ##       x y を相対位置と考えて移動を行います。
 ##       改行などの制御は全て座標に基づいた移動に変換されます。
 ##
+##     clip=X1xY1,X2xY2
+##     clip=XxY+WxH
+##       @param[in] X1 Y1 X2 Y2
+##       @param[in] X Y W H
+##       指定した矩形範囲内の描画内容だけを抽出します。
+##       矩形の左上の点が出力の描画開始点であると想定します。
+##
 ##     measure-bbox
 ##       @var[out] x1 x2 y1 y2
 ##       描画範囲を x1 x2 y1 y2 に返します。
@@ -672,13 +679,49 @@ function ble/canvas/trace/.put-sgr.draw {
 ##   Note: lc lg の面倒は呼び出し元で見る。
 function ble/canvas/trace/.goto {
   local x1=$1 y1=$2
-  if [[ $opt_relative ]]; then
-    ble/canvas/put-move.draw $((x1-x)) $((y1-y))
-  else
-    ble/canvas/put-cup.draw $((y1+1)) $((x1+1))
+  if [[ ! $opt_clip ]]; then
+    if [[ $opt_relative ]]; then
+      ble/canvas/put-move.draw $((x1-x)) $((y1-y))
+    else
+      ble/canvas/put-cup.draw $((y1+1)) $((x1+1))
+    fi
   fi
   ((x=x1,y=y1))
 }
+function ble/canvas/trace/.put-atomic.draw {
+  local c=$1 w=$2
+  if [[ $opt_clip ]]; then
+    ((cy1<=y&&y<cy2&&cx1<=x&&x<cx2&&x+w<=cx2)) || return 0
+    if [[ $cg != "$g" ]]; then
+      ble/canvas/trace/.put-sgr.draw "$g"
+      cg=$g
+    fi
+    ble/canvas/put-move.draw $((x-cx)) $((y-cy))
+    ble/canvas/put.draw "$c"
+    ((cx+=x+w,cy=y))
+  else
+    ble/canvas/put.draw "$c"
+  fi
+}
+function ble/canvas/trace/.put-ascii.draw {
+  local value=$1
+  if [[ $opt_clip ]]; then
+    local x1=$x x2=$((x+${#value}))
+    ((x2<=cx1||cx2<=x1||y+1<=cy1||cy2<=y)) && return 0
+    if [[ $cg != "$g" ]]; then
+      ble/canvas/trace/.put-sgr.draw "$g"
+      cg=$g
+    fi
+    ((x1<cx1)) && value=${value:cx1-x1} x1=$cx1
+    ((x2>cx2)) && value=${value::${#value}-(x2-cx2)} x2=$cx2
+    ble/canvas/put-move.draw $((x-cx)) $((y-cy))
+    ble/canvas/put.draw "$value"
+    ((cx=x2,cy=y))
+  else
+    ble/canvas/put.draw "$value"
+  fi
+}
+
 function ble/canvas/trace/.process-overflow {
   [[ :$opts: == *:truncate:* ]] && i=$iN # stop
   if [[ :$opts: == *:ellipsis:* ]]; then
@@ -690,7 +733,7 @@ function ble/canvas/trace/.process-overflow {
     fi
     local x0=$x y0=$y
     ble/canvas/trace/.goto $((cols-w)) $((lines-1))
-    ble/canvas/put.draw "$ellipsis"
+    ble/canvas/trace/.put-atomic.draw "$ellipsis"
     ((x+=w,x>=cols&&!opt_relative&&!xenl)) && ((x=0,y++))
     ble/canvas/trace/.goto "$x0" "$y0"
     if [[ $opt_measure ]]; then
@@ -702,15 +745,19 @@ function ble/canvas/trace/.process-overflow {
 
 function ble/canvas/trace/.decsc {
   trace_decsc=("$x" "$y" "$g" "$lc" "$lg")
-  [[ :$opts: == *:noscrc:* ]] ||
-    ble/canvas/put.draw "$_ble_term_sc"
+  if [[ ! $opt_clip ]]; then
+    [[ :$opts: == *:noscrc:* ]] ||
+      ble/canvas/put.draw "$_ble_term_sc"
+  fi
 }
 function ble/canvas/trace/.decrc {
-  ble/canvas/trace/.put-sgr.draw "${trace_decsc[2]}" # g を明示的に復元。
-  if [[ :$opts: == *:noscrc:* ]]; then
-    ble/canvas/put-move.draw $((trace_decsc[0]-x)) $((trace_decsc[1]-y))
-  else
-    ble/canvas/put.draw "$_ble_term_rc"
+  if [[ ! $opt_clip ]]; then
+    ble/canvas/trace/.put-sgr.draw "${trace_decsc[2]}" # g を明示的に復元。
+    if [[ :$opts: == *:noscrc:* ]]; then
+      ble/canvas/put-move.draw $((trace_decsc[0]-x)) $((trace_decsc[1]-y))
+    else
+      ble/canvas/put.draw "$_ble_term_rc"
+    fi
   fi
   x=${trace_decsc[0]}
   y=${trace_decsc[1]}
@@ -720,15 +767,19 @@ function ble/canvas/trace/.decrc {
 }
 function ble/canvas/trace/.scosc {
   trace_scosc=("$x" "$y" "$g" "$lc" "$lg")
-  [[ :$opts: == *:noscrc:* ]] ||
-    ble/canvas/put.draw "$_ble_term_sc"
+  if [[ ! $opt_clip ]]; then
+    [[ :$opts: == *:noscrc:* ]] ||
+      ble/canvas/put.draw "$_ble_term_sc"
+  fi
 }
 function ble/canvas/trace/.scorc {
-  ble/canvas/trace/.put-sgr.draw "$g" # g は変わらない様に。
-  if [[ :$opts: == *:noscrc:* ]]; then
-    ble/canvas/put-move.draw $((trace_scosc[0]-x)) $((trace_scosc[1]-y))
-  else
-    ble/canvas/put.draw "$_ble_term_rc"
+  if [[ ! $opt_clip ]]; then
+    ble/canvas/trace/.put-sgr.draw "$g" # g は変わらない様に。
+    if [[ :$opts: == *:noscrc:* ]]; then
+      ble/canvas/put-move.draw $((trace_scosc[0]-x)) $((trace_scosc[1]-y))
+    else
+      ble/canvas/put.draw "$_ble_term_rc"
+    fi
   fi
   x=${trace_scosc[0]}
   y=${trace_scosc[1]}
@@ -753,12 +804,14 @@ function ble/canvas/trace/.NEL {
     ble/canvas/trace/.process-overflow
     return 1
   fi
-  if [[ $opt_relative ]]; then
-    ((x)) && ble/canvas/put-cub.draw "$x"
-    ble/canvas/put-cud.draw 1
-  else
-    ble/canvas/put.draw "$_ble_term_cr"
-    ble/canvas/put.draw "$_ble_term_nl"
+  if [[ ! $opt_clip ]]; then
+    if [[ $opt_relative ]]; then
+      ((x)) && ble/canvas/put-cub.draw "$x"
+      ble/canvas/put-cud.draw 1
+    else
+      ble/canvas/put.draw "$_ble_term_cr"
+      ble/canvas/put.draw "$_ble_term_nl"
+    fi
   fi
   ((y++,x=0,lc=32,lg=0))
   return 0
@@ -771,7 +824,7 @@ function ble/canvas/trace/.SGR {
   local param=$1 seq=$2 specs i iN
   if [[ ! $param ]]; then
     g=0
-    ble/canvas/put.draw "$opt_sgr0"
+    [[ $opt_clip ]] || ble/canvas/put.draw "$opt_sgr0"
     return 0
   fi
 
@@ -781,8 +834,7 @@ function ble/canvas/trace/.SGR {
   else
     ble/color/read-sgrspec "$param" ansi
   fi
-
-  ble/canvas/trace/.put-sgr.draw "$g"
+  [[ $opt_clip ]] || ble/canvas/trace/.put-sgr.draw "$g"
 }
 function ble/canvas/trace/.process-csi-sequence {
   local seq=$1 seq1=${1:2} rex
@@ -802,47 +854,55 @@ function ble/canvas/trace/.process-csi-sequence {
       if [[ $char == A ]]; then
         # CUU "CSI A"
         ((y-=arg,y<0&&(y=0)))
-        ((y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
+        ((!opt_clip&&y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
       elif [[ $char == [Be] ]]; then
         # CUD "CSI B"
         # VPR "CSI e"
         ((y+=arg,y>=lines&&(y=lines-1)))
-        ((y>y0)) && ble/canvas/put-cud.draw $((y-y0))
+        ((!opt_clip&&y>y0)) && ble/canvas/put-cud.draw $((y-y0))
       elif [[ $char == [Ca] ]]; then
         # CUF "CSI C"
         # HPR "CSI a"
         ((x+=arg,x>=cols&&(x=cols-1)))
-        ((x>x0)) && ble/canvas/put-cuf.draw $((x-x0))
+        ((!opt_clip&&x>x0)) && ble/canvas/put-cuf.draw $((x-x0))
       elif [[ $char == D ]]; then
         # CUB "CSI D"
         ((x-=arg,x<0&&(x=0)))
-        ((x<x0)) && ble/canvas/put-cub.draw $((x0-x))
+        ((!opt_clip&&x<x0)) && ble/canvas/put-cub.draw $((x0-x))
       elif [[ $char == E ]]; then
         # CNL "CSI E"
         ((y+=arg,y>=lines&&(y=lines-1),x=0))
-        ((y>y0)) && ble/canvas/put-cud.draw $((y-y0))
-        ble/canvas/put.draw "$_ble_term_cr"
+        if [[ ! $opt_clip ]]; then
+          ((y>y0)) && ble/canvas/put-cud.draw $((y-y0))
+          ble/canvas/put.draw "$_ble_term_cr"
+        fi
       elif [[ $char == F ]]; then
         # CPL "CSI F"
         ((y-=arg,y<0&&(y=0),x=0))
-        ((y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
-        ble/canvas/put.draw "$_ble_term_cr"
+        if [[ ! $opt_clip ]]; then
+          ((y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
+          ble/canvas/put.draw "$_ble_term_cr"
+        fi
       elif [[ $char == [G\`] ]]; then
         # CHA "CSI G"
         # HPA "CSI `"
         ((x=arg-1,x<0&&(x=0),x>=cols&&(x=cols-1)))
-        if [[ $opt_relative ]]; then
-          ble/canvas/put-move-x.draw $((x-x0))
-        else
-          ble/canvas/put-hpa.draw $((x+1))
+        if [[ ! $opt_clip ]]; then
+          if [[ $opt_relative ]]; then
+            ble/canvas/put-move-x.draw $((x-x0))
+          else
+            ble/canvas/put-hpa.draw $((x+1))
+          fi
         fi
       elif [[ $char == d ]]; then
         # VPA "CSI d"
         ((y=arg-1,y<0&&(y=0),y>=lines&&(y=lines-1)))
-        if [[ $opt_relative ]]; then
-          ble/canvas/put-move-y.draw $((y-y0))
-        else
-          ble/canvas/put-vpa.draw $((y+1))
+        if [[ ! $opt_clip ]]; then
+          if [[ $opt_relative ]]; then
+            ble/canvas/put-move-y.draw $((y-y0))
+          else
+            ble/canvas/put-vpa.draw $((y+1))
+          fi
         fi
       elif [[ $char == I ]]; then
         # CHT "CSI I"
@@ -850,7 +910,7 @@ function ble/canvas/trace/.process-csi-sequence {
         ((_x=(x/it+arg)*it,
           _x>=cols&&(_x=cols-1)))
         if ((_x>x)); then
-          ble/canvas/put-cuf.draw $((_x-x))
+          [[ $opt_clip ]] || ble/canvas/put-cuf.draw $((_x-x))
           ((x=_x))
         fi
       elif [[ $char == Z ]]; then
@@ -859,7 +919,7 @@ function ble/canvas/trace/.process-csi-sequence {
         ((_x=((x+it-1)/it-arg)*it,
           _x<0&&(_x=0)))
         if ((_x<x)); then
-          ble/canvas/put-cub.draw $((x-_x))
+          [[ $opt_clip ]] || ble/canvas/put-cub.draw $((x-_x))
           ((x=_x))
         fi
       fi
@@ -904,10 +964,11 @@ function ble/canvas/trace/.process-esc-sequence {
     return 0 ;;
   (D) # IND
     [[ $opt_nooverflow ]] && ((y+1>=lines)) && return 0
-    if [[ $opt_relative ]]; then
+    if [[ $opt_clip || $opt_relative ]]; then
       ((y+1>=lines)) && return 0
       ((y++))
-      ble/canvas/put-cud.draw 1
+      [[ $opt_clip ]] ||
+        ble/canvas/put-cud.draw 1
     else
       ((y++))
       ble/canvas/put.draw "$_ble_term_ind"
@@ -918,10 +979,11 @@ function ble/canvas/trace/.process-esc-sequence {
     return 0 ;;
   (M) # RI
     [[ $opt_nooverflow ]] && ((y==0)) && return 0
-    if [[ $opt_relative ]]; then
+    if [[ $opt_clip || $opt_relative ]]; then
       ((y==0)) && return 0
       ((y--))
-      ble/canvas/put-cuu.draw 1
+      [[ $opt_clip ]] ||
+        ble/canvas/put-cuu.draw 1
     else
       ((y--,y<0&&(y=0)))
       ble/canvas/put.draw "$_ble_term_ri"
@@ -946,6 +1008,11 @@ function ble/canvas/trace/.impl {
   # 正規表現の range expression が期待通りに動かない。
   local LC_ALL= LC_COLLATE=C
 
+  # constants
+  local cols=${COLUMNS:-80} lines=${LINES:-25}
+  local it=${bleopt_tab_width:-$_ble_term_it} xenl=$_ble_term_xenl
+  ble/string#reserve-prototype "$it"
+
   # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
   #   その時は st='\u009C' になるはず。2文字以上のとき変換に失敗したと見做す。
   local ret rex
@@ -959,6 +1026,21 @@ function ble/canvas/trace/.impl {
   [[ :$opts: != *:left-char:* ]] && local lc=32 lg=0
   local opt_terminfo=; [[ :$opts: == *:terminfo:* ]] && opt_terminfo=1
 
+  local opt_clip= cx1 cy1 cx2 cy2 cx cy cg
+  if local rex=':clip=([0-9]*),([0-9]*)([-+])([0-9]*),([0-9]*):'; [[ :$opts: =~ $rex ]]; then
+    opt_clip=1
+    local cx1=${BASH_REMATCH[1]} cy1=${BASH_REMATCH[2]}
+    local cx2=${BASH_REMATCH[4]} cy2=${BASH_REMATCH[5]}
+    [[ ${BASH_REMATCH[3]} == + ]] && ((cx2+=cx1,cy2+=cy1))
+    ((cx1<=cx2)) || local cx1=$cx2 cx2=$cx1
+    ((cy1<=cy2)) || local cy1=$cy2 cy2=$cy1
+    ((cx1<0)) && cx=0
+    ((cy1<0)) && cy=0
+    ((cols<cx2)) && cx=$cols
+    ((lines<cy2)) && cy=$lines
+    local cx=$cx1 cy=$cy1 cg=
+  fi
+
   local opt_g0= opt_sgr0=$_ble_term_sgr0
   if rex=':g0=([^:]+):'; [[ :$opts: =~ $rex ]]; then
     opt_g0=${BASH_REMATCH[1]}
@@ -968,12 +1050,9 @@ function ble/canvas/trace/.impl {
   if [[ $opt_g0 ]]; then
     ble/color/g2sgr "$opt_g0"; opt_sgr0=$ret
     ble/canvas/put.draw "$opt_sgr0"
+    g=$opt_g0
   fi
 
-  # constants
-  local cols=${COLUMNS:-80} lines=${LINES:-25}
-  local it=${bleopt_tab_width:-$_ble_term_it} xenl=$_ble_term_xenl
-  ble/string#reserve-prototype "$it"
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
   # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
@@ -1004,45 +1083,42 @@ function ble/canvas/trace/.impl {
           s=$BASH_REMATCH
           [[ ${BASH_REMATCH[3]} ]] || s="$s\\" # 終端の追加
           ((i+=${#BASH_REMATCH}-1))
+          ble/canvas/trace/.put-atomic.draw "$s" 0
         elif [[ $tail =~ $rex_csi ]]; then
           # Control sequences
-          s=
           ((i+=${#BASH_REMATCH}-1))
           ble/canvas/trace/.process-csi-sequence "$BASH_REMATCH"
         elif [[ $tail =~ $rex_2022 ]]; then
           # ISO-2022 (素通り)
-          s=$BASH_REMATCH
+          ble/canvas/trace/.put-atomic.draw "$BASH_REMATCH" 0
           ((i+=${#BASH_REMATCH}-1))
         elif [[ $tail =~ $rex_esc ]]; then
-          s=
           ((i+=${#BASH_REMATCH}-1))
           ble/canvas/trace/.process-esc-sequence "$BASH_REMATCH"
+        else
+          ble/canvas/trace/.put-atomic.draw "$s" 0
         fi ;;
       ($'\b') # BS
         if ((x>0)); then
+          [[ $opt_clip ]] || ble/canvas/put.draw "$s"
           ((x--,lc=32,lg=g))
-        else
-          s=
         fi ;;
       ($'\t') # HT
         local _x
         ((_x=(x+it)/it*it,
           _x>=cols&&(_x=cols-1)))
         if ((x<_x)); then
-          s=${_ble_string_prototype::_x-x}
+          ble/canvas/trace/.put-ascii.draw "${_ble_string_prototype::_x-x}"
           ((x=_x,lc=32,lg=g))
-        else
-          s=
         fi ;;
       ($'\n') # LF = CR+LF
-        s=
         ble/canvas/trace/.NEL ;;
       ($'\v') # VT
-        s=
         if ((y+1<lines||!opt_nooverflow)); then
-          if [[ $opt_relative ]]; then
+          if [[ $opt_clip || $opt_relative ]]; then
             if ((y+1<lines)); then
-              ble/canvas/put-cud.draw 1
+              [[ $opt_clip ]] ||
+                ble/canvas/put-cud.draw 1
               ((y++,lc=32,lg=0))
             fi
           else
@@ -1053,19 +1129,20 @@ function ble/canvas/trace/.impl {
           fi
         fi ;;
       ($'\r') # CR ^M
-        if [[ $opt_relative ]]; then
-          s=
-          ble/canvas/put-cub.draw "$x"
-        else
-          s=$_ble_term_cr
+        if [[ ! $opt_clip ]]; then
+          if [[ $opt_relative ]]; then
+            ble/canvas/put-cub.draw "$x"
+          else
+            ble/canvas/put.draw "$_ble_term_cr"
+          fi
         fi
         ((x=0,lc=-1,lg=0)) ;;
       # Note: \001 (^A) 及び \002 (^B) は PS1 の処理で \[ \] を意味するそうだ。#D1074
-      ($'\001') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1sc; s= ;;
-      ($'\002') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1rc; s= ;;
+      ($'\001') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1sc ;;
+      ($'\002') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1rc ;;
       # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
+      (*) ble/canvas/put.draw "$s" ;;
       esac
-      [[ $s ]] && ble/canvas/put.draw "$s"
     elif ble/util/isprint+ "$tail"; then
       local s=$BASH_REMATCH
       w=${#s}
@@ -1073,7 +1150,7 @@ function ble/canvas/trace/.impl {
         local wmax=$((lines*cols-(y*cols+x)))
         ((w>wmax)) && w=$wmax is_overflow=1
       fi
-      if [[ $opt_relative ]]; then
+      if [[ $opt_clip || $opt_relative ]]; then
         local t=${s::w} tlen=$w len=$((cols-x))
         if [[ $opt_measure ]]; then
           if ((tlen>len)); then
@@ -1082,13 +1159,13 @@ function ble/canvas/trace/.impl {
           fi
         fi
         while ((tlen>len)); do
-          ble/canvas/put.draw "${t::len}"
+          ble/canvas/trace/.put-ascii.draw "${t::len}"
           t=${t:len}
           ((x=cols,tlen-=len,len=cols))
           ble/canvas/trace/.NEL
         done
         w=${#t}
-        ble/canvas/put.draw "$t"
+        ble/canvas/trace/.put-ascii.draw "$t"
       else
         ble/canvas/put.draw "${tail::w}"
       fi
@@ -1107,7 +1184,7 @@ function ble/canvas/trace/.impl {
       else
         lc=$c lg=$g
         if ((x+w>cols)); then
-          if [[ $opt_relative ]]; then
+          if [[ $opt_clip || $opt_relative ]]; then
             ble/canvas/trace/.NEL
           else
             # 行に入りきらない場合の調整
@@ -1120,7 +1197,7 @@ function ble/canvas/trace/.impl {
               ((x2<cols&&(x2=cols)))
           fi
         fi
-        ble/canvas/put.draw "${tail::1}"
+        ble/canvas/trace/.put-atomic.draw "${tail::1}" "$w"
       fi
       ((i++))
     fi
@@ -1143,6 +1220,19 @@ function ble/canvas/trace/.impl {
     [[ $is_overflow ]] && ble/canvas/trace/.process-overflow
   done
   [[ $opt_measure ]] && ((y2++))
+  if [[ $opt_clip ]]; then
+    x=$cx y=$cy g=$cg
+    if [[ $opt_measure ]]; then
+      ((x1<cx1)) && x1=$cx1
+      ((x1>cx2)) && x1=$cx2
+      ((x2<cx1)) && x2=$cx1
+      ((x2>cx2)) && x2=$cx2
+      ((y1<cy1)) && y1=$cy1
+      ((y1>cy2)) && y1=$cy2
+      ((y2<cy1)) && y2=$cy1
+      ((y2>cy2)) && y2=$cy2
+    fi
+  fi
 }
 function ble/canvas/trace.draw {
   ble/canvas/trace/.impl "$@" 2>/dev/null # Note: suppress LC_COLLATE errors #D1205 #D1341 #D1440
