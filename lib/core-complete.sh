@@ -1343,7 +1343,7 @@ function ble/complete/source/eval-simple-word {
 function ble/complete/source/evaluate-path-spec {
   local word=$1 sep=$2 opts=$3
   if [[ :$comp_type: != *:sync:* && :$opts: != *:noglob:* ]]; then
-    opts=$opts:stopcheck:cached
+    opts=$opts:stopcheck:cached:single
     [[ :$comp_type: == *:auto:* && $bleopt_complete_timeout_auto ]] &&
       opts=$opts:timeout=$((bleopt_complete_timeout_auto))
   fi
@@ -1976,7 +1976,7 @@ function ble/complete/progcomp/.compvar-perform-wordbreaks {
   ble/array#push ret "$word"
 }
 function ble/complete/progcomp/.compvar-eval-word {
-  local opts=$2
+  local opts=$2:single
   if [[ :$opts: == *:noglob:* ]]; then
     ble/syntax:bash/simple-word/eval "$1" "$opts"
   else
@@ -3287,7 +3287,7 @@ function ble/complete/candidates/.pick-nearest-sources {
       comps_flags=$comps_flags${simple_flags}v
 
       if ((${simple_ibrace%:*})); then
-        ble/complete/source/eval-simple-word "${reconstructed::${simple_ibrace#*:}}"; (($?==148)) && return 148
+        ble/complete/source/eval-simple-word "${reconstructed::${simple_ibrace#*:}}" single; (($?==148)) && return 148
         comps_fixed=${simple_ibrace%:*}:$ret
         comps_flags=${comps_flags}x
       fi
@@ -3763,7 +3763,7 @@ function ble/complete/candidates/determine-common-prefix {
         esac
 
         local is_processed=
-        ble/complete/source/eval-simple-word "$common_reconstructed"; local ext=$?
+        ble/complete/source/eval-simple-word "$common_reconstructed" single; local ext=$?
         ((ext==148)) && return 148
         if ((ext==0)) && ble/complete/candidates/filter:"$filter_type"/count-match-chars "$ret"; then
           if [[ $filter_type == head ]] && ((ret<${#COMPV})); then
@@ -3823,7 +3823,7 @@ function ble/complete/candidates/determine-common-prefix {
         else
           local simple_flags simple_ibrace
           ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
-            ble/complete/source/eval-simple-word "$ret" &&
+            ble/complete/source/eval-simple-word "$ret" single &&
             [[ $ret == "$COMPV"* ]] &&
             flag_reduction=1
           (($?==148)) && return 148
@@ -4271,7 +4271,7 @@ function ble/complete/insert-common {
     local menu_common_part=$COMPV
     local ret simple_flags simple_ibrace
     if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
-      ble/complete/source/eval-simple-word "$ret"
+      ble/complete/source/eval-simple-word "$ret" single
       (($?==148)) && return 148
       menu_common_part=$ret
     fi
@@ -4772,7 +4772,7 @@ function ble/complete/insert-braces {
       local ret simple_flags simple_ibrace
       ble/complete/candidates/determine-common-prefix/.apply-partial-comps # var[in,out] common
       if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common"; then
-        ble/complete/source/eval-simple-word "$ret"
+        ble/complete/source/eval-simple-word "$ret" single
         (($?==148)) && return 148
         fixed=$common fixval=$ret
       fi
@@ -4997,7 +4997,7 @@ function ble/complete/menu-filter {
     return 0
   fi
   [[ $simple_ibrace ]] && ((${simple_ibrace%%:*}>10#0${_ble_complete_menu0_comp[6]%%:*})) && return 1 # 別のブレース展開要素に入った時
-  ble/syntax:bash/simple-word/eval "$ret"; (($?==148)) && return 148
+  ble/syntax:bash/simple-word/eval "$ret" single; (($?==148)) && return 148
   local COMPV=$ret
 
   local comp_type=${_ble_complete_menu0_comp[4]} cand_pack
@@ -5640,7 +5640,7 @@ function ble/widget/auto_complete/self-insert {
     fi
   elif [[ $_ble_complete_ac_type == [rmaA] && $ins != [{,}] ]]; then
     if local ret simple_flags simple_ibrace; ble/syntax:bash/simple-word/reconstruct-incomplete-word "$comps_new"; then
-      if ble/complete/source/eval-simple-word "$ret" && local compv_new=$ret; then
+      if ble/complete/source/eval-simple-word "$ret" single && local compv_new=$ret; then
         # r: 遡って書き換わる時
         #   挿入しても展開後に一致する時、そのまま挿入。
         #   元から展開後に一致していない場合もあるが、その場合は一旦候補を消してやり直し。
@@ -6033,7 +6033,7 @@ function ble/complete/source:sabbrev {
     # filter で除外されない為に cand には評価後の値を入れる必要がある。
     local ret simple_flags simple_ibrace
     ble/syntax:bash/simple-word/reconstruct-incomplete-word "$cand" &&
-      ble/complete/source/eval-simple-word "$ret" || continue
+      ble/complete/source/eval-simple-word "$ret" single || continue
 
     local value=$ret # referenced in "ble/complete/action:sabbrev/initialize"
     local flag_source_filter=1

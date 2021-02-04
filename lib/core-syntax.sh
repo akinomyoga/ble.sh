@@ -1413,6 +1413,7 @@ _ble_syntax_bash_simple_eval_hash=
 ##   @var[in,out] _ble_syntax_bash_simple_eval
 function ble/syntax:bash/simple-word/eval/.cache-clear {
   ble/gdict#clear _ble_syntax_bash_simple_eval
+  ble/gdict#clear _ble_syntax_bash_simple_eval_full
 }
 ## @fn ble/syntax:bash/simple-word/eval/.cache-update
 ##   @var[in,out] _ble_syntax_bash_simple_eval
@@ -1429,12 +1430,19 @@ function ble/syntax:bash/simple-word/eval/.cache-update {
 ##   @var[in,out] _ble_syntax_bash_simple_eval
 function ble/syntax:bash/simple-word/eval/.cache-save {
   ((ext==148||ext==142)) && return 0
+  local ret; ble/string#quote-words "$3"
+  ble/gdict#set _ble_syntax_bash_simple_eval "$1" "ext=$2 count=$(($#-2)) ret=$ret"
   local ret; ble/string#quote-words "${@:3}"
-  ble/gdict#set _ble_syntax_bash_simple_eval "$1" "ext=$2 ret=($ret)"
+  ble/gdict#set _ble_syntax_bash_simple_eval_full "$1" "ext=$2 count=$(($#-2)) ret=($ret)"
 }
+## @fn ble/syntax:bash/simple-word/eval/.cache-load word opts
 function ble/syntax:bash/simple-word/eval/.cache-load {
   ext= ret=
-  ble/gdict#get _ble_syntax_bash_simple_eval "$1" || return 1
+  if [[ :$2: == *:single:* ]]; then
+    ble/gdict#get _ble_syntax_bash_simple_eval "$1" || return 1
+  else
+    ble/gdict#get _ble_syntax_bash_simple_eval_full "$1" || return 1
+  fi
   builtin eval -- "$ret"
   return 0
 }
@@ -1442,17 +1450,36 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ## @fn ble/syntax:bash/simple-word/eval word opts
 ##   @param[in] word
 ##   @param[in,opt] opts
-##     noglob
+##     コロン区切りのオプション指定です。
 ##
-##     cached
-##     stopcheck
+##       noglob
+##         パス名展開を抑制します。
 ##
-##     timeout=NUM
-##       stopcheck を指定している時に有効です。timeout を指定します。
-##     timeout-highlight
-##       bleopt highlight_timeout_{sync,async} を参照して timeout します。
-##     retry-noglob-on-timeout
-##       timeout した時に noglob で改めて展開を試行します。
+##     以下は (成功時の) 評価結果に影響を与えないオプションです。
+##
+##       single
+##         最初の展開結果のみを ret に設定します。
+##       count
+##         変数 count に展開結果の単語数を返します。
+##       cached
+##         展開結果をキャッシュします。
+##
+##     以下はパス名展開の起こる可能性にある単語に大して有効です。
+##
+##       stopcheck
+##         ユーザー入力があった場合に中断します。
+##       timeout=NUM
+##         stopcheck を指定している時に有効です。timeout を指定します。
+##       timeout-highlight
+##         bleopt highlight_timeout_{sync,async} を参照して timeout します。
+##       retry-noglob-on-timeout
+##         timeout した時に noglob で改めて展開を試行します。
+##
+##   @arr[out] ret
+##     展開結果を返します。複数の単語に評価される場合にはそれを全て返します。
+##     opts に single が指定されている時、最初の展開結果のみを返します。
+##   @var[out] count
+##     opts に count が指定されている時に展開結果の数を返します。
 ##
 ##   @var[out] ret
 ##   @exit
@@ -1460,14 +1487,16 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ##     0 以外の終了ステータスを返します。
 ##
 function ble/syntax:bash/simple-word/eval {
+  [[ :$2: != *:count:* ]] && local count
   if [[ :$2: == *:cached:* && :$2: != *:noglob:* ]]; then
     ble/syntax:bash/simple-word/eval/.cache-update
-    local ext; ble/syntax:bash/simple-word/eval/.cache-load "$1" && return "$ext"
+    local ext; ble/syntax:bash/simple-word/eval/.cache-load "$1" "$2" && return "$ext"
   fi
 
   local __ble_ret
   ble/syntax:bash/simple-word/eval/.impl "$1" "$2"; local ext=$?
   ret=("${__ble_ret[@]}")
+  count=${#ret[@]}
 
   if [[ :$2: == *:cached:* && :$2: != *:noglob:* ]]; then
     ble/syntax:bash/simple-word/eval/.cache-save "$1" "$ext" "${ret[@]}"
@@ -6453,7 +6482,7 @@ function ble/syntax/progcolor/word:default/.detect-separated-path {
   local word=$1
   ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)) || return 1
 
-  local detect_opts=stopcheck:timeout-highlight:cached:url
+  local detect_opts=url:$highlight_eval_opts
   ((wtype==CTX_RDRS)) && detect_opts=$detect_opts:noglob
   [[ $word == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && detect_opts=$detect_opts:notilde
   ble/syntax:bash/simple-word/detect-separated-path "$word" :, "$detect_opts"
@@ -6575,13 +6604,13 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
   local p0=${1%%:*} p1=${1#*:}
   local wtxt=${text:p0:p1-p0}
 
-  local path_opts=stopcheck:timeout-highlight:cached:after-sep
+  local path_opts=after-sep:$highlight_eval_opts
   # チルダ展開の文脈でない時には抑制
   [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
   ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
 
-  local ret path spec ext value
-  ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
+  local ret path spec ext value count
+  ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "count:$path_opts"; ext=$? value=("${ret[@]}")
   ((ext==148)) && return 148
   if ((ext==142)); then
     if [[ $ble_textarea_render_defer_running ]]; then
@@ -6594,7 +6623,7 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
   elif ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
     # failglob 等の理由で展開に失敗した場合
     ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr "$ATTR_ERR"
-  elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
+  elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&count>=2)); then
     # 複数語に展開されたら駄目
     ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
   elif ((wtype==CTX_CMDI)); then
@@ -6619,7 +6648,7 @@ function ble/syntax/progcolor/word:default/.is-option-context {
 
   local iword ret
   for ((iword=1;iword<progcolor_iword;iword++)); do
-    ble/syntax/progcolor/eval-word "$iword" stopcheck:timeout-highlight:cached
+    ble/syntax/progcolor/eval-word "$iword" "$highlight_eval_opts"
     [[ $ret == -- ]] && return 1
   done
   return 0
@@ -6669,7 +6698,7 @@ function ble/syntax/progcolor/word:default/.impl {
       ((ext==148)) && return 148
       if ((ext==0)); then
         local sep=$ret ranges i
-        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" stopcheck:timeout-highlight:cached:url
+        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" "url:$highlight_eval_opts"
         (($?==148)) && return 148; ranges=("${ret[@]}")
         for ((i=0;i<${#ranges[@]};i+=2)); do
           ble/syntax/progcolor/word:default/.highlight-filename $((p0+ranges[i])):$((p0+ranges[i+1]))
@@ -6843,6 +6872,9 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
 ## @var[in,out] color_umin color_umax
 function ble/highlight/layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return 1
+
+  local highlight_eval_opts=stopcheck:timeout-highlight:cached:single
+
   ble/syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \
     ble/highlight/layer:syntax/word/.update-attributes/.proc
 }
