@@ -997,9 +997,10 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/util/readfile { # 465ms for man bash
-    IFS= builtin read -r -d '' "$1" < "$2"
+    TMOUT= IFS= builtin read -r -d '' "$1" < "$2"
   }
   function ble/util/mapfile {
+    local IFS= TMOUT=
     local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
     while builtin read -r _ble_local_val || [[ $_ble_local_val ]]; do
       _ble_local_arr[_ble_local_i++]=$_ble_local_val
@@ -1036,7 +1037,7 @@ else
     builtin eval "$2" >| "$_ble_local_tmp"
     local _ble_local_ret=$?
     ((_ble_util_assign_level--))
-    IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
+    TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ble_local_ret"
   }
@@ -1596,9 +1597,9 @@ function ble/util/conditional-sync {
 function ble/util/cat {
   local content=
   if [[ $1 && $1 != - ]]; then
-    IFS= builtin read -r -d '' content < "$1"
+    TMOUT= IFS= builtin read -r -d '' content < "$1"
   else
-    IFS= builtin read -r -d '' content
+    TMOUT= IFS= builtin read -r -d '' content
   fi
   printf %s "$content"
 }
@@ -3255,7 +3256,7 @@ else
 
     local bytes byte
     ble/util/assign bytes '
-      while IFS= builtin read -r -n 1 byte; do
+      while TMOUT= IFS= builtin read -r -n 1 byte; do
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
     '

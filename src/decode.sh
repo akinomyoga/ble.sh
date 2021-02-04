@@ -2373,7 +2373,7 @@ function ble/decode/read-inputrc {
 
   local -a script=()
   local ret line= iline=0
-  while builtin read -r line || [[ $line ]]; do
+  while TMOUT= builtin read -r line || [[ $line ]]; do
     ((++iline))
     ble/string#trim "$line"; line=$ret
     [[ ! $line || $line == '#'* ]] && continue
