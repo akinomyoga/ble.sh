@@ -7468,8 +7468,10 @@ function ble/builtin/read/.loop {
 
     # read 1 character
     TMOUT= IFS= builtin read -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
-    if ((ext==142)); then
+    if ((ext>128)); then
       # timeout
+      #   Note: #D1467 Cygwin/Linux では read の timeout は 142 だが、これはシステム依存。
+      #   man bash にある様に 128 より大きいかどうかで判定する。
       _ble_edit_read_accept=142
       break
     fi

@@ -2642,9 +2642,11 @@ function ble/util/msleep/.use-read-timeout {
   esac
 
   # Note: 古い Cygwin では双方向パイプで "Communication error on send" というエラーになる。
-  # 期待通りの振る舞いをしなかったらプロセス置換に置き換える。 #D1449
+  #   期待通りの振る舞いをしなかったらプロセス置換に置き換える。 #D1449
+  # #D1467 Cygwin/Linux では timeout は 142 だが、これはシステム依存。
+  #   man bash にある様に 128 より大きいかどうかで判定
   if [[ :$opts: == *:check:* && $_ble_util_msleep_fd ]]; then
-    if builtin read -t 0.000001 -u "$_ble_util_msleep_fd" _ble_util_msleep_dummy 2>/dev/null; (($?!=142)); then
+    if builtin read -t 0.000001 -u "$_ble_util_msleep_fd" _ble_util_msleep_dummy 2>/dev/null; (($?<=128)); then
       ble/fd#close _ble_util_msleep_fd
       _ble_util_msleep_fd=
       return 1

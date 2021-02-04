@@ -3813,6 +3813,21 @@ bash_tips
 
 2021-02-04
 
+  * global: read timeout は $?==142 とは限らない [#D1467]
+
+    read timeout は本当に常に 142 なのか。と思ったが現在の用例では 142 は
+    conditional-sync によって固定で返されているので気にしなくて良い。因みに
+    bash のソースコードを確認する限りは 142 は hardcoded ではない。
+
+    * edit (ble/builtin/read/.loop): うーん。予め 142 に対応する終了ステータス
+      を調べておくか、或いは 128 以上を一括で timeout と解釈するか。マニュアル
+      には "128 より大きな値になる" とだけ書かれている。マニュアルに従った判定
+      にするのが良い気がする。
+
+    * util (ble/util/msleep/.use-read-timeout): これは現在は使っていない。何れ
+      にしても Cygwin/MSYS の時にだけチェックする様にすれば、これらのシステムで
+      は 142 固定と期待されるので大丈夫。
+
   * util (bleopt): bleopt でパイプに繋いでいても _ble_term_sgr0 が出力されている場合がある [#D1466]
     追加で関連する関数に於いて --color オプションで着色を制御できるようにする。
     * "--color" options for bleopt, blehook, ble-color-setface

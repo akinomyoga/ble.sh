@@ -56,7 +56,8 @@
 - global: refactor `setup => set up / set-up` `#D1456` c37a9dd
 - global: clean up helps of user functions `#D1459` 33c283e
 - benchmark (`ble-measure`): support `-T TIME` and `-B TIME` option `#D1460` 1aa471b
-- util, color (`bleopt`, `blehook`, `ble-color-setface`): support `--color` and fix `sgr0` contamination in non-color output `#D1466` 0000000
+- util, color (`bleopt`, `blehook`, `ble-color-setface`): support `--color` and fix `sgr0` contamination in non-color output `#D1466` 69248ff
+- global: fix status check for read timeout `#D1467` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
