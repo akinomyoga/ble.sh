@@ -3813,6 +3813,10 @@ bash_tips
 
 2021-02-04
 
+  * util (bleopt): bleopt でパイプに繋いでいても _ble_term_sgr0 が出力されている場合がある [#D1466]
+    追加で関連する関数に於いて --color オプションで着色を制御できるようにする。
+    * "--color" options for bleopt, blehook, ble-color-setface
+
   * 2021-02-01 highlight: highlight_timeout_sync=0 にしても遅い (reported by 3ximus) [#D1465]
     https://github.com/akinomyoga/ble.sh/issues/82#issuecomment-770390986
 

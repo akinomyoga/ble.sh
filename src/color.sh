@@ -841,26 +841,43 @@ function ble/color/setface/.check-argument {
   local rex='^[a-zA-Z0-9_]+$'
   [[ $# == 2 && $1 =~ $rex && $2 ]] && return 0
 
-  if (($#==0)); then
-    ble/color/list-faces
-    ext=0
-    return 1
+  local flags=a
+  while (($#)); do
+    local arg=$1; shift
+    case $arg in
+    (--help) flags=H$flags ;;
+    (--color|--color=always) flags=c${flags//[ac]} ;;
+    (--color=auto) flags=a${flags//[ac]} ;;
+    (--color=never) flags=${flags//[ac]} ;;
+    (-*)
+      ble/util/print "${FUNCNAME[1]}: unrecognized option '$arg'." >&2
+      flags=E$flags ;;
+    (*)
+      ble/util/print "${FUNCNAME[1]}: unrecognized argument '$arg'." >&2
+      flags=E$flags ;;
+    esac
+  done
+
+  if [[ $flags == *E* ]]; then
+    ext=2; return 1
+  elif [[ $flags == *H* ]]; then
+    ble/util/print-lines \
+      "usage: $name FACE_NAME [TYPE:]SPEC" \
+      '    Set face.' \
+      '' \
+      '  TYPE      Specifies the format of SPEC. The following values are available.' \
+      '    gspec   Comma separated graphic attribute list' \
+      '    g       Integer value' \
+      '    ref     Face name or id (reference)' \
+      '    copy    Face name or id (copy value)' \
+      '    sgrspec Parameters to the control function SGR' \
+      '    ansi    ANSI Sequences' >&2
+    ext=0; return 1
   fi
 
-  local name=${FUNCNAME[1]}
-  ble/util/print-lines \
-    "usage: $name FACE_NAME [TYPE:]SPEC" \
-    '    Set face.' \
-    '' \
-    '  TYPE      Specifies the format of SPEC. The following values are available.' \
-    '    gspec   Comma separated graphic attribute list' \
-    '    g       Integer value' \
-    '    ref     Face name or id (reference)' \
-    '    copy    Face name or id (copy value)' \
-    '    sgrspec Parameters to the control function SGR' \
-    '    ansi    ANSI Sequences' >&2
-  ext=2; [[ $# == 1 && $1 == --help ]] && ext=0
-  return 1
+  local opts=
+  [[ $flags == *c* || $flags == *a* && -t 1 ]] && opts=$opts:color
+  ble/color/list-faces "$opts"; ext=$?; return 1
 }
 function ble-color-defface {
   local ext; ble/color/setface/.check-argument "$@" || return "$ext"
@@ -970,8 +987,10 @@ function ble/color/initialize-faces {
   fi
 }
 
+## @fn ble/color/list-faces opts
 function ble/color/list-faces {
-  local opt_color=; [[ -t 1 ]] && opt_color=1
+  local opt_color=
+  [[ :$1: == *:color:* ]] && opt_color=1
 
   local ret sgr0= sgr1= sgr2=
   if [[ $opt_color ]]; then
