@@ -70,6 +70,8 @@ fi
 # グローバル変数の定義 (関数内からではできないのでここで先に定義)
 
 if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  builtin unset -v _ble_syntax_highlight_filetype
+  builtin unset -v _ble_syntax_highlight_lscolors_ext
   if ((_ble_bash>=40300)); then
     declare -gA _ble_syntax_highlight_filetype=()
   else
