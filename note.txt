@@ -3725,6 +3725,13 @@ bash_tips
 
 2021-02-10
 
+  * global: 今度はまた別の連想配列のエラーが出ている (reported by 0xC0ncord) [#D1471]
+    https://github.com/akinomyoga/ble.sh/issues/86#issuecomment-776165286
+
+    新しいシェルを開いてもエラーが出ていると書いているが本当だろうか?
+    もしこれが同じシェルだとしたら ble-update で駄目な事になるというのは理解できる。
+    取り敢えずその為の修正だけは入れる事にした。
+
   * global: 連想配列の中身が bash-4.2 関数内ble.shソースで消滅する (reported by 0xC0ncord) [#D1470]
     https://github.com/akinomyoga/ble.sh/issues/86
 

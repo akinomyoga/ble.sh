@@ -780,6 +780,7 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   ##   @param[in] file
   ##
   if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+    builtin unset -v _ble_builtin_history_rskip_dict
     if ((_ble_bash>=40300)); then
       declare -gA _ble_builtin_history_rskip_dict=()
     else

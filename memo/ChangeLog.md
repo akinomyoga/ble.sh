@@ -31,7 +31,8 @@
 - edit (sword): fix definition of `sword` (shell words) `#D1441` f923388
 - edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 09cf7f1
 - complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
-- global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 0000000
+- global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
+  - global: fix declaration of associative arrays for `ble-reload` `#D1471` 0000000
 
 ## Internal changes and fixes
 

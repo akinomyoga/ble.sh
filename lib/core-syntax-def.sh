@@ -100,6 +100,8 @@ bleopt/declare -v highlight_filename 1
 bleopt/declare -v highlight_variable 1
 
 if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  builtin unset -v _ble_syntax_highlight_filetype
+  builtin unset -v _ble_syntax_highlight_lscolors_ext
   if ((_ble_bash>=40300)); then
     declare -gA _ble_syntax_highlight_filetype=()
     declare -gA _ble_syntax_highlight_lscolors_ext=()
