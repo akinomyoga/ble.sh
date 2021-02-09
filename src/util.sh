@@ -1372,8 +1372,8 @@ _ble_builtin_trap_reserved=()
 _ble_builtin_trap_handlers=()
 _ble_builtin_trap_DEBUG=
 _ble_builtin_trap_inside=
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  if ((_ble_bash>=40200)); then
+if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40300)); then
     declare -gA _ble_builtin_trap_n2i=()
   else
     declare -A _ble_builtin_trap_n2i=()

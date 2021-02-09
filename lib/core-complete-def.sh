@@ -18,7 +18,7 @@ function ble-sabbrev {
 }
 
 if ! declare -p _ble_complete_sabbrev &>/dev/null; then # reload #D0875
-  if ((_ble_bash>=40200)); then
+  if ((_ble_bash>=40300)); then
     declare -gA _ble_complete_sabbrev=()
   elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     declare -A _ble_complete_sabbrev=()

@@ -5959,7 +5959,7 @@ function ble/syntax/highlight/cmdtype/.impl {
 ##   @param[in] word
 ##     シェル展開・クォート除去を実行する前の文字列を指定します。
 ##   @var[out] type
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # Note: 連想配列 _ble_syntax_highlight_filetype は core-syntax-def.sh で先に定義される。
 
   _ble_syntax_highlight_filetype_version=-1
@@ -6072,7 +6072,7 @@ function ble/syntax/highlight/ls_colors/.clear {
 ## @fn ble/syntax/highlight/ls_colors/.read-extension key
 ##   @param[in] key
 ##   @var[out] ret
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # 連想配列による実装
   function ble/syntax/highlight/ls_colors/.register-extension {
     local key=$1 value=$2
