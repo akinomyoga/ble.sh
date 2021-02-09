@@ -49,10 +49,10 @@ ble_decode_MaskFlag=0x7FC00000
 
 ble_decode_IsolatedESC=$((0x07FF))
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
   _ble_decode_kbd__n=0
-  if ((_ble_bash>=40200)); then
+  if ((_ble_bash>=40300)); then
     declare -gA _ble_decode_kbd__k2c
   else
     declare -A _ble_decode_kbd__k2c
