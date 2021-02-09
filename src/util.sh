@@ -2760,19 +2760,38 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
     fi
   }
   function sleep { ble/builtin/sleep "$@"; }
-elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
-  if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
-    # Note: #D1452 socket (/dev/udp) で Cygwin が hang する。他の実装も全般に
-    # read -t は Cygwin では固まる可能性がある様だ。但し、発生する頻度は方法に
-    # よって異なる。仕方が無いので自前で loadable builtin をコンパイルする事に
-    # した。と思ったがライセンスの問題でこれを有効にする訳には行かない。
-    [[ -f $_ble_base/lib/init-msleep.sh ]] &&
-      source "$_ble_base/lib/init-msleep.sh" &&
-      ble/util/msleep/.use-compiled-builtin ||
-        ble/util/msleep/.use-read-timeout zero.exec1-coreutil
-  else
-    ble/util/msleep/.use-read-timeout fifo.exec2
-  fi
+elif [[ -f $_ble_base/lib/init-msleep.sh ]] &&
+       source "$_ble_base/lib/init-msleep.sh" &&
+       ble/util/msleep/.load-compiled-builtin
+then
+  # 自前で sleep.so をコンパイルする。
+  #
+  # Note: #D1452 #D1468 #D1469 元々使っていた read -t による手法が
+  # Bash のバグでブロックする事が分かった。bash 4.3..5.1 ならばどの OS
+  # でも再現する。仕方が無いので自前で loadable builtin をコンパイルす
+  # る事にした。と思ったがライセンスの問題でこれを有効にする訳には行か
+  # ない。
+  function ble/util/msleep { ble/builtin/msleep "$1"; }
+elif ((40000<=_ble_bash&&!(40300<=_ble_bash&&_ble_bash<50200))) &&
+       [[ $OSTYPE != cygwin* && $OSTYPE != mingw* && $OSTYPE != haiku* && $OSTYPE != minix* ]]
+then
+  # FIFO (mkfifo) を予め読み書き両用で開いて置き read -t する方法。
+  #
+  # Note: #D1452 #D1468 #D1469 Bash 4.3 以降では一般に read -t が
+  # SIGALRM との race condition で固まる可能性がある。socket
+  # (/dev/udp) や fifo で特に問題が発生しやすい。特に Cygwin で顕著。
+  # 但し、発生する頻度は環境や用法・手法によって異なる。Cygwin/MSYS,
+  # Haiku 及び Minix では fifo は思う様に動かない。
+  ble/util/msleep/.use-read-timeout fifo.exec2
+elif ((_ble_bash>=40000)) && [[ -c /dev/zero ]]; then
+  # /dev/zero に対して read -t する方法。
+  #
+  # Note: #D1452 #D1468 #D1469 元々使っていた FIFO に対する方法が安全
+  # でない時は /dev/zero に対して read -t する。0 を読み続ける事になる
+  # ので CPU を使う事になるが短時間の sleep の時のみに使う事にして我慢
+  # する事にする。確認した全ての OS で /dev/zero は存在した (Linux,
+  # Cygwin, FreeBSD, Solaris, Minix, Haiku, MSYS2)。
+  ble/util/msleep/.use-read-timeout zero.exec1-coreutil
 elif ble/bin/.freeze-utility-path sleepenh; then
   function ble/util/msleep/.core { ble/bin/sleepenh "$1" &>/dev/null; }
 elif ble/bin/.freeze-utility-path usleep; then

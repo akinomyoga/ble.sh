@@ -41,6 +41,7 @@
 - edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 09cf7f1
 - complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
 - util (`ble/util/msleep`): fix hang in Cygwin by swithing from `/dev/udp/0.0.0.0/80` to `/dev/zero` `#D1452` d4d718a
+  - util (`ble/util/msleep`): work around the bash-4.3 bug of `read -t` (reported by 3ximus) `#D1468` `#D1469` 0000000
 - syntax: fix broken AST with `[[` keyword `#D1454` 69658ef
 - benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
 - global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
@@ -57,7 +58,7 @@
 - global: clean up helps of user functions `#D1459` 33c283e
 - benchmark (`ble-measure`): support `-T TIME` and `-B TIME` option `#D1460` 1aa471b
 - util, color (`bleopt`, `blehook`, `ble-color-setface`): support `--color` and fix `sgr0` contamination in non-color output `#D1466` 69248ff
-- global: fix status check for read timeout `#D1467` 0000000
+- global: fix status check for read timeout `#D1467` e886883
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
