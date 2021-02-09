@@ -84,10 +84,10 @@ function ble/init:term/initialize {
   ble/init:term/register-varname _ble_term_xenl
 
   # bce (background color erase)
-  _ble_term_bce=0
+  _ble_term_bce=
   [[ $_ble_term_tput ]] &&
     ble/init:term/tput bce:ut &>/dev/null &&
-    _ble_term_xenl=1
+    _ble_term_bce=1
   ble/init:term/register-varname _ble_term_bce
 
   # tab width
@@ -190,6 +190,10 @@ function ble/init:term/initialize {
     _ble_term_civis=$_ble_term_civis$'\e[34h'
   [[ $_ble_term_civis == $'\e[?25l'* && $_ble_term_cvvis != *$'\e[?25h'* ]] &&
     _ble_term_cvvis=$_ble_term_cvvis$'\e[?25h'
+
+  # Alternate Screen Buffer
+  ble/init:term/define-cap _ble_term_smcup '' smcup:ti # \e[?1049h
+  ble/init:term/define-cap _ble_term_rmcup '' rmcup:te # \e[?1049l
 
   # status lines
   ble/init:term/define-cap _ble_term_tsl '' tsl:ts

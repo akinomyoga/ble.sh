@@ -893,8 +893,8 @@ function ble-decode-char/csi/.decode {
       local button=$((10#${BASH_REMATCH[1]}))
       ((_ble_term_mouse_button=button&~0x1C,
         char==109&&(_ble_term_mouse_button|=0x70),
-        _ble_term_mouse_x=10#${BASH_REMATCH[2]},
-        _ble_term_mouse_y=10#${BASH_REMATCH[3]}))
+        _ble_term_mouse_x=10#${BASH_REMATCH[2]}-1,
+        _ble_term_mouse_y=10#${BASH_REMATCH[3]}-1))
       local key=$_ble_decode_KCODE_MOUSE
       ((button&32)) && key=$_ble_decode_KCODE_MOUSE_MOVE
       ble-decode-char/csi/.modify-key $((button>>2&0x07))
@@ -905,8 +905,8 @@ function ble-decode-char/csi/.decode {
     if rex='^<([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
       ## mouse_select
       ((_ble_term_mouse_button=128,
-        _ble_term_mouse_x=10#${BASH_REMATCH[1]},
-        _ble_term_mouse_y=10#${BASH_REMATCH[2]}))
+        _ble_term_mouse_x=10#${BASH_REMATCH[1]}-1,
+        _ble_term_mouse_y=10#${BASH_REMATCH[2]}-1))
       local key=$_ble_decode_KCODE_MOUSE
       csistat=$key
     fi

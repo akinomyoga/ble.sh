@@ -250,6 +250,48 @@ bleopt/declare -v line_limit_length 10000
 ##   一括挿入で文字数を超過した時の動作を指定します。
 bleopt/declare -v line_limit_type none
 
+# 
+#------------------------------------------------------------------------------
+# **** Application ****
+
+_ble_app_render_mode=panel
+function ble/application/.set-up-render-mode {
+  [[ $1 == "$_ble_app_render_mode" ]] && return 0
+  case $1 in
+  (panel)
+    ble/term/leave-altscr
+    ble/canvas/panel/invalidate ;;
+  (forms:*)
+    ble/term/enter-altscr
+    ble/util/buffer "$_ble_term_clear"
+    ble/util/buffer $'\e[H'
+    _ble_canvas_x=0 _ble_canvas_y=0 ;;
+  (*)
+    ble/util/print "ble/edit: unrecognized render mode '$1'."
+    return 1 ;;
+  esac
+}
+function ble/application/push-render-mode {
+  ble/application/.set-up-render-mode "$1" || return 1
+  ble/array#unshift _ble_app_render_mode "$1"
+}
+function ble/application/pop-render-mode {
+  [[ ${_ble_app_render_mode[1]} ]] || return 1
+  ble/application/.set-up-render-mode "${_ble_app_render_mode[1]}"
+  ble/array#shift _ble_app_render_mode
+}
+function ble/application/render {
+  local render=$_ble_app_render_mode
+  case $render in
+  (panel)
+    ble/edit/leave-command-layout # ble/edit 特有
+    ble/canvas/panel/render ;;
+  (forms:*)
+    ble/forms/render "${render#*:}" ;;
+  esac
+  ble/util/buffer.flush >&2
+}
+
 # canvas.sh 設定
 
 _ble_canvas_panel_focus=0
@@ -1207,6 +1249,7 @@ function ble/edit/info/.construct-content {
 
 function ble/edit/info/.clear-content {
   [[ ${_ble_edit_info[2]} ]] || return 1
+  [[ $_ble_app_render_mode == panel ]] || return 0
 
   local -a DRAW_BUFF=()
   ble/canvas/panel#set-height.draw "$_ble_edit_info_panel" 0
@@ -1228,6 +1271,8 @@ function ble/edit/info/.render-content {
   fi
 
   _ble_edit_info=("$x" "$y" "$content")
+
+  [[ $_ble_app_render_mode == panel ]] || return 0
 
   local -a DRAW_BUFF=()
   ble/canvas/panel/reallocate-height.draw
@@ -1855,8 +1900,7 @@ function ble-edit/attach/TRAPWINCH {
       ble-edit/bind/stdout.on
       ble/edit/enter-command-layout
       ble/util/buffer "$_ble_term_ed"
-      ble/edit/leave-command-layout
-      ble/canvas/panel/render
+      ble/application/render
       ble-edit/bind/stdout.off
     fi
   fi
@@ -7492,9 +7536,7 @@ function ble/builtin/read/.loop {
     ((timeout<0)) && timeout=
   fi
 
-  ble/edit/leave-command-layout
-  ble/canvas/panel/render
-  ble/util/buffer.flush >&2
+  ble/application/render
 
   # Note: ble-decode-key が中断しない為の設定 #D0998
   #   ble/encoding:.../is-intermediate の状態にはないと仮定して、
@@ -7548,9 +7590,7 @@ function ble/builtin/read/.loop {
     ble/util/is-stdin-ready && continue
     ble-edit/content/check-limit
     ble-decode/.hook/erase-progress
-    ble/edit/leave-command-layout
-    ble/canvas/panel/render
-    ble/util/buffer.flush >&2
+    ble/application/render
   done
 
   # 入力が終わったら消すか次の行へ行く
@@ -8124,22 +8164,21 @@ function ble-edit/bind/.tail-without-draw {
 
 if ((_ble_bash>=40000)); then
   function ble-edit/bind/.tail {
-    ble/edit/leave-command-layout
-    ble/canvas/panel/render
-    ble/util/idle.do && ble/canvas/panel/render
+    ble/application/render
+    ble/util/idle.do && ble/application/render
     ble/textarea#adjust-for-bash-bind # bash-4.0+
     ble-edit/bind/stdout.off
   }
 else
   function ble-edit/bind/.tail {
-    ble/edit/leave-command-layout
-    ble/canvas/panel/render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
-    ble/util/idle.do && ble/canvas/panel/render # bash-4.0+
+    ble/application/render
+    ble/util/idle.do && ble/application/render
+    # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     ble-edit/bind/stdout.off
   }
 fi
 
-## ble-decode.sh 用の設定
+## src/decode.sh 用の設定
 function ble-decode/PROLOGUE {
   ble-edit/exec:gexec/restore-state
   ble-edit/bind/.head
@@ -8147,7 +8186,7 @@ function ble-decode/PROLOGUE {
   ble/term/enter
 }
 
-## ble-decode.sh 用の設定
+## src/decode.sh 用の設定
 function ble-decode/EPILOGUE {
   if ((_ble_bash>=40000)); then
     # 貼付対策:
@@ -8162,7 +8201,7 @@ function ble-decode/EPILOGUE {
 
   ble-edit/content/check-limit
 
-  # _ble_decode_bind_hook で bind/tail される。
+  # _ble_decode_bind_hook で bind/,tail される。
   "ble-edit/exec:$bleopt_internal_exec_type/process" && return 0
 
   ble-edit/bind/.tail

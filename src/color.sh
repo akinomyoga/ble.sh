@@ -10,6 +10,7 @@ _ble_color_gflags_Invisible=0x10
 _ble_color_gflags_Strike=0x20
 _ble_color_gflags_Blink=0x40
 
+_ble_color_gflags_DecorationMask=0x77
 _ble_color_gflags_FgMask=0x00000000FFFFFF00
 _ble_color_gflags_BgMask=0x00FFFFFF00000000
 _ble_color_gflags_FgIndexed=0x0100000000000000

@@ -17,7 +17,7 @@
   - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 01cfb10
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
   - prompt: fix missing height allocation for status line `#D1487` b424fa5
-  - prompt: support `bleopt prompt_status_align=justify` `#D1494` 0000000
+  - prompt: support `bleopt prompt_status_align=justify` `#D1494` c30a0db
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
 - keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
 
@@ -87,7 +87,7 @@
   - Makefile: fix up f7323b4: restore rule for `keymap/*.txt` `#D1496` 054e5c1
 - util, etc: ensure each function to work with arbitrary `IFS` `#D1490` `#D1491` 5f9adfe
 - tui, canvas (`ble/canvas/trace`): support `opts=clip` `#D1493` 61ce90c
-
+- tui, edit: add a new render mode for full-screen applications 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

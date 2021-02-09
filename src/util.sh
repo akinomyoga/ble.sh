@@ -477,8 +477,10 @@ function ble/array#pop {
   if ((i$1>=0)); then
     builtin eval "ret=\${$1[i$1]}"
     builtin unset -v "$1[i$1]"
+    return 0
   else
     ret=
+    return 1
   fi
 }
 ## @fn ble/array#unshift arr value...
@@ -4694,6 +4696,38 @@ function ble/term/modifyOtherKeys/leave {
     ble/term/modifyOtherKeys/.supported || value=
   fi
   ble/term/modifyOtherKeys/.update "$value"
+}
+
+#---- Alternate Screen Buffer mode --------------------------------------------
+
+_ble_term_altscr_state=
+function ble/term/enter-altscr {
+  [[ $_ble_term_altscr_state ]] && return 0
+  _ble_term_altscr_state=("$_ble_canvas_x" "$_ble_canvas_y")
+  if [[ $_ble_term_rmcup ]]; then
+    ble/util/buffer "$_ble_term_smcup"
+  else
+    local -a DRAW_BUFF=()
+    ble/canvas/put.draw $'\e[?1049h'
+    ble/canvas/put-cup.draw "$LINES" 0
+    ble/canvas/put-ind.draw "$LINES"
+    ble/canvas/bflush.draw
+  fi
+}
+function ble/term/leave-altscr {
+  [[ $_ble_term_altscr_state ]] || return 0
+  if [[ $_ble_term_rmcup ]]; then
+    ble/util/buffer "$_ble_term_rmcup"
+  else
+    local -a DRAW_BUFF=()
+    ble/canvas/put-cup.draw "$LINES" 0
+    ble/canvas/put-ind.draw
+    ble/canvas/put.draw $'\e[?1049l'
+    ble/canvas/bflush.draw
+  fi
+  _ble_canvas_x=${_ble_term_altscr_state[0]}
+  _ble_canvas_y=${_ble_term_altscr_state[1]}
+  _ble_term_altscr_state=()
 }
 
 #---- rl variable: convert-meta -----------------------------------------------
