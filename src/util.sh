@@ -1488,60 +1488,74 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
   _ble_util_msleep_builtin_available=1
   _ble_util_msleep_delay=300
   function ble/util/msleep/.core { builtin sleep "$1"; }
-elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
-  if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
-    _ble_util_msleep_tmp=/dev/zero
-    ble/util/openat _ble_util_msleep_fd '< "$_ble_util_msleep_tmp"'
-    _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
+elif ((40000<=_ble_bash&&!(40300<=_ble_bash&&_ble_bash<50200))) &&
+       [[ $OSTYPE != cygwin* && $OSTYPE != mingw* && $OSTYPE != haiku* && $OSTYPE != minix* ]]
+then
+  # FIFO (mkfifo) を予め読み書き両用で開いて置き read -t する方法。
+  #
+  # Note: #D1452 #D1468 #D1469 Bash 4.3 以降では一般に read -t が
+  # SIGALRM との race condition で固まる可能性がある。socket
+  # (/dev/udp) や fifo で特に問題が発生しやすい。特に Cygwin で顕著。
+  # 但し、発生する頻度は環境や用法・手法によって異なる。Cygwin/MSYS,
+  # Haiku 及び Minix では fifo は思う様に動かない。
+  _ble_util_msleep_delay=300
+  _ble_util_msleep_fd=
+  _ble_util_msleep_tmp=$_ble_base_run/$$.ble_util_msleep.pipe
+  if [[ ! -p $_ble_util_msleep_tmp ]]; then
+    [[ -e $_ble_util_msleep_tmp ]] && ble/bin/rm -rf "$_ble_util_msleep_tmp"
+    ble/bin/mkfifo "$_ble_util_msleep_tmp"
+  fi
+  ble/util/openat _ble_util_msleep_fd '<> "$_ble_util_msleep_tmp"'
+  _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
 
-    _ble_util_msleep_switch=200 # [msec]
-    _ble_util_msleep_delay1=2000 # short msleep にかかる時間 [usec]
-    _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
-    function ble/util/msleep {
-      if (($1<_ble_util_msleep_switch)); then
-        local v=$((1000*$1-_ble_util_msleep_delay1))
-        ((v<=0)) && v=100
-        ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
-        builtin eval -- "$_ble_util_msleep_read"
-      else
-        local v=$((1000*$1-_ble_util_msleep_delay2))
-        ((v<=0)) && v=100
-        ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
-        ble/bin/sleep "$v"
-      fi
-    }
-    function ble/util/msleep/.calibrate-loop {
-      local _ble_measure_threshold=10000
-      local ret nsec _ble_measure_count=1
+  function ble/util/msleep {
+    local v=$((1000*$1-_ble_util_msleep_delay))
+    ((v<=0)) && v=100
+    ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+    builtin eval -- "$_ble_util_msleep_read"
+  }
+elif ((_ble_bash>=40000)) && [[ -c /dev/zero ]]; then
+  # /dev/zero に対して read -t する方法。
+  #
+  # Note: #D1452 #D1468 #D1469 元々使っていた FIFO に対する方法が安全
+  # でない時は /dev/zero に対して read -t する。0 を読み続ける事になる
+  # ので CPU を使う事になるが短時間の sleep の時のみに使う事にして我慢
+  # する事にする。確認した全ての OS で /dev/zero は存在した (Linux,
+  # Cygwin, FreeBSD, Solaris, Minix, Haiku, MSYS2)。
+  _ble_util_msleep_tmp=/dev/zero
+  ble/util/openat _ble_util_msleep_fd '< "$_ble_util_msleep_tmp"'
+  _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
 
-      _ble_util_msleep_switch=200
-      _ble_util_msleep_delay1=0 ble-measure 'ble/util/msleep 1'
-      local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
-      ((count<=0||delay<_ble_util_msleep_delay1)) && _ble_util_msleep_delay1=$delay # 最小値を選択
-
-      _ble_util_msleep_delay2=0 ble-measure 'ble/bin/sleep 0'
-      local delay=$((nsec/1000))
-      ((count<=0||delay<_ble_util_msleep_delay2)) && _ble_util_msleep_delay2=$delay # 最小値を選択
-      ((_ble_util_msleep_switch=_ble_util_msleep_delay2/1000+10))
-    }
-  else
-    _ble_util_msleep_delay=300
-    _ble_util_msleep_fd=
-    _ble_util_msleep_tmp=$_ble_base_run/$$.ble_util_msleep.pipe
-    if [[ ! -p $_ble_util_msleep_tmp ]]; then
-      [[ -e $_ble_util_msleep_tmp ]] && ble/bin/rm -rf "$_ble_util_msleep_tmp"
-      ble/bin/mkfifo "$_ble_util_msleep_tmp"
-    fi
-    ble/util/openat _ble_util_msleep_fd '<> "$_ble_util_msleep_tmp"'
-    _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
-
-    function ble/util/msleep {
-      local v=$((1000*$1-_ble_util_msleep_delay))
+  _ble_util_msleep_switch=200 # [msec]
+  _ble_util_msleep_delay1=2000 # short msleep にかかる時間 [usec]
+  _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
+  function ble/util/msleep {
+    if (($1<_ble_util_msleep_switch)); then
+      local v=$((1000*$1-_ble_util_msleep_delay1))
       ((v<=0)) && v=100
       ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
       builtin eval -- "$_ble_util_msleep_read"
-    }
-  fi
+    else
+      local v=$((1000*$1-_ble_util_msleep_delay2))
+      ((v<=0)) && v=100
+      ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+      ble/bin/sleep "$v"
+    fi
+  }
+  function ble/util/msleep/.calibrate-loop {
+    local _ble_measure_threshold=10000
+    local ret nsec _ble_measure_count=1
+
+    _ble_util_msleep_switch=200
+    _ble_util_msleep_delay1=0 ble-measure 'ble/util/msleep 1'
+    local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
+    ((count<=0||delay<_ble_util_msleep_delay1)) && _ble_util_msleep_delay1=$delay # 最小値を選択
+
+    _ble_util_msleep_delay2=0 ble-measure 'ble/bin/sleep 0'
+    local delay=$((nsec/1000))
+    ((count<=0||delay<_ble_util_msleep_delay2)) && _ble_util_msleep_delay2=$delay # 最小値を選択
+    ((_ble_util_msleep_switch=_ble_util_msleep_delay2/1000+10))
+  }
 elif ble/bin/.freeze-utility-path sleepenh; then
   function ble/util/msleep/.core { ble/bin/sleepenh "$1" &>/dev/null; }
 elif ble/bin/.freeze-utility-path usleep; then
