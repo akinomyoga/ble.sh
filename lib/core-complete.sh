@@ -4208,7 +4208,7 @@ function ble/complete/sabbrev/.print-definition {
 ##   @param[in] key
 ##   @var[out] ret
 ##
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   function ble/complete/sabbrev/register {
     local key=$1 value=$2
     _ble_complete_sabbrev[$key]=$value

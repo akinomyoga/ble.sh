@@ -70,8 +70,8 @@ ble/function#try ble/util/idle.push ble/syntax/import ||
 
 bleopt/declare -v filename_ls_colors ''
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  if ((_ble_bash>=40200)); then
+if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40300)); then
     declare -gA _ble_syntax_highlight_filetype=()
     declare -gA _ble_syntax_highlight_lscolors_ext=()
   else
