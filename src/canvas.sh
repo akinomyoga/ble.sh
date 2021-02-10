@@ -2151,7 +2151,8 @@ function ble/canvas/panel/render {
   for ((index=0;index<n;index++)); do
     local panel_class=${_ble_canvas_panel_class[index]}
     local panel_height=${_ble_canvas_panel_height[index]}
-    ((panel_height)) || continue
+    # Note: panel::render の中で高さを更新するので panel_height==0 で
+    # あっても panel::render を呼び出す。
     ble/function#try "$panel_class#panel::render" "$index" 0 "$panel_height"
     if [[ $_ble_canvas_panel_focus ]] && ((index==_ble_canvas_panel_focus)); then
       local ret; ble/canvas/panel/save-position; local pos=$ret

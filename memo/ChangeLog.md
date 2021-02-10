@@ -13,6 +13,7 @@
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
+  - canvas (panel): always call panel::render to update height `#D1472` 0000000
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
 
 ## Changes
@@ -41,7 +42,7 @@
 - edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 09cf7f1
 - complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
 - util (`ble/util/msleep`): fix hang in Cygwin by swithing from `/dev/udp/0.0.0.0/80` to `/dev/zero` `#D1452` d4d718a
-  - util (`ble/util/msleep`): work around the bash-4.3 bug of `read -t` (reported by 3ximus) `#D1468` `#D1469` 0000000
+  - util (`ble/util/msleep`): work around the bash-4.3 bug of `read -t` (reported by 3ximus) `#D1468` `#D1469` 4ca9b2e
 - syntax: fix broken AST with `[[` keyword `#D1454` 69658ef
 - benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
 - global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04

@@ -2090,7 +2090,7 @@ function ble/textarea#render/.erase-forward-line.draw {
 ##   @var[in,out] scroll
 ##     現在のスクロール量を指定します。調整後のスクロール量を指定します。
 ##   @var[in,out] height
-##     最大の表示高さを指定します。実際の表示高さを返します。
+##     現在の表示高さを指定します。再配置後の表示高さを返します。
 ##   @var[in,out] umin umax
 ##     描画範囲を表示領域に制限して返します。
 ##
@@ -2100,7 +2100,14 @@ function ble/textarea#render/.erase-forward-line.draw {
 ##
 function ble/textarea#render/.determine-scroll {
   local nline=$((endy+1))
-  if ((nline>height)); then
+
+  # panel の高さを要求。この後 height <= nline になる筈。
+  if ((height!=nline)); then
+    ble/canvas/panel#reallocate-height.draw
+    height=${_ble_canvas_panel_height[_ble_textarea_panel]}
+  fi
+
+  if ((height<nline)); then
     ((scroll<=nline-height)) || ((scroll=nline-height))
 
     local _height=$((height-begy)) _nline=$((nline-begy)) _cy=$((cy-begy))
@@ -2131,8 +2138,12 @@ function ble/textarea#render/.determine-scroll {
       ((umin<wmin&&(umin=wmin),
         umax>wmax&&(umax=wmax)))
   else
+    # Note: height == nline の筈
     scroll=
-    height=$nline
+    if ! ble/util/assert '((height==nline))'; then
+      ble/canvas/panel#set-height.draw "$_ble_textarea_panel" "$nline"
+      height=$nline
+    fi
   fi
 }
 ## @fn ble/textarea#render/.perform-scroll new_scroll
@@ -2384,7 +2395,6 @@ function ble/textarea#render {
   # 描画領域の決定とスクロール
 
   local -a DRAW_BUFF=()
-  ble/canvas/panel#reallocate-height.draw
 
   # 1 描画領域の決定
   local begx=$_ble_textmap_begx begy=$_ble_textmap_begy
@@ -2396,7 +2406,6 @@ function ble/textarea#render {
   local height=${_ble_canvas_panel_height[_ble_textarea_panel]}
   local scroll=${_ble_textarea_scroll_new:-$_ble_textarea_scroll}
   ble/textarea#render/.determine-scroll # update: height scroll umin umax
-  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" "$height"
 
   local gend gendx gendy
   if [[ $scroll ]]; then
