@@ -3764,6 +3764,13 @@ bash_tips
 
 2021-02-10
 
+  * ble/builtin/read: 空文字列の時 C-d でキャンセルしない [#D1473]
+
+    使い心地が変だと思って plain Bash で試してみたら C-d でちゃんとキャンセルに
+    なる。ble/builtin/read もこれと同様に振る舞うべきである。
+
+    →これも実装した。これは簡単な修正。
+
   * ble/builtin/read: 全く描画されなくなっている [#D1472]
 
     これは ble/canvas/panel/render において描画するかどうかを各パネルの高さで決

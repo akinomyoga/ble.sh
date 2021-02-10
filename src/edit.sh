@@ -3656,7 +3656,6 @@ function ble/widget/exit {
 function ble/widget/delete-forward-char-or-exit {
   if [[ $_ble_edit_str ]]; then
     ble/widget/delete-forward-char
-    return "$?"
   else
     ble/widget/exit
   fi
@@ -7275,6 +7274,13 @@ function ble/widget/read/cancel {
   ble/widget/read/accept
   _ble_edit_read_accept=2
 }
+function ble/widget/read/delete-forward-char-or-cancel {
+  if [[ $_ble_edit_str ]]; then
+    ble/widget/delete-forward-char
+  else
+    ble/widget/read/cancel
+  fi
+}
 
 function ble/widget/read/__line_limit__.edit {
   local content=$1
@@ -7300,6 +7306,7 @@ function ble-decode/keymap:read/define {
   ble-bind -f 'C-m' read/accept
   ble-bind -f 'RET' read/accept
   ble-bind -f 'C-j' read/accept
+  ble-bind -f 'C-d' 'delete-region-or read/delete-forward-char-or-cancel'
 
   # shell functions
   ble-bind -f  'C-g'     bell

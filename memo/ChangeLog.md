@@ -13,7 +13,7 @@
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
-  - canvas (panel): always call panel::render to update height `#D1472` 0000000
+  - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
 
 ## Changes
@@ -29,6 +29,7 @@
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 - prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` cca1cbc
+- edit (`ble/builtin/read`): cancel by <kbd>C-d</kbd> on an empty line `#D1473` 0000000
 
 ## Fixes
 
