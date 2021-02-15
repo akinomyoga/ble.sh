@@ -55,7 +55,11 @@ CTX_ARGVR       62 # (コマンド) declare の引数の右辺
 CTX_CONDX       32
 CTX_CONDI       33
 CTX_CONDQ       67
-CTX_CASE        34 # case パターン待ち
+CTX_CASE        34 # case パターン 開始待ち ("(" を特別扱い)
+CTX_CPATX       76 # case パターン 単語待ち ("(" の後)
+CTX_CPATI       77 # case パターン 単語内部
+CTX_CPATQ       79 # case パターン 変数代入形式(チルダ展開の為に区別)
+CTX_CPATX0      78 # case パターン 単語終了後。"|" or ")" 待ち
 CTX_PATN        30 # glob 通常文字
 ATTR_GLOB       31 # glob 特別文字
 CTX_BRAX        54 # [...] (角括弧式)

@@ -3157,40 +3157,6 @@ bash_tips
     例えばシェル関数を定義した履歴項目に跳んだり、変数名から declare に移動するなど。
     そういう機能でまともそうなのが定義できればそれを実装する。
 
-2017-10-01
-
-  * syntax: case $x in (a b) : ;; esac のパターン "a b" はエラー
-
-    どうやら一個の単語までしか駄目な様子?
-
-    更に case aaa in ((aaa)) echo;; esac 等の様に () の入れ子もエラーになる。
-    shopt -s/-u extglob に拘らずエラーになる。
-    一方で extglob の @() に関しては中で () の入れ子が可能である。
-    つまり、case の中の (...) と extglob @(...) の文脈は異なる。
-
-    他にも違いはある。@(<>) は許されるが、in (<>) は許されない。
-    @(&&) は許されるが in (&&) は許されない。
-    in (a|a|a) は許されるが in (a||a) や in (||) は許されない。
-    in (&), in (|), in (;), in (<), in (>) は何れも駄目。
-    in (a&b), in (a;b), in (a<b), in (a>b) も何れも駄目。
-
-    どうも全然違う文脈の様に思われてきた。
-
-    現在の実装では ble-syntax:bash/ctx-case から CTX_PATN に突入している。
-    (他に CTX_PATN に入っている箇所を探すと、
-    関数の引数の括弧に何か変な物が入っている場合と、
-    コマンドの途中で突然括弧が現れた場合である。
-    これらはエラーに対する復帰としての CTX_PATN なのでそんなに気にしなくて良い)
-
-    どうも振る舞いを観察すると ctx-conditions と ctx-globpat の中間のように思う。
-    単語を設置しなければならないという観点で言うと ctx-conditions に近い。
-    一方で対応している構文の集合という観点で言うと ctx-globpat が幾らか近いように思う。
-
-    2017-11-27 追記
-    どうやら () の中の単語ではチルダ展開も有効のようだ。以下で hello が出力される。
-    case a=~ in (a=/home/murase) echo hello; esac # これは対応済み
-    case a=/home/murase in (a=~) echo hello; esac
-
 2017-09-18
 
   * vi-mode: operator = [#tmp0001]
@@ -3761,6 +3727,251 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-02-15
+
+  * 2017-10-01 syntax: case $x in (a b) : ;; esac のパターン "a b" はエラー [#D1476]
+    これも #D1474 で対応した。此処に挙げられているテストケースは有用だった。
+
+    どうやら一個の単語までしか駄目な様子?
+
+    更に case aaa in ((aaa)) echo;; esac 等の様に () の入れ子もエラーになる。
+    shopt -s/-u extglob に拘らずエラーになる。
+    一方で extglob の @() に関しては中で () の入れ子が可能である。
+    つまり、case の中の (...) と extglob @(...) の文脈は異なる。
+
+    他にも違いはある。@(<>) は許されるが、in (<>) は許されない。
+    @(&&) は許されるが in (&&) は許されない。
+    in (a|a|a) は許されるが in (a||a) や in (||) は許されない。
+    in (&), in (|), in (;), in (<), in (>) は何れも駄目。
+    in (a&b), in (a;b), in (a<b), in (a>b) も何れも駄目。
+
+    どうも全然違う文脈の様に思われてきた。
+
+    現在の実装では ble-syntax:bash/ctx-case から CTX_PATN に突入している。
+    (他に CTX_PATN に入っている箇所を探すと、
+    関数の引数の括弧に何か変な物が入っている場合と、
+    コマンドの途中で突然括弧が現れた場合である。
+    これらはエラーに対する復帰としての CTX_PATN なのでそんなに気にしなくて良い)
+
+    どうも振る舞いを観察すると ctx-conditions と ctx-globpat の中間のように思う。
+    単語を設置しなければならないという観点で言うと ctx-conditions に近い。
+    一方で対応している構文の集合という観点で言うと ctx-globpat が幾らか近いように思う。
+
+    2017-11-27 追記
+    どうやら () の中の単語ではチルダ展開も有効のようだ。以下で hello が出力される。
+    case a=~ in (a=/home/murase) echo hello; esac # これは対応済み
+    case a=/home/murase in (a=~) echo hello; esac
+
+  * syntax: case x) とした時の ")" の着色が括弧でちゃんと囲んだ時と異なる [#D1475]
+    これは #D1474 における再実装で一緒に修正した。
+
+  * syntax: case a in @) で @() と入力すると fatal error [#D1474]
+
+    case a in ) の状態でパターンに @() を入力しようとするとシフトエラーになる
+
+    | もっと具体的に調べてみると case a in @) の状態で @ の直後に ( を挿入する
+    | となる。シフトエラーになるという事は case a in @) と入力した時点で壊れて
+    | いると考えられる。
+    |
+    | | 先に ) を入力した時
+    | | $ case a in @)
+    | | _ble_syntax_attr/tree/nest/stat?
+    | | 18 a    000 'c' | stat=(CMDX w=- n=- t=-:-)
+    | |  | a    001 'a' |
+    | |  | a    002 's' |
+    | |  | a    003 'e' + word=CMDI:0-4/(wattr=d)
+    | | 39 a    004 ' '   stat=(CARGX1 w=- n=- t=$4:-)
+    | | 40 a    005 'a' + word=ARGI:@3>5-6/(wattr=d) stat=(CARGX1 w=- n=- t=$4:-)
+    | | 41 a    006 ' '   stat=(CARGX2 w=- n=- t=$6:-)
+    | | 42 a    007 'i' | stat=(CARGX2 w=- n=- t=$6:-)
+    | |  | a    008 'n' + word=CARGI2:@5>7-9/(wattr=d)
+    | | 34*a    009 ' '   stat=(CASE w=- n=- t=$9:-)
+    | | 30*a    010 '@' | nest=(CMDX w=- n=- t=$9:-) stat=(CASE w=- n=- t=$9:-)
+    | | 30*a  s 011 ')' + word="none":@8>10-12 stat=(PATN w=- n=@10 t=-:$9)
+    | |  |    s 012 ^@   stat=(CMDX w=- n=- t=$12:-)
+    | |
+    | | 先に @ を入力した時
+    | | $ case a in @)
+    | | _ble_syntax_attr/tree/nest/stat?
+    | | 18 a    000 'c' | stat=(CMDX w=- n=- t=-:-)
+    | |  | a    001 'a' |
+    | |  | a    002 's' |
+    | |  | a    003 'e' + word=CMDI:0-4/(wattr=d)
+    | | 39 a    004 ' '   stat=(CARGX1 w=- n=- t=$4:-)
+    | | 40 a    005 'a' + word=ARGI:@3>5-6/(wattr=d) stat=(CARGX1 w=- n=- t=$4:-)
+    | | 41 a    006 ' '   stat=(CARGX2 w=- n=- t=$6:-)
+    | | 42 a    007 'i' | stat=(CARGX2 w=- n=- t=$6:-)
+    | |  | a    008 'n' + word=CARGI2:@5>7-9/(wattr=d)
+    | | 34 a    009 ' '   stat=(CASE w=- n=- t=$9:-)
+    | | 30*a    010 '@' | nest=(CMDX w=- n=- t=$9:-) stat=(CASE w=- n=- t=$9:-)
+    | | 30*a    011 ')' + word="none":@8>10-12 stat=(PATN w=- n=@10 t=-:$9)
+    | |  |    s 012 ^@   stat=(CMDX w=- n=- t=$12:-)
+    |
+    | これら二つを比較しても違いは 011 の位置の s という記号のみである。この s
+    | というのが何であるかは覚えていないが、実のところこの二つの両方で問題が再
+    | 現するので @ を先に入力するか ) を先に入力するかは問題には関係ない。
+    |
+    | @の代わりに X を挿入した場合にどうなるか調べる。X に引き続いて (
+    | を挿入しても問題は発生しない。
+    |
+    | | $ case a in X)
+    | | _ble_syntax_attr/tree/nest/stat?
+    | | 18 a    000 'c' | stat=(CMDX w=- n=- t=-:-)
+    | |  | a    001 'a' |
+    | |  | a    002 's' |
+    | |  | a    003 'e' + word=CMDI:0-4/(wattr=d)
+    | | 39 a    004 ' '   stat=(CARGX1 w=- n=- t=$4:-)
+    | | 40 a    005 'a' + word=ARGI:@3>5-6/(wattr=d) stat=(CARGX1 w=- n=- t=$4:-)
+    | | 41 a    006 ' '   stat=(CARGX2 w=- n=- t=$6:-)
+    | | 42 a    007 'i' | stat=(CARGX2 w=- n=- t=$6:-)
+    | |  | a    008 'n' + word=CARGI2:@5>7-9/(wattr=d)
+    | | 34 a    009 ' '   stat=(CASE w=- n=- t=$9:-)
+    | | 30 a    010 'X' | nest=(CMDX w=- n=- t=$9:-) stat=(CASE w=- n=- t=$9:-)
+    | | 30 a    011 ')' + word="none":@8>10-12 stat=(PATN w=- n=@10 t=-:$9)
+    | |  |    s 012 ^@   stat=(CMDX w=- n=- t=$12:-)
+    |
+    | 然し木構造を調べても X の時と @ の時で全く同じ状態になっている。な
+    | のにシフトでエラーが発生するというのは不思議である。
+    | →改めて確認した所、一番最初に発生するエラーはシフトエラーではなかった。
+    |
+    | | ble/syntax/tree-enumerate/.initialize/FATAL2
+    | |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:4 (ble/syntax/tree-enumerate)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/print-status/.dump-tree)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:8 (ble/syntax/print-status)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:74 (ble/highlight/layer:syntax/update)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:13 (ble/highlight/layer/update)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:10 (ble/textarea#update-text-buffer)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:76 (ble/textarea#render)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble-edit/bind/.tail)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:18 (ble-decode/EPILOGUE)
+    | |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:79 (ble-decode/.hook)
+    |
+    | print-status の段階でエラーが発生している。つまり、直前の状態が問
+    | 題なのではなくて ( を入力した直後の状態が壊れているのである。
+    |
+    | | _ble_syntax_attr/tree/nest/stat?
+    | | 18 a e  000 'c' | stat=(CMDX w=- n=- t=-:-)
+    | |  | a e  001 'a' |
+    | |  | a e  002 's' |
+    | |  | a e  003 'e' + word=CMDI:0-4/(wattr=d)
+    | | 39 a e  004 ' '   stat=(CARGX1 w=- n=- t=$4:-)
+    | | 40 a e  005 'a' + word=ARGI:@3>5-6/(wattr=d) stat=(CARGX1 w=- n=- t=$4:-)
+    | | 41 a e  006 ' '   stat=(CARGX2 w=- n=- t=$6:-)
+    | | 42 a e  007 'i' | stat=(CARGX2 w=- n=- t=$6:-)
+    | |  | a e  008 'n' + word=CARGI2:@5>7-9/(wattr=d)
+    | | 34 a e  009 ' '   stat=(CASE w=- n=- t=$9:-)
+    | | 31*a e  010 '@' | nest=(PATN w=- n='none':10- t=-:$9) stat=(CASE w=- n=- t=$9:-)
+    | |  |*a e  011 '(' |
+    | |  6*a es 012 ')' + word="none":10-13 stat=(PATN w=- n=@10 t=-:-)
+    | |  |    s 013 ^@   stat=(PATN w=- n=@10 t=$13:$9)
+    |
+    | というか、")" が存在しなくても普通に @( と入力しただけでエラーになってい
+    | る。a@( としている時には大丈夫である。これはつまり単語と nest が同じ場所
+    | で始まる事によってエラーになっているという事だろうか。うーん。確かに a@(
+    | とすると a の位置と @ の位置の両方に nest が設定されている。という事は、
+    | @( を入力した時に同時に二箇所に nest を設定しようとして状態が破壊されてい
+    | るのである。だとすると $( でも問題が発生する筈→発生した。" でも問題が発
+    | 生した。うーん。根本的に nest を再考する必要があるのかもしれない。
+
+    [状況]
+
+    以下の何れでも問題が発生する。原因は同じ位置に2つの nest を設置しようとして
+    いる事にある。
+
+    - case a in @(
+    - case a in $(
+    - case a in "
+    - case a in (x);;"
+
+    nest の位置をずらそうとしても " の場合には一文字しか無いのでずらす事ができ
+    ない。逆にパターンの側の nest の位置を一文字前にずらすという事も考えたが、
+    必ずしもパターンの前が空白とは限らない。例えば ;; など。この場合には結局同
+    じ位置に nest を設置するしかない。或いは ;; の位置に nest を設置してしまう
+    という手もあるのかもしれないが、それは不自然だし色々とまた変な問題が発生し
+    そうである。
+
+    [修正]
+
+    やはり解決策としては同じ位置に nest を設置できる様にするという事。然し、現
+    状のコードで nest が同じ位置に設置されないという前提は何処で使っていただろ
+    うか。場合によって単に対応するだけでは済まないかもしれない。
+
+    或いはもう一つの方法として、そもそも case パターンを nest にする必要があっ
+    たのかという事。この方法の方が確実に簡単に修正できる気がする。然し、nest に
+    した理由は何だろうか。単に既存の CTX_PATN を使いたかったからというのであれ
+    ば簡単である。
+
+    コードを確認してみたがやはり nest を使わないとすると新しい文脈値が必要にな
+    りそうである。更に、元から case pattern の中は単語が一個だけになる様に制限
+    を加える予定だった。これに対応する為には結局新しい文脈値が必要だったのだ。
+    case pattern の単語数も一緒に対応してしまうのが良いだろう。
+
+    うーん。実はコマンド文脈で読み取った方が良い? とも思ったがそうでも
+    ない気もする。例えば | の取り扱いが異なる。& や ; 等他の delim の
+    場合にはエラーにする必要がある。|| は一まとまりではなく一文字ずつ取る。
+    | の直後は再び単語を受け付けて OK。など。
+
+    - done: ble/syntax:bash/ctx-command-case-pattern
+
+    実装したが無限ループになってしまう。調べると parse の中で同じ位置に対してずっ
+    と計算している。
+
+    parse (i=19): ctx=78 ble/syntax:bash/ctx-command-case-pattern-expect
+
+    $ case x in @() echo ;; esac
+
+    問題は ;; の直前で起きている様だ。これは BASH_REMATCH が途中で書き換わって
+    いたのが見落としだった。修正した。OK 動いている。
+
+    ----------------------------------------------------------------------
+
+    2021-02-19 assertion failure が出た。
+
+    assertion failure: ((_ble_syntax_bash_command_isARGI[ctx]))
+    invalid ctx=79 in words
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:15 (ble/syntax:bash/ctx-command)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:86 (ble/syntax/parse)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:7 (ble-edit/content/update-syntax)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:75 (ble/textarea#render)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#panel::render)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:5 (ble/function#try)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:8 (ble/canvas/panel/render)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble-edit/bind/.tail)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:18 (ble-decode/EPILOGUE)
+
+    [再現]
+
+    | 以下のコマンドラインに於いて "'; の ; の前にカーソルを置いて、其処から BS
+    | の autorepeat で削除を行うと確率的に上記のエラーが発生する。不思議なのは
+    | ctx=79 は最近追加した CTX_CPATQ であり、これは case の時にしか発生しない筈
+    | の物であるという事。現状では何処にも case はないので ctx が 79 になる事はな
+    | い様に思われる。core-syntax.sh の中を再度確認してみたが混入する事はない気が
+    | する。
+    |
+    | $ debug/builtin() { unset -f builtin; IFS=" " eval 'echo "[$*]"'; builtin "$@"; local _ext=$?; echo "[$* ($_ext)]";
+    |   builtin() { debug/builtin "$@"; }; return "$_ext"; }
+    |
+    | $ d() { unset -f builtin; A=" " : ': "[$*]"'; : "$@"; : a=$?; : "[$* ($a)]"; }
+    |
+    | $ : helloworldhelloworld; A=" " :; : a=$?; : "[$* ($a)]"
+    |
+    | あー。成程。79 が現れたのは BS で消す途中に ;; が現れる為である。確率的に発
+    | 生していたのは、丁度 ";;" の時に文法の再解析が起こるか起こらないかである。
+    | 一つずつ BS を押していれば必ず発生する。
+    |
+    | $ :; :;: a=$?;:
+    |
+    | OK. 以下が最小再現コードである。以下の状態から間の空白を削除するとエラーになる。
+    |
+    | $ ; ;a=1
+    |
+    | というより変な事をしなくても普通に以下で問題が発生する。
+    |
+    | $ case x in a=1
+
+    取り敢えず 79 が出るのは別にバグではないという事は確認できた。
+    そして修正は簡単だった。これは fixup にする。
 
 2021-02-10
 

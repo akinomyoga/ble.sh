@@ -2323,21 +2323,17 @@ function ble/syntax:bash/ctx-quot {
 _BLE_SYNTAX_FCTX[CTX_CASE]=ble/syntax:bash/ctx-case
 function ble/syntax:bash/ctx-case {
   if [[ $tail =~ ^$_ble_syntax_bash_RexIFSs ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+    ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
     return 0
   elif [[ $tail == '('* ]]; then
-    ((ctx=CTX_CMDX))
-    ble/syntax/parse/nest-push "$CTX_PATN"
-    ((_ble_syntax_attr[i++]=ATTR_GLOB))
+    ((_ble_syntax_attr[i++]=ATTR_GLOB,ctx=CTX_CPATX))
     return 0
   elif [[ $tail == 'esac'$_ble_syntax_bash_RexDelimiter* || $tail == 'esac' ]]; then
     ((ctx=CTX_CMDX))
     ble/syntax:bash/ctx-command
   else
-    ((ctx=CTX_CMDX))
-    ble/syntax/parse/nest-push "$CTX_PATN"
-    ble/syntax:bash/ctx-globpat
+    ((ctx=CTX_CPATX))
+    ble/syntax:bash/ctx-command-case-pattern-expect
   fi
 }
 
@@ -3035,6 +3031,8 @@ function ble/syntax:bash/check-tilde-expansion {
 #   変数代入の形式の引数の右辺ではチルダ展開が有効である。
 #
 
+# 変数代入形式の時に文脈を切り替える文脈値。実際に変数代入でなくても変数代入形
+# 式によるチルダ展開が有効である時には区別する必要がある。
 _ble_syntax_bash_command_CtxAssign[CTX_CMDI]=$CTX_VRHS
 _ble_syntax_bash_command_CtxAssign[CTX_COARGI]=$CTX_VRHS
 _ble_syntax_bash_command_CtxAssign[CTX_ARGVI]=$CTX_ARGVR
@@ -3042,6 +3040,7 @@ _ble_syntax_bash_command_CtxAssign[CTX_ARGEI]=$CTX_ARGER
 _ble_syntax_bash_command_CtxAssign[CTX_ARGI]=$CTX_ARGQ
 _ble_syntax_bash_command_CtxAssign[CTX_FARGI3]=$CTX_FARGQ3
 _ble_syntax_bash_command_CtxAssign[CTX_CARGI1]=$CTX_CARGQ1
+_ble_syntax_bash_command_CtxAssign[CTX_CPATI]=$CTX_CPATQ
 _ble_syntax_bash_command_CtxAssign[CTX_VALI]=$CTX_VALQ
 _ble_syntax_bash_command_CtxAssign[CTX_CONDI]=$CTX_CONDQ
 
@@ -3052,6 +3051,7 @@ _ble_syntax_bash_command_IsAssign[CTX_ARGER]=$CTX_ARGEI
 _ble_syntax_bash_command_IsAssign[CTX_ARGQ]=$CTX_ARGI
 _ble_syntax_bash_command_IsAssign[CTX_FARGQ3]=$CTX_FARGI3
 _ble_syntax_bash_command_IsAssign[CTX_CARGQ1]=$CTX_CARGI1
+_ble_syntax_bash_command_IsAssign[CTX_CPATQ]=$CTX_CPATI
 _ble_syntax_bash_command_IsAssign[CTX_VALR]=$CTX_VALI
 _ble_syntax_bash_command_IsAssign[CTX_VALQ]=$CTX_VALI
 _ble_syntax_bash_command_IsAssign[CTX_CONDQ]=$CTX_CONDI
@@ -3192,12 +3192,18 @@ _BLE_SYNTAX_FEND[CTX_FARGI3]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_FARGQ3]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FCTX[CTX_CARGX1]=ble/syntax:bash/ctx-command-compound-expect
 _BLE_SYNTAX_FCTX[CTX_CARGX2]=ble/syntax:bash/ctx-command-compound-expect
+_BLE_SYNTAX_FCTX[CTX_CPATX]=ble/syntax:bash/ctx-command-case-pattern-expect
+_BLE_SYNTAX_FCTX[CTX_CPATX0]=ble/syntax:bash/ctx-command-case-pattern-expect
 _BLE_SYNTAX_FCTX[CTX_CARGI1]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CARGQ1]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CARGI2]=ble/syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CPATI]=ble/syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CPATQ]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FEND[CTX_CARGI1]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_CARGQ1]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_CARGI2]=ble/syntax:bash/ctx-command/check-word-end
+_BLE_SYNTAX_FEND[CTX_CPATI]=ble/syntax:bash/ctx-command/check-word-end
+_BLE_SYNTAX_FEND[CTX_CPATQ]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FCTX[CTX_TARGX1]=ble/syntax:bash/ctx-command-time-expect
 _BLE_SYNTAX_FCTX[CTX_TARGX2]=ble/syntax:bash/ctx-command-time-expect
 _BLE_SYNTAX_FCTX[CTX_TARGI1]=ble/syntax:bash/ctx-command
@@ -3339,6 +3345,8 @@ _ble_syntax_bash_command_EndCtx[CTX_FARGQ3]=$CTX_FARGX3
 _ble_syntax_bash_command_EndCtx[CTX_CARGI1]=$CTX_CARGX2
 _ble_syntax_bash_command_EndCtx[CTX_CARGQ1]=$CTX_CARGX2
 _ble_syntax_bash_command_EndCtx[CTX_CARGI2]=$CTX_CASE
+_ble_syntax_bash_command_EndCtx[CTX_CPATI]=$CTX_CPATX0
+_ble_syntax_bash_command_EndCtx[CTX_CPATQ]=$CTX_CPATX0
 _ble_syntax_bash_command_EndCtx[CTX_TARGI1]=$((_ble_bash>=40200?CTX_TARGX2:CTX_CMDXT)) #1
 _ble_syntax_bash_command_EndCtx[CTX_TARGI2]=$CTX_CMDXT
 
@@ -3363,6 +3371,8 @@ _ble_syntax_bash_command_EndWtype[CTX_FARGX2]=$CTX_FARGI2 # in
 _ble_syntax_bash_command_EndWtype[CTX_FARGX3]=$CTX_ARGI # in
 _ble_syntax_bash_command_EndWtype[CTX_CARGX1]=$CTX_ARGI
 _ble_syntax_bash_command_EndWtype[CTX_CARGX2]=$CTX_CARGI2 # in
+_ble_syntax_bash_command_EndWtype[CTX_CPATX]=$CTX_CPATI
+_ble_syntax_bash_command_EndWtype[CTX_CPATX0]=$CTX_CPATI
 _ble_syntax_bash_command_EndWtype[CTX_TARGX1]=$CTX_ARGI # -p
 _ble_syntax_bash_command_EndWtype[CTX_TARGX2]=$CTX_ARGI # --
 
@@ -3748,6 +3758,8 @@ _ble_syntax_bash_command_BeginCtx[CTX_FARGX2]=$CTX_FARGI2
 _ble_syntax_bash_command_BeginCtx[CTX_FARGX3]=$CTX_FARGI3
 _ble_syntax_bash_command_BeginCtx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_CARGX2]=$CTX_CARGI2
+_ble_syntax_bash_command_BeginCtx[CTX_CPATX]=$CTX_CPATI
+_ble_syntax_bash_command_BeginCtx[CTX_CPATX0]=$CTX_CPATI
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX1]=$CTX_TARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX2]=$CTX_TARGI2
 _ble_syntax_bash_command_BeginCtx[CTX_COARGX]=$CTX_COARGI
@@ -3755,8 +3767,8 @@ _ble_syntax_bash_command_BeginCtx[CTX_COARGX]=$CTX_COARGI
 #%if !release
 ## @arr _ble_syntax_bash_command_isARGI[ctx]
 ##
-##   この配列要素が非空文字列のとき、
-##   その文脈はシェル単語を解析中に用いられることを表す。
+##   assert 用の配列。シェル単語の解析中に現れても良い文脈値を管理する。この配
+##   列要素が非空文字列のとき、その文脈はシェル単語の解析中に現れても良い。
 ##
 _ble_syntax_bash_command_isARGI[CTX_CMDI]=1
 _ble_syntax_bash_command_isARGI[CTX_VRHS]=1
@@ -3773,6 +3785,8 @@ _ble_syntax_bash_command_isARGI[CTX_FARGQ3]=1 # args... (= の後)
 _ble_syntax_bash_command_isARGI[CTX_CARGI1]=1 # value
 _ble_syntax_bash_command_isARGI[CTX_CARGQ1]=1 # value (= の後)
 _ble_syntax_bash_command_isARGI[CTX_CARGI2]=1 # in
+_ble_syntax_bash_command_isARGI[CTX_CPATI]=1  # pattern
+_ble_syntax_bash_command_isARGI[CTX_CPATQ]=1  # pattern
 _ble_syntax_bash_command_isARGI[CTX_TARGI1]=1 # -p
 _ble_syntax_bash_command_isARGI[CTX_TARGI2]=1 # --
 _ble_syntax_bash_command_isARGI[CTX_COARGI]=1 # var (coproc の後)
@@ -3792,7 +3806,7 @@ function ble/syntax:bash/ctx-command/.check-word-begin {
     #   配列 _ble_syntax_bash_command_EndWtype により変換されてから tree に登録される。
     ble/syntax/parse/word-push "$wtype" "$i"
 
-    ((octx!=CTX_ARGX0)); return "$?" # return unexpectedWbegin
+    ((octx!=CTX_ARGX0&&octx!=CTX_CPATX0)); return "$?" # return unexpectedWbegin
   fi
 
 #%if !release
@@ -3806,7 +3820,8 @@ function ble/syntax:bash/ctx-command {
 #%if !release
   if ble/syntax:bash/starts-with-delimiter-or-redirect; then
     ble/util/assert '
-      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_COARGX||
+      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||
+          ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_COARGX||
           ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
           ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV))'  "invalid ctx=$ctx @ i=$i"
     ble/util/assert '((wbegin<0&&wtype<0))' "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
@@ -3957,6 +3972,38 @@ function ble/syntax:bash/ctx-command-time-expect {
   if ((ctx==CTX_TARGX2)); then
     ble/syntax:bash/ctx-command-expect/.match-word '--' ||
       ((ctx=CTX_CMDXT))
+  fi
+
+  # 他は同じ
+  ble/syntax:bash/ctx-command
+}
+
+function ble/syntax:bash/ctx-command-case-pattern-expect {
+  ble/util/assert '((ctx==CTX_CPATX||ctx==CTX_CPATX0))'
+
+  if ble/syntax:bash/starts-with-delimiter-or-redirect; then
+    local delimiter=$BASH_REMATCH
+    if [[ $tail =~ ^$_ble_syntax_bash_RexSpaces ]]; then
+      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+    elif [[ $tail == '|'* ]]; then
+      ((_ble_syntax_attr[i++]=ctx==CTX_CPATX?ATTR_ERR:ATTR_GLOB,ctx=CTX_CPATX))
+    elif [[ $tail == ')'* ]]; then
+      ((_ble_syntax_attr[i++]=ctx==CTX_CPATX?ATTR_ERR:ATTR_GLOB,ctx=CTX_CMDX))
+    elif [[ $tail == '('* ]]; then
+      # ctx-command と同様にエラーにして @() を始める。
+      ble/syntax:bash/ctx-command/.check-delimiter-or-redirect
+    else
+      # 改行、リダイレクト、; & はエラー
+      ((_ble_syntax_attr[i]=ATTR_ERR,i+=${#delimiter}))
+    fi
+    return "$?"
+  fi
+
+  # コメント禁止
+  local i0=$i
+  if ble/syntax:bash/check-comment; then
+    ((_ble_syntax_attr[i0]=ATTR_ERR))
+    return 0
   fi
 
   # 他は同じ
@@ -5138,6 +5185,8 @@ _ble_syntax_bash_complete_check_prefix[CTX_FARGI3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_FARGQ3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CARGI1]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CARGQ1]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_CPATI]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_CPATQ]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_COARGI]='inside-argument variable command'
 _ble_syntax_bash_complete_check_prefix[CTX_VALI]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument file'
@@ -5203,6 +5252,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-command {
 ##   ARGX 系統の文脈に対する補完文脈の生成
 _ble_syntax_bash_complete_check_prefix[CTX_ARGX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_CARGX1]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_CPATX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_FARGX3]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_COARGX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_ARGVX]=next-argument
@@ -5273,6 +5323,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-identifier {
   fi
 }
 _ble_syntax_bash_complete_check_prefix[CTX_ARGX0]="next-word sabbrev"
+_ble_syntax_bash_complete_check_prefix[CTX_CPATX0]="next-word sabbrev"
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-word wordlist:-rs:';:{:do'"
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-word wordlist:-rs:'{:do'"
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXE]="next-word wordlist:-rs:'}:fi:done:esac:then:elif:else:do'"
@@ -5528,7 +5579,7 @@ function ble/syntax/completion-context/.check-here {
       ble/syntax/completion-context/.add wordlist:-rs:';:{:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
       ble/syntax/completion-context/.add wordlist:-rs:'{:do' "$index"
-    elif ((ctx==CTX_ARGX0)); then
+    elif ((ctx==CTX_ARGX0||ctx==CTX_CPATX0)); then
       ble/syntax/completion-context/.add sabbrev "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
       ble/syntax/completion-context/.add argument "$index"
@@ -5550,7 +5601,7 @@ function ble/syntax/completion-context/.check-here {
     elif ((ctx==CTX_COARGX)); then
       ble/syntax/completion-context/.add variable:w "$index"
       ble/syntax/completion-context/.add command "$index"
-    elif ((ctx==CTX_RDRF||ctx==CTX_RDRS)); then
+    elif ((ctx==CTX_CPATI||ctx==CTX_RDRF||ctx==CTX_RDRS)); then
       ble/syntax/completion-context/.add file "$index"
     elif ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR)); then
       ble/syntax/completion-context/.add rhs "$index"
@@ -5965,6 +6016,10 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define CTX_CARGI1   syntax_default
   ble/syntax/attr2iface/.define CTX_CARGQ1   syntax_default
   ble/syntax/attr2iface/.define CTX_CARGI2   command_keyword
+  ble/syntax/attr2iface/.define CTX_CPATX    syntax_default
+  ble/syntax/attr2iface/.define CTX_CPATI    syntax_default
+  ble/syntax/attr2iface/.define CTX_CPATQ    syntax_default
+  ble/syntax/attr2iface/.define CTX_CPATX0   syntax_default
 
   ble/syntax/attr2iface/.define CTX_TARGX1   syntax_default
   ble/syntax/attr2iface/.define CTX_TARGX2   syntax_default

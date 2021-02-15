@@ -15,6 +15,7 @@
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
+- syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 0000000
 
 ## Changes
 
@@ -29,7 +30,7 @@
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 - prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` cca1cbc
-- edit (`ble/builtin/read`): cancel by <kbd>C-d</kbd> on an empty line `#D1473` 0000000
+- edit (`ble/builtin/read`): cancel by <kbd>C-d</kbd> on an empty line `#D1473` ecb8888
 
 ## Fixes
 
@@ -47,7 +48,7 @@
 - syntax: fix broken AST with `[[` keyword `#D1454` 69658ef
 - benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
 - global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
-  - global: fix declaration of associative arrays for `ble-reload` `#D1471` 3cae6e4
+  - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
 
 ## Internal changes and fixes
 
