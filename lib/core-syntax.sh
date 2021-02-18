@@ -3676,8 +3676,9 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
         ((_ble_syntax_attr[i++]=ATTR_DEL,ctx=CTX_CMDXD))
         return 0
       elif ((ctx==CTX_CMDXT)); then
-        # time ; 及び ! ; に限っては、エラーにならずに直後に CTX_CMDXE になる (#D0592)
-        ((_ble_syntax_attr[i++]=ATTR_DEL,ctx=CTX_CMDXE))
+        # Note #D0592: time ; 及び ! ; に限っては、エラーにならずに直後に CTX_CMDXE になる
+        # Note #D1477: Bash 4.4 で振る舞いが変わる。
+        ((_ble_syntax_attr[i++]=ATTR_DEL,ctx=_ble_bash>=40400?CTX_CMDX:CTX_CMDXE))
         return 0
       fi
     fi
