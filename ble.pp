@@ -104,6 +104,8 @@ IFS=$' \t\n'
 #------------------------------------------------------------------------------
 # check environment
 
+function ble/util/print { builtin printf '%s\n' "$1"; }
+
 # ble/bin
 
 ## 関数 ble/bin/.default-utility-path commands...
