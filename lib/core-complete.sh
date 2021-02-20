@@ -2660,39 +2660,43 @@ function ble/complete/mandb/.generate-cache {
   (*)          ble/bin/cat "$path" ;;
   esac | ble/bin/awk -v type="$_ble_complete_mandb_convert_type" '
     BEGIN {
-      g_key = "";
+      g_keys_count = 0;
       g_desc = "";
       if (type == "man") {
         print ".TH __ble_ignore__ 1 __ble_ignore__ __ble_ignore__";
         print ".ll 9999"
       }
     }
-    function flush_topic() {
-      if (g_key == "") return;
-      print "__ble_key__";
-      if (type == "man") print ".TP";
-      print g_key;
-      print "";
-      print "__ble_desc__";
-      print "";
-      print g_desc;
-      print "";
-
-      g_key = "";
+    function flush_topic(_, i) {
+      if (g_keys_count == 0) return;
+      for (i = 0; i < g_keys_count; i++) {
+        print "__ble_key__";
+        if (type == "man") print ".TP";
+        print g_keys[i];
+        print "";
+        print "__ble_desc__";
+        print "";
+        print g_desc;
+        print "";
+      }
+      g_keys_count = 0;
       g_desc = "";
     }
 
     type == "man" && /^\.TP([^_[:alnum:]]|$)/ {
-      flush_topic(); mode = "key"; next;
+      if (g_keys_count && g_desc != "") flush_topic();
+      mode = "key"; next;
     }
     type == "mdoc" && /^\.It Fl([^_[:alnum:]]|$)/ {
-      flush_topic(); mode = "key";
+      if (g_keys_count && g_desc != "") flush_topic();
+      mode = "key";
       sub(/^\.It Fl/, ".Fl");
     }
     /^\.(S[Ss]|S[Hh]|P[Pp])([^_[:alnum:]]|$)/ { flush_topic(); next; }
+    /^\.PD([^_[:alnum:]]|$)/ { next; }
 
     mode == "key" {
-      g_key = $0;
+      g_keys[g_keys_count++] = $0;
       g_desc = "";
       mode = "desc";
       next;
@@ -2778,10 +2782,10 @@ function ble/complete/mandb/.generate-cache {
 }
 function ble/complete/mandb/load-cache {
   local command=${1##*/}
-  local fcache=$_ble_base_cache/man/$command
+  local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
+  local fcache=$_ble_base_cache/man/$lc_messages/$command
   if ! [[ -s $fcache && $fcache -nt $_ble_base/lib/core-complete.sh ]]; then
-    [[ -d $_ble_base_cache/man ]] ||
-      ble/bin/mkdir -p "$_ble_base_cache/man"
+    [[ -d ${fcache%/*} ]] || ble/bin/mkdir -p "${fcache%/*}"
     ble/complete/mandb/.generate-cache "$command" >| "$fcache" &&
       [[ -s $fcache ]] ||
         return 1
