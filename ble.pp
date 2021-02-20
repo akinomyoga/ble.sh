@@ -42,6 +42,8 @@ fi
 
 # check environment
 
+function ble/util/print { builtin printf '%s\n' "$1"; }
+
 if ((_ble_bash>=40000)); then
   function ble/bin#has { type "$@" &>/dev/null; }
 else

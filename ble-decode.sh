@@ -1283,10 +1283,10 @@ trap .ble-stty.exit-trap EXIT
 
 # **** ESC ESC ****                                           @decode.bind.esc2
 
-## 関数 ble-edit+.ble-decode-byte 27 27
+## 関数 ble-edit+.CHARS 27 27
 ##   ESC ESC を直接受信できないので
 ##   '' → '[27^[27^' → '__esc__ __esc__' と変換して受信する。
-function ble-edit+.ble-decode-char {
+function ble-edit+.CHARS {
   while (($#)); do
     .ble-decode-char "$1"
     shift
