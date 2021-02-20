@@ -1182,7 +1182,7 @@ function ble-decode-key/dump {
         echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
       ('ble/widget/.EDIT_COMMAND '*)
         echo "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
-      ('ble/widget/.ble-decode-char '*)
+      ('ble/widget/.CHARS '*)
         local ret; ble/util/chars2keyseq ${cmd#*' '}
         echo "ble-bind$kmapopt -s '${knames//$q/$Q}' '${ret//$q/$Q}'" ;;
       ('ble/widget/'*)
@@ -1883,7 +1883,7 @@ function ble-bind {
               command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             (s)
               local ret; ble/util/keyseq2chars "$command"
-              command="ble/widget/.ble-decode-char ${ret[*]}" ;;
+              command="ble/widget/.CHARS ${ret[*]}" ;;
             ('@') ;; # 直接実行
             (*)
               echo "error: unsupported binding type \`-$c'." 1>&2
@@ -1918,10 +1918,10 @@ function ble-bind {
 
 # **** ESC ESC ****                                           @decode.bind.esc2
 
-## 関数 ble/widget/.ble-decode-char ...
+## 関数 ble/widget/.CHARS ...
 ##   - lib/init-bind.sh で設定する bind で使用する。
 ##   - bind '"keyseq":"macro"' の束縛に使用する。
-function ble/widget/.ble-decode-char {
+function ble/widget/.CHARS {
   ble-decode-char "$@"
 }
 
@@ -2702,7 +2702,7 @@ function ble/builtin/bind/option:- {
     # keyboard macro
     value=${value#\"} value=${value%\"}
     local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
-    local command="ble/widget/.ble-decode-char ${chars[*]}"
+    local command="ble/widget/.CHARS ${chars[*]}"
     ble-decode-key/bind "${keys[*]}" "$command"
   elif [[ $value ]]; then
     if local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; then
