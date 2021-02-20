@@ -31,7 +31,7 @@
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 - prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` cca1cbc
 - edit (`ble/builtin/read`): cancel by <kbd>C-d</kbd> on an empty line `#D1473` ecb8888
-- syntax: change syntax context after `time ;` and `! ;` for Bash 4.4 `#D1477` 0000000
+- syntax: change syntax context after `time ;` and `! ;` for Bash 4.4 `#D1477` 4628370
 
 ## Fixes
 
@@ -50,6 +50,7 @@
 - benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
 - global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
+- bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 0000000
 
 ## Internal changes and fixes
 
