@@ -4025,7 +4025,7 @@ function ble/widget/.insert-newline {
     # info を表示したまま行を挿入し、今までの panel 0 の内容を範囲外に破棄
     local -a DRAW_BUFF=()
     ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" 1
-    ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((_ble_textarea_gendy+1))
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((_ble_textarea_gendy+1)) sgr0
     ble/canvas/bflush.draw
   else
     # 最終状態の描画
@@ -4034,7 +4034,7 @@ function ble/widget/.insert-newline {
 
     # 新しい描画領域
     local -a DRAW_BUFF=()
-    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy" sgr0
     ble/canvas/put.draw "$_ble_term_nl"
     ble/canvas/bflush.draw
     ble/util/joblist.bflush
@@ -7361,7 +7361,7 @@ function ble/widget/external-command {
   ble/textarea#invalidate
   local -a DRAW_BUFF=()
   ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
-  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0 sgr0
   ble/canvas/bflush.draw
   ble/term/leave
   ble/util/buffer.flush >&2
