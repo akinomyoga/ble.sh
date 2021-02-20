@@ -133,7 +133,7 @@ function ble/init:cmap/initialize {
   ble-bind --csi '7~' home
   ble-bind --csi '8~' end
   local kdch1; ble/util/assign kdch1 'tput kD 2>/dev/null || tput kdch1 2>/dev/null'
-  [[ $kdch1 == $'\x7F' ]] && ble-bind -k 'DEL' delete
+  [[ $kdch1 == $'\x7F' || $TERM == sun* ]] && ble-bind -k 'DEL' delete
 
   # vt220, xterm, rxvt
   ble-bind --csi '11~' f1
@@ -239,6 +239,29 @@ function ble/init:cmap/initialize {
   ble/init:cmap/bind-single-csi '[ C' f3
   ble/init:cmap/bind-single-csi '[ D' f4
   ble/init:cmap/bind-single-csi '[ E' f5
+
+  # sun specific (Solaris)
+  ble/init:cmap/bind-single-csi '2 4 7 z' insert
+  ble/init:cmap/bind-single-csi '2 1 4 z' home
+  ble/init:cmap/bind-single-csi '2 2 0 z' end
+  ble/init:cmap/bind-single-csi '2 2 2 z' prior
+  ble/init:cmap/bind-single-csi '2 1 6 z' next
+  ble/init:cmap/bind-single-csi '2 2 4 z' f1
+  ble/init:cmap/bind-single-csi '2 2 5 z' f2
+  ble/init:cmap/bind-single-csi '2 2 6 z' f3
+  ble/init:cmap/bind-single-csi '2 2 7 z' f4
+  ble/init:cmap/bind-single-csi '2 2 8 z' f5
+  ble/init:cmap/bind-single-csi '2 2 9 z' f6
+  ble/init:cmap/bind-single-csi '2 3 0 z' f7
+  ble/init:cmap/bind-single-csi '2 3 1 z' f8
+  ble/init:cmap/bind-single-csi '2 3 2 z' f9
+  ble/init:cmap/bind-single-csi '2 3 3 z' f10
+  ble/init:cmap/bind-single-csi '2 3 4 z' f11
+  ble/init:cmap/bind-single-csi '2 3 5 z' f12
+  # ble/init:cmap/bind-single-csi '2 z'     insert # terminfo
+  # ble/init:cmap/bind-single-csi '3 z'     delete # terminfo
+  # ble/init:cmap/bind-single-csi '1 9 2 z' f11
+  # ble/init:cmap/bind-single-csi '1 9 3 z' f12
 
   # 修飾キー 'CAN @ ?'
   #

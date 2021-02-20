@@ -368,12 +368,12 @@ function ble/canvas/put.draw {
 }
 function ble/canvas/put-ind.draw {
   local count=${1-1}
-  local ret; ble/string#repeat "${_ble_term_ind}" "$count"
+  local ret; ble/string#repeat "$_ble_term_ind" "$count"
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
 function ble/canvas/put-ri.draw {
   local count=${1-1}
-  local ret; ble/string#repeat "${_ble_term_ri}" "$count"
+  local ret; ble/string#repeat "$_ble_term_ri" "$count"
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
 function ble/canvas/put-il.draw {
@@ -2119,7 +2119,7 @@ function ble/canvas/panel#clear-after.draw {
     ble/canvas/put.draw "$_ble_term_ind"
     ble/canvas/put-dl.draw "$rest_lines"
     ble/canvas/put-il.draw "$rest_lines"
-    ble/canvas/put.draw "$_ble_term_ri"
+    ble/canvas/put-cuu.draw 1
   fi
 }
 
@@ -2180,8 +2180,18 @@ function ble/canvas/panel/ensure-tmargin.draw {
       ble/canvas/put.draw $'\e[1;'$((LINES-bottom_height))'r'
       ble/canvas/excursion-end.draw
       ble/canvas/goto.draw 0 0
-      ble/canvas/put-ri.draw "$tmargin"
-      ble/canvas/put-cud.draw "$tmargin"
+      if [[ $_ble_term_ri ]]; then
+        ble/canvas/put-ri.draw "$tmargin"
+        ble/canvas/put-cud.draw "$tmargin"
+      else
+        # RI がない時
+        ble/canvas/put-ind.draw $((top_height-1+tmargin))
+        ble/canvas/put-cuu.draw $((top_height-1+tmargin))
+        ble/canvas/excursion-start.draw
+        ble/canvas/put-cup.draw 1 1
+        ble/canvas/put-il.draw "$tmargin"
+        ble/canvas/excursion-end.draw
+      fi
       ble/canvas/excursion-start.draw
       ble/canvas/put.draw $'\e[;r'
       ble/canvas/excursion-end.draw
@@ -2193,7 +2203,23 @@ function ble/canvas/panel/ensure-tmargin.draw {
   fi
 
   ble/canvas/goto.draw 0 0
-  ble/canvas/put-ri.draw "$tmargin"
-  ble/canvas/put-cud.draw "$tmargin"
+  if [[ $_ble_term_ri ]]; then
+    ble/canvas/put-ri.draw "$tmargin"
+    ble/canvas/put-cud.draw "$tmargin"
+  else
+    # RI がない時
+    local total_height=$((top_height+bottom_height))
+    ble/canvas/put-ind.draw $((total_height-1+tmargin))
+    ble/canvas/put-cuu.draw $((total_height-1+tmargin))
+    if [[ $_ble_term_rc ]]; then
+      ble/canvas/excursion-start.draw
+      ble/canvas/put-cup.draw 1 1
+      ble/canvas/put-il.draw "$tmargin"
+      ble/canvas/excursion-end.draw
+    else
+      ble/canvas/put-il.draw "$tmargin"
+    fi
+    ble/canvas/put-cud.draw "$tmargin"
+  fi
   ble/canvas/panel/load-position.draw "$pos"
 }

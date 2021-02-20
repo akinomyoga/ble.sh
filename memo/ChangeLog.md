@@ -56,6 +56,11 @@
 - mandb: improve extraction and cache for each locale `#D1480` 3588158
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 0000000
 
+## Compatibility
+
+- term: work around quirks of Solaris xpg4 awk `#D1481` 0000000
+- term: support key sequences and control sequences of Solaris console `#D1481` 0000000
+
 ## Internal changes and fixes
 
 - main: include hostname in local runtime directory `#D1444` 6494836

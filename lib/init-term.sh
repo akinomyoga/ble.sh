@@ -77,7 +77,8 @@ function ble/init:term/initialize {
   _ble_term_xenl=1
   [[ $_ble_term_tput ]] &&
     ! ble/init:term/tput xenl:xn &>/dev/null &&
-    _ble_term_xenl=0
+    _ble_term_xenl=
+  [[ $TERM == sun* ]] && _ble_term_xenl=
   ble/init:term/register-varname _ble_term_xenl
 
   # bce (background color erase)
@@ -96,9 +97,9 @@ function ble/init:term/initialize {
   ble/init:term/register-varname _ble_term_it
 
   # IND/RI, CR, LF, FS
-  ble/init:term/define-cap.2 _ble_term_ind $'\eD' ind:sf
-  ble/init:term/define-cap   _ble_term_ri  $'\eM' ri:sr
-  ble/init:term/define-cap   _ble_term_cr  $'\r'  cr:cr
+  ble/init:term/define-cap.2 _ble_term_ind $'\n' ind:sf # $'\eD'
+  ble/init:term/define-cap   _ble_term_ri  ''    ri:sr  # $'\eM'
+  ble/init:term/define-cap   _ble_term_cr  $'\r' cr:cr
   if [[ $OSTYPE == msys && ! $_ble_term_CR ]]; then # msys-1.0
     [[ $_ble_term_cr ]] || _ble_term_cr=$'\e[G'
     if [[ $TERM == cygwin ]]; then
@@ -117,6 +118,9 @@ function ble/init:term/initialize {
   _ble_term_cuf=${_ble_term_cuf//123/%d}
   _ble_term_cub=${_ble_term_cub//123/%d}
   # ※もし 122 だとか 124 だとかになると上記では駄目
+
+  _ble_term_ri_or_cuu1=${_ble_term_ri:-${_ble_term_cuu//'%d'/1}}
+  ble/init:term/register-varname _ble_term_ri_or_cuu1
 
   # CUP
   ble/init:term/define-cap _ble_term_cup $'\e[13;35H' cup:cm 12 34
@@ -165,9 +169,10 @@ function ble/init:term/initialize {
   _ble_term_ech=${_ble_term_ech//123/%d}
 
   # DECSC/DECRC or SCOSC/SCORC
-  ble/init:term/define-cap _ble_term_sc $'\e[s' sc:sc
-  ble/init:term/define-cap _ble_term_rc $'\e[u' rc:rc
+  ble/init:term/define-cap _ble_term_sc $'\e7' sc:sc # \e[s
+  ble/init:term/define-cap _ble_term_rc $'\e8' rc:rc # \e[u
   [[ $TERM == minix ]] && _ble_term_sc= _ble_term_rc=
+  # Note: TERM=sun{,-color}: terminfo にはないが \e7 \e8 が使える。
 
   # Cursors
   ble/init:term/define-cap _ble_term_Ss '' Ss:Ss 123 # DECSCUSR

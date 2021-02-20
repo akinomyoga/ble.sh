@@ -1061,10 +1061,14 @@ function ble/prompt/update {
   fi
 
   # bleopt prompt_xterm_title
-  local ret
-  ble/prompt/.instantiate-control-string _ble_prompt_xterm_title "$bleopt_prompt_xterm_title"
-  [[ $ret ]] && ret=$'\e]0;'$ret$'\a'
-  _ble_prompt_xterm_title[6]=$ret
+  case ${_ble_term_TERM:-$TERM} in
+  (sun*|minix) ;; # black list
+  (*)
+    local ret
+    ble/prompt/.instantiate-control-string _ble_prompt_xterm_title "$bleopt_prompt_xterm_title"
+    [[ $ret ]] && ret=$'\e]0;'$ret$'\a'
+    _ble_prompt_xterm_title[6]=$ret ;;
+  esac
 
   # bleopt prompt_screen_title
   case ${_ble_term_TERM:-$TERM} in

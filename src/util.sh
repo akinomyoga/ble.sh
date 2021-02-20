@@ -4158,25 +4158,131 @@ function ble/term/audible-bell {
 #
 # 前回の表示内容は以下の配列に格納する。
 #
-# @arr _ble_term_visible_bell_prev=(message [x0 y0 x y])
+# @arr _ble_term_visible_bell_prev=(vbell_type message [x0 y0 x y])
 
+_ble_term_visible_bell_prev=()
 _ble_term_visible_bell_ftime=$_ble_base_run/$$.visible-bell.time
+
 _ble_term_visible_bell_show='%message%'
 _ble_term_visible_bell_clear=
-function ble/term/visible-bell/.initialize {
-  local -a BUFF=()
-  ble/term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-  ble/term/cup 0 0
-  ble/term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//'%d'/1}"
-  IFS= builtin eval '_ble_term_visible_bell_show="${BUFF[*]}"'
+function ble/term/visible-bell:term/init {
+  if [[ ! $_ble_term_visible_bell_clear ]]; then
+    local -a BUFF=()
+    ble/term/put "$_ble_term_ri_or_cuu1$_ble_term_sc$_ble_term_sgr0"
+    ble/term/cup 0 0
+    ble/term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//'%d'/1}"
+    IFS= builtin eval '_ble_term_visible_bell_show="${BUFF[*]}"'
 
-  BUFF=()
-  ble/term/put "$_ble_term_sc$_ble_term_sgr0"
-  ble/term/cup 0 0
-  ble/term/put "$_ble_term_el2$_ble_term_rc"
-  IFS= builtin eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
+    BUFF=()
+    ble/term/put "$_ble_term_sc$_ble_term_sgr0"
+    ble/term/cup 0 0
+    ble/term/put "$_ble_term_el2$_ble_term_rc"
+    IFS= builtin eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
+  fi
+
+  # 一行に収まる様に切り詰める
+  local cols=${COLUMNS:-80}
+  ((_ble_term_xenl||cols--))
+  local message=${1::cols}
+  _ble_term_visible_bell_prev=(term "$message")
 }
-ble/term/visible-bell/.initialize
+function ble/term/visible-bell:term/show {
+  local sgr=$1 message=${_ble_term_visible_bell_prev[1]}
+  ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}" >&2
+}
+function ble/term/visible-bell:term/update {
+  ble/term/visible-bell:term/show "$@"
+}
+function ble/term/visible-bell:term/clear {
+  local sgr=$1
+  ble/util/put "$_ble_term_visible_bell_clear" >&2
+}
+
+function ble/term/visible-bell:canvas/init {
+  local message=$1
+
+  local lines=1 cols=${COLUMNS:-80}
+  ((_ble_term_xenl||cols--))
+  local x= y=
+  local ret sgr0= sgr1=
+  ble/canvas/trace-text "$message" nonewline:external-sgr
+  message=$ret
+
+  local x0=0 y0=0
+  if [[ $bleopt_vbell_align == right ]]; then
+    ((x0=COLUMNS-1-x,x0<0&&(x0=0)))
+  elif [[ $bleopt_vbell_align == center ]]; then
+    ((x0=(COLUMNS-1-x)/2,x0<0&&(x0=0)))
+  fi
+
+  _ble_term_visible_bell_prev=(canvas "$message" "$x0" "$y0" "$x" "$y")
+}
+function ble/term/visible-bell:canvas/show {
+  local sgr=$1 opts=$2
+  local message=${_ble_term_visible_bell_prev[1]}
+  local x0=${_ble_term_visible_bell_prev[2]}
+  local y0=${_ble_term_visible_bell_prev[3]}
+  local x=${_ble_term_visible_bell_prev[4]}
+  local y=${_ble_term_visible_bell_prev[5]}
+
+  local -a DRAW_BUFF=()
+  [[ $_ble_attached ]] &&
+    [[ $_ble_term_ri || :$opts: != *:erased:* && :$opts: != *:update:* ]] &&
+    ble/canvas/panel/ensure-tmargin.draw
+  if [[ $_ble_term_rc ]]; then
+    local ret=
+    [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
+    ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sc$_ble_term_sgr0"
+    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+    ble/canvas/put.draw "$_ble_term_rc"
+    ble/canvas/put-cud.draw 1
+    [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
+  else
+    ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sgr0"
+    ble/canvas/put-hpa.draw $((1+x0))
+    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+    ble/canvas/put-cud.draw 1
+    ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
+  fi
+  ble/canvas/bflush.draw
+  ble/util/buffer.flush >&2
+}
+function ble/term/visible-bell:canvas/update {
+  ble/term/visible-bell:canvas/show "$@"
+}
+function ble/term/visible-bell:canvas/clear {
+  local sgr=$1
+  local x0=${_ble_term_visible_bell_prev[2]}
+  local y0=${_ble_term_visible_bell_prev[3]}
+  local x=${_ble_term_visible_bell_prev[4]}
+  local y=${_ble_term_visible_bell_prev[5]}
+
+  local -a DRAW_BUFF=()
+  if [[ $_ble_term_rc ]]; then
+    local ret=
+    [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
+    ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
+    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+    ble/canvas/put.draw "$sgr"
+    ble/canvas/put-spaces.draw "$x"
+    #ble/canvas/put-ech.draw "$x"
+    #ble/canvas/put.draw "$_ble_term_el"
+    ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
+    [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
+  else
+    : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
+    # ble/util/buffer.flush >&2
+    # ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sgr0"
+    # ble/canvas/put-hpa.draw $((1+x0))
+    # ble/canvas/put.draw "$sgr"
+    # ble/canvas/put-spaces.draw "$x"
+    # ble/canvas/put.draw "$_ble_term_sgr0"
+    # ble/canvas/put-cud.draw 1
+    # ble/canvas/put-hpa.draw $((1+_ble_canvas_x)) # 親プロセスの _ble_canvas_x?
+  fi
+  ble/canvas/flush.draw >&2
+}
 
 function ble/term/visible-bell/defface.hook {
   ble/color/defface vbell       reverse
@@ -4185,114 +4291,20 @@ function ble/term/visible-bell/defface.hook {
 }
 blehook color_init_defface+=ble/term/visible-bell/defface.hook
 
-_ble_term_visible_bell_prev=()
 function ble/term/visible-bell/.show {
-  local message=$1 sgr=$2 x=$3 y=$4
-  if [[ $opt_canvas ]]; then
-    local x0=0 y0=0
-    if [[ $bleopt_vbell_align == right ]]; then
-      ((x0=COLUMNS-1-x,x0<0&&(x0=0)))
-    elif [[ $bleopt_vbell_align == center ]]; then
-      ((x0=(COLUMNS-1-x)/2,x0<0&&(x0=0)))
-    fi
-
-    local -a DRAW_BUFF=()
-    [[ $_ble_attached ]] && ble/canvas/panel/ensure-tmargin.draw
-    if [[ $_ble_term_rc ]]; then
-      local ret=
-      [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
-      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-      ble/canvas/put.draw "$_ble_term_rc"
-      ble/canvas/put-cud.draw 1
-      [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
-    else
-      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
-      ble/canvas/put-hpa.draw $((1+x0))
-      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-      ble/canvas/put-cud.draw 1
-      ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
-    fi
-    ble/canvas/bflush.draw
-    ble/util/buffer.flush >&2
-    _ble_term_visible_bell_prev=("$message" "$x0" "$y0" "$x" "$y")
-  else
-    ble/util/put "${_ble_term_visible_bell_show//'%message%'/$message}"
-    _ble_term_visible_bell_prev=("$message")
-  fi
-} >&2
+  local bell_type=${_ble_term_visible_bell_prev[0]}
+  ble/term/visible-bell:"$bell_type"/show "$@"
+}
 function ble/term/visible-bell/.update {
-  local sgr=$1
-  local message=${_ble_term_visible_bell_prev[0]}
-  if ((${#_ble_term_visible_bell_prev[@]}==5)); then
-    local x0=${_ble_term_visible_bell_prev[1]}
-    local y0=${_ble_term_visible_bell_prev[2]}
-    local x=${_ble_term_visible_bell_prev[3]}
-    local y=${_ble_term_visible_bell_prev[4]}
-
-    local -a DRAW_BUFF=()
-    [[ $_ble_attached ]] && ble/canvas/panel/ensure-tmargin.draw
-    if [[ $_ble_term_rc ]]; then
-      local ret=
-      [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
-      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-      ble/canvas/put.draw "$_ble_term_rc"
-      ble/canvas/put-cud.draw 1
-      [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
-    else
-      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
-      ble/canvas/put-hpa.draw $((1+x0))
-      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-      ble/canvas/put-cud.draw 1
-      ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
-    fi
-    ble/canvas/bflush.draw
-    ble/util/buffer.flush >&2
-  else
-    ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
-  fi
-} >&2
+  local bell_type=${_ble_term_visible_bell_prev[0]}
+  ble/term/visible-bell:"$bell_type"/update "$1" "$2:update"
+}
 function ble/term/visible-bell/.clear {
-  if ((${#_ble_term_visible_bell_prev[@]}==5)); then
-    local x0=${_ble_term_visible_bell_prev[1]}
-    local y0=${_ble_term_visible_bell_prev[2]}
-    local x=${_ble_term_visible_bell_prev[3]}
-    local y=${_ble_term_visible_bell_prev[4]}
-
-    local ret; ble/color/face2sgr vbell_erase; local sgr=$ret
-
-    local -a DRAW_BUFF=()
-    if [[ $_ble_term_rc ]]; then
-      local ret=
-      [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
-      ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
-      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-      ble/canvas/put.draw "$sgr"
-      ble/canvas/put-spaces.draw "$x"
-      #ble/canvas/put-ech.draw "$x"
-      #ble/canvas/put.draw "$_ble_term_el"
-      ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
-      [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
-    else
-      : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
-      # ble/util/buffer.flush >&2
-      # ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
-      # ble/canvas/put-hpa.draw $((1+x0))
-      # ble/canvas/put.draw "$sgr"
-      # ble/canvas/put-spaces.draw "$x"
-      # ble/canvas/put.draw "$_ble_term_sgr0"
-      # ble/canvas/put-cud.draw 1
-      # ble/canvas/put-hpa.draw $((1+_ble_canvas_x)) # 親プロセスの _ble_canvas_x?
-    fi
-    ble/canvas/flush.draw
-  else
-    ble/util/put "$_ble_term_visible_bell_clear"
-  fi
+  local bell_type=${_ble_term_visible_bell_prev[0]}
+  ble/term/visible-bell:"$bell_type"/clear "$@"
   >| "$_ble_term_visible_bell_ftime"
-} >&2
+}
+
 function ble/term/visible-bell/.erase-previous-visible-bell {
   local -a workers=()
   builtin eval 'workers=("$_ble_base_run/$$.visible-bell."*)' &>/dev/null # failglob 対策
@@ -4300,10 +4312,11 @@ function ble/term/visible-bell/.erase-previous-visible-bell {
   local workerfile
   for workerfile in "${workers[@]}"; do
     if [[ -s $workerfile && ! ( $workerfile -ot $_ble_term_visible_bell_ftime ) ]]; then
-      ble/term/visible-bell/.clear
-      break
+      ble/term/visible-bell/.clear "$sgr0"
+      return 0
     fi
   done
+  return 1
 }
 
 function ble/term/visible-bell/.create-workerfile {
@@ -4336,37 +4349,35 @@ function ble/term/visible-bell/.worker {
   [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return 0 >| "$workerfile"
 
   # check and clear
-  ble/term/visible-bell/.clear
+  ble/term/visible-bell/.clear "$sgr0"
 
   >| "$workerfile"
 }
 
 ## @fn ble/term/visible-bell message [opts]
 function ble/term/visible-bell {
-  local cols=${COLUMNS:-80}
   local message=$1 opts=$2
   message=${message:-$bleopt_vbell_default_message}
 
-  # 一行に収まる様に切り詰める
-  local opt_canvas= x= y=
   if ble/is-function ble/canvas/trace-text; then
-    opt_canvas=1
-    local ret lines=1 sgr0= sgr1=
-    ble/canvas/trace-text "$message" nonewline:external-sgr
-    message=$ret
+    ble/term/visible-bell:canvas/init "$message"
   else
-    message=${message::cols}
+    ble/term/visible-bell:term/init "$message"
   fi
 
   local sgr0=$_ble_term_sgr0
   local sgr1=${_ble_term_setaf[2]}$_ble_term_rev
   local sgr2=$_ble_term_rev
-  local ret
-  ble/color/face2sgr vbell_flash; sgr1=$ret
-  ble/color/face2sgr vbell; sgr2=$ret
+  if ble/is-function ble/color/face2sgr; then
+    local ret
+    ble/color/face2sgr vbell_flash; sgr1=$ret
+    ble/color/face2sgr vbell; sgr2=$ret
+    ble/color/face2sgr vbell_erase; sgr0=$ret
+  fi
 
-  ble/term/visible-bell/.erase-previous-visible-bell
-  ble/term/visible-bell/.show "$message" "$sgr1" "$x" "$y"
+  local show_opts=
+  ble/term/visible-bell/.erase-previous-visible-bell && show_opts=erased
+  ble/term/visible-bell/.show "$sgr1" "$show_opts"
 
   local workerfile; ble/term/visible-bell/.create-workerfile
   # Note: __ble_suppress_joblist__ を指定する事によって、
@@ -4640,7 +4651,7 @@ function ble/term/modifyOtherKeys/.update {
   _ble_term_modifyOtherKeys_current=$1
 }
 function ble/term/modifyOtherKeys/.supported {
-  # libvte は SGR(>4) を直接画面に表示してしまう
+  # libvte は SGR(>4) を直接画面に表示してしまう。
   [[ $_ble_term_TERM == vte ]] && return 1
 
   # 改造版 Poderosa は通知でウィンドウサイズを毎回変更するので表示が乱れてしまう
@@ -4648,7 +4659,8 @@ function ble/term/modifyOtherKeys/.supported {
 
   # Note #D1213: linux (kernel 5.0.0) は "\e[>" でエスケープシーケンスを閉じてしまう。
   #   5.4.8 は大丈夫だがそれでも modifyOtherKeys に対応していない。
-  [[ $TERM == linux || $TERM == minix ]] && return 1
+  #   Solaris のコンソールもそのまま出力してしまう。
+  [[ $TERM == linux || $TERM == minix || $TERM == sun* ]] && return 1
 
   return 0
 }
