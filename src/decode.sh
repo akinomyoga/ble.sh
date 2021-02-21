@@ -2427,6 +2427,7 @@ function ble/builtin/bind/option:m {
 ##   keyseq:command の形式の文字列を keyseq と command に分離します。
 ##   @var[out] keyseq value
 function ble/builtin/bind/.decompose-pair {
+  local LC_ALL= LC_CTYPE=C
   local ret; ble/string#trim "$1"
   local spec=$ret ifs=$' \t\n' q=\' Q="'\''"
 
@@ -2462,6 +2463,7 @@ function ble/builtin/bind/.decompose-pair {
     return 0
   fi
 }
+ble/function#suppress-stderr ble/builtin/bind/.decompose-pair
 ## 関数 ble/builtin/bind/.parse-keyname keyname
 ##   @var[out] chars
 function ble/builtin/bind/.parse-keyname {
