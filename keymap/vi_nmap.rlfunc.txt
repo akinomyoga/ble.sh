@@ -137,7 +137,7 @@ vi-column                         vi-command/nth-column
 vi-complete                       -
 vi-delete                         vi_nmap/kill-forward-char
 vi-delete-to                      vi-rlfunc/delete-to
-vi-editing-mode                   -
+vi-editing-mode                   vi_nmap/insert-mode
 vi-eof-maybe                      -
 vi-fetch-history                  vi-command/history-end
 vi-first-print                    vi-command/first-non-space
