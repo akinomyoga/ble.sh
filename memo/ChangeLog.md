@@ -52,7 +52,8 @@
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
-- mandb: improve extraction and cache for each locale `#D1480` 0000000
+- mandb: improve extraction and cache for each locale `#D1480` 3588158
+- decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 0000000
 
 ## Internal changes and fixes
 

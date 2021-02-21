@@ -5022,12 +5022,16 @@ function ble/util/keyseq2chars {
   local -a chars=()
   local mods=
   local rex='^([^\]+)|^\\([CM]-|[0-7]{1,3}|x[0-9a-fA-F]{1,2}|.)?'
-  while [[ $keyseq =~ $rex ]]; do
-    local text=${BASH_REMATCH[1]} esc=${BASH_REMATCH[2]}
-    keyseq=${keyseq:${#BASH_REMATCH}}
+  while [[ $keyseq ]]; do
+    local text=${keyseq::1}
+    [[ $keyseq =~ $rex ]] &&
+      text=${BASH_REMATCH[1]} esc=${BASH_REMATCH[2]}
+
     if [[ $text ]]; then
+      keyseq=${keyseq:${#text}}
       ble/util/s2chars "$text"
     else
+      keyseq=${keyseq:$1+{#esc}}
       ret=()
       case $esc in
       ([CM]-)  mods=$mods${esc::1}; continue ;;
