@@ -3730,6 +3730,43 @@ bash_tips
 
 2021-02-21
 
+  * decode (rlfunc): vi-replace in imap, vi-editing-mode in nmap (reported by onelittlehope) [#D1484]
+
+    それから vi-replace in imap 及び vi-editing-mode in nmap は未実装である。
+
+    * vi-editin-mode in nmap: 先ずは vi-editing-mode を vi-command で使うと何が
+      起こるのかについて確認する。→どうやら vi_nmap を抜けて imap に戻る様であ
+      る。うーん。これは単に vi_nmap/insert-mode にすれば良い気がする。
+
+    * vi-replace はどうやら replace-mode に入る為のコマンドの様だ。そしてこれは
+      insert と同じで良いのではないか?? と思ったがうーん。vi-command では "R"
+      に割り当てられている。つまり、文字幅に応じた replace-mode に入るべきであ
+      る。
+
+      | vi_imap でも同等の replace-mode に入るための widget を追加するべきだろう
+      | か。と思って、vi_imap/normal-mode-without-insert-leave &
+      | vi_nmap/replace-mode を組み合わせて新しい widget を作りかけていたら、どう
+      | やら既に存在していた様だ。vi_imap/overwrite-mode である。というより、既定
+      | の insert がこれになっていた。
+      |
+      | なので作りかけた以下の関数は廃止。
+      |
+      | function ble/widget/vi_imap/replace-mode {
+      |   ble-edit/content/clear-arg
+      |   _ble_edit_mark_active=
+      |   _ble_edit_overwrite_mode=R
+      |   _ble_keymap_vi_insert_overwrite=R
+      |   ble/keymap:vi/update-mode-name
+      | }
+
+      所で、既存の vi_imap/overwrite-mode は ble-edit/content/clear-arg がない
+      が良いのだろうか。と思ったが、よく考えたら vi_imap では引数を指定する方法
+      が存在しない。という事を考えたら別になくても良いという事なのだろうか。ま
+      あ、ble-edit/content/clear-arg して困る事はない。もしかすると誰かが
+      vi_imap でも arg を設定できる様に binding を追加するかもしれない。
+
+    結局二つとも既存の widget を辞書に登録するだけで済ませる事にした。
+
   * decode (rlfunc): 既存の束縛の読み取り時にエラー (reported by onelittlehope) [#D1483]
     https://github.com/akinomyoga/ble.sh/issues/89
 

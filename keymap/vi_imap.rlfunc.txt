@@ -152,7 +152,7 @@ vi-overstrike-delete              -
 vi-prev-word                      -
 vi-put                            -
 vi-redo                           -
-vi-replace                        -
+vi-replace                        vi_imap/overwrite-mode
 vi-rubout                         -
 vi-search                         -
 vi-search-again                   -

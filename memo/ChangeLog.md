@@ -32,6 +32,7 @@
 - prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` cca1cbc
 - edit (`ble/builtin/read`): cancel by <kbd>C-d</kbd> on an empty line `#D1473` ecb8888
 - syntax: change syntax context after `time ;` and `! ;` for Bash 4.4 `#D1477` 4628370
+- decode (rlfunc): update mapping `vi-replace` in `imap` and `vi-editing-mode` in `nmap` (reported by onelittlehope) `#D1484` 0000000
 
 ## Fixes
 
@@ -53,7 +54,7 @@
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - mandb: improve extraction and cache for each locale `#D1480` 3588158
-- decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 0000000
+- decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658
 
 ## Internal changes and fixes
 

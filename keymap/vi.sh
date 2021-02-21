@@ -7566,6 +7566,7 @@ function ble/widget/vi_imap/delete-region-or {
   fi
 }
 function ble/widget/vi_imap/overwrite-mode {
+  ble-edit/content/clear-arg
   if [[ $_ble_edit_overwrite_mode ]]; then
     _ble_edit_overwrite_mode=
   else
