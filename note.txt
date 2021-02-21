@@ -3806,6 +3806,9 @@ bash_tips
     https://github.com/akinomyoga/ble.sh/issues/89#issuecomment-782824259
     追記: 簡単なミスをしていた。修正する。
 
+    https://github.com/akinomyoga/ble.sh/issues/89#issuecomment-782827987
+    追記: まだ駄目だった。何度でも同じミスをしている…。ちゃんと実際にテストしなければならない。
+
 2021-02-20
 
   * complete/mabdb: man awk の内容を抽出しきれていない [#D1480]

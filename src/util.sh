@@ -5031,7 +5031,7 @@ function ble/util/keyseq2chars {
       keyseq=${keyseq:${#text}}
       ble/util/s2chars "$text"
     else
-      keyseq=${keyseq:$1+${#esc}}
+      keyseq=${keyseq:1+${#esc}}
       ret=()
       case $esc in
       ([CM]-)  mods=$mods${esc::1}; continue ;;
