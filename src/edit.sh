@@ -155,6 +155,11 @@ bleopt/declare -v prompt_term_status  ''
 bleopt/declare -o rps1 prompt_rps1
 bleopt/declare -o rps1_transient prompt_rps1_transient
 
+function bleopt/check:prompt_rps1 { ble/prompt/clear; return 0; }
+function bleopt/check:prompt_xterm_title { ble/prompt/clear; return 0; }
+function bleopt/check:prompt_screen_title { ble/prompt/clear; return 0; }
+function bleopt/check:prompt_term_status { ble/prompt/clear; return 0; }
+
 ## @bleopt prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
 
@@ -162,9 +167,13 @@ bleopt/declare -v prompt_status_line  ''
 bleopt/declare -n prompt_status_align left
 ble/color/defface prompt_status_line fg=231,bg=240
 
+function bleopt/check:prompt_status_line { ble/prompt/clear; return 0; }
 function bleopt/check:prompt_status_align {
   case $value in
-  (left|right|center) return 0 ;;
+  (left|right|center)
+    [[ $bleopt_prompt_status_line ]] &&
+      ble/prompt/clear
+    return 0 ;;
   (*)
     ble/util/print "bleopt prompt_status_align: unsupported value: '$value'" >&2
     return 1 ;;
@@ -1109,6 +1118,7 @@ function ble/prompt/update {
 }
 function ble/prompt/clear {
   _ble_edit_prompt[0]=
+  ble/textarea#invalidate
 }
 function ble/prompt/notify-readline-mode-change {
   if ble/util/test-rl-variable show-mode-in-prompt; then

@@ -408,7 +408,6 @@ function ble/keymap:vi/update-mode-name {
 
   if [[ $bleopt_keymap_vi_mode_update_prompt ]] || ble/util/test-rl-variable show-mode-in-prompt; then
     ble/prompt/clear
-    ble/textarea#invalidate
   fi
 
   local name=

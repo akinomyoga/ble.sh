@@ -790,7 +790,7 @@ function ble-attach {
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
   ble-edit/initialize # 3ms
   ble-edit/attach     # 0ms (_ble_edit_PS1 他の初期化)
-  ble/textarea#redraw # 37ms
+  ble/canvas/panel/render # 37ms
   ble/util/buffer.flush >&2
 
   # keymap 初期化

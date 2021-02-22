@@ -35,6 +35,7 @@
 - edit (`ble/builtin/read`): cancel by <kbd>C-d</kbd> on an empty line `#D1473` ecb8888
 - syntax: change syntax context after `time ;` and `! ;` for Bash 4.4 `#D1477` 4628370
 - decode (rlfunc): update mapping `vi-replace` in `imap` and `vi-editing-mode` in `nmap` (reported by onelittlehope) `#D1484` f2ca811
+- prompt: invalidate prompt and textarea on prompt setting changes `#D1492` 0000000
 
 ## Fixes
 
@@ -57,7 +58,7 @@
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - mandb: improve extraction and cache for each locale `#D1480` 3588158
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
-- main: fix a bug that unset `IFS` is not correctly restored `#D1489` 0000000
+- main: fix a bug that unset `IFS` is not correctly restored `#D1489` 808f6f7
 
 ## Compatibility
 
