@@ -276,7 +276,23 @@ function ble/prompt/status#panel::render {
   [[ $_ble_prompt_status_dirty ]] || return 0
   _ble_prompt_status_dirty=
 
+  # 表示内容がない場合は何もせず抜ける (高さは既に調整されている前提)
+  local index=$1
+  local height; ble/prompt/status#panel::getHeight "$index"
+  [[ ${height#*:} == 1 ]] || return 0
+
   local -a DRAW_BUFF=()
+
+  # 高さが一致していない場合は取り敢えず再配置を要求してみる。
+  # 高さを取得できなければ諦める。
+  height=$3
+  if ((height!=1)); then
+    ble/canvas/panel/reallocate-height.draw
+    ble/canvas/bflush.draw
+    height=${_ble_canvas_panel_height[index]}
+    ((height==0)) && return 0
+  fi
+
   local esc=${_ble_prompt_status_line[2]}
   if [[ $esc ]]; then
     local prox=${_ble_prompt_status_line[0]}
