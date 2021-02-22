@@ -3071,9 +3071,11 @@ function ble/decode/read-inputrc/test {
     if ((_ble_bash<40400)); then
       ((lhs_major=2+_ble_bash/10000,
         lhs_minor=_ble_bash/100%100))
+    elif ((_ble_bash<50000)); then
+      ((lhs_major=7,lhs_minor=0))
     else
       ((lhs_major=3+_ble_bash/10000,
-        lhs_minor=0))
+        lhs_minor=_ble_bash/100%100))
     fi
 
     local rhs_major rhs_minor
@@ -3347,11 +3349,11 @@ function ble/builtin/bind/rlfunc2widget {
 
   local rlfunc_file= rlfunc_dict=
   case $kmap in
-  (emacs)   rlfunc_file=$_ble_base/keymap/emacs.rlfunc.txt
+  (emacs)   rlfunc_file=$_ble_base/lib/core-decode.emacs-rlfunc.txt
             rlfunc_dict=_ble_decode_rlfunc2widget_emacs ;;
-  (vi_imap) rlfunc_file=$_ble_base/keymap/vi_imap.rlfunc.txt
+  (vi_imap) rlfunc_file=$_ble_base/lib/core-decode.vi_imap-rlfunc.txt
             rlfunc_dict=_ble_decode_rlfunc2widget_vi_imap ;;
-  (vi_nmap) rlfunc_file=$_ble_base/keymap/vi_nmap.rlfunc.txt
+  (vi_nmap) rlfunc_file=$_ble_base/lib/core-decode.vi_nmap-rlfunc.txt
             rlfunc_dict=_ble_decode_rlfunc2widget_vi_nmap ;;
   esac
 

@@ -1,2 +1,6 @@
--x md:bash --exclude=./out --exclude=./dist --exclude=./a.sh --exclude=./test/install --exclude=./ble.sh ble-syntax-ctx.def keymap/*.rlfunc.txt ble.pp blerc
-
+-x md:bash --exclude=./out --exclude=./dist --exclude=./a.sh --exclude=./test/install --exclude=./ble.sh
+GNUmakefile
+ble.pp
+blerc
+lib/core-syntax-ctx.def
+lib/core-decode.*-rlfunc.txt

@@ -75,6 +75,7 @@
 - benchmark (`ble-measure`): support `-T TIME` and `-B TIME` option `#D1460` 1aa471b
 - util, color (`bleopt`, `blehook`, `ble-color-setface`): support `--color` and fix `sgr0` contamination in non-color output `#D1466` 69248ff
 - global: fix status check for read timeout `#D1467` e886883
+- decode: move `{keymap/*. => lib/core-decode.*-}rlfunc.txt` and clean up files `#D1486` e130619
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

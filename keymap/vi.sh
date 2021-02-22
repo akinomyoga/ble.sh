@@ -5860,7 +5860,7 @@ function ble-decode/keymap:vi_nmap/define {
   # ble-bind -f '_'   'vi-rlfunc/yank-arg'
 }
 
-# vi_nmap.rlfunc.txt 用
+# lib/core-decode.vi_nmap-rlfunc.txt 用
 
 # d or D
 function ble/widget/vi-rlfunc/delete-to {

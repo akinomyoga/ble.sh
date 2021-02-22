@@ -632,7 +632,7 @@ function sub:check-readline-bindable {
       [[ $bash == bash-[12]* ]] && continue
       "$bash" -c 'bind -l' 2>/dev/null
     done | sort -u
-  ) <(sort keymap/emacs.rlfunc.txt)
+  ) <(sort lib/core-decode.emacs-rlfunc.txt)
 }
 
 #------------------------------------------------------------------------------

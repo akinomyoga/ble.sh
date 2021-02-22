@@ -932,6 +932,7 @@ function ble/base/process-blesh-arguments {
         ble/util/print "ble.sh ($arg): an option argument is missing." >&2
       fi ;;
     (--noinputrc)
+      _ble_builtin_bind_user_settings_loaded=noinputrc
       _ble_builtin_bind_inputrc_done=noinputrc ;;
     (--rcfile=*|--init-file=*|--rcfile|--init-file)
       if [[ $arg != *=* ]]; then

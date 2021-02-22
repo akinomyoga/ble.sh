@@ -3742,6 +3742,14 @@ bash_tips
 
 2021-02-22
 
+  * decode: rlfunc.txt ファイルを移動する [#D1486]
+
+    * .srcoption の中身も更新した。
+    * GNUmakefile も書き換えた。
+    * decode.sh も書き換えた。
+    * 他に make_command.sh と vi.sh の中で言及していたファイル名を書き換えた。
+    * 序でに散らばっていたテスト用のファイルをリポジトリに追加しておく。
+
   * term: screen で attach した時に時々 _ble_term_* が壊れる現象 [#D1485]
 
     screen で attach すると何故か色々壊れる現象があったが、どうも contra からの

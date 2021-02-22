@@ -47,12 +47,7 @@ $(OUTDIR)/ble.sh: ble.pp GNUmakefile | $(OUTDIR)
 outdirs += $(OUTDIR)/keymap
 outfiles += $(OUTDIR)/keymap/emacs.sh
 outfiles += $(OUTDIR)/keymap/vi.sh $(OUTDIR)/keymap/vi_digraph.sh $(OUTDIR)/keymap/vi_digraph.txt $(OUTDIR)/keymap/vi_test.sh
-outfiles += $(OUTDIR)/keymap/emacs.rlfunc.txt
-outfiles += $(OUTDIR)/keymap/vi_imap.rlfunc.txt
-outfiles += $(OUTDIR)/keymap/vi_nmap.rlfunc.txt
 $(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
-	cp -p $< $@
-$(OUTDIR)/keymap/%.txt: keymap/%.txt | $(OUTDIR)/keymap
 	cp -p $< $@
 
 #------------------------------------------------------------------------------
@@ -67,6 +62,9 @@ outfiles += $(OUTDIR)/lib/core-complete.sh
 outfiles += $(OUTDIR)/lib/core-syntax.sh
 outfiles += $(OUTDIR)/lib/core-test.sh
 outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
+outfiles += $(OUTDIR)/lib/core-decode.emacs-rlfunc.txt
+outfiles += $(OUTDIR)/lib/core-decode.vi_imap-rlfunc.txt
+outfiles += $(OUTDIR)/lib/core-decode.vi_nmap-rlfunc.txt
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
 outfiles += $(OUTDIR)/lib/test-main.sh

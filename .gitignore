@@ -6,8 +6,9 @@
 
 # edit files
 /COMMIT
-/[a-zA-Z].txt
-/[a-zA-Z].sh
+/[a-zA-Z0-9].txt
+/[a-zA-Z0-9].sh
+/\*scratch\*
 
 # test
 /test
