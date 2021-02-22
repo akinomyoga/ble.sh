@@ -54,13 +54,14 @@
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - mandb: improve extraction and cache for each locale `#D1480` 3588158
-- decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 0000000
+- decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
 
 ## Compatibility
 
-- term: work around quirks of Solaris xpg4 awk `#D1481` 0000000
-- term: support key sequences and control sequences of Solaris console `#D1481` 0000000
-- term: work around Cygwin-console bug of bottom `IL`/`DL` `#D1482` 000000
+- term: work around quirks of Solaris xpg4 awk `#D1481` 6ca0b8c
+- term: support key sequences and control sequences of Solaris console `#D1481` 6ca0b8c
+- term: work around Cygwin-console bug of bottom `IL`/`DL` `#D1482` 5dce0b8
+- term: work around leaked <kbd>DA2R</kbd> in screen from outside terminal `#D1485` 0000000
 
 ## Internal changes and fixes
 

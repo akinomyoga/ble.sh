@@ -4091,6 +4091,7 @@ function ble/term:cygwin/initialize.hook {
 }
 
 function ble/term/DA2R.hook {
+  blehook DA2R-=ble/term/DA2R.hook
   case $_ble_term_TERM in
   (contra)
     _ble_term_cuu=$'\e[%dk'
@@ -4579,8 +4580,13 @@ _ble_term_DA1R=
 _ble_term_DA2R=
 function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke DA1R; }
 function ble/term/DA2/notify {
-  _ble_term_DA2R=$1
-  ble/term/DA2/initialize-term
+  # Note #D1485: screen で attach した時に外側の端末の DA2R が混入する
+  # 事がある。2回目以降に受信した内容は ble.sh の内部では使用しない事
+  # にする。
+  if [[ ! $_ble_term_DA2R ]]; then
+    _ble_term_DA2R=$1
+    ble/term/DA2/initialize-term
+  fi
   blehook/invoke DA2R
 }
 

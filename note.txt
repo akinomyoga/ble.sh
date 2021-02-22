@@ -3740,6 +3740,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-02-22
+
+  * term: screen で attach した時に時々 _ble_term_* が壊れる現象 [#D1485]
+
+    screen で attach すると何故か色々壊れる現象があったが、どうも contra からの
+    DA2R がそのまま screen の内部の shell に伝播しているという事の気がする。
+    DA2R を受信した時に最初に受信した時の値を保持する様にするべきではないか。
+    もしくは一旦受信したら blehook で削除しておく。
+
 2021-02-21
 
   * decode (rlfunc): vi-replace in imap, vi-editing-mode in nmap (reported by onelittlehope) [#D1484]
