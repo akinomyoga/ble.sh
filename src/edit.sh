@@ -1855,7 +1855,7 @@ function ble-edit/attach/.attach {
   _ble_edit_attached=1
 
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
-    _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
+    _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
     builtin unset -v LINENO; LINENO=$_ble_edit_LINENO
     _ble_edit_CMD=$_ble_edit_LINENO
@@ -3082,6 +3082,7 @@ function ble/widget/nop { :; }
 # **** insert ****                                                 @edit.insert
 
 function ble/widget/insert-string {
+  local IFS=$_ble_term_IFS
   local content="$*"
   local arg; ble-edit/content/get-arg 1
   if ((arg<0)); then
@@ -3095,7 +3096,7 @@ function ble/widget/insert-string {
   ble/widget/.insert-string "$content"
 }
 function ble/widget/.insert-string {
-  local insert="$*"
+  local insert=$1
   [[ $insert ]] || return 1
 
   ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$insert"
@@ -4829,6 +4830,7 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
     local IFS=$' \t\n'
     local depth=${#FUNCNAME[*]}
     local rex='^(ble-edit/exec:gexec/\.|\<ble/builtin/trap/\.handler)'
+    local IFS=$_ble_term_IFS
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
       ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 ${FUNCNAME[1]} $1" >&2
@@ -5189,7 +5191,7 @@ function ble-edit/hist_expanded/.expand {
 
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
-  local BASH_COMMAND="$*"
+  local BASH_COMMAND=$1
   if [[ ! -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded=$BASH_COMMAND
     return 0
@@ -5529,6 +5531,7 @@ function ble/widget/shell-expand-line.proc {
   [[ ${#words[@]} -eq 1 && $word == "$ret" ]] && return 0
 
   if ((wtype==_ble_ctx_RDRF||wtype==_ble_ctx_RDRD||wtype==_ble_ctx_RDRS)); then
+    local IFS=$_ble_term_IFS
     words=("${words[*]}")
   fi
 
@@ -5590,7 +5593,7 @@ function ble-edit/undo/.check-hindex {
 
   # load
   if [[ ${_ble_edit_undo_history[hindex]} ]]; then
-    builtin eval "local -a data=(${_ble_edit_undo_history[hindex]})"
+    local data; ble/string#split-words data "${_ble_edit_undo_history[hindex]}"
     _ble_edit_undo=("${data[@]:1}")
     _ble_edit_undo_index=${data[0]}
   else
@@ -8164,8 +8167,7 @@ function ble/widget/print {
 }
 function ble/widget/internal-command {
   ble-edit/content/clear-arg
-  local -a BASH_COMMAND
-  BASH_COMMAND=("$*")
+  local BASH_COMMAND=$1
   [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
@@ -8173,8 +8175,7 @@ function ble/widget/internal-command {
 }
 function ble/widget/external-command {
   ble-edit/content/clear-arg
-  local -a BASH_COMMAND
-  BASH_COMMAND=("$*")
+  local BASH_COMMAND=$1
   [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
 
   ble/edit/enter-command-layout
@@ -8191,8 +8192,7 @@ function ble/widget/external-command {
 }
 function ble/widget/execute-command {
   ble-edit/content/clear-arg
-  local -a BASH_COMMAND
-  BASH_COMMAND=("$*")
+  local BASH_COMMAND=$1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
 

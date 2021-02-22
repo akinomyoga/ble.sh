@@ -4923,6 +4923,8 @@ function ble/syntax/parse {
   local beg=${3:-0} end=${4:-$iN} end0=${5:-0}
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return 0
 
+  local IFS=$_ble_term_IFS
+
   local shift=$((end-end0))
 #%if !release
   ble/util/assert \
@@ -5871,6 +5873,7 @@ function ble/syntax:bash/extract-command-by-noderef {
     fi
   done
 
+  local IFS=$_ble_term_IFS
   comp_line="${comp_words[*]}"
   local tmp="${comp_words[*]::comp_cword+1}"
   comp_point=${#tmp}
@@ -6442,6 +6445,7 @@ function ble/syntax/progcolor/set-wattr {
   ble/syntax/urange#update color_ "$wbeg" "$wend"
   ble/syntax/wrange#update _ble_syntax_word_ "$TE_i"
   node[TE_nofs+4]=$1
+  local IFS=$_ble_term_IFS
   _ble_syntax_tree[TE_i-1]="${node[*]}"
 }
 
@@ -6813,6 +6817,7 @@ function ble/syntax/progcolor/default {
 function ble/syntax/progcolor/.compline-rewrite-command {
   local ocmd=${comp_words[0]}
   [[ $1 != "$ocmd" ]] || (($#>=2)) || return 1
+  local IFS=$_ble_term_IFS
   local ins="$*"
   comp_line=$ins${comp_line:${#ocmd}}
   ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))
@@ -7058,7 +7063,7 @@ function ble/highlight/layer:syntax/update-error-table {
   if ((jN)); then
     for ((j=0;j<jN;j++)); do
       local -a range
-      range=(${_ble_highlight_layer_syntax3_list[j]})
+      ble/string#split-words range "${_ble_highlight_layer_syntax3_list[j]}"
 
       local a=${range[0]} b=${range[1]}
       ((a>=DMAX0?(a+=DMAX-DMAX0):(a>=DMIN&&(a=DMIN)),

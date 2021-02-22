@@ -366,6 +366,7 @@ else
     #   270ms for 16437 entries (generate-source の時間は除く)
     # * プロセス置換×source は bash-3 で動かない。eval に変更する。
     local result=$(ble/history:bash/load/.generate-source)
+    local IFS=$' \t\n'
     if [[ $opt_append ]]; then
       if ((_ble_bash>=30100)); then
         builtin eval -- "_ble_history+=($result)"
@@ -379,6 +380,7 @@ else
       builtin eval -- "_ble_history=($result)"
       _ble_history_edit=("${_ble_history[@]}")
     fi
+    ble/util/unlocal IFS
 
     blehook/invoke history_message
   }
@@ -1393,6 +1395,7 @@ function ble/builtin/history {
     flag_processed=1
   fi
   if [[ $opt_s ]]; then
+    local IFS=$_ble_term_IFS
     ble/builtin/history/option:s "$*"
     flag_processed=1
   elif [[ $opt_d ]]; then

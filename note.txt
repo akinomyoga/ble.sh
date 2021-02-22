@@ -3746,6 +3746,144 @@ bash_tips
 
 2021-02-22
 
+  * global: IFS 対策 [#D1491]
+
+    多くの関数は IFS が普通の値になっているという事を前提にして書かれている。
+    ble.sh の中では一時的に IFS を設定して動作する様になっているが、
+    ユーザーから使用された時に IFS に変な値が設定されている可能性は排除でいない。
+
+    * 引数を $* で渡された時の対策は取り敢えず grc -F で ${* もしくは $* に一致させて確認した。
+    * 配列に対する単語分割 =($...) に関してもチェックは行った。
+
+    * 他に配列を結合する処理に関しても注意が必要になる可能性がある。
+      つまり、aa="${arr[*]}" の形の処理である。
+
+      grc '\$\{[[:alnum:]_]+\[\*\]' --exclude={test,ext,wiki}
+
+      取り敢えずこれも大体対応した。
+
+    * builtin read も IFS に依存して振る舞いが変わる。
+
+    他にも IFS が影響を与える様な状況はあるだろうか。恐らく他にもあると思うが、
+    すぐには思い浮かばないので取り敢えずこれぐらいで良いだろう。
+
+  * global: 現在様々な関数が引数として text... を受け取っているが [#D1490]
+
+    実の所複数の引数を受け取る事に意味は余りない。
+    実際に複数の引数をこれらの関数に渡している箇所があるとは思えない。
+    現在は毎回 IFS を設定してこれらの引数を結合する様にしているが、
+    そもそもその様な処理すら必要ないのではないか。
+
+    * done: (main) ble/util/put
+    * done: (main) ble/util/print
+    * done: (util) ble/string#escape-*
+    * done: (util) ble/string#{toggle-case,toupper,tolower}
+    * done: (util) ble/string#[lr]?trim
+    * done: (util) ble/string#capitalize
+    * done: (util) ble/util/buffer
+    * done: (util) ble/string#split-lines
+    * done: (util) ble/util/idle.push
+    * done: (vi) ble/keymap:vi/string#encode-rot13
+    * done: (complete) ble/complete/cand/yield
+    * done: (canvas) ble/canvas/put.draw
+    * done: (edit) ble-edit/hist_expanded.update
+    * done: (edit) ble/widget/(in|ex)ternal-command
+    * done: (edit) ble/widget/execute-command
+
+  * global: ロード時にエラーが出る (reported by 0neGal) [#D1489]
+    https://github.com/akinomyoga/ble.sh/issues/85
+
+    bash: ((: 4 0: syntax error in expression (error token is "0")
+
+    うーん。 "4 0" という文字列が何処から混入するのかという事。
+    "4 0" という文字列があるという事は何処かにそういう変数が存在しているという事?
+    と思って declare -p の結果を grep で検索して 4 0 の組み合わせを探そうとしたが見つからない。
+    配列に、要素を跨ってその様な値が格納されているのかとも思ったが、そうでもない。
+
+    だとするとグローバル変数ではなくて内部で一時的に生成された文字列に問題が起きているという事?
+
+    ((${#aaa[*]})) となるべき所を ((${aaa[*]})) にしてしまっているというのが怪しい。
+    と思ったが m scan で引っ掛からない。
+    sub:scan/array-count-in-arithmetic-expression でちゃんとチェックしている。
+
+    3588158 で発生している。前に動いていた時はいつの version かと思ったが、
+    どうも 0.3.3 を動かしていた様なので実は 0.4 でも前からずっと問題があった可能性もある。
+
+    うーん。エラーメッセージから察するに "4 0" が完全な算術式として評価されよう
+    としているという事。これにより ((...)) の形のコマンドで発生しているとすると
+    かなり発生箇所を制限する事ができる。
+
+    | ./lib/core-complete.sh:2847:      ((${simple_ibrace%:*})) && comps_fixed=1
+    | ./lib/core-complete.sh:3282:      if ((${simple_ibrace%:*})); then
+    | ./lib/core-complete.sh:3293:      if ((${simple_ibrace%:*})); then
+    |
+    |   simple_ibrance に値を設定している箇所は限られている。そしてその何れの場所
+    |   でも確実に 数字:数字 の形になっているので、変な事が起こる余地はない。
+    |
+    | ./src/canvas.sh:1725:    (($3)) && ((x=0,y++))
+    |
+    |   ble/textmap#hit/.getxy.cur の第三引数…ではなかった。ここでは textmap 配
+    |   列に含まれる単語を分割している。もしかして IFS に変な値を設定されていると
+    |   いう事? と思ったがその影響が残っているのだとしたらもっと色々な大変な事が
+    |   起こってしまう筈。そして実際に IFS= にして起動してみたが特にエラーメッセー
+    |   ジは出ていない。
+    |
+    |   もう一つここが違いそうな理由は、報告によると起動時のみに問題が起こるとい
+    |   う事であった。然し、もしここが本当に問題になるのだとしたらそれ以降もずっ
+    |   と危ない感じになる気がする。
+    |
+    |   何れにしてもこの部分はもっとまともな実装に置き換えて良い気がする。
+    |
+    | ./src/color.sh:955:    (($name)) && return 0
+    |
+    |   name=_ble_faces__$1 としているので此処からは '4 0' という値は出てこない。
+    |
+    | ./src/util.sh:3244:    (($2))
+    |
+    |   これは ble/util/test-rl-variable の第二引数である。使用箇所を確認したが第
+    |   2引数はそもそも指定していないか指定していたとしても 1 か 0 である。なので、
+    |   これも違うだろう。
+
+    然し、変数に alpha='4 0' 等の値が入っていてそれを ((alpha)) 等として実行し
+    た場合にも同じエラーメッセージが発生するので本当にこの部分で発生しているの
+    かというのは分からない。一方で $(()) の中で実行した場合にはエラーメッセージ
+    が異なる物になるので、やはり (()) の中で発生しているというのは確定して良い。
+
+    もしかすると bashrc の内部で ble-attach すると問題が発生する可能性?
+
+    できた。再現できた。IFS= を ble-attach の直前に記入すると問題が生じる。
+
+    どうやらコメントに依ると unset IFS にしている様である。という事は…。ble.sh
+    をロードした時に unset 状態の IFS を保存して復元する時に空文字列になってし
+    まうのが問題の原因になっている。
+
+    * done: IFS の unset 状態も復元する様にする。復元する様にした。
+
+    更にその後で空文字列の IFS が問題を引き起こしている。掘り下げていくと
+    textarea#redraw の中で問題が発生している。
+
+    * done: 空の IFS でも単語分割ができる様に個々の関数を書き換える。
+
+      * 結局 ble/textmap#getxy.cur の問題だった。先に上で修正したと思っていたが
+        修正漏れがあった。これで動く様になった。
+
+      * 他にも IFS=$' \t\n' でないと動かない様なコードはないだろうかと調べると
+        ble/canvas/trace の sc/rc がそれだった。修正した。
+
+      * 他にも ble/textmap#update の中でも単語分割を使っている様子だったが、こ
+        れは関数の先頭で IFS を設定しているので問題にならない。
+        ble/string#split-words で書き換えようと思ったが performance の問題だろ
+        う。そのままにしておく事にした。
+
+      * 他のファイルも探したら沢山あったのでこの際全て修正する事にした。他にも
+        IFS の値で振る舞いが変化する物は沢山あるのでこれだけで local IFS=$'
+        \t\n' しなくてよくなったりはしないが、念の為変な動作を起こさない様にし
+        ておく。
+
+    x fixed: 全部直した筈だと思ったが ble-bind がエラーを出力している。
+      →"$*" の類も全て IFS を気にする必要がある。取り敢えず util.sh の関数については
+      IFS の値に拘らず動作する様に修正した。
+
   * keymap/vi: vim mode strings の設定をもっと柔軟にできる様にする (motivated by 0neGal) [#D1488]
     https://github.com/akinomyoga/ble.sh/issues/85
 

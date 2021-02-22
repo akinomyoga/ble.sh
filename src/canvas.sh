@@ -364,7 +364,7 @@ function ble/canvas/attach {
 # ble/canvas
 
 function ble/canvas/put.draw {
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$1
 }
 function ble/canvas/put-ind.draw {
   local count=${1-1} ind=$_ble_term_ind
@@ -742,7 +742,7 @@ function ble/canvas/trace/.ps1rc {
   local lastIndex=$((${#trace_brack[*]}-1))
   if ((lastIndex>=0)); then
     local -a scosc
-    scosc=(${trace_brack[lastIndex]})
+    ble/string#split-words scosc "${trace_brack[lastIndex]}"
     ((x=scosc[0]))
     ((y=scosc[1]))
     builtin unset -v "trace_brack[$lastIndex]"
@@ -869,7 +869,7 @@ function ble/canvas/trace/.process-csi-sequence {
       # CUP "CSI H"
       # HVP "CSI f"
       local -a params
-      params=(${param//[^0-9]/ })
+      ble/string#split-words params "${param//[^0-9]/ }"
       local x1 y1
       ((x1=params[1]-1))
       ((y1=params[0]-1))
@@ -1669,12 +1669,12 @@ function ble/textmap#getxy.cur {
   fi
 
   local -a _pos
-  _pos=(${_ble_textmap_pos[$1]})
+  ble/string#split-words _pos "${_ble_textmap_pos[$1]}"
 
   # 追い出しされたか check
   if (($1<_ble_textmap_length)); then
     local -a _eoc
-    _eoc=(${_ble_textmap_pos[$1+1]})
+    ble/string#split-words _eoc "${_ble_textmap_pos[$1+1]}"
     ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
   fi
 
@@ -1713,16 +1713,17 @@ function ble/textmap#get-index-at {
 ## @fn ble/textmap#hit/.getxy.cur index
 ##   @var[in,out] pos
 function ble/textmap#hit/.getxy.out {
-  set -- ${_ble_textmap_pos[$1]}
-  x=$1 y=$2
+  local a
+  ble/string#split-words a "${_ble_textmap_pos[$1]}"
+  x=${a[0]} y=${a[1]}
 }
 function ble/textmap#hit/.getxy.cur {
-  local index=$1
-  set -- ${_ble_textmap_pos[index]}
-  x=$1 y=$2
+  local index=$1 a
+  ble/string#split-words a "${_ble_textmap_pos[index]}"
+  x=${a[0]} y=${a[1]}
   if ((index<_ble_textmap_length)); then
-    set -- ${_ble_textmap_pos[index+1]}
-    (($3)) && ((x=0,y++))
+    ble/string#split-words a "${_ble_textmap_pos[index+1]}"
+    ((a[2])) && ((x=0,y++))
   fi
 }
 

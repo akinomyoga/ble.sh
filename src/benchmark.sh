@@ -18,8 +18,8 @@ if [[ $ZSH_VERSION ]]; then
   _ble_measure_resolution=1000 # [usec]
   function ble-measure/.time {
     local result
-    result=$({ time ( ble-measure/.loop "$n" "$*" ; ) } 2>&1 )
-    #local result=$({ time ( ble-measure/.loop "$n" "$*" &>/dev/null); } 2>&1)
+    result=$({ time ( ble-measure/.loop "$n" "$1" ; ) } 2>&1 )
+    #local result=$({ time ( ble-measure/.loop "$n" "$1" &>/dev/null); } 2>&1)
     result=${result##*cpu }
     local rex='(([0-9]+):)?([0-9]+)\.([0-9]+) total$'
     if [[ $result =~ $rex ]]; then
@@ -46,10 +46,10 @@ elif ((BASH_VERSINFO[0]>=5)); then
     time=$EPOCHREALTIME
   }
   function ble-measure/.time {
-    local command="$*"
+    local command=$1
     local time
     ble-measure/.get-realtime 2>/dev/null; local time1=${time//.}
-    ble-measure/.loop "$n" "$*" &>/dev/null
+    ble-measure/.loop "$n" "$command" &>/dev/null
     ble-measure/.get-realtime 2>/dev/null; local time2=${time//.}
     ((utot=time2-time1,usec=utot/n))
     ((utot>0))
@@ -60,7 +60,7 @@ else
     utot=0 usec=0
     local word utot1 usec1
     local head=
-    for word in $({ time ble-measure/.loop "$n" "$*" &>/dev/null;} 2>&1); do
+    for word in $({ time ble-measure/.loop "$n" "$1" &>/dev/null;} 2>&1); do
       local rex='(([0-9])+m)?([0-9]+)(\.([0-9]+))?s'
       if [[ $word =~  $rex ]]; then
         local m=${BASH_REMATCH[2]}
@@ -174,6 +174,7 @@ function ble-measure/.read-arguments {
       flags=E$flags ;;
     esac
   done
+  local IFS=$' \t\n'
   command="${args[*]:iarg}"
   [[ $flags != *E* ]]
 }

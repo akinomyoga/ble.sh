@@ -209,7 +209,7 @@ function sub:check-all {
 # sub:scan
 
 function sub:scan/grc-source {
-  local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk} --exclude=./make_command.sh)
+  local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk} --exclude=./{GNUmakefile,make_command.sh})
   grc "${options[@]}" "$@"
 }
 function sub:scan/list-command {
@@ -261,7 +261,7 @@ function sub:scan/check-todo-mark {
 }
 function sub:scan/a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude=./test --exclude=./lib/test-*.sh --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
+  grc --color --exclude=./{test,ext} --exclude=./lib/test-*.sh --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 

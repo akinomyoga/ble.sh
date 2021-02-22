@@ -8,11 +8,11 @@ ble/test/start-section 'main' 14
 (
   ble/test ble/util/put a     stdout=a
   ble/test ble/util/print a   stdout=a
-  ble/test ble/util/put a b   stdout='a b'
-  ble/test ble/util/print a b stdout='a b'
-  ble/test 'ble/util/put a b; ble/util/put c d' \
+  ble/test 'ble/util/put "a b"'   stdout='a b'
+  ble/test 'ble/util/print "a b"' stdout='a b'
+  ble/test 'ble/util/put "a b"; ble/util/put "c d"' \
            stdout='a bc d'
-  ble/test 'ble/util/print a b; ble/util/print c d' \
+  ble/test 'ble/util/print "a b"; ble/util/print "c d"' \
            stdout='a b' \
            stdout='c d'
 )

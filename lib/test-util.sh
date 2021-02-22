@@ -9,9 +9,9 @@ ble/test/start-section 'util' 1191
 (
   # 定義・設定・出力
   ble/test 'bleopt a=1' \
-           exit=1
+           exit=2
   ble/test 'bleopt a' \
-           stdout= exit=1
+           stdout= exit=2
   ble/test 'bleopt a:=2'
   ble/test 'bleopt a' \
            stdout="bleopt a=2"

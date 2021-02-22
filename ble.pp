@@ -218,6 +218,7 @@ if [[ ${BASH_EXECUTION_STRING+set} ]]; then
   return 1 2>/dev/null || builtin exit 1
 fi
 
+_ble_init_original_IFS_set=${IFS+set}
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
@@ -265,8 +266,8 @@ ble/base/initialize-version-information
 
 # ble/bin
 
-function ble/util/put { builtin printf '%s' "$*"; }
-function ble/util/print { builtin printf '%s\n' "$*"; }
+function ble/util/put { builtin printf '%s' "$1"; }
+function ble/util/print { builtin printf '%s\n' "$1"; }
 function ble/util/print-lines { builtin printf '%s\n' "$@"; }
 
 ## @fn ble/bin/.default-utility-path commands...
@@ -739,7 +740,6 @@ blehook ERR+='ble/function#try TRAPERR'
 #%x inc.r|@|lib/core-complete-def|
 #%x inc.r|@|lib/core-syntax-def|
 #------------------------------------------------------------------------------
-# function .ble-time { echo "$*"; time "$@"; }
 
 # blerc
 _ble_base_rcfile=
@@ -1002,7 +1002,12 @@ function ble/base/initialize/.clean-up {
   builtin unset -v _ble_init_test
 
   # 状態復元
-  IFS=$_ble_init_original_IFS
+  if [[ $_ble_init_original_IFS_set ]]; then
+    IFS=$_ble_init_original_IFS
+  else
+    builtin unset -v IFS
+  fi
+  builtin unset -v _ble_init_original_IFS_set
   builtin unset -v _ble_init_original_IFS
   if [[ ! $_ble_attached ]]; then
     ble/base/restore-bash-options

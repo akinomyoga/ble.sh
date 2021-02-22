@@ -1394,7 +1394,7 @@ function ble/complete/source/reduce-compv-for-ambiguous-match {
 ##   @var[in] flag_force_fignore
 ##   @var[in] flag_source_filter
 function ble/complete/cand/yield {
-  local ACTION=$1 CAND=$2 DATA="${*:3}"
+  local ACTION=$1 CAND=$2 DATA=$3
   [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && return 0
 
   [[ $flag_source_filter ]] ||
@@ -2491,6 +2491,7 @@ function ble/complete/progcomp/.compgen {
 function ble/complete/progcomp/.compline-rewrite-command {
   local ocmd=${comp_words[0]}
   [[ $1 != "$ocmd" ]] || (($#>=2)) || return 1
+  local IFS=$_ble_term_IFS
   local ins="$*"
   comp_line=$ins${comp_line:${#ocmd}}
   ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))

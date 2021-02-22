@@ -128,10 +128,12 @@ function ble/lib/vim-surround.sh/async-inputtarget.hook {
   fi
 }
 function ble/lib/vim-surround.sh/async-inputtarget {
+  local IFS=$_ble_term_IFS
   _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook init:digit $*"
   return 147
 }
 function ble/lib/vim-surround.sh/async-inputtarget-noarg {
+  local IFS=$_ble_term_IFS
   _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook init $*"
   return 147
 }

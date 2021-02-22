@@ -84,7 +84,7 @@ function ble/init:bind/generate-binder {
   local bind18XX=0
   if ((40400<=_ble_bash&&_ble_bash<50000)); then
     # Insert a dummy entry in "cmd_xmap"
-    ble/util/print "[[ -o emacs ]] && bind 'set keyseq-timeout 1'" >> "$fbind1"
+    ble/util/print "[[ -o emacs ]] && builtin bind 'set keyseq-timeout 1'" >> "$fbind1"
     fbind2=$fbind1 ble/init:bind/append '\C-x\C-x' 24 '[[ -o emacs ]]'
   elif ((_ble_bash<40300)); then
     bind18XX=1

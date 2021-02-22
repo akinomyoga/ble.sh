@@ -15,9 +15,9 @@
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
-  - prompt: fix missing height allocation for status line `#D1487` 0000000
+  - prompt: fix missing height allocation for status line `#D1487` b424fa5
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
-- keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` 0000000
+- keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
 
 ## Changes
 
@@ -57,6 +57,7 @@
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - mandb: improve extraction and cache for each locale `#D1480` 3588158
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
+- main: fix a bug that unset `IFS` is not correctly restored `#D1489` 0000000
 
 ## Compatibility
 
@@ -78,6 +79,7 @@
 - util, color (`bleopt`, `blehook`, `ble-color-setface`): support `--color` and fix `sgr0` contamination in non-color output `#D1466` 69248ff
 - global: fix status check for read timeout `#D1467` e886883
 - decode: move `{keymap/*. => lib/core-decode.*-}rlfunc.txt` and clean up files `#D1486` f7323b4
+- util, etc: ensure each function to work with arbitrary `IFS` `#D1490` `#D1491` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

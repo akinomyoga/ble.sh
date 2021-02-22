@@ -344,6 +344,7 @@ ble-decode-kbd/.initialize
 ##   @var[out] ret
 ##     キー列を空白区切りの整数列として返します。
 function ble-decode-kbd {
+  local IFS=$_ble_term_IFS
   local spec="$*"
   case $spec in
   (keys:*)
@@ -447,6 +448,7 @@ function ble-decode-unkbd/.single-key {
 ##     キーを表す整数値の列を指定します。
 ##   @var[out] ret
 function ble-decode-unkbd {
+  local IFS=$_ble_term_IFS
   local -a kspecs
   local key
   for key in $*; do
@@ -1072,7 +1074,7 @@ function ble-decode-char {
         local key=$_ble_decode_char2_reach_key
         local seq=$_ble_decode_char2_reach_seq
         local rest=${_ble_decode_char2_seq:${#seq}}
-        rest=(${rest//_/ } $ble_decode_char_char)
+        ble/string#split-words rest "${rest//_/ } $ble_decode_char_char"
 
         _ble_decode_char2_seq=
         _ble_decode_char2_reach_key=
@@ -1241,7 +1243,7 @@ function ble-decode-char/.send-modified-key {
     _ble_decode_char2_modkcode=
     _ble_decode_char2_modseq=
     if ((key&mflag)); then
-      CHARS=(${mseq//_/ })
+      ble/string#split-words CHARS "${mseq//_/ }"
       ble-decode-key "$mcode"
     else
       seq=$mseq$seq
@@ -1249,7 +1251,7 @@ function ble-decode-char/.send-modified-key {
     fi
   fi
 
-  CHARS=(${seq//_/ })
+  ble/string#split-words CHARS "${seq//_/ }"
   ble-decode-key "$key"
 }
 
@@ -1321,6 +1323,7 @@ function ble-decode-char/unbind {
   done
 }
 function ble-decode-char/dump {
+  local IFS=$_ble_term_IFS
   local tseq=$1 nseq ccode
   nseq=("${@:2}")
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
@@ -1516,10 +1519,10 @@ function ble-decode/INITIALIZE_DEFMAP {
 
 ## @fn[custom] ble/widget/.SHELL_COMMAND command
 ##   ble-bind -c で登録されたコマンドを処理します。
-function ble/widget/.SHELL_COMMAND { builtin eval -- "$*"; }
+function ble/widget/.SHELL_COMMAND { local IFS=$_ble_term_IFS; builtin eval -- "$*"; }
 ## @fn[custom] ble/widget/.EDIT_COMMAND command
 ##   ble-bind -x で登録されたコマンドを処理します。
-function ble/widget/.EDIT_COMMAND { builtin eval -- "$*"; }
+function ble/widget/.EDIT_COMMAND { local IFS=$_ble_term_IFS; builtin eval -- "$*"; }
 
 ## @fn ble-decode-key/bind keymap keys command
 ##   @param[in] keymap keys command
@@ -1868,7 +1871,8 @@ function ble-decode-key {
         if [[ $bleopt_decode_error_kseq_discard ]]; then
           _ble_decode_key__seq=
         else
-          local -a keys=(${_ble_decode_key__seq//_/ } $key)
+          local -a keys
+          ble/string#split-words keys "${_ble_decode_key__seq//_/ } $key"
           _ble_decode_key__seq=
           # 2文字目以降を処理
           ble-decode-key "${keys[@]:1}"
@@ -2038,7 +2042,7 @@ function ble-decode/widget/.call-keyseq {
 
   # set up variables
   local WIDGET=$command KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
-  local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
+  local -a KEYS; ble/string#split-words KEYS "${_ble_decode_key__seq//_/ } $key"
   _ble_decode_widget_last=$WIDGET
   _ble_decode_key__seq=
 
@@ -2049,7 +2053,7 @@ function ble-decode/widget/.call-keyseq {
     _ble_decode_keylog_chars_count=0 _ble_decode_keylog_keys_count=0
   return "$ext"
 }
-## @fn ble-decode/widget/.call-async-read
+## @fn ble-decode/widget/.call-async-read widget keys
 ##   _ble_decode_{char,key}__hook の呼び出しに使用します。
 ##   _ble_decode_widget_last は更新しません。
 function ble-decode/widget/.call-async-read {
@@ -2058,7 +2062,7 @@ function ble-decode/widget/.call-async-read {
 
   # set up variables
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
-  local -a KEYS=($2)
+  local -a KEYS; ble/string#split-words KEYS "$2"
   builtin eval -- "$WIDGET"; local ext=$?
   ((_ble_decode_keylog_depth==1)) &&
     _ble_decode_keylog_chars_count=0 _ble_decode_keylog_keys_count=0
@@ -2188,6 +2192,7 @@ function ble/debug/keylog#start {
 }
 function ble/debug/keylog#end {
   {
+    local IFS=$_ble_term_IFS
     ble/util/print '===== bytes ====='
     ble/util/print "${_ble_debug_keylog_bytes[*]}"
     ble/util/print
@@ -2860,6 +2865,8 @@ function ble-bind/option:csi {
       ble/util/s2c "${num:i:1}"
       ble/array#push cseq "$ret"
     done
+
+    local IFS=$_ble_term_IFS
     if [[ $key ]]; then
       ble-decode-char/bind "${cseq[*]}" $((key|_ble_decode_Shft))
     else
@@ -2985,6 +2992,7 @@ function ble-bind {
               command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             (s)
               local ret; ble/util/keyseq2chars "$command"
+              local IFS=$_ble_term_IFS
               command="ble/widget/.MACRO ${ret[*]}" ;;
             ('@') ;; # 直接実行
             (*)
@@ -3346,6 +3354,7 @@ _ble_decode_rlfunc2widget_vi_imap=()
 _ble_decode_rlfunc2widget_vi_nmap=()
 function ble/builtin/bind/rlfunc2widget {
   local kmap=$1 rlfunc=$2
+  local IFS=$_ble_term_IFS
 
   local rlfunc_file= rlfunc_dict=
   case $kmap in
@@ -3494,6 +3503,7 @@ function ble/builtin/bind/option:- {
 }
 function ble/builtin/bind/.process {
   flags=
+  local IFS=$_ble_term_IFS
   local opt_literal= opt_keymap=$_ble_builtin_bind_keymap opt_print=
   local -a opt_queries=()
   while (($#)); do
