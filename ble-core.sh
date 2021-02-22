@@ -21,7 +21,7 @@ function bleopt/check:input_encoding {
 
   if [[ $bleopt_input_encoding != "$value" ]]; then
     ble-decode/unbind
-    bleopt_input_encoding=$value
+    local bleopt_input_encoding=$value
     ble-decode/bind
   fi
   return 0
