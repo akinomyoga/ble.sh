@@ -342,6 +342,44 @@ bleopt/declare -v keymap_vi_mode_name_select    'SELECT'
 bleopt/declare -v keymap_vi_mode_name_linewise  'LINE'
 bleopt/declare -v keymap_vi_mode_name_blockwise 'BLOCK'
 
+## @fn ble/keymap:vi/script/get-mode
+##   @var[out] mode
+function ble/keymap:vi/script/get-mode {
+  mode=
+
+  local kmap=$_ble_decode_keymap
+  [[ $kmap == auto_complete ]] && kmap=vi_imap
+
+  # /[iR^R]?/
+  if [[ $_ble_keymap_vi_single_command || $kmap == vi_imap ]]; then
+    local overwrite=
+    if [[ $kmap == vi_imap ]]; then
+      overwrite=$_ble_edit_overwrite_mode
+    elif [[ $kmap == vi_[noxs]map ]]; then
+      overwrite=$_ble_keymap_vi_single_command_overwrite
+    fi
+    case $overwrite in
+    ('') mode=i ;;
+    (R)  mode=R ;;
+    (*)  mode=$'\x12' ;; # C-r
+    esac
+  fi
+
+  # /[nvV^VsS^S]?/
+  case $kmap:${_ble_edit_mark_active%+} in
+  (vi_xmap:vi_line) mode=$mode'v' ;;
+  (vi_xmap:vi_block)mode=$mode'V' ;;
+  (vi_xmap:*)       mode=$mode$'\x16' ;; # C-v
+  (vi_smap:vi_line) mode=$mode's' ;;
+  (vi_smap:vi_block)mode=$mode'S' ;;
+  (vi_smap:*)       mode=$mode$'\x13' ;; # C-s
+  (vi_[no]map:*)    mode=$mode'n' ;;
+  (vi_cmap:*)       mode=$mode'c' ;;
+  (vi_imap:*) ;;
+  (*:*)             mode=$mode'?' ;;
+  esac
+}
+
 function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_keymap cursor=
   if [[ $kmap == vi_imap ]]; then

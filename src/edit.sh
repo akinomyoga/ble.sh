@@ -1021,11 +1021,9 @@ function ble/prompt/update {
 
   # bleopt prompt_status_line
   if [[ $bleopt_prompt_status_line ]]; then
-    ble/color/face2g prompt_status_line; local g0=$ret
-
     local ps=$bleopt_prompt_status_line
     local cols=$COLUMNS; ((_ble_term_xenl||cols--))
-    local trace_opts=confine:relative:measure-bbox:noscrc:g0=$g0
+    local trace_opts=confine:relative:measure-bbox:noscrc:face0=prompt_status_line
 
     local trace_hash esc x y g lc lg
     local x1=${_ble_prompt_status_bbox[0]}
@@ -1038,6 +1036,7 @@ function ble/prompt/update {
     local -a DRAW_BUFF=()
 
     # background color
+    ble/color/face2g prompt_status_line; local g0=$ret
     if ((g0)); then
       ble/color/g2sgr "$g0"; local sgr=$ret
       if ((_ble_term_bce)); then

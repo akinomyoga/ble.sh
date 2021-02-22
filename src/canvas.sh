@@ -615,8 +615,9 @@ function ble/canvas/put-clear-lines.draw {
 ##       ANSI制御シーケンスではなく現在の端末のシーケンスとして
 ##       制御機能SGRを解釈します。
 ##
-##     g0
-##       背景色・既定属性として用いる属性値を指定します。
+##     g0 face0
+##       背景色・既定属性として用いる属性値または描画設定を指定します。
+##       両方指定された場合は g0 を優先させます。
 ##
 ##   @var[in,out] DRAW_BUFF[]
 ##     ble/canvas/trace.draw の出力先の配列です。
@@ -961,6 +962,10 @@ function ble/canvas/trace/.impl {
   local opt_g0= opt_sgr0=$_ble_term_sgr0
   if rex=':g0=([^:]+):'; [[ :$opts: =~ $rex ]]; then
     opt_g0=${BASH_REMATCH[1]}
+  elif rex=':face0=([^:]+):'; [[ :$opts: =~ $rex ]]; then
+    ble/color/face2g "${BASH_REMATCH[1]}"; opt_g0=$ret
+  fi
+  if [[ $opt_g0 ]]; then
     ble/color/g2sgr "$opt_g0"; opt_sgr0=$ret
     ble/canvas/put.draw "$opt_sgr0"
   fi

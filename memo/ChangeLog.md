@@ -17,6 +17,7 @@
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
   - prompt: fix missing height allocation for status line `#D1487` 0000000
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
+- keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` 0000000
 
 ## Changes
 

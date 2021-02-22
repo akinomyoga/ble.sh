@@ -3746,6 +3746,53 @@ bash_tips
 
 2021-02-22
 
+  * keymap/vi: vim mode strings の設定をもっと柔軟にできる様にする (motivated by 0neGal) [#D1488]
+    https://github.com/akinomyoga/ble.sh/issues/85
+
+    Note: 0neGuyDev は名前が 0neGal に変化した様だ。
+
+    * done: wiki vim のページ hook の説明で := の : が余分。
+    * done: wiki vim の設定のページで全ての項目に注意書きを書く。
+
+    何れにしても Cygwin での IL/DL の問題 (#D1482) に取り敢えずの決着をつけてから。
+    →IL/DL の問題を解決したが未だ status line の問題 (#D1487) は残っていた。
+    その後 status line の問題も解決した。
+
+    どうやら Vim では mode() を用いて現在のモードを表現する文字列を取得する事が
+    できるらしい。然し、mode() だけでは表しきれない情報も存在する様である。取り
+    敢えず似た関数を用意さえすれば既存の枠組みを使って mode を status ilne に表
+    示する事ができるのではないか。
+
+    | Mode                                                                                          | `mode()` |
+    |:----------------------------------------------------------------------------------------------|:---------|
+    | INSERT                                                                                        | i        |
+    | REPLACE<br/>VREPLACE                                                                          | R        |
+    | NORMAL<br/>(insert)<br/>(replace)<br/>(vreplace)                                              | n        |
+    | VISUAL<br/>(insert) VISUAL<br/>(replace) VISUAL<br/>(vreplace) VISUAL                         | v        |
+    | VISUAL LINE<br/>(insert) VISUAL LINE<br/>(replace) VISUAL LINE<br/>(vreplace) VISUAL LINE     | V        |
+    | VISUAL BLOCK<br/>(insert) VISUAL BLOCK<br/>(replace) VISUAL BLOCK<br/>(vreplace) VISUAL BLOCK | ^V       |
+    | SELECT<br/>(insert) SELECT<br/>(replace) SELECT<br/>(vreplace) SELECT                         | s        |
+    | SELECT LINE<br/>(insert) SELECT LINE<br/>(replace) SELECT LINE<br/>(vreplace) SELECT LINE     | S        |
+    | SELECT BLOCK<br/>(insert) SELECT BLOCK<br/>(replace) SELECT BLOCK<br/>(vreplace) SELECT BLOCK | ^S       |
+
+    これらは基本的にはそのモードに入る為に使うコマンドが使われる。
+    然し、normal の n や select の s は名前から来ている。
+
+    これに倣えば。拡張するとしたら VREPLACE は gR になるだろうか。
+    insert, replace, vreplace は それぞれ i^O R^O gR^O になる。
+    でもどうせ組み合わせるのであれば、実の所 ^O は必要ないのではないか。
+
+    つまり、/(i|R|gR)?(n|v|V|^V|s|S|^S)?/ - ε (4x8-1=32-1=31種) という事になる。
+
+    うーん。サンプルを見ると Rv というのが存在しているが実際に試してみると R に
+    なっている。何故だろうか。後、やはり gR というのは都合が悪い気がする。
+    vreplace の文字はまた別に考えたい。小文字の r を考えたがどうやら既に PROMPT
+    というのの為に使われている様だ。だとすると ^R という事になるだろうか。うー
+    ん。取り敢えず ^R という事にする。そもそも制御文字を使うとうのが良い事なの
+    か微妙だが。RSTUV で何れも近い値というのも比較的良い事の気がする。
+
+    * テストに用いた vimrc を移動する。
+
   * edit: prompt_status_line の表示が崩れる [#D1487]
 
     | prompt_status_line を試しに組み合わせて見たら表示がおかしくなっている。うー
