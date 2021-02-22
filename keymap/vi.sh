@@ -81,7 +81,7 @@ function ble-edit/content/find-non-space {
 function ble/widget/nop { :; }
 
 function ble/keymap:vi/string#encode-rot13 {
-  local text=$*
+  local text=$1
   local -a buff=() ch
   for ((i=0;i<${#text};i++)); do
     ch=${text:i:1}
@@ -178,6 +178,7 @@ function ble/keymap:vi/imap-repeat/pop {
   ((top_index>=0)) && unset '_ble_keymap_vi_irepeat[top_index]'
 }
 function ble/keymap:vi/imap-repeat/push {
+  local IFS=$_ble_term_IFS
   ble/array#push _ble_keymap_vi_irepeat "${KEYS[*]-}:$WIDGET"
 }
 
@@ -230,6 +231,7 @@ function ble/keymap:vi/imap/is-command-white {
     # frequently used command is checked first
     return 0
   elif [[ $1 == ble/widget/* ]]; then
+    local IFS=$_ble_term_IFS
     local cmd=${1#ble/widget/}; cmd=${cmd%%[$' \t\n']*}
     [[ $cmd == vi_imap/* || " ${_ble_keymap_vi_imap_white_list[*]} " == *" $cmd "*  ]] && return 0
   fi
@@ -757,6 +759,7 @@ function ble/keymap:vi/register#set-edit {
   ble/keymap:vi/register#set "$@" || return 1
   local reg=$1 type=$2 content=$3
   if [[ $reg == '' || $reg == 34 ]]; then
+    local IFS=$_ble_term_IFS
     local widget=${WIDGET%%[$' \t\n']*}
     if [[ $content == *$'\n'* || " $widget " == " ${_ble_keymap_vi_register_49_widget_list[*]} " ]]; then
       local n
@@ -1264,7 +1267,8 @@ function ble/keymap:vi/operator:d {
     done
 
     # yank
-    IFS=$'\n' eval 'local yank_content="${atext[*]-}"'
+    IFS=$'\n' builtin eval 'local yank_content="${atext[*]-}"'
+    local IFS=$_ble_term_IFS
     local yank_type=B:"${afill[*]-}"
     ble/keymap:vi/register#set-edit "$reg" "$yank_type" "$yank_content" || return 1
 
@@ -1337,7 +1341,8 @@ function ble/keymap:vi/operator:y {
       ble/array#push atext "$stext"
     done
 
-    IFS=$'\n' eval 'local yank_content="${atext[*]-}"'
+    IFS=$'\n' builtin eval 'local yank_content="${atext[*]-}"'
+    local IFS=$_ble_term_IFS
     yank_type=B:"${afill[*]-}"
   else
     yank_type=
@@ -2068,6 +2073,7 @@ function ble/widget/vi-command/linewise-goto.impl {
 # single char arguments
 
 function ble/keymap:vi/async-read-char.hook {
+  local IFS=$_ble_term_IFS
   local command=${@:1:$#-1} key=${@:$#}
   if ((key==(ble_decode_Ctrl|0x6B))); then # C-k
     ble-decode/keymap/push vi_digraph
@@ -2078,6 +2084,7 @@ function ble/keymap:vi/async-read-char.hook {
 }
 
 function ble/keymap:vi/async-read-char {
+  local IFS=$_ble_term_IFS
   _ble_decode_key__hook="ble/keymap:vi/async-read-char.hook $*"
   return 148
 }
@@ -2133,6 +2140,7 @@ function ble/keymap:vi/mark/update-mark-history {
       local value=${_ble_keymap_vi_mark_local[imark]}
       ble/array#push save "$imark:$value"
     done
+    local IFS=$_ble_term_IFS
     _ble_keymap_vi_mark_history[_ble_keymap_vi_mark_hindex]="${save[*]-}"
 
     # load
@@ -2401,6 +2409,7 @@ function ble/keymap:vi/repeat/record-special {
   return 1
 }
 function ble/keymap:vi/repeat/record-normal {
+  local IFS=$_ble_term_IFS
   local -a repeat; repeat=("$KEYMAP" "${KEYS[*]-}" "$WIDGET" "$ARG" "$FLAG" "$REG" '')
   if [[ $KEYMAP == vi_[xs]map ]]; then
     repeat[6]=$_ble_keymap_vi_xmap_prev_edit
@@ -2427,6 +2436,7 @@ function ble/keymap:vi/repeat/record-insert {
     _ble_keymap_vi_repeat_irepeat=("${_ble_keymap_vi_irepeat[@]}")
   elif ((${#_ble_keymap_vi_irepeat[@]})); then
     # 挿入モード突入操作が初期化されていたら、挿入操作がある時のみに記録
+    local IFS=$_ble_term_IFS
     _ble_keymap_vi_repeat=(vi_nmap "${KEYS[*]-}" ble/widget/vi_nmap/insert-mode 1 '' '')
     _ble_keymap_vi_repeat_irepeat=("${_ble_keymap_vi_irepeat[@]}")
   fi
@@ -2443,7 +2453,7 @@ function ble/keymap:vi/repeat/invoke {
   local repeat_arg=$_ble_edit_arg
   local repeat_reg=$_ble_keymap_vi_reg
   local KEYMAP=${_ble_keymap_vi_repeat[0]}
-  local -a KEYS=(${_ble_keymap_vi_repeat[1]})
+  local -a KEYS; ble/string#split-words KEYS "${_ble_keymap_vi_repeat[1]}"
   local WIDGET=${_ble_keymap_vi_repeat[2]}
   if [[ $KEYMAP == vi_[onxs]map ]]; then
     if [[ $KEYMAP == vi_omap ]]; then
@@ -2978,7 +2988,7 @@ function ble/widget/vi_nmap/paste.impl/block {
 
   local ret cols=$_ble_textmap_cols
 
-  local -a afill=(${_ble_edit_kill_type:2})
+  local -a afill; ble/string#split-words afill "${_ble_edit_kill_type:2}"
   local atext; ble/string#split-lines atext "$_ble_edit_kill_ring"
   local ntext=${#atext[@]}
 

@@ -98,6 +98,7 @@ if shopt -q restricted_shell; then
   return 1
 fi
 
+_ble_init_original_IFS_set=${IFS+set}
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
@@ -460,7 +461,6 @@ ble/bin/awk.use-solaris-xpg4
 #%x inc.r/@/form/
 #%x inc.r/@/syntax-lazy/
 #------------------------------------------------------------------------------
-# function .ble-time { echo "$*"; time "$@"; }
 
 function ble-initialize {
   ble-decode-initialize # 7ms
@@ -509,8 +509,14 @@ time ble-initialize
 ble-initialize
 #%end
 
-IFS=$_ble_init_original_IFS
-unset _ble_init_original_IFS
+# 状態復元
+if [[ $_ble_init_original_IFS_set ]]; then
+  IFS=$_ble_init_original_IFS
+else
+  builtin unset -v IFS
+fi
+builtin unset -v _ble_init_original_IFS_set
+builtin unset -v _ble_init_original_IFS
 
 function ble/base/process-blesh-arguments {
   local opt_attach=1

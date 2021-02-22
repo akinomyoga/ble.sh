@@ -81,10 +81,12 @@ function ble/getopt.init {
   OPTIND=1 OPTION= OPTARG=
 }
 function ble/getopt.print-argument-message {
+  local IFS=$_ble_term_IFS
   local index=$((OPTIND-1))
   echo "${_optargs[0]##*/} (argument#$index \`${_optargs[index]}'): $*" >&2
 }
 function ble/getopt.print-message {
+  local IFS=$_ble_term_IFS
   local index=$((OPTIND-1))
   echo "${_optargs[0]##*/} (arguments): $*" >&2
 }

@@ -240,6 +240,7 @@ ble-decode-kbd/.initialize
 ##   @var[out] ret
 function ble-decode-kbd {
   local keys; ble/string#split-words keys "$*"
+  local IFS=$_ble_term_IFS
   local key code codes keys
   codes=()
   for key in "${keys[@]}"; do
@@ -313,6 +314,7 @@ function ble-decode-unkbd/.single-key {
 ##   @var[in] keys
 ##   @var[out] ret
 function ble-decode-unkbd {
+  local IFS=$_ble_term_IFS
   local -a kspecs
   local key
   for key in $*; do
@@ -527,9 +529,9 @@ function ble-decode-char {
       # シーケンスが登録されていない時
       if [[ $_ble_decode_char2_reach ]]; then
         local reach rest
-        reach=($_ble_decode_char2_reach)
+        ble/string#split-words reach "$_ble_decode_char2_reach"
         rest=${_ble_decode_char2_seq:reach[1]}
-        rest=(${rest//_/ } $char)
+        ble/string#split-words rest "${rest//_/ } $char"
 
         _ble_decode_char2_reach=
         _ble_decode_char2_seq=
@@ -719,6 +721,7 @@ function ble-decode-char/unbind {
   done
 }
 function ble-decode-char/dump {
+  local IFS=$_ble_term_IFS
   local tseq=$1 nseq ccode
   nseq=("${@:2}")
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
@@ -804,10 +807,10 @@ function ble-decode/DEFAULT_KEYMAP {
 
 ## 設定関数 ble/widget/.SHELL_COMMAND command
 ##   ble-bind -cf で登録されたコマンドを処理します。
-function ble/widget/.SHELL_COMMAND { eval "$*"; }
+function ble/widget/.SHELL_COMMAND { local IFS=$_ble_term_IFS; builtin eval -- "$*"; }
 ## 設定関数 ble/widget/.EDIT_COMMAND command
 ##   ble-bind -xf で登録されたコマンドを処理します。
-function ble/widget/.EDIT_COMMAND { eval "$*"; }
+function ble/widget/.EDIT_COMMAND { local IFS=$_ble_term_IFS; builtin eval -- "$*"; }
 
 
 ## 関数 kmap ; ble-decode-key/bind keycodes command
@@ -1040,7 +1043,8 @@ function ble-decode-key {
         if [[ $bleopt_decode_error_kseq_discard ]]; then
           _ble_decode_key__seq=
         else
-          local -a keys=(${_ble_decode_key__seq//_/ } $key)
+          local -a keys
+          ble/string#split-words keys "${_ble_decode_key__seq//_/ } $key"
           _ble_decode_key__seq=
           # 2文字目以降を処理
           ble-decode-key "${keys[@]:1}"
@@ -1182,7 +1186,7 @@ function ble-decode-key/.invoke-command {
 
   # setup variables
   local WIDGET=$command KEYMAP=$_ble_decode_key__kmap
-  local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
+  local -a KEYS; ble/string#split-words KEYS "${_ble_decode_key__seq//_/ } $key"
   _ble_decode_key__seq=
 
   ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
@@ -1197,7 +1201,7 @@ function ble-decode-key/.call-widget {
 
   # setup variables
   local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap
-  local -a KEYS=($2)
+  local -a KEYS; ble/string#split-words KEYS "$2"
 
   builtin eval -- "$WIDGET"
 }
@@ -1220,6 +1224,7 @@ function ble-decode/start-keylog {
 }
 function ble-decode/end-keylog {
   {
+    local IFS=$_ble_term_IFS
     echo '===== bytes ====='
     printf '%s\n' "${_ble_keylogger_bytes[*]}"
     echo

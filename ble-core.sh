@@ -88,8 +88,9 @@ function ble/util/restore-arrs {
 _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
 function ble/debug/.check-leak-variable {
   if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
-    echo "$1=${!1}:${*:2}" >> a.txt
-    eval "$1=__t1wJltaP9nmow__"
+    local IFS=$_ble_term_IFS
+    ble/util/print "$1=${!1}:${*:2}" >> a.txt
+    builtin eval "$1=__t1wJltaP9nmow__"
   fi
 }
 #%end
@@ -241,7 +242,7 @@ function ble/string#common-suffix {
   ret=${a:u}
 }
 
-## 関数 ble/string#split arr sep str...
+## 関数 ble/string#split arr sep str
 ##   文字列を分割します。
 ##   空白類を分割に用いた場合は、空要素は削除されます。
 ##
@@ -268,7 +269,7 @@ function ble/string#split-words {
     set +f
   fi
 }
-## 関数 ble/string#split-lines arr text...
+## 関数 ble/string#split-lines arr text
 ##   文字列を行に分割します。空行も省略されません。
 ##
 ##   @param[out] arr  分割した文字列を格納する配列名を指定します。
@@ -276,11 +277,11 @@ function ble/string#split-words {
 ##
 if ((_ble_bash>=40000)); then
   function ble/string#split-lines {
-    mapfile -t "$1" <<< "${*:2}"
+    mapfile -t "$1" <<< "$2"
   }
 else
   function ble/string#split-lines {
-    ble/util/mapfile "$1" <<< "${*:2}"
+    ble/util/mapfile "$1" <<< "$2"
   }
 fi
 ## 関数 ble/string#count-char text chars
@@ -330,17 +331,17 @@ function ble/string#last-index-of {
   ((ret>=0))
 }
 
-## 関数 ble/string#toggle-case text...
-## 関数 ble/string#touppwer text...
-## 関数 ble/string#tolower text...
+## 関数 ble/string#toggle-case text
+## 関数 ble/string#toupper text
+## 関数 ble/string#tolower text
 ##   @param[in] text
 ##   @var[out] ret
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
 _ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
 function ble/string#toggle-case {
   local LC_ALL= LC_COLLATE=C
-  local text=$*
-  local -a buff ch
+  local text=$1 ch i
+  local -a buff=()
   for ((i=0;i<${#text};i++)); do
     ch=${text:i:1}
     if [[ $ch == [A-Z] ]]; then
@@ -355,13 +356,13 @@ function ble/string#toggle-case {
   IFS= builtin eval 'ret="${buff[*]-}"'
 } 2>/dev/null
 if ((_ble_bash>=40000)); then
-  function ble/string#tolower { ret=${*,,}; }
-  function ble/string#toupper { ret=${*^^}; }
+  function ble/string#tolower { ret=${1,,}; }
+  function ble/string#toupper { ret=${1^^}; }
 else
   function ble/string#tolower {
     local LC_ALL= LC_COLLATE=C
-    local text=$*
-    local -a buff ch
+    local i text=$1 ch
+    local -a buff=()
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
       if [[ $ch == [A-Z] ]]; then
@@ -374,8 +375,8 @@ else
   } 2>/dev/null
   function ble/string#toupper {
     local LC_ALL= LC_COLLATE=C
-    local text=$*
-    local -a buff ch
+    local i text=$1 ch
+    local -a buff=()
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
       if [[ $ch == [a-z] ]]; then
@@ -389,7 +390,7 @@ else
 fi
 
 function ble/string#escape-for-sed-regex {
-  ret="$*"
+  ret=$1
   if [[ $ret == *['\.[*^$/']* ]]; then
     local a b
     for a in \\ \. \[ \* \^ \$ \/; do
@@ -398,7 +399,7 @@ function ble/string#escape-for-sed-regex {
   fi
 }
 function ble/string#escape-for-awk-regex {
-  ret="$*"
+  ret=$1
   if [[ $ret == *['\.[*?+|^$(){}/']* ]]; then
     local a b
     for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \} \/; do
@@ -407,7 +408,7 @@ function ble/string#escape-for-awk-regex {
   fi
 }
 function ble/string#escape-for-extended-regex {
-  ret="$*"
+  ret=$1
   if [[ $ret == *['\.[*?+|^$(){}']* ]]; then
     local a b
     for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \}; do
@@ -969,13 +970,13 @@ ble/util/isfunction ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
 #------------------------------------------------------------------------------
-## 関数 ble/util/buffer text...
+## 関数 ble/util/buffer text
 _ble_util_buffer=()
 function ble/util/buffer {
-  _ble_util_buffer[${#_ble_util_buffer[@]}]="$*"
+  _ble_util_buffer[${#_ble_util_buffer[@]}]=$1
 }
 function ble/util/buffer.print {
-  ble/util/buffer "$*"$'\n'
+  ble/util/buffer "$1"$'\n'
 }
 function ble/util/buffer.flush {
   IFS= builtin eval 'builtin echo -n "${_ble_util_buffer[*]-}"'
@@ -1336,7 +1337,7 @@ _ble_stackdump_title=stackdump
 function ble-stackdump {
   ((bleopt_stackdump_enabled)) || return 1
   # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
-  local i nl=$'\n'
+  local i nl=$'\n' IFS=$_ble_term_IFS
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i-1]} (${FUNCNAME[i]})$nl"
@@ -1348,6 +1349,7 @@ function ble-assert {
   local _ble_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
+    local IFS=$_ble_term_IFS
     ble-stackdump "$expr$_ble_term_nl$*"
     return 1
   else
@@ -1388,7 +1390,7 @@ if ((_ble_bash>=40000)); then
     [[ $_processed ]]
   }
   function ble/util/idle.push {
-    ble/array#push _ble_util_idle_task "$*"
+    ble/array#push _ble_util_idle_task "$1"
   }
 else
   function ble/util/idle.do { false; }

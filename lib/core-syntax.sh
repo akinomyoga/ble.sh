@@ -3752,7 +3752,9 @@ function ble-syntax/parse {
   local end0=${4:-$end}
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
-  local -ir iN=${#text} shift=end-end0
+  local IFS=$_ble_term_IFS
+
+  local -ir iN=${#text} shift=$((end-end0))
 #%if !release
   if ! ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)); then
     ble-stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
@@ -4830,7 +4832,7 @@ function ble-highlight-layer:syntax/update-error-table {
   if ((jN)); then
     for ((j=0;j<jN;j++)); do
       local -a range
-      range=(${_ble_highlight_layer_syntax3_list[j]})
+      ble/string#split-words range "${_ble_highlight_layer_syntax3_list[j]}"
 
       local a=${range[0]} b=${range[1]}
       ((a>=DMAX0?(a+=DMAX-DMAX0):(a>=DMIN&&(a=DMIN)),

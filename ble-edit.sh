@@ -447,7 +447,7 @@ function ble/util/c2w+east {
 # **** ble-edit/draw ****                                            @edit/draw
 
 function ble-edit/draw/put {
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$1
 }
 function ble-edit/draw/put.ind {
   local -i count=${1-1}
@@ -721,7 +721,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       # CUP "CSI H"
       # HVP "CSI f"
       local -a params
-      params=(${param//[^0-9]/ })
+      ble/string#split-words params "${param//[^0-9]/ }"
       ((x=params[1]-1))
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),
@@ -1620,7 +1620,7 @@ function ble/textmap#getxy.out {
   fi
 
   local -a _pos
-  _pos=(${_ble_textmap_pos[$1]})
+  ble/string#split-words _pos "${_ble_textmap_pos[$1]}"
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
 }
@@ -1643,12 +1643,12 @@ function ble/textmap#getxy.cur {
   fi
 
   local -a _pos
-  _pos=(${_ble_textmap_pos[$1]})
+  ble/string#split-words _pos "${_ble_textmap_pos[$1]}"
 
   # 追い出しされたか check
   if (($1<_ble_textmap_length)); then
     local -a _eoc
-    _eoc=(${_ble_textmap_pos[$1+1]})
+    ble/string#split-words _eoc "${_ble_textmap_pos[$1+1]}"
     ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
   fi
 
@@ -1687,16 +1687,17 @@ function ble/textmap#get-index-at {
 ## 関数 ble/textmap#hit/.getxy.cur index
 ##   @var[in,out] pos
 function ble/textmap#hit/.getxy.out {
-  set -- ${_ble_textmap_pos[$1]}
-  x=$1 y=$2
+  local a
+  ble/string#split-words a "${_ble_textmap_pos[$1]}"
+  x=${a[0]} y=${a[1]}
 }
 function ble/textmap#hit/.getxy.cur {
-  local index=$1
-  set -- ${_ble_textmap_pos[index]}
-  x=$1 y=$2
+  local index=$1 a
+  ble/string#split-words a "${_ble_textmap_pos[index]}"
+  x=${a[0]} y=${a[1]}
   if ((index<_ble_textmap_length)); then
-    set -- ${_ble_textmap_pos[index+1]}
-    (($3)) && ((x=0,y++))
+    ble/string#split-words a "${_ble_textmap_pos[index+1]}"
+    ((a[2])) && ((x=0,y++))
   fi
 }
 
@@ -2248,7 +2249,7 @@ function ble-edit/attach {
   _ble_edit_attached=1
 
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
-    _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
+    _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
     unset LINENO; LINENO=$_ble_edit_LINENO
     _ble_edit_CMD=$_ble_edit_LINENO
@@ -3132,6 +3133,7 @@ function ble/widget/bell {
 # **** insert ****                                                 @edit.insert
 
 function ble/widget/insert-string {
+  local IFS=$_ble_term_IFS
   local content="$*"
   local arg; ble-edit/content/get-arg 1
   if ((arg<0)); then
@@ -3145,11 +3147,11 @@ function ble/widget/insert-string {
   ble/widget/.insert-string "$content"
 }
 function ble/widget/.insert-string {
-  local ins="$*"
-  [[ $ins ]] || return
+  local insert=$1
+  [[ $insert ]] || return 1
 
-  local dx=${#ins}
-  _ble_edit_str.replace _ble_edit_ind _ble_edit_ind "$ins"
+  local dx=${#insert}
+  _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$insert"
   ((
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
@@ -4518,16 +4520,16 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
   if ((_ble_edit_exec_INT!=0)); then
     # エラーが起きている時
 
-    local IFS=$' \t\n'
+    local IFS=$_ble_term_IFS
     local depth=${#FUNCNAME[*]}
-    local rex='^\ble-edit/exec:gexec/.'
+    local rex='^ble-edit/exec:gexec/.'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
       builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
       return 0
     fi
 
-    local rex='^(\ble-edit/exec:gexec/.|trap - )'
+    local rex='^(ble-edit/exec:gexec/.|trap - )'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
       builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2" >&2
@@ -4740,7 +4742,7 @@ function ble-edit/hist_expanded/.expand {
 
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
-  local BASH_COMMAND="$*"
+  local BASH_COMMAND=$1
   if [[ ! -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded=$BASH_COMMAND
     return 0
@@ -4888,7 +4890,7 @@ function ble-edit/undo/.check-hindex {
 
   # load
   if [[ ${_ble_edit_undo_history[hindex]} ]]; then
-    builtin eval "local -a data=(${_ble_edit_undo_history[hindex]})"
+    local data; builtin eval -- "data=(${_ble_edit_undo_history[hindex]})"
     _ble_edit_undo=("${data[@]:1}")
     _ble_edit_undo_index=${data[0]}
   else
@@ -7275,8 +7277,7 @@ function ble-decode/EPILOGUE {
 function ble/widget/.SHELL_COMMAND {
   ble-edit/content/clear-arg
 
-  local -a BASH_COMMAND
-  BASH_COMMAND=("$*")
+  local BASH_COMMAND=$1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
 

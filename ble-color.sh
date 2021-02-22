@@ -492,6 +492,7 @@ function ble-highlight-layer:region/update-dirty-range {
 }
 
 function ble-highlight-layer:region/update {
+  local IFS=$_ble_term_IFS
   local omin=-1 omax=-1 osgr= olen=${#_ble_highlight_layer_region_osel[@]}
   if ((olen)); then
     omin=${_ble_highlight_layer_region_osel[0]}

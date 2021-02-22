@@ -170,7 +170,7 @@ function ble-complete/action/variable/complete {
 # source
 
 function ble-complete/yield-candidate {
-  local CAND=$1 ACTION=$2 DATA="${*:3}"
+  local CAND=$1 ACTION=$2 DATA=$3
   local SHOW=${1#$COMP_PREFIX} INSERT=$CAND
   "$ACTION/initialize"
 
