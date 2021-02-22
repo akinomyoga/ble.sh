@@ -47,7 +47,7 @@
 function ble-complete/util/escape-specialchars {
   local _a _b _var=ret
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
-  local _ret="$*"
+  local _ret=$1
   if [[ $_ret == *['][\ "'\''$|&;<>()*?{}!^']* ]]; then
     _a=\\ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
     _a=\  _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
@@ -76,7 +76,7 @@ function ble-complete/util/escape-specialchars {
 function ble-complete/util/escape-regexchars {
   local _a _b _var=ret
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
-  local _ret="$*"
+  local _ret=$1
   if [[ $_ret == *['\.[*^$/']* ]]; then
     _a=\\ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
     _a=\. _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
@@ -170,7 +170,7 @@ function ble-complete/action/command/complete {
 # source
 
 function ble-complete/yield-candidate {
-  local CAND=$1 ACTION=$2 DATA="${*:3}"
+  local CAND=$1 ACTION=$2 DATA=$3
   local SHOW=${1#$COMP_PREFIX} INSERT=$CAND
   "$ACTION/initialize"
 

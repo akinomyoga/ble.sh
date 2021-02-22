@@ -261,7 +261,7 @@ function .ble-text.c2w+east {
 # **** ble-edit/draw ****                                            @edit/draw
 
 function ble-edit/draw/put {
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$1
 }
 function ble-edit/draw/put.il {
   local -i value="${1-1}"
@@ -529,7 +529,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       # CUP "CSI H"
       # HVP "CSI f"
       local -a params
-      params=(${param//[^0-9]/ })
+      ble/string#split params $' \t\n' "${param//[^0-9]/ }"
       ((x=params[1]-1))
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),
@@ -1385,7 +1385,7 @@ function .ble-line-text/getxy {
   fi
 
   local -a _pos
-  _pos=(${_ble_line_text_cache_pos[$1]})
+  ble/string#split _pos $' \t\n' "${_ble_line_text_cache_pos[$1]}"
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
 }
@@ -1398,12 +1398,12 @@ function .ble-line-text/getxy.cur {
   fi
 
   local -a _pos
-  _pos=(${_ble_line_text_cache_pos[$1]})
+  ble/string#split _pos $' \t\n' "${_ble_line_text_cache_pos[$1]}"
 
   # 追い出しされたか check
   if (($1<_ble_line_text_cache_length)); then
     local -a _eoc
-    _eoc=(${_ble_line_text_cache_pos[$1+1]})
+    ble/string#split _eoc $' \t\n' "${_ble_line_text_cache_pos[$1+1]}"
     ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
   fi
 
@@ -1771,7 +1771,7 @@ function .ble-edit/edit/attach {
   _ble_edit_attached=1
 
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
-    _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
+    _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
     unset LINENO; LINENO="$_ble_edit_LINENO"
     _ble_edit_CMD="$_ble_edit_LINENO"
@@ -2338,6 +2338,7 @@ function ble-edit+bell {
 # **** insert ****                                                 @edit.insert
 
 function ble-edit+insert-string {
+  local IFS=$_ble_term_IFS
   local ins="$*"
   [[ $ins ]] || return
 
@@ -3032,7 +3033,8 @@ function .ble-edit/exec:gexec/eval-TRAPDEBUG {
   if ((_ble_edit_accept_line_INT!=0)); then
     # エラーが起きている時
 
-    local depth="${#FUNCNAME[*]}"
+    local IFS=$_ble_term_IFS
+    local depth=${#FUNCNAME[*]}
     local rex='^\.ble-edit/exec:gexec/'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、.ble-edit/exec:gexec/ の中ではない時
@@ -3206,7 +3208,7 @@ fi
 
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
-  local BASH_COMMAND="$*"
+  local BASH_COMMAND=$1
   if [[ $- != *H* || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded="$BASH_COMMAND"
     return 0
@@ -3264,8 +3266,7 @@ function ble-edit+accept-single-line-or-newline {
 }
 
 function .ble-edit.bind.command {
-  local -a BASH_COMMAND
-  BASH_COMMAND=("$*")
+  local IFS=$_ble_term_IFS BASH_COMMAND=$1
   .ble-line-info.clear
   .ble-edit-draw.update
 

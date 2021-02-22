@@ -319,20 +319,19 @@ function ble/string#common-suffix {
   ret="${a:u}"
 }
 
-## 関数 ble/string#split arr split str...
+## 関数 ble/string#split arr split str
 ##   文字列を分割します。
 ##   @param[out] arr   分割した文字列を格納する配列名を指定します。
 ##   @param[in]  split 分割に使用する文字を指定します。
 ##   @param[in]  str   分割する文字列を指定します。
 function ble/string#split {
-  if shopt -q nullglob &>/dev/null; then
-    # ※GLOBIGNORE を設定していても nullglob の効果は有効である。
-    # この時 [..] や * や ? が一文字でも含まれるとその要素は必ず消滅する。
-    shopt -u nullglob
-    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
-    shopt -s nullglob
+  local IFS=$2
+  if [[ -o noglob ]]; then
+    builtin eval "$1=(\$3\$2)"
   else
-    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+    set -f
+    builtin eval "$1=(\$3\$2)"
+    set +f
   fi
 }
 
@@ -399,7 +398,7 @@ function ble-load {
 _ble_stackdump_title=stackdump
 function ble-stackdump {
   # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
-  local i nl=$'\n'
+  local i nl=$'\n' IFS=$_ble_term_IFS
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i-1]} (${FUNCNAME[i]})$nl"
@@ -411,6 +410,7 @@ function ble-assert {
   local _ble_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
+    local IFS=$_ble_term_IFS
     ble-stackdump "$expr$_ble_term_nl$*"
     return 1
   else
@@ -568,7 +568,7 @@ function .ble-term.visible-bell.worker {
 function .ble-term.visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
   local cols=${COLUMNS:-80}
-  local message="$*"
+  local message=$1
   message="${message:-$bleopt_vbell_default_message}"
 
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2

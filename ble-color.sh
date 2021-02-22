@@ -801,6 +801,7 @@ function ble-highlight-layer:region/update-dirty-range {
 }
 
 function ble-highlight-layer:region/update {
+  local IFS=$_ble_term_IFS
   local omin omax
   ((omin=_ble_highlight_layer_region_omin,
     omax=_ble_highlight_layer_region_omax))

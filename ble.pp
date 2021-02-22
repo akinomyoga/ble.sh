@@ -40,6 +40,20 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
+_ble_init_original_IFS_set=${IFS+set}
+_ble_init_original_IFS=$IFS
+IFS=$' \t\n'
+function ble/init/restore-IFS {
+  # 状態復元
+  if [[ $_ble_init_original_IFS_set ]]; then
+    IFS=$_ble_init_original_IFS
+  else
+    builtin unset -v IFS
+  fi
+  builtin unset -v _ble_init_original_IFS_set
+  builtin unset -v _ble_init_original_IFS
+}
+
 # check environment
 
 function ble/util/print { builtin printf '%s\n' "$1"; }
@@ -72,13 +86,16 @@ function ble/.check-environment {
 #%end
   fi
 }
-if ! ble/.check-environment; then
-  _ble_bash=
-  return 1
-fi
 
 if [[ $_ble_base ]]; then
   echo "ble.sh: ble.sh seems to be already loaded." >&2
+  ble/init/restore-IFS
+  return 1
+fi
+
+if ! ble/.check-environment; then
+  _ble_bash=
+  ble/init/restore-IFS
   return 1
 fi
 
@@ -137,6 +154,7 @@ function _ble_base.initialize {
 _ble_base.initialize "${BASH_SOURCE[0]}"
 if [[ ! -d $_ble_base ]]; then
   echo "ble.sh: ble base directory not found!" 1>&2
+  ble/init/restore-IFS
   return 1
 fi
 
@@ -169,7 +187,6 @@ fi
 #%x inc.r/@/edit/
 #%x inc.r/@/syntax/
 #------------------------------------------------------------------------------
-# function .ble-time { echo "$*"; time "$@"; }
 
 function ble-initialize {
   ble-decode-initialize # 54ms
@@ -190,6 +207,7 @@ function ble-detach {
 }
 
 ble-initialize
+ble/init/restore-IFS
 [[ $1 != noattach ]] && ble-attach
 
 ###############################################################################

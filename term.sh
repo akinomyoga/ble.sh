@@ -18,13 +18,15 @@ function ble/term.sh/register-varname {
 }
 
 function ble/term.sh/define-cap {
-  local name="$1" def="$2"
+  local IFS=$_ble_term_IFS
+  local name=$1 def=$2
   shift 2
   builtin eval "$name=\"\$(ble/term.sh/tput $* || echo -n \"\$def\")\""
   ble/term.sh/register-varname "$name"
 }
 function ble/term.sh/define-cap.2 {
-  local name="$1" def="$2"
+  local IFS=$_ble_term_IFS
+  local name=$1 def=$2
   shift 2
   builtin eval "$name=\"\$(echo -n x;ble/term.sh/tput $* || echo -n \"\$def\";echo -n x)\"; $name=\${$name#x}; $name=\${$name%x}"
   ble/term.sh/register-varname "$name"

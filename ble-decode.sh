@@ -193,6 +193,7 @@ function .ble-decode-kbd.initialize {
 
 function ble-decode-kbd {
   local keys; ble/string#split keys $' \t\n' "$*"
+  local IFS=$_ble_term_IFS
   local key code codes keys
   codes=()
   for key in "${keys[@]}"; do
@@ -258,6 +259,7 @@ function .ble-decode-unkbd.single-key {
 }
 
 function ble-decode-unkbd {
+  local IFS=$_ble_term_IFS
   local -a kbd
   local kc
   for kc in $*; do
@@ -458,9 +460,9 @@ function .ble-decode-char {
     # シーケンスが登録されていない時
     if [[ $_ble_decode_char2_reach ]]; then
       local reach rest
-      reach=($_ble_decode_char2_reach)
-      rest="${_ble_decode_char2_seq:reach[1]}"
-      rest=(${rest//_/ } $char)
+      ble/string#split reach $' \t\n' "$_ble_decode_char2_reach"
+      rest=${_ble_decode_char2_seq:reach[1]}
+      ble/string#split rest $' \t\n' "${rest//_/ } $char"
 
       _ble_decode_char2_reach=
       _ble_decode_char2_seq=
@@ -645,6 +647,7 @@ function .ble-decode-char.unbind {
   done
 }
 function .ble-decode-char.dump {
+  local IFS=$_ble_term_IFS
   local tseq="$1" nseq ccode
   nseq=("${@:2}")
   builtin eval "local -a ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
@@ -716,7 +719,7 @@ function .ble-decode/keymap/dump {
 ## 関数 kmap ; .ble-decode-key.bind keycodes command
 function .ble-decode-key.bind {
   local dicthead="_ble_decode_${kmap}_kmap_"
-  local -a seq=($1)
+  local -a seq; ble/string#split seq $' \t\n' "$1"
   local cmd="$2"
 
   .ble-decode/keymap/register "$kmap"
@@ -745,7 +748,7 @@ function .ble-decode-key.bind {
 
 function .ble-decode-key.unbind {
   local dicthead=_ble_decode_${kmap}_kmap_
-  local -a seq=($1)
+  local -a seq; ble/string#split seq $' \t\n' "$1"
 
   local i iN=${#seq}
   local key=${seq[iN-1]}
@@ -900,7 +903,7 @@ function .ble-decode-key {
         _ble_decode_key__seq=
       else
         local -a keys
-        keys=(${_ble_decode_key__seq//_/ } $key)
+        ble/string#split keys $' \t\n' "${_ble_decode_key__seq//_/ } $key"
         local i iN
         _ble_decode_key__seq=
         for ((i=1,iN=${#keys[*]};i<iN;i++)); do
@@ -1013,8 +1016,7 @@ function .ble-decode-key/invoke-partial-match {
 #
 function .ble-decode-key/invoke-command {
   if [[ $command ]]; then
-    local -a KEYS
-    KEYS=(${_ble_decode_key__seq//_/ } $key)
+    local -a KEYS; ble/string#split KEYS $' \t\n' "${_ble_decode_key__seq//_/ } $key"
     _ble_decode_key__seq=
     builtin eval -- "$command"
     return 0
