@@ -481,7 +481,7 @@ function ble/complete/source/reduce-compv-for-ambiguous-match {
 ##   @param[in] DATA
 ##   @var[in] COMP_PREFIX
 function ble/complete/cand/yield {
-  local ACTION=$1 CAND=$2 DATA="${*:3}"
+  local ACTION=$1 CAND=$2 DATA=$3
   [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && return
 
   local PREFIX_LEN=0

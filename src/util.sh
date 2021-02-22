@@ -222,8 +222,9 @@ function ble/util/restore-arrs {
 _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
 function ble/debug/.check-leak-variable {
   if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
-    echo "$1=${!1}:${*:2}" >> a.txt
-    eval "$1=__t1wJltaP9nmow__"
+    local IFS=$_ble_term_IFS
+    ble/util/print "$1=${!1}:${*:2}" >> a.txt
+    builtin eval "$1=__t1wJltaP9nmow__"
   fi
 }
 
@@ -504,11 +505,11 @@ function ble/string#split-words {
 ##
 if ((_ble_bash>=40000)); then
   function ble/string#split-lines {
-    mapfile -t "$1" <<< "${*:2}"
+    mapfile -t "$1" <<< "$2"
   }
 else
   function ble/string#split-lines {
-    ble/util/mapfile "$1" <<< "${*:2}"
+    ble/util/mapfile "$1" <<< "$2"
   }
 fi
 ## 関数 ble/string#count-char text chars
@@ -561,16 +562,16 @@ function ble/string#last-index-of {
   ((ret>=0))
 }
 
-## 関数 ble/string#toggle-case text...
-## 関数 ble/string#touppwer text...
-## 関数 ble/string#tolower text...
+## 関数 ble/string#toggle-case text
+## 関数 ble/string#touppwer text
+## 関数 ble/string#tolower text
 ##   @param[in] text
 ##   @var[out] ret
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
 _ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
 function ble/string#toggle-case.impl {
   local LC_ALL= LC_COLLATE=C
-  local text=$* ch i
+  local text=$1 ch i
   local -a buff
   for ((i=0;i<${#text};i++)); do
     ch=${text:i:1}
@@ -586,18 +587,18 @@ function ble/string#toggle-case.impl {
   IFS= builtin eval 'ret="${buff[*]-}"'
 }
 function ble/string#toggle-case {
-  ble/string#toggle-case.impl "$@" 2>/dev/null # suppress locale error #D1440
+  ble/string#toggle-case.impl "$1" 2>/dev/null # suppress locale error #D1440
 }
-## 関数 ble/string#tolower text...
-## 関数 ble/string#toupper text...
+## 関数 ble/string#tolower text
+## 関数 ble/string#toupper text
 ##   @var[out] ret
 if ((_ble_bash>=40000)); then
-  function ble/string#tolower { ret="${*,,}"; }
-  function ble/string#toupper { ret="${*^^}"; }
+  function ble/string#tolower { ret=${1,,}; }
+  function ble/string#toupper { ret=${1^^}; }
 else
   function ble/string#tolower.impl {
     local LC_ALL= LC_COLLATE=C
-    local i text="$*"
+    local i text=$1
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
@@ -611,7 +612,7 @@ else
   }
   function ble/string#toupper.impl {
     local LC_ALL= LC_COLLATE=C
-    local i text="$*"
+    local i text=$1
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
@@ -624,33 +625,32 @@ else
     IFS= eval 'ret="${buff[*]-}"'
   }
   function ble/string#tolower {
-    ble/string#tolower.impl "$@" 2>/dev/null # suppress locale error #D1440
+    ble/string#tolower.impl "$1" 2>/dev/null # suppress locale error #D1440
   }
   function ble/string#toupper {
-    ble/string#toupper.impl "$@" 2>/dev/null # suppress locale error #D1440
+    ble/string#toupper.impl "$1" 2>/dev/null # suppress locale error #D1440
   }
 fi
 
-## 関数 ble/string#trim text...
 ##   @var[out] ret
 function ble/string#trim {
-  ret="$*"
+  ret=$1
   local rex=$'^[ \t\n]+'
   [[ $ret =~ $rex ]] && ret=${ret:${#BASH_REMATCH}}
   local rex=$'[ \t\n]+$'
   [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
 }
-## 関数 ble/string#ltrim text...
+## 関数 ble/string#ltrim text
 ##   @var[out] ret
 function ble/string#ltrim {
-  ret="$*"
+  ret=$1
   local rex=$'^[ \t\n]+'
   [[ $ret =~ $rex ]] && ret=${ret:${#BASH_REMATCH}}
 }
-## 関数 ble/string#rtrim text...
+## 関数 ble/string#rtrim text
 ##   @var[out] ret
 function ble/string#rtrim {
-  ret="$*"
+  ret=$1
   local rex=$'[ \t\n]+$'
   [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
 }
@@ -671,41 +671,40 @@ function ble/string#escape-characters {
   fi
 }
 
-## 関数 ble/string#escape-for-sed-regex text...
-## 関数 ble/string#escape-for-awk-regex text...
-## 関数 ble/string#escape-for-extended-regex text...
-## 関数 ble/string#escape-for-bash-glob text...
-## 関数 ble/string#escape-for-bash-single-quote text...
-## 関数 ble/string#escape-for-bash-double-quote text...
-## 関数 ble/string#escape-for-bash-escape-string text...
-## 関数 ble/string#escape-for-bash-specialchars text...
-## 関数 ble/string#escape-for-bash-specialchars-in-brace text...
-##   @param[in] text...
+## 関数 ble/string#escape-for-sed-regex text
+## 関数 ble/string#escape-for-awk-regex text
+## 関数 ble/string#escape-for-extended-regex text
+## 関数 ble/string#escape-for-bash-glob text
+## 関数 ble/string#escape-for-bash-single-quote text
+## 関数 ble/string#escape-for-bash-double-quote text
+## 関数 ble/string#escape-for-bash-escape-string text
+## 関数 ble/string#escape-for-bash-specialchars text
+## 関数 ble/string#escape-for-bash-specialchars-in-brace text
+##   @param[in] text
 ##   @var[out] ret
 function ble/string#escape-for-sed-regex {
-  ble/string#escape-characters "$*" '\.[*^$/'
+  ble/string#escape-characters "$1" '\.[*^$/'
 }
 function ble/string#escape-for-awk-regex {
-  ble/string#escape-characters "$*" '\.[*?+|^$(){}/'
+  ble/string#escape-characters "$1" '\.[*?+|^$(){}/'
 }
 function ble/string#escape-for-extended-regex {
-  ble/string#escape-characters "$*" '\.[*?+|^$(){}'
+  ble/string#escape-characters "$1" '\.[*?+|^$(){}'
 }
 function ble/string#escape-for-bash-glob {
-  ble/string#escape-characters "$*" '\*?[('
+  ble/string#escape-characters "$1" '\*?[('
 }
 function ble/string#escape-for-bash-single-quote {
-  ret="$*"
   local q="'" Q="'\''"
-  ret=${ret//"$q"/$Q}
+  ret=${1//"$q"/$Q}
 }
 function ble/string#escape-for-bash-double-quote {
-  ble/string#escape-characters "$*" '\"$`'
+  ble/string#escape-characters "$1" '\"$`'
   local a b
   a='!' b='"\!"' ret=${ret//"$a"/$b}
 }
 function ble/string#escape-for-bash-escape-string {
-  ble/string#escape-characters "$*" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
+  ble/string#escape-characters "$1" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
 }
 ## 関数 ble/string#escape-for-bash-specialchars text flags
 ##   @param[in] text
@@ -1659,13 +1658,13 @@ ble/is-function ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
 #------------------------------------------------------------------------------
-## 関数 ble/util/buffer text...
+## 関数 ble/util/buffer text
 _ble_util_buffer=()
 function ble/util/buffer {
-  _ble_util_buffer[${#_ble_util_buffer[@]}]="$*"
+  _ble_util_buffer[${#_ble_util_buffer[@]}]=$1
 }
 function ble/util/buffer.print {
-  ble/util/buffer "$*"$'\n'
+  ble/util/buffer "$1"$'\n'
 }
 function ble/util/buffer.flush {
   IFS= builtin eval 'builtin echo -n "${_ble_util_buffer[*]-}"'
@@ -2209,7 +2208,7 @@ _ble_util_stackdump_title=stackdump
 _ble_util_stackdump_start=
 function ble/util/stackdump {
   ((bleopt_internal_stackdump_enabled)) || return 1
-  local message=$1 nl=$'\n'
+  local message=$1 nl=$'\n' IFS=$_ble_term_IFS
   message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
   local i i0=${_ble_util_stackdump_start:-1} iN=${#FUNCNAME[*]}
   for ((i=i0;i<iN;i++)); do
@@ -2231,6 +2230,7 @@ function ble-stackdump {
   fi
 
   local _ble_util_stackdump_start=2
+  local IFS=$_ble_term_IFS
   ble/util/stackdump "${args[*]}"
 }
 
@@ -2272,6 +2272,7 @@ function ble-assert {
     return 0
   fi
 
+  local IFS=$_ble_term_IFS
   ble/util/assert "${args[0]}" "${args[*]:1}"
 }
 
@@ -2617,7 +2618,7 @@ if ((_ble_bash>=40000)); then
     _ble_util_idle_task[i]=$entry
   }
   function ble/util/idle.push {
-    ble/util/idle.push/.impl 0 "R:$*"
+    ble/util/idle.push/.impl 0 "R:$1"
   }
   function ble/util/idle.push-background {
     ble/util/idle.push/.impl 10000 "R:$*"

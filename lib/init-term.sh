@@ -18,12 +18,14 @@ function ble/init:term/register-varname {
 }
 
 function ble/init:term/define-cap {
+  local IFS=$_ble_term_IFS
   local name=$1 def=$2
   shift 2
   ble/util/assign "$name" "ble/init:term/tput $* || echo -n \"\$def\""
   ble/init:term/register-varname "$name"
 }
 function ble/init:term/define-cap.2 {
+  local IFS=$_ble_term_IFS
   local name=$1 def=$2
   shift 2
   ble/util/assign "$name" "echo -n x; ble/init:term/tput $* || echo -n \"\$def\"; echo -n x"

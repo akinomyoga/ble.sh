@@ -146,6 +146,7 @@ if [[ ${BASH_EXECUTION_STRING+set} ]]; then
   return 1 2>/dev/null || builtin exit 1
 fi
 
+_ble_init_original_IFS_set=${IFS+set}
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
@@ -607,7 +608,6 @@ ble/bin/awk.use-solaris-xpg4
 #%x inc.r|@|lib/core-complete-def|
 #%x inc.r|@|lib/core-syntax-def|
 #------------------------------------------------------------------------------
-# function .ble-time { echo "$*"; time "$@"; }
 
 _ble_attached=
 function ble-attach {
@@ -781,8 +781,13 @@ function ble/base/process-blesh-arguments {
 ble/base/process-blesh-arguments "$@"
 
 # 状態復元
-IFS=$_ble_init_original_IFS
-unset -v _ble_init_original_IFS
+if [[ $_ble_init_original_IFS_set ]]; then
+  IFS=$_ble_init_original_IFS
+else
+  builtin unset -v IFS
+fi
+builtin unset -v _ble_init_original_IFS_set
+builtin unset -v _ble_init_original_IFS
 if [[ ! $_ble_attached ]]; then
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
