@@ -99,6 +99,8 @@ function ble/edit/use-textmap {
 bleopt/declare -v rps1 ''
 bleopt/declare -v rps1_transient ''
 
+function bleopt/check:rps1 { [[ $_ble_attached ]] && ble-edit/prompt/clear; return 0; }
+
 ## オプション prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
 
@@ -706,6 +708,10 @@ function ble-edit/prompt/update {
     _ble_edit_rprompt_bbox=()
     _ble_edit_rprompt=()
   fi
+}
+function ble-edit/prompt/clear {
+  _ble_edit_prompt[0]=
+  ble/textarea#invalidate
 }
 
 # 
