@@ -4074,17 +4074,18 @@ function ble/term:cygwin/initialize.hook {
   _ble_term_ri=$'\e[A'
 
   # DLの修正
-  # Note: Cygwin console では DL が最終行まで
-  #   消去する時、何も消去されない…。
   function ble/canvas/put-dl.draw {
     local value=${1-1} i
     ((value)) || return 1
+
+    # Note: DL が最終行まで消去する時、何も消去されない…。
     DRAW_BUFF[${#DRAW_BUFF[*]}]=$'\e[2K'
     if ((value>1)); then
       local ret
       ble/string#repeat $'\e[B\e[2K' $((value-1)); local a=$ret
       DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret$'\e['$((value-1))'A'
     fi
+
     DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
   }
 }

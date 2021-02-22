@@ -60,6 +60,7 @@
 
 - term: work around quirks of Solaris xpg4 awk `#D1481` 0000000
 - term: support key sequences and control sequences of Solaris console `#D1481` 0000000
+- term: work around Cygwin-console bug of bottom `IL`/`DL` `#D1482` 000000
 
 ## Internal changes and fixes
 

@@ -367,8 +367,9 @@ function ble/canvas/put.draw {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
 }
 function ble/canvas/put-ind.draw {
-  local count=${1-1}
-  local ret; ble/string#repeat "$_ble_term_ind" "$count"
+  local count=${1-1} ind=$_ble_term_ind
+  [[ :$2: == *:true-ind:* ]] && ind=$'\eD'
+  local ret; ble/string#repeat "$ind" "$count"
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
 function ble/canvas/put-ri.draw {
@@ -376,6 +377,16 @@ function ble/canvas/put-ri.draw {
   local ret; ble/string#repeat "$_ble_term_ri" "$count"
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
+## @fn ble/canvas/put-il.draw [nline] [opts]
+## @fn ble/canvas/put-dl.draw [nline] [opts]
+##   @param[in,opt] nline
+##     消去・挿入する行数を指定します。
+##     省略した場合は 1 と解釈されます。
+##   @param[in,opt] opts
+##     panel
+##     vfill
+##     no-lastline
+##       Cygwin console 最終行バグ判定用の情報です。
 function ble/canvas/put-il.draw {
   local value=${1-1}
   ((value>0)) || return 0
@@ -388,6 +399,58 @@ function ble/canvas/put-dl.draw {
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2 # Note #D1214: 最終行対策 cygwin, linux
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
 }
+# Cygwin console (pcon) では最終行で IL/DL すると画面全体がクリアされるバグの対策
+if ((_ble_bash>=40000)) && [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $TERM == xterm-256color ]]; then
+  function ble/canvas/.is-il-workaround-required {
+    local value=$1 opts=$2
+
+    # Cygwin console 以外の端末ではそもそも対策不要。
+    [[ ! $_ble_term_DA2R ]] || return 1
+
+    # 複数行挿入・削除する場合は現在位置は最終行ではない筈。
+    ((value==1)) || return 1
+
+    # 対策不要と明示されている場合は対策不要。
+    [[ :$opts: == *:vfill:* || :$opts: == *:no-lastline:* ]] && return 1
+
+    # ble/canvas/panel 内部で移動中の時は opts=panel が指定される。
+    # panel 集合の最終行にいない場合は対策不要。
+    [[ :$opts: == *:panel:* ]] &&
+      ! ble/canvas/panel/is-last-line &&
+      return 1
+
+    return 0
+  }
+
+  function ble/canvas/put-il.draw {
+    local value=${1-1} opts=$2
+    ((value>0)) || return 0
+    if ble/canvas/.is-il-workaround-required "$value" "$2"; then
+      if [[ :$opts: == *:panel:* ]]; then
+        DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2
+      else
+        DRAW_BUFF[${#DRAW_BUFF[*]}]=$'\e[S\e[A\e[L\e[B\e[T'
+      fi
+    else
+      DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_il//'%d'/$value}
+      DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2 # Note #D1214: 最終行対策 cygwin, linux
+    fi
+  }
+  function ble/canvas/put-dl.draw {
+    local value=${1-1} opts=$2
+    ((value>0)) || return 0
+    if ble/canvas/.is-il-workaround-required "$value" "$2"; then
+      if [[ :$opts: == *:panel:* ]]; then
+        DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2
+      else
+        DRAW_BUFF[${#DRAW_BUFF[*]}]=$'\e[S\e[A\e[M\e[B\e[T'
+      fi
+    else
+      DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2 # Note #D1214: 最終行対策 cygwin, linux
+      DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
+    fi
+  }
+fi
 function ble/canvas/put-cuu.draw {
   local value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuu//'%d'/$value}
@@ -458,7 +521,7 @@ function ble/canvas/put-move-y.draw {
     if [[ $MC_SID == $$ ]]; then
       # Note #D1392: mc (midnight commander) の中だと layout が破壊されるので、
       #   必ずしも CUD で想定した行だけ移動できると限らない。
-      ble/canvas/put-ind.draw "$dy"
+      ble/canvas/put-ind.draw "$dy" true-ind
     else
       ble/canvas/put-cud.draw "$dy"
     fi
@@ -487,6 +550,26 @@ function ble/canvas/sflush.draw {
 function ble/canvas/bflush.draw {
   IFS= builtin eval 'ble/util/buffer "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
+}
+
+## @fn ble/canvas/put-clear-lines.draw [old] [new] [opts]
+##   @param[in,opt] old new
+##     消去前と消去後の行数を指定します。
+##     old を省略した場合は 1 が使われます。
+##     new を省略した場合は old が使われます。
+##   @param[in,opt] opts
+##     panel
+##     vfill
+##     no-lastline
+function ble/canvas/put-clear-lines.draw {
+  local old=${1:-1}
+  local new=${2:-$old}
+  if ((old==1&&new==1)); then
+    ble/canvas/put.draw "$_ble_term_el2"
+  else
+    ble/canvas/put-dl.draw "$old" "$3"
+    ble/canvas/put-il.draw "$new" "$3"
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -1856,7 +1939,7 @@ function ble/canvas/panel/layout/.get-available-height {
   ret=${heights[index]}
 }
 
-function ble/canvas/panel#reallocate-height.draw {
+function ble/canvas/panel/reallocate-height.draw {
   local lines=$((${LINES:-25}-_ble_canvas_panel_tmargin))
 
   local i n=${#_ble_canvas_panel_class[@]}
@@ -1877,6 +1960,11 @@ function ble/canvas/panel#reallocate-height.draw {
     ((heights[i]>_ble_canvas_panel_height[i])) &&
       ble/canvas/panel#set-height.draw "$i" "${heights[i]}"
   done
+}
+function ble/canvas/panel/is-last-line {
+  local ret
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"
+  ((_ble_canvas_y==ret-1))
 }
 
 function ble/canvas/panel/goto-bottom-dock.draw {
@@ -1991,7 +2079,7 @@ function ble/canvas/panel#report-cursor-position {
   ((_ble_canvas_x=x,_ble_canvas_y=ret+y))
 }
 
-function ble/canvas/panel#increase-total-height.draw {
+function ble/canvas/panel/increase-total-height.draw {
   local delta=$1
   ((delta>0)) || return 1
 
@@ -2021,7 +2109,7 @@ function ble/canvas/panel#increase-total-height.draw {
   ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1))
   ble/canvas/put-ind.draw $((new_height-1-_ble_canvas_y)); ((_ble_canvas_y=new_height-1))
   ble/canvas/panel/goto-vfill.draw &&
-    ble/canvas/put-il.draw "$delta"
+    ble/canvas/put-il.draw "$delta" vfill
 }
 
 ## @fn ble/canvas/panel#set-height.draw panel height opts
@@ -2042,22 +2130,21 @@ function ble/canvas/panel#set-height.draw {
     fi
   elif ((delta>0)); then
     # 新しく行を挿入
-    ble/canvas/panel#increase-total-height.draw "$delta"
+    ble/canvas/panel/increase-total-height.draw "$delta"
     ble/canvas/panel/goto-vfill.draw &&
-      ble/canvas/put-dl.draw "$delta"
+      ble/canvas/put-dl.draw "$delta" vfill
     ((_ble_canvas_panel_height[index]=new_height))
 
     case :$opts: in
     (*:clear:*)
       ble/canvas/panel#goto.draw "$index"
-      ble/canvas/put-dl.draw "$old_height"
-      ble/canvas/put-il.draw "$new_height" ;;
+      ble/canvas/put-clear-lines.draw "$old_height" "$new_height" panel ;;
     (*:shift:*) # 先頭に行挿入
       ble/canvas/panel#goto.draw "$index"
-      ble/canvas/put-il.draw "$delta" ;;
+      ble/canvas/put-il.draw "$delta" panel ;;
     (*) # 末尾に行挿入
       ble/canvas/panel#goto.draw "$index" 0 "$old_height"
-      ble/canvas/put-il.draw "$delta" ;;
+      ble/canvas/put-il.draw "$delta" panel ;;
     esac
 
   else
@@ -2066,19 +2153,18 @@ function ble/canvas/panel#set-height.draw {
     case :$opts: in
     (*:clear:*)
       ble/canvas/panel#goto.draw "$index"
-      ble/canvas/put-dl.draw "$old_height"
-      ble/canvas/put-il.draw "$new_height" ;;
+      ble/canvas/put-clear-lines.draw "$old_height" "$new_height" panel ;;
     (*:shift:*) # 先頭を削除
       ble/canvas/panel#goto.draw "$index" 0 0
-      ble/canvas/put-dl.draw "$delta" ;;
+      ble/canvas/put-dl.draw "$delta" panel ;;
     (*) # 末尾を削除
       ble/canvas/panel#goto.draw "$index" 0 "$new_height"
-      ble/canvas/put-dl.draw "$delta" ;;
+      ble/canvas/put-dl.draw "$delta" panel ;;
     esac
 
     ((_ble_canvas_panel_height[index]=new_height))
     ble/canvas/panel/goto-vfill.draw &&
-      ble/canvas/put-il.draw "$delta"
+      ble/canvas/put-il.draw "$delta" vfill
   fi
   ble/function#try "${_ble_canvas_panel_class[index]}#panel::onHeightChange" "$index"
 
@@ -2099,12 +2185,7 @@ function ble/canvas/panel#clear.draw {
   local height=${_ble_canvas_panel_height[index]}
   if ((height)); then
     ble/canvas/panel#goto.draw "$index" 0 0 sgr0
-    if ((height==1)); then
-      ble/canvas/put.draw "$_ble_term_el2"
-    else
-      ble/canvas/put-dl.draw "$height"
-      ble/canvas/put-il.draw "$height"
-    fi
+    ble/canvas/put-clear-lines.draw "$height"
   fi
 }
 function ble/canvas/panel#clear-after.draw {
@@ -2117,8 +2198,9 @@ function ble/canvas/panel#clear-after.draw {
   local rest_lines=$((height-(y+1)))
   if ((rest_lines)); then
     ble/canvas/put.draw "$_ble_term_ind"
-    ble/canvas/put-dl.draw "$rest_lines"
-    ble/canvas/put-il.draw "$rest_lines"
+    [[ $_ble_term_ind != $'\eD' ]] &&
+      ble/canvas/put-hpa.draw $((x+1))
+    ble/canvas/put-clear-lines.draw "$rest_lines"
     ble/canvas/put-cuu.draw 1
   fi
 }
@@ -2189,7 +2271,7 @@ function ble/canvas/panel/ensure-tmargin.draw {
         ble/canvas/put-cuu.draw $((top_height-1+tmargin))
         ble/canvas/excursion-start.draw
         ble/canvas/put-cup.draw 1 1
-        ble/canvas/put-il.draw "$tmargin"
+        ble/canvas/put-il.draw "$tmargin" no-lastline
         ble/canvas/excursion-end.draw
       fi
       ble/canvas/excursion-start.draw
@@ -2214,10 +2296,10 @@ function ble/canvas/panel/ensure-tmargin.draw {
     if [[ $_ble_term_rc ]]; then
       ble/canvas/excursion-start.draw
       ble/canvas/put-cup.draw 1 1
-      ble/canvas/put-il.draw "$tmargin"
+      ble/canvas/put-il.draw "$tmargin" no-lastline
       ble/canvas/excursion-end.draw
     else
-      ble/canvas/put-il.draw "$tmargin"
+      ble/canvas/put-il.draw "$tmargin" no-lastline
     fi
     ble/canvas/put-cud.draw "$tmargin"
   fi

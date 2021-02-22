@@ -1201,7 +1201,7 @@ function ble/edit/info/.render-content {
   _ble_edit_info=("$x" "$y" "$content")
 
   local -a DRAW_BUFF=()
-  ble/canvas/panel#reallocate-height.draw
+  ble/canvas/panel/reallocate-height.draw
   ble/canvas/panel#clear.draw "$_ble_edit_info_panel"
   ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
   ble/canvas/put.draw "$content"
@@ -2107,7 +2107,7 @@ function ble/textarea#render/.determine-scroll {
 
   # panel の高さを要求。この後 height <= nline になる筈。
   if ((height!=nline)); then
-    ble/canvas/panel#reallocate-height.draw
+    ble/canvas/panel/reallocate-height.draw
     height=${_ble_canvas_panel_height[_ble_textarea_panel]}
   fi
 
@@ -2170,9 +2170,9 @@ function ble/textarea#render/.perform-scroll {
       local shift=$((_ble_textarea_scroll-new_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
-      ble/canvas/put-dl.draw "$draw_shift"
+      ble/canvas/put-dl.draw "$draw_shift" panel
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
-      ble/canvas/put-il.draw "$draw_shift"
+      ble/canvas/put-il.draw "$draw_shift" panel
 
       if ((new_scroll==0)); then
         fmin=0
@@ -2184,9 +2184,9 @@ function ble/textarea#render/.perform-scroll {
       local shift=$((new_scroll-_ble_textarea_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
-      ble/canvas/put-dl.draw "$draw_shift"
+      ble/canvas/put-dl.draw "$draw_shift" panel
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
-      ble/canvas/put-il.draw "$draw_shift"
+      ble/canvas/put-il.draw "$draw_shift" panel
 
       ble/textmap#get-index-at 0 $((new_scroll+height-draw_shift)); fmin=$index
       ble/textmap#get-index-at "$cols" $((new_scroll+height-1)); fmax=$index
@@ -4906,8 +4906,8 @@ function ble-edit/exec:gexec/.begin {
   _ble_edit_exec_PWD=$PWD
   ble-edit/exec:gexec/TERM/leave
   ble/term/leave
-  ble/util/buffer.flush >&2
   ble-edit/bind/stdout.on
+  ble/util/buffer.flush >&2
 
   # C-c に対して
   ble/builtin/trap/install-hook INT # 何故か改めて実行しないと有効にならない
