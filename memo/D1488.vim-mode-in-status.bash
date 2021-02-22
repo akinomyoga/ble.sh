@@ -32,7 +32,10 @@ function 0neGal/set-up-status-line {
     esac
   }
 
-  bleopt prompt_status_line='\q{0neGal/currentmode}'
+  # In this example, we put the mode string, date and time, and the
+  # current working directory in the status line.
+  bleopt prompt_status_line='\q{0neGal/currentmode} \D{%F %H:%M} \e[96m\w\e[m'
+  #bleopt prompt_status_line='\r\e[$((COLUMNS-17))C\D{%F %H:%M}\r\q{0neGal/currentmode} \e[96m\w\e[m'
 
 }
 blehook/eval-after-load keymap_vi 0neGal/set-up-status-line

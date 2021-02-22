@@ -367,12 +367,12 @@ function ble/keymap:vi/script/get-mode {
 
   # /[nvV^VsS^S]?/
   case $kmap:${_ble_edit_mark_active%+} in
-  (vi_xmap:vi_line) mode=$mode'v' ;;
-  (vi_xmap:vi_block)mode=$mode'V' ;;
-  (vi_xmap:*)       mode=$mode$'\x16' ;; # C-v
-  (vi_smap:vi_line) mode=$mode's' ;;
-  (vi_smap:vi_block)mode=$mode'S' ;;
-  (vi_smap:*)       mode=$mode$'\x13' ;; # C-s
+  (vi_xmap:vi_line) mode=$mode'V' ;;
+  (vi_xmap:vi_block)mode=$mode$'\x16' ;; # C-v
+  (vi_xmap:*)       mode=$mode'v' ;;
+  (vi_smap:vi_line) mode=$mode'S' ;;
+  (vi_smap:vi_block)mode=$mode$'\x13' ;; # C-s
+  (vi_smap:*)       mode=$mode's' ;;
   (vi_[no]map:*)    mode=$mode'n' ;;
   (vi_cmap:*)       mode=$mode'c' ;;
   (vi_imap:*) ;;
