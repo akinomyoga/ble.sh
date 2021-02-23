@@ -4234,18 +4234,18 @@ function ble/term/visible-bell:canvas/show {
   local y=${_ble_term_visible_bell_prev[5]}
 
   local -a DRAW_BUFF=()
-  [[ $_ble_attached ]] &&
+  [[ :$opts: != *:update:* && $_ble_attached ]] && # WA #D1495
     [[ $_ble_term_ri || :$opts: != *:erased:* && :$opts: != *:update:* ]] &&
     ble/canvas/panel/ensure-tmargin.draw
   if [[ $_ble_term_rc ]]; then
     local ret=
-    [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
+    [[ :$opts: != *:update:* && $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock # WA #D1495
     ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sc$_ble_term_sgr0"
     ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
     ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
     ble/canvas/put.draw "$_ble_term_rc"
     ble/canvas/put-cud.draw 1
-    [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
+    [[ :$opts: != *:update:* && $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret" # WA #D1495
   else
     ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sgr0"
     ble/canvas/put-hpa.draw $((1+x0))
@@ -4269,7 +4269,7 @@ function ble/term/visible-bell:canvas/clear {
   local -a DRAW_BUFF=()
   if [[ $_ble_term_rc ]]; then
     local ret=
-    [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
+    #[[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock # WA #D1495
     ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
     ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
     ble/canvas/put.draw "$sgr"
@@ -4277,7 +4277,7 @@ function ble/term/visible-bell:canvas/clear {
     #ble/canvas/put-ech.draw "$x"
     #ble/canvas/put.draw "$_ble_term_el"
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
-    [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
+    #[[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret" # WA #D1495
   else
     : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
     # ble/util/buffer.flush >&2

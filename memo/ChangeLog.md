@@ -14,6 +14,7 @@
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
+  - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 0000000
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
   - prompt: fix missing height allocation for status line `#D1487` b424fa5
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
