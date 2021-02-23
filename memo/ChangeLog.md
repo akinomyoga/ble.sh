@@ -14,7 +14,7 @@
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
-  - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 0000000
+  - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 01cfb10
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
   - prompt: fix missing height allocation for status line `#D1487` b424fa5
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
@@ -36,7 +36,7 @@
 - edit (`ble/builtin/read`): cancel by <kbd>C-d</kbd> on an empty line `#D1473` ecb8888
 - syntax: change syntax context after `time ;` and `! ;` for Bash 4.4 `#D1477` 4628370
 - decode (rlfunc): update mapping `vi-replace` in `imap` and `vi-editing-mode` in `nmap` (reported by onelittlehope) `#D1484` f2ca811
-- prompt: invalidate prompt and textarea on prompt setting changes `#D1492` 0000000
+- prompt: invalidate prompt and textarea on prompt setting changes `#D1492` 1f55913
 
 ## Fixes
 
@@ -81,7 +81,8 @@
 - util, color (`bleopt`, `blehook`, `ble-color-setface`): support `--color` and fix `sgr0` contamination in non-color output `#D1466` 69248ff
 - global: fix status check for read timeout `#D1467` e886883
 - decode: move `{keymap/*. => lib/core-decode.*-}rlfunc.txt` and clean up files `#D1486` f7323b4
-- util, etc: ensure each function to work with arbitrary `IFS` `#D1490` `#D1491` 0000000
+  - Makefile: fix up f7323b4: restore rule for `keymap/*.txt` `#D1496` 000000
+- util, etc: ensure each function to work with arbitrary `IFS` `#D1490` `#D1491` 5f9adfe
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
