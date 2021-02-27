@@ -5596,15 +5596,14 @@ function ble-edit/undo/.check-hindex {
   # save
   if [[ $_ble_edit_undo_hindex ]]; then
     local uindex=${_ble_edit_undo_index:-${#_ble_edit_undo[@]}}
-    local q=\' Q="'\''" value
-    ble/util/sprintf value "'%s' " "$uindex" "${_ble_edit_undo[@]//$q/$Q}"
-    _ble_edit_undo_history[_ble_edit_undo_hindex]=$value
+    local ret; ble/string#quote-words "$uindex" "${_ble_edit_undo[@]}"
+    _ble_edit_undo_history[_ble_edit_undo_hindex]=$ret
   fi
 
   # load
   if [[ ${_ble_edit_undo_history[hindex]} ]]; then
-    local data; ble/string#split-words data "${_ble_edit_undo_history[hindex]}"
-    _ble_edit_undo=("${data[@]:1}")
+    local -a data=()
+    builtin eval -- "data=(${_ble_edit_undo_history[hindex]})"
     _ble_edit_undo_index=${data[0]}
   else
     _ble_edit_undo=()
@@ -5844,7 +5843,7 @@ function ble-edit/history/goto {
 
   ((index0==index1)) && return 0
 
-  if [[ $bleopt_history_share  && ! $_ble_history_prefix && $_ble_decode_keymap != isearch ]]; then
+  if [[ $bleopt_history_share && ! $_ble_history_prefix && $_ble_decode_keymap != isearch ]]; then
     # Note: isearch の途中の history/goto で履歴情報が書き換わると変な事になるので
     #   isearch では history_share による読み込みは行わない。
     #   一方で nsearch や lastarg は過去の履歴項目を参照するが
