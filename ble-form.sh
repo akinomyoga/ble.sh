@@ -84,11 +84,11 @@ function ble-form/panel#increase-total-height.draw {
   ble/arithmetic/sum "${_ble_form_window_height[@]}"; local old_total_height=$ret
   # 下に余白を確保
   if ((old_total_height>0)); then
-    ble-form/goto.draw 0 old_total_height-1
-    ble-edit/draw/put.ind delta; ((_ble_line_y+=delta))
+    ble-form/goto.draw 0 $((old_total_height-1)) sgr0
+    ble-edit/draw/put.ind "$delta"; ((_ble_line_y+=delta))
   else
-    ble-form/goto.draw 0 0
-    ble-edit/draw/put.ind delta-1; ((_ble_line_y+=delta-1))
+    ble-form/goto.draw 0 0 sgr0
+    ble-edit/draw/put.ind $((delta-1)); ((_ble_line_y+=delta-1))
   fi
 }
 
@@ -103,13 +103,13 @@ function ble-form/panel#set-height.draw {
     ble-form/panel#increase-total-height.draw "$delta"
 
     ble/arithmetic/sum "${_ble_form_window_height[@]::index+1}"; local ins_offset=$ret
-    ble-form/goto.draw 0 "$ins_offset"
-    ble-edit/draw/put.il delta
+    ble-form/goto.draw 0 "$ins_offset" sgr0
+    ble-edit/draw/put.il "$delta"
   else
     # 行を削除
     ble/arithmetic/sum "${_ble_form_window_height[@]::index+1}"; local ins_offset=$ret
-    ble-form/goto.draw 0 ins_offset+delta
-    ble-edit/draw/put.dl -delta
+    ble-form/goto.draw 0 $((ins_offset+delta)) sgr0
+    ble-edit/draw/put.dl $((-delta))
   fi
 
   ((_ble_form_window_height[index]=new_height))
