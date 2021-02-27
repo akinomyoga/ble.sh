@@ -3773,6 +3773,22 @@ bash_tips
 
 2021-02-27
 
+  * canvas/panel: set-height で高さ拡張時にその時の sgr0 が bce で適用されてしまう [#D1498]
+
+    < /dev/tcp/..../80 で赤色になっている時に実行すると赤い行ができてしまう。
+    これは sgr0 をせずに set-height を実行する事によって発生している事態である。
+    そもそも赤い状態をそのままにして放置している事自体が変なのかもしれないが、
+    取り敢えず set-height をする前に sgr0 をする必要はある気がする。
+
+    $_ble_term_sgr0 を出力する様にしてみた。
+
+    しかし、どうも ble/canvas/goto.draw する時にまた $_ble_term_sgr0 を出力する
+    様なので、重複してしまう。問題が発生するのは、ble/canvas/goto.draw の時に既
+    に目的地にいる場合で、その時は既定では sgr0 の出力も省略されてしまう。
+    goto.draw の opts=sgr0 は、例え移動が起こらなくても sgr0 の出力を行うという
+    物であった。→方針を変更して goto.draw に sgr0 を指定して其処で強制的に
+    sgr0 を出力するという事にした。
+
   * エラーメッセージ "bash: ((: '0': syntax error:" (reported by rux616) [#D1497]
     https://github.com/akinomyoga/ble.sh/issues/92
 

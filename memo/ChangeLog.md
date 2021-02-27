@@ -53,14 +53,15 @@
   - util (`ble/util/msleep`): work around the bash-4.3 bug of `read -t` (reported by 3ximus) `#D1468` `#D1469` 4ca9b2e
 - syntax: fix broken AST with `[[` keyword `#D1454` 69658ef
 - benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
-- global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
+- global: work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - mandb: improve extraction and cache for each locale `#D1480` 3588158
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
 - main: fix a bug that unset `IFS` is not correctly restored `#D1489` 808f6f7
-  - edit: fix error messages on accessing undo records in emacs mode (reported by rux616) `#D1497` 0000000
+  - edit: fix error messages on accessing undo records in emacs mode (reported by rux616) `#D1497`  61a57c0 e9be69e
+- canvas: fix a glitch that SGR at the end of command line is applied to new lines `#D1498` 0000000
 
 ## Compatibility
 

@@ -1993,7 +1993,7 @@ function ble/canvas/panel/goto-vfill.draw {
   local ret
   ble/canvas/panel/goto-top-dock.draw
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]::_ble_canvas_panel_vfill}"
-  ble/canvas/goto.draw 0 "$ret"
+  ble/canvas/goto.draw 0 "$ret" sgr0
   return 0
 }
 ## @fn ble/canvas/panel/save-position opts
@@ -2098,7 +2098,7 @@ function ble/canvas/panel/increase-total-height.draw {
       ble/canvas/excursion-start.draw
       ble/canvas/put.draw $'\e[1;'$((LINES-bottom_height))'r'
       ble/canvas/excursion-end.draw
-      ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1))
+      ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1)) sgr0
       ble/canvas/put-ind.draw $((top_height-1+delta-_ble_canvas_y))
       ((_ble_canvas_y=top_height-1+delta))
       ble/canvas/excursion-start.draw
@@ -2112,7 +2112,7 @@ function ble/canvas/panel/increase-total-height.draw {
 
   local old_height=$((top_height+bottom_height))
   local new_height=$((old_height+delta))
-  ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1))
+  ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1)) sgr0
   ble/canvas/put-ind.draw $((new_height-1-_ble_canvas_y)); ((_ble_canvas_y=new_height-1))
   ble/canvas/panel/goto-vfill.draw &&
     ble/canvas/put-il.draw "$delta" vfill
@@ -2143,13 +2143,13 @@ function ble/canvas/panel#set-height.draw {
 
     case :$opts: in
     (*:clear:*)
-      ble/canvas/panel#goto.draw "$index"
+      ble/canvas/panel#goto.draw "$index" 0 0 sgr0
       ble/canvas/put-clear-lines.draw "$old_height" "$new_height" panel ;;
     (*:shift:*) # 先頭に行挿入
-      ble/canvas/panel#goto.draw "$index"
+      ble/canvas/panel#goto.draw "$index" 0 0 sgr0
       ble/canvas/put-il.draw "$delta" panel ;;
     (*) # 末尾に行挿入
-      ble/canvas/panel#goto.draw "$index" 0 "$old_height"
+      ble/canvas/panel#goto.draw "$index" 0 "$old_height" sgr0
       ble/canvas/put-il.draw "$delta" panel ;;
     esac
 
@@ -2158,13 +2158,13 @@ function ble/canvas/panel#set-height.draw {
 
     case :$opts: in
     (*:clear:*)
-      ble/canvas/panel#goto.draw "$index"
+      ble/canvas/panel#goto.draw "$index" 0 0 sgr0
       ble/canvas/put-clear-lines.draw "$old_height" "$new_height" panel ;;
     (*:shift:*) # 先頭を削除
-      ble/canvas/panel#goto.draw "$index" 0 0
+      ble/canvas/panel#goto.draw "$index" 0 0 sgr0
       ble/canvas/put-dl.draw "$delta" panel ;;
     (*) # 末尾を削除
-      ble/canvas/panel#goto.draw "$index" 0 "$new_height"
+      ble/canvas/panel#goto.draw "$index" 0 "$new_height" sgr0
       ble/canvas/put-dl.draw "$delta" panel ;;
     esac
 
@@ -2267,7 +2267,7 @@ function ble/canvas/panel/ensure-tmargin.draw {
       ble/canvas/excursion-start.draw
       ble/canvas/put.draw $'\e[1;'$((LINES-bottom_height))'r'
       ble/canvas/excursion-end.draw
-      ble/canvas/goto.draw 0 0
+      ble/canvas/goto.draw 0 0 sgr0
       if [[ $_ble_term_ri ]]; then
         ble/canvas/put-ri.draw "$tmargin"
         ble/canvas/put-cud.draw "$tmargin"
@@ -2290,7 +2290,7 @@ function ble/canvas/panel/ensure-tmargin.draw {
     fi
   fi
 
-  ble/canvas/goto.draw 0 0
+  ble/canvas/goto.draw 0 0 sgr0
   if [[ $_ble_term_ri ]]; then
     ble/canvas/put-ri.draw "$tmargin"
     ble/canvas/put-cud.draw "$tmargin"
