@@ -5602,8 +5602,8 @@ function ble-edit/undo/.check-hindex {
 
   # load
   if [[ ${_ble_edit_undo_history[hindex]} ]]; then
-    local -a data=()
-    builtin eval -- "data=(${_ble_edit_undo_history[hindex]})"
+    local data; builtin eval -- "data=(${_ble_edit_undo_history[hindex]})"
+    _ble_edit_undo=("${data[@]:1}")
     _ble_edit_undo_index=${data[0]}
   else
     _ble_edit_undo=()
