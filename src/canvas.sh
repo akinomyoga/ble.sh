@@ -1833,10 +1833,10 @@ function ble/canvas/panel#increase-total-height.draw {
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"; local old_total_height=$ret
   # 下に余白を確保
   if ((old_total_height>0)); then
-    ble/canvas/goto.draw 0 $((old_total_height-1))
+    ble/canvas/goto.draw 0 $((old_total_height-1)) sgr0
     ble/canvas/put-ind.draw "$delta"; ((_ble_canvas_y+=delta))
   else
-    ble/canvas/goto.draw 0 0
+    ble/canvas/goto.draw 0 0 sgr0
     ble/canvas/put-ind.draw $((delta-1)); ((_ble_canvas_y+=delta-1))
   fi
 }
@@ -1852,12 +1852,12 @@ function ble/canvas/panel#set-height.draw {
     ble/canvas/panel#increase-total-height.draw "$delta"
 
     ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
-    ble/canvas/goto.draw 0 "$ins_offset"
+    ble/canvas/goto.draw 0 "$ins_offset" sgr0
     ble/canvas/put-il.draw "$delta"
   else
     # 行を削除
     ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
-    ble/canvas/goto.draw 0 $((ins_offset+delta))
+    ble/canvas/goto.draw 0 $((ins_offset+delta)) sgr0
     ble/canvas/put-dl.draw $((-delta))
   fi
 
