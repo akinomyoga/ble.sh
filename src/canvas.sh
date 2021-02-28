@@ -399,7 +399,7 @@ function ble/canvas/put-dl.draw {
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2 # Note #D1214: 最終行対策 cygwin, linux
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
 }
-# Cygwin console (pcon) では最終行で IL/DL すると画面全体がクリアされるバグの対策
+# Cygwin console (pcon) では最終行で IL/DL すると画面全体がクリアされるバグの対策 (#D1482)
 if ((_ble_bash>=40000)) && [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $TERM == xterm-256color ]]; then
   function ble/canvas/.is-il-workaround-required {
     local value=$1 opts=$2
@@ -608,6 +608,9 @@ function ble/canvas/put-clear-lines.draw {
 ##       指定した矩形範囲内の描画内容だけを抽出します。
 ##       矩形の左上の点が出力の描画開始点であると想定します。
 ##
+##     justify
+##     justify=SEPSPEC
+##
 ##     measure-bbox
 ##       @var[out] x1 x2 y1 y2
 ##       描画範囲を x1 x2 y1 y2 に返します。
@@ -662,6 +665,21 @@ function ble/canvas/put-clear-lines.draw {
 ##     DECSC DECRC IND RI NEL はカーソル位置の変更を行います。
 ##     それ以外はカーソル位置の変更は行いません。
 ##
+## 内部実装で用いている変数を整理する
+##
+##   @var[local] xinit yinit ginit
+##     初期カーソル状態を格納する。
+##
+##   @var x1 x2 y1 y2
+##     これは measure-bbox または justify を指定した時に描画範囲を追跡するのに使っている。
+##
+##   @var[local] cx cy cg
+##     clip 時に DRAW_BUFF 出力済みの内容のカーソル状態を追跡する変数。
+##     clip 時は x y g は仮想的に clip していない時のカーソル状態を追跡している。
+##   @var[local] cx1 cy1 cx2 cy2
+##     clip 範囲を保持する変数
+##
+##
 
 function ble/canvas/trace/.put-sgr.draw {
   local ret g=$1
@@ -680,7 +698,7 @@ function ble/canvas/trace/.put-sgr.draw {
 function ble/canvas/trace/.goto {
   local x1=$1 y1=$2
   if [[ ! $opt_clip ]]; then
-    if [[ $opt_relative ]]; then
+    if [[ $trace_flags == *[RJ]* ]]; then
       ble/canvas/put-move.draw $((x1-x)) $((y1-y))
     else
       ble/canvas/put-cup.draw $((y1+1)) $((x1+1))
@@ -721,7 +739,6 @@ function ble/canvas/trace/.put-ascii.draw {
     ble/canvas/put.draw "$value"
   fi
 }
-
 function ble/canvas/trace/.process-overflow {
   [[ :$opts: == *:truncate:* ]] && i=$iN # stop
   if [[ :$opts: == *:ellipsis:* ]]; then
@@ -731,11 +748,12 @@ function ble/canvas/trace/.process-overflow {
     else
       local ellipsis=... w=3
     fi
-    local x0=$x y0=$y
-    ble/canvas/trace/.goto $((cols-w)) $((lines-1))
+
+    local ox=$x oy=$y
+    ble/canvas/trace/.goto $((xlimit-w)) $((lines-1))
     ble/canvas/trace/.put-atomic.draw "$ellipsis"
-    ((x+=w,x>=cols&&!opt_relative&&!xenl)) && ((x=0,y++))
-    ble/canvas/trace/.goto "$x0" "$y0"
+    ((x+=w))
+    ble/canvas/trace/.goto "$ox" "$oy"
     if [[ $opt_measure ]]; then
       ((x2<cols&&(x2=cols)))
       ((y2<lines-1&&(y2=lines-1)))
@@ -743,8 +761,153 @@ function ble/canvas/trace/.process-overflow {
   fi
 }
 
+#--------------------------------------
+## (trace 内部変数) justify 関連
+##
+##   @var[local] justify_sep
+##   @arr[local] justify_fields
+##   @arr[local] justify_buff
+##   @arr[local] justify_out
+##   @var[local] jx0 jy0
+##     各フィールドの開始カーソル位置を保持する。
+##   @var[local] jx1 jy1 jx2 jy2
+##     measure-bbox も指定されていた時に、
+##     justify 後の描画範囲追跡に用いている。
+##     justify 処理中は x1 y1 x2 y2 は align 前のフィールドの描画範囲追跡に使っている。
+##     関数の一番最後で jx1 jy1 jx2 jy2 で x1 y1 x2 y2 を上書きする。
+##
+## @fn ble/canvas/trace/.justify/enabled
+##   @var[in] trace_flags
+##   @var[in] trace_scosc trace_decsc trace_brack
+function ble/canvas/trace/.justify/enabled {
+  [[ $trace_flags == *J* ]] || return 1
+  [[ ! ${trace_scosc[5]}${trace_decsc[5]}${trace_brack[0]} ]] || return 1
+  return 0
+}
+## @fn ble/canvas/trace/.justify/begin-line
+##   @var[out] jx0 jy0 x1 y1 x2 y2
+function ble/canvas/trace/.justify/begin-line {
+  ((jx0=x1=x2=x,jy0=y1=y2=y))
+}
+## @fn ble/canvas/trace/.justify/next-field [sep]
+##   @param[in,opt] sep
+##     省略時は最後のフィールドを意味する。
+##   @var[out] jx0 jy0 x1 y1 x2 y2
+##   @var[in,out] DRAW_BUFF justify_fields
+function ble/canvas/trace/.justify/next-field {
+  local sep=$1 wmin=0
+  local esc; ble/canvas/sflush.draw -v esc
+  [[ $sep == ' ' ]] && wmin=1
+  ble/array#push justify_fields "${sep:-\$}:$wmin:$jx0,$jy0,$x,$y:$x1,$y1,$x2,$y2:$esc"
+  ((x+=wmin,jx0=x1=x2=x,jy0=y1=y2=y))
+}
+## @fn ble/canvas/trace/.justify/unpack packed_data
+##   @var[out] sep wmin xI yI xF yF x1 y1 x2 y2 esc
+function ble/canvas/trace/.justify/unpack {
+  local data=$1
+  sep=${data::1}; data=${data:2}
+  wmin=${data%%:*}; data=${data#*:}
+  ble/string#split buff , "${data%%:*}"; data=${data#*:}
+  xI=${buff[0]} yI=${buff[1]} xF=${buff[2]} yF=${buff[3]}
+  ble/string#split buff , "${data%%:*}"; data=${data#*:}
+  x1=${buff[0]} y1=${buff[1]} x2=${buff[2]} y2=${buff[3]}
+  esc=$data
+}
+## @fn ble/canvas/trace/.justify/end-line
+##   これまでに justify_fields に記録した各フィールドの esc を align しつつ結合
+##   する。
+##   @var[in,out] justify_fields DRAW_BUFF justify_buff
+function ble/canvas/trace/.justify/end-line {
+  # Note: 行内容がなかった場合でも行の高さだけは記録する
+  # (NEL で新しい行が形成される事に注意)。
+  if [[ $trace_flags == *M* ]]; then
+    ((y<jy1&&(jy1=y)))
+    ((y>jy2&&(jy2=y)))
+  fi
+  ((${#justify_fields[@]}||${#DRAW_BUFF[@]})) || return 0
+
+  # 最後のフィールドを justify_fields に移動。
+  ble/canvas/trace/.justify/next-field
+
+  local i width=0 ispan=0 has_content=
+  for ((i=0;i<${#justify_fields[@]};i++)); do
+    local sep wmin xI yI xF yF x1 y1 x2 y2 esc
+    ble/canvas/trace/.justify/unpack "${justify_fields[i]}"
+
+    ((width+=xF-xI))
+    [[ $esc ]] && has_content=1
+
+    # Note: 最後の要素の次には余白はない。
+    ((i+1==${#justify_fields[@]})) && break
+
+    ((width+=wmin))
+    ((ispan++))
+  done
+  [[ $has_content ]] || return 0
+  local nspan=$ispan
+
+  local -a DRAW_BUFF=()
+
+  # fill に使える余白を計算する。
+  # Note: _ble_term_xenl 及び opt_relative の時には本当の端末の右端には接触しな
+  #   いと想定して範囲の右端まで使用する。
+  local xlimit=$cols
+  [[ $_ble_term_xenl$opt_relative ]] || ((xlimit--))
+  local span=$((xlimit-width))
+
+  x= y=
+  local ispan=0 vx=0 spanx=0
+  for ((i=0;i<${#justify_fields[@]};i++)); do
+    local sep wmin xI yI xF yF x1 y1 x2 y2 esc
+    ble/canvas/trace/.justify/unpack "${justify_fields[i]}"
+
+    [[ $x ]] || x=$xI y=$yI
+
+    if [[ $esc ]]; then
+      local delta=0
+      ((vx+x1-xI<0)) && ((delta=-(vx+x1-xI)))
+      ((vx+x2-xI>xlimit)) && ((delta=xlimit-(vx+x2-xI)))
+      ble/canvas/put-move-x.draw $((vx+delta-x))
+      ((x=vx+delta))
+      ble/canvas/put.draw "$esc"
+      if [[ $trace_flags == *M* ]]; then
+        ((x+x1-xI<jx1&&(jx1=x+x1-xI)))
+        ((y+y1-yI<jy1&&(jy1=y+y1-yI)))
+        ((x+x2-xI>jx2&&(jx2=x+x2-xI)))
+        ((y+y2-yI>jy2&&(jy2=y+y2-yI)))
+      fi
+      ((x+=xF-xI,y+=yF-yI,vx+=xF-xI))
+    fi
+
+    ((i+1==${#justify_fields[@]})) && break
+
+    local new_spanx=$((span*++ispan/nspan))
+    local wfill=$((wmin+new_spanx-spanx))
+    ((vx+=wfill,spanx=new_spanx))
+
+    # fillchar: 取り敢えず現在の実装では空白で fill
+    if [[ $sep == ' ' ]]; then
+      ble/string#reserve-prototype "$wfill"
+      ble/canvas/put.draw "${_ble_string_prototype::wfill}"
+      ((x+=wfill))
+    fi
+  done
+
+  local ret
+  ble/canvas/sflush.draw
+  ble/array#push justify_buff "$ret"
+  justify_fields=()
+}
+
+#--------------------------------------
+## (trace 内部変数) sc/rc 関連
+##
+##   @arr[local] trace_decsc
+##   @arr[local] trace_scosc
+##   @arr[local] trace_brack
+##
 function ble/canvas/trace/.decsc {
-  trace_decsc=("$x" "$y" "$g" "$lc" "$lg")
+  trace_decsc=("$x" "$y" "$g" "$lc" "$lg" active)
   if [[ ! $opt_clip ]]; then
     [[ :$opts: == *:noscrc:* ]] ||
       ble/canvas/put.draw "$_ble_term_sc"
@@ -764,9 +927,10 @@ function ble/canvas/trace/.decrc {
   g=${trace_decsc[2]}
   lc=${trace_decsc[3]}
   lg=${trace_decsc[4]}
+  trace_decsc[5]=
 }
 function ble/canvas/trace/.scosc {
-  trace_scosc=("$x" "$y" "$g" "$lc" "$lg")
+  trace_scosc=("$x" "$y" "$g" "$lc" "$lg" active)
   if [[ ! $opt_clip ]]; then
     [[ :$opts: == *:noscrc:* ]] ||
       ble/canvas/put.draw "$_ble_term_sc"
@@ -785,6 +949,7 @@ function ble/canvas/trace/.scorc {
   y=${trace_scosc[1]}
   lc=${trace_scosc[3]}
   lg=${trace_scosc[4]}
+  trace_scosc[5]=
 }
 function ble/canvas/trace/.ps1sc {
   trace_brack[${#trace_brack[*]}]="$x $y"
@@ -799,13 +964,17 @@ function ble/canvas/trace/.ps1rc {
     builtin unset -v "trace_brack[$lastIndex]"
   fi
 }
+
+#--------------------------------------
 function ble/canvas/trace/.NEL {
+  ble/canvas/trace/.justify/enabled &&
+    ble/canvas/trace/.justify/end-line
   if [[ $opt_nooverflow ]] && ((y+1>=lines)); then
     ble/canvas/trace/.process-overflow
     return 1
   fi
   if [[ ! $opt_clip ]]; then
-    if [[ $opt_relative ]]; then
+    if [[ $trace_flags == *R* ]]; then
       ((x)) && ble/canvas/put-cub.draw "$x"
       ble/canvas/put-cud.draw 1
     else
@@ -814,6 +983,8 @@ function ble/canvas/trace/.NEL {
     fi
   fi
   ((y++,x=0,lc=32,lg=0))
+  ble/canvas/trace/.justify/enabled &&
+    ble/canvas/trace/.justify/begin-line
   return 0
 }
 ## @fn ble/canvas/trace/.SGR
@@ -850,37 +1021,37 @@ function ble/canvas/trace/.process-csi-sequence {
       [[ $param =~ ^[0-9]+$ ]] && arg=$param
       ((arg==0&&(arg=1)))
 
-      local x0=$x y0=$y
+      local ox=$x oy=$y
       if [[ $char == A ]]; then
         # CUU "CSI A"
         ((y-=arg,y<0&&(y=0)))
-        ((!opt_clip&&y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
+        ((!opt_clip&&y<oy)) && ble/canvas/put-cuu.draw $((oy-y))
       elif [[ $char == [Be] ]]; then
         # CUD "CSI B"
         # VPR "CSI e"
         ((y+=arg,y>=lines&&(y=lines-1)))
-        ((!opt_clip&&y>y0)) && ble/canvas/put-cud.draw $((y-y0))
+        ((!opt_clip&&y>oy)) && ble/canvas/put-cud.draw $((y-oy))
       elif [[ $char == [Ca] ]]; then
         # CUF "CSI C"
         # HPR "CSI a"
         ((x+=arg,x>=cols&&(x=cols-1)))
-        ((!opt_clip&&x>x0)) && ble/canvas/put-cuf.draw $((x-x0))
+        ((!opt_clip&&x>ox)) && ble/canvas/put-cuf.draw $((x-ox))
       elif [[ $char == D ]]; then
         # CUB "CSI D"
         ((x-=arg,x<0&&(x=0)))
-        ((!opt_clip&&x<x0)) && ble/canvas/put-cub.draw $((x0-x))
+        ((!opt_clip&&x<ox)) && ble/canvas/put-cub.draw $((ox-x))
       elif [[ $char == E ]]; then
         # CNL "CSI E"
         ((y+=arg,y>=lines&&(y=lines-1),x=0))
         if [[ ! $opt_clip ]]; then
-          ((y>y0)) && ble/canvas/put-cud.draw $((y-y0))
+          ((y>oy)) && ble/canvas/put-cud.draw $((y-oy))
           ble/canvas/put.draw "$_ble_term_cr"
         fi
       elif [[ $char == F ]]; then
         # CPL "CSI F"
         ((y-=arg,y<0&&(y=0),x=0))
         if [[ ! $opt_clip ]]; then
-          ((y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
+          ((y<oy)) && ble/canvas/put-cuu.draw $((oy-y))
           ble/canvas/put.draw "$_ble_term_cr"
         fi
       elif [[ $char == [G\`] ]]; then
@@ -889,7 +1060,7 @@ function ble/canvas/trace/.process-csi-sequence {
         ((x=arg-1,x<0&&(x=0),x>=cols&&(x=cols-1)))
         if [[ ! $opt_clip ]]; then
           if [[ $opt_relative ]]; then
-            ble/canvas/put-move-x.draw $((x-x0))
+            ble/canvas/put-move-x.draw $((x-ox))
           else
             ble/canvas/put-hpa.draw $((x+1))
           fi
@@ -899,7 +1070,7 @@ function ble/canvas/trace/.process-csi-sequence {
         ((y=arg-1,y<0&&(y=0),y>=lines&&(y=lines-1)))
         if [[ ! $opt_clip ]]; then
           if [[ $opt_relative ]]; then
-            ble/canvas/put-move-y.draw $((y-y0))
+            ble/canvas/put-move-y.draw $((y-oy))
           else
             ble/canvas/put-vpa.draw $((y+1))
           fi
@@ -964,7 +1135,7 @@ function ble/canvas/trace/.process-esc-sequence {
     return 0 ;;
   (D) # IND
     [[ $opt_nooverflow ]] && ((y+1>=lines)) && return 0
-    if [[ $opt_clip || $opt_relative ]]; then
+    if [[ $opt_clip || $opt_relative ]] || ble/canvas/trace/.justify/enabled; then
       ((y+1>=lines)) && return 0
       ((y++))
       [[ $opt_clip ]] ||
@@ -979,7 +1150,7 @@ function ble/canvas/trace/.process-esc-sequence {
     return 0 ;;
   (M) # RI
     [[ $opt_nooverflow ]] && ((y==0)) && return 0
-    if [[ $opt_clip || $opt_relative ]]; then
+    if [[ $opt_clip || $opt_relative ]] || ble/canvas/trace/.justify/enabled; then
       ((y==0)) && return 0
       ((y--))
       [[ $opt_clip ]] ||
@@ -1019,25 +1190,39 @@ function ble/canvas/trace/.impl {
   ble/util/c2s 156; local st=$ret #  (ST)
   ((${#st}>=2)) && st=
 
-  # options
+  #-------------------------------------
+  # Options
+
+  local xinit=$x yinit=$y ginit=$g
+  local trace_flags=
+
   local opt_nooverflow=; [[ :$opts: == *:truncate:* || :$opts: == *:confine:* ]] && opt_nooverflow=1
-  local opt_relative=; [[ :$opts: == *:relative:* ]] && opt_relative=1
-  local opt_measure=; [[ :$opts: == *:measure-bbox:* ]] && opt_measure=1
+  local opt_relative=; [[ :$opts: == *:relative:* ]] && trace_flags=R$trace_flags opt_relative=1
+  [[ :$opts: == *:measure-bbox:* ]] && trace_flags=M$traceflags
   [[ :$opts: != *:left-char:* ]] && local lc=32 lg=0
   local opt_terminfo=; [[ :$opts: == *:terminfo:* ]] && opt_terminfo=1
 
-  local opt_clip= cx1 cy1 cx2 cy2 cx cy cg
+  if local rex=':justify(=[^:]+)?:'; [[ :$opts: =~ $rex ]]; then
+    local jx0=$x jy0=$y
+    local justify_sep justify_buff justify_fields
+    trace_flags=J$trace_flags
+    justify_sep=${BASH_REMATCH[1]:1}${BASH_REMATCH[1]:-' '}
+    justify_buff=()
+    justify_fields=()
+  fi
+
   if local rex=':clip=([0-9]*),([0-9]*)([-+])([0-9]*),([0-9]*):'; [[ :$opts: =~ $rex ]]; then
-    opt_clip=1
-    local cx1=${BASH_REMATCH[1]} cy1=${BASH_REMATCH[2]}
-    local cx2=${BASH_REMATCH[4]} cy2=${BASH_REMATCH[5]}
+    local cx1 cy1 cx2 cy2 cx cy cg
+    trace_flags=C$trace_flags
+    cx1=${BASH_REMATCH[1]} cy1=${BASH_REMATCH[2]}
+    cx2=${BASH_REMATCH[4]} cy2=${BASH_REMATCH[5]}
     [[ ${BASH_REMATCH[3]} == + ]] && ((cx2+=cx1,cy2+=cy1))
     ((cx1<=cx2)) || local cx1=$cx2 cx2=$cx1
     ((cy1<=cy2)) || local cy1=$cy2 cy2=$cy1
-    ((cx1<0)) && cx=0
-    ((cy1<0)) && cy=0
-    ((cols<cx2)) && cx=$cols
-    ((lines<cy2)) && cy=$lines
+    ((cx1<0)) && cx1=0
+    ((cy1<0)) && cy1=0
+    ((cols<cx2)) && cx2=$cols
+    ((lines<cy2)) && cy2=$lines
     local cx=$cx1 cy=$cy1 cg=
   fi
 
@@ -1053,6 +1238,8 @@ function ble/canvas/trace/.impl {
     g=$opt_g0
   fi
 
+  #-------------------------------------
+
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
   # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
@@ -1062,18 +1249,42 @@ function ble/canvas/trace/.impl {
   # ESC ?
   local rex_esc='^[ -~]'
 
-  # variables
+  # states
   local -a trace_brack=()
   local -a trace_scosc=()
   local -a trace_decsc=()
 
-  [[ $opt_measure ]] && ((x1=x2=x,y1=y2=y))
+  ble/canvas/trace/.justify/enabled &&
+    ble/canvas/trace/.justify/start-line
+
+  # prepare measure
+  local opt_measure=
+  if [[ $trace_flags == *[MJ]* ]]; then
+    opt_measure=1
+    [[ $trace_flags != *M* ]] && local x1 x2 y1 y2
+    ((x1=x2=x,y1=y2=y))
+
+    [[ $trace_flags == *J*M* ]] &&
+      local jx1=$x jy1=$y jx2=$x jy2=$y
+  fi
+
+  # opt_clip: justify 処理が入っている時は後で clip を処理する。
+  local opt_clip=
+  [[ $trace_flags == *C* && $trace_flags != *J* ]] && opt_clip=1
+
+  # opt_relative の時には右端に接触しない前提。justify の時には、後の再配置の時
+  # に xenl について処理するので、フィールド内追跡では xenl は気にしなくて良い。
+  local xlimit=$cols
+  [[ $opt_relative || $trace_flags == *J* ]] && xenl=1 xlimit=$((cols-1))
 
   local i=0 iN=${#text}
   while ((i<iN)); do
     local tail=${text:i}
     local w=0 is_overflow=
-    if [[ $tail == [-]* ]]; then
+    if ble/canvas/trace/.justify/enabled && [[ $tail == ["$justify_sep"]* ]]; then
+      ble/canvas/trace/.justify/next-field "${tail::1}"
+      ((i++))
+    elif [[ $tail == [-]* ]]; then
       local s=${tail::1}
       ((i++))
       case "$s" in
@@ -1115,7 +1326,7 @@ function ble/canvas/trace/.impl {
         ble/canvas/trace/.NEL ;;
       ($'\v') # VT
         if ((y+1<lines||!opt_nooverflow)); then
-          if [[ $opt_clip || $opt_relative ]]; then
+          if [[ $opt_clip || $opt_relative ]] || ble/canvas/trace/.justify/enabled; then
             if ((y+1<lines)); then
               [[ $opt_clip ]] ||
                 ble/canvas/put-cud.draw 1
@@ -1129,14 +1340,18 @@ function ble/canvas/trace/.impl {
           fi
         fi ;;
       ($'\r') # CR ^M
+        local ox=$x
+        ((x=0,lc=-1,lg=0))
         if [[ ! $opt_clip ]]; then
-          if [[ $opt_relative ]]; then
-            ble/canvas/put-cub.draw "$x"
+          if ble/canvas/trace/.justify/enabled; then
+            ble/canvas/put-move-x.draw $((jx0-ox))
+            ((x=jx0))
+          elif [[ $opt_relative ]]; then
+            ble/canvas/put-cub.draw "$ox"
           else
             ble/canvas/put.draw "$_ble_term_cr"
           fi
-        fi
-        ((x=0,lc=-1,lg=0)) ;;
+        fi ;;
       # Note: \001 (^A) 及び \002 (^B) は PS1 の処理で \[ \] を意味するそうだ。#D1074
       ($'\001') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1sc ;;
       ($'\002') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1rc ;;
@@ -1145,12 +1360,14 @@ function ble/canvas/trace/.impl {
       esac
     elif ble/util/isprint+ "$tail"; then
       local s=$BASH_REMATCH
+      ble/canvas/trace/.justify/enabled && s=${s%%["$justify_sep"]*}
       w=${#s}
       if [[ $opt_nooverflow ]]; then
         local wmax=$((lines*cols-(y*cols+x)))
+        ((xenl||wmax--,wmax<0&&(wmax=0)))
         ((w>wmax)) && w=$wmax is_overflow=1
       fi
-      if [[ $opt_clip || $opt_relative ]]; then
+      if [[ $opt_clip || $opt_relative ]] || ble/canvas/trace/.justify/enabled; then
         local t=${s::w} tlen=$w len=$((cols-x))
         if [[ $opt_measure ]]; then
           if ((tlen>len)); then
@@ -1179,12 +1396,12 @@ function ble/canvas/trace/.impl {
       local ret
       ble/util/s2c "${tail::1}"; local c=$ret
       ble/util/c2w "$c"; local w=$ret
-      if [[ $opt_nooverflow ]] && ! ((x+w<=cols||y+1<lines&&w<=cols)); then
+      if [[ $opt_nooverflow ]] && ! ((x+w<=xlimit||y+1<lines&&w<=cols)); then
         w=0 is_overflow=1
       else
         lc=$c lg=$g
         if ((x+w>cols)); then
-          if [[ $opt_clip || $opt_relative ]]; then
+          if [[ $opt_clip || $opt_relative ]] || ble/canvas/trace/.justify/enabled; then
             ble/canvas/trace/.NEL
           else
             # 行に入りきらない場合の調整
@@ -1210,7 +1427,7 @@ function ble/canvas/trace/.impl {
         fi
       fi
       ((x+=w,y+=x/cols,x%=cols,
-        (opt_relative||xenl)&&x==0&&(y--,x=cols)))
+        xenl&&x==0&&(y--,x=cols)))
       ((x==0&&(lc=32,lg=0)))
     fi
     if [[ $opt_measure ]]; then
@@ -1219,10 +1436,33 @@ function ble/canvas/trace/.impl {
     fi
     [[ $is_overflow ]] && ble/canvas/trace/.process-overflow
   done
-  [[ $opt_measure ]] && ((y2++))
-  if [[ $opt_clip ]]; then
+
+  if [[ $trace_flags == *J* ]]; then
+    if ! ble/canvas/trace/.justify/enabled; then
+      # 各種 sc により一時的に justify が無効化されていたとしても、強制的に rc
+      # を出力して閉じる。
+      [[ ${trace_scosc[5]} ]] && ble/canvas/trace/.scorc
+      [[ ${trace_decsc[5]} ]] && ble/canvas/trace/.decrc
+      while [[ ${trace_brack[0]} ]]; do ble/canvas/trace/.ps1rc; done
+    fi
+    ble/canvas/trace/.justify/end-line
+    DRAW_BUFF=("${justify_buff[@]}")
+
+    [[ $trace_flags == *M* ]] &&
+      ((x1=jx1,y1=jy1,x2=jx2,y2=jy2))
+
+    if [[ $trace_flags == *C* ]]; then
+      ble/canvas/sflush.draw
+      x=$xinit y=$yinit g=$ginit
+      ble/canvas/trace/.impl "$ret" clip="$cx1,$cy1-$cx2,$cy2"
+      cx=$x cy=$y cg=$g
+    fi
+  fi
+
+  [[ $trace_flags == *M* ]] && ((y2++))
+  if [[ $trace_flags == *C* ]]; then
     x=$cx y=$cy g=$cg
-    if [[ $opt_measure ]]; then
+    if [[ $trace_flags == *M* ]]; then
       ((x1<cx1)) && x1=$cx1
       ((x1>cx2)) && x1=$cx2
       ((x2<cx1)) && x2=$cx1

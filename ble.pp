@@ -1025,6 +1025,7 @@ function ble/base/test {
   echo "BASH_VERSION: $BASH_VERSION"
   source "$_ble_base"/lib/test-main.sh || error=1
   source "$_ble_base"/lib/test-util.sh || error=1
+  source "$_ble_base"/lib/test-canvas.sh || error=1
   [[ ! $error ]]
 }
 

@@ -34,6 +34,10 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh
 source ble.sh/out/ble.sh
 
+# 更新 (ble.sh をロードした状態で実行して下さい)
+
+ble-update
+
 # パッケージ作成用コマンド
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git

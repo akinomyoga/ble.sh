@@ -34,6 +34,10 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh
 source ble.sh/out/ble.sh
 
+# UPDATE (in a ble.sh session)
+
+ble-update
+
 # PACKAGE (for package maintainers)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git

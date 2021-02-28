@@ -164,13 +164,13 @@ function bleopt/check:prompt_term_status { ble/prompt/clear; return 0; }
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
 
 bleopt/declare -v prompt_status_line  ''
-bleopt/declare -n prompt_status_align left
+bleopt/declare -n prompt_status_align $'justify=\r'
 ble/color/defface prompt_status_line fg=231,bg=240
 
 function bleopt/check:prompt_status_line { ble/prompt/clear; return 0; }
 function bleopt/check:prompt_status_align {
   case $value in
-  (left|right|center)
+  (left|right|center|justify|justify=?*)
     [[ $bleopt_prompt_status_line ]] &&
       ble/prompt/clear
     return 0 ;;
@@ -1033,6 +1033,10 @@ function ble/prompt/update {
     local ps=$bleopt_prompt_status_line
     local cols=$COLUMNS; ((_ble_term_xenl||cols--))
     local trace_opts=confine:relative:measure-bbox:noscrc:face0=prompt_status_line
+
+    local rex='^justify(=[^:]+)?$'
+    [[ $bleopt_prompt_status_align =~ $rex ]] &&
+      trace_opts=$trace_opts:$BASH_REMATCH
 
     local trace_hash esc x y g lc lg
     local x1=${_ble_prompt_status_bbox[0]}

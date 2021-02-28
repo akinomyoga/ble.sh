@@ -123,6 +123,10 @@ function ble/test/.read-arguments {
     (code[:=]*)
       ((${#buff[@]})) && ble/array#push buff $'\n'
       ble/array#push buff "${arg#*[:=]}" ;;
+    (--depth=*)
+      caller_depth=${arg#*=} ;;
+    (--display-code=*)
+      display_code=${arg#*=} ;;
     (*)
       ((${#buff[@]})) && ble/array#push buff ' '
       ble/array#push buff "$arg" ;;
@@ -143,11 +147,12 @@ function ble/test {
   local -a item_name=(stdout stderr exit ret)
 
   local code title
+  local caller_depth=0 display_code=
   local -a item_expect=()
   ble/test/.read-arguments "$@"
 
-  local caller_lineno=${BASH_LINENO[0]}
-  local caller_source=${BASH_SOURCE[1]}
+  local caller_lineno=${BASH_LINENO[caller_depth+0]}
+  local caller_source=${BASH_SOURCE[caller_depth+1]}
   title="$caller_source:$caller_lineno${title+ ($title)}"
   ble/test/section#incr "$title"
 
@@ -166,7 +171,7 @@ function ble/test {
 
     if [[ ! $flag_error ]]; then
       flag_error=1
-      ble/util/print $'\e[1m'"$title"$'\e[m: \e[91m'"$code"$'\e[m'
+      ble/util/print $'\e[1m'"$title"$'\e[m: \e[91m'"${display_code:-$code}"$'\e[m'
     fi
 
     ble/test/diff "${item_name[i]}" "${item_expect[i]}" "${item_result[i]}"

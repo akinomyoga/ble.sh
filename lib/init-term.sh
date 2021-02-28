@@ -106,7 +106,7 @@ function ble/init:term/initialize {
     [[ $_ble_term_cr ]] || _ble_term_cr=$'\e[G'
     if [[ $TERM == cygwin ]]; then
       [[ $_ble_term_ind == $'\eD' ]] && _ble_term_ind=$'\n'
-      _ble_term_xenl=0
+      _ble_term_xenl=
     fi
   fi
 
