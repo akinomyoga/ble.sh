@@ -9,6 +9,7 @@
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
+  - complete: update the default value of `bleopt complete_limit{,auto}` `#D1500` 0000000
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
@@ -31,6 +32,7 @@
   - syntax (`simple-word/is-simple-noglob`): suppress error messages on expansions `#D1461` a56873f
   - syntax (`simple-word/eval`): fix unperformed tilde expansions in the background (reported by 3ximus) `#D1463` 6ebec48
   - syntax (`simple-word/eval`): propagate timeouts in sync highlighting (reported by 3ximus) `#D1465` c2555e2
+  - edit: change the priority of `render-defer` and `menu-filter` `#D1501` 0000000
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 - prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` cca1cbc
@@ -87,7 +89,7 @@
   - Makefile: fix up f7323b4: restore rule for `keymap/*.txt` `#D1496` 054e5c1
 - util, etc: ensure each function to work with arbitrary `IFS` `#D1490` `#D1491` 5f9adfe
 - tui, canvas (`ble/canvas/trace`): support `opts=clip` `#D1493` 61ce90c
-- tui, edit: add a new render mode for full-screen applications 0000000
+- tui, edit: add a new render mode for full-screen applications 817889d
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

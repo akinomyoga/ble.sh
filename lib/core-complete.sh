@@ -5139,7 +5139,7 @@ function ble/highlight/layer:menu_filter/getg {
 _ble_complete_menu_filter_enabled=
 if ble/is-function ble/util/idle.push-background; then
   _ble_complete_menu_filter_enabled=1
-  ble/util/idle.push-background ble/complete/menu-filter.idle
+  ble/util/idle.push -n 9999 ble/complete/menu-filter.idle
   ble/array#insert-before _ble_highlight_layer__list region menu_filter
 fi
 

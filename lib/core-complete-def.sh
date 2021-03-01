@@ -32,8 +32,8 @@ fi
 bleopt/declare -n complete_polling_cycle 50
 bleopt/declare -o complete_stdin_frequency complete_polling_cycle
 
-bleopt/declare -v complete_limit 500
-bleopt/declare -v complete_limit_auto 200
+bleopt/declare -v complete_limit ''
+bleopt/declare -v complete_limit_auto 2000
 bleopt/declare -v complete_timeout_auto 5000
 bleopt/declare -v complete_timeout_compvar 200
 
