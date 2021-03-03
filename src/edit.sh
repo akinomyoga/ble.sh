@@ -938,8 +938,10 @@ function ble/prompt/.instantiate {
     x=0 y=0 g=0 lc=32 lg=0
     esc=$expanded
   elif trace_hash=$COLUMNS:$expanded; [[ $trace_hash != "$trace_hash0" ]]; then
+    local trace_opts=$opts:prompt
+    [[ $bleopt_internal_suppress_bash_output ]] || trace_opts=$trace_opts:left-char
     x=0 y=0 g=0 lc=32 lg=0
-    ble/canvas/trace "$expanded" "$opts:prompt:left-char"; local traced=$ret
+    ble/canvas/trace "$expanded" "$trace_opts"; local traced=$ret
     ((lc<0&&(lc=0)))
     esc=$traced
     return 0
@@ -1055,14 +1057,14 @@ function ble/prompt/update {
   if [[ $rps1 ]]; then
     local ps1_height=$((y+1))
     local trace_hash esc x y g lc lg # Note: これ以降は local の x y g lc lg
-    local x1=${_ble_edit_rprompt_bbox[0]}
-    local y1=${_ble_edit_rprompt_bbox[1]}
-    local x2=${_ble_edit_rprompt_bbox[2]}
-    local y2=${_ble_edit_rprompt_bbox[3]}
-    LINES=$ps1_height ble/prompt/.instantiate "$rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}" &&
+    local gx1=${_ble_edit_rprompt_bbox[0]}
+    local gy1=${_ble_edit_rprompt_bbox[1]}
+    local gx2=${_ble_edit_rprompt_bbox[2]}
+    local gy2=${_ble_edit_rprompt_bbox[3]}
+    LINES=$ps1_height ble/prompt/.instantiate "$rps1" confine:relative:right:measure-gbox "${_ble_edit_rprompt[@]:1}" &&
       _ble_edit_rprompt_dirty=1
     _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
-    _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
+    _ble_edit_rprompt_bbox=("$gx1" "$gy1" "$gx2" "$gy2")
   elif [[ $_ble_edit_rprompt ]]; then
     # 新しい rps1 が空の場合、前回の rps1 が残っていればクリア
     _ble_edit_rprompt_dirty=1
@@ -2357,11 +2359,11 @@ function ble/textarea#render/.show-prompt {
 ##   @var[in] cols
 function ble/textarea#render/.show-rprompt {
   local rps1out=${_ble_edit_rprompt[6]}
-  local rps1x=${_ble_edit_rprompt[1]}
+  local rps1x=$((_ble_edit_rprompt[1]+COLUMNS-_ble_edit_rprompt_bbox[2]))
   local rps1y=${_ble_edit_rprompt[2]}
   # Note: cols は画面右端ではなく textmap の右端
-  ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
-  ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" $((cols+1+rps1x)) "$rps1y"
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+  ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" "$rps1x" "$rps1y"
   _ble_edit_rprompt_dirty=
   _ble_edit_rprompt_shown=1
 }
@@ -2426,7 +2428,7 @@ function ble/textarea#render {
   # rps1_transient
   if [[ $rps1_enabled && :$opts: == *:leave:* && ! $bleopt_prompt_rps1_final && $bleopt_prompt_rps1_transient ]]; then
     # Note: ble/prompt/update を実行するよりも前に現在の表示内容を消去する。
-    local rps1_width=${_ble_edit_rprompt_bbox[2]}
+    local rps1_width=$((_ble_edit_rprompt_bbox[2]-_ble_edit_rprompt_bbox[0]))
     local prox=${_ble_edit_prompt[1]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
       rps1_enabled=
@@ -2440,7 +2442,7 @@ function ble/textarea#render {
 
   # rps1
   if [[ $rps1_enabled ]]; then
-    local rps1_width=${_ble_edit_rprompt_bbox[2]}
+    local rps1_width=$((_ble_edit_rprompt_bbox[2]-_ble_edit_rprompt_bbox[0]))
     local prox=${_ble_edit_prompt[1]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
       ((cols-=rps1_width+1,_ble_term_xenl||cols--))

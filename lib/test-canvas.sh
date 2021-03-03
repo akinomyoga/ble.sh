@@ -2,8 +2,15 @@
 
 ble-import lib/core-test
 
+_ble_test_canvas_contra=
+if [[ -x ext/contra ]]; then
+  _ble_test_canvas_contra=ext/contra
+elif [[ $(printf 'hello world' | contra test 5 2) == $' worl\nd    ' ]]; then
+  _ble_test_canvas_contra=contra
+fi
+
 function ble/test:canvas/trace.contra {
-  [[ -x ext/contra ]] || return 0 # skip
+  [[ $_ble_test_canvas_contra ]] || return 0 # skip
 
   local w=${1%%:*} h=${1#*:} esc=$2 opts=$3 test_opts=$4
   local expect=$(sed 's/\$$//')
@@ -21,14 +28,14 @@ function ble/test:canvas/trace.contra {
   ble/string#quote-word "$esc"; local q_esc=$ret
   ble/string#quote-word "$opts"; local q_opts=$ret
   ble/test --depth=1 --display-code="trace $q_esc $q_opts" \
-           '{ printf "\e['$((y0+1))';'$((x0+1))'H"; ble/util/put "$out";} | ext/contra test "$termw" "$termh"' \
+           '{ printf "\e['$((y0+1))';'$((x0+1))'H"; ble/util/put "$out";} | "$_ble_test_canvas_contra" test "$termw" "$termh"' \
            stdout="$expect"
 }
 
 #------------------------------------------------------------------------------
 # from lib/test-canvas.sh
 
-ble/test/start-section 'ble/canvas/trace (relative:confine:measure-bbox)' 6
+ble/test/start-section 'ble/canvas/trace (relative:confine:measure-bbox)' 10
 
 # test1
 
@@ -49,6 +56,14 @@ ble/test:canvas/trace.contra 20:1 '12345678901234567890hello' confine << EOF
 12345678901234567890$
 EOF
 
+ble/test:canvas/trace.contra 10:1 $'hello\nworld' confine << EOF
+helloworld$
+EOF
+ble/test:canvas/trace.contra 10:2 $'hello\nworld check' confine << EOF
+hello     $
+world chec$
+EOF
+
 # ble/test:ble/canvas/trace
 
 ble/test:canvas/trace.contra 10:6 $'hello\e[B\e[4D123' measure-bbox x=3:y=2 << EOF
@@ -66,6 +81,19 @@ ble/test:canvas/trace.contra 10:2 日本語 measure-bbox << EOF
           $
 EOF
 ble/test '[[ $x1-$x2:$y1-$y2 == 0-6:0-1 ]]'
+
+ble/test:canvas/trace.contra 10:2 $'hello\eDworld' measure-bbox << EOF
+hello     $
+     world$
+EOF
+ble/test '[[ $x1-$x2:$y1-$y2 == 0-10:0-2 ]]'
+
+ble/test:canvas/trace.contra 10:2 $'hello\eMworld' measure-bbox << EOF
+     world$
+hello     $
+EOF
+ble/test '[[ $x1-$x2:$y1-$y2 == 0-10:-1-1 ]]'
+
 
 #------------------------------------------------------------------------------
 # from test/check-trace.sh
@@ -130,7 +158,7 @@ ble/test:canvas/check-trace
 #------------------------------------------------------------------------------
 # test-trace.sh
 
-ble/test/start-section 'ble/canvas/trace (justify)' 16
+ble/test/start-section 'ble/canvas/trace (justify)' 24
 
 ble/test:canvas/trace.contra 30:1 'a b c' justify << EOF
 a             b              c$
@@ -210,5 +238,25 @@ quick         check        bar$
               test            $
 EOF
 
-ble/test/end-section
+ble/test:canvas/trace.contra 30:3 $'hello\n2021-01-01\nA' right:measure-bbox:measure-gbox << EOF
+                         hello$
+                    2021-01-01$
+                             A$
+EOF
+ble/test '[[ bbox:$x1,$y1-$x2,$y2 == bbox:0,0-30,3 ]]'
+ble/test '[[ gbox:$gx1,$gy1-$gx2,$gy2 == gbox:20,0-30,3 ]]'
 
+ble/test:canvas/trace.contra 30:3 $'hello\n2021-01-01\nA' center:measure-bbox:measure-gbox << EOF
+            hello             $
+          2021-01-01          $
+              A               $
+EOF
+ble/test '[[ bbox:$x1,$y1-$x2,$y2 == bbox:0,0-20,3 ]]'
+ble/test '[[ gbox:$gx1,$gy1-$gx2,$gy2 == gbox:10,0-20,3 ]]'
+
+ble/test:canvas/trace.contra 10:1 $'xyz\e[4Daxyz' relative:measure-bbox x=3 << EOF
+  axyz    $
+EOF
+ble/test '[[ bbox:$x1,$y1-$x2,$y2 == bbox:2,0-6,1 ]]'
+
+ble/test/end-section

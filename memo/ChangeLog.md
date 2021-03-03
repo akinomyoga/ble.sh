@@ -9,7 +9,7 @@
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
-  - complete: update the default value of `bleopt complete_limit{,auto}` `#D1500` 0000000
+  - complete: update the default value of `bleopt complete_limit{,auto}` `#D1500` aae553c
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
@@ -21,6 +21,7 @@
   - prompt: support `bleopt prompt_status_align=justify` `#D1494` c30a0db
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
 - keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
+- prompt: support multiline `prompt_rps1` `#D1502` 0000000
 
 ## Changes
 
@@ -32,7 +33,7 @@
   - syntax (`simple-word/is-simple-noglob`): suppress error messages on expansions `#D1461` a56873f
   - syntax (`simple-word/eval`): fix unperformed tilde expansions in the background (reported by 3ximus) `#D1463` 6ebec48
   - syntax (`simple-word/eval`): propagate timeouts in sync highlighting (reported by 3ximus) `#D1465` c2555e2
-  - edit: change the priority of `render-defer` and `menu-filter` `#D1501` 0000000
+  - edit: change the priority of `render-defer` and `menu-filter` `#D1501` aae553c
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 - prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` cca1cbc
