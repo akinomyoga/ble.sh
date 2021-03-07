@@ -2557,7 +2557,7 @@ function ble/canvas/panel/increase-total-height.draw {
       ble/canvas/put-ind.draw $((top_height-1+delta-_ble_canvas_y))
       ((_ble_canvas_y=top_height-1+delta))
       ble/canvas/excursion-start.draw
-      ble/canvas/put.draw $'\e[;r'
+      ble/canvas/put.draw $'\e[r' # Note: Kitty は CSI ; r を認識しない
       ble/canvas/excursion-end.draw
       return 0
     else

@@ -4003,6 +4003,22 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-03-07
+
+  * canvas: Kitty が CSI ; r に対して何もしない (reported by timjrd) [#D1503]
+    https://github.com/akinomyoga/ble.sh/pull/65#issuecomment-791932281
+
+    抑 CSI ; r にしていたのは DECSLRM CSI ; s に合わせる為であり、DECSLRM を
+    CSI ; s にしていたのは、SCOSC と区別する為に引数の数に基づく heuristics を
+    用いている為である。CSI r 自体については SUNSCRL と conflict が存在している
+    が、SUNSCRL を実装している端末は Solaris console ぐらいしかないだろう。なの
+    で、CSI r をそのまま出力しても問題ないと判断する。
+
+    然し、引数の省略をすると動作しないというのは Kitty のバグなのではないのか。
+    まあ Kitty の全体的なデザイン等について知らないので、もしかすると Kitty は
+    全体的にそういう感じなのかもしれない。何れにしても Kitty の端末エミュレーショ
+    ンは元より滅茶苦茶なので気にしても仕方がない。
+
 2021-03-03
 
   * 2021-02-28 canvas/trace: align=right,center に対応する [#D1502]
