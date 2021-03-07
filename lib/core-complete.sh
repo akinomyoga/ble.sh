@@ -2282,11 +2282,22 @@ function ble/complete/progcomp/compopt {
 
   return "$ext"
 }
+function ble/complete/progcomp/.check-limits {
+  # user-input check
+  ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
+    [[ ! -t 0 ]] && ble/complete/check-cancel < /dev/tty &&
+    return 148
+  ble/complete/source/test-limit $((progcomp_read_count++))
+  return "$?"
+}
 function ble/complete/progcomp/.compgen-helper-func {
   [[ $comp_func ]] || return 1
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
   ble/complete/progcomp/.compvar-initialize
+
+  local progcomp_read_count=0
+  local _ble_builtin_read_hook='ble/complete/progcomp/.check-limits || return 148'
 
   local fDefault=
   local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}

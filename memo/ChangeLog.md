@@ -10,19 +10,20 @@
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
   - complete: update the default value of `bleopt complete_limit{,auto}` `#D1500` aae553c
+  - complete: inject user interruption and complete limits into `bash-completion` through `read` (motivated by timjrd) `#D1504` 0000000
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
   - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 01cfb10
-  - canvas: work around Kitty's quirk not recognizing <kbd>DECSTBM</kbd> (<kbd>CSI ; r</kbd>) `#D1503` 0000000
+  - canvas: work around Kitty's quirk not recognizing <kbd>DECSTBM</kbd> (<kbd>CSI ; r</kbd>) `#D1503` eca2976
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
   - prompt: fix missing height allocation for status line `#D1487` b424fa5
   - prompt: support `bleopt prompt_status_align=justify` `#D1494` c30a0db
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
 - keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
-- prompt: support multiline `prompt_rps1` `#D1502` 0000000
+- prompt: support multiline `prompt_rps1` `#D1502` 4fa139a
 
 ## Changes
 

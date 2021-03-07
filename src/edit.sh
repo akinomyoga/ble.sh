@@ -7678,6 +7678,10 @@ function ble/builtin/read {
     return "$?"
   fi
 
+  # used by core-complete to cancel progcomp
+  [[ $_ble_builtin_read_hook ]] &&
+    builtin eval -- "$_ble_builtin_read_hook"
+
   local __ble_command= __ble_args= __ble_input=
   ble/builtin/read/.impl "$@"; local __ble_ext=$?
   [[ $__ble_command ]] || return "$__ble_ext"

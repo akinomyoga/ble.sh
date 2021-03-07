@@ -1208,6 +1208,11 @@ bash_tips
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
 
+2021-03-07
+
+  * システムによってロードされた fzf が悪さをして固まってしまう。
+    これは . /etc/bashrc を読み込むと強制的に実行される。
+
 2021-02-28
 
   * magic-space で alias 展開する機能があっても良いのでは?
@@ -4004,6 +4009,65 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-03-07
+
+  * progcomp: やはりファイルが大量にあるシステムで遅い (reported by timjrd) [#D1504]
+    https://github.com/akinomyoga/ble.sh/pull/65#issuecomment-791932281
+
+    試しに complete -r して見ると発生しなくなる。
+
+    という事は bash_completion が悪さをしているのだろうか。
+
+    * fzf completion も勝手にロードされている。fzf completion の実装が悪いのか
+      と思って fzf の completion をロードしない様にしたがそれでも問題は発生する。
+
+    * highlight_filenme= としても特に問題は改善しない。逆に
+      complete_auto_complete= として highlight_filename=1 のままの場合には特に
+      問題も生じない。着色もそんなに時間をかけずに実行できている。という事を考
+      えるとやはり progcomp 特有の問題である様に思われる。
+
+    * bash の progcomp の場合には特に問題は生じていない。という事は -F で呼び出
+      した関数を強制的に中断する機能があるのか、或いは -F の関数の呼び出し自体
+      にはそんなに処理時間がかかっていなくて後の処理で時間がかかっているという
+      事なのか。何れにしても計測が必要になる。
+
+    実際に処理をブロックしているのは以下の関数の呼び出しの様だ。
+
+    $ _minimal 'echo' '' 'echo'
+
+    然し普通に呼び出してもそんなに時間がかかる事はない。
+
+    ----
+
+    _minimal の呼び出しに時間計測をかける。結局 _filedir の中にあるループがいけ
+    ないのだという事。うーん。ble.sh の中で実行すると 20 秒も待たされるが、bash
+    progcomp から呼び出すと 1.2 秒で終了する。何故だろう。
+
+    実際に候補を bash progcomp 内で生成しているのか確認してみるとちゃんと候補は
+    生成されている。
+
+    もしかして read で変な処理をしているのが行けないという事だろうか。でもそん
+    なに重い処理はしていない。うーん。オプションの処理をしているが、bash
+    progcomp の時にも現在 attach しているかどうかのチェックは行っている。そんな
+    に差が開く物なのか。
+
+    実際に unset -f と read() { ble/builtin/read "$@"; } で囲んでみたら 0.6s に
+    縮まった。1/60 の時間になった。
+
+    ----
+
+    これに対する対策はどのようにするのが良いか。
+
+    a progcomp で compgen する時だけは unset -f read する? と思ったが、この状態
+      で read -e を内部で呼び出されるなどすると変な事になってしまう。
+
+    b decode-detach/attach するのは処理量的に好ましくない気がする。特に
+      auto-complete で何度も呼び出されるのに、実際に時間がかかるかどうか分から
+      ない処理のために毎回 detach/attach するのは大変。
+
+    c 或いは _filedir 等の各関数に対して .advice around で unset -f read を行う?
+
+    d 或いは read の中に complete_polling_cycle を仕込む。うーん。これが一番
+      smart な気がしてきた…。
 
   * canvas: Kitty が CSI ; r に対して何もしない (reported by timjrd) [#D1503]
     https://github.com/akinomyoga/ble.sh/pull/65#issuecomment-791932281
