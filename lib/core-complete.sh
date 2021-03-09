@@ -1935,7 +1935,7 @@ function ble/complete/source:tilde {
 
   local old_cand_count=$cand_count
   ble/complete/cand/yield-filenames tilde "${candidates[@]}"; local ext=$?
-  return $((ext?ext:cand_count==old_cand_count))
+  return $((ext?ext:cand_count>old_cand_count))
 }
 
 #------------------------------------------------------------------------------
@@ -2171,7 +2171,8 @@ function ble/complete/progcomp/.compvar-quote-subword {
 ##   @var[out] progcomp_prefix
 function ble/complete/progcomp/.compvar-initialize {
   COMP_TYPE=9
-  COMP_KEY=${KEYS[${#KEYS[@]}-1]:-9} # KEYS defined in ble-decode/widget/.call-keyseq
+  COMP_KEY=9
+  ((${#KEYS[@]})) && COMP_KEY=${KEYS[${#KEYS[@]}-1]:-9} # KEYS defined in ble-decode/widget/.call-keyseq
 
   # Note: 以降の処理は基本的には comp_words, comp_line, comp_point, comp_cword を
   #   COMP_WORDS COMP_LINE COMP_POINT COMP_CWORD にコピーする。
@@ -2241,7 +2242,7 @@ function ble/complete/progcomp/.compgen-helper-prog {
     local -x COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
     ble/complete/progcomp/.compvar-initialize
     local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
-    "$comp_prog" "$cmd" "$cur" "$prev" </dev/null
+    "$comp_prog" "$cmd" "$cur" "$prev" < /dev/null
   fi
 }
 # compopt に介入して -o/+o option を読み取る。
@@ -2297,12 +2298,12 @@ function ble/complete/progcomp/.compgen-helper-func {
   ble/complete/progcomp/.compvar-initialize
 
   local progcomp_read_count=0
-  local _ble_builtin_read_hook='ble/complete/progcomp/.check-limits || return 148'
+  local _ble_builtin_read_hook='ble/complete/progcomp/.check-limits || { builtin read "$@" < /dev/null; return 148; }'
 
   local fDefault=
   local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
   ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
-  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null; local ret=$?
+  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null > /dev/tty 2>&1; local ret=$?
   ble/function#pop compopt
 
   if [[ $is_default_completion && $ret == 124 ]]; then
@@ -2391,6 +2392,8 @@ function ble/complete/progcomp/.compgen {
           ble/array#push compoptions "-$c" "$o" ;;
         (F)
           comp_func=${compargs[iarg++]}
+          [[ $comp_func == _fzf_* ]] &&
+            ble-import contrib/fzf-completion
           ble/array#push compoptions "-$c" ble/complete/progcomp/.compgen-helper-func ;;
         (C)
           comp_prog=${compargs[iarg++]}
@@ -2490,7 +2493,7 @@ function ble/complete/progcomp/.compgen {
   # Note: 重複候補や順序については考えていない
   [[ $comp_opts == *:plusdirs:* ]] && ble/complete/source:dir
 
-  ((cand_count!=old_cand_count))
+  ((cand_count>old_cand_count))
 }
 
 ## @fn ble/complete/progcomp/.compline-rewrite-command cmd [args...]
@@ -3319,6 +3322,13 @@ function ble/complete/candidates/.pick-nearest-sources {
   fi
 }
 
+function ble/complete/candidates/clear {
+  cand_count=0
+  cand_cand=()
+  cand_word=()
+  cand_pack=()
+}
+
 ## @fn ble/complete/candidates/.filter-by-command command
 ##   生成された候補 (cand_*) に対して指定したコマンドを実行し、
 ##   成功した候補のみを残して他を削除します。
@@ -3659,11 +3669,7 @@ function ble/complete/candidates/generate {
   ble/complete/candidates/comp_type#read-rl-variables
 
   local cand_iloop=0
-  cand_count=0
-  cand_cand=() # 候補文字列
-  cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
-  cand_pack=() # 候補の詳細データ
-
+  ble/complete/candidates/clear
   ble/complete/candidates/generate-with-filter none "$opts" || return "$?"
   ((cand_count)) && return 0
 
@@ -4881,8 +4887,8 @@ function ble/widget/complete {
 
   local COMP1 COMP2 COMPS COMPV
   local comp_type comps_flags comps_fixed
-  local cand_count=0
-  local -a cand_cand cand_word cand_pack
+  local cand_count cand_cand cand_word cand_pack
+  ble/complete/candidates/clear
   local cand_limit_reached=
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
           :$opts: != *:context=*:* && ${#_ble_complete_menu_icons[@]} -gt 0 ]]
@@ -5974,8 +5980,8 @@ function ble/complete/sabbrev/expand {
     local flag_source_filter=1
 
     # construct cand_pack
-    local cand_count=0
-    local -a cand_cand=() cand_word=() cand_pack=()
+    local cand_count cand_cand cand_word cand_pack
+    ble/complete/candidates/clear
     local cand COMP_PREFIX=
 
     # local settings

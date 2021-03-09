@@ -10,7 +10,7 @@
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
   - complete: update the default value of `bleopt complete_limit{,auto}` `#D1500` aae553c
-  - complete: inject user interruption and complete limits into `bash-completion` through `read` (motivated by timjrd) `#D1504` 0000000
+  - complete: inject user interruption and complete limits into `bash-completion` through `read` (motivated by timjrd) `#D1504` 856cec2 `#D1507` 0000000
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
@@ -75,6 +75,7 @@
 - term: support key sequences and control sequences of Solaris console `#D1481` 6ca0b8c
 - term: work around Cygwin-console bug of bottom `IL`/`DL` `#D1482` 5dce0b8
 - term: work around leaked <kbd>DA2R</kbd> in screen from outside terminal `#D1485` e130619
+- complete: work around `fzf` completion settings loaded automatically `#D1508` 0000000
 
 ## Internal changes and fixes
 
