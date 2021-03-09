@@ -1,4 +1,78 @@
+# ble-0.4.0-devel2
+
+## Usage
+
+**Prerequisites**
+
+Bash 3.0+ and basic POSIX utilities are required.
+
+**Download ble-0.4.0-devel2.tar.xz**
+
+https://github.com/akinomyoga/ble.sh/releases/download/v0.4.0-devel2/ble-0.4.0-devel2.tar.xz
+
+```bash
+# DOWNLOAD with wget
+wget https://github.com/akinomyoga/ble.sh/releases/download/v0.4.0-devel2/ble-0.4.0-devel2.tar.xz
+
+# DOWNLOAD with curl
+curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.4.0-devel2/ble-0.4.0-devel2.tar.xz
+```
+
+**Trial & Install**
+
+```bash
+# TRIAL
+tar xJf ble-0.4.0-devel2.tar.xz
+source ble-0.4.0-devel2/ble.sh
+
+# INSTALL (quick)
+tar xJf ble-0.4.0-devel2.tar.xz -C ~/.local/share/blesh
+echo 'source ~/.local/share/blesh' >> ~/.bashrc
+
+# INSTALL (more robust)
+tar xJf ble-0.4.0-devel2.tar.xz -C ~/.local/share/blesh
+# Add the following line near the top of ~/.bashrc
+[[ $- == *i* ]] && source ~/.local/share/blesh/ble.sh --attach=none
+# Add the following line at the end of ~/.bashrc
+[[ ${BLE_VERSION-} ]] && ble-attach
+```
+
+--------------------------------------------------------------------------------
+
 # ble-0.3.3
+
+## Usage
+
+**Prerequisites**
+
+Bash 3.0+ and basic POSIX utilities are required.
+
+**Download ble-0.3.3.tar.xz**
+
+https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
+
+```bash
+# DOWNLOAD with wget
+wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
+
+# DOWNLOAD with curl
+curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
+```
+
+**Trial & Install**
+
+```bash
+# TRIAL
+tar xJf ble-0.3.3.tar.xz
+source ble-0.3.3/ble.sh
+
+# INSTALL
+tar xJf ble-0.3.3.tar.xz -C ~/.local/share/blesh
+# Add the following line near the top of ~/.bashrc
+[[ $- == *i* ]] && source ~/.local/share/blesh/ble.sh --attach=none
+# Add the following line at the end of ~/.bashrc
+[[ ${BLE_VERSION-} ]] && ble-attach
+```
 
 ## New features
 

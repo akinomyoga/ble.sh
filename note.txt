@@ -4010,6 +4010,12 @@ bash_tips
 
 2021-03-09
 
+  * README: uninstall に .cache の事が書かれていない [#D1510]
+    書いた。
+
+  * README: 0.3 に関しては release note の側に書いておくべきなのでは [#D1509]
+    記入した。0.1..0.3 の情報を書いた。各 Release ページに使い方を記入した。
+
   * COMPAT complete vs fzf: システムによってロードされた fzf で固まる [#D1508]
 
     これは . /etc/bashrc を読み込むと強制的に読み込まれている設定である。ユーザー

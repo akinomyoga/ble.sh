@@ -113,6 +113,16 @@ Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` 
 
 `.bashrc` の設定に関しては[節1.3](#set-up-bashrc)を御覧ください。
 
+## 1.2 GitHub Releases から tar をダウンロードして使う<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+
+ダウンロード・試用・インストールの方法については各リリースページの説明を御覧ください。
+現在、安定版は開発版に比べてかなり古いので様々な機能が欠けている事にご注意下さい。
+
+- 開発版 [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
+- 安定版 [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork)
+- 安定版 [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork)
+- 安定版 [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork)
+
 ## 1.2 `ble.sh` をダウンロードして試す (旧バージョン ble-0.3 201902版)<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
 
 `wget` を使う場合:
@@ -190,9 +200,11 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 基本的に `ble.sh` ディレクトリとユーザの追加した設定を単に削除していただければ問題ありません。
 
+- 全ての `ble.sh` セッション (`ble.sh` をロードしている Bash 対話セッション) を終了します。
 - `.bashrc` に追加した行があれば削除します。
 - `blerc` 設定ファイル (`~/.blerc` または `~/.config/blesh/init.sh`) があれば削除します。
 - `ble.sh` をインストールしたディレクトリを削除します。
+- キャッシュディレクトリ `~/.cache/blesh` が生成されていればそれを削除します。
 - 一時ディレクトリ `/tmp/blesh` が生成されていればそれを削除します。これは `/tmp` の内容が自動的にクリアされないシステムで必要です。
 
 # 2 基本設定

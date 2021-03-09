@@ -113,25 +113,16 @@ If none of these variables are specified, the default install location is `~/.lo
 
 To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
 
-## 1.2 Or, try `ble.sh` downloaded from GitHub releases (version ble-0.3 201902)<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+## 1.2 Or, use a tar ball of `ble.sh` obtained from GitHub releases<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
 
-With `wget`:
-```bash
-wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
-tar xJf ble-0.3.3.tar.xz
-source ble-0.3.3/ble.sh
-```
-With `curl`:
-```bash
-curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
-tar xJf ble-0.3.3.tar.xz
-source ble-0.3.3/ble.sh
-```
+For download, trial and install, see the description at each release page.
+The stable versions are significantly old compared to the devel version, so many features are unavailable.
 
-If you want to place `ble.sh` in a specific directory, just copy the directory:
-```bash
-cp -r ble-0.3.3 /path/to/blesh
-```
+- Devel [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
+- Stable [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork)
+- Stable [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork)
+- Stable [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork)
+
 
 ## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
@@ -189,9 +180,11 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 Basically you can simply delete the installed directory and the settings that user added.
 
+- Close all the `ble.sh` sessions (the Bash interactive sessions with `ble.sh`)
 - Remove the added lines in `.bashrc`.
 - Remove `blerc` files (`~/.blerc` or `~/.config/blesh/init.sh`) if any.
 - Remove the installed directory.
+- Remove the cache directory `~/.cache/blesh` if any.
 - Remove the temporary directory `/tmp/blesh` if any [ Only needed when your system does not automatically clears `/tmp` ].
 
 # 2 Basic settings
