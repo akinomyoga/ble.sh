@@ -2562,6 +2562,8 @@ function ble/syntax:bash/ctx-param {
       ((ctx=CTX_PWORDE))
     else
       ((ctx=CTX_PWORD))
+      [[ $BASH_REMATCH == [':-+=?#%']* ]] &&
+        tail=${text:i} ble/syntax:bash/check-tilde-expansion pword
     fi
     return 0
   else
@@ -2967,20 +2969,33 @@ function ble/syntax:bash/ctx-brace-expansion.end {
 # ${_ble_syntax_bash_chars[CTX_ARGI]} により読み取りを行っている
 # ctx-command ctx-values ctx-conditions ctx-redirect から呼び出される事を想定している。
 
+## @fn ble/syntax:bash/check-tilde-expansion
+##   チルダ展開を検出して処理します。
+##   単語の始めの ~、または変数代入形式の単語の途中の :~ または
+##   パラメータ展開中の word の始めの ~ の処理を行います。
 function ble/syntax:bash/check-tilde-expansion {
   [[ $tail == ['~:']* ]] || return 1
 
-  local tilde_enabled=$((i==wbegin))
-  [[ $1 == rhs ]] && tilde_enabled=1
+  # @var rhs_enabled
+  #   変数代入形式の文脈の右辺でチルダ展開が有効かどうか。set -o posix では限ら
+  #   れた文脈のみで有効になる。
+  local rhs_enabled=
+  { ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR||ctx==CTX_ARGER)) ||
+      ! ble/base/is-POSIXLY_CORRECT; } && rhs_enabled=1
+
+  local tilde_enabled=$((i==wbegin||ctx==CTX_PWORD))
+  [[ $1 == rhs && $rhs_enabled ]] && tilde_enabled=1 # = の直後
 
   if [[ $tail == ':'* ]]; then
     _ble_syntax_attr[i++]=$ctx
 
     # 変数代入の右辺、または、その一つ下の角括弧式のときチルダ展開が有効。
-    if ! ((tilde_enabled=_ble_syntax_bash_command_IsAssign[ctx])); then
-      if ((ctx==CTX_BRAX)); then
-        local nctx; ble/syntax/parse/nest-ctx
-        ((tilde_enabled=_ble_syntax_bash_command_IsAssign[nctx]))
+    if [[ $rhs_enabled ]]; then
+      if ! ((tilde_enabled=_ble_syntax_bash_command_IsAssign[ctx])); then
+        if ((ctx==CTX_BRAX)); then
+          local nctx; ble/syntax/parse/nest-ctx
+          ((tilde_enabled=_ble_syntax_bash_command_IsAssign[nctx]))
+        fi
       fi
     fi
 
@@ -2990,6 +3005,11 @@ function ble/syntax:bash/check-tilde-expansion {
 
   if ((tilde_enabled)); then
     local chars="${_ble_syntax_bash_chars[CTX_ARGI]}/:"
+    # Note: pword の時は delimiters も除外したいので
+    #   _ble_syntax_bash_chars[CTX_PWORD] ではなく
+    #   _ble_syntax_bash_chars[CTX_ARGI] を修正して使う。
+    ((ctx==CTX_PWORD)) && chars=${chars/'{'/'{}'}
+
     ble/syntax:bash/cclass/update/reorder chars
     local delimiters="$_ble_syntax_bash_IFS;|&)<>"
     local rex='^(~\+|~[^'$chars']*)([^'$delimiters'/:]?)'; [[ $tail =~ $rex ]]

@@ -202,6 +202,14 @@ function ble/base/restore-POSIXLY_CORRECT {
 }
 ble/base/adjust-POSIXLY_CORRECT
 
+function ble/base/is-POSIXLY_CORRECT {
+  if [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then
+    [[ $_ble_edit_POSIXLY_CORRECT_set ]]
+  else
+    [[ ${POSIXLY_CORRECT+set} ]]
+  fi
+}
+
 builtin bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi && ! $_ble_init_test ]]; then
   builtin echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2

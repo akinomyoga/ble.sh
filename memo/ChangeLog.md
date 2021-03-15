@@ -24,6 +24,7 @@
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
 - keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
 - prompt: support multiline `prompt_rps1` `#D1502` 4fa139a
+- syntax: support tilde expansions in parameter expansions `#D1513` 0000000
 
 ## Changes
 
@@ -45,8 +46,8 @@
 - prompt: invalidate prompt and textarea on prompt setting changes `#D1492` 1f55913
 - README: update informations on stable versions `#D1509` c8e658e
 - README: update the description of how to uninstall `#D1510` c8e658e
-- util (`bleopt`): validate initial user settings `#D1511` 0000000
-- complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` 0000000
+- util (`bleopt`): validate initial user settings `#D1511` 82c5ece
+- complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` e5be0c1
 
 ## Fixes
 

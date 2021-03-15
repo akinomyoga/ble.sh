@@ -4021,6 +4021,30 @@ bash_tips
 
 2021-03-15
 
+  * 2021-03-03 syntax: 実は "${v#...}" の中身も tilde 展開の対象の様である [#D1513]
+    https://lists.gnu.org/archive/html/help-bash/2021-03/msg00003.html
+
+    bash-1.14 から bash-dev まで一貫して再現する。
+    bash -c 'v=/home/murase/test; echo "${v##~/}"'
+
+    : の後は特に展開対象という訳ではない様だ。変数代入形式の単語でも特に展開は
+    しない。つまり本当に先頭に ~ がある時にのみ展開が発生する。
+
+    $ bash -c 'v=x:/home/murase/test; echo "${v##x:~/}"'
+    $ bash -c 'v=a=/home/murase/test; echo "${v##a=~/}"'
+    $ bash -c 'v=a=x:/home/murase/test; echo "${v##x:a=~/}"'
+
+    序でに、この振る舞いについては実はマニュアルにちゃんと記載されている。
+
+    > In each of the cases below, word is subject to tilde expansion,
+    > parameter expansion, command substitution, and arithmetic
+    > expansion.
+
+    対象は ${v-w} ${v+w} ${v?w} ${v=w} ${v#w} ${v%w} である。他は関係ない。
+
+    * 他に posix モードに於いては変数代入形式の単語についてチルダ展開は起こさな
+      い→これの対策も実装した。OK
+
   * 巨大なディレクトリで TAB 補完が遅くなる (reported by timjrd) [#D1512]
     https://github.com/akinomyoga/ble.sh/pull/65#issuecomment-798551355
 
