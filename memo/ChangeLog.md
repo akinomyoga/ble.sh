@@ -46,6 +46,7 @@
 - README: update informations on stable versions `#D1509` c8e658e
 - README: update the description of how to uninstall `#D1510` c8e658e
 - util (`bleopt`): validate initial user settings `#D1511` 0000000
+- complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` 0000000
 
 ## Fixes
 
