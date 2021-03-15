@@ -16,17 +16,17 @@ _ble_color_gflags_BgMask=0x00FFFFFF00000000
 _ble_color_gflags_FgIndexed=0x0100000000000000
 _ble_color_gflags_BgIndexed=0x0200000000000000
 
-bleopt/declare -v term_true_colors semicolon
-
-if [[ ! ${bleopt_term_index_colors+set} ]]; then
+function ble/color/define-options {
+  local ncolor=0
   if [[ $TERM == xterm* || $TERM == *-256color || $TERM == kterm* ]]; then
-    bleopt_term_index_colors=256
+    ncolor=256
   elif [[ $TERM == *-88color ]]; then
-    bleopt_term_index_colors=88
-  else
-    bleopt_term_index_colors=0
+    ncolor=88
   fi
-fi
+  bleopt/declare -v term_true_colors semicolon
+  bleopt/declare -v term_index_colors "$bleopt_term_index_colors"
+}
+ble/color/define-options
 
 function bleopt/check:term_true_colors {
   ble/color/g2sgr/.clear-cache

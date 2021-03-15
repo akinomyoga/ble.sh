@@ -8,7 +8,6 @@
 ##   bleopt_tab_width=NUM
 ##     数字を指定したときはその値をタブの幅として用います。
 bleopt/declare -v tab_width ''
-
 function bleopt/check:tab_width {
   if [[ $value ]] && (((value=value)<=0)); then
     ble/util/print "bleopt: an empty string or a positive value is required for tab_width." >&2
@@ -44,7 +43,6 @@ function ble/arithmetic/sum {
 ##       emacs で用いられている既定の文字幅の設定です
 ##     定義 ble/util/c2w+$bleopt_char_width_mode
 bleopt/declare -n char_width_mode auto
-
 function bleopt/check:char_width_mode {
   if ! ble/is-function "ble/util/c2w+$value"; then
     ble/util/print "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2

@@ -137,30 +137,51 @@ function bleopt {
   [[ $flags != *E* ]]
 }
 
-function bleopt/declare/.handle-obsolete-option {
+function bleopt/declare/.check-renamed-option {
   var=bleopt_$2
   local locate=$'\e[32m'${BASH_SOURCE[3]}:${BASH_LINENO[2]}$'\e[m'
   ble/util/print "$locate (bleopt): The option '$1' has been renamed. Please use '$2' instead." >&2
+  if ble/is-function bleopt/check:"$2"; then
+    bleopt/check:"$2"
+    return "$?"
+  fi
   return 0
 }
 function bleopt/declare {
   local type=$1 name=bleopt_$2 default_value=$3
+  # local set=${!name+set} value=${!name-}
   case $type in
   (-o)
     builtin eval -- "$name='[obsolete: renamed to $3]'"
-    builtin eval -- "function bleopt/check:$2 { bleopt/declare/.handle-obsolete-option $2 $3; }"
+    builtin eval -- "function bleopt/check:$2 { bleopt/declare/.check-renamed-option $2 $3; }"
     builtin eval -- "function bleopt/obsolete:$2 { :; }" ;;
   (-n)
+    builtin eval -- "_ble_opt_def_$2=\$3"
     builtin eval -- ": \"\${$name:=\$default_value}\"" ;;
   (*)
+    builtin eval -- "_ble_opt_def_$2=\$3"
     builtin eval -- ": \"\${$name=\$default_value}\"" ;;
   esac
   return 0
 }
+function bleopt/check-all {
+  local name defname varname
+  for defname in "${!_ble_opt_def_@}"; do
+    name=${defname#_ble_opt_def_}
+    varname=bleopt_$name
+    [[ ${!varname} == "${!defname}" ]] && continue
+    ble/is-function bleopt/check:"$name" || continue
+
+    # 一旦値を既定値に戻して改めてチェックを行う。
+    local value=${!varname}
+    builtin eval -- "$varname=\$$defname"
+    bleopt/check:"$name" &&
+      builtin eval "$varname=\$$value"
+  done
+}
 
 ## @bleopt input_encoding
 bleopt/declare -n input_encoding UTF-8
-
 function bleopt/check:input_encoding {
   if ! ble/is-function "ble/encoding:$value/decode"; then
     ble/util/print "bleopt: Invalid value input_encoding='$value'." \
@@ -187,7 +208,7 @@ function bleopt/check:input_encoding {
   # Note: ble/encoding:$value/clear は optional な設定である。
 
   if [[ $bleopt_input_encoding != "$value" ]]; then
-    bleopt_input_encoding=$value
+    local bleopt_input_encoding=$value
     ble/decode/rebind
   fi
   return 0
@@ -3749,13 +3770,12 @@ if ((_ble_bash>=40000)); then
     fi
   }
 
-  if [[ ! $bleopt_idle_interval ]]; then
-    if ((_ble_bash>50000)) && [[ $_ble_util_msleep_builtin_available ]]; then
-      bleopt_idle_interval=20
-    else
-      bleopt_idle_interval='ble_util_idle_elapsed>600000?500:(ble_util_idle_elapsed>60000?200:(ble_util_idle_elapsed>5000?100:20))'
-    fi
-  fi
+  function ble/util/idle/.initialize-options {
+    local interval='ble_util_idle_elapsed>600000?500:(ble_util_idle_elapsed>60000?200:(ble_util_idle_elapsed>5000?100:20))'
+    ((_ble_bash>50000)) && [[ $_ble_util_msleep_builtin_available ]] && interval=20
+    bleopt/declare -v idle_interval "$interval"
+  }
+  ble/util/idle/.initialize-options
 
   ## @arr _ble_util_idle_task
   ##   タスク一覧を保持します。各要素は一つのタスクを表し、

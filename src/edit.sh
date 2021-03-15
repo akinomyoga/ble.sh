@@ -129,12 +129,12 @@ function bleopt/check:info_display {
   (top)
     [[ $_ble_canvas_panel_vfill == 3 ]] && return 0
     _ble_canvas_panel_vfill=3
-    ble/canvas/panel/clear
+    [[ $_ble_attached ]] && ble/canvas/panel/clear
     return 0 ;;
   (bottom)
     [[ $_ble_canvas_panel_vfill == 2 ]] && return 0
     _ble_canvas_panel_vfill=2
-    ble/canvas/panel/clear
+    [[ $_ble_attached ]] && ble/canvas/panel/clear
     return 0 ;;
   (*)
     ble/util/print "bleopt: Invalid value for 'info_display': $value"
@@ -155,10 +155,10 @@ bleopt/declare -v prompt_term_status  ''
 bleopt/declare -o rps1 prompt_rps1
 bleopt/declare -o rps1_transient prompt_rps1_transient
 
-function bleopt/check:prompt_rps1 { ble/prompt/clear; return 0; }
-function bleopt/check:prompt_xterm_title { ble/prompt/clear; return 0; }
-function bleopt/check:prompt_screen_title { ble/prompt/clear; return 0; }
-function bleopt/check:prompt_term_status { ble/prompt/clear; return 0; }
+function bleopt/check:prompt_rps1 { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
+function bleopt/check:prompt_xterm_title { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
+function bleopt/check:prompt_screen_title { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
+function bleopt/check:prompt_term_status { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
 
 ## @bleopt prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
@@ -167,11 +167,11 @@ bleopt/declare -v prompt_status_line  ''
 bleopt/declare -n prompt_status_align $'justify=\r'
 ble/color/defface prompt_status_line fg=231,bg=240
 
-function bleopt/check:prompt_status_line { ble/prompt/clear; return 0; }
+function bleopt/check:prompt_status_line { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
 function bleopt/check:prompt_status_align {
   case $value in
   (left|right|center|justify|justify=?*)
-    [[ $bleopt_prompt_status_line ]] &&
+    [[ $bleopt_prompt_status_line && $_ble_attached ]] &&
       ble/prompt/clear
     return 0 ;;
   (*)
@@ -190,7 +190,6 @@ function bleopt/check:prompt_status_align {
 ##
 ## 要件: 関数 ble-edit/exec:$bleopt_internal_exec_type/process が定義されていること。
 bleopt/declare -n internal_exec_type gexec
-
 function bleopt/check:internal_exec_type {
   if ! ble/is-function "ble-edit/exec:$value/process"; then
     ble/util/print "bleopt: Invalid value internal_exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2

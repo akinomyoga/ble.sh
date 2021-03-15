@@ -335,6 +335,13 @@ bleopt/declare -v keymap_vi_smap_cursor ''
 bleopt/declare -v keymap_vi_cmap_cursor ''
 
 bleopt/declare -v keymap_vi_mode_show 1
+function bleopt/check:keymap_vi_mode_show {
+  local bleopt_keymap_vi_mode_show=$value
+  [[ $_ble_attached ]] &&
+    ble/keymap:vi/update-mode-name
+  return 0
+}
+
 bleopt/declare -v keymap_vi_mode_update_prompt ''
 bleopt/declare -v keymap_vi_mode_name_insert    'INSERT'
 bleopt/declare -v keymap_vi_mode_name_replace   'REPLACE'

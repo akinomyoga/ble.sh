@@ -24,7 +24,7 @@ function bleopt/check:default_keymap {
   case $value in
   (auto|emacs|vi|safe)
     if [[ $_ble_decode_bind_state != none ]]; then
-      bleopt_default_keymap=$value
+      local bleopt_default_keymap=$value
       ble/decode/reset-default-keymap
     fi
     return 0 ;;

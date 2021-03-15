@@ -43,8 +43,9 @@
 - syntax: change syntax context after `time ;` and `! ;` for Bash 4.4 `#D1477` 4628370
 - decode (rlfunc): update mapping `vi-replace` in `imap` and `vi-editing-mode` in `nmap` (reported by onelittlehope) `#D1484` f2ca811
 - prompt: invalidate prompt and textarea on prompt setting changes `#D1492` 1f55913
-- README: update informations on stable versions `#D1509` 0000000
-- README: update the description of how to uninstall `#D1510` 0000000
+- README: update informations on stable versions `#D1509` c8e658e
+- README: update the description of how to uninstall `#D1510` c8e658e
+- util (`bleopt`): validate initial user settings `#D1511` 0000000
 
 ## Fixes
 

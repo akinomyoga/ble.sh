@@ -717,6 +717,9 @@ function ble-update {
 # Solaris: src/util の中でちゃんとした awk が必要
 ble/bin/awk.use-solaris-xpg4
 
+#------------------------------------------------------------------------------
+_ble_attached=
+
 #%x inc.r|@|src/def|
 #%x inc.r|@|src/util|
 
@@ -739,6 +742,8 @@ blehook ERR+='ble/function#try TRAPERR'
 #%x inc.r|@|src/edit|
 #%x inc.r|@|lib/core-complete-def|
 #%x inc.r|@|lib/core-syntax-def|
+
+bleopt/check-all
 #------------------------------------------------------------------------------
 
 # blerc
