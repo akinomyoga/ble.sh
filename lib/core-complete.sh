@@ -891,18 +891,10 @@ function ble/complete/source:file/.impl {
   ble/complete/util/eval-pathname-expansion "$ret"
 
   local -a candidates=()
-  local cand
   if [[ :$opts: == *:directory:* ]]; then
-    for cand in "${ret[@]}"; do
-      [[ -d $cand ]] || continue
-      [[ $cand == / ]] || cand=${cand%/}
-      ble/array#push candidates "$cand"
-    done
+    candidates=("${ret[@]%/}")
   else
-    for cand in "${ret[@]}"; do
-      [[ -e $cand || -h $cand ]] || continue
-      ble/array#push candidates "$cand"
-    done
+    candidates=("${ret[@]}")
   fi
 
   local rex_hidden=
