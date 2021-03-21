@@ -805,6 +805,43 @@ bash_tips
     Memo
 -------------------------------------------------------------------------------
 
+2021-05-01
+
+  * ble.sh 初期化時の Bash 設定に対する対策 [#M0018]
+
+    ble.sh が set -euxv -o posix や FUNCNEST=0 等特殊な状況で呼び出される事がある。
+    この様な環境ではまともに動作する事ができないので設定を適切な順序で解除してい
+    く必要がある。
+
+    set -eu に関しては適切な記述方法を取れば回避する事ができるので後回しにする。
+    set -xv に関しても標準エラー出力を適当な物に繋いで置けば回避できる。set -o
+    posix が設定されていると関数を定義できない。その他の振る舞いにも注意が必要だ
+    ろう。alias も何が定義されているか分からないので出来るだけ expand_aliases を
+    off にする方向で考えたい。
+
+    現在の実装では以下の順にチェック・対策を行っている。
+
+    1 最初の引数解析 (POSIX shell 準拠): この部分は別のシェルで起動した場合などで
+      も引数解析の結果などを表示する為に対策よりも前に処理する。alias で { や if
+      が書き換えられている事によって失敗しても、シェルが全く操作できなくなるとい
+      う事はないだろうし、ユーザー側の責任とする。
+
+    2 Bash のバージョンチェック。これをしないとそもそも対策コード自体動くか怪しく
+      なってくるので先にチェックする必要がある。これもシェルが全く操作できなくな
+      るという事はないだろうという事で、ユーザー側の責任とする。
+
+    3 expand_aliases
+    4 FUNCNEST
+    5 set +o posix
+
+      この三つを設定すれば取り敢えず安全に関数を定義して実行できる。
+
+    6 reset-builtins
+
+      builtin が上書きされてしまうのを防ぐ為。
+
+    7 adjust-options (set +euxv; shopt -u nocaseglob; shopt -u expand_aliases)
+
 2020-05-11
 
   * Bash の HISTTIMEFORMAT 振る舞いのまとめ [#M0017]
@@ -1208,6 +1245,99 @@ bash_tips
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
 
+2021-04-30
+
+  * syntax: eval() { echo yes; } が構文エラーになっている。
+    local, declare も同じ。
+
+2021-04-29
+
+  * robustness: main/init: readonly POSIXLY_CORRECT されていたらどうするのか。
+
+    少なくともどちらの側の設定であっても ble.sh 的には困る。
+
+    然し、readonly まで気にし始めるとあらゆる変数名で問題が起こるので気にしても仕
+    方がないのかも知れない。せめて全て大文字の変数だけが readonly になっていると
+    いう事を要請するのが妥当だろうか。ローカル変数で大文字を使っているというと
+    KEYS WIDGET ARG FLAG REG 辺りは危ないかもしれない。
+
+    然し、ここまで行くと「ユーザーが自分で変な事をしたのだから責任は持てない」と
+    いうレベルの事の様な気がする。
+
+  * robustness: main/init: 最初の bash version 判定も alias 対策可能かもしれない?
+    然し、return/exit が上書きされる場合等も考えると難しいかも知れない?
+
+  * robustness: "builtin read -e" 対策?
+
+    これは今迄考えて来なかったが関連する考察 #D1520 があったので記録として残し
+    ておく。但し、纏めた物を眺めるに総じて困難である様に思われる。
+
+    a set -o emacs / set -o vi の切り替えを利用して read が使える様にする。つま
+      り、ble.sh は裏側の keymap に bind して、ユーザーコマンドを実行する時に反
+      転させるという方法。この方法には問題が多い。
+
+      x 全てのユーザー関数 (補完関数、プロンプト、trap、blehook 等) で keymap
+        を反転する必要があるのではないか。
+
+      x ユーザーが emacs/vi keymap を切り替える rl bindable function を実行する
+        と結局 ble.sh の bind している keymap が表に出てきてその時点で制御不能
+        になってしまう。勝手にそういった binding を削除するのも非現実的な気がす
+        る。
+
+      x bash の version によっては keymap を切り替えると bind -x が中断した様な
+        気もする。
+
+    b trap DEBUG 等を使って builtin read -e が呼び出されるのを検出して、ble.sh
+      で wrap した処理を行ってからそのコマンドの実行をスキップする。この方法に
+      も色々の問題がつきまとう。ちゃんと透過的に対応できるかというと困難の気が
+      する。
+
+      x DEBUG のコストがある。
+
+      x ユーザの設定した DEBUG の管理が面倒。結局 trap DEBUG を透過的に利用でき
+        る様にする枠組みは完成していない。(これはその枠組さえ完成すれば余り気に
+        しなくても良いのかもしれない)
+
+      x 本当に実行するコマンドを入れ替える事が可能なのだろうか。例えば builtin
+        read -e の呼び出し元から見て、本当に関数実行が入れ替わった様に見えるの
+        か。exit status はどうなるのか。これは実際に実験してみないと分からない。
+
+      x DEBUG の BASH_COMMAND を用いて元のコマンドを本当に再現できるのか。例え
+        ば $1 等が使われていた時にその内容を取得する事は可能なのか (BASH_ARGV
+        を有効にしておかなければならないのか? ユーザーが設定を変更してしまった
+        らどうなるのか)。また、引数の境界等もちゃんと BASH_COMMAND を見ただけで
+        分かる様になっているのか。これも色々実験しないと分からない。
+
+    c builtin read -e に入った後で ble.sh の widget が呼び出されたら良い様に
+      状態を adjust して widget の振る舞いを変更できないだろうか。
+
+      x C-c に明示的に対応して、C-c が呼び出された時には設定を restore して抜け
+        る様にする。これは面倒なだけで処理としては十分可能である様な気がする。
+        但し、外側に SIGINT を伝播する必要はあるのかもしれない。
+
+    d ユーザーがコマンドを実行する度に realine 設定を完全 unbind して、終わったら
+      再度 bind し直す。でも、これは文法エラー等によってコマンド実行が中断された
+      時に、ble.sh session に復帰せずに通常の readline の状態に落ちてしまう。
+
+2021-04-06
+
+  * main (--rcfile): 通常ファイルしか許可していないが、<() や
+    /dev/null を食わせたい事もあるだろう。後、ファイルが見つからなかっ
+    た時に結局 ~/.blerc を読み取ってしまうのは不便。ファイルが見つから
+    なかった場合には何も読み込むべきではない。
+
+  * localvar_inherit で動かなくなっている。或いは元から動いた事はなかった可能性も?
+
+    * localvar_inherit をしていると local -r a した変数に対して、
+      内側の関数で同名の変数を定義できなくなってしまう。
+
+    うーん。それでも未だ色々動かない。というか、バグというかちゃんと書
+    かれていないコードを洗い出すのに使えるかもしれないとは思う。
+
+  * logout も exit と同様に置き換えるべきなのではないか。
+
+  * prompt を評価する時に $var が local 変数に被覆されている。
+
 2021-04-28
 
   * keymap 初期化に失敗した時にそれを検出しているのにも拘らず操作不能になる
@@ -1258,8 +1388,8 @@ bash_tips
 
 2021-03-07
 
-  * システムによってロードされた fzf が悪さをして固まってしまう。
-    これは . /etc/bashrc を読み込むと強制的に実行される。
+  * edit: キーボードマクロで "M-d" が "M-d d" と記録されてしまっている
+    vi でも emacs でも同様に記録されてしまう。
 
 2021-02-28
 
@@ -1293,6 +1423,13 @@ bash_tips
     \q{hfill w=2 fill=...}... という具合に。その場合には \1\2 と同様に特別なシー
     ケンスで fill を表現する必要はある。OSC か其処らを使えば良い気がする。或い
     は ANSI seq に何かあった気がしないでもない。
+
+2021-02-27
+
+  * /dev/tcp/... についても特別に着色を行いたい。
+
+    例えば < /dev/tcp/.../.. において正しいパスであるのにも拘らず、存在しないファ
+    イルとしてエラーが検出される。
 
 2021-02-24
 
@@ -4072,6 +4209,330 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+  * 2021-03-21 gitstatus.plugin.sh の alias builtin で builtin eval 他が破壊されている
+    https://github.com/akinomyoga/ble.sh/issues/93
+
+    * 取り敢えず暫定的な対策として source ble.sh の時に unalias builtin 等を実
+      行する事にした。
+
+    * 他に source ble.sh した後に gitstatus.plugin.sh が実行されて、更にその後
+      になって ble-attach した時の事も考える必要がある。
+
+    gitstatus.plugin.sh の側で対策できないのか。
+    34e21707
+
+    https://github.com/romkatv/gitstatus/issues/154
+    ここで本人が builtin を置き換えるのは良くない事だという事を述べている。
+
+    > It's generally not a good idea to redefine builtins. If you also redefine
+    > things like true, local, unset, etc., gitstatus won't work. Please don't
+    > file a bug in this case but rather fix your config.
+
+    eval ... pos parameters
+    source ... pos parameters
+    source ... function scope or not (declare var の振る舞い)
+    unset ... previous-scope dynamic-unset or value-unset
+    exec ... persistent redirections
+      これは実際に問題になるという事を確認した。
+
+2021-05-04
+
+  * set -o posix の時、ユーザーが read -e を呼び出すと [#D1520]
+    何にも動かなくなるのではないか。
+
+    a 然し、read -e 自体が posix の範囲外なので仕方がないという見方もできる。
+
+    b 或いは、set -o posix の時には set -o emacs / set -o vi の切り替えを利用して
+      read が使える様に調整するという事も原理的には可能である。その場合には実際に
+      bind する対象の keymap が反転するので大幅な改修が必要かもしれない。
+
+      x 然し、vi mode 及び emacs mode に切り替える機能も存在した筈である。これを
+        呼び出されると結局 ble.sh の管理下の keymap が前に出てきて問題になる。
+        read の中から呼び出された事を検出してどうにかその場で取り繕う事は可能だろ
+        うか。
+
+    c 別の方法で read が呼び出される瞬間を検出できないだろうか。或いは read -e に
+      よって最初に widget が呼び出された瞬間に POSIX を始めとする様々の設定を回復
+      する? その場合には C-c で read をキャンセルした場合にまた元に戻す事を忘れて
+      はならない。
+
+    d ユーザーがコマンドを実行する度に realine 設定を完全 unbind して、終わったら
+      再度 bind し直す。でも、これは文法エラー等によってコマンド実行が中断された
+      時に、ble.sh session に復帰せずに通常の readline の状態に落ちてしまう。
+
+    →どうやら set -o posix でも本来の意味を取り戻す builtin とそうでない
+    builtin が存在する様で、read の場合には set -o poix であっても関数が定義さ
+    れていればそちらが呼び出される様である。なので気にしなくて良い。本当に問題
+    が起こるのは builtin read -e が実行された時になるが、これは元から動いていな
+    かった。
+
+    実の所、builtin read -e に対しても制御を全く失う様な事態にならない様にした
+    いが、それはまた別に考えた方が良いのでは? と思ったが、此処での考察はその場
+    合にも同様に適用できる→別項目に残す事にした。
+
+2021-04-30
+
+  * 2021-03-21 set -o posix してから source ble.sh すると失敗する [#D1519]
+
+    先に source ble.sh してから set -o posix する分には即座に問題は起こらない。
+    然し ble-attach に失敗するという可能性は存在する。うーん。
+    関数を新しく定義するという事をしなければ特に問題は発生しない?
+
+    POSIX モードに対する処理は関数の外で実行する事にした。同時に順序を変えて一
+    番最初に POSIX モードを ble.sh 内部状態として調整する事にする。
+
+    ? done: 実のところ、enter/leave でユーザーの設定した同名の alias/function
+      を保存し、それからまた後で復元するという事も原理的には可能なのではないか
+
+      …と思ったが、果たして其処までの事をする必要はあるだろうか。保存の為にま
+      た色々コマンドを走らせなければならなくなるが重くはならないだろうか。と思っ
+      たが、alias ... declare -pf ... を呼び出すだけなので実はそんなに処理とし
+      て重い訳ではない。問題は alias や declare が勝手に置き換えられていた時に
+      ちゃんと動作するのかという話である。
+
+      結局実装する事にした。
+
+    ? done: 現在二段階に分けて unset -f しているが POSIXLY_CORRECT しているのだ
+      から、builtin も unset も本来の意味を取り戻している筈で、それならば一回の
+      unset -f で十分なのではないか。
+
+    x fixed: 現在 set -o posix, +o posix を使ってモードを切り替えているが、これ
+      は setを上書きされていた場合に使えない。直接変数に代入するべきである。更
+      に言うと、local ... も使えるとは限らない。local が上書きされているかもし
+      れないから。という事を考えると、これも直接グローバル変数の値を変数代入で
+      変更するべきである。
+
+      →これは確認した所、元から殆どその様になっていた。新しく追加したコードだ
+      けで set を使っていたので、これを全て POSIXLY_CORRECT=y 及び \builtin
+      unset -v POSIXLY_CORRECT に書き換えた。また、unset は -o posix の時にだけ
+      実行する様に変更した。-o posix の時には \builtin unset は本来の意味で解釈
+      される事が保証されているからである。
+
+      ? と思ったが、unset を使って解除する場合には見えている一番上の
+        POSIXLY_CORRECT が解除されるだけで、更に呼び出し元のスコープで定義され
+        ている POSIXLY_CORRECT が存在した場合には依然として set -o posix のまま
+        になるのではないか。
+
+        $ f1() { local POSIXLY_CORRECT=y; f2; echo f1:$SHELLOPTS; }
+        $ f2() { local POSIXLY_CORRECT=y; f3; echo f2:$SHELLOPTS; }
+        $ f3() { set +o posix; }
+        $ f1
+        $ f2
+
+        試して見た所、unset POSIXLY_CORRECT だとやはり、更にその上の階層の状態
+        が見える様になるだけである。そして、set +o posix も全く同じに作用すると
+        いう事が分かった。
+
+        但し考えて見るに ble.sh はトップレベルで動いていてその途中で
+        POSIXLY_CORRECT を設定して動作するという事もないので、unset が途中の関
+        数スコープの POSIXLY_CORRECT に当たるという事もない。従って、普通に
+        unset -v POSIXLY_CORRECT を一回実行するだけで問題ない。
+
+        何か問題が起こるとすれば、ble-attach もしくは source ble.sh を実行した
+        時に複数の local POSIXLY_CORRECT=y の中で実行された時である。然し、この
+        場合にはどうにも対策の仕様がない。unset -v を繰り返し呼び出す事によって
+        POSIXLY_CORRECT を解除する事はできるが、然しこれを実行すると呼び出し元
+        で実行した local POSIXLY_CORRECT の意図を壊してしまい呼び出し元で問題が
+        生じる可能性がある。
+
+        実はこの事まで考えると set +o posix や set -o posix で POSIX 状態を操作
+        するのは不味いのではないかという気がする。呼び出し元で設定した
+        POSIXLY_CORRECT の動作を破壊してしまう。
+
+    x posix にしていても eval の中の alias 置換を防ぐ事はできないのでは。
+      alias 展開をオプションで無効にする必要があるのではないか。
+      そして alias は割とあらゆる箇所で影響が出る。
+      これは大丈夫だろうと思っている if や [[ 等も対象である。
+
+      | a builtin に関しては危ない所を全て \builtin 等に書き換えてしまえば問題ない。
+      |
+      |   grc '(^|[[:space:];|&('\''"])builtin\b' --exclude={wiki,ext,memo}
+      |
+      | b 或いは shopt expand_aliases を off にして処理を行う? うーん。ble.sh の内
+      |   部では expand_aliases を off にするのが良い気がしてきた。
+      |
+      | c と思ったが ble.sh に影響を与える様な alias だけを off にすれば良いので
+      |   あって全ての alias を off にする必要性もない。そして ble.sh に影響を与
+      |   える様な物に関しては、ble.sh の処理中には unalias してしまっている筈な
+      |   ので殆どの場合は大丈夫な筈なのである。
+      |
+      |   ユーザー実行環境で ble.sh 関数が呼び出されて、その ble.sh の中で eval
+      |   をした時に alias 置換が発生するという状況は考えられるが、まあ、その様な
+      |   場合にまで気を配る必要は今の所ないと考えている。
+      |
+      |   取り敢えず、adjust-builtin-wrappers が呼び出される所までは \builtin の
+      |   様にして escape する必要がある。後、adjust-builtin-wrappers 自体の処理
+      |   でも対策が必要になる。
+      |
+      |   * 特に、adjust-builtin-wrappers の中で eval を実行しているが、其処で
+      |     alias 展開が起こると問題である。特に ble/util/assign によって実行され
+      |     る eval が問題になるのではないか。
+      |
+      |   後、ble/util/assign の中でも
+
+      結局 expand_aliases を off にする事にした。ble.sh を読み込んで
+      expand_aliases を無効にする迄の部分を \builtin の様に quote すれば良い。
+      一旦関数を定義してしまえば実行時に書き換わる事はないので、気にしなくて良
+      い。気にするべきは eval で実行される文字列 (新しく解析される文字列) であ
+      る。
+
+    * resolved: 保存・復元の時に sed を使っているがこれを置き換えられないか。
+
+      | これは ble.sh 読み込み時の最初の最初の部分なので sed が PATH に含まれてい
+      | ない可能性も考える必要がある。sed の代わりに使える物はないだろうか。
+      |
+      | a 例えば extglob を有効にしてパラメータ展開で置換を実行するというのは一つ
+      |   の手である。
+      |
+      |   この方法だと一回 type の出力を変数に格納する必要がある。従って、余分に
+      |   $(subshell) を実行する事になってしまって非効率的である。と思ったが、パ
+      |   イプにする事によっても subshell が 2 つ余分に生成されるのだから、$() に
+      |   しても特に overhead にはならない気がする。
+      |
+      |   然し extglob を on/off するのはそれはそれでまた面倒である。
+      |
+      | b どうにかして sed の binary を見つけてそれを先に ble/bin/sed に登録して
+      |   しまう? 然し、その為に色々の処理が必要で、その処理を不明な環境で安全に
+      |   実行するのもまた面倒である。
+      |
+      | 後、最初の実行時には注意深い実装が必要かもしれないが、一旦初期化が終わっ
+      | てしまえば、ble/bin/sed を使っても良いし、ble/util/assign も軽い実装を利
+      | 用する事ができる。いっその事、初めから初期化前用の実装と、初期化後用の実
+      | 装に分けても良い気がする。
+
+      汚いが extglob で処理する事にした。
+
+      実際に動かしてみると bash-3.0 で滅茶苦茶遅い。何故だろうか。bash-3.1 では
+      特に問題は起きていない。調べてみた所、+([[:lower:]]) とすると遅い。
+      +([a-z]) は遅くない。直接書く様に修正した。
+
+    * 現在の待避コードの順序について考える。
+
+      posix だとそもそも ble/* という関数自体定義する事ができない。一旦関数さえ
+      定義できてしまえば関数呼び出し自体はできる。
+
+      FUNCNEST の設定。関数定義はできるが関数呼び出しができないという状態だと駄
+      目なので。
+
+    * 一応各 builtin について動作確認をしておく。
+
+      builtin, unset, eval はOK
+      return, break, continue, local もOK
+
+      % declare は駄目だった。というのも関数定義を抽出するのに使っているから。set
+      % -o posix していても declare は回復できないのだという事。うーん。つまり
+      % builtin か declare のどちらかは必ず先に unset しないと動かないという事。
+      %
+      % local の方を諦める事にした。local を上書きしてもローカルに変数が作られる
+      % 事になる為、期待した効果を再現する事は不可能になる。なので敢えて上書きし
+      % ようという人はいないだろう。declare だと機能を勘違いしている人が上書きし
+      % ている可能性がある。また最初の local POSIXLY_CORRECT が効果を失うのも避け
+      % たい。
+
+      やはり他にも色々動かない物があるので local を諦めるだけでは済まない。やは
+      り builtin の復元を諦める事にする。そもそも builtin を置き換えようとする
+      事自体が異常である。何か一つ置き換えを禁止するのだとしたら builtin にする
+      のが自然ではある。
+
+      x fixed: : は保存できていない。もしかすると set -o posix の時には declare
+        -pf で定義を出力できないという事? 確かめてみたが別にそういう事はない様
+        である。という事は逆に定義する時に失敗しているという可能性?
+
+    x fixed: ble-reload 後に ble-detach を実行すると以下のメッセージが出る。
+
+      | bash: builtin: is: シェルのビルトイン関数ではありません
+      | bash: enable: is: シェルのビルトイン関数ではありません
+      | bash: enable: a: シェルのビルトイン関数ではありません
+      | bash: enable: shell: シェルのビルトイン関数ではありません
+      | bash: unalias: is: 見つかりません
+      | bash: unalias: a: 見つかりません
+      | bash: unalias: shell: 見つかりません
+      | bash: unalias: builtin: 見つかりません
+      | bash: return: is: 数字の引数が必要です
+
+      これを見るに何らかのエラーメッセージがコマンドとして実行されている?
+
+      然し、ble-reload の後に履歴が可笑しくなっているのも、ble-detach の後に変
+      な状態になっているのも治っていない。これらはまた別の問題という事か。
+
+      どうも _ble_bash が変な値になっていて、それによって別のコードが呼び出され
+      ていたという事。そしてそのコードはちゃんとテストされていなかったので元々
+      バグを持っていて、それが発現していたという事の様である。そもそもそのコー
+      ドは set -o posix でも動く関数定義取得の為に declare -pf と type を切り替
+      えて使っていた物だったが、そもそも関数名が通常の識別子である限りは
+      declare -f を常に使っていれば特に問題はない。基本的には declare -f を使っ
+      て、: だけは bash の version で切り替える事にした。
+
+      以前使っていた declare -pf / type の切り替えによるコードは以下に残して置
+      く。
+
+      | if ((_ble_bash>=40300)); then
+      |   builtin local defs
+      |   ble/base/adjust-builtin-wrappers/.assign '
+      |     \builtin declare -pf "${builtins1[@]}" :
+      |     \builtin alias "${builtins1[@]}" "${keywords1[@]}" :'
+      | else
+      |   builtin local fname
+      |   ble/base/adjust-builtin-wrappers/.assign '
+      |     \builtin declare -pf "${builtins1[@]}"
+      |     \builtin alias "${builtins1[@]}" "${keywords1[@]}" :'
+      |   defs=$'\n'$defs
+      |
+      |   # Note: bash-3.0 だと何故か extglob +([]) の中で [:alnum:] や [:lower:]
+      |   #   を使うと滅茶苦茶遅い。何れにしても locale 依存になるのは避けたいので、
+      |   #   直接 a-z と書くのが良い。
+      |   builtin local pattern=$'\n+([][{}:a-z]) is a function\n'
+      |   if builtin shopt -q extglob; then
+      |     defs=${defs//$pattern/$'\n'}
+      |   else
+      |     builtin shopt -s extglob
+      |     defs=${defs//$pattern/$'\n'}
+      |     builtin shopt -u extglob
+      |   fi
+      | fi
+
+      さて、これで問題は "何故 _ble_bash が消えて無くなるのか" という事に集約さ
+      れる。(履歴の振る舞いが変になるのも古い bash の history -s の振る舞いが変
+      だという事と関係しているのだろう。また、C-d の反応が悪いのも関係している
+      だろう。)
+
+      実際に _ble_bash が空になっているという事が確認できた。
+
+      そしてそれは何故かというと ble/base/unload-for-reload で _ble_bash を
+      unset しているのが原因だった。つまり、unload-for-reload を呼び出す迄は
+      _ble_bash 等の初期化は遅延した方が良いという事なのだろう。builtin に対す
+      る対策は _ble_bash には頼らずに version 判定するべきなのである。→結局ど
+      の bash version でも動作する様に常に type を使って関数定義を得る事にした。
+
+    x fixed: ble-reload すると何故か履歴項目が最後の項目に対する追記の様になっ
+      てしまっている。ble-reload ではなくて source ble.sh しても同様の問題が発
+      生する。bash --rcfile out/ble.sh としても発生している事を考えると mshex
+      等の他の設定との組み合わせで起こっている問題ではなくてそれ自体として発生
+      している問題である。
+
+      遡って見ると #D1519 の問題であるという事が判明した。これは #D1519 の下で
+      議論するべきであろう。然し、そうだとしても何が原因になっているのかは謎で
+      ある。構文着色も動いている様に見えて何だか不思議な動作をしている。原因を
+      特定する為に幾つか振る舞いを変えて試してみる必要がある。
+
+      * 保存していた builtins を復元しない様に変更したが特に変化はない。依然と
+        して変な振る舞いを続けている。
+
+      * adjust/restore-builtin-wrappers を使わない様にしても変な振る舞いを続け
+        ている。
+
+      うーん。コードを見ても怪しい所は見つからない。明らかに機能不全を起こして
+      いる箇所があるのだから其処を手掛かりに原因を探る方が懸命である様に思われ
+      る。
+
+      ble-detach で発生するエラーについて調べようとしたが原因の設定では再現しな
+      い様である。再現する為の条件があるという事か? 或いは ble-detach で発生す
+      るエラーに関しては実は adjust/restore-builtin-wrappers が関係しているとい
+      う事だろうか。
+
+      これの原因は前の項目で判明した _ble_bash の消滅だという事が分かった。一緒
+      に治った。
 
 2021-04-28
 

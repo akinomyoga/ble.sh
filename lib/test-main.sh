@@ -52,6 +52,15 @@ ble/test/start-section 'main' 14
   ble/test '[[ -d $_ble_base_cache ]]'
 )
 
+(
+  qnl="\$'\n'"
+  value=$'\nxxx is a function\nhello\nyyy is a function\n'
+  pattern=$'\n+([][{}:[:alnum:]]) is a function\n'
+  shopt -s extglob
+  ble/test '[[ ${value//$pattern/'"$qnl"'} == '"$qnl"'hello'"$qnl"' ]]'
+  shopt -u extglob
+  ble/test '[[ ${value//$pattern/'"$qnl"'} != '"$qnl"'hello'"$qnl"' ]]'
+)
 
 # ble-reload
 # ble-update

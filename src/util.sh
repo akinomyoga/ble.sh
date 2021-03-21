@@ -1924,14 +1924,28 @@ fi
 
 ## @fn ble/function#getdef function
 ##   @var[out] def
+##
+## Note: declare -pf "$name" が -o posix に依存しない関数定義の取得方
+##   法であるかに思えたが、declare -pf "$name" を使うと -t 属性が付い
+##   ていた時に末尾に declare -ft name という余分な属性付加のコマンド
+##   が入ってしまう。或いはこの属性も一緒に保存できた方が良いのかもし
+##   れないが、取り敢えず今は属性が入らない様に declare -pf name は使
+##   わない。
 if ((_ble_bash>=30200)); then
   function ble/function#getdef {
     local name=$1
-    ble/util/assign def 'declare -f "$name"'
+    ble/is-function "$name" || return 1
+    if [[ -o posix ]]; then
+      ble/util/assign def 'type "$name"'
+      def=${def#*$'\n'}
+    else
+      ble/util/assign def 'declare -f "$name"'
+    fi
   }
 else
   function ble/function#getdef {
     local name=$1
+    ble/is-function "$name" || return 1
     ble/util/assign def 'type "$name"'
     def=${def#*$'\n'}
   }

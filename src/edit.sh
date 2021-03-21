@@ -4647,30 +4647,6 @@ function ble-edit/exec/.adjust-eol {
   ble/canvas/bflush.draw
 }
 
-function ble-edit/exec/.reset-builtins-1 {
-  # Note: 何故か local POSIXLY_CORRECT の効果が
-  #   builtin unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
-  local POSIXLY_CORRECT=y
-  local -a builtins1; builtins1=(builtin unset enable unalias)
-  local -a builtins2; builtins2=(return break continue declare local typeset readonly eval)
-  local -a keywords1; keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
-  builtin unset -f "${builtins1[@]}"
-  builtin unset -f "${builtins2[@]}"
-  builtin unalias "${builtins1[@]}" "${builtins2[@]}" "${keywords1[@]}"
-  ble/base/unset-POSIXLY_CORRECT
-}
-function ble-edit/exec/.reset-builtins-2 {
-  # Workaround (bash-3.0 - 4.3) #D0722
-  #
-  #   builtin unset -v POSIXLY_CORRECT でないと unset -f : できないが、
-  #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
-  #   builtin unset -v POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
-  #   "unset -f :" (非POSIX関数名) は別関数で adjust-POSIXLY_CORRECT の後で実行することにする。
-  #
-  builtin unset -f :
-  builtin unalias :
-}
-
 if ((_ble_bash>=50100)); then
   _ble_edit_exec_BASH_REMATCH=()
   function ble-edit/exec/save-BASH_REMATCH {
@@ -5024,14 +5000,15 @@ function ble-edit/exec:gexec/.prologue {
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
-  builtin eval -- "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+  ble/base/restore-builtin-wrappers
+  builtin eval -- "$_ble_bash_FUNCNEST_restore" # これ以降関数は呼び出せない
   _ble_edit_exec_TRAPDEBUG_enabled=1
   return "$_ble_edit_exec_lastexit" # set $?
 } 31>&1 32>&2 &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
   _ble_edit_exec_TRAPDEBUG_enabled=
-  builtin eval -- "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
+  builtin eval -- "$_ble_bash_FUNCNEST_adjust" # 他の関数呼び出しよりも先
   ble/base/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
@@ -5039,8 +5016,8 @@ function ble-edit/exec:gexec/.epilogue {
   _ble_edit_exec_lastexit=$? # lastexit
   _ble_edit_exec_TRAPDEBUG_enabled=
   _ble_edit_exec_inside_prologue=
-  builtin eval -- "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
-  ble-edit/exec/.reset-builtins-1
+  builtin eval -- "$_ble_bash_FUNCNEST_adjust" # 他の関数呼び出しよりも先
+  ble/base/adjust-builtin-wrappers-1
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit=$_ble_edit_exec_INT
   fi
@@ -5052,7 +5029,7 @@ function ble-edit/exec:gexec/.epilogue {
 
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
-  ble-edit/exec/.reset-builtins-2
+  ble/base/adjust-builtin-wrappers-2
   ble-edit/adjust-IGNOREEOF
   ble-edit/adjust-READLINE
   ble-edit/adjust-PS1
@@ -8241,7 +8218,8 @@ function ble-edit/bind/.check-detach {
       # ここで ble-detach/impl した時は調整は最低限でOK
       ble/base/restore-bash-options
       ble/base/restore-POSIXLY_CORRECT
-      builtin eval -- "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+      ble/base/restore-builtin-wrappers
+      builtin eval -- "$_ble_bash_FUNCNEST_restore" # これ以降関数は呼び出せない
     else
       # Note: 既に ble-detach/impl されていた時 (reload 時) は
       #   epilogue によって detach 後の状態が壊されているので

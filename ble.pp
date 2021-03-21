@@ -104,12 +104,12 @@ echo prologue >&2
 #------------------------------------------------------------------------------
 # check shell
 
-if [ -z "$BASH_VERSION" ]; then
+if [ -z "${BASH_VERSION-}" ]; then
   echo "ble.sh: This shell is not Bash. Please use this script with Bash." >&3
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
-if [ -z "$BASH_VERSINFO" ] || [ "$BASH_VERSINFO" -lt 3 ]; then
+if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
   echo "ble.sh: Bash with a version under 3.0 is not supported." >&3
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
@@ -120,57 +120,43 @@ if [[ $- != *i* && ! $_ble_init_test ]]; then
   return 1 2>/dev/null || builtin exit 1
 fi 3>&2 &>/dev/null # set -x 対策 #D0930
 
-function ble/base/adjust-bash-options {
-  [[ $_ble_bash_options_adjusted ]] && return 1 || :
-  _ble_bash_options_adjusted=1
-
-  _ble_bash_sete=; [[ -o errexit ]] && _ble_bash_sete=1 && set +e
-  _ble_bash_setx=; [[ -o xtrace  ]] && _ble_bash_setx=1 && set +x
-  _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
-  _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
-
-  # Note: nocasematch は bash-3.0 以上
-  _ble_bash_nocasematch=
-  shopt -q nocasematch 2>/dev/null &&
-    _ble_bash_nocasematch=1 && shopt -u nocasematch
-} 2>/dev/null # set -x 対策 #D0930
-function ble/base/restore-bash-options {
-  [[ $_ble_bash_options_adjusted ]] || return 1
-  _ble_bash_options_adjusted=
-  [[ $_ble_bash_setv && ! -o verbose ]] && set -v
-  [[ $_ble_bash_setu && ! -o nounset ]] && set -u
-  [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
-  [[ $_ble_bash_sete && ! -o errexit ]] && set -e
-  if [[ $_ble_bash_nocasematch ]]; then shopt -s nocasematch; fi # Note: set -e により && は駄目
-} 2>/dev/null # set -x 対策 #D0930
-
 {
-  _ble_base_adjust_FUNCNEST='
-    if [[ ! $_ble_bash_funcnest_adjusted ]]; then
-      _ble_bash_funcnest_adjusted=1
-      _ble_bash_funcnest=$FUNCNEST FUNCNEST=
-    fi 2>/dev/null'
-  _ble_base_restore_FUNCNEST='
-    if [[ $_ble_bash_funcnest_adjusted ]]; then
-      _ble_bash_funcnest_adjusted=
-      FUNCNEST=$_ble_bash_funcnest
-    fi 2>/dev/null'
+  ## @var _ble_bash_POSIXLY_CORRECT_adjusted
+  ##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
+  ## @var _ble_bash_POSIXLY_CORRECT_set
+  ##   待避した POSIXLY_CORRECT の設定・非設定状態を保持します。
+  ## @var _ble_bash_POSIXLY_CORRECT_set
+  ##   待避した POSIXLY_CORRECT の値を保持します。
+  _ble_bash_POSIXLY_CORRECT_adjusted=1
+  _ble_bash_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+  _ble_bash_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
 
-  _ble_bash_funcnest_adjusted=
-  builtin eval -- "$_ble_base_adjust_FUNCNEST"
-  _ble_bash_options_adjusted=
-  ble/base/adjust-bash-options
-} &>/dev/null # set -x 対策 #D0930
+  POSIXLY_CORRECT=y
 
-## @var _ble_edit_POSIXLY_CORRECT_adjusted
-##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
-## @var _ble_edit_POSIXLY_CORRECT_set
-##   待避した POSIXLY_CORRECT の設定・非設定状態を保持します。
-## @var _ble_edit_POSIXLY_CORRECT_set
-##   待避した POSIXLY_CORRECT の値を保持します。
-_ble_edit_POSIXLY_CORRECT_adjusted=
-_ble_edit_POSIXLY_CORRECT_set=
-_ble_edit_POSIXLY_CORRECT=
+  # 暫定対策 expand_aliases (ble/base/adjust-bash-options を呼び出す迄の暫定)
+  _ble_bash_expand_aliases=
+  \shopt -q expand_aliases &&
+    _ble_bash_expand_aliases=1 &&
+    \shopt -u expand_aliases || ((1))
+
+  # 対策 FUNCNEST
+  _ble_bash_FUNCNEST_adjusted=
+  _ble_bash_FUNCNEST=
+  _ble_bash_FUNCNEST_adjust='
+    if [[ ! $_ble_bash_FUNCNEST_adjusted ]]; then
+      _ble_bash_FUNCNEST_adjusted=1
+      _ble_bash_FUNCNEST=$FUNCNEST FUNCNEST=
+    fi 2>/dev/null'
+  _ble_bash_FUNCNEST_restore='
+    if [[ $_ble_bash_FUNCNEST_adjusted ]]; then
+      _ble_bash_FUNCNEST_adjusted=
+      FUNCNEST=$_ble_bash_FUNCNEST
+    fi 2>/dev/null'
+  \builtin eval -- "$_ble_bash_FUNCNEST_adjust"
+
+  \builtin unset -v POSIXLY_CORRECT
+} 2>/dev/null
+
 function ble/base/workaround-POSIXLY_CORRECT {
   # This function will be overwritten by ble-decode
   true
@@ -182,47 +168,156 @@ function ble/base/unset-POSIXLY_CORRECT {
   fi
 }
 function ble/base/adjust-POSIXLY_CORRECT {
-  [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]] && return 0
-  _ble_edit_POSIXLY_CORRECT_adjusted=1
-  _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
-  _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
-  builtin unset -v POSIXLY_CORRECT
+  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then return 0; fi # Note: set -e 対策
+  _ble_bash_POSIXLY_CORRECT_adjusted=1
+  _ble_bash_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+  _ble_bash_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
+  if [[ $_ble_bash_POSIXLY_CORRECT_set ]]; then
+    builtin unset -v POSIXLY_CORRECT
+  fi
 
   # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
   ble/base/workaround-POSIXLY_CORRECT
 }
 function ble/base/restore-POSIXLY_CORRECT {
-  if [[ ! $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then return 0; fi # Note: set -e の為 || は駄目
-  _ble_edit_POSIXLY_CORRECT_adjusted=
-  if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
-    POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
+  if [[ ! $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then return 0; fi # Note: set -e の為 || は駄目
+  _ble_bash_POSIXLY_CORRECT_adjusted=
+  if [[ $_ble_bash_POSIXLY_CORRECT_set ]]; then
+    POSIXLY_CORRECT=$_ble_bash_POSIXLY_CORRECT
   else
     ble/base/unset-POSIXLY_CORRECT
   fi
 }
-ble/base/adjust-POSIXLY_CORRECT
-
 function ble/base/is-POSIXLY_CORRECT {
-  if [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then
-    [[ $_ble_edit_POSIXLY_CORRECT_set ]]
+  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then
+    [[ $_ble_bash_POSIXLY_CORRECT_set ]]
   else
     [[ ${POSIXLY_CORRECT+set} ]]
   fi
 }
 
+_ble_bash_builtins_adjusted=
+_ble_bash_builtins_save=
+function ble/base/adjust-builtin-wrappers/.assign {
+  if [[ $_ble_util_assign_base ]]; then
+    builtin eval -- "$1" >| "$_ble_util_assign_base.adjust-builtin"
+    IFS= builtin read -r -d '' defs < "$_ble_util_assign_base.adjust-builtin"
+  else
+    defs=$(builtin eval -- "$1")
+  fi || ((1))
+}
+function ble/base/adjust-builtin-wrappers-1 {
+  # Note: 何故か local POSIXLY_CORRECT の効果が
+  #   builtin unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
+  # Note: set -o posix にしても read, type, builtin, local 等は上書き
+  #   された儘なので難しい。unset -f builtin さえすれば色々動く様になる
+  #   ので builtin は unset -f builtin してしまう。
+#  return 0
+  unset -f builtin
+  builtin local POSIXLY_CORRECT=y builtins1 keywords1
+  builtins1=(builtin unset enable unalias return break continue declare local typeset readonly eval exec)
+  keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
+  if [[ ! $_ble_bash_builtins_adjusted ]]; then
+    _ble_bash_builtins_adjusted=1
+
+    builtin local defs
+    ble/base/adjust-builtin-wrappers/.assign '
+      \builtin declare -f "${builtins1[@]}"
+      \builtin alias "${builtins1[@]}" "${keywords1[@]}"'
+    _ble_bash_builtins_save=$defs
+  fi
+  builtin unset -f "${builtins1[@]}"
+  builtin unalias "${builtins1[@]}" "${keywords1[@]}"
+  ble/base/unset-POSIXLY_CORRECT
+} 2>/dev/null
+function ble/base/adjust-builtin-wrappers-2 {
+  # Workaround (bash-3.0..4.3) #D0722
+  #
+  #   builtin unset -v POSIXLY_CORRECT でないと unset -f : できないが、
+  #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
+  #   builtin unset -v POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
+  #   "unset -f :" (非POSIX関数名) は別関数で adjust-POSIXLY_CORRECT の後で実行することにする。
+
+  # function :, alias : の保存
+  local defs
+  ble/base/adjust-builtin-wrappers/.assign 'LC_ALL= LC_MESSAGES=C builtin type :; alias :'
+  defs=${defs#$': is a function\n'}
+  _ble_bash_builtins_save=$_ble_bash_builtins_save$'\n'$defs
+
+  builtin unset -f :
+  builtin unalias :
+} 2>/dev/null
+function ble/base/restore-builtin-wrappers {
+  if [[ $_ble_bash_builtins_adjusted ]]; then
+    _ble_bash_builtins_adjusted=
+    builtin eval -- "$_ble_bash_builtins_save"
+  fi
+}
+{
+  ble/base/adjust-builtin-wrappers-1
+  ble/base/adjust-builtin-wrappers-2
+} 2>/dev/null # set -x 対策
+
+function ble/base/adjust-bash-options {
+  [[ $_ble_bash_options_adjusted ]] && return 1 || ((1))
+  _ble_bash_options_adjusted=1
+
+  # Note: set -e 対策が最初でないと && chaining で失敗する
+  _ble_bash_sete=; [[ -o errexit ]] && _ble_bash_sete=1 && set +e
+  _ble_bash_setx=; [[ -o xtrace  ]] && _ble_bash_setx=1 && set +x
+  _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
+  _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
+
+  # Note: nocasematch は bash-3.0 以上
+  _ble_bash_nocasematch=
+  shopt -q nocasematch 2>/dev/null &&
+    _ble_bash_nocasematch=1 && shopt -u nocasematch
+  _ble_bash_expand_aliases=
+  shopt -q expand_aliases 2>/dev/null &&
+    _ble_bash_expand_aliases=1 && shopt -u expand_aliases
+} 2>/dev/null # set -x 対策 #D0930
+function ble/base/restore-bash-options {
+  [[ $_ble_bash_options_adjusted ]] || return 1
+  _ble_bash_options_adjusted=
+  [[ $_ble_bash_expand_aliases ]] && shopt -s expand_aliases
+  [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
+  [[ $_ble_bash_setu && ! -o nounset ]] && set -u
+  [[ $_ble_bash_setv && ! -o verbose ]] && set -v
+  [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
+  [[ $_ble_bash_sete && ! -o errexit ]] && set -e # set -e は最後
+} 2>/dev/null # set -x 対策 #D0930
+
+{
+  # 対策 expand_aliases (暫定) 終了
+  [[ $_ble_bash_expand_aliases ]] && shopt -s expand_aliases || ((1))
+  ble/base/adjust-bash-options
+} &>/dev/null # set -x 対策 #D0930
+
 builtin bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi && ! $_ble_init_test ]]; then
   builtin echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
+  ble/base/restore-bash-options
+  ble/base/restore-builtin-wrappers
+  ble/base/restore-POSIXLY_CORRECT
+  builtin eval -- "$_ble_bash_FUNCNEST_restore"
   return 1
 fi
 
 if shopt -q restricted_shell; then
   builtin echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
+  ble/base/restore-bash-options
+  ble/base/restore-builtin-wrappers
+  ble/base/restore-POSIXLY_CORRECT
+  builtin eval -- "$_ble_bash_FUNCNEST_restore"
   return 1
 fi
 
 if [[ ${BASH_EXECUTION_STRING+set} ]]; then
   # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&2
+  ble/base/restore-bash-options
+  ble/base/restore-builtin-wrappers
+  ble/base/restore-POSIXLY_CORRECT
+  builtin eval -- "$_ble_bash_FUNCNEST_restore"
   return 1 2>/dev/null || builtin exit 1
 fi
 
@@ -233,6 +328,10 @@ IFS=$' \t\n'
 if [[ $_ble_base ]]; then
   if ! ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
+    ble/base/restore-bash-options
+    ble/base/restore-builtin-wrappers
+    ble/base/restore-POSIXLY_CORRECT
+    builtin eval -- "$_ble_bash_FUNCNEST_restore"
     return 1
   fi
 fi
@@ -272,11 +371,14 @@ ble/base/initialize-version-information
 #------------------------------------------------------------------------------
 # check environment
 
-# ble/bin
+# will be overwritten by src/util.sh
+function ble/util/assign { builtin eval "$1=\$(builtin eval -- \"\$2\")"; }
 
 function ble/util/put { builtin printf '%s' "$1"; }
 function ble/util/print { builtin printf '%s\n' "$1"; }
 function ble/util/print-lines { builtin printf '%s\n' "$@"; }
+
+# ble/bin
 
 ## @fn ble/bin/.default-utility-path commands...
 ##   取り敢えず ble/bin/* からコマンドを呼び出せる様にします。
@@ -389,11 +491,6 @@ function ble/bin/awk.use-solaris-xpg4 {
 }
 
 #------------------------------------------------------------------------------
-
-# will be overwritten by src/util.sh
-function ble/util/assign {
-  builtin eval "$1=\$(builtin eval -- \"\${@:2}\")"
-}
 
 # readlink -f (taken from akinomyoga/mshex.git)
 ## @fn ble/util/readlink path
@@ -792,9 +889,11 @@ function ble-attach {
   _ble_attached=1
 
   # 特殊シェル設定を待避
-  builtin eval -- "$_ble_base_adjust_FUNCNEST"
+  builtin eval -- "$_ble_bash_FUNCNEST_adjust"
+  ble/base/adjust-builtin-wrappers-1
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
+  ble/base/adjust-builtin-wrappers-2
 
   # char_width_mode=auto
   ble/canvas/attach
@@ -1025,7 +1124,8 @@ function ble/base/initialize/.clean-up {
   if [[ ! $_ble_attached ]]; then
     ble/base/restore-bash-options
     ble/base/restore-POSIXLY_CORRECT
-    builtin eval -- "$_ble_base_restore_FUNCNEST"
+    ble/base/restore-builtin-wrappers
+    builtin eval -- "$_ble_bash_FUNCNEST_restore"
   fi
 }
 
