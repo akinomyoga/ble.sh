@@ -795,7 +795,7 @@ function ble/widget/vim-surround.sh/omap {
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
     _ble_edit_arg=$ARG
     _ble_keymap_vi_reg=$REG
-    ble-decode/keymap/pop
+    ble/decode/keymap/pop
     ble/widget/vi-command/operator "$opfunc:$opflags" ;;
   (yss)
     ble/widget/vi_nmap/linewise-operator "yss:$opflags" ;;

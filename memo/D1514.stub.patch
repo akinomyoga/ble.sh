@@ -1,0 +1,75 @@
+From 7456a437e59f26b22507ec453bc19d67e45c8673 Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Mon, 26 Apr 2021 06:36:26 +0900
+Subject: [PATCH] stub: keymap_emacs_cursor
+
+---
+ blerc           | 10 ++++++++++
+ keymap/emacs.sh | 16 +++++++++++++++-
+ 2 files changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/blerc b/blerc
+index 94c4fc4..3cb6cbe 100644
+--- a/blerc
++++ b/blerc
+@@ -609,6 +609,16 @@
+ # ble-color-setface varname_transform         fg=29,bold
+ # ble-color-setface varname_unset             fg=124
+ 
++##-----------------------------------------------------------------------------
++## Settings for emacs-mode
++
++function blerc/emacs-load-hook {
++  :
++  ## Cursor style
++
++  # bleopt keymap_emacs_cursor=5
++}
++blehook/eval-after-load keymap_emacs blerc/emacs-load-hook
+ 
+ ##-----------------------------------------------------------------------------
+ ## Settings for vim-mode
+diff --git a/keymap/emacs.sh b/keymap/emacs.sh
+index e4842b1..1c20c0e 100644
+--- a/keymap/emacs.sh
++++ b/keymap/emacs.sh
+@@ -11,6 +11,16 @@ function ble-edit/bind/load-editing-mode:emacs { :; }
+ # 2021-01-25 force update (change mapping of C-w and M-w)
+ # 2021-04-26 force update (rename ble/decode/keymap#.register)
+ 
++bleopt/declare -v keymap_emacs_cursor ''
++function bleopt/check:keymap_emacs_cursor {
++  if [[ $_ble_attached ]]; then
++    local ret; bleopt/get:default_keymap
++    [[ $ret == emacs ]] &&
++      ble/term/cursor-state/set-internal "$bleopt_keymap_emacs_cursor"
++  fi
++  return 0
++}
++
+ #------------------------------------------------------------------------------
+ 
+ _ble_keymap_emacs_white_list=(
+@@ -39,6 +49,10 @@ function ble/keymap:emacs/is-command-white {
+   return 1
+ }
+ 
++function ble/widget/emacs/__attach__ {
++  ble/widget/safe/__attach__
++  ble/term/cursor-state/set-internal "$bleopt_keymap_emacs_cursor"
++}
+ function ble/widget/emacs/__before_widget__ {
+   if ! ble/keymap:emacs/is-command-white "$WIDGET"; then
+     ble-edit/undo/add
+@@ -154,7 +168,7 @@ function ble-decode/keymap:emacs/define {
+ 
+   #----------------------------------------------------------------------------
+ 
+-  ble-bind -f __attach__        safe/__attach__
++  ble-bind -f __attach__        emacs/__attach__
+   ble-bind -f __before_widget__ emacs/__before_widget__
+   ble-bind -f __after_widget__  emacs/__after_widget__
+   ble-bind -f __line_limit__    __line_limit__
+-- 
+2.30.0
+

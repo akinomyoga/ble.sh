@@ -7,6 +7,7 @@ function ble-edit/bind/load-editing-mode:vi { :; }
 
 # 2020-04-29 force update (rename ble-decode/keymap/.register)
 # 2021-01-25 force update (change mapping of C-w and M-w)
+# 2021-04-26 force update (rename ble/decode/keymap#.register)
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
@@ -333,6 +334,26 @@ bleopt/declare -v keymap_vi_omap_cursor ''
 bleopt/declare -v keymap_vi_xmap_cursor ''
 bleopt/declare -v keymap_vi_smap_cursor ''
 bleopt/declare -v keymap_vi_cmap_cursor ''
+function ble/keymap:vi/.process-cursor-options {
+  local keymap=${FUNCNAME[1]#bleopt/check:keymap_}; keymap=${keymap%_cursor}
+  ble-bind -m "$keymap" --cursor "$value"
+  local locate=$'\e[32m'$bleopt_source:$bleopt_lineno$'\e[m'
+  ble/util/print-lines \
+    "bleopt ($locate): The option 'keymap_${keymap}_cursor' has been removed." \
+    "  Please use 'ble-bind -m $keymap --cursor $value' instead." >&2
+}
+function bleopt/check:keymap_vi_imap_cursor { ble/keymap:vi/.process-cursor-options; }
+function bleopt/check:keymap_vi_nmap_cursor { ble/keymap:vi/.process-cursor-options; }
+function bleopt/check:keymap_vi_omap_cursor { ble/keymap:vi/.process-cursor-options; }
+function bleopt/check:keymap_vi_xmap_cursor { ble/keymap:vi/.process-cursor-options; }
+function bleopt/check:keymap_vi_smap_cursor { ble/keymap:vi/.process-cursor-options; }
+function bleopt/check:keymap_vi_cmap_cursor { ble/keymap:vi/.process-cursor-options; }
+function bleopt/obsolete:keymap_vi_imap_cursor { :; }
+function bleopt/obsolete:keymap_vi_nmap_cursor { :; }
+function bleopt/obsolete:keymap_vi_omap_cursor { :; }
+function bleopt/obsolete:keymap_vi_xmap_cursor { :; }
+function bleopt/obsolete:keymap_vi_smap_cursor { :; }
+function bleopt/obsolete:keymap_vi_cmap_cursor { :; }
 
 bleopt/declare -v keymap_vi_mode_show 1
 function bleopt/check:keymap_vi_mode_show {
@@ -393,23 +414,17 @@ function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_keymap cursor=
   if [[ $kmap == vi_imap ]]; then
     ble/util/buffer "$bleopt_term_vi_imap"
-    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_imap_cursor"
   elif [[ $kmap == vi_nmap ]]; then
     ble/util/buffer "$bleopt_term_vi_nmap"
-    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_nmap_cursor"
   elif [[ $kmap == vi_xmap ]]; then
     ble/util/buffer "$bleopt_term_vi_xmap"
-    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_xmap_cursor"
   elif [[ $kmap == vi_smap ]]; then
     ble/util/buffer "$bleopt_term_vi_smap"
-    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_smap_cursor"
   elif [[ $kmap == vi_omap ]]; then
     ble/util/buffer "$bleopt_term_vi_omap"
-    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_omap_cursor"
   elif [[ $kmap == vi_cmap ]]; then
     ble/edit/info/default text ''
     ble/util/buffer "$bleopt_term_vi_cmap"
-    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_cmap_cursor"
     return 0
   fi
 
@@ -487,7 +502,7 @@ function ble/widget/vi_imap/normal-mode.impl {
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
   ble-edit/content/bolp || ((_ble_edit_ind--))
-  ble-decode/keymap/push vi_nmap
+  ble/decode/keymap/push vi_nmap
 }
 function ble/widget/vi_imap/normal-mode {
   ble-edit/content/clear-arg
@@ -540,7 +555,7 @@ function ble/keymap:vi/adjust-command-mode {
 
   local kmap_popped=
   if [[ $_ble_decode_keymap == vi_omap ]]; then
-    ble-decode/keymap/pop
+    ble/decode/keymap/pop
     kmap_popped=1
   fi
 
@@ -580,8 +595,8 @@ function ble/widget/vi-command/bell {
 ##   @param[in] overwrite
 ##   @param[in] opts
 function ble/widget/vi_nmap/.insert-mode {
-  [[ $_ble_decode_keymap == vi_[xs]map ]] && ble-decode/keymap/pop
-  [[ $_ble_decode_keymap == vi_omap ]] && ble-decode/keymap/pop
+  [[ $_ble_decode_keymap == vi_[xs]map ]] && ble/decode/keymap/pop
+  [[ $_ble_decode_keymap == vi_omap ]] && ble/decode/keymap/pop
   local arg=$1 overwrite=$2
   ble/keymap:vi/imap-repeat/reset "$arg"
   _ble_edit_mark_active=
@@ -591,7 +606,7 @@ function ble/widget/vi_nmap/.insert-mode {
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
   _ble_keymap_vi_search_matched=
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   ble/keymap:vi/update-mode-name
 
   ble/keymap:vi/mark/start-edit-area
@@ -1132,7 +1147,7 @@ function ble/widget/vi-command/operator {
     ble/keymap:vi/adjust-command-mode
     return "$ext"
   elif [[ $_ble_decode_keymap == vi_nmap ]]; then
-    ble-decode/keymap/push vi_omap
+    ble/decode/keymap/push vi_omap
     _ble_keymap_vi_oparg=$_ble_edit_arg
     _ble_keymap_vi_opfunc=$opname
     _ble_edit_arg=
@@ -2270,7 +2285,7 @@ function ble/keymap:vi/async-read-char.hook {
   local IFS=$_ble_term_IFS
   local command="${*:1:$#-1}" key="${*:$#}"
   if ((key==(_ble_decode_Ctrl|0x6B))); then # C-k
-    ble-decode/keymap/push vi_digraph
+    ble/decode/keymap/push vi_digraph
     _ble_keymap_vi_digraph__hook="$command"
   else
     builtin eval -- "$command $key"
@@ -2724,11 +2739,11 @@ function ble/keymap:vi/repeat/invoke {
     ble/widget/vi-command/bell
     return 1
   elif [[ $KEYMAP == vi_omap ]]; then
-    ble-decode/keymap/push vi_omap
+    ble/decode/keymap/push vi_omap
   elif [[ $KEYMAP == vi_[xs]map ]]; then
     local _ble_keymap_vi_xmap_prev_edit=${_ble_keymap_vi_repeat[6]}
     ble/widget/vi_xmap/.restore-visual-state
-    ble-decode/keymap/push "$KEYMAP"
+    ble/decode/keymap/push "$KEYMAP"
     # Note: vim では . によって領域の大きさは更新されない。
     #   従ってここでは敢えて _ble_keymap_vi_xmap_prev_edit を unset しない
   fi
@@ -6682,7 +6697,7 @@ function ble/widget/vi-command/visual-mode.impl {
 
   ((ARG)) && ble/widget/vi_xmap/.restore-visual-state "$ARG"
 
-  ble-decode/keymap/push "$keymap"
+  ble/decode/keymap/push "$keymap"
   ble/keymap:vi/update-mode-name
   return 0
 }
@@ -6713,7 +6728,7 @@ function ble/widget/vi_xmap/exit {
   if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     ble/keymap:vi/xmap/set-previous-visual-area
     _ble_edit_mark_active=
-    ble-decode/keymap/pop
+    ble/decode/keymap/pop
     ble/keymap:vi/update-mode-name
     ble/keymap:vi/adjust-command-mode
   fi
@@ -6759,24 +6774,24 @@ function ble/widget/vi_xmap/switch-to-blockwise {
 # xmap <C-g>
 function ble/widget/vi_xmap/switch-to-select {
   if [[ $_ble_decode_keymap == vi_xmap ]]; then
-    ble-decode/keymap/pop
-    ble-decode/keymap/push vi_smap
+    ble/decode/keymap/pop
+    ble/decode/keymap/push vi_smap
     ble/keymap:vi/update-mode-name
   fi
 }
 # smap <C-g>
 function ble/widget/vi_xmap/switch-to-visual {
   if [[ $_ble_decode_keymap == vi_smap ]]; then
-    ble-decode/keymap/pop
-    ble-decode/keymap/push vi_xmap
+    ble/decode/keymap/pop
+    ble/decode/keymap/push vi_xmap
     ble/keymap:vi/update-mode-name
   fi
 }
 # smap <C-v>
 function ble/widget/vi_xmap/switch-to-visual-blockwise {
   if [[ $_ble_decode_keymap == vi_smap ]]; then
-    ble-decode/keymap/pop
-    ble-decode/keymap/push vi_xmap
+    ble/decode/keymap/pop
+    ble/decode/keymap/push vi_xmap
   fi
   if [[ ${_ble_edit_mark_active%+} != vi_block ]]; then
     ble/widget/vi_xmap/switch-to-blockwise
@@ -7727,7 +7742,7 @@ function ble/widget/vi_imap/insert-digraph.hook {
 }
 
 function ble/widget/vi_imap/insert-digraph {
-  ble-decode/keymap/push vi_digraph
+  ble/decode/keymap/push vi_digraph
   _ble_keymap_vi_digraph__hook=ble/widget/vi_imap/insert-digraph.hook
   return 0
 }
@@ -7953,7 +7968,7 @@ function ble/keymap:vi/async-commandline-mode {
   _ble_keymap_vi_cmap_history_prefix=$_ble_history_prefix
 
   # 初期化
-  ble-decode/keymap/push vi_cmap
+  ble/decode/keymap/push vi_cmap
   ble/keymap:vi/update-mode-name
 
   # textarea
@@ -8004,7 +8019,7 @@ function ble/widget/vi_cmap/accept {
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
   _ble_history_prefix=$_ble_keymap_vi_cmap_history_prefix
 
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   ble/keymap:vi/update-mode-name
   if [[ $hook ]]; then
     builtin eval -- "$hook \"\$result\""
@@ -8087,13 +8102,13 @@ function ble-decode/keymap:vi/initialize {
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."
 
   {
-    ble-decode/keymap/load isearch dump
-    ble-decode/keymap/load nsearch dump
-    ble-decode/keymap/load vi_imap dump
-    ble-decode/keymap/load vi_nmap dump
-    ble-decode/keymap/load vi_omap dump
-    ble-decode/keymap/load vi_xmap dump
-    ble-decode/keymap/load vi_cmap dump
+    ble/decode/keymap#load isearch dump
+    ble/decode/keymap#load nsearch dump
+    ble/decode/keymap#load vi_imap dump
+    ble/decode/keymap#load vi_nmap dump
+    ble/decode/keymap#load vi_omap dump
+    ble/decode/keymap#load vi_xmap dump
+    ble/decode/keymap#load vi_cmap dump
   } 3>| "$fname_keymap_cache"
 
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi... done"

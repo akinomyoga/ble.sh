@@ -794,12 +794,12 @@ function ble/widget/menu/end-of-page {
 }
 
 function ble/widget/menu/cancel {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   ble/complete/menu#clear
   "$_ble_complete_menu_class"/oncancel
 }
 function ble/widget/menu/accept {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   ble/complete/menu#clear
   local nsel=$_ble_complete_menu_selected
   local hook=$_ble_complete_menu_accept_hook
@@ -860,7 +860,7 @@ function ble/complete/menu#start {
   ble/complete/menu#construct sync || return "$?"
   ble/complete/menu#show
   ble/complete/menu#select 0
-  ble-decode/keymap/push menu
+  ble/decode/keymap/push menu
   return 147
 }
 
@@ -5200,13 +5200,13 @@ function ble/complete/menu-complete/enter {
   fi
 
   _ble_edit_mark_active=insert
-  ble-decode/keymap/push menu_complete
+  ble/decode/keymap/push menu_complete
   return 0
 }
 
 function ble/widget/menu_complete/exit {
   local opts=$1
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
 
   if ((_ble_complete_menu_selected>=0)); then
     # 置換情報を再構成
@@ -5255,7 +5255,7 @@ function ble/widget/menu_complete/exit {
   _ble_complete_menu_original=
 }
 function ble/widget/menu_complete/cancel {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   ble/complete/menu#select -1
   _ble_edit_mark_active=
   _ble_complete_menu_original=
@@ -5408,7 +5408,7 @@ function ble/complete/auto-complete/.enter-auto-complete-mode {
   _ble_complete_ac_suffix=$suffix
 
   _ble_edit_mark_active=auto_complete
-  ble-decode/keymap/push auto_complete
+  ble/decode/keymap/push auto_complete
   ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
 }
 ## @fn ble/complete/auto-complete/.insert ins
@@ -5597,7 +5597,7 @@ function ble/widget/auto-complete-enter {
   ble/complete/auto-complete.impl sync
 }
 function ble/widget/auto_complete/cancel {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_mark" ''
   _ble_edit_mark=$_ble_edit_ind
   _ble_edit_mark_active=
@@ -5605,7 +5605,7 @@ function ble/widget/auto_complete/cancel {
   _ble_complete_ac_suffix=
 }
 function ble/widget/auto_complete/insert {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_mark" ''
   _ble_edit_mark=$_ble_edit_ind
 
@@ -6244,7 +6244,7 @@ function ble/complete/dabbrev/next.fib {
 }
 function ble/widget/dabbrev-expand {
   ble/complete/dabbrev/initialize-variables
-  ble-decode/keymap/push dabbrev
+  ble/decode/keymap/push dabbrev
   ble/util/fiberchain#initialize ble/complete/dabbrev
   ble/util/fiberchain#push next
   ble/util/fiberchain#resume
@@ -6288,7 +6288,7 @@ function ble/widget/dabbrev/cancel {
   fi
 }
 function ble/widget/dabbrev/exit {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   _ble_edit_mark_active=
   ble/complete/dabbrev/erase-status
 }

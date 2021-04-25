@@ -650,11 +650,11 @@ function blerc/vim-load-hook {
 
   ## Cursor settings
 
-  # bleopt keymap_vi_nmap_cursor=2
-  # bleopt keymap_vi_imap_cursor=5
-  # bleopt keymap_vi_omap_cursor=4
-  # bleopt keymap_vi_xmap_cursor=2
-  # bleopt keymap_vi_cmap_cursor=0
+  # ble-bind -m vi_nmap --cursor 2
+  # ble-bind -m vi_imap --cursor 5
+  # ble-bind -m vi_omap --cursor 4
+  # ble-bind -m vi_xmap --cursor 2
+  # ble-bind -m vi_cmap --cursor 0
 
   ## DECSCUSR setting
   ##

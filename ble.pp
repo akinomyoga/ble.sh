@@ -873,7 +873,7 @@ function ble/base/unload {
   ble/util/buffer.flush >&2
   ble/fd#finalize
   ble/util/import/finalize
-  ble-decode/keymap/unload
+  ble/decode/keymap#unload
   ble-edit/bind/clear-keymap-definition-loader
   ble/bin/rm -rf "$_ble_base_run/$$".* 2>/dev/null
   blehook/invoke unload

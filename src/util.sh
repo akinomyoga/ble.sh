@@ -93,6 +93,8 @@ function bleopt {
       local var=${spec%%=*} value=${spec#*=}
       [[ ${!var+set} && ${!var} == "$value" ]] && continue
       if ble/is-function bleopt/check:"${var#bleopt_}"; then
+        local bleopt_source=${BASH_SOURCE[1]}
+        local bleopt_lineno=${BASH_LINENO[0]}
         if ! bleopt/check:"${var#bleopt_}"; then
           flags=E$flags
           continue
@@ -4503,6 +4505,12 @@ _ble_term_cursor_current=unknown
 _ble_term_cursor_internal=0
 _ble_term_cursor_hidden_current=unknown
 _ble_term_cursor_hidden_internal=reveal
+
+# #D1516 今迄にカーソル変更がなく、且つ既定値に戻そうとしている時は
+#   何もしない。xterm.js で DECSCUSR(0) がユーザー既定値でない事への
+#   対策。外部コマンドがカーソル形状を復元するという事を前提にしている。
+_ble_term_cursor_current=0
+
 function ble/term/cursor-state/.update {
   local state=$(($1))
   [[ $_ble_term_cursor_current == "$state" ]] && return 0

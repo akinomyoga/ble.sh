@@ -3083,7 +3083,7 @@ function ble/widget/yank-pop {
 
   ble/edit/yankpop.impl "$arg"
   _ble_edit_mark_active=insert
-  ble-decode/keymap/push yankpop
+  ble/decode/keymap/push yankpop
 }
 function ble/widget/yankpop/next {
   local arg; ble-edit/content/get-arg 1
@@ -3094,7 +3094,7 @@ function ble/widget/yankpop/prev {
   ble/edit/yankpop.impl $((-arg))
 }
 function ble/widget/yankpop/exit {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   _ble_edit_mark_active=
 }
 function ble/widget/yankpop/cancel {
@@ -3263,7 +3263,7 @@ function ble/widget/insert-last-argument {
   local delta=-1 nth=$arg
   ble/widget/insert-arg.impl "$beg" "$end" "$index" "$delta" "$nth" || return "$?"
   _ble_edit_mark_active=insert
-  ble-decode/keymap/push lastarg
+  ble/decode/keymap/push lastarg
 }
 function ble/widget/lastarg/next {
   local arg; ble-edit/content/get-arg 1
@@ -3282,7 +3282,7 @@ function ble/widget/lastarg/next {
   ble/widget/insert-arg.impl "$beg" "$end" "$index" "$delta" "$nth"
 }
 function ble/widget/lastarg/exit {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   _ble_edit_mark_active=
 }
 function ble/widget/lastarg/cancel {
@@ -6621,7 +6621,7 @@ function ble/widget/isearch/.restore-mark-state {
   fi
 }
 function ble/widget/isearch/exit.impl {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
   _ble_edit_isearch_str=
@@ -6677,7 +6677,7 @@ function ble/widget/isearch/exit-delete-forward-char {
 function ble/widget/history-isearch.impl {
   local opts=$1
   ble-edit/content/clear-arg
-  ble-decode/keymap/push isearch
+  ble/decode/keymap/push isearch
   ble/util/fiberchain#initialize ble-edit/isearch
 
   local index; ble/history/get-index
@@ -6925,7 +6925,7 @@ function ble/widget/history-search {
     _ble_edit_nsearch_opts=
   fi
   _ble_edit_mark_active=
-  ble-decode/keymap/push nsearch
+  ble/decode/keymap/push nsearch
 
   # start search
   ble/util/fiberchain#initialize ble-edit/nsearch
@@ -6982,7 +6982,7 @@ function ble/widget/nsearch/backward {
   ble/util/fiberchain#resume
 }
 function ble/widget/nsearch/exit {
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   _ble_edit_mark_active=
   ble-edit/nsearch/erase-status
 }
@@ -7305,7 +7305,7 @@ function ble-decode/keymap:safe/define {
 }
 
 function ble-edit/bind/load-editing-mode:safe {
-  ble-decode/keymap/load safe
+  ble/decode/keymap#load safe
 }
 
 ble/util/autoload "keymap/emacs.sh" \
@@ -7347,7 +7347,7 @@ function ble/widget/read/accept {
   _ble_edit_read_result=$_ble_edit_str
   # [[ $_ble_edit_read_result ]] &&
   #   ble/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
 }
 function ble/widget/read/cancel {
   local _ble_edit_line_disabled=1
@@ -7463,7 +7463,7 @@ function ble/builtin/read/.read-arguments {
 
 function ble/builtin/read/.set-up-textarea {
   # 初期化
-  ble-decode/keymap/push read || return 1
+  ble/decode/keymap/push read || return 1
 
   [[ $_ble_edit_read_context == external ]] &&
     _ble_canvas_panel_height[0]=0
@@ -7645,7 +7645,7 @@ function ble/builtin/read/.impl {
     return 0
   fi
 
-  ble-decode/keymap/load read
+  ble/decode/keymap#load read
   local result _ble_edit_read_context=$_ble_term_state
 
   # Note: サブシェル中で重複して出力されない様に空にしておく
@@ -8294,7 +8294,7 @@ function ble-decode/INITIALIZE_DEFMAP {
     local base_keymap=$defmap
     [[ $defmap == vi ]] && base_keymap=vi_imap
     builtin eval -- "$2=\$base_keymap"
-    ble-decode/keymap/is-keymap "$base_keymap" && return 0
+    ble/decode/is-keymap "$base_keymap" && return 0
   fi
 
   # エラーメッセージ
@@ -8308,7 +8308,7 @@ function ble-decode/INITIALIZE_DEFMAP {
 
   # Fallback keymap "safe"
   ble-edit/bind/load-editing-mode safe &&
-    ble-decode/keymap/load safe &&
+    ble/decode/keymap#load safe &&
     builtin eval -- "$2=safe" &&
     bleopt_default_keymap=safe
 }

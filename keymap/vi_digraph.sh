@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # 2020-04-29 force update (rename ble-decode/keymap/.register)
+# 2021-04-26 force update (rename ble/decode/keymap#.register)
 
 _ble_keymap_vi_digraph__hook=
 
@@ -8,7 +9,7 @@ function ble/widget/vi_digraph/.proc {
   local code=$1
   local hook=${_ble_keymap_vi_digraph__hook:-ble-decode-key}
   _ble_keymap_vi_digraph__hook=
-  ble-decode/keymap/pop
+  ble/decode/keymap/pop
   builtin eval -- "$hook $code"
 }
 
@@ -57,7 +58,7 @@ function ble-decode/keymap:vi_digraph/initialize {
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph..."
 
   : >| "$fname_keymap_cache"
-  ble-decode/keymap/load vi_digraph dump 3>> "$fname_keymap_cache"
+  ble/decode/keymap#load vi_digraph dump 3>> "$fname_keymap_cache"
 
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph... done"
 }

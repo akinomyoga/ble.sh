@@ -9,6 +9,7 @@ function ble-edit/bind/load-editing-mode:emacs { :; }
 # 2019-03-21 keymap cache should be updated for recent changes
 # 2020-04-29 force update (rename ble-decode/keymap/.register)
 # 2021-01-25 force update (change mapping of C-w and M-w)
+# 2021-04-26 force update (rename ble/decode/keymap#.register)
 
 #------------------------------------------------------------------------------
 
@@ -213,9 +214,9 @@ function ble-decode/keymap:emacs/initialize {
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."
 
   {
-    ble-decode/keymap/load isearch dump
-    ble-decode/keymap/load nsearch dump
-    ble-decode/keymap/load emacs   dump
+    ble/decode/keymap#load isearch dump
+    ble/decode/keymap#load nsearch dump
+    ble/decode/keymap#load emacs   dump
   } 3>| "$fname_keymap_cache"
 
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs... done"
