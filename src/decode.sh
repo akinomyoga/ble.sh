@@ -1732,6 +1732,7 @@ function ble/decode/keymap/push {
     # set cursor-state
     local cursor; ble/decode/keymap#get-cursor "$1"
     [[ $cursor ]] && ble/term/cursor-state/set-internal $((cursor))
+    return 0
   elif ble/decode/keymap#load "$1" && ble/decode/keymap#registered "$1"; then
     ble/decode/keymap/push "$1" # 再実行
   else

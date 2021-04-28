@@ -1315,14 +1315,16 @@ function ble/highlight/layer:region/update {
     local g ret
     local k=0 inext iprev=0
     for inext in "${selection[@]}"; do
-      if ((k==0)); then
-        ble/array#push buff "\"\${$PREV_BUFF[@]::$inext}\""
-      elif ((k%2)); then
-        ble/array#push buff "\"$sgr\${_ble_highlight_layer_plain_buff[@]:$iprev:$((inext-iprev))}\""
-      else
-        ble/highlight/layer/update/getg "$iprev"
-        ble/color/g2sgr "$g"
-        ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev:$((inext-iprev))}\""
+      if ((inext>iprev)); then
+        if ((k==0)); then
+          ble/array#push buff "\"\${$PREV_BUFF[@]::$inext}\""
+        elif ((k%2)); then
+          ble/array#push buff "\"$sgr\${_ble_highlight_layer_plain_buff[@]:$iprev:$((inext-iprev))}\""
+        else
+          ble/highlight/layer/update/getg "$iprev"
+          ble/color/g2sgr "$g"
+          ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev:$((inext-iprev))}\""
+        fi
       fi
       ((iprev=inext,k++))
     done

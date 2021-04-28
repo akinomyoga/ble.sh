@@ -6742,27 +6742,43 @@ function ble-decode/keymap:isearch/define {
 ## @var _ble_edit_nsearch_index
 ##   最後に検索した位置を表します。
 ##   検索が一致した場合は _ble_edit_nsearch_match と同じになります。
+## @var _ble_edit_nsearch_prev
+##   前回の検索文字列
 _ble_edit_nsearch_input=
 _ble_edit_nsearch_needle=
+_ble_edit_nsearch_index0=
 _ble_edit_nsearch_opts=
 _ble_edit_nsearch_stack=()
 _ble_edit_nsearch_match=
 _ble_edit_nsearch_index=
+_ble_edit_nsearch_prev=
+
+function ble/highlight/layer:region/mark:nsearch/get-face {
+  face=region_match
+}
+function ble/highlight/layer:region/mark:nsearch/get-selection {
+  local beg=$_ble_edit_mark
+  local end=$((_ble_edit_mark+${#_ble_edit_nsearch_needle}))
+  selection=("$beg" "$end")
+}
 
 ## @fn ble-edit/nsearch/.show-status.fib [pos_progress]
 ##   @var[in] fib_ntask
 function ble-edit/nsearch/.show-status.fib {
-  local ll rr
-  if [[ :$_ble_edit_isearch_opts: == *:forward:* ]]; then
-    ll="  " rr=">>"
-  else
-    ll=\<\< rr="  " # Note: Emacs workaround: '<<' や "<<" と書けない。
+  [[ :$_ble_edit_nsearch_opts: == *:hide-status:* ]] && return 0
+
+  local ll=\<\< rr=">>" # Note: Emacs workaround: '<<' や "<<" と書けない。
+  local match=$_ble_edit_nsearch_match index0=$_ble_edit_nsearch_index0
+  if ((match>index0)); then
+    ll="  "
+  elif ((match<index0)); then
+    rr="  "
   fi
 
-  local index='!'$((_ble_edit_nsearch_match+1))
+  local sindex='!'$((_ble_edit_nsearch_match+1))
   local nmatch=${#_ble_edit_nsearch_stack[@]}
   local needle=$_ble_edit_nsearch_needle
-  local text="(nsearch#$nmatch: $ll $index $rr) \`$needle'"
+  local text="(nsearch#$nmatch: $ll $sindex $rr) \`$needle'"
 
   if [[ $1 ]]; then
     local pos=$1
@@ -6784,6 +6800,45 @@ function ble-edit/nsearch/show-status {
 }
 function ble-edit/nsearch/erase-status {
   ble/edit/info/default
+}
+
+#@ToDo backward/forward backward 固定になっているがそれで良いのか?
+function ble-edit/nsearch/.goto-match {
+  local index=$1 opts=$2
+  local direction=backward
+  [[ :$opts: == *:forward:* ]] && direction=forward
+  local needle=$_ble_edit_nsearch_needle
+  local old_match=$_ble_edit_nsearch_match
+  ble/array#push _ble_edit_nsearch_stack "$direction,$old_match,$_ble_edit_ind,$_ble_edit_mark:$_ble_edit_str"
+
+  if [[ ! $index ]]; then
+    ble/history/get-index
+  elif [[ :$opts: == *:action=load:* ]]; then
+    local old_index; ble/history/get-index -v old_index
+    if ((index!=old_index)); then
+      local line; ble/history/get-editted-entry -v line "$index"
+      ble-edit/content/reset-and-check-dirty "$line"
+    fi
+  else
+    ble-edit/history/goto "$index"
+  fi
+  local prefix=${_ble_edit_str%%"$needle"*}
+  local beg=${#prefix}
+  local end=$((beg+${#needle}))
+  _ble_edit_nsearch_match=$index
+  _ble_edit_nsearch_index=$index
+  _ble_edit_mark=$beg
+  case :$opts: in
+  (*:point=begin:*)       _ble_edit_ind=0 ;;
+  (*:point=end:*)         _ble_edit_ind=${#_ble_edit_str} ;;
+  (*:point=match-begin:*) _ble_edit_ind=$beg ;;
+  (*:point=match-end:*|*) _ble_edit_ind=$end ;;
+  esac
+  if ((beg!=end)); then
+    _ble_edit_mark_active=nsearch
+  else
+    _ble_edit_mark_active=
+  fi
 }
 
 function ble-edit/nsearch/.search.fib {
@@ -6808,13 +6863,17 @@ function ble-edit/nsearch/.search.fib {
       local record line=${ret#*:}
       ble/string#split record , "${ret%%:*}"
 
-      ble-edit/content/reset-and-check-dirty "$line"
+      if [[ :$opts: == *:action=load:* ]]; then
+        ble-edit/content/reset-and-check-dirty "$line"
+      else
+        ble-edit/history/goto "${record[1]}"
+      fi
       _ble_edit_nsearch_match=${record[1]}
       _ble_edit_nsearch_index=${record[1]}
       _ble_edit_ind=${record[2]}
       _ble_edit_mark=${record[3]}
       if ((_ble_edit_mark!=_ble_edit_ind)); then
-        _ble_edit_mark_active=search
+        _ble_edit_mark_active=nsearch
       else
         _ble_edit_mark_active=
       fi
@@ -6833,6 +6892,12 @@ function ble-edit/nsearch/.search.fib {
     fib_suspend=
   else
     local index=$_ble_edit_nsearch_index
+    if ((nstack==1)); then
+      # 検索方向反転があった時は検索開始位置を初期化
+      local index0=$_ble_edit_nsearch_index0
+      ((opt_forward?index<index0:index>index0)) &&
+        index=$index0
+    fi
     local start=$index
   fi
   local needle=$_ble_edit_nsearch_needle
@@ -6840,7 +6905,7 @@ function ble-edit/nsearch/.search.fib {
     if [[ $opt_forward ]]; then
       local count; ble/history/get-count
       [[ $opt_resume ]] || ((++index))
-      ((index<count))
+      ((index<=count))
     else
       [[ $opt_resume ]] || ((--index))
       ((index>=0))
@@ -6861,25 +6926,9 @@ function ble-edit/nsearch/.search.fib {
 
   # 書き換え
   if ((ext==0)); then
-    local old_match=$_ble_edit_nsearch_match
-    ble/array#push _ble_edit_nsearch_stack "backward,$old_match,$_ble_edit_ind,$_ble_edit_mark:$_ble_edit_str"
-
-    local line; ble/history/get-editted-entry -v line "$index"
-    local prefix=${line%%"$needle"*}
-    local beg=${#prefix}
-    local end=$((beg+${#needle}))
-    _ble_edit_nsearch_match=$index
-    _ble_edit_nsearch_index=$index
-    ble-edit/content/reset-and-check-dirty "$line"
-    ((_ble_edit_mark=beg,_ble_edit_ind=end))
-    if ((_ble_edit_mark!=_ble_edit_ind)); then
-      _ble_edit_mark_active=search
-    else
-      _ble_edit_mark_active=
-    fi
+    ble-edit/nsearch/.goto-match "$index" "$opts"
     ble-edit/nsearch/.show-status.fib
     ble/textarea#redraw
-
   elif ((ext==148)); then
     fib_suspend="index=$index start=$start"
     return 148
@@ -6902,9 +6951,42 @@ function ble-edit/nsearch/backward.fib {
   ble-edit/nsearch/.search.fib "$_ble_edit_nsearch_opts:backward"
 }
 
+## @widget history-search opts
+##   @param[in] opts
+##
+##     forward   前方に検索します
+##     backward  後方に検索します
+##     substr    部分一致を行います
+##     input     検索文字列をユーザー入力します
+##     again     前回ユーザー入力した検索文字列を使います
+##
+##     empty=EMPTY
+##       空文字列で検索を開始した時の動作を指定します。
+##       previous-search 前回の検索文字列を使用して検索します [既定]
+##       empty-search    空文字列で検索します。
+##       hide-status     空文字列検索。nsearch 状態は隠します。
+##       history-move    履歴項目移動。コマンドライン先頭に移動します。
+##
+##     action=ACTION
+##       文字列が見つかった時の動作を指定します。
+##       goto 見つかった履歴項目に移動します [既定]
+##       load 現在の履歴項目の位置で見つかったコマンド文字列をロードします
+##
+##     point=POINT
+##       文字列が見つかった時のカーソル位置を指定します。
+##       begin       コマンドラインの先頭に移動します。
+##       end         コマンドラインの末尾に移動します。
+##       match-begin 一致範囲の先頭に移動します。
+##       match-end   一致範囲の末尾に移動します。
+##
+##     hide-status
+##       現在の検索状態を表示しません。
+##
+##     immediate-accept
+##       nsearch を正常終了する時にコマンドを即座に実行します。
+##
 function ble/widget/history-search {
   local opts=$1
-  ble-edit/content/clear-arg
 
   # initialize variables
   if [[ :$opts: == *:input:* || :$opts: == *:again:* && ! $_ble_edit_nsearch_input ]]; then
@@ -6915,17 +6997,51 @@ function ble/widget/history-search {
   else
     _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
   fi
+
+  # 検索文字列が空の時は別の動作を行う
+  if [[ ! $_ble_edit_nsearch_needle ]]; then
+    local empty=empty-search
+    local rex='.*:empty=([^:]*):'
+    [[ :$opts: =~ $rex ]] && empty=${BASH_REMATCH[1]}
+    case $empty in
+    (history-move)
+      if [[ :$opts: == *:forward:* ]]; then
+        ble/widget/history-next
+      else
+        ble/widget/history-prev
+      fi && _ble_edit_ind=0
+      return $? ;;
+    (hide-status)
+      opts=$opts:hide-status ;;
+    (previous-search)
+      _ble_edit_nsearch_needle=$_ble_edit_nsearch_prev ;;
+    esac
+  fi
+  _ble_edit_nsearch_prev=$_ble_edit_nsearch_needle
+
+  ble-edit/content/clear-arg
+
   _ble_edit_nsearch_stack=()
   local index; ble/history/get-index
+  _ble_edit_nsearch_index0=$index
+  _ble_edit_nsearch_opts=$opts
+  ble/path#remove _ble_edit_nsearch_opts forward
+  ble/path#remove _ble_edit_nsearch_opts backward
   _ble_edit_nsearch_match=$index
   _ble_edit_nsearch_index=$index
-  if [[ :$opts: == *:substr:* ]]; then
-    _ble_edit_nsearch_opts=substr
-  else
-    _ble_edit_nsearch_opts=
-  fi
   _ble_edit_mark_active=
   ble/decode/keymap/push nsearch
+
+  # 現在履歴位置が一致する場合は戻って来れる様に記録する。
+  if
+    if [[ :$opts: == *:substr:* ]]; then
+      [[ $_ble_edit_str == *"$_ble_edit_nsearch_needle"* ]]
+    else
+      [[ $_ble_edit_str == "$_ble_edit_nsearch_needle"* ]]
+    fi
+  then
+    ble-edit/nsearch/.goto-match '' "$opts"
+  fi
 
   # start search
   ble/util/fiberchain#initialize ble-edit/nsearch
@@ -6937,28 +7053,28 @@ function ble/widget/history-search {
   ble/util/fiberchain#resume
 }
 function ble/widget/history-nsearch-backward {
-  ble/widget/history-search input:substr:backward
+  ble/widget/history-search "input:substr:backward:$1"
 }
 function ble/widget/history-nsearch-forward {
-  ble/widget/history-search input:substr:forward
+  ble/widget/history-search "input:substr:forward:$1"
 }
 function ble/widget/history-nsearch-backward-again {
-  ble/widget/history-search again:substr:backward
+  ble/widget/history-search "again:substr:backward:$1"
 }
 function ble/widget/history-nsearch-forward-again {
-  ble/widget/history-search again:substr:forward
+  ble/widget/history-search "again:substr:forward:$1"
 }
 function ble/widget/history-search-backward {
-  ble/widget/history-search backward
+  ble/widget/history-search "backward:$1"
 }
 function ble/widget/history-search-forward {
-  ble/widget/history-search forward
+  ble/widget/history-search "forward:$1"
 }
 function ble/widget/history-substring-search-backward {
-  ble/widget/history-search substr:backward
+  ble/widget/history-search "substr:backward:$1"
 }
 function ble/widget/history-substring-search-forward {
-  ble/widget/history-search substr:forward
+  ble/widget/history-search "substr:forward:$1"
 }
 
 function ble/widget/nsearch/forward {
@@ -6981,13 +7097,20 @@ function ble/widget/nsearch/backward {
   fi
   ble/util/fiberchain#resume
 }
-function ble/widget/nsearch/exit {
+function ble/widget/nsearch/.exit {
   ble/decode/keymap/pop
   _ble_edit_mark_active=
   ble-edit/nsearch/erase-status
 }
+function ble/widget/nsearch/exit {
+  if [[ :$_ble_edit_nsearch_opts: == *:immediate-accept:* ]]; then
+    ble/widget/nsearch/accept-line
+  else
+    ble/widget/nsearch/.exit
+  fi
+}
 function ble/widget/nsearch/exit-default {
-  ble/widget/nsearch/exit
+  ble/widget/nsearch/.exit
   ble/decode/widget/skip-lastwidget
   ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
@@ -6996,13 +7119,16 @@ function ble/widget/nsearch/cancel {
     ble/util/fiberchain#clear
     ble-edit/nsearch/show-status
   else
-    ble/widget/nsearch/exit
+    ble/widget/nsearch/.exit
     local record=${_ble_edit_nsearch_stack[0]}
     if [[ $record ]]; then
       local line=${record#*:}
       ble/string#split record , "${record%%:*}"
-
-      ble-edit/content/reset-and-check-dirty "$line"
+      if [[ :$_ble_edit_nsearch_opts: == *:action=load:* ]]; then
+        ble-edit/content/reset-and-check-dirty "$line"
+      else
+        ble-edit/history/goto "$_ble_edit_nsearch_index0"
+      fi
       _ble_edit_ind=${record[2]}
       _ble_edit_mark=${record[3]}
     fi
@@ -7012,7 +7138,7 @@ function ble/widget/nsearch/accept-line {
   if ((${#_ble_util_fiberchain[@]})); then
     ble/widget/.bell "nsearch: now searching..."
   else
-    ble/widget/nsearch/exit
+    ble/widget/nsearch/.exit
     ble-decode-key 13 # RET
   fi
 }

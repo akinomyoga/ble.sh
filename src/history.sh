@@ -1505,7 +1505,7 @@ function ble/history/set-editted-entry {
   local index=$1 str=$2
   local code='
     # store
-    if [[ ${PREFIX_history_edit[index]} != "$str" ]]; then
+    if [[ ! ${PREFIX_history_edit[index]+set} || ${PREFIX_history_edit[index]} != "$str" ]]; then
       PREFIX_history_edit[index]=$str
       PREFIX_history_dirt[index]=1
     fi'

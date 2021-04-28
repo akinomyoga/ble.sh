@@ -10,9 +10,9 @@
 ## # Please put the following line in the beginning of .bashrc
 ## # Note: Please replace $HOME/.local/share/blesh with the path to your ble.sh
 ## [[ $- == *i* ]] && "$HOME/.local/share/blesh/ble.sh" --noattach
-## 
+##
 ## # Your bashrc contents should come between the two lines.
-## 
+##
 ## # Please put the following line in the end of .bashrc
 ## [[ ${BLE_VERSION-} ]] && ble-attach
 ## ```
@@ -611,6 +611,30 @@
 
 
 ##-----------------------------------------------------------------------------
+## Key bindings
+
+
+## The default mapping of <SP> is magic-space which performs history and
+## sabbrev expansion before inserting a space.  If you want to insert just a
+## space without expansions as Bash's default, use the following setting:
+
+#ble-bind -f 'SP' 'self-insert'
+
+
+## If you want to search the already input string using <up> and <down> keys,
+## use the following setting:
+
+#ble-bind -f up 'history-search-backward'
+#ble-bind -f down 'history-search-forward'
+
+## If you want to immediately run the matched command by RET, you can specify
+## the option "immediate-accept" to nsearch widgets:
+
+#ble-bind -f up 'history-search-backward immediate-accept'
+#ble-bind -f down 'history-search-forward immediate-accept'
+
+
+##-----------------------------------------------------------------------------
 ## Settings for vim-mode
 
 function blerc/vim-load-hook {
@@ -631,6 +655,19 @@ function blerc/vim-load-hook {
   ## this option has a non-empty value, the mode line is shown.
 
   # bleopt keymap_vi_mode_show=1
+
+
+  ## The default mapping of C-o is vi_imap/single-command-mode.  If you want to
+  ## execute the current command line and load the next history entry with
+  ## <C-o>, use the following setting:
+
+  #ble-bind -m vi_imap -f 'C-o' 'accept-and-next'
+
+
+  ## The default mapping of C-k is kill-forward-line.  If you want to input
+  ## digraphs with <C-k>{char1}{char2}, use the following setting:
+
+  #ble-bind -m vi_imap -f 'C-k' 'vi_imap/insert-digraph'
 
 
   ## The following settings specify the name of modes in the mode line.
