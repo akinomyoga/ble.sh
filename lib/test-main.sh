@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'main' 14
+ble/test/start-section 'main' 16
 
 # ble/util/{put,print}
 (

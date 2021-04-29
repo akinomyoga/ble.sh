@@ -1834,6 +1834,347 @@ else
   }
 fi
 
+## @fn ble/util/writearray [OPTIONS] arr
+##   配列の内容を読み出し可能な形式で出力します。
+##
+## OPTIONS
+##   --       以降の引数は通常引数
+##   -d delim 配列要素を区切るのに使う文字を設定します。
+##            既定値は改行 "\n" です。
+##   --nlfix  改行区切りで出力します。要素に改行が含まれる時は $'' を用
+##            いて内容をエスケープします。改行が含まれる要素番号の一覧
+##            を一番最後の要素に追加します。
+##
+function ble/util/writearray/.read-arguments {
+  _ble_local_array=
+  _ble_local_nlfix=
+  _ble_local_delim=$'\n'
+  local flags=
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $flags != *-* && $arg == -* ]]; then
+      case $arg in
+      (--nlfix) _ble_local_nlfix=1 ;;
+      (-d)
+        if (($#)); then
+          _ble_local_delim=$1; shift
+        else
+          echo "${FUNCNAME[1]}: '$arg': missing option argument." >&2
+          flags=E$flags
+        fi ;;
+      (--) flags=-$flags ;;
+      (*)
+        echo "${FUNCNAME[1]}: '$arg': unrecognized option." >&2
+        flags=E$flags ;;
+      esac
+    else
+      if local rex='^[a-zA-Z_][a-zA-Z_0-9]*$'; ! [[ $arg =~ $rex ]]; then
+        echo "${FUNCNAME[1]}: '$arg': invalid array name." >&2
+        flags=E$flags
+      elif [[ $flags == *A* ]]; then
+        echo "${FUNCNAME[1]}: '$arg': an array name has been already specified." >&2
+        flags=E$flags
+      else
+        _ble_local_array=$arg
+        flags=A$flags
+      fi
+    fi
+  done
+  [[ $_ble_local_nlfix ]] && _ble_local_delim=$'\n'
+  [[ $flags != *E* ]]
+}
+function ble/util/writearray {
+  local _ble_local_array
+  local -x _ble_local_nlfix _ble_local_delim
+  ble/util/writearray/.read-arguments "$@" || return 2
+
+  local rex_dq='^"([^\\"]|\\.)*"'
+  local rex_es='^\$'\''([^\\'\'']|\\.)*'\'''
+  local rex_sq='^'\''([^'\'']|'\'\\\\\'\'')*'\'''
+  local rex_normal='^[^[:space:]$`"'\''()|&;<>\\]' # Note: []{}?*#!~^, @(), +() は quote されていなくても OK とする
+  declare -p "$_ble_local_array" | ble/bin/awk -v _ble_bash="$_ble_bash" '
+    BEGIN {
+      DELIM = ENVIRON["_ble_local_delim"];
+      FLAG_NLFIX = ENVIRON["_ble_local_nlfix"];
+      if (FLAG_NLFIX) DELIM = "\n";
+
+      IS_GAWK = AWKTYPE == "gawk";
+      IS_XPG4 = AWKTYPE == "xpg4";
+      REP_SL = "\\";
+      if (IS_XPG4) REP_SL = "\\\\";
+
+      es_control_chars["a"] = "\a";
+      es_control_chars["b"] = "\b";
+      es_control_chars["t"] = "\t";
+      es_control_chars["n"] = "\n";
+      es_control_chars["v"] = "\v";
+      es_control_chars["f"] = "\f";
+      es_control_chars["r"] = "\r";
+      es_control_chars["e"] = "\033";
+
+      for (i = 0; i < 16; i++)
+        xdigit2int[sprintf("%x", i)] = i;
+      for (i = 10; i < 16; i++)
+        xdigit2int[sprintf("%X", i)] = i;
+
+      c2s_initialize();
+
+      decl = "";
+    }
+
+    function str2rep(str) {
+      if (IS_XPG4) sub(/\\/, "\\\\\\\\", str);
+      return str;
+    }
+
+    function s2i(s, base, _, i, n, r) {
+      if (!base) base = 10;
+      r = 0;
+      n = length(s);
+      for (i = 1; i <= n; i++)
+        r = r * base + xdigit2int[substr(s, i, 1)];
+      return r;
+    }
+
+    # ENCODING: UTF-8
+    function c2s_initialize(_, i) {
+      if (sprintf("%c", 945) == "α") {
+        C2S_UNICODE_PRINTF_C = 1;
+      } else {
+        C2S_UNICODE_PRINTF_C = 0;
+        for (i = 1; i <= 255; i++)
+          c2s_byte2char[i] = sprintf("%c", i);
+      }
+    }
+    function c2s(code, _, leadbyte_mark, leadbyte_sup, tail) {
+      if (C2S_UNICODE_PRINTF_C)
+        return sprintf("%c", code);
+
+      leadbyte_sup = 128; # 0x80
+      leadbyte_mark = 0;
+      tail = "";
+      while (leadbyte_sup && code >= leadbyte_sup) {
+        leadbyte_sup /= 2;
+        leadbyte_mark = leadbyte_mark ? leadbyte_mark / 2 : 65472; # 0xFFC0
+        tail = c2s_byte2char[128 + int(code % 64)] tail;
+        code = int(code / 64);
+      }
+      return c2s_byte2char[(leadbyte_mark + code) % 256] tail;
+    }
+
+    function unquote_dq(s, _, head) {
+      head = "";
+      while (match(s, /^([^\\]|\\[^$`"\\])*\\[$`"\\]/)) {
+        head = head substr(s, 1, RLENGTH - 2) substr(s, RLENGTH, 1);
+        s = substr(s, RLENGTH + 1);
+      }
+      return head s;
+    }
+    function unquote_sq(s) {
+      gsub(/'\'\\\\\'\''/, "'\''", s);
+      return s;
+    }
+    function unquote_es(s, _, head, c) {
+      head = "";
+      while (match(s, /^[^\\]*\\/)) {
+        head = head substr(s, 1, RLENGTH - 1);
+        s = substr(s, RLENGTH + 1);
+        if ((c = es_control_chars[substr(s, 1, 1)])) {
+          head = head c;
+          s = substr(s, 2);
+        } else if (match(s, /^[0-9]([0-9][0-9]?)?/)) {
+          head = head c2s(s2i(substr(s, 1, RLENGTH), 8) % 256);
+          s = substr(s, RLENGTH + 1);
+        } else if (match(s, /^x[0-9a-fA-F][0-9a-fA-F]?/)) {
+          head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+          s = substr(s, RLENGTH + 1);
+        } else if (match(s, /^U[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
+          # \\U[0-9]{5,8}
+          head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+          s = substr(s, RLENGTH + 1);
+        } else if (match(s, /^[uU][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
+          # \\[uU][0-9]{1,4}
+          head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+          s = substr(s, RLENGTH + 1);
+        } else {
+          head = head "\\";
+        }
+      }
+      return head s;
+    }
+    function unquote(s, _, c) {
+      c = substr(s, 1, 1);
+      if (c == "\"")
+        return unquote_dq(substr(s, 2, length(s) - 2));
+      else if (c == "$")
+        return unquote_es(substr(s, 3, length(s) - 3));
+      else if (c == "'\''")
+        return unquote_sq(substr(s, 2, length(s) - 2));
+      else if (c == "\\")
+        return substr(s, 2, 1);
+      else
+        return s;
+    }
+
+    # 制御文字が要素に含まれていない場合は全て [1]="..." の形式になっている筈。
+    function analyze_elements_dq(decl, _, arr, i, n) {
+      if (decl ~ /^\[[0-9]+\]="([^'$'\1\2''"\n\\]|\\.)*"( \[[0-9]+\]="([^\1\2"\\]|\\.)*")*$/) {
+        if (IS_GAWK) {
+          decl = gensub(/\[[0-9]+\]="(([^"\\]|\\.)*)" ?/, "\\1\001", "g", decl);
+          sub(/\001$/, "", decl);
+          decl = gensub(/\\([\\$"`])/, "\\1", decl);
+        } else {
+          # Convert to a ^A-separated list
+          gsub(/\[[0-9]+\]="([^"\\]|\\.)*" /, "&\001", decl);
+          gsub(/" \001\[[0-9]+\]="/, "\001", decl);
+          sub(/^\[[0-9]+\]="/, "", decl);
+          sub(/"$/, "", decl);
+
+          # Unescape
+          gsub(/\\\\/, "\002", decl);
+          gsub(/\\\$/, "$", decl);
+          gsub(/\\"/, "\"", decl);
+          gsub(/\\`/, "`", decl);
+          gsub(/\002/, REP_SL, decl);
+        }
+
+        # Output
+        if (DELIM != "") {
+          gsub(/\001/, str2rep(DELIM), decl);
+          printf("%s", decl DELIM);
+        } else {
+          n = split(decl, arr, /\001/);
+          for (i = 1; i <= n; i++)
+            printf("%s%c", arr[i], 0);
+        }
+
+        # [N]="" の形式の時は要素内改行はないと想定
+        if (FLAG_NLFIX) printf("\n");
+
+        return 1;
+      }
+      return 0;
+    }
+    # 任意の場合は多少遅くなるがこちらの関数で処理する。
+    function analyze_elements_general(decl, _, arr, i, n, nlfix_indices) {
+      n = split(decl, arr, / /);
+      nlfix_indices = "";
+      for (i = 1; i <= n; i++) {
+        elem = arr[i];
+        sub(/^\[[0-9]+\]=/, "", elem);
+        line = "";
+        while (1) {
+          if (match(elem, /'"$rex_dq"'|'"$rex_es"'|'"$rex_sq"'|'"$rex_normal"'|^\\./)) {
+            mlen = RLENGTH;
+            line = line unquote(substr(elem, 1, mlen));
+            elem = substr(elem, mlen + 1);
+          } else if (elem ~ /^[$"'\''\\]/ && i + 1 <= n) {
+            elem = elem " " arr[++i];
+          } else {
+            break;
+          }
+        }
+
+        if (FLAG_NLFIX) {
+          if (line ~ /\n/) {
+            gsub(/\\/, REP_SL REP_SL, line);
+            gsub(/'\''/, REP_SL "'\''", line);
+            gsub(/\a/, REP_SL "a", line);
+            gsub(/\b/, REP_SL "b", line);
+            gsub(/\t/, REP_SL "t", line);
+            gsub(/\n/, REP_SL "n", line);
+            gsub(/\v/, REP_SL "v", line);
+            gsub(/\f/, REP_SL "f", line);
+            gsub(/\r/, REP_SL "r", line);
+            printf("$'\''%s'\''\n", line);
+            nlfix_indices = nlfix_indices != "" ? nlfix_indices " " (i - 1) : (i - 1);
+          } else {
+            printf("%s\n", line);
+          }
+        } else if (DELIM != "") {
+          printf("%s", line DELIM);
+        } else {
+          printf("%s%c", line, 0);
+        }
+      }
+      if (FLAG_NLFIX)
+        printf("%s\n", nlfix_indices);
+      return 1;
+    }
+
+    function process_declaration(decl, _, mlen, line) {
+      # declare 除去
+      sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
+
+      # 全体 quote の除去
+      if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
+        sub(/='\''\(/, "=(", decl);
+        sub(/\)'\''$/, ")", decl);
+        gsub(/'\'\\\\\'\''/, "'\''", decl);
+      }
+
+      # bash-3.0 の declare -p は改行について誤った出力をする。
+      if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
+
+      # #D1238 bash-4.3 以前の declare -p は ^A, ^? を
+      #   ^A^A, ^A^? と出力してしまうので補正する。
+      # #D1325 更に Bash-3.0 では "x${_ble_term_DEL}y" とすると
+      #   _ble_term_DEL の中身が消えてしまうので
+      #   "x""${_ble_term_DEL}""y" とする必要がある。
+      if (_ble_bash < 40000) {
+        gsub(/\001\001\001\001/, "\001", decl);
+        gsub(/\001\001\001\177/, "\177", decl);
+      } else if (_ble_bash < 40400) {
+        gsub(/\001\001/, "\001", decl);
+        gsub(/\001\177/, "\177", decl);
+      }
+
+      sub(/^([_a-zA-Z][_a-zA-Z0-9]*)=\([[:space:]]*/, "", decl);
+      sub(/[[:space:]]*\)[[:space:]]*$/, "", decl);
+
+      # 空配列
+      if (decl == "") return 1;
+
+      # [N]="value" だけの時の高速実装。mawk だと却って遅くなる様だ
+      if (AWKTYPE != "mawk" && analyze_elements_dq(decl)) return 1;
+
+      return analyze_elements_general(decl);
+    }
+    { decl = decl ? decl "\n" $0: $0; }
+    END { process_declaration(decl); }
+  '
+}
+function ble/util/readarray {
+  local _ble_local_array
+  local -x _ble_local_nlfix _ble_local_delim
+  ble/util/writearray/.read-arguments "$@" || return 2
+
+  if ((_ble_bash>=40400)); then
+    local _ble_local_script='
+      mapfile -t -d "$_ble_local_delim" ARR'
+  elif ((_ble_bash>=40000)) && [[ $_ble_local_delim == $'\n' ]]; then
+    local _ble_local_script='
+      mapfile -t ARR'
+  else
+    local _ble_local_script='
+      local IFS= ARRI=0 ARR
+      while read -r -d "" "ARR[ARRI++]"; do :; done'
+  fi
+
+  if [[ $_ble_local_nlfix ]]; then
+    _ble_local_script=$_ble_local_script'
+      local ARRN=${#ARR[@]}
+      if ((ARRN--)); then
+        ble/string#split-words ARRF "${ARR[ARRN]}"
+        builtin unset -v "ARR[ARRN]"
+        for ARRI in "${ARRF[@]}"; do
+          builtin eval -- "ARR[ARRI]=${ARR[ARRI]}"
+        done
+      fi'
+  fi
+  builtin eval -- "${_ble_local_script//ARR/$_ble_local_array}"
+}
+
 ## @fn ble/util/assign var command
 ##   var=$(command) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
@@ -1894,6 +2235,30 @@ else
     local _ble_local_ret=$?
     ((_ble_util_assign_level--))
     ble/util/mapfile "$1" < "$_ble_local_tmp"
+    return "$_ble_local_ret"
+  }
+fi
+
+if ! ((_ble_bash>=40400)); then
+  function ble/util/assign-array0 {
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_ret=$?
+    ((_ble_util_assign_level--))
+    mapfile -d '' -t "$1" < "$_ble_local_tmp"
+    return "$_ble_local_ret"
+  }
+else
+  function ble/util/assign-array0 {
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_ret=$?
+    ((_ble_util_assign_level--))
+    local IFS= i=0 _ble_local_arr
+    while read -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmp"
+    [[ ${_ble_local_arr[--i]} ]] || unset -v "_ble_local_arr[i]"
+    ble/util/unlocal i IFS
+    builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
     return "$_ble_local_ret"
   }
 fi
@@ -2290,6 +2655,24 @@ function ble/util/declare-print-definitions {
         if (decl) {
           isArray = (decl ~ /^declare +-[ilucnrtxfFgGI]*[aA]/);
 
+          # declare 除去
+          sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
+          if (isArray) {
+            if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
+              sub(/='\''\(/, "=(", decl);
+              sub(/\)'\''$/, ")", decl);
+              gsub(/'\'\\\\\'\''/, "'\''", decl);
+
+              # Note: bash-3.* の配列表記では ^A, ^? が二重にエスケープされて
+              #   ^A^A^A^A, ^A^A^A^? になってしまう。一つ目のエスケープをここで
+              # 外しておく。
+              if (_ble_bash < 40000) {
+                gsub(/\001\001/, "\001", decl);
+                gsub(/\001\177/, "\177", decl);
+              }
+            }
+          }
+
           # bash-3.0 の declare -p は改行について誤った出力をする。
           if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
 
@@ -2308,15 +2691,6 @@ function ble/util/declare-print-definitions {
           if (flag_escape_cr)
             gsub(/\015/, "${_ble_term_CR}", decl);
 
-          # declare 除去
-          sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
-          if (isArray) {
-            if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
-              sub(/='\''\(/, "=(", decl);
-              sub(/\)'\''$/, ")", decl);
-              gsub(/'\'\\\\\'\''/, "'\''", decl);
-            }
-          }
           print decl;
           decl = "";
         }

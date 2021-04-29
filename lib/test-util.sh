@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 1191
+ble/test/start-section 'util' 1192
 
 # bleopt
 
@@ -1189,6 +1189,12 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'ble/util/assign-array a "seq 5"; status' stdout='5:(1 2 3 4 5)'
   ble/test 'ble/util/assign-array a "echo; echo; echo"; status' stdout='3:(  )'
   ble/test 'ble/util/assign-array a "echo 1; echo; echo 2"; status' stdout='3:(1  2)'
+)
+
+# ble/util/writearray
+(
+  x=($'\1' $'\2' $'\32' ' ' $'\a' $'\b' $'\t' $'\n' $'\v' $'\f' $'\r' $'\177' a \" \' \$ \! \` \~)
+  ble/test "ble/util/writearray -d '' x | sha256sum | awk '{print \$1}'" stdout=$(printf '%s\0' "${x[@]}" | sha256sum | awk '{print $1}')
 )
 
 # ble/is-function

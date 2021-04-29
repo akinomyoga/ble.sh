@@ -2677,20 +2677,22 @@ function ble/decode/bind/.generate-source-to-unbind-default {
 } 2>/dev/null
 function ble/decode/bind/.generate-source-to-unbind-default/.process {
   # Note: #D1355 LC_ALL 切り替えに伴うエラーメッセージは呼び出し元で /dev/null に繋いでいる。
-  local q=\' Q="'\''" is_xpg4=0
-  # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンスも処理される
-  [[ $_ble_bin_awk_solaris_xpg4 == yes ]] && is_xpg4=1
-  LC_ALL=C ble/bin/awk -v q="$q" -v is_xpg4="$is_xpg4" '
-    function str2rep(str) {
-      if (is_xpg4) sub(/\\/, "\\\\\\\\", str);
-      return str;
-    }
+  local q=\' Q="'\''"
+  LC_ALL=C ble/bin/awk -v q="$q" '
     BEGIN {
+      IS_XPG4 = AWKTYPE == "xpg4";
       rep_Q         = str2rep(q "\\" q q);
       rep_bslash    = str2rep("\\");
       rep_kseq_1c5c = str2rep("\"\\x1c\\x5c\"");
       rep_kseq_1c   = str2rep("\"\\x1c\"");
       mode = 1;
+    }
+
+    # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンス
+    #   も処理されるので、バックスラッシュをエスケープする。
+    function str2rep(str) {
+      if (IS_XPG4) sub(/\\/, "\\\\\\\\", str);
+      return str;
     }
 
     function quote(text) {

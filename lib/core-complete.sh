@@ -1753,11 +1753,13 @@ function ble/complete/util/eval-pathname-expansion {
     local sync_opts=progressive-weight
     [[ :$comp_type: == *:auto:* && $bleopt_complete_timeout_auto ]] &&
       sync_opts=$sync_opts:timeout=$((bleopt_complete_timeout_auto))
+
     local def
     ble/util/assign def 'ble/util/conditional-sync "$sync_command" "" "" "$sync_opts"' &>/dev/null; local ext=$?
     ((ext==148)) && return 148
+    ble/complete/check-cancel && return 148
     builtin eval -- "$def"
-  fi
+  fi 2>/dev/tty
 
   ble/array#reverse dtor
   ble/util/invoke-hook dtor
@@ -4333,7 +4335,7 @@ function ble/complete/insert-all {
 function ble/complete/insert-braces/.compose {
   # Note: awk が RS = "\0" に対応していれば \0 で区切る。
   #   それ以外の場合には \x1E (ASCII RS) で区切る。
-  if ble/bin/awk-supports-null-record-separator; then
+  if ble/bin/awk.supports-null-record-separator; then
     local printf_format='%s\0' RS='"\0"'
   else
     local printf_format='%s\x1E' RS='"\x1E"'

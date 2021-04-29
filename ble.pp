@@ -397,6 +397,7 @@ function ble/bin/.default-utility-path {
 function ble/bin/.freeze-utility-path {
   local cmd path q=\' Q="'\''" fail=
   for cmd; do
+    type -t "ble/bin/$cmd" &>/dev/null && continue
     if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
       builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
     else
@@ -462,8 +463,39 @@ if ! ble/.check-environment; then
   return 1
 fi
 
+# src/util で awk を使う
+function ble/bin/awk {
+  local path q=\' Q="'\''"
+  if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+    # Solaris の既定の awk は全然駄目なので /usr/xpg4 以下の awk を使う。
+    function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; }
+  elif ble/util/assign path "builtin type -P -- nawk 2>/dev/null" && [[ $path ]]; then
+    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }"
+  elif ble/util/assign path "builtin type -P -- mawk 2>/dev/null" && [[ $path ]]; then
+    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
+  elif ble/util/assign path "builtin type -P -- gawk 2>/dev/null" && [[ $path ]]; then
+    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
+  elif ble/util/assign path "builtin type -P -- awk 2>/dev/null" && [[ $path ]]; then
+    local version type
+    ble/util/assign version '"$path" --version 2>&1'
+    if [[ $version == *'GNU Awk'* ]]; then
+      type=gawk
+    elif [[ $version == *mawk* ]]; then
+      type=mawk
+    elif [[ $version == 'awk version '[12][0-9][0-9][0-9][01][0-9][0-3][0-9] ]]; then
+      type=nawk
+    else
+      type=unknown
+    fi
+    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=$type \"\$@\"; }"
+  else
+    return 1
+  fi
+  ble/bin/awk "$@"
+}
+
 _ble_bin_awk_supports_null_RS=
-function ble/bin/awk-supports-null-record-separator {
+function ble/bin/awk.supports-null-record-separator {
   if [[ ! $_ble_bin_awk_supports_null_RS ]]; then
     local count=0 awk_script='BEGIN { RS = "\0"; } { count++; } END { print count; }'
     ble/util/assign count 'printf "a\0b\0" | ble/bin/awk "$awk_script" '
@@ -474,20 +506,6 @@ function ble/bin/awk-supports-null-record-separator {
     fi
   fi
   [[ $_ble_bin_awk_supports_null_RS == yes ]]
-}
-_ble_bin_awk_solaris_xpg4=
-function ble/bin/awk.use-solaris-xpg4 {
-  if [[ ! $_ble_bin_awk_solaris_xpg4 ]]; then
-    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
-      _ble_bin_awk_solaris_xpg4=yes
-    else
-      _ble_bin_awk_solaris_xpg4=no
-    fi
-  fi
-
-  # Solaris の既定の awk は絶望的なので /usr/xpg4/bin/awk (nawk) を使う
-  [[ $_ble_bin_awk_solaris_xpg4 == yes ]] &&
-    function ble/bin/awk { /usr/xpg4/bin/awk "$@"; }
 }
 
 #------------------------------------------------------------------------------
@@ -819,8 +837,6 @@ function ble-update {
 }
 #%end
 
-# Solaris: src/util の中でちゃんとした awk が必要
-ble/bin/awk.use-solaris-xpg4
 
 #------------------------------------------------------------------------------
 _ble_attached=
@@ -831,8 +847,6 @@ _ble_attached=
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 ble/bin/.freeze-utility-path man
 ble/bin/.freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
-# Solaris: .freeze-utility-path で上書きされた awk を戻す
-ble/bin/awk.use-solaris-xpg4
 
 ble/builtin/trap/install-hook EXIT
 ble/builtin/trap/install-hook INT

@@ -5,7 +5,7 @@ ble-import lib/core-test
 _ble_test_canvas_contra=
 if [[ -x ext/contra ]]; then
   _ble_test_canvas_contra=ext/contra
-elif [[ $(printf 'hello world' | contra test 5 2) == $' worl\nd    ' ]]; then
+elif [[ $(printf 'hello world' | contra test 5 2 2>/dev/null) == $' worl\nd    ' ]]; then
   _ble_test_canvas_contra=contra
 fi
 
@@ -74,25 +74,29 @@ ble/test:canvas/trace.contra 10:6 $'hello\e[B\e[4D123' measure-bbox x=3:y=2 << E
           $
           $
 EOF
-ble/test '[[ $x1-$x2:$y1-$y2 == 3-8:2-4 ]]'
+[[ $_ble_test_canvas_contra ]] &&
+  ble/test 'echo "$x1-$x2:$y1-$y2"' stdout='3-8:2-4'
 
 ble/test:canvas/trace.contra 10:2 日本語 measure-bbox << EOF
 日本語    $
           $
 EOF
-ble/test '[[ $x1-$x2:$y1-$y2 == 0-6:0-1 ]]'
+[[ $_ble_test_canvas_contra ]] &&
+  ble/test 'echo "$x1-$x2:$y1-$y2"' stdout='0-6:0-1'
 
 ble/test:canvas/trace.contra 10:2 $'hello\eDworld' measure-bbox << EOF
 hello     $
      world$
 EOF
-ble/test '[[ $x1-$x2:$y1-$y2 == 0-10:0-2 ]]'
+[[ $_ble_test_canvas_contra ]] &&
+  ble/test 'echo "$x1-$x2:$y1-$y2"' stdout='0-10:0-2'
 
 ble/test:canvas/trace.contra 10:2 $'hello\eMworld' measure-bbox << EOF
      world$
 hello     $
 EOF
-ble/test '[[ $x1-$x2:$y1-$y2 == 0-10:-1-1 ]]'
+[[ $_ble_test_canvas_contra ]] &&
+  ble/test 'echo "$x1-$x2:$y1-$y2"' stdout='0-10:-1-1'
 
 
 #------------------------------------------------------------------------------
@@ -149,9 +153,10 @@ E                                       $
                                         $
 EOF
 )
-  ble/test --depth=1 \
-           'ble/canvas/flush.draw | ext/contra test 40 15' \
-           stdout="$expect"
+  [[ $_ble_test_canvas_contra ]] &&
+    ble/test --depth=1 \
+             'ble/canvas/flush.draw | $_ble_test_canvas_contra test 40 15' \
+             stdout="$expect"
 }
 ble/test:canvas/check-trace
 
@@ -243,20 +248,26 @@ ble/test:canvas/trace.contra 30:3 $'hello\n2021-01-01\nA' right:measure-bbox:mea
                     2021-01-01$
                              A$
 EOF
-ble/test '[[ bbox:$x1,$y1-$x2,$y2 == bbox:0,0-30,3 ]]'
-ble/test '[[ gbox:$gx1,$gy1-$gx2,$gy2 == gbox:20,0-30,3 ]]'
+if [[ $_ble_test_canvas_contra ]]; then
+  ble/test 'echo "bbox:$x1,$y1-$x2,$y2"' stdout='bbox:0,0-30,3'
+  ble/test 'echo "gbox:$gx1,$gy1-$gx2,$gy2"' stdout='gbox:20,0-30,3'
+fi
 
 ble/test:canvas/trace.contra 30:3 $'hello\n2021-01-01\nA' center:measure-bbox:measure-gbox << EOF
             hello             $
           2021-01-01          $
               A               $
 EOF
-ble/test '[[ bbox:$x1,$y1-$x2,$y2 == bbox:0,0-20,3 ]]'
-ble/test '[[ gbox:$gx1,$gy1-$gx2,$gy2 == gbox:10,0-20,3 ]]'
+if [[ $_ble_test_canvas_contra ]]; then
+  ble/test 'echo "bbox:$x1,$y1-$x2,$y2"' stdout='bbox:0,0-20,3'
+  ble/test 'echo "gbox:$gx1,$gy1-$gx2,$gy2"' stdout='gbox:10,0-20,3'
+fi
 
 ble/test:canvas/trace.contra 10:1 $'xyz\e[4Daxyz' relative:measure-bbox x=3 << EOF
   axyz    $
 EOF
-ble/test '[[ bbox:$x1,$y1-$x2,$y2 == bbox:2,0-6,1 ]]'
+if [[ $_ble_test_canvas_contra ]]; then
+  ble/test 'echo "bbox:$x1,$y1-$x2,$y2"' stdout='bbox:2,0-6,1'
+fi
 
 ble/test/end-section

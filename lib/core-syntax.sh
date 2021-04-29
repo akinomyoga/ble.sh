@@ -1325,6 +1325,25 @@ function ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot {
 
 function ble/syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
 function ble/syntax:bash/simple-word/eval/.print-result {
+  if (($#>=1000)) && [[ $OSTYPE != cygwin ]]; then
+    # ファイル数が少ない場合は fork コストを避ける為に多少遅くても quote&eval
+    # でデータを親シェルに転送する。Cygwin では mapfile/read が unbuffered で遅
+    # いので、ファイル数が遅くても quote&eval を使う。
+
+    # # もし mapfile -d "" が buffered になったら以下のコードを使用したい。
+    # if ((_ble_bash>=50200)); then
+    #   printf '%s\0' "$@" >| "$__ble_simple_word_tmpfile"
+    #   ble/util/print 'ble/util/readarray -d "" __ble_ret < "$__ble_simple_word_tmpfile"'
+    #   return 0
+    # fi
+    if ((_ble_bash>=40000)); then
+      ret=("$@")
+      ble/util/writearray --nlfix ret >| "$__ble_simple_word_tmpfile"
+      ble/util/print 'ble/util/readarray --nlfix __ble_ret < "$__ble_simple_word_tmpfile"'
+      return 0
+    fi
+  fi
+
   local ret; ble/string#quote-words "$@"
   ble/util/print "__ble_ret=($ret)"
 }
@@ -1395,9 +1414,11 @@ function ble/syntax:bash/simple-word/eval/.impl {
     [[ $__ble_sync_timeout ]] &&
       __ble_sync_opts=$__ble_sync_opts:timeout=$((__ble_sync_timeout))
 
-    local __ble_def
-    ble/util/assign __ble_def 'ble/util/conditional-sync "$__ble_sync_command" "" "$__ble_sync_weight" "$__ble_sync_opts"' &>/dev/null; local ext=$?
-    builtin eval -- "$__ble_def"
+    local __ble_simple_word_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    local __ble_script
+    ble/util/assign __ble_script 'ble/util/conditional-sync "$__ble_sync_command" "" "$__ble_sync_weight" "$__ble_sync_opts"' &>/dev/null; local ext=$?
+    builtin eval -- "$__ble_script"
+    ((_ble_util_assign_level--))
   else
     builtin eval "ble/syntax:bash/simple-word/eval/.set-result $__ble_word" &>/dev/null; local ext=$?
     builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
