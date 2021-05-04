@@ -172,6 +172,7 @@ function bleopt/check-all {
     name=${defname#_ble_opt_def_}
     varname=bleopt_$name
     [[ ${!varname} == "${!defname}" ]] && continue
+    ble/is-function bleopt/obsolete:"$name" && continue
     ble/is-function bleopt/check:"$name" || continue
 
     # 一旦値を既定値に戻して改めてチェックを行う。

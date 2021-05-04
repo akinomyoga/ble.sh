@@ -50,9 +50,10 @@
 - README: update the description of how to uninstall `#D1510` c8e658e
 - util (`bleopt`): validate initial user settings `#D1511` 82c5ece
   - util (`bleopt`): fix a bug that old values are double-expanded on init (fixup 82c5ece) `#D1521` f795c07
+  - util (`bleopt`): do not validate obsoleted initial settings `#D1527` 0000000
 - complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` e5be0c1
 - main: preserve user-space overridden builtins `#D1519` 0860be0
-  - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 0000000
+  - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 45b30a7
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
 
 ## Fixes

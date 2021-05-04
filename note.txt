@@ -4282,6 +4282,9 @@ bash_tips
 
 2021-05-04
 
+  * util: bleopt/check-all で obsolete な設定も読み取ろうとしてエラーになっている [#D1527]
+    obsolete なオプションに対しては初期設定のチェックは行わなくて良い。
+
   * syntax: 着色決定時に expand_aliases 設定が退避されている [#D1526]
     https://github.com/akinomyoga/ble.sh/issues/103
 
