@@ -178,7 +178,7 @@ function bleopt/check-all {
     local value=${!varname}
     builtin eval -- "$varname=\$$defname"
     bleopt/check:"$name" &&
-      builtin eval "$varname=\$$value"
+      builtin eval "$varname=\$value"
   done
 }
 
