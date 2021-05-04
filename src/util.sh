@@ -2536,7 +2536,10 @@ fi
 ##   @param[in] command
 ##     種類を判定するコマンド名を指定します。
 function ble/util/type {
-  ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"
+  [[ $_ble_attached && $_ble_bash_expand_aliases ]] && shopt -s expand_aliases
+  ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"; local ext=$?
+  [[ $_ble_attached && $_ble_bash_expand_aliases ]] && shopt -u expand_aliases
+  return "$ext"
 }
 ## @fn ble/util/expand-alias word
 ##   @var[out] ret

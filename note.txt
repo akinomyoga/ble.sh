@@ -4282,6 +4282,38 @@ bash_tips
 
 2021-05-04
 
+  * syntax: 着色決定時に expand_aliases 設定が退避されている [#D1526]
+    https://github.com/akinomyoga/ble.sh/issues/103
+
+    0860be0 に於いて内部では alias が展開されない様に shopt -u expand_aliases
+    を設定していた。然し、よく考えてみたら構文着色等に於いて expand_aliases が
+    有効かどうかによって処理を変えていた。つまり expand alias の処理の際にちゃ
+    んと退避した設定を確認する必要がある。
+
+    実際に修正しようとしたら話はそう単純ではない様である。そもそも自分で shopt
+    -s/-u expand_aliases を変更しようとしても完全に無視されてしまう。次のユーザー
+    状態になる頃には勝手に元の値に戻ってしまっている。何故? 例えば
+    POSIXLY_CORRECT を手で弄っている所為だろうか。或いは expand_aliases の保存
+    復元の呼び出しタイミングが混ざっているからだろうか。それとも bind -x の中で
+    変更した expand_aliases の状態は抜けると消えてしまうという事なのだろうか。
+
+    やはり自分では何も操作していないのに expand_aliases の設定が変わってしまっ
+    ている。うーん。という事は…どうすれば良いのか?
+
+    * 内部で shopt -u expand_aliases にしたいというのは…。毎回 bind head で設
+      定し直すぐらいしかできない→ bind/.head で再設定する様にした。
+
+    * ユーザーが設定した設定が保持されないという事に関しては。これは明示的に自
+      分で保存復元する必要がある。特に restore する時には shopt -u
+      expand_aliases も明示的に実行する。→これは bind/.head で設定する様にした
+      ので、わざわざ自分で実行しなくても良い。
+
+    * エイリアスを展開する時に一時的に shopt -s expand_aliases 状態を復元する。
+      と思ったが、それでは駄目だった。様々な所で ble/util/type を呼び出していて、
+      その結果が alias にならないとそもそも expand-alias 関数自体が呼び出されな
+      い。修正するべきは expand-alias ではなくて ble/util/type の方である。こち
+      らを修正したら動く様になった。
+
   * util: test-canvas.sh ext/contra 依存性の解消 [#D1525]
 
     test-canvas.sh がエラーを出す様になっている。試すとテストを取り入れた時から

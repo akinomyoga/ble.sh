@@ -8262,6 +8262,7 @@ fi
 
 function ble-edit/bind/.head {
   ble-edit/bind/stdout.on
+  ble/base/reinforce-bash-options
 
   [[ $bleopt_internal_suppress_bash_output ]] ||
     ble-edit/bind/.head/adjust-bash-rendering

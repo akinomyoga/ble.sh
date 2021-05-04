@@ -52,7 +52,8 @@
   - util (`bleopt`): fix a bug that old values are double-expanded on init (fixup 82c5ece) `#D1521` f795c07
 - complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` e5be0c1
 - main: preserve user-space overridden builtins `#D1519` 0860be0
-- syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing `#D1522` 0000000
+  - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 0000000
+- syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
 
 ## Fixes
 
@@ -104,8 +105,8 @@
 - util, etc: ensure each function to work with arbitrary `IFS` `#D1490` `#D1491` 5f9adfe
 - tui, canvas (`ble/canvas/trace`): support `opts=clip` `#D1493` 61ce90c
 - tui, edit: add a new render mode for full-screen applications 817889d
-- main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` 0000000
-- test (`test-canvas`): fix dependency on `ext/contra` `#D1525` 0000000
+- main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` c89aa23
+- test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

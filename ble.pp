@@ -286,6 +286,10 @@ function ble/base/restore-bash-options {
   [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
   [[ $_ble_bash_sete && ! -o errexit ]] && set -e # set -e は最後
 } 2>/dev/null # set -x 対策 #D0930
+function ble/base/reinforce-bash-options {
+  # bind -x が終わる度に設定が復元されてしまうので毎回設定し直す。
+  shopt -u expand_aliases
+}
 
 {
   # 対策 expand_aliases (暫定) 終了
