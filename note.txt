@@ -1262,12 +1262,18 @@ bash_tips
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
 
+2021-05-05
+
+  * MSYS2 で Backspace で行全体が削除されるという話
+    https://github.com/akinomyoga/ble.sh/issues/104
+
+    取り敢えず MSYS2 の .inputrc が怪しいという事で msys2-users に報告した。
+    それとは別に ble.sh の側でも対策する事は可能だろうか。
+
 2021-05-04
 
   * robustness: ble.sh では exit を上書きしているが set -o posix の時にはそれが
     無効になる。
-
-  * ble/bin/sleep を初期化する前に sleep の機能についてテストしている気がする?
 
   * akinomyoga.dotfiles h: 複数行コマンドを実行した後に出力内容がずれている。
     ble がロードされている時は ble の内容を参照した方が良いかもしれない。
@@ -4280,12 +4286,50 @@ bash_tips
     exec ... persistent redirections
       これは実際に問題になるという事を確認した。
 
+2021-05-05
+
+  * main: freeze-utility-path が一時実装を置き換えなくなっている [#D1528]
+
+    ble/bin/sleep を初期化する前に sleep の機能についてテストしている気がする?
+    と思ったが最初に ble/bin/sleep を絶対パスではなくて command sleep で定義し
+    ているので問題は起こらないのだった。というより、最近 freeze-utility-path で
+    既存の関数がある時には上書きをしない様に変更したが、これは駄目だ。元々上書
+    きする様になっていたのはこの一時的な実装を置き換える為であったのである。
+
+    然し、上書きする様に変更してしまうと freeze-utility が ble/bin/awk を上書きしてしまう。
+
+    a そうすると一時的な実装とそうでない実装を区別できる様に、関数か変数をマー
+      カーに使う?
+
+    b 或いは初めからもう定義してしまって呼び出した時点でパスを決定する事にする。
+      初期化の順序によっては fork コストがかかる可能性もあるが、
+      それも少しだけなので余り気にしなくても良いかもしれない。
+
+      問題は ble/util/assign がちゃんと動作する迄に時間がかかるという事だから、
+      ble/util/assign が準備できたかどうかを変数に記録しておけば良いのでは。
+
+    c 或いは ble/util/assign が準備できた時点で .freze-utility を改めて呼び出す
+      事にする。直接呼び出しても良いし、それだと密結合になるというのであれば、
+      hook か何かを準備しても良い。
+
+    d 或いは今まで通り freeze-utility は上書きをしてしまう様にする。awk に関し
+      ては上書きしない様にリストから削除しておくか (然し削除の為にまたコードを
+      書かなければならない。初期化時点では ble/array#remove もない)、或いは
+      ble/bin/awk.protected か何かの様にして上書きをしない様に関数を定義する。
+
+    うーん。大きく変更するのも面倒なので ble/bin/awk.protected を定義するという
+    方針にする。と思ったが関数が存在するかどうかのテストはやはり util.sh を待た
+    なければならない。
+
+    ? ok: alias が定義されている時に freeze-utility は正しく動作するだろうか?
+      →これは大丈夫。type -P としているから。
+
 2021-05-04
 
   * util: bleopt/check-all で obsolete な設定も読み取ろうとしてエラーになっている [#D1527]
     obsolete なオプションに対しては初期設定のチェックは行わなくて良い。
 
-  * syntax: 着色決定時に expand_aliases 設定が退避されている [#D1526]
+  * syntax: 着色決定時に expand_aliases 設定が退避されている (reported by 3ximus) [#D1526]
     https://github.com/akinomyoga/ble.sh/issues/103
 
     0860be0 に於いて内部では alias が展開されない様に shopt -u expand_aliases

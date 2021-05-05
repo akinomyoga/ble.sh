@@ -107,6 +107,7 @@
 - tui, canvas (`ble/canvas/trace`): support `opts=clip` `#D1493` 61ce90c
 - tui, edit: add a new render mode for full-screen applications 817889d
 - main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` c89aa23
+  - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` 0000000
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 
 <!---------------------------------------------------------------------------->

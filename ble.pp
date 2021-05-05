@@ -401,7 +401,7 @@ function ble/bin/.default-utility-path {
 function ble/bin/.freeze-utility-path {
   local cmd path q=\' Q="'\''" fail=
   for cmd; do
-    type -t "ble/bin/$cmd" &>/dev/null && continue
+    ble/bin#has "ble/bin/.frozen:$cmd" && continue
     if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
       builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
     else
@@ -497,6 +497,8 @@ function ble/bin/awk {
   fi
   ble/bin/awk "$@"
 }
+# Do not overwrite by .freeze-utility-path
+function ble/bin/.frozen:awk { :; }
 
 _ble_bin_awk_supports_null_RS=
 function ble/bin/awk.supports-null-record-separator {
