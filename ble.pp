@@ -65,13 +65,18 @@ echo prologue >&2
              'OPTION' \
              '' \
              '  --help' \
-             '    Show this help' \
+             '    Show this help and exit' \
              '  --version' \
-             '    Show version' \
+             '    Show version and exit' \
+             '  --test' \
+             '    Run test and exit' \
              '' \
              '  --rcfile=BLERC' \
              '  --init-file=BLERC' \
              '    Specify the ble init file. The default is ~/.blerc.' \
+             '' \
+             '  --norc' \
+             '    Do not load the ble init file.' \
              '' \
              '  --attach=ATTACH' \
              '  --noattach' \
@@ -1072,12 +1077,17 @@ function ble/base/process-blesh-arguments {
       else
         local rcfile=${arg#*=}
       fi
-      if [[ $rcfile && -f $rcfile ]]; then
-        _ble_base_rcfile=$rcfile
-      else
-        ble/util/print "ble.sh ($arg): '$rcfile' is not a regular file." >&2
+
+      _ble_base_rcfile=${rcfile:-/dev/null}
+      if [[ ! $rcfile || ! -e $rcfile ]]; then
+        ble/util/print "ble.sh ($arg): '$rcfile' does not exist." >&2
+        flags=E$flags
+      elif [[ ! -r $rcfile ]]; then
+        ble/util/print "ble.sh ($arg): '$rcfile' is not readable." >&2
         flags=E$flags
       fi ;;
+    (--norc)
+      _ble_base_rcfile=/dev/null ;;
     (--keep-rlvars)
       flags=V$flags ;;
     (--debug-bash-output)

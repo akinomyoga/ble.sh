@@ -55,6 +55,7 @@
 - main: preserve user-space overridden builtins `#D1519` 0860be0
   - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 45b30a7
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
+- main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 0000000
 
 ## Fixes
 
