@@ -1255,10 +1255,16 @@ bash_tips
 
 
 *******************************************************************************
-    bug-bash
+    bug-bash, third-party bugs
 -------------------------------------------------------------------------------
 
 2021-05-06
+
+  * bash-completion
+    https://github.com/akinomyoga/ble.sh/issues/97
+    Ref #D1533
+
+    python のテストを自分で実装したりしなければならず面倒である。
 
   * bug-bash localvar_inherit: dynamic variables の性質も継承されるのは意図的か。
     Ref #D1532
@@ -4342,6 +4348,15 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-05-06
+
+  * complete: bash-completion bug workarounds (reported by oc1024) [#D1533]
+    https://github.com/akinomyoga/ble.sh/issues/97
+
+    自分の手許でも色々エラーメッセージが出てうるさい。
+
+    bash-completion で修正を掛けるのは面倒だし時間がかかりそう。更に、各種
+    distribution に波及する迄に更に時間もかかりそうなので取り敢えず暫定的に、
+    ble.sh の側で bash-completion の実装を上書きする事にしてしまう。
 
   * 2021-04-06 localvar_inherit で動かなくなっている  [#D1532]
 

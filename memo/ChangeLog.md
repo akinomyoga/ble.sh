@@ -84,6 +84,7 @@
 - syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` 0000000
 - decode: fix a hang on attach failure by cache corruption `#D1531` 0000000
 - edit, etc: add workarounds for `localvar_inherit` `#D1532` 0000000
+- complete: work around bash-completion bugs `#D1533` 0000000
 
 ## Compatibility
 

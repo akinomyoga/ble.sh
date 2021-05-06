@@ -2385,8 +2385,23 @@ function ble/complete/progcomp/.compgen {
           ble/array#push compoptions "-$c" "$o" ;;
         (F)
           comp_func=${compargs[iarg++]}
+
+          # Workarounds for third-party plugins
           [[ $comp_func == _fzf_* ]] &&
             ble-import contrib/fzf-completion
+          if ble/is-function _quote_readline_by_ref; then
+            # Fix bash_completion
+            function _quote_readline_by_ref {
+              if [[ $1 == \'* ]]; then
+                printf -v "$2" %s "${1:1}"
+              else
+                printf -v "$2" %q "$1"
+                [[ ${!2} == \$* ]] && eval $2=${!2}
+              fi
+            }
+            ble/function#suppress-stderr _filedir
+          fi
+
           ble/array#push compoptions "-$c" ble/complete/progcomp/.compgen-helper-func ;;
         (C)
           comp_prog=${compargs[iarg++]}

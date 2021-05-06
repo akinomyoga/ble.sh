@@ -2497,11 +2497,13 @@ function ble/function#suppress-stderr {
     return 2
   fi
 
-  local def; ble/function#getdef "$name"
-  builtin eval "ble/function#suppress-stderr:$def"
+  # 重複して suppress-stderr した時の為、未定義の時のみ実装を待避
   local lambda=ble/function#suppress-stderr:$name
+  if ! ble/is-function "$lambda"; then
+    local def; ble/function#getdef "$name"
+    builtin eval "ble/function#suppress-stderr:$def"
+  fi
 
-  local q=\' Q="'\''"
   builtin eval "function $name { $lambda \"\$@\" 2>/dev/null; }"
   return 0
 }
