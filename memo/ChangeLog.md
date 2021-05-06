@@ -86,6 +86,7 @@
 - edit, etc: add workarounds for `localvar_inherit` `#D1532` 0000000
 - complete: work around bash-completion bugs `#D1533` 0000000
 - main: work around MSYS2 .inputrc `#D1534` 0000000
+- progcomp: fix non-working `complete -C prog` `#D1535` 0000000
 
 ## Compatibility
 
