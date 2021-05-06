@@ -82,6 +82,7 @@
   - edit: fix error messages on accessing undo records in emacs mode (reported by rux616) `#D1497`  61a57c0 e9be69e
 - canvas: fix a glitch that SGR at the end of command line is applied to new lines `#D1498` 4bdfdbf
 - syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` 0000000
+- decode: fix a hang on attach failure by cache corruption `#D1531` 0000000
 
 ## Compatibility
 

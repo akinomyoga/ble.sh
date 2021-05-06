@@ -4932,7 +4932,10 @@ function ble-edit/exec:gexec/TERM/enter {
     # Note: ble/decode/rebind ではなく元の binding の記録・復元も含めてやり直す。
     ble/edit/info/immediate-show text 'ble: TERM has changed. rebinding...'
     ble/decode/detach
-    ble/decode/attach
+    if ! ble/decode/attach; then
+      ble-detach
+      ble-edit/bind/.check-detach && return 1
+    fi
     ble/edit/info/immediate-clear
   fi
 }
@@ -4979,7 +4982,7 @@ function ble-edit/exec:gexec/.end {
   ble/util/joblist.flush >&2
   ble-edit/bind/.check-detach && return 0
   ble/term/enter
-  ble-edit/exec:gexec/TERM/enter
+  ble-edit/exec:gexec/TERM/enter || return 0 # rebind に失敗した時 .tail せずに抜ける
   [[ $1 == restore ]] && return 0 # Note: 前回の呼出で .end に失敗した時 #D1170
   ble-edit/bind/.tail # flush will be called here
 }
@@ -7426,7 +7429,7 @@ function ble/widget/.change-editing-mode {
       set -o "$mode"
       ble/decode/reset-default-keymap
       ble/decode/detach
-      ble/decode/attach
+      ble/decode/attach || ble-detach
     fi
   else
     bleopt default_keymap="$mode"
@@ -8237,7 +8240,11 @@ function ble-edit/bind/.check-detach {
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
       ble/decode/reset-default-keymap
       ble/decode/detach
-      ble/decode/attach
+      if ! ble/decode/attach; then
+        ble-detach
+        ble-edit/bind/.check-detach # 改めて終了処理
+        return $?
+      fi
     fi
 
     return 1
