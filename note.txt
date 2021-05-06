@@ -1253,6 +1253,106 @@ bash_tips
       これは少なくとも 1 文字 i を進めてからでないと tree-append を呼び出せないという事である。
       nest-pop も内部的にそのまま tree-append を呼び出しているので同じ制限がある。
 
+
+*******************************************************************************
+    bug-bash
+-------------------------------------------------------------------------------
+
+2021-05-06
+
+  * bug-bash localvar_inherit: dynamic variables の性質も継承されるのは意図的か。
+    Ref #D1532
+
+    例:
+
+      shopt -s localvar_inherit
+      local BASH_COMMAND='xxxx'
+      local LINENO='xxxx'
+      local RANDOM='xxxx'
+
+    * PS1 を評価する為に BASH_COMMAND を一時的に別の物に置き換えたい。
+      localvar_inherit を一時的に off にしたり或いは tempvar を通して
+      BASH_COMMAND を変更する等すれば一応 BASH_COMMAND を置き換える事は可能だが
+      非自明である。
+
+    * localvar_inherit は local variable という形で初期化を行わなかった時の振る
+      舞いを制御する物と思っていたが、実際には上記の様にした場合に影響が出てく
+      る。つまり、localvar_inherit の下で上を実行すると set/get がコピーされた
+      上で代入が行われる様で、動的変数としての性質が継承される。振る舞いが変わっ
+      てしまって困る。特に代入した値が消滅してしまう。
+
+    * また、マニュアルを見ても attr 及び value が継承されるとは書かれているが
+      dynamic variable としての性質が継承されるとまでは書かれていない (?)。
+
+      > info bash より (man bash は本質的に同じ)
+      >
+      >   localvar_inherit
+      >
+      >         If set, local variables inherit the value and attributes of a
+      >         variable of the same name that exists at a previous scope before
+      >         any new value is assigned.  The 'nameref' attribute is not
+      >         inherited.
+      >
+      >   declare
+      >
+      >         The '-I' option causes local variables to inherit the attributes
+      >         (except the 'nameref' attribute) and value of any existing variable
+      >         with the same NAME at a surrounding scope.  If there is no existing
+      >         variable, the local variable is initially unset.
+      >
+      > declare --help より
+      >
+      >   -I    if creating a local variable, inherit the attributes and value of a
+      >         variable with the same name at a previous scope
+
+    * 他の実装はどうだろうかと思って zsh で RANDOM, LINENO を試してみたが、
+      RANDOM に関しては local にしても何も振る舞いの変化は見られず、LINENO に関
+      してはそもそも代入不可能だった。そもそも zsh は local var; とすると前のス
+      コープの値は保持される単に unset になる。
+
+    * 実際にこの継承を行っているのは variables.c:2738 の以下の部分である
+
+      variables.c L2738
+      > if (localvar_inherit || (flags & MKLOC_INHERIT))
+      >   {
+      >     /* It doesn't make sense to inherit the nameref attribute */
+      >     new_var->attributes = old_var->attributes & ~att_nameref;
+      >     new_var->dynamic_value = old_var->dynamic_value;
+      >     new_var->assign_func = old_var->assign_func;
+      >   }
+
+2021-05-04
+
+  * mapfile -d "" が buffered になったら
+    ble/syntax:bash/simple-word/eval/.print-result (lib/core-syntax.sh) を修正
+
+  * 2021-03-21 gitstatus.plugin.sh の alias builtin で builtin eval 他が破壊されている
+    https://github.com/akinomyoga/ble.sh/issues/93
+
+    * 取り敢えず暫定的な対策として source ble.sh の時に unalias builtin 等を実
+      行する事にした。
+
+    * 他に source ble.sh した後に gitstatus.plugin.sh が実行されて、更にその後
+      になって ble-attach した時の事も考える必要がある。
+
+    gitstatus.plugin.sh の側で対策できないのか。
+    34e21707
+
+    https://github.com/romkatv/gitstatus/issues/154
+    ここで本人が builtin を置き換えるのは良くない事だという事を述べている。
+
+    > It's generally not a good idea to redefine builtins. If you also redefine
+    > things like true, local, unset, etc., gitstatus won't work. Please don't
+    > file a bug in this case but rather fix your config.
+
+    eval ... pos parameters
+    source ... pos parameters
+    source ... function scope or not (declare var の振る舞い)
+    unset ... previous-scope dynamic-unset or value-unset
+    exec ... persistent redirections
+      これは実際に問題になるという事を確認した。
+
+
 @todo
 *******************************************************************************
     ToDo
@@ -1274,9 +1374,6 @@ bash_tips
 
   * robustness: ble.sh では exit を上書きしているが set -o posix の時にはそれが
     無効になる。
-
-  * mapfile -d "" が buffered になったら
-    ble/syntax:bash/simple-word/eval/.print-result (lib/core-syntax.sh) を修正
 
   * util: builtins 復元、function#advice, etc. において functrace 属性は復元し
     なくて良いのだろうか。復元という事を考えるとやはり declare -pf を使う必要が
@@ -1365,14 +1462,6 @@ bash_tips
       時に、ble.sh session に復帰せずに通常の readline の状態に落ちてしまう。
 
 2021-04-06
-
-  * localvar_inherit で動かなくなっている。或いは元から動いた事はなかった可能性も?
-
-    * localvar_inherit をしていると local -r a した変数に対して、
-      内側の関数で同名の変数を定義できなくなってしまう。
-
-    うーん。それでも未だ色々動かない。というか、バグというかちゃんと書
-    かれていないコードを洗い出すのに使えるかもしれないとは思う。
 
   * logout も exit と同様に置き換えるべきなのではないか。
 
@@ -4252,33 +4341,103 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
-  * 2021-03-21 gitstatus.plugin.sh の alias builtin で builtin eval 他が破壊されている
-    https://github.com/akinomyoga/ble.sh/issues/93
+2021-05-06
 
-    * 取り敢えず暫定的な対策として source ble.sh の時に unalias builtin 等を実
-      行する事にした。
+  * 2021-04-06 localvar_inherit で動かなくなっている  [#D1532]
 
-    * 他に source ble.sh した後に gitstatus.plugin.sh が実行されて、更にその後
-      になって ble-attach した時の事も考える必要がある。
+    或いは元から動いた事はなかった可能性も?
 
-    gitstatus.plugin.sh の側で対策できないのか。
-    34e21707
+    * localvar_inherit をしていると local -r a した変数に対して、
+      内側の関数で同名の変数を定義できなくなってしまう。
 
-    https://github.com/romkatv/gitstatus/issues/154
-    ここで本人が builtin を置き換えるのは良くない事だという事を述べている。
+    うーん。それでも未だ色々動かない。というか、バグというかちゃんと書
+    かれていないコードを洗い出すのに使えるかもしれないとは思う。
 
-    > It's generally not a good idea to redefine builtins. If you also redefine
-    > things like true, local, unset, etc., gitstatus won't work. Please don't
-    > file a bug in this case but rather fix your config.
+    * どうやら localvar_inherit になっていると local BASH_COMMAND としても
+      BASH_COMMAND の値が変化する性質は受け継がれてしまう様である。
 
-    eval ... pos parameters
-    source ... pos parameters
-    source ... function scope or not (declare var の振る舞い)
-    unset ... previous-scope dynamic-unset or value-unset
-    exec ... persistent redirections
-      これは実際に問題になるという事を確認した。
+      | RANDOM でも同様の現象が発生している。
+      |
+      | $ f1() { local RANDOM=hello; echo $RANDOM; RANDOM=world; echo $RANDOM; }
+      | $ shopt -u localvar_inherit; f1
+      | hello
+      | world
+      | $ shopt -s localvar_inherit; f1
+      | 20034
+      | 20034
+      |
+      | 何が起こっているのだろう。元の変数がそのまま見えているという事だろうか。
+      | と思ったがそうでもない。unset RANDOM して見たが元の変数が消えるという事は
+      | なかった。恐らく localvar_inherit の時には値が受け継がれるのではなくて、
+      | setter/getter が引き継がれてしまっているのが原因なのだろうと思われる。
+      |
+      | bash を確認すると subst.c (expand_declaration_argument) では
+      | localvar_inherit が設定されている時には declare は declare -I と同様の振
+      | る舞いになる。 declare -I の説明を declare --help で確認すると値と属性を
+      | 継承すると書かれている。
+      |
+      |   if creating a local variable, inherit the attributes and value of a
+      |   variable with the same name at a previous scope
+      |
+      | と思ったが実装をよく見ても inheriting の値が一切使われていない気がする。
+      | 不思議である。未実装なのだろうか。或いは何かを見落としている? どうもこの
+      | 関数は arr=() の形式の引数を処理する時にだけ使われているという事だろうか。
+      |
+      | 実際に localvar_inherit の処理を具体的に処理しているのは variables.c の方
+      | である様に思われる。特に以下の部分 (variables.c:2738) が setter/getter を
+      | 継承するコードである。
+      |
+      |   if (localvar_inherit || (flags & MKLOC_INHERIT))
+      |     {
+      |       /* It doesn't make sense to inherit the nameref attribute */
+      |       new_var->attributes = old_var->attributes & ~att_nameref;
+      |       new_var->dynamic_value = old_var->dynamic_value;
+      |       new_var->assign_func = old_var->assign_func;
+      |     }
+      |
+      | 明示的にコピーしているという事を考えるとこれを覆すのは難しいかも知れない。
+      | 具体的に変な振る舞いをする例を作ってそれを呈示すれば何か考えて貰えるかも
+      | しれない。getter/setter が関わっている関数は他にあるだろうか。
+      |
+      | INIT_DYNAMIC_VAR で検索するとそういった関数の一覧が得られる。
+      |
+      | - "SECONDS", (v ? value_cell (v) : (char *)NULL), get_seconds, assign_seconds
+      | - "FUNCNAME", (char *)NULL, get_funcname, null_assign
+      | - "BASH_ARGV0", (char *)NULL, get_bash_argv0, assign_bash_argv0
+      | - "BASH_COMMAND", (char *)NULL, get_bash_command, (sh_var_assign_func_t *)NULL
+      | - "BASH_SUBSHELL", (char *)NULL, get_subshell, assign_subshell
+      | - "RANDOM", (char *)NULL, get_random, assign_random
+      | - "SRANDOM", (char *)NULL, get_urandom, (sh_var_assign_func_t *)NULL
+      | - "LINENO", (char *)NULL, get_lineno, assign_lineno
+      | - "BASHPID", (char *)NULL, get_bashpid, null_assign
+      | - "EPOCHSECONDS", (char *)NULL, get_epochseconds, null_assign
+      | - "EPOCHREALTIME", (char *)NULL, get_epochrealtime, null_assign
+      | - "HISTCMD", (char *)NULL, get_histcmd, (sh_var_assign_func_t *)NULL
+      | - "COMP_WORDBREAKS", (char *)NULL, get_comp_wordbreaks, assign_comp_wordbreaks
+      |
+      | TERM の場合はどうなっているのだろうか。これは special_vars という事になっ
+      | ていて、値が変更した時に特別の関数が呼び出される様になっている。他に
+      | TERM* や LANG, LC_* 等様々な変数がこれに相当する。これらは local に関係なく
+      | 常に値が変更したら何か処理する事になっているので今回の振る舞いには関係ない。
+      |
+      | やはり勝手に上書きするのが悪いという結論になりそうな変数しか存在しない。
+      | 敢えて言うならば RANDOM か LINENO ばかりだろうか。LINENO の方も確認したが、
+      | やはり LINENO に対する代入は無視されて現在の行数が常に表示される様になっ
+      | ている。因みに LINENO=1234 eval 'echo $LINENO' に関しては
+      | localvar_inherit を設定しても特に変わりなく同名の tempvar が作成される。
 
-2021-05-05
+      bash のバグか或いは confusing behavior かどうかは別として、古い version
+      に対しては取り敢えず修正しなければならないので、対策は行う事にする。時間
+      があれば bash に報告・相談もする事にする。
+
+    * もう一つの問題は local -a buff とした後に ble/array#push としていると、前
+      の配列の内容が既にあった場合にそれの続きとして値を push してしまうという
+      事。こう言った使い方をしている箇所はないと思っていたが、確かめてみると古
+      いコードを中心にして沢山あった。と思ったがそんなには無かった。合計で4箇所
+      だけだった。
+
+    上記の事を直したら取り敢えず動いている様に見える。残りは具体的に問題が生じ
+    てから対処する事にする。
 
   * 2021-04-28 keymap 初期化に失敗した時にそれを検出しているのにも拘らず操作不能になる [#D1531]
 

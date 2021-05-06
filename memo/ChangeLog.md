@@ -83,6 +83,7 @@
 - canvas: fix a glitch that SGR at the end of command line is applied to new lines `#D1498` 4bdfdbf
 - syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` 0000000
 - decode: fix a hang on attach failure by cache corruption `#D1531` 0000000
+- edit, etc: add workarounds for `localvar_inherit` `#D1532` 0000000
 
 ## Compatibility
 

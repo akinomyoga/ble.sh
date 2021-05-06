@@ -2343,8 +2343,8 @@ function ble/complete/progcomp/.compgen {
     compcmd=${comp_words[0]}
   fi
 
-  local -a compargs compoptions flag_noquote=
-  local ret iarg=1
+  local -a compargs compoptions=()
+  local ret iarg=1 flag_noquote=
   if [[ $is_special_completion ]]; then
     ble/util/assign ret 'builtin complete -p "$compcmd" 2>/dev/null'
   else
@@ -5338,7 +5338,7 @@ function ble/complete/auto-complete/.search-history-light {
   if [[ $text != [-0-9#?!]* ]]; then
     word=${text%%[$wordbreaks]*}
     local expand
-    BASH_COMMAND='!'$word ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
+    command='!'$word ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
     if [[ $expand == "$text"* ]]; then
       ret=$expand
       return 0
@@ -5358,7 +5358,7 @@ function ble/complete/auto-complete/.search-history-light {
     done
 
     for frag in "${longest_fragments[@]}"; do
-      BASH_COMMAND='!?'$frag ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
+      command='!?'$frag ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
       [[ $expand == "$text"* ]] || continue
       ret=$expand
       return 0
@@ -5459,8 +5459,7 @@ function ble/complete/auto-complete/.check-context {
     local bleopt_complete_polling_cycle=25
   local COMP1 COMP2 COMPS COMPV
   local comps_flags comps_fixed
-  local cand_count
-  local -a cand_cand cand_word cand_pack
+  local cand_count cand_cand cand_word cand_pack
   local cand_limit_reached=
   ble/complete/candidates/generate; local ext=$?
   [[ $COMPV ]] || return 1

@@ -262,18 +262,18 @@ function sub:scan/check-todo-mark {
 function sub:scan/a.txt {
   echo "--- $FUNCNAME ---"
   grc --color --exclude=./{test,ext} --exclude=./lib/test-*.sh --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
-    grep -Ev "$rex_grep_head#|[[:space:]]#"
+    grep -Ev "$rex_grep_head#|[[:space:]]#|DEBUG_LEAKVAR"
 }
 
 function sub:scan/bash300bug {
   echo "--- $FUNCNAME ---"
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
-  grc 'local [a-zA-Z_]+=\(' --exclude=./test --exclude=./make_command.sh --exclude=ChangeLog.md
+  grc 'local [a-zA-Z_]+=\(' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
-  grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./test --exclude=./make_command.sh
+  grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh
 }
 
 function sub:scan/bash301bug-array-element-length {
@@ -386,20 +386,22 @@ function sub:scan {
   sub:scan/builtin 'eval' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\('\''eval'\''\)Zd
-      \Zbuiltins2=\(.* eval\)Zd
+      \Zbuiltins1=\(.* eval .*\)Zd
       \Z\^eval --Zd
       \Zt = "eval -- \$"Zd
       \Ztext = "eval -- \$'\''Zd
       \Zcmd '\''eval -- %q'\''Zd
+      \Z\$\(eval \$\(call .*\)\)Zd
       g'
   sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zunset _ble_init_(version|arg|exit|test)\bZd
       \Zreadonly -f unsetZd
+      \Zunset -f builtinZd
       g'
   sub:scan/builtin 'unalias' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zbuiltins1=\(.* unalias\)Zd
+      \Zbuiltins1=\(.* unalias .*\)Zd
       g'
 
   #sub:scan/assign

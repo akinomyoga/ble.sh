@@ -4962,7 +4962,7 @@ function ble/syntax/parse/check-end {
 ##     今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
 ##
 function ble/syntax/parse {
-  local -r text=$1 iN=${#1}
+  local text=$1 iN=${#1}
   local opts=$2
   local beg=${3:-0} end=${4:-$iN} end0=${5:-0}
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return 0

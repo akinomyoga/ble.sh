@@ -343,7 +343,7 @@ _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
 function ble/debug/.check-leak-variable {
   if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
     local IFS=$_ble_term_IFS
-    ble/util/print "$1=${!1}:${*:2}" >> a.txt
+    ble/util/print "$1=${!1}:${*:2}" >> a.txt # DEBUG_LEAKVAR
     builtin eval "$1=__t1wJltaP9nmow__"
   fi
 }
@@ -836,8 +836,8 @@ if ((_ble_bash>=40000)); then
 else
   function ble/string#tolower.impl {
     local LC_ALL= LC_COLLATE=C
-    local i text=$1
-    local -a buff ch
+    local i text=$1 ch
+    local -a buff=()
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
       if [[ $ch == [A-Z] ]]; then
@@ -850,8 +850,8 @@ else
   }
   function ble/string#toupper.impl {
     local LC_ALL= LC_COLLATE=C
-    local i text=$1
-    local -a buff ch
+    local i text=$1 ch
+    local -a buff=()
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
       if [[ $ch == [a-z] ]]; then
@@ -1860,20 +1860,20 @@ function ble/util/writearray/.read-arguments {
         if (($#)); then
           _ble_local_delim=$1; shift
         else
-          echo "${FUNCNAME[1]}: '$arg': missing option argument." >&2
+          ble/util/print "${FUNCNAME[1]}: '$arg': missing option argument." >&2
           flags=E$flags
         fi ;;
       (--) flags=-$flags ;;
       (*)
-        echo "${FUNCNAME[1]}: '$arg': unrecognized option." >&2
+        ble/util/print "${FUNCNAME[1]}: '$arg': unrecognized option." >&2
         flags=E$flags ;;
       esac
     else
       if local rex='^[a-zA-Z_][a-zA-Z_0-9]*$'; ! [[ $arg =~ $rex ]]; then
-        echo "${FUNCNAME[1]}: '$arg': invalid array name." >&2
+        ble/util/print "${FUNCNAME[1]}: '$arg': invalid array name." >&2
         flags=E$flags
       elif [[ $flags == *A* ]]; then
-        echo "${FUNCNAME[1]}: '$arg': an array name has been already specified." >&2
+        ble/util/print "${FUNCNAME[1]}: '$arg': an array name has been already specified." >&2
         flags=E$flags
       else
         _ble_local_array=$arg
@@ -2159,7 +2159,7 @@ function ble/util/readarray {
   else
     local _ble_local_script='
       local IFS= ARRI=0 ARR
-      while read -r -d "" "ARR[ARRI++]"; do :; done'
+      while builtin read -r -d "" "ARR[ARRI++]"; do :; done'
   fi
 
   if [[ $_ble_local_nlfix ]]; then
@@ -2256,8 +2256,8 @@ else
     local _ble_local_ret=$?
     ((_ble_util_assign_level--))
     local IFS= i=0 _ble_local_arr
-    while read -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmp"
-    [[ ${_ble_local_arr[--i]} ]] || unset -v "_ble_local_arr[i]"
+    while builtin read -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmp"
+    [[ ${_ble_local_arr[--i]} ]] || builtin unset -v "_ble_local_arr[i]"
     ble/util/unlocal i IFS
     builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
     return "$_ble_local_ret"

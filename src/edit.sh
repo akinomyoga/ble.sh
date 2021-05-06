@@ -924,9 +924,9 @@ function ble/prompt/.instantiate {
     local ret
     ble/prompt/.escape "$processed"; local escaped=$ret
     local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
-    local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
     ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-    builtin eval "expanded=\"$escaped\""
+    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+      builtin eval "expanded=\"$escaped\""
   else
     local expanded=$processed
   fi
@@ -979,9 +979,9 @@ function ble/prompt/update/.has-prompt_command {
 }
 function ble/prompt/update/.eval-prompt_command.1 {
   # Note: return 等と記述されていた時対策として関数内評価する。
-  local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  builtin eval -- "$1"
+  BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+    builtin eval -- "$1"
 }
 function ble/prompt/update/.eval-prompt_command {
   local _command
@@ -4588,7 +4588,6 @@ _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 _ble_edit_exec_BASH_COMMAND=$BASH
 function ble-edit/exec/register {
-  local BASH_COMMAND=$1
   ble/array#push _ble_edit_exec_lines "$1"
 }
 function ble-edit/exec/.setexit {
@@ -4905,9 +4904,9 @@ function ble-edit/exec:gexec/.TRAPINT/reset {
   blehook INT-='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
-  local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  blehook/invoke "$@"
+  BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+    blehook/invoke "$@"
 }
 
 # ble-edit/exec:gexec/TERM
@@ -4998,7 +4997,7 @@ function ble-edit/exec:gexec/.prologue {
   builtin unset -v HISTCMD; ble/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
-  ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$BASH_COMMAND" &>/dev/tty
+  ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND" &>/dev/tty
   ble-edit/exec/print-PS0 >&31
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
@@ -5068,7 +5067,7 @@ function ble-edit/exec:gexec/.setup {
 
   local apos=\' APOS="'\\''"
   local cmd
-  local -a buff
+  local -a buff=()
   local count=0
   buff[${#buff[@]}]=ble-edit/exec:gexec/.begin
   for cmd in "${_ble_edit_exec_lines[@]}"; do
@@ -5219,26 +5218,26 @@ function ble/widget/discard-line {
 }
 
 function ble/edit/hist_expanded/.core {
-  ble/builtin/history/option:p "$BASH_COMMAND"
+  ble/builtin/history/option:p "$command"
 }
 function ble-edit/hist_expanded/.expand {
   ble/edit/hist_expanded/.core 2>/dev/null; local ext=$?
-  ((ext)) && ble/util/print "$BASH_COMMAND"
+  ((ext)) && ble/util/print "$command"
   ble/util/put :
   return "$ext"
 }
 
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
-  local BASH_COMMAND=$1
-  if [[ ! -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
-    hist_expanded=$BASH_COMMAND
+  local command=$1
+  if [[ ! -o histexpand || ! ${command//[ 	]} ]]; then
+    hist_expanded=$command
     return 0
   elif ble/util/assign hist_expanded 'ble-edit/hist_expanded/.expand'; then
     hist_expanded=${hist_expanded%$_ble_term_nl:}
     return 0
   else
-    hist_expanded=$BASH_COMMAND
+    hist_expanded=$command
     return 1
   fi
 }
@@ -5258,9 +5257,9 @@ function ble/widget/default/accept-line {
   fi
 
   ble-edit/content/clear-arg
-  local BASH_COMMAND=$_ble_edit_str
+  local command=$_ble_edit_str
 
-  if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
+  if [[ ! ${command//[ 	]} ]]; then
     [[ $bleopt_history_share ]] &&
       ble/builtin/history/option:n
     ble/widget/.newline keep-info
@@ -5271,7 +5270,7 @@ function ble/widget/default/accept-line {
 
   # 履歴展開
   local hist_expanded
-  if ! ble-edit/hist_expanded.update "$BASH_COMMAND"; then
+  if ! ble-edit/hist_expanded.update "$command"; then
     _ble_edit_line_disabled=1 ble/widget/.insert-newline
     shopt -q histreedit &>/dev/null || ble/widget/.newline/clear-content
     ble/util/buffer.flush >&2
@@ -5280,7 +5279,7 @@ function ble/widget/default/accept-line {
   fi
 
   local hist_is_expanded=
-  if [[ $hist_expanded != "$BASH_COMMAND" ]]; then
+  if [[ $hist_expanded != "$command" ]]; then
     if shopt -q histverify &>/dev/null; then
       _ble_edit_line_disabled=1 ble/widget/.insert-newline
       ble-edit/content/reset-and-check-dirty "$hist_expanded"
@@ -5290,21 +5289,21 @@ function ble/widget/default/accept-line {
       return 0
     fi
 
-    BASH_COMMAND=$hist_expanded
+    command=$hist_expanded
     hist_is_expanded=1
   fi
 
   ble/widget/.newline
 
-  [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $BASH_COMMAND"
+  [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $command"
 
   ((++_ble_edit_CMD))
 
   # 編集文字列を履歴に追加
-  ble/history/add "$BASH_COMMAND"
+  ble/history/add "$command"
 
   # 実行を登録
-  ble-edit/exec/register "$BASH_COMMAND"
+  ble-edit/exec/register "$command"
 }
 
 function ble/widget/accept-and-next {
@@ -5405,19 +5404,19 @@ function ble/widget/edit-and-execute-command.edit {
 function ble/widget/edit-and-execute-command.impl {
   local ret
   ble/widget/edit-and-execute-command.edit "$1"
-  local BASH_COMMAND=$ret
+  local command=$ret
 
-  BASH_COMMAND=${BASH_COMMAND%$'\n'}
-  if [[ ! ${BASH_COMMAND//["$IFS"]} ]]; then
+  command=${command%$'\n'}
+  if [[ ! ${command//["$IFS"]} ]]; then
     ble/widget/.bell
     return 1
   fi
 
   # Note: accept-line を参考にした
-  ble/util/buffer.print "${_ble_term_setaf[12]}[ble: fc]$_ble_term_sgr0 $BASH_COMMAND"
+  ble/util/buffer.print "${_ble_term_setaf[12]}[ble: fc]$_ble_term_sgr0 $command"
   ((++_ble_edit_CMD))
-  ble/history/add "$BASH_COMMAND"
-  ble-edit/exec/register "$BASH_COMMAND"
+  ble/history/add "$command"
+  ble-edit/exec/register "$command"
 }
 function ble/widget/edit-and-execute-command {
   ble-edit/content/clear-arg
@@ -8336,16 +8335,16 @@ function ble/widget/print {
 }
 function ble/widget/internal-command {
   ble-edit/content/clear-arg
-  local BASH_COMMAND=$1
-  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+  local command=$1
+  [[ ${command//[$_ble_term_IFS]} ]] || return 1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
-  builtin eval -- "$BASH_COMMAND"
+  BASH_COMMAND=$command builtin eval -- "$command"
 }
 function ble/widget/external-command {
   ble-edit/content/clear-arg
-  local BASH_COMMAND=$1
-  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+  local command=$1
+  [[ ${command//[$_ble_term_IFS]} ]] || return 1
 
   ble/edit/enter-command-layout
   ble/textarea#invalidate
@@ -8355,21 +8354,21 @@ function ble/widget/external-command {
   ble/canvas/bflush.draw
   ble/term/leave
   ble/util/buffer.flush >&2
-  builtin eval -- "$BASH_COMMAND"; local ext=$?
+  BASH_COMMAND=$command builtin eval -- "$command"; local ext=$?
   ble/term/enter
   return "$ext"
 }
 function ble/widget/execute-command {
   ble-edit/content/clear-arg
-  local BASH_COMMAND=$1
+  local command=$1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
 
   # Note: 空コマンドでも .insert-newline は実行する。
-  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+  [[ ${command//[$_ble_term_IFS]} ]] || return 1
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
-  ble-edit/exec/register "$BASH_COMMAND"
+  ble-edit/exec/register "$command"
 }
 
 ## @fn ble/widget/.SHELL_COMMAND command

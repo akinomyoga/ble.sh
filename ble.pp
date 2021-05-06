@@ -217,7 +217,6 @@ function ble/base/adjust-builtin-wrappers-1 {
   # Note: set -o posix にしても read, type, builtin, local 等は上書き
   #   された儘なので難しい。unset -f builtin さえすれば色々動く様になる
   #   ので builtin は unset -f builtin してしまう。
-#  return 0
   unset -f builtin
   builtin local POSIXLY_CORRECT=y builtins1 keywords1
   builtins1=(builtin unset enable unalias return break continue declare local typeset readonly eval exec)
