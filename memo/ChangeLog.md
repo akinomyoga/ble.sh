@@ -85,6 +85,7 @@
 - decode: fix a hang on attach failure by cache corruption `#D1531` 0000000
 - edit, etc: add workarounds for `localvar_inherit` `#D1532` 0000000
 - complete: work around bash-completion bugs `#D1533` 0000000
+- main: work around MSYS2 .inputrc `#D1534` 0000000
 
 ## Compatibility
 

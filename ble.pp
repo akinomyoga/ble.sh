@@ -302,6 +302,13 @@ function ble/base/reinforce-bash-options {
 } &>/dev/null # set -x 対策 #D0930
 
 builtin bind &>/dev/null # force to load .inputrc
+
+# WA #D1534 workaround for msys2 .inputrc
+if [[ $OSTYPE == msys* ]]; then
+  [[ $(bind -m emacs -p | grep '"\\C-?"') == '"\C-?": backward-kill-line' ]] &&
+    builtin bind -m emacs '"\C-?": backward-delete-char'
+fi
+
 if [[ ! -o emacs && ! -o vi && ! $_ble_init_test ]]; then
   builtin echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
   ble/base/restore-bash-options

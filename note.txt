@@ -1260,6 +1260,16 @@ bash_tips
 
 2021-05-06
 
+  * MSYS2 .inputrc
+    https://github.com/akinomyoga/ble.sh/issues/104
+    https://sourceforge.net/p/msys2/mailman/msys2-users/thread/CAFLRLk-UX7S%3DTAerNix7HvxDAv4aY2FwZuFZz%3DU%2BTLBAWxCLEg%40mail.gmail.com/#msg37275646
+    Ref #D1534
+
+    特に問題の行は削除するべきであると考えているが返信は未だない。
+    強い口調で書き過ぎたから無視されているのかも知れないし、
+    単にこの mailing list には誰もいないという事なのかもしれない。
+    archive を遡ってもこの mailing list は活発であるとは言い難い。
+
   * bash-completion
     https://github.com/akinomyoga/ble.sh/issues/97
     Ref #D1533
@@ -1367,14 +1377,6 @@ bash_tips
 0.6 ErrorMsg
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
-
-2021-05-05
-
-  * MSYS2 で Backspace で行全体が削除されるという話
-    https://github.com/akinomyoga/ble.sh/issues/104
-
-    取り敢えず MSYS2 の .inputrc が怪しいという事で msys2-users に報告した。
-    それとは別に ble.sh の側でも対策する事は可能だろうか。
 
 2021-05-04
 
@@ -4348,6 +4350,29 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-05-06
+
+  * MSYS2 で Backspace で行全体が削除されるという話 (reported by n1kk) [#D1534]
+    https://github.com/akinomyoga/ble.sh/issues/104
+    https://sourceforge.net/p/msys2/mailman/msys2-users/thread/CAFLRLk-UX7S%3DTAerNix7HvxDAv4aY2FwZuFZz%3DU%2BTLBAWxCLEg%40mail.gmail.com/#msg37275646
+
+    取り敢えず MSYS2 の .inputrc が怪しいという事で msys2-users に報告した。そ
+    れとは別に ble.sh の側でも対策する事は可能だろうか。
+
+    a 例えば MSYS2 にいる時には .inputrc は読み取らない (--noinputrc) 様にする?
+      然し .inputrc だけ読み取らない様にしても仕方がない。ユーザー設定も読み取
+      らない様にしないと bind で自動的に読み込まれた設定を読み取ってしまう事に
+      なる。
+
+    b INPUTRC=/dev/null を設定してから bind で初期化する事により bashrc で設定
+      されたユーザー設定だけを読み取るという手もある気がするが、これも source
+      ble.sh よりも先に bind 関連の設定にユーザーが触れていると駄目である。
+
+    c 上記の問題は inputrc にある他の設定も全て潰してしまうという事である。それ
+      ならば、C-? に対応する設定だけ ble.sh default に強制的に設定する様にすれ
+      ば良いのではないだろうか。
+
+    取り敢えず c の方針で実装する事にした。この様にしたとしても C-x C-r で
+    inputrc を再読込するとまた変な状態になってしまうが、これは仕方がない。
 
   * complete: bash-completion bug workarounds (reported by oc1024) [#D1533]
     https://github.com/akinomyoga/ble.sh/issues/97
