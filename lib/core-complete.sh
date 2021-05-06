@@ -336,7 +336,7 @@ function ble/complete/action:progcomp/complete {
   if [[ $DATA == *:filenames:* ]]; then
     ble/complete/action:file/complete
   else
-    if [[ -d $CAND ]]; then
+    if [[ $DATA != *:no-mark-directories:* && -d $CAND ]]; then
       ble/complete/action/util/complete.mark-directory
     else
       ble/complete/action:word/complete
@@ -1184,7 +1184,15 @@ function ble/complete/source:argument/.progcomp-helper-prog {
     local -x COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
     ble/complete/source:argument/.compvar-initialize
     local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
-    "$comp_prog" "$cmd" "$cur" "$prev" </dev/null
+
+    if [[ $comp_opts == *:prog-trim:* ]]; then
+      # WA: aws_completer
+      local compreply
+      ble/util/assign compreply '"$comp_prog" "$cmd" "$cur" "$prev" < /dev/null'
+      ble/bin/sed "s/[[:space:]]\{1,\}\$//" <<< "$compreply"
+    else
+      "$comp_prog" "$cmd" "$cur" "$prev" < /dev/null
+    fi
   fi
 }
 function ble/complete/source:argument/.progcomp-helper-func {
@@ -1242,6 +1250,116 @@ function ble/complete/source:argument/.progcomp-helper-func {
   fi
 }
 
+## @fn ble/complete/progcomp/.parse-complete/next
+##   @var[out] optarg
+##   @var[in,out] compdef
+##   @var[in] rex
+function ble/complete/progcomp/.parse-complete/next {
+  if [[ $compdef =~ $rex ]]; then
+    builtin eval "arg=$BASH_REMATCH"
+    compdef=${compdef:${#BASH_REMATCH}}
+    return 0
+  elif [[ ${compdef%%' '*} ]]; then
+    # 本来此処には来ない筈
+    arg=${compdef%%' '*}
+    compdef=${compdef#*' '}
+    return 0
+  else
+    return 1
+  fi
+}
+function ble/complete/progcomp/.parse-complete/optarg {
+  optarg=
+  if ((ic+1<${#arg})); then
+    optarg=${arg:ic+1}
+    ic=${#arg}
+    return 0
+  elif [[ $compdef =~ $rex ]]; then
+    builtin eval "optarg=$BASH_REMATCH"
+    compdef=${compdef:${#BASH_REMATCH}}
+    return 0
+  else
+    return 2
+  fi
+}
+## @fn ble/complete/progcomp/.parse-complete compdef
+##   @param[in] compdef
+##   @var[in,out] comp_opts
+##   @var[out] compoptions comp_prog comp_func flag_noquote
+function ble/complete/progcomp/.parse-complete {
+  compoptions=()
+  comp_prog=
+  comp_func=
+  flag_noquote=
+  local compdef=${1#'complete '}
+
+  local arg optarg rex='^([^][*?;&|[:space:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:space:]]+'
+  while ble/complete/progcomp/.parse-complete/next; do
+    case $arg in
+    (-*)
+      local ic c
+      for ((ic=1;ic<${#arg};ic++)); do
+        c=${arg:ic:1}
+        case "$c" in
+        ([abcdefgjksuvE])
+          # Note: workaround #D0714 #M0009 #D0870
+          case $c in
+          (c) flag_noquote=1 ;;
+          (d) ((_ble_bash>=40300)) && flag_noquote=1 ;;
+          (f) ((40000<=_ble_bash&&_ble_bash<40200)) && flag_noquote=1 ;;
+          esac
+          ble/array#push compoptions "-$c" ;;
+        ([pr])
+          ;; # 無視 (-p 表示 -r 削除)
+        ([AGWXPS])
+          # Note: workaround #D0714 #M0009 #D0870
+          ble/complete/progcomp/.parse-complete/optarg || break 2
+          if [[ $c == A ]]; then
+            case $optarg in
+            (command) flag_noquote=1 ;;
+            (directory) ((_ble_bash>=40300)) && flag_noquote=1 ;;
+            (file) ((40000<=_ble_bash&&_ble_bash<40200)) && flag_noquote=1 ;;
+            esac
+          fi
+          ble/array#push compoptions "-$c" "$optarg" ;;
+        (o)
+          ble/complete/progcomp/.parse-complete/optarg || break 2
+          comp_opts=${comp_opts//:"$optarg":/:}$optarg:
+          ble/array#push compoptions "-$c" "$optarg" ;;
+        (C)
+          if ((_ble_bash<40000)); then
+            # bash-3.2以下では -C は一番最後に出力される (unquoted)
+            comp_prog=${compdef%' '}
+            compdef=
+          else
+            # bash-4.0以降では -C は quoted
+            ble/complete/progcomp/.parse-complete/optarg || break 2
+            comp_prog=$optarg
+          fi
+          ble/array#push compoptions "-$c" ble/complete/soruce:argument/.progcomp-helper-prog ;;
+        (F)
+          # unquoted optarg (bash-3.2 以下では続きに unquoted -C prog が来得る)
+          if ((_ble_bash<40000)) && [[ $compdef == *' -C '* ]]; then
+            comp_prog=${compdef#*' -C '}
+            comp_prog=${comp_prog%' '}
+            ble/array#push compoptions '-C' ble/complete/source:argument/.progcomp-helper-prog
+            comp_func=${compdef%%' -C '*}
+          else
+            comp_func=${compdef%' '}
+          fi
+          compdef=
+
+          ble/array#push compoptions "-$c" ble/complete/source:argument/.progcomp-helper-func ;;
+        (*)
+          # -D, -I, etc. just discard
+        esac
+      done ;;
+    (*)
+      ;; # 無視
+    esac
+  done
+}
+
 ## 関数 ble/complete/source:argument/.progcomp opts
 ##   @param[in] opts
 ##     コロン区切りのオプションリストです。
@@ -1262,9 +1380,8 @@ function ble/complete/source:argument/.progcomp {
 
   local opts=$1
 
-  local comp_prog= comp_func=
-  local cmd=${comp_words[0]} compcmd= is_default_completion= is_special_completion=
-
+  local cmd=${comp_words[0]}
+  local compcmd= is_default_completion= is_special_completion=
   if [[ :$opts: == *:initial:* ]]; then
     is_special_completion=1
     compcmd='-I'
@@ -1282,60 +1399,39 @@ function ble/complete/source:argument/.progcomp {
 
   [[ $compcmd ]] || return 1
 
-  local -a compargs compoptions flag_noquote=
-  local ret iarg=1
+  local compdef
   if [[ $is_special_completion ]]; then
-    ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
+    ble/util/assign compdef 'complete -p "$compcmd" 2>/dev/null'
   else
-    ble/util/assign ret 'complete -p -- "$compcmd" 2>/dev/null'
+    ble/util/assign compdef 'complete -p -- "$compcmd" 2>/dev/null'
   fi
-  ble/string#split-words compargs "$ret"
-  while ((iarg<${#compargs[@]})); do
-    local arg=${compargs[iarg++]}
-    case "$arg" in
-    (-*)
-      local ic c
-      for ((ic=1;ic<${#arg};ic++)); do
-        c=${arg:ic:1}
-        case "$c" in
-        ([abcdefgjksuvE])
-          # Note: workaround #D0714 #M0009 #D0870
-          case $c in
-          (c) flag_noquote=1 ;;
-          (d) ((_ble_bash>=40300)) && flag_noquote=1 ;;
-          (f) ((40000<=_ble_bash&&_ble_bash<40200)) && flag_noquote=1 ;;
-          esac
-          ble/array#push compoptions "-$c" ;;
-        ([pr])
-          ;; # 無視 (-p 表示 -r 削除)
-        ([AGWXPS])
-          # Note: workaround #D0714 #M0009 #D0870
-          if [[ $c == A ]]; then
-            case ${compargs[iarg]} in
-            (command) flag_noquote=1 ;;
-            (directory) ((_ble_bash>=40300)) && flag_noquote=1 ;;
-            (file) ((40000<=_ble_bash&&_ble_bash<40200)) && flag_noquote=1 ;;
-            esac
-          fi
-          ble/array#push compoptions "-$c" "${compargs[iarg++]}" ;;
-        (o)
-          local o=${compargs[iarg++]}
-          comp_opts=${comp_opts//:"$o":/:}$o:
-          ble/array#push compoptions "-$c" "$o" ;;
-        (F)
-          comp_func=${compargs[iarg++]}
-          ble/array#push compoptions "-$c" ble/complete/source:argument/.progcomp-helper-func ;;
-        (C)
-          comp_prog=${compargs[iarg++]}
-          ble/array#push compoptions "-$c" ble/complete/source:argument/.progcomp-helper-prog ;;
-        (*)
-          # -D, -I, etc. just discard
-        esac
-      done ;;
-    (*)
-      ;; # 無視
-    esac
-  done
+  compdef=${compdef%"$compcmd"} # strip -I, -D, or command_name
+  compdef=${compdef%' '}' '
+
+  local comp_prog comp_func compoptions flag_noquote
+  ble/complete/progcomp/.parse-complete "$compdef"
+
+  # WA: Workarounds for third-party plugins
+  if [[ $comp_func ]]; then
+    # bash_completion
+    if ble/is-function _quote_readline_by_ref; then
+      function _quote_readline_by_ref {
+        if [[ $1 == \'* ]]; then
+          printf -v "$2" %s "${1:1}"
+        else
+          printf -v "$2" %q "$1"
+          [[ ${!2} == \$* ]] && eval $2=${!2}
+        fi
+      }
+      ble/function#suppress-stderr _filedir
+    fi
+  fi
+  if [[ $comp_prog ]]; then
+    # aws
+    if [[ $comp_prog == aws_completer ]]; then
+      comp_opts=${comp_opts}no-mark-directories:prog-trim:
+    fi
+  fi
 
   ble/complete/check-cancel && return 148
 
@@ -1361,7 +1457,7 @@ function ble/complete/source:argument/.progcomp {
 
   [[ $compgen ]] || return 1
 
-  # Note: git の補完関数など勝手に末尾に space をつけ -o nospace を指定する物が存在する。
+  # WA: git の補完関数など勝手に末尾に space をつけ -o nospace を指定する物が存在する。
   #   単語の後にスペースを挿入する事を意図していると思われるが、
   #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、
   #   挿入時のエスケープ対象であるので末尾の space もエスケープされてしまう。
