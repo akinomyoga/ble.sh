@@ -1275,11 +1275,18 @@ bash_tips
   * robustness: ble.sh では exit を上書きしているが set -o posix の時にはそれが
     無効になる。
 
-  * akinomyoga.dotfiles h: 複数行コマンドを実行した後に出力内容がずれている。
-    ble がロードされている時は ble の内容を参照した方が良いかもしれない。
-
   * mapfile -d "" が buffered になったら
     ble/syntax:bash/simple-word/eval/.print-result (lib/core-syntax.sh) を修正
+
+  * util: builtins 復元、function#advice, etc. において functrace 属性は復元し
+    なくて良いのだろうか。復元という事を考えるとやはり declare -pf を使う必要が
+    あるのかもしれない。
+
+    bash version, posix mode も含めてどういう方法があってそれぞれどの様に振る舞
+    うのか調べる必要がある。
+
+    取り敢えず問題が起こらない事を確かめた上で getdef 自体を更新するのが良いの
+    ではないか。
 
 2021-05-03
 
@@ -1287,11 +1294,6 @@ bash_tips
   * rlvar: enable-active-region
   * rlbind: prior, next
   * vi-undo
-
-2021-04-30
-
-  * syntax: eval() { echo yes; } が構文エラーになっている。
-    local, declare も同じ。
 
 2021-04-29
 
@@ -1380,6 +1382,12 @@ bash_tips
   * logout も exit と同様に置き換えるべきなのではないか。
 
   * prompt を評価する時に $var が local 変数に被覆されている。
+
+    然し $var だけならば良いが $() で呼び出された関数が更に内部で変数を使用して
+    いる可能性等を考えると下手に変な調整はしない方が良いかもしれない。PS1 に直
+    接 $var と記述するかしないかで $() の内部でも変数が見えるかどうかが切り替わ
+    るというのは不自然すぎる。それならば ble.sh 自体が変数を定義するのでそれに
+    よって被覆されてしまうと説明した方が自然である。
 
 2021-04-28
 
@@ -4287,6 +4295,13 @@ bash_tips
       これは実際に問題になるという事を確認した。
 
 2021-05-05
+
+  * syntax: eval() { echo yes; } が構文エラーになっている [#D1529]
+    local, declare も同じ。
+
+    これは意外と簡単だった。処理順序を変えるだけで良かった。builtin の処理と
+    keyword の処理が結合しているから切り離すのに時間がかかるのではないかと思っ
+    たが、実際には builtin の処理は独立にしても問題ない様な実装になっていた。
 
   * main: freeze-utility-path が一時実装を置き換えなくなっている [#D1528]
 

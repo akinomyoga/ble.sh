@@ -3510,12 +3510,6 @@ function ble/syntax:bash/ctx-command/check-word-end {
       fi ;;
     ('then'|'elif'|'else'|'do') ((ctx=CTX_CMDX1)) ; processed=middle ;;
     ('}'|'done'|'fi'|'esac')    ((ctx=CTX_CMDXE)) ; processed=end ;;
-    ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
-      ((ctx=CTX_ARGVX))
-      processed=builtin ;;
-    ('eval')
-      ((ctx=CTX_ARGEX))
-      processed=builtin ;;
     ('coproc')
       if ((_ble_bash>=40000)); then
         if ble/syntax:bash/ctx-coproc/.is-next-compound; then
@@ -3601,6 +3595,15 @@ function ble/syntax:bash/ctx-command/check-word-end {
         ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#rematch1}))
       fi
     fi
+
+    # 引数の取り扱いが特別な builtin
+    case $word_expanded in
+    ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
+      ((ctx=CTX_ARGVX)) ;;
+    ('eval')
+      ((ctx=CTX_ARGEX)) ;;
+    esac
+
     return 0
   fi
 
