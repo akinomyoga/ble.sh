@@ -742,7 +742,6 @@ function ble/base/attach-from-PROMPT_COMMAND {
 
 function ble/base/process-blesh-arguments {
   local opt_attach=attach
-  local opt_rcfile=
   local opt_error=
   while (($#)); do
     local arg=$1; shift
@@ -757,12 +756,16 @@ function ble/base/process-blesh-arguments {
       else
         local rcfile=${arg#*=}
       fi
-      if [[ $rcfile && -f $rcfile ]]; then
-        _ble_base_rcfile=$rcfile
-      else
-        echo "ble.sh ($arg): '$rcfile' is not a regular file." >&2
+      _ble_base_rcfile=${rcfile:-/dev/null}
+      if [[ ! $rcfile || ! -e $rcfile ]]; then
+        ble/util/print "ble.sh ($arg): '$rcfile' does not exist." >&2
+        opt_error=1
+      elif [[ ! -r $rcfile ]]; then
+        ble/util/print "ble.sh ($arg): '$rcfile' is not readable." >&2
         opt_error=1
       fi ;;
+    (--norc)
+      _ble_base_rcfile=/dev/null ;;
     (*)
       echo "ble.sh: unrecognized argument '$arg'" >&2
       opt_error=1
