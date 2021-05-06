@@ -2507,9 +2507,6 @@ function ble-syntax:bash/ctx-command/check-word-end {
       fi ;;
     ('then'|'elif'|'else'|'do') ((ctx=CTX_CMDX1)) ; processed=middle ;;
     ('}'|'done'|'fi'|'esac')    ((ctx=CTX_CMDXE)) ; processed=end ;;
-    ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
-      ((ctx=CTX_ARGVX))
-      processed=builtin ;;
     ('function')
       ((ctx=CTX_ARGX))
       local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
@@ -2586,6 +2583,13 @@ function ble-syntax:bash/ctx-command/check-word-end {
         ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#rematch1}))
       fi
     fi
+
+    # 引数の取り扱いが特別な builtin
+    case $word in
+    ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
+      ((ctx=CTX_ARGVX)) ;;
+    esac
+
     return 0
   fi
 
