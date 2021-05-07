@@ -2708,10 +2708,13 @@ function ble/builtin/bind/option:- {
 
   if [[ $value == \"* ]]; then
     # keyboard macro
+    local bind_keys="${keys[*]}"
     value=${value#\"} value=${value%\"}
     local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
     local command="ble/widget/.CHARS ${chars[*]}"
-    ble-decode-key/bind "${keys[*]}" "$command"
+    ble/builtin/bind/.decode-chars "${chars[@]}"
+    [[ ${keys[*]} != "$bind_keys" ]] &&
+      ble-decode-key/bind "$bind_keys" "$command"
   elif [[ $value ]]; then
     if local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; then
       local command=$ret
