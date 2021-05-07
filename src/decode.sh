@@ -3527,10 +3527,13 @@ function ble/builtin/bind/option:- {
 
   if [[ $value == \"* ]]; then
     # keyboard macro
+    local bind_keys="${keys[*]}"
     value=${value#\"} value=${value%\"}
     local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
     local command="ble/widget/.MACRO ${chars[*]}"
-    ble-decode-key/bind "$kmap" "${keys[*]}" "$command"
+    ble/decode/cmap/decode-chars "${chars[*]}"
+    [[ ${keys[*]} != "$bind_keys" ]] &&
+      ble-decode-key/bind "$kmap" "$bind_keys" "$command"
   elif [[ $value ]]; then
     local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; local ext=$?
     if ((ext==0)); then

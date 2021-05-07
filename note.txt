@@ -4364,6 +4364,34 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-05-07
+
+  * bind: fix a problem that "bind '"seq":"key"'" causes a loop macro "bind -s key key" (reported by thanosz) [#D1536]
+    https://github.com/akinomyoga/ble.sh/issues/105
+
+    これはどうやら OpenSUSE の inputrc にある、テンキーの / のエスケープシーケ
+    ンスを / に翻訳する keybinding の問題だった。ble.sh は左辺をキー列に翻訳し
+    てから bind する。という事なので、
+
+      "escape-sequence": "key"
+
+    の様な binding が存在すると、key: "key" という形に翻訳されてしまう。そうす
+    ると無限ループに変換されてしまうという事である。
+
+    これの対策は単に左辺と右辺が一致している時に binding を無視するというだけで
+    良いのだろうか。或いは、それだけでは駄目なケースが存在するだろうか。例えば、
+
+      "escape-sequence-long": "escape-sequence-short"
+
+    という形になっていたとすると、
+
+      key: escape-sequence-short
+
+    という形になってしまって結局無限ループになってしまうのではないだろうか。現
+    在の実装について改めて確認する→やはり左辺が keys で右辺が chars になってい
+    るので単純に keys と chars を比較するのでは駄目である。結局 chars を keys
+    に翻訳してから比較する事にした。実装した。テストした。動いている。OK
+
 2021-05-06
 
   * progcomp: aws_completer が呼び出されない (reported by Archehandoro) [#D1535]

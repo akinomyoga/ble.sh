@@ -87,6 +87,7 @@
 - complete: work around bash-completion bugs `#D1533` 0000000
 - main: work around MSYS2 .inputrc `#D1534` 0000000
 - progcomp: fix non-working `complete -C prog` `#D1535` 0000000
+- bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` 0000000
 
 ## Compatibility
 
