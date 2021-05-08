@@ -4366,6 +4366,24 @@ bash_tips
 
 2021-05-07
 
+  * decode: 初期化時にエラー (reported by RakibFiha) [#D1537]
+    https://github.com/akinomyoga/ble.sh/issues/106
+
+    一番最近の commit を観察したが特に怪しい所はない様に思われる。
+
+    キャッシュが壊れている可能性? 然し、キャッシュをクリアしてしまうと問題が再
+    現しなくなる可能性があるので後回し。
+    もし ble-update を実行する過程でキャッシュが壊れるのだとしたらどれかの
+    version から最新版に更新した時に問題が再現するかもしれない。そう思って
+    026432d 9125795 79d671d 0506df2 032f6b2 からのアップデートを試したが再現は
+    しなかった。
+
+    どの commit で問題が起こる様になったのだろうか。改めて怪しい変更がないか
+    commit を眺めて見る。試しに bind '"hello":"world"' としたら再現した。改めて
+    decode-char の呼び出し部分を確認する。もしかするとここを "${chars[*]}" にし
+    ていたり変数に代入したりする過程でその様に加工してしまっているかもしれない。
+    と思ったら、本当に "${chars[*]}" にしてしまっていた。一文字の修正である。
+
   * bind: fix a problem that "bind '"seq":"key"'" causes a loop macro "bind -s key key" (reported by thanosz) [#D1536]
     https://github.com/akinomyoga/ble.sh/issues/105
 

@@ -3531,7 +3531,7 @@ function ble/builtin/bind/option:- {
     value=${value#\"} value=${value%\"}
     local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
     local command="ble/widget/.MACRO ${chars[*]}"
-    ble/decode/cmap/decode-chars "${chars[*]}"
+    ble/decode/cmap/decode-chars "${chars[@]}"
     [[ ${keys[*]} != "$bind_keys" ]] &&
       ble-decode-key/bind "$kmap" "$bind_keys" "$command"
   elif [[ $value ]]; then
