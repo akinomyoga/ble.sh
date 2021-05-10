@@ -27,8 +27,8 @@
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
-- syntax: support the deprecated redirection `>& file` `#D1539` 0000000
-- complete: complete file descriptors and heredoc words after redirections `#D1539` 0000000
+- syntax: support the deprecated redirection `>& file` `#D1539` b9b0de4
+- complete: complete file descriptors and heredoc words after redirections `#D1539` b9b0de4
 
 ## Changes
 
@@ -58,6 +58,7 @@
   - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 45b30a7
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
 - main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
+- promopt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1531` 0000000
 
 ## Fixes
 

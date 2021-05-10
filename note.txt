@@ -4405,6 +4405,14 @@ bash_tips
 
 2021-05-10
 
+  * syntax: PS0 から stderr に出力できないという報告を受けた (reported by tycho-kirchner) [#D1541]
+    https://github.com/akinomyoga/ble.sh/issues/107
+
+    一体何をしたいのか謎だがまあ元の bash で動く以上はその動作を利用する設定も
+    あるだろう。元々その様に実装していたのは set -x の出力を防ぐ為だったが、よ
+    く見たら PS0 の出力は restore-bash-options の前だったのでこの段階では 2 を
+    端末に出力しても OK.
+
   * 2021-03-21 gitstatus.plugin.sh の alias builtin で builtin eval 他が破壊されている [#D1540]
     https://github.com/akinomyoga/ble.sh/issues/93
     https://github.com/romkatv/gitstatus/pull/235

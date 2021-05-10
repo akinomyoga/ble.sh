@@ -4998,7 +4998,7 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND" &>/dev/tty
-  ble-edit/exec/print-PS0 >&31
+  ble-edit/exec/print-PS0 >&31 2>&32
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
