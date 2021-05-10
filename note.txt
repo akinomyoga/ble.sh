@@ -1260,21 +1260,16 @@ bash_tips
 
 2021-05-06
 
-  * MSYS2 .inputrc
-    https://github.com/akinomyoga/ble.sh/issues/104
-    https://sourceforge.net/p/msys2/mailman/msys2-users/thread/CAFLRLk-UX7S%3DTAerNix7HvxDAv4aY2FwZuFZz%3DU%2BTLBAWxCLEg%40mail.gmail.com/#msg37275646
-    Ref #D1534
-
-    特に問題の行は削除するべきであると考えているが返信は未だない。
-    強い口調で書き過ぎたから無視されているのかも知れないし、
-    単にこの mailing list には誰もいないという事なのかもしれない。
-    archive を遡ってもこの mailing list は活発であるとは言い難い。
+  * bash: complete -p の -F はやはり quote するべきなのではないか。
+    $var となっている場合、!! となっている場合、{1..10} となっている場合。
 
   * bash-completion
     https://github.com/akinomyoga/ble.sh/issues/97
+    https://github.com/scop/bash-completion/pull/492
     Ref #D1533
 
     python のテストを自分で実装したりしなければならず面倒である。
+    実装した。PR を update した。これは無効の反応待ち状態である。
 
   * bug-bash localvar_inherit: dynamic variables の性質も継承されるのは意図的か。
     Ref #D1532
@@ -1342,31 +1337,18 @@ bash_tips
   * mapfile -d "" が buffered になったら
     ble/syntax:bash/simple-word/eval/.print-result (lib/core-syntax.sh) を修正
 
-  * 2021-03-21 gitstatus.plugin.sh の alias builtin で builtin eval 他が破壊されている
-    https://github.com/akinomyoga/ble.sh/issues/93
+    2021-05-08 もう修正されている。然し、Cygwin に対しても動作を変更できないか
+    どうか尋ねてその上で改めて一緒に修正するのが良い気がする。
 
-    * 取り敢えず暫定的な対策として source ble.sh の時に unalias builtin 等を実
-      行する事にした。
+    read -t ... についても同様に bash-5.2 以降で実装を切り替えて良い気がする。
 
-    * 他に source ble.sh した後に gitstatus.plugin.sh が実行されて、更にその後
-      になって ble-attach した時の事も考える必要がある。
+  * empty associative array subscripts: これは結局返事がないが ToDo リストに入っ
+    ているのかもしれない。或いはそうでもないのかもしれない。何れにしても、今少
+    しずつ associative array subscripts の取り扱いの変更が行われているので、そ
+    れらが済んでから処理されるのではないか。
 
-    gitstatus.plugin.sh の側で対策できないのか。
-    34e21707
-
-    https://github.com/romkatv/gitstatus/issues/154
-    ここで本人が builtin を置き換えるのは良くない事だという事を述べている。
-
-    > It's generally not a good idea to redefine builtins. If you also redefine
-    > things like true, local, unset, etc., gitstatus won't work. Please don't
-    > file a bug in this case but rather fix your config.
-
-    eval ... pos parameters
-    source ... pos parameters
-    source ... function scope or not (declare var の振る舞い)
-    unset ... previous-scope dynamic-unset or value-unset
-    exec ... persistent redirections
-      これは実際に問題になるという事を確認した。
+  * return without arguments in trap handlers. これは結局強い理由がないと変更さ
+    れない雰囲気になっている。
 
 
 @todo
@@ -1378,6 +1360,37 @@ bash_tips
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
 
+2021-05-09
+
+  * Fedora の package にするには結構面倒な手続きが要りそうな感じである。
+    https://blog.jwf.io/2017/11/first-rpm-package-fedora/
+
+    何れにしても ble.sh は頻繁に変更が加わっているし未だ 0.* の version の段階
+    なので未だ公式に提出はしない事にする。1.0 を出す時に一緒に提出を考えるのが
+    良いだろうと思われる。
+
+  * v1.0 を出す迄に何か目玉の機能を実装したい所であるが、実の所、他のシェルに全
+    くない様な機能で便利そうな物は存在しない。
+
+    * syntax-highlighting ... 文法もちゃんと追跡した物
+
+    * error message ... これは他のシェルにはない機能である。fish にあったりする
+      かもしれないが。
+
+    * vim mode ... これは highlighting も含めてなかなか気に入っている。
+
+    * complete
+      * sabbrev ... 個人的にこれは結構便利だと考えている。
+      * auto-complete ... これは別に他のシェルと比べて何か良い訳でもない。
+      * auto-menu ... これはちょっと煩い。けれど他のシェルにもあるので。
+
+    * bottom panel ... 一つは bottom panel かもしれないがそんなに便利なのかとい
+      うと微妙な所である。tmux の方の設定で似たような物を表示できる筈だし特に便
+      利でもない。
+
+    * enhanced history ... 相対パスでファイル名を参照しているのを記録したい。そ
+      れを auto-complete の実装に役立てたい。
+
 2021-05-06
 
   * progcomp: complete -C completer で改行のエスケープに対応していない
@@ -1388,6 +1401,26 @@ bash_tips
     を持つのだろうか。よく分からない事が多い。実際に試してみないと分からない。
 
     或いは read line で読み込む事ができる形式だろうか。
+
+    →実際に動作を確認したところ、エスケープの除去は行われず \ も含まて補完文字
+    列とされる様だ。よく考えてみれば、実際に挿入した時に複数の単語として解釈さ
+    れてしまっては困る訳だから、確かにこの動作でなければならない。
+
+    ? 末尾に \\ があったらどうなるだろうか → \\ であってもその後の改行は候補の
+      一部と見做される様だ。
+
+    さて、具体的にどの様に実装するのが良いか…という事を考えようと思ったが難し
+    い。先ず標準出力を勝手に自分で COMPREPLY に代入するのは違う様に思われる。と
+    いうのも、呼び出し元の compgen で -S suffix 等の加工をしてもらわなければな
+    らないからである。だとすると、最終的な compgen の出力結果を解釈する時に行末
+    の '\' で行を繋げる様に処理しなければならないのだろうか。
+
+    そもそも改行を含むファイル名があった時に compgen はどの様な出力をするのか。
+    うーん。普通にエスケープせずに改行を出力した様な気がする→確認した。確かに
+    そうなっている。なので '\' が行末にあるからと言って勝手に振る舞いを変更する
+    のも憚られる。
+
+    或いは compgen の全ての機能を自前で模倣するという手もなくはない。その場合には区切りは全て制御下にある。
 
   * progcomp: -F もしくは -C で生成した候補に対しても dir/ 等の suffix を付ける
     必要はあるのか。もし付けたければ completion 側で付けるべきなのではないかと
@@ -1406,7 +1439,13 @@ bash_tips
     うのか調べる必要がある。
 
     取り敢えず問題が起こらない事を確かめた上で getdef 自体を更新するのが良いの
-    ではないか。
+    ではないか
+
+    →と思ったが実際は複雑である。getdef を使って関数を別名にコピーするのに使っ
+    たりしているが、その時に先頭部分だけを置換している。しかし declare -ft の部
+    分についても関数名を置換しなければならない。そういう事になるぐらいであれば、
+    個別に declare -ft かどうかを判定して、改めて declare -ft で属性を付加し直
+    す様にしないと行けない筈である。
 
 2021-05-03
 
@@ -4364,7 +4403,156 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
-2021-05-07
+2021-05-10
+
+  * 2021-03-21 gitstatus.plugin.sh の alias builtin で builtin eval 他が破壊されている [#D1540]
+    https://github.com/akinomyoga/ble.sh/issues/93
+    https://github.com/romkatv/gitstatus/pull/235
+
+    * 取り敢えず暫定的な対策として source ble.sh の時に unalias builtin 等を実
+      行する事にした。
+
+    * 他に source ble.sh した後に gitstatus.plugin.sh が実行されて、更にその後
+      になって ble-attach した時の事も考える必要がある。
+
+    gitstatus.plugin.sh の側で対策できないのか。
+    34e21707
+
+    https://github.com/romkatv/gitstatus/issues/154
+    ここで本人が builtin を置き換えるのは良くない事だという事を述べている。
+
+    > It's generally not a good idea to redefine builtins. If you also redefine
+    > things like true, local, unset, etc., gitstatus won't work. Please don't
+    > file a bug in this case but rather fix your config.
+
+    eval ... pos parameters
+    source ... pos parameters
+    source ... function scope or not (declare var の振る舞い)
+    unset ... previous-scope dynamic-unset or value-unset
+    exec ... persistent redirections
+      これは実際に問題になるという事を確認した。
+
+    これは報告したらもっと別の方法で exec bash を検出する方法について議論が始まっ
+    た。幾つか結構怪しい方法も含めて紹介した。その内の一つの方針で実装してテス
+    トしてみるそうである。
+
+    これも返信が来て色々議論して alias を全く使わない様に向こうが修正してくれた。
+    しかも後で気づいたのだが gitstatus の作者はあの powerlevel10k の作者でもあっ
+    た。powerlevel10k は ble.sh と同じく zsh ではあるがシェルで色々と複雑な処理
+    をゼロから真面目に実装している奴である。
+
+  * highlight: 1>&a.txt のファイル名着色 [#D1539]
+
+    着色だけでなく補完にも一緒に対応する。
+
+    x fixed: 実装してみたが動かない→2箇所 RDRD2 になっていた。CTX_RDRD2 に直す。
+
+    x fixed: 3<&- や 3<&4- 等の redirection に対してエラー着色になっている。
+
+    x fixed: 1>& 1 に対して補完が効かない→check-prefix に登録していなかった。
+
+    x fixed: 1>& に対して補完が効かない。ファイル名だけが生成される。check-here
+      でもしかすると別の ctx になっている?  →調べたらそもそも ARGX になってい
+      て其処から RDRD2 等に変わっていないので ARGX だと思って補完が開始されてい
+      るのが原因である。何が問題かというと、次の単語がない時に redirection で
+      stat を設置していないのが行けない。然し、そもそも RDRD2 等は単語の種類で
+      あって解析の状態ではないのではないか? と思ったが別にそういう訳でもないら
+      しい。ちゃんと RDRD2 という ctx になって解析されている。
+
+      ここで問題になるのは RDRD2X 的な文脈が存在しないという事にある気がする。
+
+      a 或いは一文字も入力されていなくても勝手に RDRD2 を開始してしまうべきなの
+        だろうか。と思ったが RDRF, etc は nest の中にいるという事を前提とした実
+        装になっているので、そのまま ctx を設定する訳には行かない。然し、そうは
+        言っても空の nest を生成する事もできない。
+
+      b 或いは stat か何処かの配列に次に来るべき者についての情報を記録するとい
+        う事にする? 他の所ではその様な事をしていないのに此処だけでその様に処理
+        するのも変である。
+
+      c というかそもそも check-prefix で ARGX の時に redirection を検出するべき
+        なのではないだろうか。
+
+      最終的に c が正しい実装である。そもそも check-here は fallback 的な位置づ
+      けであり此処に来た時点で実は変な補完になってしまう事は運命づけられている。
+
+    * 他に << 及び <<- の後の補完も定義されていなかったのを定義した。適当に
+      EOF:END:HERE 等としたがもっと別の物を追加するべきかもしれないし、あるいは
+      ユーザーが設定できる様にするべきかもしれない。
+
+    * 全般に fd の補完もできる様にした。
+
+  * MSYS2 patch .inputrc [#D1538]
+    https://github.com/akinomyoga/ble.sh/issues/104
+    https://sourceforge.net/p/msys2/mailman/msys2-users/thread/CAFLRLk-UX7S%3DTAerNix7HvxDAv4aY2FwZuFZz%3DU%2BTLBAWxCLEg%40mail.gmail.com/#msg37275646
+    https://github.com/msys2/MSYS2-packages/pull/2490
+    https://github.com/git-for-windows/build-extra/pull/341
+
+    Ref #D1534
+
+    特に問題の行は削除するべきであると考えているが返信は未だない。
+    強い口調で書き過ぎたから無視されているのかも知れないし、
+    単にこの mailing list には誰もいないという事なのかもしれない。
+    archive を遡ってもこの mailing list は活発であるとは言い難い。
+
+    GitHub にソースを見つけたので PR を出してみた。
+    こちらも直ぐには返事が来ない。
+    一応ちゃんと変更の要求は取り込まれた。
+
+    https://github.com/msys2/MSYS2-packages/pull/2490
+
+    然し本当に git bash の msys と msys2 は一緒なのだろうか…。MSYS2 をインストー
+    ルして、それから Git Bash もインストールしてみる。Git Bash の方は個人のディ
+    レクトリには .inputrc はなくて、/etc/inputrc が読み取られている様である (実
+    際に /etc/inputrc を編集して影響を与えている事を確認した)。そして、実は
+    /etc/inputrc の内容と MSYS2 の .inputrc の内容は異なるという事も確認できた。
+
+    ? ok: MSYS2 の /etc/inputrc はどうなっているのだったか→MSYS2 では
+      /etc/inputrc は存在していない。なので、今回の変更だけで大丈夫のはず。
+
+    ? ok: Cygwin の方にも inputrc があるのではないか→調べたら
+      /etc/skel/.inputrc があったが、これはちゃんと変な binding は削除されてい
+      た。検索した感じだとそもそもこの壊れた binding は cygwin の inputrc から
+      来ていた様な気がする (違ったかもしれないが面倒なのでもう確認しない) ので、
+      Cygwin の側では誰かが何処かの時点で気づいて削除したという事だろうか。
+
+    ? done: Git Bash の /etc/inputrc にも変更要求を出さなければならない
+
+      https://github.com/git-for-windows/git-sdk-64/blob/main/etc/inputrc
+      https://github.com/git-for-windows/git-sdk-64/blob/main/etc/skel/.inputrc
+      https://github.com/git-for-windows/git-sdk-32/blob/main/etc/inputrc
+      https://github.com/git-for-windows/git-sdk-32/blob/main/etc/skel/.inputrc
+
+      以上にファイルを見つけたがどうも違う様な気がする。これらのリポジトリのコ
+      ミットを見ると自動的にアップデートされている。なので、これは別の場所に
+      upstream があるという事を示唆しているのではないか。然し検索してみても関連
+      する物は見つからない。
+
+      https://github.com/search?q=org%3Agit-for-windows+%22msys2+mailing+list%22&type=code
+
+      /etc/skel/.inputrc は MSYS2 から継承されるのだと考えたとしても、では
+      /etc/inputrc は何処から来ているのだろうか。謎である。うーん。もしかして
+      msys1 が起源になっている? というか Git Bash の MSYS は MSYS2 ではなくて
+      MSYS1 なのだろうか。MSYS の version は何処でチェックできるのだろうか。
+
+      改めて色々読んでいると build-extra も言及されている。適当にディレクトリを
+      覗いたら inputrc があった。どうも GitHub の検索はファイル名本体には全く一
+      致しないようだ。
+
+      https://github.com/git-for-windows/build-extra/blob/main/git-extra/inputrc
+
+      https://github.com/git-for-windows/git/issues/62 では PR は OK と言ってい
+      るが何処に出したら良いのかについては何も言及していない。msysgit という物
+      も存在する様だ…そちらにも PR を出す必要があるだろうか、と思って確認した
+      ら msysgit は Git for Windows の前身であり同じ人が管理していて既に
+      archive されていた。
+
+    ? ok: MSYS-1.0 にも出した方が良いだろうかと思って活動を確認したが Mailing
+      list は 2013 から動いていないし、最新版も 1.0.12 の 2016 年なので、此処で
+      修正しても仕方がないと判断する。そもそも、ble.sh の側でも対策を入れたので
+      実質的に問題は発生しない筈。
+
+2021-05-08
 
   * decode: 初期化時にエラー (reported by RakibFiha) [#D1537]
     https://github.com/akinomyoga/ble.sh/issues/106
@@ -4383,6 +4571,8 @@ bash_tips
     decode-char の呼び出し部分を確認する。もしかするとここを "${chars[*]}" にし
     ていたり変数に代入したりする過程でその様に加工してしまっているかもしれない。
     と思ったら、本当に "${chars[*]}" にしてしまっていた。一文字の修正である。
+
+2021-05-07
 
   * bind: fix a problem that "bind '"seq":"key"'" causes a loop macro "bind -s key key" (reported by thanosz) [#D1536]
     https://github.com/akinomyoga/ble.sh/issues/105

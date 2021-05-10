@@ -567,6 +567,11 @@ function ble/array#filter-by-regex {
   local _ble_local_rex=$2
   ble/array#filter "$1" ble/array#filter-by-regex/.predicate
 }
+function ble/array#remove-by-regex/.predicate { ! [[ $1 =~ $_ble_local_rex ]]; }
+function ble/array#remove-by-regex {
+  local _ble_local_rex=$2
+  ble/array#filter "$1" ble/array#remove-by-regex/.predicate
+}
 ## @fn ble/array#remove arr element
 function ble/array#remove/.predicate { [[ $1 != "$_ble_local_value" ]]; }
 function ble/array#remove {

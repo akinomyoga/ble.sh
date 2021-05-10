@@ -1016,7 +1016,7 @@ function ble/syntax:bash/cclass/initialize {
 
   # _ble_syntax_bash_chars[CTX_ARGI] は以下で使われている
   #   ctx-command (色々)
-  #   ctx-redirect (CTX_RDRF, CTX_RDRD, CTX_RDRS)
+  #   ctx-redirect (CTX_RDRF, CTX_RDRD, CTX_RDRD2, CTX_RDRS)
   #   ctx-values (CTX_VALI, CTX_VALR, CTX_VALQ)
   #   ctx-conditions (CTX_CONDI, CTX_CONDQ)
   # 更に以下でも使われている
@@ -2438,7 +2438,7 @@ function ble/syntax:bash/ctx-bracket-expression {
     # 以下の文脈では ctx-command と同様の処理で問題ない。
     #
     #   ctx-command (色々)
-    #   ctx-redirect (CTX_RDRF CTX_RDRD CTX_RDRS)
+    #   ctx-redirect (CTX_RDRF CTX_RDRD CTX_RDRD2 CTX_RDRS)
     #   ctx-values (CTX_VALI, CTX_VALR, CTX_VALQ)
     #   ctx-conditions (CTX_CONDI, CTX_CONDQ)
     #     この文脈では例外として && || < > など一部の演算子で delimiters
@@ -2830,7 +2830,7 @@ function ble/syntax:bash/ctx-expr {
 # ブレース展開
 
 ## CTX_CONDI 及び CTX_RDRS の時は不活性化したブレース展開として振る舞う。
-## CTX_RDRF 及び CTX_RDRD の時は複数語に展開されるブレース展開はエラーなので、
+## CTX_RDRF 及び CTX_RDRD, CTX_RDRD2 の時は複数語に展開されるブレース展開はエラーなので、
 ## nest-push して解析だけ行いブレース展開であるということが確定した時点でエラーを設定する。
 
 function ble/syntax:bash/check-brace-expansion {
@@ -2886,7 +2886,7 @@ function ble/syntax:bash/check-brace-expansion {
       local rematch3=${BASH_REMATCH[3]}
       local len2=${#rematch2}; ((len2||(len2=1)))
       local attr=$ATTR_BRACE
-      if ((ctx==CTX_RDRF||ctx==CTX_RDRD)); then
+      if ((ctx==CTX_RDRF||ctx==CTX_RDRD||ctx==CTX_RDRD2)); then
         # リダイレクトで複数語に展開される時はエラー
         local lhs=${rematch1::len2} rhs=${rematch1:len2+2}
         if [[ $rematch2 ]]; then
@@ -2915,7 +2915,7 @@ function ble/syntax:bash/check-brace-expansion {
   # Note: {aa},bb} は {"aa}","bb"} と解釈されるので、
   #   ここでは終端の "}" の有無に拘らず nest-push する。
   local ntype=
-  ((ctx==CTX_RDRF||ctx==CTX_RDRD)) && force_attr=$ctx
+  ((ctx==CTX_RDRF||ctx==CTX_RDRD||ctx==CTX_RDRD2)) && force_attr=$ctx
   [[ $force_attr ]] && ntype="glob_attr=$force_attr"
   ble/syntax/parse/nest-push "$CTX_BRACE1" "$ntype"
   local len=$((${#str}-1))
@@ -3692,7 +3692,9 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
       #   但し、空白類および <> はリダイレクトに含まれ得るので許容する。
       ((_ble_syntax_attr[i+len-1]=ATTR_ERR))
     else
-      if [[ $rematch1 == *'&' ]]; then
+      if [[ $rematch3 == '>&' ]]; then
+        ble/syntax/parse/nest-push "$CTX_RDRD2" "$rematch3"
+      elif [[ $rematch1 == *'&' ]]; then
         ble/syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
       elif [[ $rematch1 == *'<<<' ]]; then
         ble/syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
@@ -4278,13 +4280,15 @@ function ble/syntax:bash/ctx-conditions {
 
 _BLE_SYNTAX_FCTX[CTX_RDRF]=ble/syntax:bash/ctx-redirect
 _BLE_SYNTAX_FCTX[CTX_RDRD]=ble/syntax:bash/ctx-redirect
+_BLE_SYNTAX_FCTX[CTX_RDRD2]=ble/syntax:bash/ctx-redirect
 _BLE_SYNTAX_FCTX[CTX_RDRS]=ble/syntax:bash/ctx-redirect
 _BLE_SYNTAX_FEND[CTX_RDRF]=ble/syntax:bash/ctx-redirect/check-word-end
 _BLE_SYNTAX_FEND[CTX_RDRD]=ble/syntax:bash/ctx-redirect/check-word-end
+_BLE_SYNTAX_FEND[CTX_RDRD2]=ble/syntax:bash/ctx-redirect/check-word-end
 _BLE_SYNTAX_FEND[CTX_RDRS]=ble/syntax:bash/ctx-redirect/check-word-end
 function ble/syntax:bash/ctx-redirect/check-word-begin {
   if ((wbegin<0)); then
-    # ※解析の段階では CTX_RDRF/CTX_RDRD/CTX_RDRS の間に区別はない。
+    # ※解析の段階では CTX_RDRF/CTX_RDRD/CTX_RDRD2/CTX_RDRS の間に区別はない。
     #   但し、↓の行で解析に用いられた ctx が保存される。
     #   この情報は後で補完候補を生成するのに用いられる。
     ble/syntax/parse/word-push "$ctx" "$i"
@@ -5264,6 +5268,27 @@ _ble_syntax_bash_complete_check_prefix[CTX_CMDX]=next-command
 _ble_syntax_bash_complete_check_prefix[CTX_CMDX1]=next-command
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXT]=next-command
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXV]=next-command
+function ble/syntax/completion-context/.check-prefix/.test-redirection {
+  ##   @var[in] index
+  local word=$1
+  [[ $word =~ ^$_ble_syntax_bash_RexRedirect$ ]] || return 1
+  # 文法的に元々リダイレクトは許されない
+  ((ctx==CTX_CMDXC||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_FARGX3)) && return 0
+
+  local rematch3=${BASH_REMATCH[3]}
+  case $rematch3 in
+  ('>&')
+    ble/syntax/completion-context/.add fd "$index"
+    ble/syntax/completion-context/.add file:no-fd "$index" ;;
+  (*'&')
+    ble/syntax/completion-context/.add fd "$index" ;;
+  ('<<'|'<<-')
+    ble/syntax/completion-context/.add wordlist:EOF:END:HERE "$index" ;;
+  ('<<<'|*)
+    ble/syntax/completion-context/.add file "$index" ;;
+  esac
+  return 0
+}
 function ble/syntax/completion-context/.check-prefix/ctx:next-command {
   # 直前の再開点が CMDX だった場合、
   # 現在地との間にコマンド名があればそれはコマンドである。
@@ -5287,6 +5312,8 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-command {
         ble/syntax/completion-context/.add variable:= "$istat"
       fi
     fi
+  elif ble/syntax/completion-context/.check-prefix/.test-redirection; then
+    true
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
     # 単語が未だ開始していない時 (空白)
     shopt -q no_empty_cmd_completion ||
@@ -5338,6 +5365,8 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
         fi
       fi
     done
+  elif ble/syntax/completion-context/.check-prefix/.test-redirection "$word"; then
+    true
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
     # 単語が未だ開始していない時 (空白)
     local src
@@ -5430,13 +5459,29 @@ function ble/syntax/completion-context/.check-prefix/ctx:quote/.check-container-
 ## @fn ble/syntax/completion-context/.check-prefix/ctx:redirection
 ##   redirect の filename 部分を補完する文脈
 _ble_syntax_bash_complete_check_prefix[CTX_RDRF]=redirection
+_ble_syntax_bash_complete_check_prefix[CTX_RDRD2]=redirection
+_ble_syntax_bash_complete_check_prefix[CTX_RDRD]=redirection
 function ble/syntax/completion-context/.check-prefix/ctx:redirection {
   ble/syntax/completion-context/.check/parameter-expansion
   local p=$((wlen>=0?wbeg:istat))
   if ble/syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
-    ble/syntax/completion-context/.add file "$p"
+    if ((ctx==CTX_RDRF)); then
+      ble/syntax/completion-context/.add file "$p"
+    elif ((ctx==CTX_RDRD)); then
+      ble/syntax/completion-context/.add fd "$p"
+    elif ((ctx==CTX_RDRD2)); then
+      ble/syntax/completion-context/.add fd "$p"
+      ble/syntax/completion-context/.add file:no-fd "$p"
+    fi
   fi
 }
+_ble_syntax_bash_complete_check_prefix[CTX_RDRH]=here
+_ble_syntax_bash_complete_check_prefix[CTX_RDRI]=here
+function ble/syntax/completion-context/.check-prefix/ctx:here {
+  local p=$((wlen>=0?wbeg:istat))
+  ble/syntax/completion-context/.add wordlist:EOF:END:HERE "$p"
+}
+
 
 ## @fn ble/syntax/completion-context/.check-prefix/ctx:rhs
 ##   VAR=value の value 部分を補完する文脈
@@ -5650,6 +5695,13 @@ function ble/syntax/completion-context/.check-here {
       ble/syntax/completion-context/.add command "$index"
     elif ((ctx==CTX_CPATI||ctx==CTX_RDRF||ctx==CTX_RDRS)); then
       ble/syntax/completion-context/.add file "$index"
+    elif ((ctx==CTX_RDRD)); then
+      ble/syntax/completion-context/.add fd "$index"
+    elif ((ctx==CTX_RDRD2)); then
+      ble/syntax/completion-context/.add fd "$index"
+      ble/syntax/completion-context/.add file:no-fd "$index"
+    elif ((ctx==CTX_RDRH||ctx==CTX_RDRI)); then
+      ble/syntax/completion-context/.add wordlist:EOF:END:HERE "$index"
     elif ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR)); then
       ble/syntax/completion-context/.add rhs "$index"
     fi
@@ -6076,6 +6128,12 @@ function ble/syntax/faces-onload-hook {
 
   ble/syntax/attr2iface/.define CTX_COARGX   syntax_default
   ble/syntax/attr2iface/.define CTX_COARGI   syntax_command
+
+  # redirection words
+  ble/syntax/attr2iface/.define CTX_RDRF    syntax_default
+  ble/syntax/attr2iface/.define CTX_RDRD    syntax_default
+  ble/syntax/attr2iface/.define CTX_RDRD2   syntax_default
+  ble/syntax/attr2iface/.define CTX_RDRS    syntax_default
 
   # here documents
   ble/syntax/attr2iface/.define CTX_RDRH    syntax_document_begin
@@ -6662,7 +6720,7 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec-by-name {
   ((type==ATTR_FILE_URL)) && highlight_opts=no-path-color
 
   # check values
-  if ((wtype==CTX_RDRF)); then
+  if ((wtype==CTX_RDRF||wtype==CTX_RDRD2)); then
     if ((type==ATTR_FILE_DIR)); then
       # ディレクトリにリダイレクトはできない
       type=$ATTR_ERR
@@ -6674,12 +6732,12 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec-by-name {
       #   リダイレクトの情報は node[TE_nofs-_ble_syntax_TREE_WIDTH] に入っていると考えられる。
       #
       local redirect_ntype=${node[TE_nofs-_ble_syntax_TREE_WIDTH]:1}
-      if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
+      if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>'[\|\&] ) ]]; then
         if [[ -e $value || -h $value ]]; then
           if [[ -d $value || ! -w $value ]]; then
             # ディレクトリまたは書き込み権限がない
             type=$ATTR_ERR
-          elif [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
+          elif [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' || $redirect_ntype == '>&' ) && -f $value ]]; then
             if [[ -o noclobber ]]; then
               # 上書き禁止
               type=$ATTR_ERR
@@ -6736,10 +6794,10 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
       # foreground で timeout した時は後で background で着色する為に取り敢えず抜ける
       return 148
     fi
-  elif ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
+  elif ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_RDRD||wtype==CTX_RDRD2||wtype==CTX_VALI))); then
     # failglob 等の理由で展開に失敗した場合
     ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr "$ATTR_ERR"
-  elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&count>=2)); then
+  elif (((wtype==CTX_RDRF||wtype==CTX_RDRD||wtype==CTX_RDRD2)&&count>=2)); then
     # 複数語に展開されたら駄目
     ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
   elif ((wtype==CTX_CMDI)); then
@@ -6751,6 +6809,14 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
       elif [[ $type ]]; then
         ble/syntax/progcolor/wattr#setattr "$p0" "$type"
       fi
+    fi
+  elif ((wtype==CTX_RDRD||wtype==CTX_RDRD2)); then
+    if local rex='^[0-9]+-?$|^-$'; [[ $value =~ $rex ]]; then
+      ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_DEL"
+    elif ((wtype==CTX_RDRD2)); then
+      ble/syntax/progcolor/word:default/.highlight-pathspec-by-name "$value"
+    else
+      ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
     fi
   elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS||wtype==CTX_RDRF)); then
     ble/syntax/progcolor/word:default/.highlight-pathspec-by-name "$value"

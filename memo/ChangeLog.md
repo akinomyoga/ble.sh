@@ -27,6 +27,8 @@
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
+- syntax: support the deprecated redirection `>& file` `#D1539` 0000000
+- complete: complete file descriptors and heredoc words after redirections `#D1539` 0000000
 
 ## Changes
 
@@ -50,12 +52,12 @@
 - README: update the description of how to uninstall `#D1510` c8e658e
 - util (`bleopt`): validate initial user settings `#D1511` 82c5ece
   - util (`bleopt`): fix a bug that old values are double-expanded on init (fixup 82c5ece) `#D1521` f795c07
-  - util (`bleopt`): do not validate obsoleted initial settings `#D1527` 0000000
+  - util (`bleopt`): do not validate obsoleted initial settings `#D1527` 032f6b2
 - complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` e5be0c1
 - main: preserve user-space overridden builtins `#D1519` 0860be0
   - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 45b30a7
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
-- main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 0000000
+- main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
 
 ## Fixes
 
@@ -81,14 +83,14 @@
 - main: fix a bug that unset `IFS` is not correctly restored `#D1489` 808f6f7
   - edit: fix error messages on accessing undo records in emacs mode (reported by rux616) `#D1497`  61a57c0 e9be69e
 - canvas: fix a glitch that SGR at the end of command line is applied to new lines `#D1498` 4bdfdbf
-- syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` 0000000
-- decode: fix a hang on attach failure by cache corruption `#D1531` 0000000
-- edit, etc: add workarounds for `localvar_inherit` `#D1532` 0000000
-- complete: work around bash-completion bugs `#D1533` 0000000
-- main: work around MSYS2 .inputrc `#D1534` 0000000
-- progcomp: fix non-working `complete -C prog` `#D1535` 0000000
-- bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` 0000000
-  - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` 0000000
+- syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` b429095
+- decode: fix a hang on attach failure by cache corruption `#D1531` 24ea379
+- edit, etc: add workarounds for `localvar_inherit` `#D1532` 7b63c60
+- complete: work around bash-completion bugs (reported by oc1024) `#D1533` 9d4ad56
+- main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
+- progcomp: fix non-working `complete -C prog` (reported by Archehandoro) `#D1535` 026432d
+- bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
+  - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
 
 ## Compatibility
 
@@ -116,7 +118,7 @@
 - tui, canvas (`ble/canvas/trace`): support `opts=clip` `#D1493` 61ce90c
 - tui, edit: add a new render mode for full-screen applications 817889d
 - main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` c89aa23
-  - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` 0000000
+  - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 
 <!---------------------------------------------------------------------------->

@@ -13,6 +13,8 @@ about: Create a report to fix problems
 
   Note: In most cases, in reply, we will ask further questions to investigate
   the problem in detail.  Please don't hesitate to RESPOND TO THE QUESTIONS, or
-  otherwise we need to just close the issue soon.
+  otherwise we need to just close the issue soon.  But don't worry!  Any
+  (stupid) responses are welcome!  It's definitely better than NO RESPONSE.
+  Let's communicate!
 
 -->

@@ -1841,16 +1841,18 @@ function ble/complete/source:file/.impl {
   else
     candidates=("${ret[@]}")
   fi
+  [[ :$opts: == *:no-fd:* ]] &&
+    ble/array#remove-by-regex candidates '^[0-9]+-?$|^-$'
 
   local flag_source_filter=1
   ble/complete/cand/yield-filenames file "${candidates[@]}"
 }
 
 function ble/complete/source:file {
-  ble/complete/source:file/.impl
+  ble/complete/source:file/.impl "$1"
 }
 function ble/complete/source:dir {
-  ble/complete/source:file/.impl directory
+  ble/complete/source:file/.impl "directory:$1"
 }
 
 # source:rhs
@@ -1929,6 +1931,38 @@ function ble/complete/source:tilde {
   local old_cand_count=$cand_count
   ble/complete/cand/yield-filenames tilde "${candidates[@]}"; local ext=$?
   return $((ext?ext:cand_count>old_cand_count))
+}
+
+function ble/complete/source:fd {
+  IFS=: eval 'local fdlist=":${_ble_util_openat_fdlist[*]}:"'
+
+  [[ $comp_filter_type == none ]] &&
+    local comp_filter_type=head
+
+  local old_cand_count=$cand_count
+  ble/complete/cand/yield word -
+  if [[ -d /proc/self/fd ]]; then
+    local ret
+    ble/complete/util/eval-pathname-expansion '/proc/self/fd/*'
+
+    local fd
+    for fd in "${ret[@]}"; do
+      fd=${fd#/proc/self/fd/}
+      [[ ${fd//[0-9]} ]] && continue
+      [[ $fdlist == *:"$fd":* ]] && continue
+      ble/complete/cand/yield word "$fd"
+      ble/complete/cand/yield word "$fd-"
+    done
+  else
+    local fd
+    for ((fd=0;fd<10;fd++)); do
+      ble/fd#is-open "$fd" || continue
+      ble/complete/cand/yield word "$fd"
+      ble/complete/cand/yield word "$fd-"
+    done
+  fi
+
+  return $((cand_count>old_cand_count))
 }
 
 #------------------------------------------------------------------------------
@@ -3763,6 +3797,7 @@ function ble/complete/candidates/generate {
 
   local cand_iloop=0
   ble/complete/candidates/clear
+  # #D1416 filter:none にするのは ~[TAB] の時など COMPV ではなく COMPS で補完したい事がある為
   ble/complete/candidates/generate-with-filter none "$opts" || return "$?"
   ((cand_count)) && return 0
 

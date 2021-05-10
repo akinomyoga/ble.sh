@@ -43,6 +43,7 @@ CTX_PWORDE      73 # (パラメータ展開) ${!var@...} の ... に居る時
 CTX_PWORDR      72 # (パラメータ展開) ${var//before/after} の before に居る時
 CTX_RDRF        19 # (リダイレクト) リダイレクト対象のファイル。
 CTX_RDRD        20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
+CTX_RDRD2       80 # (リダイレクト) >& NUMBER または >& FILENAME
 CTX_RDRS        27 # (リダイレクト) ヒアストリング
 CTX_VALX        23 # (値リスト) arr=(@)
 CTX_VALI        24 # (値リスト) arr=(a@b)

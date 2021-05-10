@@ -2434,7 +2434,7 @@ function ble/widget/.MACRO {
   if ((ble_decode_char_char&_ble_decode_Macr)); then
     if ((_ble_decode_macro_count++>=bleopt_decode_macro_limit)); then
       ((_ble_decode_macro_count==bleopt_decode_macro_limit+1)) &&
-        ble/term/visible-bell "Macro invokation is cancelled by decode_macro_limit"
+        ble/term/visible-bell "Macro invocation is cancelled by decode_macro_limit"
       return 1
     fi
   else
