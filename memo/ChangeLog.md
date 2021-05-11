@@ -58,7 +58,8 @@
   - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 45b30a7
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
 - main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
-- promopt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1531` 0000000
+- prompt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1541` 24a88ce
+- prompt: adjust behavior of `LINENO` and prompt sequence `\#` (reported by tycho-kirchner) `#D1542` 0000000
 
 ## Fixes
 
