@@ -769,17 +769,32 @@ _ble_decode_csi_mode=0
 _ble_decode_csi_args=
 _ble_decode_csimap_tilde=()
 _ble_decode_csimap_alpha=()
+function ble-decode-char/csi/print/.print-csidef {
+  local qalpha qkey ret q=\' Q="'\''"
+  if [[ $sgrq ]]; then
+    ble/string#quote-word "$1" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qalpha=$ret
+    ble/string#quote-word "$2" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qkey=$ret
+  else
+    qalpha="'${1//$q/$Q}'"
+    qkey="'${2//$q/$Q}'"
+  fi
+  ble/util/print "${sgrf}ble-bind$sgr0 $sgro--csi$sgr0 $qalpha $qkey"
+
+}
+## @fn ble-decode-char/csi/print
+##   @var[in] ble_bind_print sgr0 sgrf sgrq sgrc sgro
 function ble-decode-char/csi/print {
+  [[ $ble_bind_print ]] || local sgr0= sgrf= sgrq= sgrc= sgro=
   local num ret
   for num in "${!_ble_decode_csimap_tilde[@]}"; do
     ble-decode-unkbd "${_ble_decode_csimap_tilde[num]}"
-    ble/util/print "ble-bind --csi '$num~' $ret"
+    ble-decode-char/csi/print/.print-csidef "$num~" "$ret"
   done
 
   for num in "${!_ble_decode_csimap_alpha[@]}"; do
     local s; ble/util/c2s "$num"; s=$ret
     ble-decode-unkbd "${_ble_decode_csimap_alpha[num]}"
-    ble/util/print "ble-bind --csi '$s' $ret"
+    ble-decode-char/csi/print/.print-csidef "$s" "$ret"
   done
 }
 
@@ -1322,8 +1337,11 @@ function ble-decode-char/unbind {
     tseq=${tseq%_*}
   done
 }
-function ble-decode-char/dump {
-  local IFS=$_ble_term_IFS
+## @fn ble-decode-char/print [tseq nseq...]
+##   @var[in] ble_bind_print sgr0 sgrf sgrq sgrc sgro
+function ble-decode-char/print {
+  [[ $ble_bind_print ]] || local sgr0= sgrf= sgrq= sgrc= sgro=
+  local IFS=$_ble_term_IFS q=\' Q="'\''"
   local tseq=$1 nseq ccode
   nseq=("${@:2}")
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
@@ -1335,12 +1353,22 @@ function ble-decode-char/dump {
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[ccode]}"
     if [[ ${ent%_} ]]; then
       local key=${ent%_} ret
-      ble-decode-unkbd "$key"; local kspec=$ret
-      ble/util/print "ble-bind -k '${cnames[*]}' '$kspec'"
+
+      local qkspec qcnames
+      if [[ $sgrq ]]; then
+        ble-decode-unkbd "$key"
+        ble/string#quote-word "$ret" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qkspec=$ret
+        ble/string#quote-word "${cnames[*]}" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qcnames=$ret
+      else
+        ble-decode-unkbd "$key"
+        qkspec="'${ret//$q/$Q}'"
+        qcnames="'${cnames[*]//$q/$Q}'"
+      fi
+      ble/util/print "${sgrf}ble-bind$sgr0 $sgro-k$sgr0 $qcnames $qkspec"
     fi
 
     if [[ ${ent//[0-9]} == _ ]]; then
-      ble-decode-char/dump "${tseq}_$ccode" "${cnames[@]}"
+      ble-decode-char/print "${tseq}_$ccode" "${cnames[@]}"
     fi
   done
 }
@@ -1663,50 +1691,64 @@ function ble/decode/keymap#set-cursor {
 ## @fn ble/decode/keymap#print keymap [tseq nseq]
 ##   @param keymap
 ##   @param[in,internal] tseq nseq
+##   @var[in] ble_bind_print sgr0 sgrf sgrq sgrc sgro
 function ble/decode/keymap#print {
   # 引数の無い場合: 全ての kmap を dump
   local kmap
   if (($#==0)); then
     for kmap in ${_ble_decode_keymap_list//:/ }; do
-      ble/util/print "# keymap $kmap"
+      ble/util/print "$sgrc# keymap $kmap$sgr0"
       ble/decode/keymap#print "$kmap"
     done
     return 0
   fi
 
+  [[ $ble_bind_print ]] || local sgr0= sgrf= sgrq= sgrc= sgro=
   local kmap=$1 tseq=$2 nseq=$3
   local dicthead=_ble_decode_${kmap}_kmap_
   local kmapopt=
-  [[ $kmap ]] && kmapopt=" -m '$kmap'"
+  [[ $kmap ]] && kmapopt=" $sgro-m$sgr0 $sgrq'$kmap'$sgr0"
 
+  local q=\' Q="'\''"
   local key keys
   builtin eval "keys=(\${!$dicthead$tseq[@]})"
   for key in "${keys[@]}"; do
     local ret; ble-decode-unkbd "$key"
     local knames=$nseq${nseq:+ }$ret
     builtin eval "local ent=\${$dicthead$tseq[key]}"
+
+    local qknames
+    if [[ $sgrq ]]; then
+      ble/string#quote-word "$knames" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qknames=$ret
+    else
+      qknames="'${knames//$q/$Q}'"
+    fi
     if [[ $ent == *:* ]]; then
-      local cmd=${ent#*:} q=\' Q="'\''"
+      local cmd=${ent#*:}
+
+      local o v
       case "$cmd" in
-      ('ble/widget/.SHELL_COMMAND '*)
-        ble/util/print "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
-      ('ble/widget/.EDIT_COMMAND '*)
-        ble/util/print "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
-      ('ble/widget/.MACRO '*)
-        local ret; ble/util/chars2keyseq ${cmd#*' '}
-        ble/util/print "ble-bind$kmapopt -s '${knames//$q/$Q}' '${ret//$q/$Q}'" ;;
-      ('ble/widget/'*)
-        ble/util/print "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble/widget/}'" ;;
-      (*)
-        ble/util/print "ble-bind$kmapopt -@ '${knames//$q/$Q}' '${cmd}'" ;;
+      ('ble/widget/.SHELL_COMMAND '*) o=c v=${cmd#'ble/widget/.SHELL_COMMAND '} ;;
+      ('ble/widget/.EDIT_COMMAND '*)  o=x v=${cmd'#ble/widget/.EDIT_COMMAND '} ;;
+      ('ble/widget/.MACRO '*)         o=s; ble/util/chars2keyseq ${cmd#*' '}; v=$ret ;;
+      ('ble/widget/'*)                o=f v=${cmd#ble/widget/} ;;
+      (*)                             o=@ v=$cmd  ;;
       esac
+
+      local qv
+      if [[ $sgrq ]]; then
+        ble/string#quote-word "$v" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qv=$ret
+      else
+        qv="'${v//$q/$Q}'"
+      fi
+      ble/util/print "${sgrf}ble-bind$sgr0$kmapopt $sgro-$o$sgr0 $qknames $qv"
     fi
 
     if [[ ${ent::1} == _ ]]; then
       ble/decode/keymap#print "$kmap" "${tseq}_$key" "$knames"
       if [[ $ent == _[0-9]* ]]; then
         local timeout=${ent%%:*}; timeout=${timeout:1}
-        ble/util/print "ble-bind$kmapopt -T '${knames//$q/$Q}' $timeout"
+        ble/util/print "${sgrf}ble-bind$sgr0$kmapopt $sgro-T$sgr0 $qknames $timeout"
       fi
     fi
   done
@@ -2826,6 +2868,7 @@ function ble-bind/.initialize-kmap {
   ble-decode/GET_BASEMAP -v kmap
   if ! ble/decode/is-keymap "$kmap"; then
     ble/util/print "ble-bind: the default keymap '$kmap' is unknown." >&2
+    flags=R$flags
     return 1
   fi
   return 0
@@ -2862,6 +2905,7 @@ EOF
 
 function ble-bind/check-argument {
   if (($3<$2)); then
+    flags=E$flags
     if (($2==1)); then
       ble/util/print "ble-bind: the option \`$1' requires an argument." >&2
     else
@@ -2938,7 +2982,20 @@ function ble-bind/option:dump {
     ble/decode/keymap#dump
   fi
 }
+## @fn ble-bind/option:print
+##   @var[in] flags
 function ble-bind/option:print {
+  local ble_bind_print=1
+  local sgr0= sgrf= sgrq= sgrc= sgro=
+  if [[ $flags == *c* || $flags != *n* && -t 1 ]]; then
+    local ret
+    ble/color/face2sgr command_function; sgrf=$ret
+    ble/color/face2sgr syntax_quoted; sgrq=$ret
+    ble/color/face2sgr syntax_comment; sgrc=$ret
+    ble/color/face2sgr argument_option; sgro=$ret
+    sgr0=$_ble_term_sgr0
+  fi
+
   local keymap
   ble-decode/INITIALIZE_DEFMAP -v keymap # 初期化を強制する
   if (($#)); then
@@ -2947,39 +3004,61 @@ function ble-bind/option:print {
     done
   else
     ble-decode-char/csi/print
-    ble-decode-char/dump
+    ble-decode-char/print
     ble/decode/keymap#print
   fi
 }
 
 function ble-bind {
-  local kmap=${ble_bind_keymap-} ret
+  # @var flags
+  #   D ... something done
+  #   E ... parse error
+  #   R ... runtime error
+  #   c ... color=always
+  #   n ... color=none
+  local flags= kmap=${ble_bind_keymap-} ret
   local -a keymaps; keymaps=()
   ble/decode/initialize
+
+  local IFS=$_ble_term_IFS q=\' Q="''\'"
 
   local arg c
   while (($#)); do
     local arg=$1; shift
     if [[ $arg == --?* ]]; then
       case "${arg:2}" in
+      (color|color=always)
+        flags=c${flags//[cn]} ;;
+      (color=never)
+        flags=n${flags//[cn]} ;;
+      (color=auto)
+        flags=${flags//[cn]} ;;
       (help)
-        ble-bind/option:help ;;
+        ble-bind/option:help
+        flags=D$flags ;;
       (csi)
-        ble-bind/check-argument --csi 2 "$#" || return 1
+        flags=D$flags
+        ble-bind/check-argument --csi 2 $# || break
         ble-bind/option:csi "$1" "$2"
         shift 2 ;;
       (cursor)
-        ble-bind/check-argument --cursor 1 $# || return 1
-        ble-bind/.initialize-kmap || return 1 # -> kmap
-        ble/decode/keymap#set-cursor "$kmap" "$1"
+        flags=D$flags
+        ble-bind/check-argument --cursor 1 $# || break
+        ble-bind/.initialize-kmap &&
+          ble/decode/keymap#set-cursor "$kmap" "$1"
         shift 1 ;;
       (list-widgets|list-functions)
+        flags=D$flags
         ble-bind/option:list-widgets ;;
-      (dump) ble-bind/option:dump "${keymaps[@]}" ;;
-      (print) ble-bind/option:print "${keymaps[@]}" ;;
+      (dump)
+        flags=D$flags
+        ble-bind/option:dump "${keymaps[@]}" ;;
+      (print)
+        flags=D$flags
+        ble-bind/option:print "${keymaps[@]}" ;;
       (*)
-        ble/util/print "ble-bind: unrecognized long option $arg" >&2
-        return 2 ;;
+        flags=E$flags
+        ble/util/print "ble-bind: unrecognized long option $arg" >&2 ;;
       esac
     elif [[ $arg == -?* ]]; then
       arg=${arg:1}
@@ -2987,9 +3066,11 @@ function ble-bind {
         c=${arg::1} arg=${arg:1}
         case $c in
         (k)
+          flags=D$flags
           if (($#<2)); then
             ble/util/print "ble-bind: the option \`-k' requires two arguments." >&2
-            return 2
+            flags=E$flags
+            break
           fi
 
           ble-decode-kbd "$1"; local cseq=$ret
@@ -3001,26 +3082,28 @@ function ble-bind {
           fi
           shift 2 ;;
         (m)
-          if (($#<1)); then
-            ble/util/print "ble-bind: the option \`-m' requires an argument." >&2
-            return 2
-          elif ! ble/decode/is-keymap "$1"; then
+          ble-bind/check-argument -m 1 $# || break
+          if ! ble/decode/is-keymap "$1"; then
             ble/util/print "ble-bind: the keymap '$1' is unknown." >&2
-            return 1
+            flags=E$flags
+            shift
+            continue
           fi
           kmap=$1
           ble/array#push keymaps "$1"
           shift ;;
-        (D) ble-bind/option:dump "${keymaps[@]}" ;;
-        ([Pd]) ble-bind/option:print "${keymaps[@]}" ;;
+        (D)
+          flags=D$flags
+          ble-bind/option:dump "${keymaps[@]}" ;;
+        ([Pd])
+          flags=D$flags
+          ble-bind/option:print "${keymaps[@]}" ;;
         (['fxc@s'])
+          flags=D$flags
+
           # 旧形式の指定 -xf や -cf に対応する処理
           [[ $c != f && $arg == f* ]] && arg=${arg:1}
-
-          if (($#<2)); then
-            ble/util/print "ble-bind: the option \`-$c' requires two arguments." >&2
-            return 2
-          fi
+          ble-bind/check-argument "-$c" 2 $# || break
 
           ble-decode-kbd "$1"; local kbd=$ret
           if [[ $2 && $2 != - ]]; then
@@ -3028,55 +3111,47 @@ function ble-bind {
 
             # コマンドの種類
             case $c in
-            (f)
-              # ble/widget/ 関数
-              command=ble/widget/$command ;;
-            (x) # 編集用の関数
-              local q=\' Q="''\'"
-              command="ble/widget/.EDIT_COMMAND '${command//$q/$Q}'" ;;
-            (c) # コマンド実行
-              local q=\' Q="''\'"
-              command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
-            (s)
-              local ret; ble/util/keyseq2chars "$command"
-              local IFS=$_ble_term_IFS
-              command="ble/widget/.MACRO ${ret[*]}" ;;
+            (f) command=ble/widget/$command ;; # ble/widget/ 関数
+            (x) command="ble/widget/.EDIT_COMMAND '${command//$q/$Q}'" ;; # 編集用の関数
+            (c) command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;; # コマンド実行
+            (s) local ret; ble/util/keyseq2chars "$command"; command="ble/widget/.MACRO ${ret[*]}" ;;
             ('@') ;; # 直接実行
             (*)
               ble/util/print "error: unsupported binding type \`-$c'." 1>&2
-              return 1 ;;
+              continue ;;
             esac
 
-            ble-bind/.initialize-kmap || return 1 # -> kmap
-            ble-decode-key/bind "$kmap" "$kbd" "$command"
+            ble-bind/.initialize-kmap &&
+              ble-decode-key/bind "$kmap" "$kbd" "$command"
           else
-            ble-bind/.initialize-kmap || return 1 # -> kmap
-            ble-decode-key/unbind "$kmap" "$kbd"
+            ble-bind/.initialize-kmap &&
+              ble-decode-key/unbind "$kmap" "$kbd"
           fi
           shift 2 ;;
         (T)
+          flags=D$flags
           ble-decode-kbd "$1"; local kbd=$ret
-          if (($#<2)); then
-            ble/util/print "ble-bind: the option \`-T' requires two arguments." >&2
-            return 2
-          fi
-
-          ble-bind/.initialize-kmap || return 1 # -> kmap
-          ble-decode-key/set-timeout "$kmap" "$kbd" "$2"
+          ble-bind/check-argument -T 2 $# || break
+          ble-bind/.initialize-kmap &&
+            ble-decode-key/set-timeout "$kmap" "$kbd" "$2"
           shift 2 ;;
         (L)
+          flags=D$flags
           ble-bind/option:list-widgets ;;
         (*)
           ble/util/print "ble-bind: unrecognized short option \`-$c'." >&2
-          return 2 ;;
+          flags=E$flags ;;
         esac
       done
     else
       ble/util/print "ble-bind: unrecognized argument \`$arg'." >&2
-      return 2
+      flags=E$flags
     fi
   done
 
+  [[ $flags == *E* ]] && return 2
+  [[ $flags == *R* ]] && return 1
+  [[ $flags == *D* ]] || ble-bind/option:print
   return 0
 }
 

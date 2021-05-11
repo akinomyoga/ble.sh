@@ -857,6 +857,7 @@ function ble-update {
 
 #------------------------------------------------------------------------------
 _ble_attached=
+BLE_ATTACHED=
 
 #%x inc.r|@|src/def|
 #%x inc.r|@|src/util|
@@ -882,6 +883,69 @@ blehook ERR+='ble/function#try TRAPERR'
 bleopt/check-all
 #------------------------------------------------------------------------------
 
+## @fn ble [SUBCOMMAND]
+##
+##   無引数で呼び出した時、現在 ble.sh の内部空間に居るかどうかを判定します。
+##
+# Bluetooth Low Energy のツールが存在するかもしれない
+ble/bin/.freeze-utility-path ble
+function ble/dispatch/.help {
+  ble/util/print-lines \
+    'usage: ble [SUBCOMMAND [ARGS...]]' \
+    '' \
+    'SUBCOMMAND' \
+    '  # Manage ble.sh' \
+    '  attach  ... alias of ble-attach' \
+    '  detach  ... alias of ble-detach'  \
+    '  update  ... alias of ble-update' \
+    '  reload  ... alias of ble-reload' \
+    '  help    ... Show this help' \
+    '  version ... Show version' \
+    '  check   ... Run unit tests' \
+    '' \
+    '  # Configuration' \
+    '  opt     ... alias of bleopt' \
+    '  bind    ... alias of ble-bind' \
+    '  face    ... alias of ble-color-setface' \
+    '  hook    ... alias of blehook' \
+    '  sabbrev ... alias of ble-sabbrev' \
+    '  palette ... alias of ble-color-show' \
+    ''
+}
+function ble/dispatch {
+  if (($#==0)); then
+    [[ $_ble_attach && ! $_ble_edit_exec_inside_userspace ]]
+    return $?
+  fi
+
+  # import autoload measure assert stackdump color-show decode-{byte,char,key}
+  local cmd=$1; shift
+  case $cmd in
+  (attach)  ble-attach "$@" ;;
+  (detach)  ble-detach "$@" ;;
+  (update)  ble-update "$@" ;;
+  (reload)  ble-reload "$@" ;;
+  (face)    ble-color-setface "$@" ;;
+  (bind)    ble-bind "$@" ;;
+  (opt)     bleopt "$@" ;;
+  (hook)    blehook "$@" ;;
+  (sabbrev) ble-sabbrev "$@" ;;
+  (palette) ble-color-show "$@" ;;
+  (help|--help) ble/dispatch/.help "$@" ;;
+  (version|--version) ble/util/print "ble.sh, version $BLE_VERSION (noarch)" ;;
+  (check|--test) ble/base/test "$@" ;;
+  (*)
+    if ble/is-function ble/bin/ble; then
+      ble/bin/ble "$cmd" "$@"
+    else
+      ble/util/print "ble (ble.sh): unrecognized subcommand '$cmd'." >&2
+      return 2
+    fi
+  esac
+}
+function ble { ble/dispatch "$@"; }
+
+
 # blerc
 _ble_base_rcfile=
 _ble_base_rcfile_initialized=
@@ -901,7 +965,6 @@ function ble/base/load-rcfile {
   fi
 }
 
-_ble_attached=
 function ble-attach {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Attach to ble.sh.' "$@"
@@ -918,6 +981,7 @@ function ble-attach {
 
   [[ $_ble_attached ]] && return 0
   _ble_attached=1
+  BLE_ATTACHED=1
 
   # 特殊シェル設定を待避
   builtin eval -- "$_ble_bash_FUNCNEST_adjust"
@@ -942,11 +1006,14 @@ function ble-attach {
   ble/decode/reset-default-keymap # 264ms (keymap/vi.sh)
   if ! ble/decode/attach; then # 53ms
     _ble_attached=
+    BLE_ATTACHED=
     ble-edit/detach
     return 1
   fi
 
   ble/history:bash/reset # 27s for bash-3.0
+
+  blehook/invoke ATTACH
 
   # Note: 再描画 (初期化中のエラーメッセージ・プロンプト変更等の為)
   ble/textarea#redraw
@@ -971,6 +1038,8 @@ function ble-detach {
 function ble-detach/impl {
   [[ $_ble_attached ]] || return 1
   _ble_attached=
+  BLE_ATTACHED=
+  blehook/invoke DETACH
 
   ble-edit/detach
   ble/decode/detach
@@ -1104,8 +1173,6 @@ function ble/base/process-blesh-arguments {
     esac
   done
 
-  ble/base/load-rcfile # blerc
-
   # rlvar (#D1148)
   #   勝手だが ble.sh の参照する readline 変数を
   #   便利だと思われる設定の方向に書き換えてしまう。
@@ -1116,6 +1183,9 @@ function ble/base/process-blesh-arguments {
     ((_ble_bash>=40300)) && builtin bind 'set colored-stats on'
     ((_ble_bash>=40400)) && builtin bind 'set colored-completion-prefix on'
   fi
+
+  ble/base/load-rcfile # blerc
+  ble/util/invoke-hook BLE_ONLOAD
 
   # attach
   case $opt_attach in

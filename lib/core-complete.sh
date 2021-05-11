@@ -1934,7 +1934,7 @@ function ble/complete/source:tilde {
 }
 
 function ble/complete/source:fd {
-  IFS=: eval 'local fdlist=":${_ble_util_openat_fdlist[*]}:"'
+  IFS=: builtin eval 'local fdlist=":${_ble_util_openat_fdlist[*]}:"'
 
   [[ $comp_filter_type == none ]] &&
     local comp_filter_type=head
@@ -2520,7 +2520,7 @@ function ble/complete/progcomp/.compgen {
           printf -v "$2" %s "${1:1}"
         else
           printf -v "$2" %q "$1"
-          [[ ${!2} == \$* ]] && eval $2=${!2}
+          [[ ${!2} == \$* ]] && builtin eval "$2=${!2}"
         fi
       }
       ble/function#suppress-stderr _filedir
@@ -5926,25 +5926,37 @@ function ble-decode/keymap:auto_complete/define {
 # sabbrev
 #
 
+function ble/complete/sabbrev/.initialize-print {
+  sgr0= sgr1= sgr2= sgr3= sgro=
+  if [[ $flags == *c* || $flags != *n* && -t 1 ]]; then
+    local ret
+    ble/color/face2sgr command_function; sgr1=$ret
+    ble/color/face2sgr syntax_varname; sgr2=$ret
+    ble/color/face2sgr syntax_quoted; sgr3=$ret
+    ble/color/face2sgr argument_option; sgro=$ret
+    sgr0=$_ble_term_sgr0
+  fi
+}
 function ble/complete/sabbrev/.print-definition {
   local key=$1 type=${2%%:*} value=${2#*:}
-  local flags=
-  [[ $type == m ]] && flags='-m '
+  local option=
+  [[ $type == m ]] && option=$sgro'-m'$sgr0' '
 
-  local q=\' Q="'\''" shell_specialchars=$' \n\t&|;<>()''\$`"'\''[]*?!~'
-  if [[ $key == *["$shell_specialchars"]* ]]; then
-    printf "ble-sabbrev %s'%s=%s'\n" "$flags" "${key//$q/$Q}" "${value//$q/$Q}"
-  else
-    printf "ble-sabbrev %s%s='%s'\n" "$flags" "$key" "${value//$q/$Q}"
-  fi
+  local ret
+  ble/string#quote-word "$key" quote-empty:sgrq="$sgr3":sgr0="$sgr2"
+  key=$sgr2$ret$sgr0
+  ble/string#quote-word "$value" sgrq="$sgr3":sgr0="$sgr0"
+  value=$ret
+  ble/util/print "${sgr1}ble-sabbrev$sgr0 $option$key=$value"
 }
 
 ## @fn ble/complete/sabbrev/register key value
 ##   静的略語展開を登録します。
 ##   @param[in] key value
 ##
-## @fn ble/complete/sabbrev/list
+## @fn ble/complete/sabbrev/list [keys...]
 ##   登録されている静的略語展開の一覧を表示します。
+##   @var[in] flags
 ##
 ## @fn ble/complete/sabbrev/get key
 ##   静的略語展開の展開値を取得します。
@@ -5957,11 +5969,23 @@ if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     _ble_complete_sabbrev[$key]=$value
   }
   function ble/complete/sabbrev/list {
-    local key
-    for key in "${!_ble_complete_sabbrev[@]}"; do
-      local value=${_ble_complete_sabbrev[$key]}
-      ble/complete/sabbrev/.print-definition "$key" "$value"
+    (($#)) || set -- "${!_ble_complete_sabbrev[@]}"
+    (($#)) || return 0
+
+    local sgr0 sgr1 sgr2 sgr3 sgro
+    ble/complete/sabbrev/.initialize-print
+
+    local key ext=0
+    for key; do
+      if [[ ${_ble_complete_sabbrev[$key]+set} ]]; then
+        local value=${_ble_complete_sabbrev[$key]}
+        ble/complete/sabbrev/.print-definition "$key" "$value"
+      else
+        ble/util/print "ble-sabbrev: $key: not found." >&2
+        ext=1
+      fi
     done
+    return "$ext"
   }
   function ble/complete/sabbrev/get {
     local key=$1
@@ -5986,13 +6010,30 @@ else
     _ble_complete_sabbrev_values[i]=$value
   }
   function ble/complete/sabbrev/list {
-    local shell_specialchars=$' \n\t&|;<>()''\$`"'\''[]*?!~'
-    local i N=${#_ble_complete_sabbrev_keys[@]} q=\' Q="'\''"
-    for ((i=0;i<N;i++)); do
-      local key=${_ble_complete_sabbrev_keys[i]}
-      local value=${_ble_complete_sabbrev_values[i]}
-      ble/complete/sabbrev/.print-definition "$key" "$value"
-    done
+    local sgr0 sgr1 sgr2 sgr3 sgro
+    ble/complete/sabbrev/.initialize-print
+
+    if (($#)); then
+      local key ret ext=0
+      for key; do
+        if ble/array#index _ble_complete_sabbrev_keys "$key"; then
+          local value=${_ble_complete_sabbrev_values[ret]}
+          ble/complete/sabbrev/.print-definition "$key" "$value"
+        else
+          ble/util/print "ble-sabbrev: $key: not found." >&2
+          ext=1
+        fi
+      done
+      return "$ext"
+    else
+      local i N=${#_ble_complete_sabbrev_keys[@]}
+      for ((i=0;i<N;i++)); do
+        local key=${_ble_complete_sabbrev_keys[i]}
+        local value=${_ble_complete_sabbrev_values[i]}
+        ble/complete/sabbrev/.print-definition "$key" "$value"
+      done
+      return 0
+    fi
   }
   function ble/complete/sabbrev/get {
     ret=
@@ -6019,7 +6060,14 @@ function ble/complete/sabbrev/read-arguments {
       ble/array#push specs "s:$arg"
     else
       case $arg in
-      (--help) flag_help=1 ;;
+      (--help)
+        flags=H$flags ;;
+      (--color|--color=always)
+        flags=c${flags//[cn]} ;;
+      (--color=never)
+        flags=n${flags//[cn]} ;;
+      (--color=auto)
+        flags=${flags//[cn]} ;;
       (-*)
         local i n=${#arg} c
         for ((i=1;i<n;i++)); do
@@ -6028,21 +6076,20 @@ function ble/complete/sabbrev/read-arguments {
           (m)
             if ((!$#)); then
               ble/util/print "ble-sabbrev: option argument for '-$c' is missing" >&2
-              flag_error=1
+              flags=E$flags
             elif [[ $1 != ?*=* ]]; then
-              ble/util/print "ble-sabbrev: invalid option argument '-$c $1' (expected form: '-c key=value')" >&2
-              flag_error=1
+              ble/util/print "ble-sabbrev: invalid option argument '-$c $1' (expected form: '-$c key=value')" >&2
+              flags=E$flags
             else
               ble/array#push specs "$c:$1"; shift
             fi ;;
           (*)
             ble/util/print "ble-sabbrev: unknown option '-$c'." >&2
-            flag_error=1 ;;
+            flags=E$flags ;;
           esac
         done ;;
       (*)
-        ble/util/print "ble-sabbrev: unrecognized argument '$arg'." >&2
-        flag_error=1 ;;
+        ble/array#push print "$arg" ;;
       esac
     fi
   done
@@ -6051,28 +6098,30 @@ function ble/complete/sabbrev/read-arguments {
 ## @fn ble-sabbrev key=value
 ##   静的略語展開を登録します。
 function ble-sabbrev {
-  if (($#)); then
-    local -a specs=()
-    local flag_help= flag_error=
-    ble/complete/sabbrev/read-arguments "$@"
-    if [[ $flag_help || $flag_error ]]; then
-      [[ $flag_error ]] && ble/util/print
-      ble/util/print-lines \
-        'usage: ble-sabbrev [key=value|-m key=function|--help]' \
-        '     Register sabbrev expansion.'
-      [[ ! $flag_error ]]; return "$?"
-    fi
-
-    local spec key type value
-    for spec in "${specs[@]}"; do
-      # spec は t:key=value の形式
-      type=${spec::1} spec=${spec:2}
-      key=${spec%%=*} value=${spec#*=}
-      ble/complete/sabbrev/register "$key" "$type:$value"
-    done
-  else
-    ble/complete/sabbrev/list
+  local -a specs=() print=()
+  local flags=
+  ble/complete/sabbrev/read-arguments "$@"
+  if [[ $flags == *H* || $flags == *E* ]]; then
+    [[ $flags == *E* ]] && ble/util/print
+    ble/util/print-lines \
+      'usage: ble-sabbrev [key=value|-m key=function|--help]' \
+      '     Register sabbrev expansion.'
+    [[ ! $flags == *E* ]]; return "$?"
   fi
+
+  local ext=0
+  if ((${#specs[@]}==0||${#print[@]})); then
+    ble/complete/sabbrev/list "${print[@]}" || ext=$?
+  fi
+
+  local spec key type value
+  for spec in "${specs[@]}"; do
+    # spec は t:key=value の形式
+    type=${spec::1} spec=${spec:2}
+    key=${spec%%=*} value=${spec#*=}
+    ble/complete/sabbrev/register "$key" "$type:$value"
+  done
+  return "$ext"
 }
 
 function ble/complete/sabbrev/expand {

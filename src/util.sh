@@ -1117,7 +1117,7 @@ function ble/string#quote-word {
   if [[ $ret == *["$chars"]* ]]; then
     local Q="'$sgr0\'$sgrq'"
     ret=$sgrq$q${ret//$q/$Q}$q$sgr0
-    ret=${ret#$q$q} ret=${ret%$q$q}
+    ret=${ret#"$sgrq$q$q$sgr0"} ret=${ret%"$sgrq$q$q$sgr0"}
   elif [[ $ret == *["$q"]* ]]; then
     local Q="\'"
     ret=${ret//$q/$Q}
@@ -1318,7 +1318,7 @@ function ble/adict#unset {
   local _ble_local_key _ble_local_index
   ble/adict#.resolve "$1" "$2"
   ((_ble_local_index>=0)) &&
-    builtin eval -- "builtin unset -v $1[_ble_local_index]"
+    builtin eval -- "builtin unset -v '$1[_ble_local_index]'"
   return 0
 }
 function ble/adict#has {
@@ -1370,6 +1370,8 @@ fi
 #------------------------------------------------------------------------------
 # blehook
 
+## @fn blehook/.print
+##   @var[in] flags
 function blehook/.print {
   local out= q=\' Q="'\''" nl=$'\n'
 
@@ -1417,6 +1419,7 @@ function blehook/.print-help {
 }
 
 function blehook {
+  local flags=a
   if (($#==0)); then
     blehook/.print
     return 0
@@ -1424,7 +1427,6 @@ function blehook {
 
   local -a print=()
   local -a process=()
-  local flags=a
   local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
   local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?-?\+?=)(.*)$'
   while (($#)); do

@@ -2823,7 +2823,9 @@ function ble/widget/clear-display {
 }
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
-  ble/widget/print "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
+  ble/widget/print \
+    "GNU bash, version $BASH_VERSION ($MACHTYPE)" \
+    "ble.sh, version $BLE_VERSION (noarch)"
 }
 function ble/widget/readline-dump-functions {
   ble-edit/content/clear-arg
@@ -4849,6 +4851,7 @@ function exit { ble/builtin/exit "$@"; }
 _ble_edit_exec_TRAPDEBUG_enabled=
 _ble_edit_exec_inside_begin=
 _ble_edit_exec_inside_prologue=
+_ble_edit_exec_inside_userspace=
 ble/builtin/trap/reserve DEBUG
 function ble-edit/exec:gexec/.TRAPDEBUG/trap {
   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*" || { (($?==2)) && return 0 || break; } &>/dev/null' DEBUG
@@ -5016,10 +5019,12 @@ function ble-edit/exec:gexec/.prologue {
   ble/base/restore-builtin-wrappers
   builtin eval -- "$_ble_bash_FUNCNEST_restore" # これ以降関数は呼び出せない
   _ble_edit_exec_TRAPDEBUG_enabled=1
+  _ble_edit_exec_inside_userspace=1
   return "$_ble_edit_exec_lastexit" # set $?
 } 31>&1 32>&2 &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
+  _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
   builtin eval -- "$_ble_bash_FUNCNEST_adjust" # 他の関数呼び出しよりも先
   ble/base/adjust-bash-options
@@ -5027,8 +5032,8 @@ function ble-edit/exec:gexec/.save-last-arg {
 }
 function ble-edit/exec:gexec/.epilogue {
   _ble_edit_exec_lastexit=$? # lastexit
+  _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
-  _ble_edit_exec_inside_prologue=
   builtin eval -- "$_ble_bash_FUNCNEST_adjust" # 他の関数呼び出しよりも先
   ble/base/adjust-builtin-wrappers-1
   if ((_ble_edit_exec_lastexit==0)); then
@@ -5049,6 +5054,8 @@ function ble-edit/exec:gexec/.epilogue {
   ble-edit/exec/save-BASH_REMATCH
   ble/util/reset-keymap-of-editing-mode
   ble-edit/exec/.adjust-eol
+  _ble_edit_exec_inside_prologue=
+
   ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC &>/dev/tty
 
   if ((_ble_edit_exec_lastexit)); then
@@ -8342,12 +8349,12 @@ function ble-decode/EPILOGUE {
 
 function ble/widget/print {
   ble-edit/content/clear-arg
-  local message=$1
-  [[ ${message//[$_ble_term_IFS]} ]] || return 1
+  local message="$*"
+  [[ ${message//["$_ble_term_IFS"]} ]] || return 1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
   ble/util/buffer.flush >&2
-  ble/util/print "$message" >&2
+  ble/util/print-lines "$@" >&2
 }
 function ble/widget/internal-command {
   ble-edit/content/clear-arg

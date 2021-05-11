@@ -12,6 +12,8 @@ blehook/declare EXIT
 blehook/declare INT
 blehook/declare ERR
 blehook/declare unload
+blehook/declare ATTACH
+blehook/declare DETACH
 
 # util.sh
 

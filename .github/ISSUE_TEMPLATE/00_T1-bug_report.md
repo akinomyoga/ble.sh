@@ -4,8 +4,10 @@ about: Create a report to fix problems
 
 ---
 
-**ble version**: <!-- The result of `echo $BLE_VERSION` (version, commit-hash) -->
-**Bash version**: <!-- The result of `echo $BASH_VERSION, $MACHTYPE` -->
+**ble version**: <!-- The result of `echo "$BLE_VERSION"` or version and commit-hash -->
+**Bash version**: <!-- The result of `echo "$BASH_VERSION ($MACHTYPE)"` -->
+<!-- You can also obtain the above information by pressing [Ctrl-x][Ctrl-v] in
+  the ble.sh session -->
 
 <!-- Describe the problem here.  If example terminal contents (in either the
   text form or an image) are available, you may paste/insert them to explain
