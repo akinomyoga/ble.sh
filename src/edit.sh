@@ -1124,7 +1124,12 @@ function ble-edit/content/clear-arg {
 #
 # 内部使用変数
 ## @var _ble_edit_LINENO
+##   LINENO の値を保持します。
+##   コマンドラインで処理・キャンセルした行数の合計です。
 ## @var _ble_edit_CMD
+##   プロンプトで \# として参照される変数です。
+##   実際のコマンド実行の回数を保持します。
+##   PS0 の評価後に増加します。
 ## @var _ble_edit_PS1
 ## @var _ble_edit_IFS
 ## @var _ble_edit_IGNOREEOF_adjusted
@@ -3453,6 +3458,9 @@ function ble-edit/exec/register {
   local BASH_COMMAND=$1
   ble/array#push _ble_edit_exec_lines "$1"
 }
+function ble-edit/exec/has-pending-commands {
+  ((${#_ble_edit_exec_lines[@]}))
+}
 function ble-edit/exec/.setexit {
   # $? 変数の設定
   return "$_ble_edit_exec_lastexit"
@@ -3930,6 +3938,8 @@ function ble-edit/exec:gexec/.eval-prologue {
   unset -v HISTCMD; ble-edit/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
+  ((++_ble_edit_CMD))
+
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
@@ -4096,7 +4106,11 @@ function ble/widget/.newline {
   fi
 
   ble/widget/.insert-newline "$opts"
-  ((LINENO=++_ble_edit_LINENO))
+
+  # update LINENO
+  local ret; ble/string#count-char "$_ble_edit_str" $'\n'
+  ((_ble_edit_LINENO+=1+ret))
+  ((LINENO=_ble_edit_LINENO))
 
   ble-edit/history/onleave.fire
   ble/widget/.newline/clear-content
@@ -4173,7 +4187,7 @@ function ble/widget/accept-line {
   ble-edit/content/clear-arg
   local BASH_COMMAND=$_ble_edit_str
 
-  if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
+  if [[ ! ${BASH_COMMAND//["$_ble_term_IFS"]]} ]]; then
     ble/widget/.newline keep-info
     ble/textarea#render
     ble/util/buffer.flush >&2
@@ -4208,8 +4222,6 @@ function ble/widget/accept-line {
   ble/widget/.newline
 
   [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $BASH_COMMAND"
-
-  ((++_ble_edit_CMD))
 
   # 編集文字列を履歴に追加
   ble-edit/history/add "$BASH_COMMAND"
@@ -7331,14 +7343,18 @@ function ble-decode/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if ble-decode/has-input; then
+    #   現在は ble-decode/.hook の段階で連続入力を縮約しているので
+    #   この関数はそんなに沢山呼び出される事はない。
+    #   bash 4.0 以降でないとユーザー入力検出できない事に注意。
+    if ble-decode/has-input && ! ble-edit/exec/has-pending-commands; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi
   fi
 
-  # _ble_decode_bind_hook で bind/tail される。
-  "ble-edit/exec:$bleopt_internal_exec_type/process" && return 0
+  # コマンド実行が設定された時には _ble_decode_bind_hook の最後で bind/.tail
+  # が実行される。
+  ble-edit/exec:"$bleopt_internal_exec_type"/process && return 0
 
   ble-edit/bind/.tail
   return 0
