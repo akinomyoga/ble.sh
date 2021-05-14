@@ -805,6 +805,13 @@ bash_tips
     Memo
 -------------------------------------------------------------------------------
 
+2021-05-15
+
+  * PKGBUILD の説明は此処にある [#M0020]
+    https://wiki.archlinux.org/title/VCS_package_guidelines
+    https://wiki.archlinux.jp/index.php/PKGBUILD
+    https://wiki.archlinux.jp/index.php/%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E4%BD%9C%E6%88%90#.E9.96.A2.E6.95.B0_pkgver.28.29
+
 2021-05-03
 
   * awk の互換性に関する注意点 [#M0019]
@@ -1359,6 +1366,49 @@ bash_tips
 0.6 ErrorMsg
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
+
+2021-05-15
+
+  * README: 様々な機能へのリンクを貼った方が良いのではないかという事
+
+2021-05-13
+
+  * vi_imap が empty と表示されるとの事
+    https://github.com/akinomyoga/ble.sh/issues/109
+
+    "ble.sh: The keymap 'vi_imap' is empty." というエラーメッセージが出るとの事
+    だが他には何もメッセージは出ないのだろうか。試しに keymap.vi を空にしてロー
+    ドしてみると…再現した。
+
+    * bash ble.sh --clear-cache オプションを実装した方が良い。
+
+    * ファイルが存在するかどうかのチェックをしている箇所は、全て有限の大きさを持っているかどうかを確認した方が良い。
+
+    * 空の keymap になっていたらキャッシュ無しで初期化し直す機能を付けた方が良いかもしれない。
+
+  * ssh -option の後の補完が固まる
+    https://github.com/akinomyoga/ble.sh/issues/98
+
+    $ alias ssh='TERM=xterm ssh'
+
+    で再現するとの情報を得た。他に man -w が現れたり消えたりするという情報も。
+    つまり、一つの man -w が 100% になっているのではなくて man -w が繰り返しルー
+    プで呼び出されている? また、cache dir に大量のファイルができているという話
+    も。つまり、ble/util/assign で無限ループを起こしている可能性がある。
+
+
+    $ complete -r
+    $ source ~/.fzf.bash
+    $ TERM=xterm ssh -w[TAB]
+
+    TERM=xterm ssh -bash: 一致しません: /home/murase/.ssh/config.d/*
+
+  *
+
+    1>&$fd- は使えない
+    1>&./- もエラーになる
+
+    もっとちゃんと調べる必要がある
 
 2021-05-09
 
@@ -4376,6 +4426,104 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-05-15
+
+  * package: AUR package (suggested by huresche, help by oc1024) [#D1548]
+    https://github.com/akinomyoga/ble.sh/issues/108
+    Ref #M0020 PKGUBUILD の書き方
+
+    AUR の PKGBUILD の提案を受けた。PKGBUILD の内容を確認してみる。
+
+    | > arch=('x86_64')
+    |
+    | arch=('any')
+    |
+    | > makedepends=('git')
+    |
+    | makedepends=('git' 'gawk')
+    |
+    | > pkgver() {
+    | >     cd "${srcdir}/${_pkgname}"
+    | >     printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+    | > }
+    |
+    | >     install -Dm644 ./note.txt "${pkgdir}/usr/share/doc/${_pkgname}/note.txt"
+    |
+    | `note.txt` is just a private note but not a part of the documentation.
+
+    というか既にパッケージにしている人がいる。
+    https://aur.archlinux.org/packages/blesh/
+    https://aur.archlinux.org/packages/blesh-git/
+
+    PKGBUILD の説明は此処にある
+    https://wiki.archlinux.org/title/VCS_package_guidelines
+    https://wiki.archlinux.jp/index.php/PKGBUILD
+    https://wiki.archlinux.jp/index.php/%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E4%BD%9C%E6%88%90#.E9.96.A2.E6.95.B0_pkgver.28.29
+
+    * fixed: 自分で試しに install を実行してみた所 644 になっていない。うーん。
+      644 もしくは 755 になる様に umask 022 とした。
+
+    ble-update を実行すると何が起こるのだろうか。
+    取り敢えず複数の方法を組み合わせて対応するのが良い。
+
+    a /usr/* /opt/* etc であって、
+      ファイルが存在するけれど書き込み権限がないという時には、
+      sudo bash "$_ble_base/ble.sh" --update を実行する。
+      sudo の存在チェックも一応する必要がある気がする。
+
+      (a) repository の書き込み権限がない場合と、(b) install 先の書き込み権限が
+      ない場合の二つがある。(c) それから repository が見つからなくて、install
+      先の書き込み権限がない場合もある。(a) と (c) の場合には全体を sudo で実行
+      し直せば良い。但し、(a) の場合には他のユーザーのディレクトリを sudo で更
+      新してしまうと変な事になるのでユーザーのチェックは必要である。権限昇格し
+      た後に [[ -O file ]] でチェックすれば良いのだろうか。取り敢えずその方針で
+      行く。
+
+      この為に ble.sh --update に対応する必要がある。
+
+    そもそも勝手にアップデートして良いのだろうか。複数のユーザーが勝手にアップ
+    デートしたらどうなるのだろうか。と思ったが sudo 権限を持っているユーザーが
+    勝手に物を実行するのが悪い。sudo を使ってインストールするのだからそれなりに
+    他の人に気を遣うべきである。
+
+    b アップデート用のスクリプトを作って sticky bit を付けて無理やりアップデー
+      トを実行するという手もある。これは他のユーザーが同時にアップデートしたり
+      する危険性が高いし、管理者権限で現在の ble.sh の状態を管理する事が不可能
+      になるので駄目。
+
+    c package manager が存在したらそれを使うという手を安易に提案されたが、それ
+      だと package manager を使わずにインストールされたのに勝手に package
+      manager 経由で再インストールされてしまうという事になりかねない。まあ、
+      /usr/share に入っている時点で何らかの package manager を経由しているとい
+      う事は明らかなのだから、余り気にしなくて良いのかもしれない。
+
+      と思ったが現在の所は AUR ぐらいしか存在しない。そして AUR ではどの様にアッ
+      プデートしたら良いのかよく分からない。単に再インストールすれば良いのだろ
+      うか。或いは一旦削除してそれから入れるのだろうか。
+
+    d done: package maintainer の用意したファイルを source するという提案。これ
+      も確かに一つの手である。例えば lib/init-package.sh を使う。
+
+      * 名称について: もしくはlib/init-PACKAGE.bash 等の方が良いかもしれない。
+        もしこれらのファイルが存在したらそれを source する事にする。PACKAGE と
+        大文字にしていると PACKAGE の部分を package manager の名前に置き換える
+        のだと勘違いする人がいるかもしれない。やはり此処は init-package.sh にす
+        るべきだろうか。然しそうすると今度は他の普通のファイルとの見分けが付か
+        ない。或いは単に lib/package.sh とするか。或いは、lib/_package.bash と
+        いう形にするのが良いだろうか。
+
+        うーん。lib/_package.bash もしくは lib/_package.sh という事にする。内部
+        で、ble/package/update なる関数を定義してもらう事にする。
+
+    * README にリンクを貼る。README が長くなるのも面倒だし、そもそも普段使って
+      いる人はコマンドを見なくても分かる筈。という訳で取り敢えずはパッケージ名
+      だけ分かる様にしておく。
+
+      一つ一つのコマンドについては Wiki にページを作る事にすれば良いだろうか。
+      然し、Wiki のページに跳ぶのも面倒である。それにリンクが沢山あるのも変な感
+      じがする。或いは、リンクは Wiki のページだけに向かわせる事にする。パッケー
+      ジ名は単なる文字列とする。それが良い気がする。
 
 2021-05-11
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+umask 022
+
 function mkd {
   [[ -d $1 ]] || mkdir -p "$1"
 }

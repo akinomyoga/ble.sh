@@ -29,8 +29,9 @@
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
 - syntax: support the deprecated redirection `>& file` `#D1539` b9b0de4
 - complete: complete file descriptors and heredoc words after redirections `#D1539` b9b0de4
-- main: support `blehook ATTACH DETACH`, `BLE_ONLOAD`, `BLE_ATTACHED` `#D1543` 0000000
-- main: support `ble` `#D1544` 0000000
+- main: support `blehook ATTACH DETACH`, `BLE_ONLOAD`, `BLE_ATTACHED` `#D1543` 750ca38
+- main: support `ble` `#D1544` 750ca38
+- main (`ble-update`): support package updates and `sudo` updates (motivated by huresche, oc1024) `#D1548` 0000000
 
 ## Changes
 
@@ -61,10 +62,10 @@
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
 - main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
 - prompt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1541` 24a88ce
-- prompt: adjust behavior of `LINENO` and prompt sequence `\#` (reported by tycho-kirchner) `#D1542` 0000000
-- edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 0000000
-- complete (`ble-sabbrev`): support colored output `#D1546` 0000000
-- complete (`ble-bind`): support colored output `#D1547` 0000000
+- prompt: adjust behavior of `LINENO` and prompt sequence `\#` (reported by tycho-kirchner) `#D1542` 8b0257e
+- edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
+- complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
+- complete (`ble-bind`): support colored output `#D1547` 750ca38
 
 ## Fixes
 

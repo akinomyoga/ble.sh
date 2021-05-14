@@ -44,6 +44,10 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
 
+パッケージ管理システムを通じて `ble.sh` をインストールする事もできます (現在 AUR のみ)。
+
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@oc1024`](https://github.com/oc1024)
+
 ## 機能概要
 
 - **構文着色**: `fish` や `zsh-syntax-highlighting` のような文法構造に従った着色を行います。

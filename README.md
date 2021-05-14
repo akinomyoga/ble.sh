@@ -44,6 +44,10 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
 
+You may also install `ble.sh` through package-management systems (currently only AUR):
+
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@oc1024`](https://github.com/oc1024)
+
 ## Features
 
 - **Syntax highlighting**: Highlight command lines input by users as in `fish` and `zsh-syntax-highlighting`.

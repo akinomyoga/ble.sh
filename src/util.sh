@@ -3863,9 +3863,15 @@ function ble/util/import/finalize {
   done
 }
 ## @fn ble/util/import/.read-arguments args...
-##   @var[out] files flags
+##   @var[out] files
+##   @var[out] flags
+##     d delay
+##     h help
+##     f force
+##     E error
 function ble/util/import/.read-arguments {
   flags= files=()
+  local -a not_found=()
   while (($#)); do
     local arg=$1; shift
     if [[ $flags != *-* ]]; then
@@ -3876,7 +3882,8 @@ function ble/util/import/.read-arguments {
       (--*)
         case $arg in
         (--delay) flags=d$flags ;;
-        (--help) flags=h$flags ;;
+        (--help)  flags=h$flags ;;
+        (--force) flags=f$flags ;;
         (*)
           ble/util/print "ble-import: unrecognized option '$arg'" >&2
           flags=E$flags ;;
@@ -3887,7 +3894,7 @@ function ble/util/import/.read-arguments {
         for ((i=1;i<${#arg};i++)); do
           c=${arg:i:1}
           case $c in
-          (d) flags=$c$flags ;;
+          ([df]) flags=$c$flags ;;
           (*)
             ble/util/print "ble-import: unrecognized option '-$c'" >&2
             flags=E$flags ;;
@@ -3899,12 +3906,22 @@ function ble/util/import/.read-arguments {
 
     local ret
     if ! ble/util/import/search "$arg"; then
-      ble/util/print "ble-import: file '$arg' not found" >&2
-      flags=E$flags
+      ble/array#push not_found "$arg"
       continue
     fi; local file=$ret
     ble/array#push files "$file"
   done
+
+  # 存在しないファイルがあった時
+  if [[ $flags != *f* ]] && ((${#not_found[@]})); then
+    local file
+    for file in "${not_found[@]}"; do
+      ble/util/print "ble-import: file '$file' not found" >&2
+    done
+    flags=E$flags
+  fi
+
+  return 0
 }
 function ble/util/import {
   local file ext=0
@@ -3924,19 +3941,20 @@ function ble-import {
   if [[ $flags == *[Eh]* ]]; then
     [[ $flags == *E* ]] && ble/util/print
     {
-      ble/util/print 'usage: ble-import [-d] SCRIPTFILE...'
+      ble/util/print 'usage: ble-import [-df] SCRIPTFILE...'
       ble/util/print '  Search and source script files that have not yet been loaded.'
     } >&2
     [[ $flags == *E* ]] && return 2
     return 0
   elif ((!${#files[@]})); then
-    ble/util/print 'ble-import: argument is not specified.' >&2
+    [[ $flags == *f* ]] && return 0
+    ble/util/print 'ble-import: files are not specified.' >&2
     return 2
   fi
 
   if [[ $flags == *d* ]] && ble/is-function ble/util/idle.push; then
     local ret
-    ble/string#quote-command ble-import "${files[@]}"
+    ble/string#quote-command ble/util/import "${files[@]}"
     ble/util/idle.push "$ret"
     return 0
   fi

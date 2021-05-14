@@ -50,16 +50,16 @@ echo prologue >&2
 {
   #%$ echo "_ble_init_version=$FULLVER+$(git show -s --format=%h)"
   _ble_init_exit=
-  _ble_init_test=
+  _ble_init_command=
   for _ble_init_arg; do
     case $_ble_init_arg in
     --version)
-      _ble_init_exit=1
-      echo "ble.sh -- Bash Line Editor (ble-$_ble_init_version)" ;;
+      _ble_init_exit=0
+      echo "ble.sh (Bash Line Editor), version $_ble_init_version" ;;
     --help)
-      _ble_init_exit=1
+      _ble_init_exit=0
       printf '%s\n' \
-             "# ble.sh -- Bash Line Editor (ble-$_ble_init_version)" \
+             "# ble.sh (Bash Line Editor), version $_ble_init_version" \
              'usage: source ble.sh [OPTION...]' \
              '' \
              'OPTION' \
@@ -69,6 +69,10 @@ echo prologue >&2
              '  --version' \
              '    Show version and exit' \
              '  --test' \
+             '    Run test and exit' \
+             '  --update' \
+             '    Run test and exit' \
+             '  --clear-cache' \
              '    Run test and exit' \
              '' \
              '  --rcfile=BLERC' \
@@ -93,16 +97,17 @@ echo prologue >&2
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
              '' ;;
-    --test)
-      _ble_init_test=1 ;;
+    --test)        _ble_init_command=test ;;
+    --update)      _ble_init_command=update ;;
+    --clear-cache) _ble_init_command=clear-cache ;;
     esac
   done
   if [ -n "$_ble_init_exit" ]; then
     unset _ble_init_version
     unset _ble_init_arg
     unset _ble_init_exit
-    unset _ble_init_test
-    return 1 2>/dev/null || exit 1
+    unset _ble_init_command
+    return 0 2>/dev/null || exit 0
   fi
 } 2>/dev/null # set -x 対策 #D0930
 
@@ -119,7 +124,7 @@ if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
-if [[ $- != *i* && ! $_ble_init_test ]]; then
+if [[ $- != *i* && ! $_ble_init_command ]]; then
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
     builtin echo "ble.sh: This is not an interactive session." >&3
   return 1 2>/dev/null || builtin exit 1
@@ -309,7 +314,7 @@ if [[ $OSTYPE == msys* ]]; then
     builtin bind -m emacs '"\C-?": backward-delete-char'
 fi
 
-if [[ ! -o emacs && ! -o vi && ! $_ble_init_test ]]; then
+if [[ ! -o emacs && ! -o vi && ! $_ble_init_command ]]; then
   builtin echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
   ble/base/restore-bash-options
   ble/base/restore-builtin-wrappers
@@ -790,12 +795,61 @@ function ble/base/print-usage-for-no-argument-command {
   return 0
 }
 function ble-reload { source "$_ble_base/ble.sh"; }
+
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 #%$ echo "_ble_base_branch=$(git rev-parse --abbrev-ref HEAD)"
+function ble-update/.check-install-directory-ownership {
+  if [[ ! -O $_ble_base ]]; then
+    ble/uti/print 'ble-update: install directory is owned by another user:' >&2
+    ls -ld "$_ble_base"
+    return 1
+  elif [[ ! -r $_ble_base || ! -w $_ble_base || ! -x $_ble_base ]]; then
+    ble/uti/print 'ble-update: install directory permission denied:' >&2
+    ls -ld "$_ble_base"
+    return 1
+  fi
+}
+function ble-update/.make {
+  local sudo=
+  if [[ $1 == --sudo ]]; then
+    sudo=1
+    shift
+  fi
+
+  if ! "$MAKE" -q "$@"; then
+    if [[ $sudo ]]; then
+      sudo "$MAKE" "$@"
+    else
+      "$MAKE" "$@"
+    fi
+  else
+    # インストール先に更新がなくても現在の session でロードされている ble.sh が
+    # 古いかもしれないのでチェックしてリロードする。
+    return 6
+  fi
+}
+function ble-update/.reload {
+  if [[ $- == *i* && $_ble_attached ]]; then
+    ble-reload
+  fi
+}
 function ble-update {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
     return "$?"
+  fi
+
+  if [[ $_ble_base_package_type ]] && ble/is-function ble/base/package:"$_ble_base_package_type"/update; then
+    ble/util/print "ble-update: delegate to '$_ble_base_package_type' package manager..." >&2
+    ble/base/package:"$_ble_base_package_type"/update; local ext=$?
+    if ((ext==125)); then
+      ble/util/print 'ble-update: fallback to the default update process.' >&2
+    elif [[ $ext -eq 0 || $ext -eq 6 && $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]]; then
+      ble-update/.reload
+      return $?
+    else
+      return "$ext"
+    fi
   fi
 
   # check make
@@ -819,33 +873,52 @@ function ble-update {
     return 1
   fi
 
+  local insdir_doc=$_ble_base/doc
+  [[ ! -d $insdir_doc && -d ${_ble_base%/*}/doc/blesh ]] &&
+    insdir_doc=${_ble_base%/*}/doc/blesh
+
   if [[ $_ble_base_repository && $_ble_base_repository != release:* ]]; then
-    if [[ -e $_ble_base_repository/.git ]]; then
+    if [[ ! -e $_ble_base_repository/.git ]]; then
+      ble/util/print "ble-update: git repository not found at '$_ble_base_repository'." >&2
+    elif [[ ! -O $_ble_base_repository ]]; then
+      ble/util/print "ble-update: git repository is owned by another user:" >&2
+      ls -ld "$_ble_base_repository"
+    elif [[ ! -r $_ble_base_repository || ! -w $_ble_base_repository || ! -x $_ble_base_repository ]]; then
+      ble/util/print 'ble-update: git repository permission denied:' >&2
+      ls -ld "$_ble_base_repository"
+    else
       ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
           builtin cd "$_ble_base_repository" &&
           git pull && git submodule update --recursive --remote &&
-          { ! "$MAKE" -q || builtin exit 6; } && "$MAKE" all &&
-          if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
-            "$MAKE" INSDIR="$_ble_base" install
+          if [[ $_ble_base == "$_ble_base_repository"/out ]]; then
+            ble-update/.make all
+          elif ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
+            ble-update/.make all
+            ble-update/.make --sudo INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
+          else
+            ble-update/.make INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
           fi ); local ext=$?
-      if ((ext==6)); then
-        [[ $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]] && ble-reload
-        return 0
+      if [[ $ext -eq 0 || $ext -eq 6 && $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]]; then
+        ble-update/.reload
+        return $?
       fi
-      ((ext==0)) && ble-reload
       return "$ext"
     fi
-
-    ble/util/print 'ble-update: git repository not found' >&2
   fi
-
-  if [[ $_ble_base_branch ]]; then
-    # release version
-    local branch=$_ble_base_branch
+  
+  if ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
+    # _ble_base が自分の物でない時は sudo でやり直す
+    sudo "$BASH" "$_ble_base/ble.sh" --update &&
+      ble-update/.reload
+    return $?
+  else
+    # _ble_base/src 内部に clone して make install
+    local branch=${_ble_base_branch:-master}
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
         git clone --recursive --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
-        builtin cd ble.sh && "$MAKE" all && "$MAKE" INSDIR="$_ble_base" install ) &&
-      ble-reload
+        builtin cd ble.sh && "$MAKE" all &&
+        "$MAKE" INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install ) &&
+      ble-update/.reload
     return "$?"
   fi
   return 1
@@ -933,7 +1006,7 @@ function ble/dispatch {
   (palette) ble-color-show "$@" ;;
   (help|--help) ble/dispatch/.help "$@" ;;
   (version|--version) ble/util/print "ble.sh, version $BLE_VERSION (noarch)" ;;
-  (check|--test) ble/base/test "$@" ;;
+  (check|--test) ble/base/sub:test "$@" ;;
   (*)
     if ble/is-function ble/bin/ble; then
       ble/bin/ble "$cmd" "$@"
@@ -1213,11 +1286,13 @@ function ble/base/process-blesh-arguments {
 }
 
 function ble/base/initialize/.clean-up {
+  local ext=$? # preserve exit status
+
   # 一時グローバル変数消去
   builtin unset -v _ble_init_version
   builtin unset -v _ble_init_arg
   builtin unset -v _ble_init_exit
-  builtin unset -v _ble_init_test
+  builtin unset -v _ble_init_command
 
   # 状態復元
   if [[ $_ble_init_original_IFS_set ]]; then
@@ -1233,9 +1308,10 @@ function ble/base/initialize/.clean-up {
     ble/base/restore-builtin-wrappers
     builtin eval -- "$_ble_bash_FUNCNEST_restore"
   fi
+  return "$ext"
 }
 
-function ble/base/test {
+function ble/base/sub:test {
   local error=
   if ((!_ble_make_command_check_count)); then
     echo "MACHTYPE: $MACHTYPE"
@@ -1247,11 +1323,16 @@ function ble/base/test {
   source "$_ble_base"/lib/test-canvas.sh || error=1
   [[ ! $error ]]
 }
+function ble/base/sub:update { ble-update; }
+function ble/base/sub:clear-cache {
+  (shopt -u failglob; ble/bin/rm -rf "$_ble_base_cache"/*)
+}
 
-if [[ $_ble_init_test ]]; then
-  if ! ble/base/test; then
+ble-import -f lib/_package
+if [[ $_ble_init_command ]]; then
+  if ! ble/base/sub:"$_ble_init_command"; then
     ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
-    { return 1 || exit 1; } 2>/dev/null # set -x 対策 #D0930
+    { return $? || exit $?; } 2>/dev/null # set -x 対策 #D0930
   fi
 else
   ble/base/process-blesh-arguments "$@"

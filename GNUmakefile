@@ -86,6 +86,17 @@ $(OUTDIR)/lib/init-msys1.sh: lib/init-msys1.sh lib/init-msys1-helper.c | $(OUTDI
 #	$(MWGPP) $< > $@
 
 #------------------------------------------------------------------------------
+# documents
+
+outdirs += $(OUTDIR)/doc
+outfiles-doc += $(OUTDIR)/doc/README.md
+outfiles-doc += $(OUTDIR)/doc/README-ja_JP.md
+outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
+outfiles-doc += $(OUTDIR)/doc/LICENSE.md
+$(OUTDIR)/doc/%: % | $(OUTDIR)/doc
+	cp -p $< $@
+
+#------------------------------------------------------------------------------
 # contrib
 
 .PHONY: update-contrib
@@ -105,7 +116,7 @@ $(OUTDIR)/contrib/%.bash: contrib/%.bash | contrib/.git $(OUTDIR)/contrib
 $(outdirs):
 	mkdir -p $@
 
-build: contrib/.git $(outfiles)
+build: contrib/.git $(outfiles) $(outfiles-doc)
 .PHONY: build
 
 all: build
@@ -113,21 +124,34 @@ all: build
 #------------------------------------------------------------------------------
 # target "install"
 
-ifneq ($(filter-out %/,$(DESTDIR)),)
-  DESTDIR := $(DESTDIR)/
-endif
-
-ifneq ($(DESTDIR)$(PREFIX),)
-  DATA_HOME := $(DESTDIR)$(PREFIX)/share
-else ifneq ($(XDG_DATA_HOME),)
-  DATA_HOME := $(XDG_DATA_HOME)
+ifneq ($(INSDIR),)
+  ifeq ($(INSDIR_DOC),)
+    INSDIR_DOC := $(INSDIR)/doc
+  endif
 else
-  DATA_HOME := $(HOME)/.local/share
+  ifneq ($(filter-out %/,$(DESTDIR)),)
+    DESTDIR := $(DESTDIR)/
+  endif
+
+  ifneq ($(DESTDIR)$(PREFIX),)
+    DATA_HOME := $(DESTDIR)$(PREFIX)/share
+  else ifneq ($(XDG_DATA_HOME),)
+    DATA_HOME := $(XDG_DATA_HOME)
+  else
+    DATA_HOME := $(HOME)/.local/share
+  endif
+
+  INSDIR = $(DATA_HOME)/blesh
+  INSDIR_DOC = $(DATA_HOME)/doc/blesh
 endif
 
-INSDIR = $(DATA_HOME)/blesh
-install: $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) $(INSDIR)/cache.d $(INSDIR)/tmp
+install: \
+  $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) \
+  $(outfiles-doc:$(OUTDIR)/doc/%=$(INSDIR_DOC)/%) \
+  $(INSDIR)/cache.d $(INSDIR)/tmp
 $(INSDIR)/%: $(OUTDIR)/%
+	bash make_command.sh install "$<" "$@"
+$(INSDIR_DOC)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
 $(INSDIR)/cache.d $(INSDIR)/tmp:
 	mkdir -p $@ && chmod a+rwxt $@
