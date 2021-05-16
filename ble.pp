@@ -71,9 +71,9 @@ echo prologue >&2
              '  --test' \
              '    Run test and exit' \
              '  --update' \
-             '    Run test and exit' \
+             '    Update ble.sh and exit' \
              '  --clear-cache' \
-             '    Run test and exit' \
+             '    Clear ble.sh cache and exit' \
              '' \
              '  --rcfile=BLERC' \
              '  --init-file=BLERC' \
