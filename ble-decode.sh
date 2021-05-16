@@ -1583,7 +1583,7 @@ function ble-decode-bind/cmap/initialize {
 
   local init=$_ble_base/cmap/default.sh
   local dump=$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump
-  if [[ $dump -nt $init ]]; then
+  if [[ -s $dump && $dump -nt $init ]]; then
     source "$dump"
   else
     echo 'ble.sh: generating "'"$dump"'"...' 1>&2
@@ -1604,7 +1604,7 @@ function ble-decode-bind/cmap/initialize {
     # 3文字以上 bind/unbind ソースの生成
     local fbinder=$_ble_base_cache/cmap+default.binder-source
     _ble_decode_bind_fbinder=$fbinder
-    if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
+    if ! [[ -s $_ble_decode_bind_fbinder && $_ble_decode_bind_fbinder -nt $init ]]; then
       echo -n 'ble.sh: initializing multichar sequence binders... '
       ble-decode-bind/cmap/.generate-binder-template >| "$fbinder"
       binder=ble-decode-bind/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
@@ -1731,7 +1731,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 
 function ble-decode/bind {
   local file=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
-  [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+  [[ -s $file &&  $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
 
   # * 一時的に 'set convert-meta off' にする。
   #
