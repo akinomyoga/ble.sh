@@ -6,6 +6,10 @@
 ## New features
 
 - complete/mandb: support mandb in FreeBSD `#D1432` 6c54f79
+  - mandb: fix BS contamination used by nroff to represent bold (reported by rlnore) `#D1429` b5c875a
+  - mandb: fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
+  - mandb: improve extraction and cache for each locale `#D1480` 3588158
+  - mandb: fix an infinite loop by a leak variable (reported by rlanore, riblo) `#D1550` 0000000
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
@@ -72,13 +76,11 @@
 
 - term: fix a bug that VTE based terminals are not recognized `#D1427` 7e16d9d
 - complete: fix a problem that candidates are not updated after menu-filter (reported by 3ximus) `#D1428` 98fbc1c
-- complete/mandb: fix BS contamination used by nroff to represent bold (reported by rlnore) `#D1429` b5c875a
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
 - edit (sword): fix definition of `sword` (shell words) `#D1441` f923388
 - edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 09cf7f1
-- complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
 - util (`ble/util/msleep`): fix hang in Cygwin by swithing from `/dev/udp/0.0.0.0/80` to `/dev/zero` `#D1452` d4d718a
   - util (`ble/util/msleep`): work around the bash-4.3 bug of `read -t` (reported by 3ximus) `#D1468` `#D1469` 4ca9b2e
 - syntax: fix broken AST with `[[` keyword `#D1454` 69658ef
@@ -87,7 +89,6 @@
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
-- mandb: improve extraction and cache for each locale `#D1480` 3588158
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
 - main: fix a bug that unset `IFS` is not correctly restored `#D1489` 808f6f7
   - edit: fix error messages on accessing undo records in emacs mode (reported by rux616) `#D1497`  61a57c0 e9be69e
@@ -108,7 +109,7 @@
 - complete: work around `fzf` completion settings loaded automatically `#D1508` 4fc51ae
 - complete: work around `bash-completion` bugs (reported by oc1024) `#D1533` 9d4ad56
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
-- util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` 0000000
+- util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
 
 ## Internal changes and fixes
 

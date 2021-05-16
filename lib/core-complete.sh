@@ -2744,25 +2744,25 @@ function ble/complete/mandb/search-file {
   ble/string#split manpath : "$manpath"
   local path
   for path in "${manpath[@]}"; do
-    ble/complete/mandb/search-file/.check "$path/man1/$man.1" && return
-    ble/complete/mandb/search-file/.check "$path/man1/$man.8" && return
+    ble/complete/mandb/search-file/.check "$path/man1/$command.1" && return
+    ble/complete/mandb/search-file/.check "$path/man1/$command.8" && return
     if ble/is-function ble/bin/gzip; then
-      ble/complete/mandb/search-file/.check "$path/man1/$man.1.gz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$man.8.gz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.gz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.gz" && return
     fi
     if ble/is-function ble/bin/bzcat; then
-      ble/complete/mandb/search-file/.check "$path/man1/$man.1.bz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$man.1.bz2" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$man.8.bz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$man.8.bz2" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.bz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.bz2" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.bz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.bz2" && return
     fi
     if ble/is-function ble/bin/xzcat; then
-      ble/complete/mandb/search-file/.check "$path/man1/$man.1.xz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$man.8.xz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.xz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.xz" && return
     fi
     if ble/is-function ble/bin/lzcat; then
-      ble/complete/mandb/search-file/.check "$path/man1/$man.1.lzma" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$man.8.lzma" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.lzma" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.lzma" && return
     fi
   done
   return 1
@@ -2807,53 +2807,87 @@ function ble/complete/mandb/.generate-cache {
       if (type == "man") {
         print ".TH __ble_ignore__ 1 __ble_ignore__ __ble_ignore__";
         print ".ll 9999"
+        topic_start = ".TP";
       }
+      mode = "begin";
     }
     function flush_topic(_, i) {
       if (g_keys_count == 0) return;
       for (i = 0; i < g_keys_count; i++) {
+        print "";
         print "__ble_key__";
-        if (type == "man") print ".TP";
+        if (topic_start != "") print topic_start;
         print g_keys[i];
         print "";
         print "__ble_desc__";
         print "";
         print g_desc;
-        print "";
       }
       g_keys_count = 0;
       g_desc = "";
     }
 
-    type == "man" && /^\.TP([^_[:alnum:]]|$)/ {
-      if (g_keys_count && g_desc != "") flush_topic();
-      mode = "key"; next;
+#%  # .Dd マクロ読み込み命令?
+#%  # .Nm (mdoc) 記述対象の名前
+    mode == "begin" && /^\.(Dd|Nm)[[:space:]]/ {
+      if (type == "man" && /^\.Dd[[:space:]]+\$Mdoc/) topic_start = "";
+      print $0;
     }
-    type == "mdoc" && /^\.It Fl([^_[:alnum:]]|$)/ {
-      if (g_keys_count && g_desc != "") flush_topic();
-      mode = "key";
-      sub(/^\.It Fl/, ".Fl");
-    }
-    /^\.(S[Ss]|S[Hh]|P[Pp])([^_[:alnum:]]|$)/ { flush_topic(); next; }
-    /^\.PD([^_[:alnum:]]|$)/ { next; }
 
-    mode == "key" {
-      g_keys[g_keys_count++] = $0;
+    function register_key(key) {
+      g_keys[g_keys_count++] = key;
       g_desc = "";
+    }
+
+    mode == "key1" {
+      register_key($0);
       mode = "desc";
       next;
     }
+
+    mode == "keyc" {
+      g_current_key = g_current_key "\n" $0;
+      if (/^\.Xc/) {
+        register_key(g_current_key);
+        mode = "desc";
+      }
+      next;
+    }
+
+    type == "man" && /^\.TP([^_[:alnum:]]|$)/ {
+      if (g_keys_count && g_desc != "") flush_topic();
+      mode = "key1";
+      next;
+    }
+
+#%  # mdoc でも man でもあった
+    /^\.It Fl([^_[:alnum:]]|$)/ {
+      if (g_keys_count && g_desc != "") flush_topic();
+      sub(/^\.It Fl/, ".Fl");
+      if ($0 ~ / Xo$/) {
+        g_current_key = $0;
+        mode = "keyc"
+      } else {
+        register_key($0);
+        mode = "desc";
+      }
+      next;
+    }
+
+    /^\.(S[Ss]|S[Hh]|P[Pp])([^_[:alnum:]]|$)/ { flush_topic(); next; }
+    /^\.PD([^_[:alnum:]]|$)/ { next; }
+
     mode == "desc" {
       if (g_desc != "") g_desc = g_desc "\n";
       g_desc = g_desc $0;
     }
 
     END { flush_topic(); }
-  ' | ble/complete/mandb/convert-mandoc | ble/bin/awk '
+  ' | ble/complete/mandb/convert-mandoc 2>/dev/null | ble/bin/awk '
     function process_pair(name, desc) {
       if (!(g_name ~ /^-/)) return;
 
-      # FS (\034) は特殊文字として使用するので除外する。
+#%    # FS (\034) は特殊文字として使用するので除外する。
       sep = "\034";
       if (g_name ~ /\034/) return;
       gsub(/\034/, "\x1b[7m^\\\x1b[27m", desc);
@@ -2885,39 +2919,50 @@ function ble/complete/mandb/.generate-cache {
       g_desc = "";
     }
 
-    sub(/^[[:space:]]*__ble_key__/, "", $0) {
-      flush_pair();
-      mode = "key";
-    }
-    sub(/^[[:space:]]*__ble_desc__/, "", $0) {
-      mode = "desc";
-    }
-
-    mode == "key" {
-      line = $0;
+    function process_key(line) {
       gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
       gsub(/\x1b[ -\/]*[0-~]/, "", line); # ESC seq
       gsub(/.\x08/, "", line); # CHAR BS
       gsub(/\x0E/, "", line); # SO
       gsub(/\x0F/, "", line); # SI
-      gsub(/[\x00-\x1F]/, "", line); # 制御文字は結局全削除
+      gsub(/[\x00-\x1F]/, "", line); # Give up all the other control chars
       gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
       #gsub(/[[:space:]]+/, " ", line);
-      if (line == "") next;
+      if (line == "") return;
       if (g_name != "") g_name = g_name " ";
       g_name = g_name line;
     }
 
-    mode == "desc" {
-      line = $0;
+    function process_desc(line) {
       gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
+      gsub(/[[:space:]][[:space:]]+/, " ", line);
       if (line == "") {
-        if (g_desc != "") mode = "";
-        next;
+        if (g_desc != "") return 0;
+        return 1;
       }
       if (g_desc != "") g_desc = g_desc " ";
       g_desc = g_desc line;
+      return 1;
     }
+
+    sub(/^[[:space:]]*__ble_key__/, "", $0) {
+      flush_pair();
+      mode = "key";
+      if (match($0, /__ble_desc__/) > 0) {
+        s_key = substr($0, 1, RSTART - 1);
+        s_desc = substr($0, RSTART + RLENGTH);
+        process_key(s_key);
+        mode = "desc";
+        if (!process_desc(s_desc)) mode = "";
+        next;
+      }
+    }
+    sub(/^[[:space:]]*__ble_desc__/, "", $0) {
+      mode = "desc";
+    }
+
+    mode == "key" { process_key($0); }
+    mode == "desc" { if (!process_desc($0)) mode = ""; }
 
     END { flush_pair(); }
   ' | ble/bin/sort -k 1
@@ -3007,7 +3052,7 @@ function ble/complete/source:argument/.generate-user-defined-completion {
 }
 
 function ble/complete/source:argument/.contains-literal-option {
-  local word
+  local word ret
   for word; do
     ble/syntax:bash/simple-word/is-simple "$word" &&
       ble/syntax:bash/simple-word/eval "$word" noglob &&
@@ -3037,10 +3082,14 @@ function ble/complete/source:argument/.generate-from-mandb {
   while local ret; ! ble/complete/mandb/load-cache "$cmd"; do
     alias_checked=$alias_checked$cmd' '
     ble/util/expand-alias "$cmd"
-    ble/string#split-words ret "$ret"
-    [[ $alias_checked != *" $ret "* ]] || return 1
-    ble/complete/source:argument/.contains-literal-option "${ret[@]:1}" && return 1
-    cmd=$ret
+    local words; ble/string#split-words ret "$ret"; words=("${ret[@]}")
+
+    # 変数代入は読み飛ばし
+    local iword=0 rex='^[_a-zA-Z][_a-zA-Z0-9]*\+?='
+    while [[ ${words[iword]} =~ $rex ]]; do ((iword++)); done
+    [[ ${words[iword]} && $alias_checked != *" ${words[iword]} "* ]] || return 1
+    ble/complete/source:argument/.contains-literal-option "${words[@]:iword+1}" && return 1
+    cmd=${words[iret]}
   done
 
   local entry

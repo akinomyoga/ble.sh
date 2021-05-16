@@ -1367,7 +1367,133 @@ bash_tips
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
 
+2021-05-17
+
+  * 履歴が消滅しすぎるので ble.sh の側で独立した履歴の仕組みを作りたい
+
+    然し何処に履歴ファイルを置くのかという問題がある。
+
+    a 今日日、~/.ble_history 的なファイルを置くのは憚られる。
+
+    b .cache には消えても良い物を置くべきだから置くなという話もあれば、
+
+    c .config はユーザー設定に纏わる物で dotfiles に入れている人もいるから勝手
+      に書き込まないで欲しいという話もある。
+
+    d 結局、.local/share/blesh/xxxx に置く事になるのだろうか。まあ、
+      .local/share/blesh/data 辺りに置いて置けば良いだろう。
+
+  * 色見本について探した
+
+    多くのサイトは微妙である。そもそも sRGB とかの概念があるのかないのか不明で
+    ある。単純に RGB #XXXXXX の値を線形で CMYK に変換していたりしてかなり怪しい。
+    色用語の場所にも sRGB やガンマ補正などの単語は見られない。
+
+    https://www.color-sample.com/popular/jiscolor/ja/
+
+    このサイトはちゃんと sRGB/Adobe RGB 等について載っているので少なくともちゃ
+    んとその辺りの事を認識した上で作られたサイトであろうと思われる。然し権利関
+    係の記述もないし、連絡先もない。メールボタンがあると思って押したら単に "友
+    達にこのサイトを紹介する" メールを送る為のボタンだった。© 2021
+    Color-Sample.com. All Rights Reserved. という表記の右にあるアイコンがリン
+    クになっていたので押して見たが、単純にトップに跳ぶだけだった。Twitter アカ
+    ウントは https://twitter.com/color_sample で見に行ったら 2014 で更新が止まっ
+    ている。著作権が 2021 になっているのは機械的に置き換えているだけという事だ
+    ろうか。何だかよく分からない。というかよく見たらブラウザサポートというアイ
+    コンも古いブラウザが並んでいたりして更新が止まっている事を示唆している。
+
+    https://triple-underscore.github.io/css-color-ja.html#rgb-to-lab
+
+    w3 の CSS の仕様の翻訳。ここにちゃんと色々の知識が書かれている。この文書は
+    最初から最後まで読むべき。
+
+    http://mezala.la.coocan.jp/pc/jiscolor/jiscolor.html
+
+    このページは複数の情報源からの差異について見せているがそもそも CMYK, RGB の
+    変換式として異なるサイトから二種類持ってきていて (どちらかが間違っているの
+    に違いない) 更に、Wikipedia からの数値も比較していて、どれだけ見た目が変わっ
+    てくるかを見せているが。色には絶対的な基準はないのだとか色々言って納得して
+    いるが、これらは単に sRGB と RGB の解釈を間違えて変換しているから起こってい
+    る間違いのような気がする。(とはいいつつ画面の輝度やその他の要因もあるだろう
+    から一概には言えないのかもしれないが、少なくともどういう条件の元での変換を
+    行っているのか明示した上で、その差異について議論していなければ情報としては
+    使い物にならない)
+
+    https://www.colordic.org/w
+
+    このサイトは和色大辞典と言って 460 色掲載しているそうで一番大きい気がする。
+    然し、その RGB 値が sRGB なのかどうかとかも分からない。Q&A には再利用・再頒
+    布可能性などについては述べられていないし、各色の出典についても書かれていな
+    い。このサイトの RGB 値が実際に sRGB なのか何なのか確認して、その上で他の色
+    についても変換を確認するのが良い気がする。
+
+2021-05-16
+
+  * edit: BUG とても長いプロンプトにした時に列計算が壊れている。
+
+    また右端から入力を始めた時の折返しが正しくできていない。
+
+  * Linux パッケージのチェック (by killermoehre) [#Mxxxx]
+    どの Linux にどのパッケージのどの version が入っているかを調べられるサイト
+    https://pkgs.org/search/?q=groff
+
+  * complete: tar xf groff-1.19.2.ta[TAB] でエラーが発生する
+
+    と思ったらこれは bash-completion だった。
+
 2021-05-15
+
+  * AUR blesh-git について
+
+    * requirements: ble-update の為に git, gawk があった方が良いのかもしれない?
+      然し、最終的に AUR helper を呼び出すのであれば余り関係ないのかもしれない。
+
+    * https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git#n29
+
+      (()) の中の quote のルールは変更されている。然し何故か PKGBUILD はそのま
+      ま何事もなく動作しているどういう事だろうか。shopt が調整されているのだろ
+      うか。或いは bash の version が違うのだろうか。適当な PKGBUILD を作ってそ
+      の辺りを出力させたらはっきりするのかもしれない。何れにしても将来的に変更
+      されるかもしれないという事などを考えると修正した方が良い。
+
+    * local variables
+      local PRE_VERSION
+      local POST_VERSION
+
+      恐らく他の所で使うという訳ではないだろう。というか、この関数は PKGBUILD
+      で使われるのではなくて ble.sh から呼び出しているのであるから他の場所から
+      使っているという事はない気がする。
+
+    * _package.sh は実の所 source するだけなので実行属性は必要ない。唯、source
+      path を経由して source したい時には実行属性がついている必要があるのだった
+      か? man bash を確認したがちゃんと実行可能である必要はないとの事が明記され
+      ている。
+
+      というか今知ったがカレントディレクトリよりも PATH の方が優先されるのだそ
+      うだ。だとすると結構変な事が起こるの可能性もあったのでは。今試しに ~/bin
+      に ble.sh を登録して、bash --norc から ble.sh ディレクトリの外で source
+      ble.sh を実行したらちゃんとロードされた。うーん。
+
+    * done: contributing に lib/_package.sh を追加する
+
+  * test: 失敗する様になっている
+
+    * quote-command の test に失敗している @ bash-4.3 直した
+
+    * ^A 及び ^? に対する declare -p 補正が動かなくなっている @ bash-3.2
+
+      #D1522 に於いて bash-3.2 以下では配列表記で ^A が ^A^A^A^A になる事を発見
+      したと思ったが、何故か今手許で試してみると ^A^A にしかなっていなくて以前
+      のコードでも良かったという事になる。再現するための条件が何かあるのだろう
+      か。例えばスクリプト内部では declare -p の結果は ^A^A^A^A になるなど。
+
+      うーん。ble/util/assign を介すと確かに ^A^A^A^A になるがそれは scalar も
+      array も同様になっている。然し、#D1522 で対処した問題は配列の時にのみ起こっ
+      ていた問題の筈なのでこれは関係ない。
+
+      関数内のみで起こる問題の可能性? と思ったがそれも変である。実際に ^A^A^A^A
+      にならず ^A^A になっているのは関数内で実行している時である。対話でも ^A^A
+      にしかならない。
 
   * README: 様々な機能へのリンクを貼った方が良いのではないかという事
 
@@ -1386,29 +1512,63 @@ bash_tips
 
     * 空の keymap になっていたらキャッシュ無しで初期化し直す機能を付けた方が良いかもしれない。
 
-  * ssh -option の後の補完が固まる
-    https://github.com/akinomyoga/ble.sh/issues/98
+    うーん。何と再現しなくなってしまった様である。
+    こうなるとコードを見て憶測で修正するしかなくなる。
 
-    $ alias ssh='TERM=xterm ssh'
+    # {
+    #   ble/decode/keymap#load isearch dump
+    #   ble/decode/keymap#load nsearch dump
+    #   ble/decode/keymap#load vi_imap dump
+    #   ble/decode/keymap#load vi_nmap dump
+    #   ble/decode/keymap#load vi_omap dump
+    #   ble/decode/keymap#load vi_xmap dump
+    #   ble/decode/keymap#load vi_cmap dump
+    # } 3>| "$fname_keymap_cache"
 
-    で再現するとの情報を得た。他に man -w が現れたり消えたりするという情報も。
-    つまり、一つの man -w が 100% になっているのではなくて man -w が繰り返しルー
-    プで呼び出されている? また、cache dir に大量のファイルができているという話
-    も。つまり、ble/util/assign で無限ループを起こしている可能性がある。
+    あー。もしかすると原因が分かったかもしれない。そもそも前に自分が問題を経験
+    した時にもそうだったが、ble/decode/keymap#load を改名した事が原因なのであっ
+    た。此処で、ble.sh が部分的に更新されていたりすると問題になるという事なのだ
+    ろうという気がする。tmux-resurrect が一体何をしようとしているのかは結局謎な
+    のであるが、うーん。
 
+    そもそも報告者が最新の物でも再現するとかしないとか言っていた時に、毎回 make
+    をしていたのかというのも疑問の一つである。と思ったが rebuilding と言ってい
+    るので、其処の所はちゃんとやっているのだろうという気がする。
 
-    $ complete -r
-    $ source ~/.fzf.bash
-    $ TERM=xterm ssh -w[TAB]
+    a あー。もしかすると複数の異なる ble.sh を使っていて cache が混合していると
+      いうのは十分考えられる可能性である。と思ったが本当にそれで問題が発生する
+      だろうか。何れにしても呼び出す vi.sh は同じディレクトリにいる ble.sh から
+      呼び出される筈で中途半端に更新されていない限りは不整合は起こらない筈なの
+      である。
 
-    TERM=xterm ssh -bash: 一致しません: /home/murase/.ssh/config.d/*
+      或いは tmux-resurrect が下手に関数等を保存しているのだとすると変な事が起
+      こっても仕方ない → 試しに関数を定義して保存・復元して見たが関数は消滅し
+      ていた。つまり、そういう事は関係ない。
 
-  *
+      或いは vi.sh の timestamp が偶然未来に設定されてしまったりする様な場合に
+      も問題が起こったりするかもしれない。
+
+      うーん。やはり timestamp が壊れない限りはこれによって変な事が起こったりす
+      る可能性は低い気がする。
+
+    b 後タイムスタンプが nfs などによってずれていたりするとそういう事があったり
+      するかもしれない。timestamp が信用できない時にはどうしようもない。これは
+      個々の使用者の側で注意して時刻を合わせてもらうしかない。
+
+    * done: 失敗したとしても端末の状態が壊れない様にする。
+
+    ? コードを見てみると初期化に失敗した時には完全に空 map になってロードされな
+      いのではなくて safe keymap に fallback する筈なのだが何故そうなっていない
+      のだろうか。
+
+      これは再現できるので修正はそんなに難しいことはない筈。
+
+  * syntax
 
     1>&$fd- は使えない
     1>&./- もエラーになる
 
-    もっとちゃんと調べる必要がある
+    もっとちゃんと調べる必要がある。
 
 2021-05-09
 
@@ -1440,6 +1600,8 @@ bash_tips
 
     * enhanced history ... 相対パスでファイル名を参照しているのを記録したい。そ
       れを auto-complete の実装に役立てたい。
+
+    * TUI configuration?
 
 2021-05-06
 
@@ -4427,12 +4589,68 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-05-17
+
+  * complete: ssh -option の後の補完が固まる (reported by rlanore, riblo) [#D1550]
+    https://github.com/akinomyoga/ble.sh/issues/98
+
+    $ alias ssh='TERM=xterm ssh'
+
+    で再現するとの情報を得た。他に man -w が現れたり消えたりするという情報も。
+    つまり、一つの man -w が 100% になっているのではなくて man -w が繰り返しルー
+    プで呼び出されている? また、cache dir に大量のファイルができているという話
+    も。つまり、ble/util/assign で無限ループを起こしている可能性がある。
+
+    $ complete -r
+    $ source ~/.fzf.bash
+    $ TERM=xterm ssh -w[TAB]
+
+    TERM=xterm ssh -bash: 一致しません: /home/murase/.ssh/config.d/*
+
+    ble/complete/source:argument/.generate-from-mandb を見ると alias で展開され
+    る限りは無限ループする可能性のあるコードがある。但し、重複判定はしている筈
+    なので alias が有限である限りは無限ループにはならない気がするが…。うーん。
+    分からない。或いは alias 展開で空文字列になった時に問題が生じる可能性?
+
+    OK! 再現できた!
+
+    - 自分の手元で再現できなかったのはどうも何か別の設定が勝手に
+      bash-completion を読み込んでしまうからだった様である。一体何の設定が勝手
+      に読み取るのかは謎だが、complete -r を実行しても何故か設定が読み込まれて
+      しまう。と思ったが… ble.sh が __load_completion が存在している時には勝手
+      にそれを呼び出す様にしていたのだった。そういう設計も考え物といえば考えも
+      のである。但し、これも unset -f __load_completion すれば解除する事ができ
+      る筈なのである。
+
+    * fixed: 分かった。 ble/complete/source:argument/.contains-literal-option が
+      variable leak して ret を書き換えしてしまっている。直した。
+
+    * done: 更に alias で TERM=... としていても対応できる様に読み飛ばし機能も追
+      加した。
+
+    x fixed: 然し ssh のオプションを抽出するのに失敗している。何故だろうか。改
+      めて振る舞いについて調べる事にする。ble/util/assign を ble/assign と書い
+      ていた。修正した。
+
+    x fixed: 未だ駄目。と思ったら man を探索する部分で $command とするべき所が
+      $man になっている。
+
+    x fixed: それでも駄目。調べると ssh の man を gzcat する所まではできている。
+      其処から関係のありそうな物を抽出する所で失敗している。うーん。man から
+      mdoc に変化するという場合もある様だ。どちらでも良い様に色々書き換える。然
+      し、それでも nroff の形式がよく分からないので行き当たりばったり的な実装に
+      なってしまう。取り敢えず Dd, Nm, Xo-Xc に対応した。また後段で __ble_key__
+      と __ble_desc__ が同じ行になってしまった場合でも動く様に修正した。
+
+    x fixed: エラーが出る groff -[TAB] ... これは nawk に日本語のコメントを渡し
+      たのが行けなかった。日本語のコメントは除去する様にした。
+
+    x fixed: 空白が沢山表示される。連続する空白は1つに縮約する様にしたい。
+
 2021-05-16
 
   * work around Kitty bugs (reported by NoahGorny) [#D1549]
     https://github.com/akinomyoga/ble.sh/issues/110
-
-    * とても長いプロンプトにすると列計算が壊れている。
 
     | bash-it に追加する事について考えると言っているがどの様な形で追加するのだろ
     | うか。コードを直接追加するのだろうか。その場合には色々と微妙。
