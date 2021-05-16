@@ -137,6 +137,7 @@
 - highlight (`layer:region`): fix blocked lower-layer changes without selection changes `#D1596` 5ede3c6
 - complete (`auto-menu`): fix sleep loops by clock/sclock difference `#D1597` 53dd018
 - history: fix a bug that history data is cleared on `history -r` `#D1605` 0000000
+- util (`ble/string#quote-command`): remove redundant trailing spaces for single word command `#D1613` 0000000
 
 ## Optimization
 

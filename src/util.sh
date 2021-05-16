@@ -1201,6 +1201,10 @@ else
     ret="${ret[*]/#/$q}"   # WA #D1570 checked
   }
   function ble/string#quote-command {
+    if (($#<=1)); then
+      ret=$1
+      return
+    fi
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@:2}")
     ret=("${ret[@]//$q/$Q}") # WA #D1570 checked
