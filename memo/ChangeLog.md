@@ -69,6 +69,7 @@
 - main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
 - prompt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1541` 24a88ce
 - prompt: adjust behavior of `LINENO` and prompt sequence `\#` (reported by tycho-kirchner) `#D1542` 8b0257e
+  - prompt: update `PS0` between multiple commands (motivated by tycho-kirchner) `#D1560` 000000
 - edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38

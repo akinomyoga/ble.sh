@@ -4618,6 +4618,14 @@ bash_tips
 
 2021-05-20
 
+  * prompt: update "PS0" between multiple commands (motivated by tycho-kirchner) [#D1560]
+
+    複数のコマンドが一度に実行される時に、それぞれのコマンドについて PS0 が呼び
+    出される。然し其処から参照される $# の値が更新されない様だった。調べてみる
+    と、PS0 の更新をチェックする時に、更新の必要があるかどうかの判定をする hash
+    値が複数のコマンドの間で変化がない為に更新が省略されていたという事。
+    →hash に $# ($_ble_edit_CMD) も含める様にして対処する事にする。
+
   * decode (ble-bind): ble-bind -m KEYMAP で全ての keymap が出力されている (fixup 750ca38) [#D1559]
 
     これは指定した keymap を表示する様にした方が良い。というか元々そのつもりだっ

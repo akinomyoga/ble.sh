@@ -4757,7 +4757,7 @@ fi
 _ble_edit_prompt0=()
 function ble-edit/exec/print-PS0 {
   if [[ $PS0 ]]; then
-    local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
+    local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count:$_ble_edit_CMD
     if [[ ${_ble_edit_prompt0[0]} == "$version" ]]; then
       local esc=${_ble_edit_prompt0[6]}
     else
