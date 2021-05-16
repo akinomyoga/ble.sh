@@ -31,7 +31,8 @@
 - complete: complete file descriptors and heredoc words after redirections `#D1539` b9b0de4
 - main: support `blehook ATTACH DETACH`, `BLE_ONLOAD`, `BLE_ATTACHED` `#D1543` 750ca38
 - main: support `ble` `#D1544` 750ca38
-- main (`ble-update`): support package updates and `sudo` updates (motivated by huresche, oc1024) `#D1548` 0000000
+- main (`ble-update`): support package updates and `sudo` updates (motivated by huresche, oc1024) `#D1548` 0bc2660
+  - main (`ble-update`): fix help message (contributed by NoahGorny) 50288bf
 
 ## Changes
 
@@ -94,8 +95,6 @@
 - syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` b429095
 - decode: fix a hang on attach failure by cache corruption `#D1531` 24ea379
 - edit, etc: add workarounds for `localvar_inherit` `#D1532` 7b63c60
-- complete: work around bash-completion bugs (reported by oc1024) `#D1533` 9d4ad56
-- main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
 - progcomp: fix non-working `complete -C prog` (reported by Archehandoro) `#D1535` 026432d
 - bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
@@ -107,6 +106,9 @@
 - term: work around Cygwin-console bug of bottom `IL`/`DL` `#D1482` 5dce0b8
 - term: work around leaked <kbd>DA2R</kbd> in screen from outside terminal `#D1485` e130619
 - complete: work around `fzf` completion settings loaded automatically `#D1508` 4fc51ae
+- complete: work around `bash-completion` bugs (reported by oc1024) `#D1533` 9d4ad56
+- main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
+- util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` 0000000
 
 ## Internal changes and fixes
 

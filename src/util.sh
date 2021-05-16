@@ -5140,7 +5140,11 @@ function ble/term/modifyOtherKeys/leave {
   if [[ $value == auto ]]; then
     value=1
     # 問題を起こす端末で無効化。
-    ble/term/modifyOtherKeys/.supported || value=
+    if [[ $TERM == xterm-kitty ]]; then
+      value=0 # Kitty は 1 では無効にならない。変な振る舞い
+    else
+      ble/term/modifyOtherKeys/.supported || value=
+    fi
   fi
   ble/term/modifyOtherKeys/.update "$value"
 }
