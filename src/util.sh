@@ -2735,10 +2735,10 @@ function ble-term/.initialize {
   _ble_term_IFS=$' \t\n'
   _ble_term_CR=$'\r'
 
-  if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
-    source "$_ble_base/lib/init-term.sh"
-  else
+  if [[ -s $_ble_base_cache/$TERM.term && $_ble_base_cache/$TERM.term -nt $_ble_base/lib/init-term.sh ]]; then
     source "$_ble_base_cache/$TERM.term"
+  else
+    source "$_ble_base/lib/init-term.sh"
   fi
 
   ble/string#reserve-prototype "$_ble_term_it"

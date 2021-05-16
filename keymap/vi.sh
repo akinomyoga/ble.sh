@@ -7772,7 +7772,8 @@ function ble-decode/keymap:vi_cmap/define {
 
 function ble-decode/keymap:vi/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi
-  if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi.sh &&
+  if [[ -s $fname_keymap_cache &&
+          $fname_keymap_cache -nt $_ble_base/keymap/vi.sh &&
           $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
     source "$fname_keymap_cache" && return
   fi
