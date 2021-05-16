@@ -4267,9 +4267,11 @@ function ble-decode-byte:bind {
 }
 
 function .ble-edit.default-key-bindings {
-  if [[ $_ble_base/cache/keymap.emacs -nt $_ble_base/keymap/emacs.sh &&
-          $_ble_base/cache/keymap.emacs -nt $_ble_base/cmap/default.sh ]]; then
-    source "$_ble_base/cache/keymap.emacs"
+  local fname_keymap_cache=$_ble_base/cache/keymap.emacs
+  if [[ -s $fname_keymap_cache &&
+          $fname_keymap_cache -nt $_ble_base/keymap/emacs.sh &&
+          $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
+    source "$fname_keymap_cache"
   else
     source "$_ble_base/keymap/emacs.sh"
   fi

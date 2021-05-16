@@ -1392,9 +1392,9 @@ function .ble-decode-initialize-cmap/emit-bindr {
 function .ble-decode-initialize-cmap {
   [[ -d $_ble_base/cache ]] || mkdir -p "$_ble_base/cache"
 
-  local init="$_ble_base/cmap/default.sh"
-  local dump="$_ble_base/cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
-  if [[ $dump -nt $init ]]; then
+  local init=$_ble_base/cmap/default.sh
+  local dump=$_ble_base/cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump
+  if [[ -s $dump && $dump -nt $init ]]; then
     source "$dump"
   else
     echo 'ble.sh: There is no file "'"$dump"'".' 1>&2
@@ -1415,9 +1415,9 @@ function .ble-decode-initialize-cmap {
 
   if ((_ble_bash>=40300)); then
     # 3文字以上 bind/unbind ソースの生成
-    local fbinder="$_ble_base/cache/cmap+default.binder-source"
-    _ble_decode_bind_fbinder="$fbinder"
-    if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
+    local fbinder=$_ble_base/cache/cmap+default.binder-source
+    _ble_decode_bind_fbinder=$fbinder
+    if ! [[ -s $_ble_decode_bind_fbinder && $_ble_decode_bind_fbinder -nt $init ]]; then
       echo -n 'ble.sh: initializing multichar sequence binders... '
       .ble-decode-bind/from-cmap-source > "$fbinder"
       binder=.ble-decode-initialize-cmap/emit-bindx source "$fbinder" > "$fbinder.bind"
@@ -1564,8 +1564,8 @@ function ble-decode-attach {
   builtin eval -- "$(.ble-decode-bind/generate-source-to-unbind-default)"
 
   # ble.sh bind の設置
-  local file="$_ble_base/cache/ble-decode-bind.$_ble_bash.bind"
-  [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+  local file=$_ble_base/cache/ble-decode-bind.$_ble_bash.bind
+  [[ -s $file && $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
   source "$file"
 }
 function ble-decode-detach {
