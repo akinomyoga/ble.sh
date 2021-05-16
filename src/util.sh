@@ -4612,10 +4612,10 @@ function ble/term/DA2R.hook {
   esac
 }
 function ble/term/.initialize {
-  if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
-    source "$_ble_base/lib/init-term.sh"
+  if [[ -s $_ble_base_cache/term.$TERM && $_ble_base_cache/term.$TERM -nt $_ble_base/lib/init-term.sh ]]; then
+    source "$_ble_base_cache/term.$TERM"
   else
-    source "$_ble_base_cache/$TERM.term"
+    source "$_ble_base/lib/init-term.sh"
   fi
 
   ble/string#reserve-prototype "$_ble_term_it"

@@ -2586,8 +2586,8 @@ function ble/decode/cmap/initialize {
   _ble_decode_cmap_initialized=1
 
   local init=$_ble_base/lib/init-cmap.sh
-  local dump=$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump
-  if [[ $dump -nt $init ]]; then
+  local dump=$_ble_base_cache/decode.cmap.$_ble_decode_kbd_ver.$TERM.dump
+  if [[ -s $dump && $dump -nt $init ]]; then
     source "$dump"
   else
     ble/edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
@@ -2606,9 +2606,10 @@ function ble/decode/cmap/initialize {
 
   if ((_ble_bash>=40300)); then
     # 3文字以上 bind/unbind ソースの生成 (init-bind.sh bindAllSeq で使用)
-    local fbinder=$_ble_base_cache/cmap+default.binder-source
+    local fbinder=$_ble_base_cache/decode.cmap.allseq
     _ble_decode_bind_fbinder=$fbinder
-    if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
+    if ! [[ -s $_ble_decode_bind_fbinder.bind && $_ble_decode_bind_fbinder.bind -nt $init &&
+              -s $_ble_decode_bind_fbinder.unbind && $_ble_decode_bind_fbinder.unbind -nt $init ]]; then
       ble/edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... '
       ble/decode/cmap/.generate-binder-template >| "$fbinder"
       binder=ble/decode/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
@@ -2831,8 +2832,8 @@ _ble_decode_bind_encoding=
 
 function ble/decode/bind/bind {
   _ble_decode_bind_encoding=$bleopt_input_encoding
-  local file=$_ble_base_cache/ble-decode-bind.$_ble_bash.$_ble_decode_bind_encoding.bind
-  [[ $file -nt $_ble_base/lib/init-bind.sh ]] || source "$_ble_base/lib/init-bind.sh"
+  local file=$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.bind
+  [[ -s $file && $file -nt $_ble_base/lib/init-bind.sh ]] || source "$_ble_base/lib/init-bind.sh"
 
   # * 一時的に 'set convert-meta off' にする。
   #
@@ -2852,7 +2853,7 @@ function ble/decode/bind/bind {
 }
 function ble/decode/bind/unbind {
   ble/function#try ble/encoding:"$bleopt_input_encoding"/clear
-  source "$_ble_base_cache/ble-decode-bind.$_ble_bash.$_ble_decode_bind_encoding.unbind"
+  source "$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.unbind"
 }
 function ble/decode/rebind {
   [[ $_ble_decode_bind_state == none ]] && return 0

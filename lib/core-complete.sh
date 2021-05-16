@@ -3057,7 +3057,7 @@ function ble/complete/mandb/.generate-cache {
 function ble/complete/mandb/load-cache {
   local command=${1##*/}
   local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
-  local fcache=$_ble_base_cache/man/$lc_messages/$command
+  local fcache=$_ble_base_cache/complete.mandb/$lc_messages/$command
   if ! [[ -s $fcache && $fcache -nt $_ble_base/lib/core-complete.sh ]]; then
     [[ -d ${fcache%/*} ]] || ble/bin/mkdir -p "${fcache%/*}"
     ble/complete/mandb/.generate-cache "$command" >| "$fcache" &&

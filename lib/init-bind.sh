@@ -2,8 +2,8 @@
 
 # 現在の bash の version に従って以下の二つのファイルを生成します:
 #
-#   $_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
-#   $_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind
+#   $_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.bind
+#   $_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.unbind
 #
 # Note: #D1300 bind -s で束縛するマクロの非終端文字は
 #   decode.sh (ble/decode/nonblocking-read) でチェックする必要がある。
@@ -25,8 +25,8 @@ function ble/init:bind/append-macro {
 }
 
 function ble/init:bind/generate-binder {
-  local fbind1=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
-  local fbind2=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind
+  local fbind1=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.bind
+  local fbind2=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.unbind
 
   ble/edit/info/show text "ble.sh: updating binders..."
 

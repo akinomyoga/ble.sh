@@ -2,7 +2,7 @@
 
 function ble/util/msleep/.load-compiled-builtin/compile {
   local builtin_path=$1
-  [[ -x $builtin_path && $builtin_path -nt $_ble_base/lib/init-msleep.sh ]] && return 0
+  [[ -x $builtin_path && -s $builtin_path && $builtin_path -nt $_ble_base/lib/init-msleep.sh ]] && return 0
 
   local CC=cc
   ble/bin#has gcc && CC=gcc

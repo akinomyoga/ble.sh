@@ -118,6 +118,7 @@
 - complete: work around `bash-completion` bugs (reported by oc1024) `#D1533` 9d4ad56
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
 - util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
+- global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 0000000
 
 ## Internal changes and fixes
 

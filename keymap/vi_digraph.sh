@@ -49,7 +49,8 @@ function ble-decode/keymap:vi_digraph/define {
 
 function ble-decode/keymap:vi_digraph/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi_digraph
-  if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.sh &&
+  if [[ -s $fname_keymap_cache &&
+          $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.sh &&
           $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.txt ]]; then
     source "$fname_keymap_cache"
     return 0

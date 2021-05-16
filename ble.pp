@@ -910,11 +910,52 @@ function ble/base/initialize-cache-directory {
   fi
   ble/base/.create-user-directory _ble_base_cache "$cache_dir/$UID"
 }
+function ble/base/migrate-cache-directory/.move {
+  local old=$1 new=$2
+  [[ -e $old ]] || return 0
+  if [[ -e $new || -L $old ]]; then
+    ble/bin/rm -rf "$old"
+  else
+    ble/bin/mv "$old" "$new"
+  fi
+}
+function ble/base/migrate-cache-directory/.check-old-prefix {
+  local old_prefix=$_ble_base_cache/$1
+  local new_prefix=$_ble_base_cache/$2
+  local file
+  for file in "$old_prefix"*; do
+    local old=$file
+    local new=$new_prefix${file#"$old_prefix"}
+    ble/base/migrate-cache-directory/.move "$old" "$new"
+  done
+}
+function ble/base/migrate-cache-directory {
+  local failglob=
+  shopt -q failglob && { failglob=1; shopt -u failglob; }
+
+  ble/base/migrate-cache-directory/.check-old-prefix cmap+default.binder-source decode.cmap.allseq
+  ble/base/migrate-cache-directory/.check-old-prefix cmap+default decode.cmap
+  ble/base/migrate-cache-directory/.check-old-prefix ble-decode-bind decode.bind
+
+  local file
+  for file in "$_ble_base_cache"/*.term; do
+    local old=$file
+    local new=$_ble_base_cache/term.${file#"$_ble_base_cache/"}; new=${new%.term}
+    ble/base/migrate-cache-directory/.move "$old" "$new"
+  done
+
+  ble/base/migrate-cache-directory/.move "$_ble_base_cache/man" "$_ble_base_cache/complete.mandb"
+
+  [[ $failglob ]] && shopt -s failglob
+}
 if ! ble/base/initialize-cache-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
   builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   return 1
 fi
+ble/base/migrate-cache-directory
+
+
 function ble/base/print-usage-for-no-argument-command {
   local name=${FUNCNAME[1]} desc=$1; shift
   ble/util/print-lines \
@@ -960,7 +1001,13 @@ function ble-update/.make {
 function ble-update/.reload {
   local ext=$?
   if [[ $ext -eq 0 || $ext -eq 6 && $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]]; then
-    if [[ $- == *i* && $_ble_attached ]] && ! ble/util/is-running-in-subshell; then
+    if [[ ! -e $_ble_base/ble.sh ]]; then
+      ble/util/print "ble-update: new ble.sh not found at '$_ble_base/ble.sh'." >&2
+      return 1
+    elif [[ ! -s $_ble_base/ble.sh ]]; then
+      ble/util/print "ble-update: new ble.sh '$_ble_base/ble.sh' is empty." >&2
+      return 1
+    elif [[ $- == *i* && $_ble_attached ]] && ! ble/util/is-running-in-subshell; then
       ble-reload
     fi
     return $?
@@ -1215,6 +1262,11 @@ function ble-attach {
     _ble_attached=
     BLE_ATTACHED=
     ble-edit/detach
+    ble/term/leave
+    ble/base/restore-bash-options
+    ble/base/restore-POSIXLY_CORRECT
+    ble/base/restore-builtin-wrappers
+    builtin eval -- "$_ble_bash_FUNCNEST_restore"
     return 1
   fi
 
