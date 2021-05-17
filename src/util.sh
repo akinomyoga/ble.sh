@@ -2597,43 +2597,67 @@ fi
 ##   指定したファイルディスクリプタが開いているかどうか判定します。
 function ble/fd#is-open { : >&"$1"; } 2>/dev/null
 
-## @fn ble/fd#alloc fdvar redirect
+_ble_util_openat_nextfd=
+function ble/fd#alloc/.nextfd {
+  [[ $_ble_util_openat_nextfd ]] ||
+    _ble_util_openat_nextfd=$bleopt_openat_base
+  # Note: Bash 3.1 では exec fd>&- で明示的に閉じても駄目。
+  #   開いた後に読み取りプロセスで読み取りに失敗する。
+  #   なので開いていない fd を探す必要がある。#D0992
+  # Note: 指定された fd が開いているかどうかを
+  #   可搬に高速に判定する方法を見つけたので
+  #   常に開いていない fd を探索する。#D1318
+  while ble/fd#is-open "$_ble_util_openat_nextfd"; do
+    ((_ble_util_openat_nextfd++))
+  done
+  (($1=_ble_util_openat_nextfd++))
+}
+
+## @fn ble/fd#alloc fdvar redirect [opts]
 ##   "exec {fdvar}>foo" に該当する操作を実行します。
 ##   @param[out] fdvar
 ##     指定した変数に使用されたファイルディスクリプタを代入します。
 ##   @param[in] redirect
 ##     リダイレクトを指定します。
+##   @param[in,opt] opts
+##     inherit
+##       既に fdvar が存在して有効な fd であれば何もしません。新しく fd を確保
+##       した場合には終了処理を登録せず、また fdvar を export します。
+##     share
+##       >&NUMBER の形式のリダイレクトの場合に fd を複製する代わりに単に NUMBER
+##       を fdvar に代入します。
 _ble_util_openat_fdlist=()
-if ((_ble_bash>=40100)); then
-  function ble/fd#alloc {
-    builtin eval "exec {$1}$2"; local _ble_local_ret=$?
-    ble/array#push _ble_util_openat_fdlist "${!1}"
-    return "$_ble_local_ret"
-  }
-else
-  _ble_util_openat_nextfd=$bleopt_openat_base
-  function ble/fd#alloc/.nextfd {
-    # Note: Bash 3.1 では exec fd>&- で明示的に閉じても駄目。
-    #   開いた後に読み取りプロセスで読み取りに失敗する。
-    #   なので開いていない fd を探す必要がある。#D0992
-    # Note: 指定された fd が開いているかどうかを
-    #   可搬に高速に判定する方法を見つけたので
-    #   常に開いていない fd を探索する。#D131
-    while ble/fd#is-open "$_ble_util_openat_nextfd"; do
-      ((_ble_util_openat_nextfd++))
-    done
-    (($1=_ble_util_openat_nextfd++))
-  }
-  function ble/fd#alloc {
-    local _fdvar=$1 _redirect=$2
+function ble/fd#alloc {
+  if [[ :$3: == *:inherit:* ]]; then
+    [[ ${!1} ]] &&
+      ble/fd#is-open "${!1}" &&
+      return 0
+  fi
+
+  if [[ :$3: == *:share:* ]]; then
+    local _ble_local_ret='[<>]&['$_ble_term_IFS']*([0-9]+)['$_ble_term_IFS']*$'
+    if [[ $2 =~ $rex ]]; then
+      builtin eval -- "$1=${BASH_REMATCH[1]}"
+      return 0
+    fi
+  fi
+
+  if ((_ble_bash>=40100)) && [[ :$3: != *:base:* ]]; then
+    builtin eval "exec {$1}$2"
+  else
     ble/fd#alloc/.nextfd "$1"
     # Note: Bash 3.2/3.1 のバグを避けるため、
     #   >&- を用いて一旦明示的に閉じる必要がある #D0857
-    builtin eval "exec ${!1}>&- ${!1}$2"; local _ble_local_ret=$?
+    builtin eval "exec ${!1}>&- ${!1}$2"
+  fi; local _ble_local_ext=$?
+
+  if [[ :$3: == *:inherit:* ]]; then
+    export "$1"
+  else
     ble/array#push _ble_util_openat_fdlist "${!1}"
-    return "$_ble_local_ret"
-  }
-fi
+  fi
+  return "$_ble_local_ext"
+}
 function ble/fd#finalize {
   local fd
   for fd in "${_ble_util_openat_fdlist[@]}"; do
@@ -2650,6 +2674,30 @@ function ble/fd#close {
   ble/array#remove _ble_util_openat_fdlist "$1"
   return 0
 }
+
+## @var _ble_util_fd_stdout
+## @var _ble_util_fd_stderr
+## @var _ble_util_fd_null
+## @var _ble_util_fd_zero
+##   既に定義されている場合は継承する
+if [[ -t 0 ]]; then
+  ble/fd#alloc _ble_util_fd_stdin '<&0' base:inherit
+else
+  ble/fd#alloc _ble_util_fd_stdin '< /dev/tty' base:inherit
+fi
+if [[ -t 1 ]]; then
+  ble/fd#alloc _ble_util_fd_stdout '>&1' base:inherit
+else
+  ble/fd#alloc _ble_util_fd_stdout '> /dev/tty' base:inherit
+fi
+if [[ -t 2 ]]; then
+  ble/fd#alloc _ble_util_fd_stderr '>&2' base:inherit
+else
+  ble/fd#alloc _ble_util_fd_stderr ">&$_ble_util_fd_stdout" base:inherit:share
+fi
+ble/fd#alloc _ble_util_fd_null '<> /dev/null' base:inherit
+[[ -c /dev/zero ]] &&
+  ble/fd#alloc _ble_util_fd_zero '< /dev/zero' base:inherit
 
 function ble/util/print-quoted-command {
   local ret; ble/string#quote-command "$@"
@@ -3001,9 +3049,13 @@ function ble/util/msleep/.use-read-timeout {
     } ;;
   (*.*)
     if local rex='^(fifo|zero|ptmx)\.(open|exec)([12])(-[a-z]+)?$'; [[ $msleep_type =~ $rex ]]; then
+      local file=${BASH_REMATCH[1]}
+      local open=${BASH_REMATCH[2]}
+      local direction=${BASH_REMATCH[3]}
+      local fall=${BASH_REMATCH[4]}
 
       # tmpfile
-      case ${BASH_REMATCH[1]} in
+      case $file in
       (fifo)
         _ble_util_msleep_tmp=$_ble_base_run/$$.ble_util_msleep.pipe
         if [[ ! -p $_ble_util_msleep_tmp ]]; then
@@ -3011,17 +3063,21 @@ function ble/util/msleep/.use-read-timeout {
           ble/bin/mkfifo "$_ble_util_msleep_tmp"
         fi ;;
       (zero)
-        _ble_util_msleep_tmp=/dev/zero ;;
+        open=dup
+        _ble_util_msleep_tmp=$_ble_util_fd_zero ;;
       (ptmx)
         _ble_util_msleep_tmp=/dev/ptmx ;;
       esac
 
       # redirection type
       local redir='<'
-      ((BASH_REMATCH[3]==2)) && redir='<>'
+      ((direction==2)) && redir='<>'
 
       # open type
-      if [[ ${BASH_REMATCH[2]} == exec ]]; then
+      if [[ $open == dup ]]; then
+        _ble_util_msleep_fd=$_ble_util_msleep_tmp
+        _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
+      elif [[ $open == exec ]]; then
         ble/fd#alloc _ble_util_msleep_fd "$redir \"\$_ble_util_msleep_tmp\""
         _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
       else
@@ -3029,7 +3085,7 @@ function ble/util/msleep/.use-read-timeout {
       fi
 
       # fallback/switch
-      if [[ ${BASH_REMATCH[4]} == '-coreutil' ]]; then
+      if [[ $fall == '-coreutil' ]]; then
         _ble_util_msleep_switch=200 # [msec]
         _ble_util_msleep_delay1=2000 # short msleep にかかる時間 [usec]
         _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
@@ -3213,7 +3269,7 @@ then
   # 但し、発生する頻度は環境や用法・手法によって異なる。Cygwin/MSYS,
   # Haiku 及び Minix では fifo は思う様に動かない。
   ble/util/msleep/.use-read-timeout fifo.exec2
-elif ((_ble_bash>=40000)) && [[ -c /dev/zero ]]; then
+elif ((_ble_bash>=40000)) && ble/fd#is-open "$_ble_util_fd_zero"; then
   # /dev/zero に対して read -t する方法。
   #
   # Note: #D1452 #D1468 #D1469 元々使っていた FIFO に対する方法が安全
@@ -4519,7 +4575,7 @@ function ble/term:cygwin/initialize.hook {
   # Note: Cygwin console では何故か RI (ESC M) が
   #   1行スクロールアップとして実装されている。
   #   一方で CUU (CSI A) で上にスクロールできる。
-  printf '\eM\e[B' >/dev/tty
+  printf '\eM\e[B' >&$_ble_util_fd_stderr
   _ble_term_ri=$'\e[A'
 
   # DLの修正

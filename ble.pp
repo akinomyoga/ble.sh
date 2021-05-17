@@ -94,6 +94,8 @@ echo prologue >&2
              '  --keep-rlvars' \
              '    Do not change readline settings for ble.sh' \
              '' \
+             '  -o BLEOPT=VALUE' \
+             '    Set a value for the specified bleopt option.' \
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
              '' ;;
@@ -320,7 +322,7 @@ if [[ ! -o emacs && ! -o vi && ! $_ble_init_command ]]; then
   ble/base/restore-builtin-wrappers
   ble/base/restore-POSIXLY_CORRECT
   builtin eval -- "$_ble_bash_FUNCNEST_restore"
-  return 1
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 if shopt -q restricted_shell; then
@@ -329,7 +331,7 @@ if shopt -q restricted_shell; then
   ble/base/restore-builtin-wrappers
   ble/base/restore-POSIXLY_CORRECT
   builtin eval -- "$_ble_bash_FUNCNEST_restore"
-  return 1
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 if [[ ${BASH_EXECUTION_STRING+set} ]]; then
@@ -345,6 +347,112 @@ _ble_init_original_IFS_set=${IFS+set}
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
+#------------------------------------------------------------------------------
+# read arguments
+
+function ble/util/put { builtin printf '%s' "$1"; }
+function ble/util/print { builtin printf '%s\n' "$1"; }
+function ble/util/print-lines { builtin printf '%s\n' "$@"; }
+
+_ble_base_arguments_opts=
+_ble_base_arguments_attach=
+_ble_base_arguments_rcfile=
+## @fn ble/base/read-blesh-arguments args
+##   @var[out] _ble_base_arguments_opts
+##   @var[out] _ble_base_arguments_attach
+##   @var[out] _ble_base_arguments_rcfile
+function ble/base/read-blesh-arguments {
+  local opts=
+  local opt_attach=prompt
+  while (($#)); do
+    local arg=$1; shift
+    case $arg in
+    (--noattach|noattach)
+      opt_attach=none ;;
+    (--attach=*) opt_attach=${arg#*=} ;;
+    (--attach)
+      if (($#)); then
+        opt_attach=$1; shift
+      else
+        opt_attach=attach
+        opts=$opts:E
+        ble/util/print "ble.sh ($arg): an option argument is missing." >&2
+      fi ;;
+    (--noinputrc)
+      opts=$opts:noinputrc ;;
+    (--rcfile=*|--init-file=*|--rcfile|--init-file)
+      if [[ $arg != *=* ]]; then
+        local rcfile=$1; shift
+      else
+        local rcfile=${arg#*=}
+      fi
+
+      _ble_base_arguments_rcfile=${rcfile:-/dev/null}
+      if [[ ! $rcfile || ! -e $rcfile ]]; then
+        ble/util/print "ble.sh ($arg): '$rcfile' does not exist." >&2
+        opts=$opts:E
+      elif [[ ! -r $rcfile ]]; then
+        ble/util/print "ble.sh ($arg): '$rcfile' is not readable." >&2
+        opts=$opts:E
+      fi ;;
+    (--norc)
+      _ble_base_arguments_rcfile=/dev/null ;;
+    (--keep-rlvars)
+      opts=$opts:keep-rlvars ;;
+    (--debug-bash-output)
+      bleopt_internal_suppress_bash_output= ;;
+    (--test | --update | --clear-cache) ;;
+    (--*)
+      ble/util/print "ble.sh: unrecognized long option '$arg'" >&2
+      opts=$opts:E ;;
+    (-?*)
+      local i c
+      for ((i=1;i<${#arg};i++)); do
+        c=${arg:i:1}
+        case -$c in
+        (-o)
+          if ((i+1<${#arg})); then
+            local oarg=${arg:i+1}
+            i=${#arg}
+          elif (($#)); then
+            local oarg=$1; shift
+          else
+            opts=$opts:E
+            i=${#arg}
+            continue
+          fi
+          local rex='^[_a-zA-Z][_a-zA-Z0-9]*='
+          if [[ $oarg =~ $rex ]]; then
+            builtin eval -- "bleopt_${oarg%%=*}=\${oarg#*=}"
+          else
+            ble/util/print "ble.sh: unrecognized option '-o $oarg'" >&2
+            opts=$opts:E
+          fi ;;
+        (-*)
+          ble/util/print "ble.sh: unrecognized option '-$c'" >&2
+          opts=$opts:E ;;
+        esac
+      done
+      ;;
+    (*)
+      ble/util/print "ble.sh: unrecognized argument '$arg'" >&2
+      opts=$opts:E ;;
+    esac
+  done
+
+  _ble_base_arguments_opts=$opts
+  _ble_base_arguments_attach=$opt_attach
+  [[ :$opts: != *:E:* ]]
+}
+if ! ble/base/read-blesh-arguments "$@"; then
+  builtin echo "ble.sh: cancel initialization." >&2
+  ble/base/restore-bash-options
+  ble/base/restore-builtin-wrappers
+  ble/base/restore-POSIXLY_CORRECT
+  builtin eval -- "$_ble_bash_FUNCNEST_restore"
+  return 2 2>/dev/null || builtin exit 2
+fi
+
 if [[ $_ble_base ]]; then
   if ! ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
@@ -352,7 +460,7 @@ if [[ $_ble_base ]]; then
     ble/base/restore-builtin-wrappers
     ble/base/restore-POSIXLY_CORRECT
     builtin eval -- "$_ble_bash_FUNCNEST_restore"
-    return 1
+    return 1 2>/dev/null || builtin exit 1
   fi
 fi
 
@@ -393,10 +501,6 @@ ble/base/initialize-version-information
 
 # will be overwritten by src/util.sh
 function ble/util/assign { builtin eval "$1=\$(builtin eval -- \"\$2\")"; }
-
-function ble/util/put { builtin printf '%s' "$1"; }
-function ble/util/print { builtin printf '%s\n' "$1"; }
-function ble/util/print-lines { builtin printf '%s\n' "$@"; }
 
 # ble/bin
 
@@ -1157,7 +1261,7 @@ _ble_base_attach_from_prompt=
 ## @fn ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
 function ble/base/attach-from-PROMPT_COMMAND {
 #%if measure_load_time
-  echo "ble.sh: $EPOCHREALTIME start prompt-attach" >&2
+  ble/util/print "ble.sh: $EPOCHREALTIME start prompt-attach" >&2
 #%end
   # 後続の設定によって PROMPT_COMMAND が置換された場合にはそれを保持する
   {
@@ -1195,73 +1299,36 @@ function ble/base/attach-from-PROMPT_COMMAND {
   ble/util/joblist.flush &>/dev/null
   ble/util/joblist.check
 #%if measure_load_time
-  echo "ble.sh: $EPOCHREALTIME end prompt-attach" >/dev/tty
+  ble/util/print "ble.sh: $EPOCHREALTIME end prompt-attach" >&2
 #%end
 }
 
 function ble/base/process-blesh-arguments {
-  local opt_attach=prompt
-  local flags=
-  while (($#)); do
-    local arg=$1; shift
-    case $arg in
-    (--noattach|noattach)
-      opt_attach=none ;;
-    (--attach=*) opt_attach=${arg#*=} ;;
-    (--attach)
-      if (($#)); then
-        opt_attach=$1; shift
-      else
-        opt_attach=attach
-        flags=E$flags
-        ble/util/print "ble.sh ($arg): an option argument is missing." >&2
-      fi ;;
-    (--noinputrc)
-      _ble_builtin_bind_user_settings_loaded=noinputrc
-      _ble_builtin_bind_inputrc_done=noinputrc ;;
-    (--rcfile=*|--init-file=*|--rcfile|--init-file)
-      if [[ $arg != *=* ]]; then
-        local rcfile=$1; shift
-      else
-        local rcfile=${arg#*=}
-      fi
+  local opts=$_ble_base_arguments_opts
+  local attach=$_ble_base_arguments_attach
 
-      _ble_base_rcfile=${rcfile:-/dev/null}
-      if [[ ! $rcfile || ! -e $rcfile ]]; then
-        ble/util/print "ble.sh ($arg): '$rcfile' does not exist." >&2
-        flags=E$flags
-      elif [[ ! -r $rcfile ]]; then
-        ble/util/print "ble.sh ($arg): '$rcfile' is not readable." >&2
-        flags=E$flags
-      fi ;;
-    (--norc)
-      _ble_base_rcfile=/dev/null ;;
-    (--keep-rlvars)
-      flags=V$flags ;;
-    (--debug-bash-output)
-      bleopt_internal_suppress_bash_output= ;;
-    (*)
-      ble/util/print "ble.sh: unrecognized argument '$arg'" >&2
-      flags=E$flags ;;
-    esac
-  done
+  if [[ :$opts: == *:noinputrc:* ]]; then
+    _ble_builtin_bind_user_settings_loaded=noinputrc
+    _ble_builtin_bind_inputrc_done=noinputrc
+  fi
 
   # rlvar (#D1148)
   #   勝手だが ble.sh の参照する readline 変数を
   #   便利だと思われる設定の方向に書き換えてしまう。
   #   多くのユーザは自分で設定しないので ble.sh の便利な機能が off になっている。
   #   一方で設定するユーザは自分で off に設定するぐらいはできるだろう。
-  if [[ $flags != *V* ]]; then
+  if [[ :$opts: != *:keep-rlvar:* ]]; then
     ((_ble_bash>=40100)) && builtin bind 'set skip-completed-text on'
     ((_ble_bash>=40300)) && builtin bind 'set colored-stats on'
     ((_ble_bash>=40400)) && builtin bind 'set colored-completion-prefix on'
   fi
 
+  _ble_base_rcfile=$_ble_base_arguments_rcfile
   ble/base/load-rcfile # blerc
   ble/util/invoke-hook BLE_ONLOAD
 
   # attach
-  case $opt_attach in
+  case $attach in
   (attach) ble-attach ;;
   (prompt)
     _ble_base_attach_from_prompt=1
@@ -1282,7 +1349,6 @@ function ble/base/process-blesh-arguments {
       fi
     fi ;;
   esac
-  [[ $flags != *E* ]]
 }
 
 function ble/base/initialize/.clean-up {

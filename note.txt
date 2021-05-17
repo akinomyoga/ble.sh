@@ -1369,6 +1369,21 @@ bash_tips
 
 2021-05-17
 
+  * global: /dev/null を $_ble_util_fd_null に置き換える?
+
+    #D1552 で議論した。毎回 open するよりも dup した方が高速である。一方で
+    _ble_util_fd_null が上書きされたりした時は /dev/null の方が頑健である。
+
+  * syntax: redirection が正しく解析できていない気がする
+    以下の手順で編集した時に着色が間違っている。
+
+    $ exec {fd}>/dev/null
+    $ exec {}>/dev/null
+    $ exec {_ble_base_fd_null}>/dev/null
+
+  * 現在の初期化だと ble.sh session で source --test 等すると変な事になるのでは
+    ないか。これは取り敢えず独立した項目として取り扱う事にする。
+
   * history: 履歴が余りに消滅するので ble.sh の側で独立した履歴の仕組みを作りたい
 
     然し何処に履歴ファイルを置くのかという問題がある。
@@ -4597,6 +4612,68 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-05-17
+
+  * util: inherit special file descriptors [#D1552]
+
+    #D1549 で setsid をしたら /dev/tty が見つからなくなって動かなくなった。
+    /dev/tty が壊れてしまうという事態に対応する為に最初に確保した
+    _ble_edit_io_std{out,err} を他の場所でも積極的に使う様にするのはどうか。
+
+    * 更に考えると毎回 bash を起動する度に新しく fd を確保するのは無駄である。
+      なのであれば、export して共有してしまえば良いのではないかという気がする。
+
+    * また、ふと思ったのだが毎回 /dev/null を開いているのはどうなのだろうか。
+      dup の方が軽かったりしないのだろうか。然し、/dev/null を dup できるのかと
+      いうのも疑問である。然し、fork した途端に使えなくなるというのも変なので
+      /dev/null は dup しても大丈夫なのだという気がする。
+
+        $ ble-measure 'echo hello >/dev/null'
+        7.439 usec/eval: echo hello >/dev/null (x10000)
+        $ exec {fd}>&14; echo $fd
+        14
+        $ ble-measure 'echo hello >&14'
+        5.035 usec/eval: echo hello >&14 (x20000)
+        $ ble-measure 'echo hello >&$_ble_base_fd_null'
+        5.821 usec/eval: echo hello >&$_ble_base_fd_null (x20000)
+
+      やはり dup の方が高速である。然し、そもそもの処理時間が短いので気にしても
+      仕方がないレベルではある。Cygwin でも同様の結果になるだろうか。
+
+        $ exec {fd}>/dev/null
+        $ echo $fd
+        16
+        $ ble-measure 'echo hello >&16'
+        24.920 usec/eval: echo hello >&16 (x5000)
+        $ ble-measure 'echo hello >/dev/null'
+        41.100 usec/eval: echo hello >/dev/null (x2000)
+        $ ble-measure 'echo hello >&$_ble_base_fd_null'
+        28.320 usec/eval: echo hello >&$_ble_base_fd_null (x5000)
+
+    →Cygwin でも dup の方が高速である。変数に入れると少し遅くなる。然し本当に
+    置き換えてしまっても問題が生じないのかというと分からない。例えば
+    _ble_base_fd_null がユーザーによって削除または書き換えられてしまったら何が
+    起こるだろうか。大量のエラーメッセージが出て色々と悲惨な事になる気がする。
+    後、/dev/null への redirect は可也基本的な事なので、もし置き換えるのだとし
+    たら何よりも先立って初期化したい気がする。実装を確認すると ble/fd は
+    ble/array を使用している。
+
+    * 取り敢えず fd#alloc のコードや stdin/stdout/stderr のコピーのコードを整理
+      して、
+
+      (1) stdin/stdout/stderr は常にコピーを保持する様に変更する。
+
+      (2) bash-4.1 以上では {fd}> ... を使う様にしていたがこれだと
+      10,11,12,... という番号を使ってしまい、間違って上書きした時に大変な事にな
+      るかもしれないので、昔の様に 30,31,32,... を使う様に戻す。但し以前はなかっ
+      た上書き確認を行う。此処で問題になるかもしれないのは、他のフレームワーク
+      が上書き確認をせずに 30,31,32,... を使おうとした時の事であるが、それは仕
+      方がない。比較として考えれば 10,11,12,... よりは安全として差し支えないだ
+      ろう。
+
+      (3) openat_base 等のオプションは ble.sh ロード時のオプションから指定でき
+      る様にする。
+
+    * done: wiki で openat_base の項目を編集する
 
   * macOS で groff のエラーが出る (reported by killermoehre) [#D1551]
 

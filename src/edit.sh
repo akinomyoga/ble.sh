@@ -4918,7 +4918,7 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     blehook/invoke "$@"
-}
+} >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
 
 # ble-edit/exec:gexec/TERM
 #
@@ -5009,8 +5009,8 @@ function ble-edit/exec:gexec/.prologue {
 
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
-  ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND" &>/dev/tty
-  ble-edit/exec/print-PS0 >&31 2>&32
+  ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND"
+  ble-edit/exec/print-PS0 >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
   ((++_ble_edit_CMD))
 
   ble-edit/exec/restore-BASH_REMATCH
@@ -5021,7 +5021,7 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_TRAPDEBUG_enabled=1
   _ble_edit_exec_inside_userspace=1
   return "$_ble_edit_exec_lastexit" # set $?
-} 31>&1 32>&2 &>/dev/null # set -x 対策 #D0930
+} &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
   _ble_edit_exec_inside_userspace=
@@ -5056,11 +5056,11 @@ function ble-edit/exec:gexec/.epilogue {
   ble-edit/exec/.adjust-eol
   _ble_edit_exec_inside_prologue=
 
-  ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC &>/dev/tty
+  ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC
 
   if ((_ble_edit_exec_lastexit)); then
     # SIGERR処理
-    ble-edit/exec:gexec/invoke-hook-with-setexit ERR &>/dev/tty
+    ble-edit/exec:gexec/invoke-hook-with-setexit ERR
     if [[ $bleopt_exec_errexit_mark == $'\e[91m[ble: exit %d]\e[m' ]]; then
       ble/util/print "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0"
     elif [[ $bleopt_exec_errexit_mark ]]; then
@@ -8046,15 +8046,11 @@ function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
 function ble-edit/bind/stdout.finalize { :;}
 
 if [[ $bleopt_internal_suppress_bash_output ]]; then
-  _ble_edit_io_stdout=
-  _ble_edit_io_stderr=
-  ble/fd#alloc _ble_edit_io_stdout '>&1'
-  ble/fd#alloc _ble_edit_io_stderr '>&2'
   _ble_edit_io_fname1=$_ble_base_run/$$.stdout
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr
 
   function ble-edit/bind/stdout.on {
-    exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr
+    exec 1>&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
   }
   function ble-edit/bind/stdout.off {
     ble/util/buffer.flush >&2

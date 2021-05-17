@@ -1759,7 +1759,7 @@ function ble/complete/util/eval-pathname-expansion {
     ((ext==148)) && return 148
     ble/complete/check-cancel && return 148
     builtin eval -- "$def"
-  fi 2>/dev/tty
+  fi 2>&$_ble_util_fd_stderr
 
   ble/array#reverse dtor
   ble/util/invoke-hook dtor
@@ -2321,7 +2321,7 @@ function ble/complete/progcomp/compopt {
 function ble/complete/progcomp/.check-limits {
   # user-input check
   ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
-    [[ ! -t 0 ]] && ble/complete/check-cancel < /dev/tty &&
+    [[ ! -t 0 ]] && ble/complete/check-cancel <&$_ble_util_fd_stdin &&
     return 148
   ble/complete/source/test-limit $((progcomp_read_count++))
   return "$?"
@@ -2338,7 +2338,7 @@ function ble/complete/progcomp/.compgen-helper-func {
   local fDefault=
   local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
   ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
-  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null > /dev/tty 2>&1; local ret=$?
+  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr; local ret=$?
   ble/function#pop compopt
 
   if [[ $is_default_completion && $ret == 124 ]]; then
