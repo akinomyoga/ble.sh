@@ -2725,6 +2725,14 @@ function ble/complete/action:mandb/get-desc {
   desc=${fields[3]}
 }
 
+function ble/complete/mandb/search-file/.extract-path {
+  local command=$1
+  [[ $_ble_complete_mandb_lang ]] &&
+    local LC_ALL=$$_ble_complete_mandb_lang
+  ble/util/assign path 'ble/bin/man -w "$command"' 2>/dev/null
+}
+ble/function#suppress-stderr ble/complete/mandb/search-file/.extract-path
+
 function ble/complete/mandb/search-file/.check {
   local path=$1
   if [[ $path && -s $path ]]; then
@@ -2737,8 +2745,9 @@ function ble/complete/mandb/search-file/.check {
 function ble/complete/mandb/search-file {
   local command=$1
 
-  # Try "man -w" first
-  ble/complete/mandb/search-file/.check "$(ble/bin/man -w "$command" 2>/dev/null)" && return
+  local path
+  ble/complete/mandb/search-file/.extract-path "$command"
+  ble/complete/mandb/search-file/.check "$path" && return
 
   local manpath=${MANPATH:-/usr/share/man:/usr/local/share/man:/usr/local/man}
   ble/string#split manpath : "$manpath"
@@ -2768,15 +2777,93 @@ function ble/complete/mandb/search-file {
   return 1
 }
 
+if ble/bin/.freeze-utility-path preconv; then
+  function ble/complete/mandb/.preconv { ble/bin/preconv; }
+else
+  # macOS では preconv がない
+  function ble/complete/mandb/.preconv {
+    ble/bin/od -A n -t u1 -v | ble/bin/awk '
+      BEGIN {
+        ECHAR = 65533; # U+FFFD
+
+        # Initialize table
+        byte = 0;
+        for (i = 0; byte < 128; byte++) { mtable[byte] = 0; vtable[byte] = i++; }
+        for (i = 0; byte < 192; byte++) { mtable[byte] = 0; vtable[byte] = ECHAR; }
+        for (i = 0; byte < 224; byte++) { mtable[byte] = 1; vtable[byte] = i++; }
+        for (i = 0; byte < 240; byte++) { mtable[byte] = 2; vtable[byte] = i++; }
+        for (i = 0; byte < 248; byte++) { mtable[byte] = 3; vtable[byte] = i++; }
+        for (i = 0; byte < 252; byte++) { mtable[byte] = 4; vtable[byte] = i++; }
+        for (i = 0; byte < 254; byte++) { mtable[byte] = 5; vtable[byte] = i++; }
+        for (i = 0; byte < 256; byte++) { mtable[byte] = 0; vtable[byte] = ECHAR; }
+
+        M = 0; C = 0;
+      }
+      function put_uchar(uchar) {
+        if (uchar < 128)
+          printf("%c", uchar);
+        else
+          printf("\\[u%04X]", uchar);
+      }
+      function process_byte(byte) {
+        if (M) {
+          if (128 <= byte && byte < 192) {
+            C = C * 64 + byte % 64;
+            if (--M == 0) put_uchar(C);
+            return;
+          } else {
+            # while (M--) C *= 64; put_uchar(C);
+            put_uchar(ECHAR);
+            M = 0;
+          }
+        }
+
+        M = mtable[byte];
+        C = vtable[byte];
+        if (M == 0) put_uchar(C);
+      }
+      { for (i = 1; i <= NF; i++) process_byte($i); }
+    '
+  }
+fi
+
+_ble_complete_mandb_lang=
 if ble/is-function ble/bin/groff; then
+  # ENCODING: UTF-8
   _ble_complete_mandb_convert_type=man
   function ble/complete/mandb/convert-mandoc {
-    ble/bin/groff -k -Tutf8 -man
+    if [[ $_ble_util_locale_encoding == UTF-8 ]]; then
+      ble/bin/groff -k -Tutf8 -man
+    else
+      ble/bin/groff -Tascii -man
+    fi
   }
+
+  # Note #D1551: macOS (groff-1.19.2) では groff -k も preconv も既定では存在しない
+  if [[ $OSTYPE == darwin* ]] && ! ble/bin/groff -k -Tutf8 -man &>/dev/null <<< 'α'; then
+    if ble/bin/groff -T utf8 -m man &>/dev/null <<< '\[u03B1]'; then
+      function ble/complete/mandb/convert-mandoc {
+        if [[ $_ble_util_locale_encoding == UTF-8 ]]; then
+          ble/complete/mandb/.preconv | ble/bin/groff -T utf8 -m man
+        else
+          ble/bin/groff -T ascii -m man
+        fi
+      }
+    else
+      _ble_complete_mandb_lang=C
+      function ble/complete/mandb/convert-mandoc {
+        ble/bin/groff -T ascii -m man
+      }
+    fi
+  fi
 elif ble/is-function ble/bin/nroff; then
   _ble_complete_mandb_convert_type=man
   function ble/complete/mandb/convert-mandoc {
-    ble/bin/nroff -Tutf8 -man
+    if [[ $_ble_util_locale_encoding == UTF-8 ]]; then
+      ble/bin/nroff -Tutf8 -man
+    else
+      ble/bin/groff -Tascii -man
+    fi
   }
 elif ble/is-function ble/bin/mandoc; then
   # bsd

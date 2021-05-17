@@ -10,6 +10,7 @@
   - mandb: fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
   - mandb: improve extraction and cache for each locale `#D1480` 3588158
   - mandb: fix an infinite loop by a leak variable (reported by rlanore, riblo) `#D1550` 0000000
+  - mandb: work around old groff in macOS (reported by killermoehre) `#D1551` 0000000
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
