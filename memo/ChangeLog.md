@@ -100,8 +100,9 @@
 - progcomp: fix non-working `complete -C prog` (reported by Archehandoro) `#D1535` 026432d
 - bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
-- main: work around sourcing `ble.sh` inside subshells `#D1554` 0000000
-- main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` 0000000
+- main: work around sourcing `ble.sh` inside subshells `#D1554` bbc2a90
+- main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
+- Makefile: create `run` directory instead of `tmp` 0000000
 
 ## Compatibility
 

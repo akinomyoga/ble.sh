@@ -2557,7 +2557,7 @@ function ble/util/expand-alias {
   ret=$1
   local type; ble/util/type type "$ret"
   if [[ $type == alias ]]; then
-    local data; ble/util/assign data 'LANG=C alias "$ret"' &>/dev/null
+    local data; ble/util/assign data 'LC_ALL=C alias "$ret"' &>/dev/null
     [[ $data == 'alias '*=* ]] && builtin eval "ret=${data#alias *=}"
   fi
 }

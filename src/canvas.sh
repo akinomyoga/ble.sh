@@ -1742,7 +1742,7 @@ function ble/canvas/trace-text {
   [[ ! $flag_overflow ]]
 }
 # Note: suppress LC_COLLATE errors #D1205 #D1262 #1341 #D1440
-ble/function#suppress-stderr ble/canvas/trace-text {
+ble/function#suppress-stderr ble/canvas/trace-text
 
 #------------------------------------------------------------------------------
 # ble/textmap

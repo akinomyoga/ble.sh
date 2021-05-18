@@ -148,12 +148,12 @@ endif
 install: \
   $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) \
   $(outfiles-doc:$(OUTDIR)/doc/%=$(INSDIR_DOC)/%) \
-  $(INSDIR)/cache.d $(INSDIR)/tmp
+  $(INSDIR)/cache.d $(INSDIR)/run
 $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install "$<" "$@"
 $(INSDIR_DOC)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
-$(INSDIR)/cache.d $(INSDIR)/tmp:
+$(INSDIR)/cache.d $(INSDIR)/run:
 	mkdir -p $@ && chmod a+rwxt $@
 .PHONY: install
 

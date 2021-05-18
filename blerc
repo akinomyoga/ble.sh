@@ -611,7 +611,7 @@
 
 
 ##-----------------------------------------------------------------------------
-## Key bindings
+## Keybindings
 
 
 ## The default mapping of <SP> is magic-space which performs history and
@@ -627,11 +627,19 @@
 #ble-bind -f up 'history-search-backward'
 #ble-bind -f down 'history-search-forward'
 
+
 ## If you want to immediately run the matched command by RET, you can specify
 ## the option "immediate-accept" to nsearch widgets:
 
 #ble-bind -f up 'history-search-backward immediate-accept'
 #ble-bind -f down 'history-search-forward immediate-accept'
+
+
+## If you want to kill/copy words including the spaces preceding them, you can
+## use the following keybindings:
+
+#ble-bind -f C-w 'kill-region-or kill-uword'
+#ble-bind -f M-w 'copy-region-or copy-uword'
 
 
 ##-----------------------------------------------------------------------------

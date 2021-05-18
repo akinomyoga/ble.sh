@@ -8,7 +8,7 @@
 <a href="https://github.com/akinomyoga/ble.sh/wiki/Recipes">Recipes</a> ]
 </p>
 
-*Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts which replaces the default GNU Readline.
+*Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash which replaces the default GNU Readline.
 
 Current devel version is 0.4.
 This script supports Bash 3.0 or higher although we recommend to use `ble.sh` with Bash 4.0 or higher.
@@ -17,7 +17,7 @@ This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD li
 
 Disclaimer: The core part of the line editor is written in **pure Bash**, but
 `ble.sh` relies on POSIX `stty` to set up TTY states before and after the execution of user commands.
-It also use other POSIX utilities for acceleration
+It also uses other POSIX utilities for acceleration
 in some part of initialization and cleanup code,
 processing of large data in completions, paste of large data, etc.
 
