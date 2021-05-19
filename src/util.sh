@@ -1180,6 +1180,9 @@ if ((_ble_bash>=40000)); then
   function ble/util/is-running-in-subshell { [[ $$ != $BASHPID ]]; }
 else
   function ble/util/is-running-in-subshell {
+    # Note: bash-4.3 以下では BASH_SUBSHELL はパイプやプロセス置換で増えないの
+    #   で信頼性が低いらしい。唯、関数内で実行している限りは大丈夫なのかもしれ
+    #   ない。
     ((BASH_SUBSHELL)) && return 0
     local bashpid= command='echo $PPID'
     ble/util/assign bashpid 'ble/bin/sh -c "$command"'
@@ -1242,19 +1245,19 @@ function ble/util/declare-print-definitions {
         if (decl) {
           isArray = (decl ~ /declare +-[fFgilrtux]*[aA]/);
 
-          # bash-3.0 の declare -p は改行について誤った出力をする。
+#%        # bash-3.0 の declare -p は改行について誤った出力をする。
           if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
 
           if (_ble_bash < 40000) {
-            # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
-            #   ^A^A, ^A^? と出力してしまうので補正する。
+#%          # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
+#%          #   ^A^A, ^A^? と出力してしまうので補正する。
             gsub(/\001\001/, "${_ble_term_SOH}", decl);
             gsub(/\001\177/, "${_ble_term_DEL}", decl);
           }
           if (flag_escape_cr)
             gsub(/\015/, "${_ble_term_CR}", decl);
 
-          # declare 除去
+#%        # declare 除去
           sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/, "", decl);
           if (isArray) {
             if (decl ~ /^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/) {

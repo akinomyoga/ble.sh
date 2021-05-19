@@ -56,7 +56,10 @@ if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
-if [[ $- != *i* ]]; then
+if ((BASH_SUBSHELL)); then
+  builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&3
+  return 1 2>/dev/null || builtin exit 1
+elif [[ $- != *i* ]]; then
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
     builtin echo "ble.sh: This is not an interactive session." >&3
   return 1 2>/dev/null || builtin exit 1
