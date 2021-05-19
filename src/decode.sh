@@ -3151,7 +3151,7 @@ function ble-bind {
 
   [[ $flags == *E* ]] && return 2
   [[ $flags == *R* ]] && return 1
-  [[ $flags == *D* ]] || ble-bind/option:print
+  [[ $flags == *D* ]] || ble-bind/option:print "${keymaps[@]}"
   return 0
 }
 

@@ -71,7 +71,8 @@
 - prompt: adjust behavior of `LINENO` and prompt sequence `\#` (reported by tycho-kirchner) `#D1542` 8b0257e
 - edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
-- complete (`ble-bind`): support colored output `#D1547` 750ca38
+- decode (`ble-bind`): support colored output `#D1547` 750ca38
+  - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 0000000
 
 ## Fixes
 

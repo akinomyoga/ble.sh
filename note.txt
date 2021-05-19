@@ -4618,6 +4618,11 @@ bash_tips
 
 2021-05-20
 
+  * decode (ble-bind): ble-bind -m KEYMAP で全ての keymap が出力されている (fixup 750ca38) [#D1559]
+
+    これは指定した keymap を表示する様にした方が良い。というか元々そのつもりだっ
+    た筈で単に対応を忘れていたという事の気がする。
+
   * main: bash ble.sh --test の終了ステータス (fixup bbc2a90) [#D!558]
 
     subshell からのロードを検出する様にした変更に於いて終了ステータスが意図しな
