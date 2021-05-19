@@ -5361,7 +5361,7 @@ else
         print "_ble_edit_history=("
       }
 
-      # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
+#%    # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
       /^ *[0-9]+\*? +(__ble_ext__|\?\?)/ {
         if (n != "") {
           n = "";
@@ -5378,11 +5378,11 @@ else
         else
           gsub(apos, apos "\\" apos apos, line);
 
-        # 対策 #D1239: bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
+#%      # 対策 #D1239: bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
         gsub(/\001/, "'$apos'${_ble_term_SOH}'$apos'", line);
         gsub(/\177/, "'$apos'${_ble_term_DEL}'$apos'", line);
 
-        # 対策 #D1270: MSYS2 で ^M を代入すると消える
+#%      # 対策 #D1270: MSYS2 で ^M を代入すると消える
         gsub(/\015/, "'$apos'${_ble_term_CR}'$apos'", line);
 
         t = t != "" ? t "\n" line : line;
@@ -5537,7 +5537,7 @@ function ble-edit/history/add {
   local command=$1
   if [[ $_ble_edit_history_prefix ]]; then
     local code='
-      # PREFIX_history_edit を未編集状態に戻す
+#%    # PREFIX_history_edit を未編集状態に戻す
       local index
       for index in "${!PREFIX_history_dirt[@]}"; do
         PREFIX_history_edit[index]=${PREFIX_history[index]}

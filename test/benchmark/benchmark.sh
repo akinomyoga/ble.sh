@@ -68,6 +68,7 @@ _ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上にな
 
 ## @var[out] ret nsec
 function ble-measure {
+  local TIMEFORMAT=
   if [[ ! $_ble_measure_base ]]; then
     _ble_measure_base=0 nsec=0
     # : よりも a=1 の方が速い様だ

@@ -62,6 +62,11 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
+if ((BASH_SUBSHELL)); then
+  builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&2
+  return 1 2>/dev/null || builtin exit 1
+fi
+
 if [[ -o posix ]]; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
