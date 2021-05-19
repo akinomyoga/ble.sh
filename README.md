@@ -15,9 +15,15 @@ This script supports Bash 3.0 or higher although we recommend to use `ble.sh` wi
 Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
 
+Disclaimer: The core part of the line editor is written in **pure Bash**, but
+`ble.sh` relies on POSIX `stty` to set up TTY states before and after the execution of user commands.
+It also use other POSIX utilities for acceleration
+in some part of initialization and cleanup code,
+processing of large data in completions, paste of large data, etc.
+
 ## Quick instructions
 
-Installation requires the commands `git`, `make` (GNU make), and `gawk`.
+Installation requires the commands `git`, `make` (GNU make), and `gawk` (in addition to `bash` and POSIX standard utilities).
 For detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
 [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
 
@@ -38,6 +44,10 @@ source ble.sh/out/ble.sh
 
 ble-update
 
+# UPDATE (outside ble.sh sessions)
+
+bash /path/to/ble.sh --update
+
 # PACKAGE (for package maintainers)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
@@ -51,17 +61,32 @@ You may also install `ble.sh` through package-management systems (currently only
 ## Features
 
 - **Syntax highlighting**: Highlight command lines input by users as in `fish` and `zsh-syntax-highlighting`.
-  Unlike the simple highlighting in `zsh-syntax-highlighting`, `ble.sh` performs syntactic analysis to enable the correct highlighting of complex structures such as nested command substitutions, multiple here documents, etc.
+  Unlike the simple highlighting in `zsh-syntax-highlighting`, `ble.sh` performs syntactic analysis
+  to enable the correct highlighting of complex structures such as nested command substitutions, multiple here documents, etc.
+  Highlighting colors and styles are [fully configurable](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A72-Graphics).
 - **Enhanced completion**:
-  Support syntax-aware completion, completion with quotes and parameter expansions in prefix texts, ambiguous candidate generation, etc.
-  Also **menu-complete** supports selection of candidates in menu (candidate list) by cursor keys, <kbd>TAB</kbd> and <kbd>S-TAB</kbd>.
-  The feature **auto-complete** supports the automatic suggestion of completed texts as in `fish` and `zsh-autosuggestions` (with Bash 4.0+).
-  The feature **menu-filter** integrates automatic filtering of candidates into menu completion (with Bash 4.0+).
-  There are other functionalities such as **dabbrev** and **sabbrev** like `zsh-abbreviations`.
+  Extend [completion](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion)
+  by **syntax-aware completion**, completion with quotes and parameter expansions in prefix texts, **ambiguous candidate generation**, etc.
+  Also, [**menu-complete**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-menu-complete)
+  supports selection of candidates in menu (candidate list) by cursor keys, <kbd>TAB</kbd> and <kbd>S-TAB</kbd>.
+  The feature [**auto-complete**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-auto-complete)
+  supports the automatic suggestion of completed texts as in `fish` and `zsh-autosuggestions` (with Bash 4.0+).
+  The feature [**menu-filter**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-menu-filter)
+  integrates automatic filtering of candidates into menu completion (with Bash 4.0+).
+  There are other functionalities such as
+  [**dabbrev**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-dabbrev) and
+  [**sabbrev**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-sabbrev) like `zsh-abbreviations`.
 - **Vim editing mode**: Enhance `readline`'s vi editing mode available with `set -o vi`.
-  Vim editing mode supports various vim modes such as char/line/block visual/select mode, replace mode, command mode, operator pending mode as well as insert mode and normal mode.
+  Vim editing mode supports various vim modes such as char/line/block visual/select mode, replace mode,
+  command mode, operator pending mode as well as insert mode and normal mode.
   Vim editing mode supports various operators, text objects, registers, keyboard macros, marks, etc.
   It also provides `vim-surround` as an option.
+- Other interesting features include
+  [**status line**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A74-Editing#user-content-bleopt-prompt_status_line),
+  [**history share**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A74-Editing#user-content-bleopt-history_share),
+  [**right prompt**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A74-Editing#user-content-bleopt-prompt_rps1),
+  [**transient prompt**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A74-Editing#user-content-bleopt-prompt_ps1_transient),
+  [**xterm title**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A74-Editing#user-content-bleopt-prompt_xterm_title), etc.
 
 Note: ble.sh does not provide a specific settings for the prompt, aliases, functions, etc.
 ble.sh provides a more fundamental infrastructure so that users can set up their own settings for prompts, aliases, etc.
@@ -77,7 +102,7 @@ Of course ble.sh can be used in combination with other Bash configurations such 
 
 ### Generate
 
-To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
+To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) (in addition to Bash and POSIX standard utilities) is required.
 The file `ble.sh` can be generated using the following commands.
 If you have GNU make installed on `gmake`, please use `gmake` instead of `make`.
 ```bash
@@ -123,9 +148,9 @@ For download, trial and install, see the description at each release page.
 The stable versions are significantly old compared to the devel version, so many features are unavailable.
 
 - Devel [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
-- Stable [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork)
-- Stable [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork)
-- Stable [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork)
+- Stable [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) +Enhanced completions
+- Stable [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) +Vim mode
+- Stable [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) Syntax highlighting
 
 
 ## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
@@ -164,10 +189,16 @@ If you want to change the default path of the init script, you can add the optio
 ## 1.5 Update
 
 You need Git (`git`), GNU awk (`gawk`) and GNU make (`make`).
-For `ble-0.3+`, run `ble-update` in the session with `ble.sh` loaded:
+For `ble-0.3+`, you can run `ble-update` in the session with `ble.sh` loaded:
 
 ```bash
 $ ble-update
+```
+
+For `ble.0.4+`, you can also update it outside the `ble.sh` session using
+
+```bash
+$ bash /path/to/ble.sh --update
 ```
 
 You can instead download the latest version by `git pull` and install it:

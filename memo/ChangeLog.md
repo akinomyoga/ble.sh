@@ -9,8 +9,8 @@
   - mandb: fix BS contamination used by nroff to represent bold (reported by rlnore) `#D1429` b5c875a
   - mandb: fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
   - mandb: improve extraction and cache for each locale `#D1480` 3588158
-  - mandb: fix an infinite loop by a leak variable (reported by rlanore, riblo) `#D1550` 0000000
-  - mandb: work around old groff in macOS (reported by killermoehre) `#D1551` 0000000
+  - mandb: fix an infinite loop by a leak variable (reported by rlanore, riblo) `#D1550` 0efcb65
+  - mandb: work around old groff in macOS (reported by killermoehre) `#D1551` d4f816b
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
@@ -100,6 +100,8 @@
 - progcomp: fix non-working `complete -C prog` (reported by Archehandoro) `#D1535` 026432d
 - bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
+- main: work around sourcing `ble.sh` inside subshells `#D1554` 0000000
+- main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` 0000000
 
 ## Compatibility
 
@@ -132,7 +134,7 @@
 - main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` c89aa23
   - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
-- util: inherit special file descriptors `#D1552` 0000000
+- util: inherit special file descriptors `#D1552` 98835b5
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

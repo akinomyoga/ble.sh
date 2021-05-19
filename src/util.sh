@@ -2024,7 +2024,7 @@ function ble/util/writearray {
         return s;
     }
 
-    # 制御文字が要素に含まれていない場合は全て [1]="..." の形式になっている筈。
+#%  # 制御文字が要素に含まれていない場合は全て [1]="..." の形式になっている筈。
     function analyze_elements_dq(decl, _, arr, i, n) {
       if (decl ~ /^\[[0-9]+\]="([^'$'\1\2''"\n\\]|\\.)*"( \[[0-9]+\]="([^\1\2"\\]|\\.)*")*$/) {
         if (IS_GAWK) {
@@ -2056,14 +2056,14 @@ function ble/util/writearray {
             printf("%s%c", arr[i], 0);
         }
 
-        # [N]="" の形式の時は要素内改行はないと想定
+#%      # [N]="" の形式の時は要素内改行はないと想定
         if (FLAG_NLFIX) printf("\n");
 
         return 1;
       }
       return 0;
     }
-    # 任意の場合は多少遅くなるがこちらの関数で処理する。
+#%  # 任意の場合は多少遅くなるがこちらの関数で処理する。
     function analyze_elements_general(decl, _, arr, i, n, nlfix_indices) {
       n = split(decl, arr, / /);
       nlfix_indices = "";
@@ -2111,24 +2111,24 @@ function ble/util/writearray {
     }
 
     function process_declaration(decl, _, mlen, line) {
-      # declare 除去
+#%    # declare 除去
       sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
 
-      # 全体 quote の除去
+#%    # 全体 quote の除去
       if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
         sub(/='\''\(/, "=(", decl);
         sub(/\)'\''$/, ")", decl);
         gsub(/'\'\\\\\'\''/, "'\''", decl);
       }
 
-      # bash-3.0 の declare -p は改行について誤った出力をする。
+#%    # bash-3.0 の declare -p は改行について誤った出力をする。
       if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
 
-      # #D1238 bash-4.3 以前の declare -p は ^A, ^? を
-      #   ^A^A, ^A^? と出力してしまうので補正する。
-      # #D1325 更に Bash-3.0 では "x${_ble_term_DEL}y" とすると
-      #   _ble_term_DEL の中身が消えてしまうので
-      #   "x""${_ble_term_DEL}""y" とする必要がある。
+#%    # #D1238 bash-4.3 以前の declare -p は ^A, ^? を
+#%    #   ^A^A, ^A^? と出力してしまうので補正する。
+#%    # #D1325 更に Bash-3.0 では "x${_ble_term_DEL}y" とすると
+#%    #   _ble_term_DEL の中身が消えてしまうので
+#%    #   "x""${_ble_term_DEL}""y" とする必要がある。
       if (_ble_bash < 40000) {
         gsub(/\001\001\001\001/, "\001", decl);
         gsub(/\001\001\001\177/, "\177", decl);
@@ -2140,10 +2140,10 @@ function ble/util/writearray {
       sub(/^([_a-zA-Z][_a-zA-Z0-9]*)=\([[:space:]]*/, "", decl);
       sub(/[[:space:]]*\)[[:space:]]*$/, "", decl);
 
-      # 空配列
+#%    # 空配列
       if (decl == "") return 1;
 
-      # [N]="value" だけの時の高速実装。mawk だと却って遅くなる様だ
+#%    # [N]="value" だけの時の高速実装。mawk だと却って遅くなる様だ
       if (AWKTYPE != "mawk" && analyze_elements_dq(decl)) return 1;
 
       return analyze_elements_general(decl);
@@ -2587,6 +2587,9 @@ else
     ble/util/assign BASHPID 'ble/bin/sh -c "$command"'
   }
   function ble/util/is-running-in-subshell {
+    # Note: bash-4.3 以下では BASH_SUBSHELL はパイプやプロセス置換で増えないの
+    #   で信頼性が低いらしい。唯、関数内で実行している限りは大丈夫なのかもしれ
+    #   ない。
     ((BASH_SUBSHELL)) && return 0
     local BASHPID; ble/util/getpid
     [[ $$ != $BASHPID ]]
@@ -2709,14 +2712,14 @@ function ble/util/declare-print-definitions {
       BEGIN {
         decl = "";
 
-        # 対策 #D1270: MSYS2 で ^M を代入すると消える
+#%      # 対策 #D1270: MSYS2 で ^M を代入すると消える
         flag_escape_cr = OSTYPE == "msys";
       }
       function declflush(_, isArray) {
         if (decl) {
           isArray = (decl ~ /^declare +-[ilucnrtxfFgGI]*[aA]/);
 
-          # declare 除去
+#%        # declare 除去
           sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
           if (isArray) {
             if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
@@ -2724,9 +2727,9 @@ function ble/util/declare-print-definitions {
               sub(/\)'\''$/, ")", decl);
               gsub(/'\'\\\\\'\''/, "'\''", decl);
 
-              # Note: bash-3.* の配列表記では ^A, ^? が二重にエスケープされて
-              #   ^A^A^A^A, ^A^A^A^? になってしまう。一つ目のエスケープをここで
-              # 外しておく。
+#%            # Note: bash-3.* の配列表記では ^A, ^? が二重にエスケープされて
+#%            #   ^A^A^A^A, ^A^A^A^? になってしまう。一つ目のエスケープをここで
+#%            # 外しておく。
               if (_ble_bash < 40000) {
                 gsub(/\001\001/, "\001", decl);
                 gsub(/\001\177/, "\177", decl);
@@ -2734,14 +2737,14 @@ function ble/util/declare-print-definitions {
             }
           }
 
-          # bash-3.0 の declare -p は改行について誤った出力をする。
+#%        # bash-3.0 の declare -p は改行について誤った出力をする。
           if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
 
-          # #D1238 bash-4.3 以前の declare -p は ^A, ^? を
-          #   ^A^A, ^A^? と出力してしまうので補正する。
-          # #D1325 更に Bash-3.0 では "x${_ble_term_DEL}y" とすると
-          #   _ble_term_DEL の中身が消えてしまうので
-          #   "x""${_ble_term_DEL}""y" とする必要がある。
+#%        # #D1238 bash-4.3 以前の declare -p は ^A, ^? を
+#%        #   ^A^A, ^A^? と出力してしまうので補正する。
+#%        # #D1325 更に Bash-3.0 では "x${_ble_term_DEL}y" とすると
+#%        #   _ble_term_DEL の中身が消えてしまうので
+#%        #   "x""${_ble_term_DEL}""y" とする必要がある。
           if (_ble_bash < 30100) {
             gsub(/\001\001/, "\"\"${_ble_term_SOH}\"\"", decl);
             gsub(/\001\177/, "\"\"${_ble_term_DEL}\"\"", decl);

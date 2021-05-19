@@ -15,6 +15,11 @@
 現時点では、文字コードとして `UTF-8` のみの対応です。
 このスクリプトは [**BSD License**](LICENSE.md) (3条項 BSD ライセンス) の下で提供されます。
 
+免責: ラインエディタ本体は **ピュア Bash** で書かれていますが、
+ユーザーコマンド実行時には TTY 設定の為に `stty` (POSIX) を呼び出します。
+他にも処理の高速化の為に、初期化・終了処理、
+巨大なデータの処理 (補完、貼り付けなど) の局面でPOSIX 標準コマンドを利用しています。
+
 ## 簡単設定
 
 `ble.sh` インストールには `git`, `make` (GNU make), and `gawk` が必要です。
@@ -34,9 +39,13 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh
 source ble.sh/out/ble.sh
 
-# 更新 (ble.sh をロードした状態で実行して下さい)
+# 更新 (ble.sh をロードした状態で)
 
 ble-update
+
+# 更新 (ble.sh 外部から)
+
+bash /path/to/ble.sh --update
 
 # パッケージ作成用コマンド
 
@@ -52,18 +61,34 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 - **構文着色**: `fish` や `zsh-syntax-highlighting` のような文法構造に従った着色を行います。
   `zsh-syntax-highlighting` のような単純な着色ではなく、構文の入れ子構造や複数のヒアドキュメントなども正しく解析して着色します。
-- **補完増強**: 補完を大幅に増強します。
-  文法構造に応じた補完、クォートやパラメータ展開を展開した上でのプログラム補完、**曖昧補完**に対応しています。
-  また、候補をカーソルキーや <kbd>TAB</kbd>, <kbd>S-TAB</kbd> で選択できる**メニュー補完**、
-  `fish` や `zsh-autosuggestions` のような**自動補完** (Bash 4.0 以上) の機能もあります。
-  更に、従来 `peco` や `fzf` を呼び出さなければならなかった補完候補の絞り込みも**メニュー絞り込み** (Bash 4.0 以上) として自然な形で組み込んでいます。
-  他に、**動的略語展開**や、`zsh-abbreviations` のような**静的略語展開**にも対応しています。
+  着色は[全て設定可能](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A72-%E6%8F%8F%E7%94%BB)です。
+- **補完増強**: [補完](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C)を大幅に増強します。
+  **文法構造に応じた補完**、クォートやパラメータ展開を展開した上でのプログラム補完、**曖昧補完**に対応しています。
+  また、候補をカーソルキーや <kbd>TAB</kbd>, <kbd>S-TAB</kbd> で選択できる
+  [**メニュー補完**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-menu-complete)、
+  `fish` や `zsh-autosuggestions` のような
+  [**自動補完**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-auto-complete)
+  (Bash 4.0 以上) の機能もあります。
+  更に、従来 `peco` や `fzf` を呼び出さなければならなかった補完候補の絞り込みも
+  [**メニュー絞り込み**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-menu-filter)
+  (Bash 4.0 以上) として自然な形で組み込んでいます。
+  他に、[**動的略語展開**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-dabbrev)
+  や、`zsh-abbreviations` のような
+  [**静的略語展開**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-sabbrev)
+  にも対応しています。
 - **Vim編集モード**: `set -o vi` による編集モードを増強します。
   挿入・ノーマルモードの他に(行・矩形)ビジュアルモード、置換モードなどの各種モードに対応しています。
   テキストオブジェクト・各種レジスタ・オペレータ・キーボードマクロなどにも対応しています。
   拡張として `vim-surround` も提供しています。
+- 他にも
+  [**ステータス行**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A74-%E7%B7%A8%E9%9B%86#user-content-bleopt-prompt_status_line),
+  [**コマンド履歴共有**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A74-%E7%B7%A8%E9%9B%86#user-content-bleopt-history_share),
+  [**右プロンプト**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A74-%E7%B7%A8%E9%9B%86#user-content-bleopt-prompt_rps1),
+  [**過渡的プロンプト**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A74-%E7%B7%A8%E9%9B%86#user-content-bleopt-prompt_ps1_transient),
+  [**xterm タイトル**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A74-%E7%B7%A8%E9%9B%86#user-content-bleopt-prompt_xterm_title),
+  など様々な機能に対応しています。
 
-★`ble.sh` はよくある Bash 設定集のようにプロンプト (`PS1`)、エイリアス、関数を提供するものではありません。
+注意: `ble.sh` は、(プロンプト (`PS1`)、エイリアス、関数などを提供する) 典型的な Bash 設定集と異なります。
 `ble.sh` はより低層の基盤を提供するもので、ユーザは自分でプロンプトやエイリアスを設定する必要があります。
 勿論 `bash-it` や `oh-my-bash` の様な他の Bash 設定と一緒に使っていただくことも可能です。
 
@@ -123,9 +148,9 @@ Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` 
 現在、安定版は開発版に比べてかなり古いので様々な機能が欠けている事にご注意下さい。
 
 - 開発版 [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
-- 安定版 [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork)
-- 安定版 [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork)
-- 安定版 [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork)
+- 安定版 [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) +拡張補完
+- 安定版 [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) +Vim モード
+- 安定版 [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) 構文着色
 
 ## 1.2 `ble.sh` をダウンロードして試す (旧バージョン ble-0.3 201902版)<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
 
@@ -188,6 +213,12 @@ Git (`git'), GNU awk (`gawk`), 及び GNU make (`make`) が必要になります
 
 ```bash
 $ ble-update
+```
+
+`ble-0.4` 以上をお使いの場合は `ble.sh` をロードしなくても以下のコマンドで更新可能です。
+
+```bash
+$ bash /path/to/ble.sh --update
 ```
 
 それ以外の場合には、以下のように `git pull` で最新版を入手・インストールできます。

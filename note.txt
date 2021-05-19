@@ -805,6 +805,12 @@ bash_tips
     Memo
 -------------------------------------------------------------------------------
 
+2021-05-16
+
+  * Linux パッケージのチェック (by killermoehre) [#M0021]
+    どの Linux にどのパッケージのどの version が入っているかを調べられるサイト
+    https://pkgs.org/search/?q=groff
+
 2021-05-15
 
   * PKGBUILD の説明は此処にある [#M0020]
@@ -1265,6 +1271,12 @@ bash_tips
     bug-bash, third-party bugs
 -------------------------------------------------------------------------------
 
+2021-05-16
+
+  * complete: tar xf groff-1.19.2.ta[TAB] でエラーが発生する
+
+    と思ったらこれは bash-completion だった。
+
 2021-05-06
 
   * bash: complete -p の -F はやはり quote するべきなのではないか。
@@ -1367,7 +1379,21 @@ bash_tips
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
 
+2021-05-19
+
+  * sabbrev: 単語でなくても任意の文脈で発動する sabbrev が欲しい。\ 等で前置す
+    れば特に問題ないのではないか?
+
 2021-05-17
+
+  * 此処で思ったのだが nawk は Unicode の対象を取り扱えるのだろうか。。。UTF-8
+    ならば通常の制御文字はそのままなので問題は生じないのではないかという気もす
+    るが。文字数を数えて何かする様な処理では何か変な事が起こるかもしれないが、
+    そうでなければ大丈夫の気がする。
+
+    問題が起こるかもしれないのは brace expansion の形式でファイル名一覧を挿入す
+    る処理。これに関しては UTF-8 だと例えば平仮名の途中で分断されたりして変な事
+    が起こる可能性がある。
 
   * global: /dev/null を $_ble_util_fd_null に置き換える?
 
@@ -1380,9 +1406,6 @@ bash_tips
     $ exec {fd}>/dev/null
     $ exec {}>/dev/null
     $ exec {_ble_base_fd_null}>/dev/null
-
-  * 現在の初期化だと ble.sh session で source --test 等すると変な事になるのでは
-    ないか。これは取り敢えず独立した項目として取り扱う事にする。
 
   * history: 履歴が余りに消滅するので ble.sh の側で独立した履歴の仕組みを作りたい
 
@@ -1455,50 +1478,16 @@ bash_tips
 
     また右端から入力を始めた時の折返しが正しくできていない。
 
-  * Linux パッケージのチェック (by killermoehre) [#Mxxxx]
-    どの Linux にどのパッケージのどの version が入っているかを調べられるサイト
-    https://pkgs.org/search/?q=groff
-
-  * complete: tar xf groff-1.19.2.ta[TAB] でエラーが発生する
-
-    と思ったらこれは bash-completion だった。
-
 2021-05-15
 
-  * AUR blesh-git について
+  * AUR blesh-git のカスタム update について
+    https://aur.archlinux.org/packages/blesh-git/
+    https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git
 
-    * requirements: ble-update の為に git, gawk があった方が良いのかもしれない?
-      然し、最終的に AUR helper を呼び出すのであれば余り関係ないのかもしれない。
+    * {PRE,POST}_VERSION を local で宣言する
+    * _package.sh の属性は 644
 
-    * https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git#n29
-
-      (()) の中の quote のルールは変更されている。然し何故か PKGBUILD はそのま
-      ま何事もなく動作しているどういう事だろうか。shopt が調整されているのだろ
-      うか。或いは bash の version が違うのだろうか。適当な PKGBUILD を作ってそ
-      の辺りを出力させたらはっきりするのかもしれない。何れにしても将来的に変更
-      されるかもしれないという事などを考えると修正した方が良い。
-
-    * local variables
-      local PRE_VERSION
-      local POST_VERSION
-
-      恐らく他の所で使うという訳ではないだろう。というか、この関数は PKGBUILD
-      で使われるのではなくて ble.sh から呼び出しているのであるから他の場所から
-      使っているという事はない気がする。
-
-    * _package.sh は実の所 source するだけなので実行属性は必要ない。唯、source
-      path を経由して source したい時には実行属性がついている必要があるのだった
-      か? man bash を確認したがちゃんと実行可能である必要はないとの事が明記され
-      ている。
-
-      というか今知ったがカレントディレクトリよりも PATH の方が優先されるのだそ
-      うだ。だとすると結構変な事が起こるの可能性もあったのでは。今試しに ~/bin
-      に ble.sh を登録して、bash --norc から ble.sh ディレクトリの外で source
-      ble.sh を実行したらちゃんとロードされた。うーん。
-
-    * done: contributing に lib/_package.sh を追加する
-
-  * test: 失敗する様になっている
+  * test: BUG 失敗する様になっている
 
     * quote-command の test に失敗している @ bash-4.3 直した
 
@@ -1516,8 +1505,6 @@ bash_tips
       関数内のみで起こる問題の可能性? と思ったがそれも変である。実際に ^A^A^A^A
       にならず ^A^A になっているのは関数内で実行している時である。対話でも ^A^A
       にしかならない。
-
-  * README: 様々な機能へのリンクを貼った方が良いのではないかという事
 
 2021-05-13
 
@@ -1768,6 +1755,8 @@ bash_tips
     接 $var と記述するかしないかで $() の内部でも変数が見えるかどうかが切り替わ
     るというのは不自然すぎる。それならば ble.sh 自体が変数を定義するのでそれに
     よって被覆されてしまうと説明した方が自然である。
+
+    グローバルでない変数を列挙する方法は存在するだろうか。
 
 2021-04-26
 
@@ -4611,6 +4600,64 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-05-19
+
+  * README: 様々な機能へのリンクを貼った方が良いのではないかという事 [#D1556]
+
+  * 現在の初期化だと ble.sh session で source --test 等すると [#D1555]
+
+    変な事になるのではないか。これは取り敢えず独立した項目として取り扱う事にする。
+
+  * main: subshell 内部で source/reload したら何が起こるのか [#D1554]
+
+    source した場合には何も起こらない。うーん。これは単に attach 戦略が prompt
+    だから attach する前に終了しているという事の気がする。
+
+    reload については reload が実際に実行されて色々と _ble_base_run のデータが
+    破棄される。この状態で ble-detach を実行すると制御できなくなる。tty 状態は
+    別に問題はない様だ。
+
+  * main: AUR blesh-git について [#D1553]
+
+    * ok: requirements: ble-update の為に git, gawk があった方が良いのかもしれ
+      ない? 然し、最終的に AUR helper を呼び出すのであれば余り関係ないのかもし
+      れない。特に package としては fallback になる事は想定していないので。
+
+    * ok: (("$helper_prog" != 0))
+      https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git#n29
+
+      (()) の中の quote のルールは変更されている。然し何故か PKGBUILD はそのま
+      ま何事もなく動作しているどういう事だろうか。shopt が調整されているのだろ
+      うか。或いは bash の version が違うのだろうか。適当な PKGBUILD を作ってそ
+      の辺りを出力させたらはっきりするのかもしれない。何れにしても将来的に変更
+      されるかもしれないという事などを考えると修正した方が良い。
+
+      と思ったが改めて試してみたが問題はない様だ。単に手許で試す時に
+      (("$xxx"!=0)) が ((!=0)) に展開されてエラーになっていただけなのであった。
+      bash-5.1 で振る舞いが変更されたのは '' による quote の方であった。
+
+    * local variables
+      local PRE_VERSION
+      local POST_VERSION
+
+      恐らく他の所で使うという訳ではないだろう。というか、この関数は PKGBUILD
+      で使われるのではなくて ble.sh から呼び出しているのであるから他の場所から
+      使っているという事はない気がする。
+
+    * _package.sh は実の所 source するだけなので実行属性は必要ない。唯、source
+      path を経由して source したい時には実行属性がついている必要があるのだった
+      か? man bash を確認したがちゃんと実行可能である必要はないとの事が明記され
+      ている。
+
+      というか今知ったがカレントディレクトリよりも PATH の方が優先されるのだそ
+      うだ。だとすると結構変な事が起こるの可能性もあったのでは。今試しに ~/bin
+      に ble.sh を登録して、bash --norc から ble.sh ディレクトリの外で source
+      ble.sh を実行したらちゃんとロードされた。うーん。
+
+    * done: contributing に lib/_package.sh を追加する
+
+    取り敢えず残っている物については簡単に纏めてこの項目はOKとする。
+
 2021-05-17
 
   * util: inherit special file descriptors [#D1552]
@@ -4676,6 +4723,7 @@ bash_tips
     * done: wiki で openat_base の項目を編集する
 
   * macOS で groff のエラーが出る (reported by killermoehre) [#D1551]
+    https://github.com/akinomyoga/ble.sh/issues/112
 
     groff -k というオプションが使えないという事。macOS の groff は v1.19 らしく
     これは 2004 の version である。実に17年前の groff である。このオプションは
@@ -4728,15 +4776,6 @@ bash_tips
     許で試してみる限りは動いている気がする。まあ、実際に動かして変な事が起こっ
     たらその時にまた考え直せば良い。取り敢えず遠隔で実装できるのは此処までであ
     る。
-
-  * 此処で思ったのだが nawk は Unicode の対象を取り扱えるのだろうか。。。UTF-8
-    ならば通常の制御文字はそのままなので問題は生じないのではないかという気もす
-    るが。文字数を数えて何かする様な処理では何か変な事が起こるかもしれないが、
-    そうでなければ大丈夫の気がする。
-
-    問題が起こるかもしれないのは brace expansion の形式でファイル名一覧を挿入す
-    る処理。これに関しては UTF-8 だと例えば平仮名の途中で分断されたりして変な事
-    が起こる可能性がある。
 
   * complete: ssh -option の後の補完が固まる (reported by rlanore, riblo) [#D1550]
     https://github.com/akinomyoga/ble.sh/issues/98

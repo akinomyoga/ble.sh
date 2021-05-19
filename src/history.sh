@@ -314,10 +314,10 @@ else
     builtin history $arg_count | ble/bin/awk -v apos="'" '
       BEGIN { n = ""; }
 
-      # 何故かタイムスタンプがコマンドとして読み込まれてしまう
+#%    # 何故かタイムスタンプがコマンドとして読み込まれてしまう
       /^ *[0-9]+\*? +(__ble_ext__|\?\?)#[0-9]/ { next; }
 
-      # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
+#%    # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
       /^ *[0-9]+\*? +(__ble_ext__|\?\?)/ {
         if (n != "") {
           n = "";
@@ -472,7 +472,7 @@ if ((_ble_bash>=30100)); then
             if (t) print "#" t > filename_section;
             print c > filename_section;
           }
-          # Note: HISTTIMEFORMAT を指定するのは bash-4.4 で複数行読み取りを有効にする為。
+#%        # Note: HISTTIMEFORMAT を指定するのは bash-4.4 で複数行読み取りを有効にする為。
           print "HISTTIMEFORMAT=%s builtin history -r " filename_section > filename_source;
         } else {
           for (i = 0; i < command_count; i++) {

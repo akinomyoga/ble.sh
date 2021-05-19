@@ -2730,8 +2730,8 @@ function ble/decode/bind/.generate-source-to-unbind-default/.process {
       mode = 1;
     }
 
-    # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンス
-    #   も処理されるので、バックスラッシュをエスケープする。
+#%  # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンス
+#%  #   も処理されるので、バックスラッシュをエスケープする。
     function str2rep(str) {
       if (IS_XPG4) sub(/\\/, "\\\\\\\\", str);
       return str;
@@ -2770,8 +2770,8 @@ function ble/decode/bind/.generate-source-to-unbind-default/.process {
       if (match(line0, /^"(([^"\\]|\\.)+)"/) > 0) {
         _seq = substr(line0, 2, RLENGTH - 2);
 
-        #%# ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
-        #%#   bind -r では \M- ではなく \e と指定しなければ削除できない。
+#%      # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
+#%      #   bind -r では \M- ではなく \e と指定しなければ削除できない。
         gsub(/\\M-/, "\\e", _seq);
 
         print "builtin bind -r " quote(_seq);
@@ -2796,14 +2796,14 @@ function ble/decode/bind/.generate-source-to-unbind-default/.process {
 
       line = $0;
 
-      #%# ※bash-4.3..5.0 では bind -r しても bind -X に残る。
-      #%#   再登録を防ぐ為 ble-decode-bind を明示的に避ける
+#%    # ※bash-4.3..5.0 では bind -r しても bind -X に残る。
+#%    #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
       if (line ~ /(^|[^[:alnum:]])ble-decode\/.hook($|[^[:alnum:]])/) next;
 
-      #%# ※bind -X で得られた物は直接 bind -x に用いる事はできない。
-      #%#   コマンド部分の "" を外して中の escape を外す必要がある。
-      #%#   escape には以下の種類がある: \C-a など \C-? \e \\ \"
-      #%#     \n\r\f\t\v\b\a 等は使われない様だ。
+#%    # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
+#%    #   コマンド部分の "" を外して中の escape を外す必要がある。
+#%    #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
+#%    #     \n\r\f\t\v\b\a 等は使われない様だ。
       if (match(line, /^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/) > 0) {
         rlen = RLENGTH;
         match(line, /^"([^"\\]|\\.)*":/);
@@ -3798,17 +3798,17 @@ function ble/builtin/bind/.reconstruct-user-settings {
         if (mode == 0 || mode == 3) {
           match(keyseq, /^\\C-\\(\\"$)?|^\\M-|^\\.|^./);
         } else {
-          #%# bind -X, bind -s には問題はない
+#%        # bind -X, bind -s には問題はない
           match(keyseq, /^\\[CM]-|^\\.|^./);
         }
         unit = substr(keyseq, 1, RLENGTH);
         keyseq = substr(keyseq, 1 + RLENGTH);
 
         if (unit == "\\C-\\") {
-          #%# Bash 3.0--5.0 Bug https://lists.gnu.org/archive/html/bug-bash/2020-01/msg00037.html
+#%        # Bash 3.0--5.0 Bug https://lists.gnu.org/archive/html/bug-bash/2020-01/msg00037.html
           unit = unit "\\";
         } else if (unit == "\\M-") {
-          #%# Bash 3.1 以下では ESC は \M- と出力される
+#%        # Bash 3.1 以下では ESC は \M- と出力される
           unit = "\\e";
         }
         out = out unit;

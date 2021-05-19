@@ -4,6 +4,19 @@
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
+#%if measure_load_time
+_ble_debug_measure_fork_count=$(echo $BASHPID)
+TIMEFORMAT='[Elapsed %Rs; CPU U:%Us S:%Ss (%P%%)]'
+function ble/debug/measure-set-timeformat {
+  local title=$1 opts=$2
+  local new=$(echo $BASHPID)
+  local fork=$(((new-_ble_debug_measure_fork_count-1)&0xFFFF))
+  _ble_debug_measure_fork_count=$new
+  TIMEFORMAT="[Elapsed %Rs; CPU U:%Us S:%Ss (%P%%)] $title"
+  [[ :$opts: != *:nofork:* ]] &&
+    TIMEFORMAT=$TIMEFORMAT" ($fork forks)"
+}
+#%end
 #%define inc
 #%%[guard_name = "@_included".replace("[^_a-zA-Z0-9]", "_")]
 #%%expand
@@ -14,8 +27,8 @@
 
 #%%%%if measure_load_time
 time {
-echo @.sh >&2
 #%%%%%include @.sh
+ble/debug/measure-set-timeformat '@.sh'
 }
 #%%%%else
 #%%%%%include @.sh
@@ -34,6 +47,7 @@ echo @.sh >&2
 #%if measure_load_time
 echo "ble.sh: $EPOCHREALTIME load start" >&2
 time {
+echo "ble.sh: $EPOCHREALTIME parsed" >&2
 # load_time (2015-12-03)
 #   core           12ms
 #   decode         10ms
@@ -42,7 +56,6 @@ time {
 #   syntax          5ms
 #   ble-initialize 14ms
 time {
-echo prologue >&2
 #%end
 #------------------------------------------------------------------------------
 # check --help or --version
@@ -99,9 +112,7 @@ echo prologue >&2
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
              '' ;;
-    --test)        _ble_init_command=test ;;
-    --update)      _ble_init_command=update ;;
-    --clear-cache) _ble_init_command=clear-cache ;;
+    --test | --update | --clear-cache) _ble_init_command=1 ;;
     esac
   done
   if [ -n "$_ble_init_exit" ]; then
@@ -126,10 +137,15 @@ if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
-if [[ $- != *i* && ! $_ble_init_command ]]; then
-  { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
-    builtin echo "ble.sh: This is not an interactive session." >&3
-  return 1 2>/dev/null || builtin exit 1
+if [[ ! $_ble_init_command ]]; then
+  if ((BASH_SUBSHELL)); then
+    builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&3
+    return 1 2>/dev/null || builtin exit 1
+  elif [[ $- != *i* ]]; then
+    { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
+      builtin echo "ble.sh: This is not an interactive session." >&3
+    return 1 2>/dev/null || builtin exit 1
+  fi
 fi 3>&2 &>/dev/null # set -x 対策 #D0930
 
 {
@@ -312,7 +328,7 @@ builtin bind &>/dev/null # force to load .inputrc
 
 # WA #D1534 workaround for msys2 .inputrc
 if [[ $OSTYPE == msys* ]]; then
-  [[ $(bind -m emacs -p | grep '"\\C-?"') == '"\C-?": backward-kill-line' ]] &&
+  [[ $(builtin bind -m emacs -p | grep '"\\C-?"') == '"\C-?": backward-kill-line' ]] &&
     builtin bind -m emacs '"\C-?": backward-delete-char'
 fi
 
@@ -364,6 +380,8 @@ _ble_base_arguments_rcfile=
 function ble/base/read-blesh-arguments {
   local opts=
   local opt_attach=prompt
+
+  _ble_init_command= # 再解析
   while (($#)); do
     local arg=$1; shift
     case $arg in
@@ -401,7 +419,13 @@ function ble/base/read-blesh-arguments {
       opts=$opts:keep-rlvars ;;
     (--debug-bash-output)
       bleopt_internal_suppress_bash_output= ;;
-    (--test | --update | --clear-cache) ;;
+    (--test | --update | --clear-cache)
+      if [[ $_ble_init_command ]]; then
+        ble/util/print "ble.sh ($arg): the option '--$_ble_init_command' has already been specified." >&2
+        opts=$opts:E
+      else
+        _ble_init_command=${arg#--}
+      fi ;;
     (--*)
       ble/util/print "ble.sh: unrecognized long option '$arg'" >&2
       opts=$opts:E ;;
@@ -454,6 +478,7 @@ if ! ble/base/read-blesh-arguments "$@"; then
 fi
 
 if [[ $_ble_base ]]; then
+  [[ $_ble_init_command ]] && _ble_init_attached=$_ble_attached
   if ! ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
     ble/base/restore-bash-options
@@ -933,9 +958,15 @@ function ble-update/.make {
   fi
 }
 function ble-update/.reload {
-  if [[ $- == *i* && $_ble_attached ]]; then
-    ble-reload
+  local ext=$?
+  if [[ $ext -eq 0 || $ext -eq 6 && $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]]; then
+    if [[ $- == *i* && $_ble_attached ]] && ! ble/util/is-running-in-subshell; then
+      ble-reload
+    fi
+    return $?
   fi
+  ((ext==6)) && ext=0
+  return "$ext"
 }
 function ble-update {
   if (($#)); then
@@ -948,11 +979,9 @@ function ble-update {
     ble/base/package:"$_ble_base_package_type"/update; local ext=$?
     if ((ext==125)); then
       ble/util/print 'ble-update: fallback to the default update process.' >&2
-    elif [[ $ext -eq 0 || $ext -eq 6 && $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]]; then
-      ble-update/.reload
-      return $?
     else
-      return "$ext"
+      ble-update/.reload "$ext"
+      return $?
     fi
   fi
 
@@ -1001,19 +1030,16 @@ function ble-update {
             ble-update/.make --sudo INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
           else
             ble-update/.make INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
-          fi ); local ext=$?
-      if [[ $ext -eq 0 || $ext -eq 6 && $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]]; then
-        ble-update/.reload
-        return $?
-      fi
-      return "$ext"
+          fi )
+      ble-update/.reload $?
+      return $?
     fi
   fi
   
   if ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
     # _ble_base が自分の物でない時は sudo でやり直す
     sudo "$BASH" "$_ble_base/ble.sh" --update &&
-      ble-update/.reload
+      ble-update/.reload 6
     return $?
   else
     # _ble_base/src 内部に clone して make install
@@ -1028,6 +1054,7 @@ function ble-update {
   return 1
 }
 #%if measure_load_time
+ble/debug/measure-set-timeformat ble.pp/prologue
 }
 #%end
 
@@ -1059,6 +1086,9 @@ blehook ERR+='ble/function#try TRAPERR'
 
 bleopt/check-all
 #------------------------------------------------------------------------------
+#%if measure_load_time
+time {
+#%end
 
 ## @fn ble [SUBCOMMAND]
 ##
@@ -1324,7 +1354,13 @@ function ble/base/process-blesh-arguments {
   fi
 
   _ble_base_rcfile=$_ble_base_arguments_rcfile
+#%if measure_load_time
+time {
+#%end
   ble/base/load-rcfile # blerc
+#%if measure_load_time
+ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
+#%end
   ble/util/invoke-hook BLE_ONLOAD
 
   # attach
@@ -1359,6 +1395,7 @@ function ble/base/initialize/.clean-up {
   builtin unset -v _ble_init_arg
   builtin unset -v _ble_init_exit
   builtin unset -v _ble_init_command
+  builtin unset -v _ble_init_attached
 
   # 状態復元
   if [[ $_ble_init_original_IFS_set ]]; then
@@ -1394,22 +1431,26 @@ function ble/base/sub:clear-cache {
   (shopt -u failglob; ble/bin/rm -rf "$_ble_base_cache"/*)
 }
 
+#%if measure_load_time
+ble/debug/measure-set-timeformat ble.pp/epilogue; }
+#%end
+
 ble-import -f lib/_package
 if [[ $_ble_init_command ]]; then
-  if ! ble/base/sub:"$_ble_init_command"; then
-    ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
-    { return $? || exit $?; } 2>/dev/null # set -x 対策 #D0930
-  fi
+  ble/base/sub:"$_ble_init_command"; _ble_init_exit=$?
+  [[ $_ble_init_attached ]] && ble-attach
+  ble/util/setexit "$_ble_init_exit"
 else
   ble/base/process-blesh-arguments "$@"
 fi
 
-ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
-
 #%if measure_load_time
-}
+ble/debug/measure-set-timeformat Total nofork; }
+_ble_init_exit=$?
 echo "ble.sh: $EPOCHREALTIME load end" >&2
+ble/util/setexit "$_ble_init_exit"
 #%end
 
-{ return 0 || exit 0; } &>/dev/null # set -x 対策 #D0930
+ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
+{ return $? || exit $?; } 2>/dev/null # set -x 対策 #D0930
 ###############################################################################

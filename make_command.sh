@@ -373,6 +373,8 @@ function sub:scan {
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zinvalid bind typeZd
       \Zline = "bind"Zd
+      \Z'\''  bindZd
+      \Z\(bind\)    ble-bindZd
       g'
   sub:scan/builtin 'read' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -397,7 +399,7 @@ function sub:scan {
       g'
   sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zunset _ble_init_(version|arg|exit|test)\bZd
+      \Zunset _ble_init_(version|arg|exit|command)\bZd
       \Zreadonly -f unsetZd
       \Zunset -f builtinZd
       g'
@@ -421,7 +423,7 @@ function sub:scan {
   sub:scan/array-count-in-arithmetic-expression
   sub:scan/unset-variable |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zunset _ble_init_(version|arg|exit|test)\bZd
+      \Zunset _ble_init_(version|arg|exit|command)\bZd
       \Zbuiltins1=\(.* unset .*\)Zd
       \Zfunction unsetZd
       \Zreadonly -f unsetZd
