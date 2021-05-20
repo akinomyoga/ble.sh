@@ -101,8 +101,9 @@
 - bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
 - main: work around sourcing `ble.sh` inside subshells `#D1554` bbc2a90
+  - main: fix exit status for `bash ble.sh --test` (fixup bbc2a90) `#D1558` 0000000
 - main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
-- Makefile: create `run` directory instead of `tmp` 0000000
+- Makefile: create `run` directory instead of `tmp` `#D1557` 0000000
 
 ## Compatibility
 
@@ -136,7 +137,7 @@
   - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
-- global: use `_ble_term_IFS` 0000000
+- global: use `_ble_term_IFS` `#D1557` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

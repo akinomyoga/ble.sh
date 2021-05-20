@@ -4616,6 +4616,71 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-05-20
+
+  * main: bash ble.sh --test の終了ステータス (fixup bbc2a90) [#D!558]
+
+    subshell からのロードを検出する様にした変更に於いて終了ステータスが意図しな
+    い物になっていた。これは return $? || exit $? に於いて二個目の exit が
+    return の $? を拾う様になってしまった為。
+
+    a 面倒なので、_ble_init_exit は削除しない様に変更して見た。
+
+    b しかし別の修正方法として eval を使う物を思いついた。うーん。eval を使う事にする。
+
+    棄却した a の修正は此処に供養する。
+    | diff --git a/ble.pp b/ble.pp
+    | index c9a11d8..d172c7d 100644
+    | --- a/ble.pp
+    | +++ b/ble.pp
+    | @@ -1398,9 +1398,9 @@ function ble/base/initialize/.clean-up {
+    |    # 一時グローバル変数消去
+    |    builtin unset -v _ble_init_version
+    |    builtin unset -v _ble_init_arg
+    | -  builtin unset -v _ble_init_exit
+    |    builtin unset -v _ble_init_command
+    |    builtin unset -v _ble_init_attached
+    | +  #builtin unset -v _ble_init_exit
+    |
+    |    # 状態復元
+    |    if [[ $_ble_init_original_IFS_set ]]; then
+    | @@ -1444,18 +1444,17 @@ ble-import -f lib/_package
+    |  if [[ $_ble_init_command ]]; then
+    |    ble/base/sub:"$_ble_init_command"; _ble_init_exit=$?
+    |    [[ $_ble_init_attached ]] && ble-attach
+    | -  ble/util/setexit "$_ble_init_exit"
+    |  else
+    |    ble/base/process-blesh-arguments "$@"
+    | +  _ble_init_exit=$?
+    |  fi
+    |
+    |  #%if measure_load_time
+    |  ble/debug/measure-set-timeformat Total nofork; }
+    |  _ble_init_exit=$?
+    |  echo "ble.sh: $EPOCHREALTIME load end" >&2
+    | -ble/util/setexit "$_ble_init_exit"
+    |  #%end
+    |
+    |  ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
+    | -{ return $? || exit $?; } 2>/dev/null # set -x 対策 #D0930
+    | +{ return "$_ble_init_exit" || exit "$_ble_init_exit"; } 2>/dev/null # set -x 対策 #D0930
+    |  ###############################################################################
+
+  * global: v0.3-master へのパッチ適用の際に気付いた細かい修正 [#D1557]
+    細かい修正が溜まって来たので此処で一つずつ修正を適用してしまう事にする
+
+    * Makefile で run ではなくて tmp を作っていた。ディレクトリ名を変更した時
+      に一緒に変更するのを忘れていた。
+    * ble/function#suppress-stderr に不要なごみ引数 { を渡していた。
+    * C-w M-w の振る舞いを変更したが、blerc に以前の設定に戻す設定例を入れた。
+
+    * IFS の異なる環境に対する対策としてできるだけ _ble_term_IFS を local IFS
+      にコピーする様に変更していたが、この際なので直接 $' \t\n' と記述してい
+      る部分をできるだけ全て $_ble_term_IFS に置き換える事にした。
+    * src/benchmark.sh は独立したファイルとしても使える様にしてきたつもりだっ
+      たが、ble/util/print, ble/util/print-lines を使う様になっていたので、こ
+      れらの関数が定義されていない時には定義する様に修正した
+
 2021-05-19
 
   * README: 様々な機能へのリンクを貼った方が良いのではないかという事 [#D1556]

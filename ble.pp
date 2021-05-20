@@ -1452,5 +1452,5 @@ ble/util/setexit "$_ble_init_exit"
 #%end
 
 ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
-{ return $? || exit $?; } 2>/dev/null # set -x 対策 #D0930
+{ builtin eval "return $? || exit $?"; } 2>/dev/null # set -x 対策 #D0930
 ###############################################################################
