@@ -1848,7 +1848,7 @@ function ble/textmap#update/.wrap {
 ##   @var[in,out] x y
 ##   @var[in,out] _ble_textmap_*
 function ble/textmap#update {
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   local dbeg dend dend0
   ((dbeg=_ble_textmap_dbeg,
     dend=_ble_textmap_dend,

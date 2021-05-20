@@ -1899,7 +1899,7 @@ function ble-edit/eval-IGNOREEOF {
 
 function ble-edit/attach/TRAPWINCH {
   local FUNCNEST=
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   if ((_ble_edit_attached)); then
     if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
       _ble_textmap_pos=()
@@ -4352,13 +4352,13 @@ function ble/edit/word:cword/setup {
   WSET='_a-zA-Z0-9'; WSEP="^$WSET"
 }
 function ble/edit/word:uword/setup {
-  WSEP="${IFS:-$' \t\n'}"; WSET="^$WSEP"
+  WSEP="$_ble_term_IFS"; WSET="^$WSEP"
 }
 function ble/edit/word:sword/setup {
   WSEP=$'|&;()<> \t\n'; WSET="^$WSEP"
 }
 function ble/edit/word:fword/setup {
-  WSEP="/${IFS:-$' \t\n'}"; WSET="^$WSEP"
+  WSEP="/$_ble_term_IFS"; WSET="^$WSEP"
 }
 
 ## @fn ble/edit/word/skip-backward set
@@ -4872,10 +4872,9 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
   if ((_ble_edit_exec_INT!=0)); then
     # エラーが起きている時
 
-    local IFS=$' \t\n'
+    local IFS=$_ble_term_IFS
     local depth=${#FUNCNAME[*]}
     local rex='^(ble-edit/exec:gexec/\.|\<ble/builtin/trap/\.handler)'
-    local IFS=$_ble_term_IFS
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
       ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 ${FUNCNAME[1]} $1" >&2
@@ -4966,7 +4965,7 @@ function ble-edit/exec:gexec/TERM/enter {
 ##
 function ble-edit/exec:gexec/.begin {
   _ble_edit_exec_inside_begin=1
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   _ble_decode_bind_hook=
   _ble_edit_exec_PWD=$PWD
   ble-edit/exec:gexec/TERM/leave
@@ -4981,7 +4980,7 @@ function ble-edit/exec:gexec/.begin {
 }
 function ble-edit/exec:gexec/.end {
   _ble_edit_exec_inside_begin=
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
 
   # Note: builtin trap -- - DEBUG は何故か此処では効かないので
   #   ble-edit/exec:gexec/.end を呼び出す直前に外側で実行する。
@@ -4999,7 +4998,7 @@ function ble-edit/exec:gexec/.end {
 
 function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_inside_prologue=1
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   BASH_COMMAND=$1
   _ble_edit_exec_BASH_COMMAND=$1
   ble-edit/restore-PS1
@@ -5041,7 +5040,7 @@ function ble-edit/exec:gexec/.epilogue {
   fi
   _ble_edit_exec_INT=0
 
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   # Note: builtin trap -- - DEBUG は此処では何故か効かない
   builtin trap -- - DEBUG
 
@@ -7853,7 +7852,7 @@ function ble/widget/command-help/.locate-in-man-bash {
 
   # check if pager is less
   local pager; ble/util/get-pager pager
-  local pager_cmd=${pager%%[$' \t\n']*}
+  local pager_cmd=${pager%%["$_ble_term_IFS"]*}
   [[ ${pager_cmd##*/} == less ]] || return 1
 
   # awk/gawk
@@ -7950,7 +7949,7 @@ function ble/widget/command-help/.type/.resolve-alias {
     ble/util/assign alias_def "alias $command"
     builtin unalias "$command"
     builtin eval "alias_def=${alias_def#*=}" # remove quote
-    literal=${alias_def%%[$' \t\n']*} command= type=
+    literal=${alias_def%%["$_ble_term_IFS"]*} command= type=
     ble/syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
     local ret; ble/syntax:bash/simple-word/eval "$literal"; command=$ret
     ble/util/type type "$command"
@@ -8098,7 +8097,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       [[ $_ble_term_state == internal ]] || return 1
 
       local FUNCNEST=
-      local IFS=$' \t\n'
+      local IFS=$_ble_term_IFS
       local file=$_ble_edit_io_fname2.proc
       if [[ -s $file ]]; then
         local content cmd

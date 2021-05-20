@@ -1973,7 +1973,7 @@ function ble/complete/source:fd {
 ## @fn ble/complete/progcomp/.compvar-initialize-wordbreaks
 ##   @var[out] wordbreaks
 function ble/complete/progcomp/.compvar-initialize-wordbreaks {
-  local ifs=$' \t\n' q=\'\" delim=';&|<>()' glob='[*?' hist='!^{' esc='`$\'
+  local ifs=$_ble_term_IFS q=\'\" delim=';&|<>()' glob='[*?' hist='!^{' esc='`$\'
   local escaped=$ifs$q$delim$glob$hist$esc
   wordbreaks=${COMP_WORDBREAKS//[$escaped]} # =:
 }

@@ -924,10 +924,9 @@ function ble/syntax:text/initialize-vars { :; }
 #
 #------------------------------------------------------------------------------
 
-_ble_syntax_bash_IFS=$' \t\n'
 _ble_syntax_bash_RexSpaces=$'[ \t]+'
-_ble_syntax_bash_RexIFSs="[$_ble_syntax_bash_IFS]+"
-_ble_syntax_bash_RexDelimiter="[$_ble_syntax_bash_IFS;|&<>()]"
+_ble_syntax_bash_RexIFSs="[$_ble_term_IFS]+"
+_ble_syntax_bash_RexDelimiter="[$_ble_term_IFS;|&<>()]"
 _ble_syntax_bash_RexRedirect='((\{[a-zA-Z_][a-zA-Z_0-9]*\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<[-<]?))[ 	]*'
 
 ## @var _ble_syntax_bash_chars[]
@@ -1009,7 +1008,7 @@ _ble_syntax_bash_charsFmt=()
 _ble_syntax_bash_chars_simpleDef=
 _ble_syntax_bash_chars_simpleFmt=
 function ble/syntax:bash/cclass/initialize {
-  local delimiters="$_ble_syntax_bash_IFS;|&()<>"
+  local delimiters="$_ble_term_IFS;|&()<>"
   local expansions="\$\"\`\\'"
   local glob='[*?'
   local tilde='~:'
@@ -2179,7 +2178,7 @@ _ble_syntax_bash_histexpand_RexQuicksubDef=
 _ble_syntax_bash_histexpand_RexEventFmt=
 _ble_syntax_bash_histexpand_RexQuicksubFmt=
 function ble/syntax:bash/check-history-expansion/.initialize {
-  local spaces=$' \t\n' nl=$'\n'
+  local spaces=$_ble_term_IFS nl=$'\n'
   local rex_event='-?[0-9]+|[!#]|[^-$^*%:'$spaces'=?!#;&|<>()]+|\?[^?'$nl']*\??'
   _ble_syntax_bash_histexpand_RexEventDef='^!('$rex_event')'
 
@@ -3032,7 +3031,7 @@ function ble/syntax:bash/check-tilde-expansion {
     ((ctx==CTX_PWORD)) && chars=${chars/'{'/'{}'}
 
     ble/syntax:bash/cclass/update/reorder chars
-    local delimiters="$_ble_syntax_bash_IFS;|&)<>"
+    local delimiters="$_ble_term_IFS;|&)<>"
     local rex='^(~\+|~[^'$chars']*)([^'$delimiters'/:]?)'; [[ $tail =~ $rex ]]
     local str=${BASH_REMATCH[1]}
 
@@ -3269,11 +3268,11 @@ function ble/syntax:bash/starts-with-delimiter-or-redirect {
   [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect || $wbegin -lt 0 && $tail == $'\\\n'* ) && $tail != ['<>']'('* ]]
 }
 function ble/syntax:bash/starts-with-delimiter {
-  [[ $tail == ["$_ble_syntax_bash_IFS;|&<>()"]* && $tail != ['<>']'('* ]]
+  [[ $tail == ["$_ble_term_IFS;|&<>()"]* && $tail != ['<>']'('* ]]
 }
 function ble/syntax:bash/check-word-end/is-delimiter {
   local tail=${text:i}
-  if [[ $tail == [!"$_ble_syntax_bash_IFS;|&<>()"]* ]]; then
+  if [[ $tail == [!"$_ble_term_IFS;|&<>()"]* ]]; then
     return 1
   elif [[ $tail == ['<>']* ]]; then
     ble/syntax/parse/set-lookahead 2
@@ -4099,7 +4098,7 @@ function ble/syntax:bash/ctx-values/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  [[ ${text:i:1} == [!"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
+  [[ ${text:i:1} == [!"$_ble_term_IFS;|&<>()"] ]] && return 1
 
   local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
   local word=${text:wbegin:wlen}
@@ -4196,7 +4195,7 @@ function ble/syntax:bash/ctx-conditions/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  [[ ${text:i:1} == [!"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
+  [[ ${text:i:1} == [!"$_ble_term_IFS;|&<>()"] ]] && return 1
 
   local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
   local word=${text:wbegin:wlen}
@@ -4433,7 +4432,7 @@ function ble/syntax:bash/ctx-heredoc-word/remove-quotes {
 ##   @var[out] escaped
 function ble/syntax:bash/ctx-heredoc-word/escape-delimiter {
   local ret=$1
-  if [[ $ret == *[\\\'$_ble_syntax_bash_IFS$_ble_term_FS]* ]]; then
+  if [[ $ret == *[\\\'$_ble_term_IFS$_ble_term_FS]* ]]; then
     local a b fs=$_ble_term_FS
     a=\\   ; b="\\$a"; ret="${ret//"$a"/$b}"
     a=\'   ; b="\\$a"; ret="${ret//"$a"/$b}"

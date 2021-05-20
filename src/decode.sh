@@ -672,7 +672,7 @@ function ble-decode/.hook {
     local buflen=${#_ble_decode_input_buffer[@]}
     if ((buflen%257==0&&buflen>=2000)); then
       # その場で標準入力を読み切る
-      local IFS=$' \t\n'
+      local IFS=$_ble_term_IFS
       ble-decode/PROLOGUE
       local char=${_ble_decode_input_buffer[buflen-1]}
       if ((_ble_bash<40000||char==0xC0||char==0xDF)); then
@@ -701,7 +701,7 @@ function ble-decode/.hook {
   # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
   [[ $_ble_bash_options_adjusted ]] && set +v || :
 
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   ble-decode/PROLOGUE
 
   # abort #D0998
@@ -3314,7 +3314,7 @@ function ble/builtin/bind/option:m {
 function ble/builtin/bind/.decompose-pair {
   local LC_ALL= LC_CTYPE=C
   local ret; ble/string#trim "$1"
-  local spec=$ret ifs=$' \t\n' q=\' Q="'\''"
+  local spec=$ret ifs=$_ble_term_IFS q=\' Q="'\''"
   keyseq= value=
 
   # bind '' と指定した時は無視する
@@ -3437,7 +3437,7 @@ function ble/builtin/bind/option:x {
   fi
 
   if [[ $value == \"* ]]; then
-    local ifs=$' \t\n'
+    local ifs=$_ble_term_IFS
     local rex='^"(([^\"]|\\.)*)"'
     if ! [[ $value =~ $rex ]]; then
       ble/util/print "ble.sh (bind): no closing '\"' in spec:'${1//$q/$Q}'" >&2
@@ -3569,7 +3569,7 @@ function ble/builtin/bind/option:- {
   local rex='^(([^\"'$q$ifs']|"([^\"]|\\.)*"|'$q'([^\'$q']|\\.)*'$q'|\\.|['$ifs']+[^#'$_ifs'])*)['$ifs']+#'
   [[ $arg =~ $rex ]] && arg=${BASH_REMATCH[1]}
 
-  local ifs=$' \t\n'
+  local ifs=$_ble_term_IFS
   if [[ $arg == 'set'["$ifs"]* ]]; then
     if [[ $_ble_decode_bind_state != none ]]; then
       local variable= value= rex=$'^set[ \t]+([^ \t]+)[ \t]+([^ \t].*)$'

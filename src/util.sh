@@ -484,7 +484,7 @@ elif ((_ble_bash>=30100)); then
     # Note (workaround Bash 3.1/3.2 bug): #D1198
     #   何故か a=("${@:2}") は IFS に特別な物が設定されていると
     #   "${*:2}" と同じ振る舞いになってしまう。
-    IFS=$' \t\n' builtin eval "$1+=(\"\${@:2}\")"
+    IFS=$_ble_term_IFS builtin eval "$1+=(\"\${@:2}\")"
   }
 else
   function ble/array#push {
@@ -728,10 +728,10 @@ function ble/string#split {
 }
 function ble/string#split-words {
   if [[ -o noglob ]]; then
-    IFS=$' \t\n' builtin eval "$1=(\${*:2})"
+    IFS=$_ble_term_IFS builtin eval "$1=(\${*:2})"
   else
     set -f
-    IFS=$' \t\n' builtin eval "$1=(\${*:2})"
+    IFS=$_ble_term_IFS builtin eval "$1=(\${*:2})"
     set +f
   fi
 }
@@ -4300,7 +4300,7 @@ if ((_ble_bash>=40000)); then
   ##     何も実行しなかった時に失敗 (1) を返します。
   ##
   function ble/util/idle.do {
-    local IFS=$' \t\n'
+    local IFS=$_ble_term_IFS
     ble/util/idle/IS_IDLE || return 1
     ((${#_ble_util_idle_task[@]}==0)) && return 1
     ble/util/buffer.flush >&2
@@ -4612,14 +4612,6 @@ function ble/term/DA2R.hook {
   esac
 }
 function ble/term/.initialize {
-  # Constants (init-term.sh に失敗すると大変なので此処に書く)
-  _ble_term_nl=$'\n'
-  _ble_term_FS=$'\034'
-  _ble_term_SOH=$'\001'
-  _ble_term_DEL=$'\177'
-  _ble_term_IFS=$' \t\n'
-  _ble_term_CR=$'\r'
-
   if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
     source "$_ble_base/lib/init-term.sh"
   else

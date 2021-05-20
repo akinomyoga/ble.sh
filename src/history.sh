@@ -366,7 +366,7 @@ else
     #   270ms for 16437 entries (generate-source の時間は除く)
     # * プロセス置換×source は bash-3 で動かない。eval に変更する。
     local result=$(ble/history:bash/load/.generate-source)
-    local IFS=$' \t\n'
+    local IFS=$_ble_term_IFS
     if [[ $opt_append ]]; then
       if ((_ble_bash>=30100)); then
         builtin eval -- "_ble_history+=($result)"

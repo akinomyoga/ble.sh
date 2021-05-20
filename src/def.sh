@@ -1,5 +1,13 @@
 # -*- mode: sh; mode: sh-bash -*-
 
+# Constants (様々な箇所から使うので此処に置く)
+_ble_term_nl=$'\n'
+_ble_term_FS=$'\034'
+_ble_term_SOH=$'\001'
+_ble_term_DEL=$'\177'
+_ble_term_IFS=$' \t\n'
+_ble_term_CR=$'\r'
+
 function blehook/declare {
   local name=$1
   builtin eval "_ble_hook_h_$name=()"

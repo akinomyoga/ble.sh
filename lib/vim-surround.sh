@@ -170,7 +170,7 @@ function ble/lib/vim-surround.sh/load-template {
       tag=${tag%'>'}
       _ble_lib_vim_surround_previous_tag=$tag
     fi
-    local end_tag=${tag%%[$' \t\n']*}
+    local end_tag=${tag%%["$_ble_term_IFS"]*}
     template="<$tag>"$'\r'"</$end_tag>" ;;
   ('(') template=$'( \r )' ;;
   ('[') template=$'[ \r ]' ;;

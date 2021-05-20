@@ -1208,7 +1208,7 @@ function ble-attach {
   ble/util/buffer.flush >&2
 
   # keymap 初期化
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   ble/decode/initialize # 7ms
   ble/decode/reset-default-keymap # 264ms (keymap/vi.sh)
   if ! ble/decode/attach; then # 53ms
@@ -1272,7 +1272,7 @@ function ble/base/unload-for-reload {
 }
 function ble/base/unload {
   ble/util/is-running-in-subshell && return 1
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   ble/term/stty/TRAPEXIT
   ble/term/leave

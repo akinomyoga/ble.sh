@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if ! type ble/util/print &>/dev/null; then
+  function ble/util/print { builtin printf '%s\n' "$1"; }
+  function ble/util/print-lines { builtin printf '%s\n' "$@"; }
+fi
+
 function ble-measure/.loop {
   builtin eval "function _target { $2; }"
   local _i _n=$1

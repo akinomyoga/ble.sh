@@ -33,7 +33,7 @@ function ble/keymap:emacs/is-command-white {
     return 0
   elif [[ $1 == ble/widget/* ]]; then
     local IFS=$_ble_term_IFS
-    local cmd=${1#ble/widget/}; cmd=${cmd%%[$' \t\n']*}
+    local cmd=${1#ble/widget/}; cmd=${cmd%%["$_ble_term_IFS"]*}
     [[ $cmd == emacs/* || " ${_ble_keymap_emacs_white_list[*]} " == *" $cmd "*  ]] && return 0
   fi
   return 1

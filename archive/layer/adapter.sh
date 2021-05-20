@@ -200,7 +200,7 @@ function ble/syntax-highlight+default/type {
 }
 
 function ble/syntax-highlight+default {
-  local rex IFS=$' \t\n'
+  local rex IFS=$_ble_term_IFS
   local text=$1
   local i iN=${#text} w
   local mode=cmd

@@ -231,7 +231,7 @@ function ble/keymap:vi/imap/is-command-white {
     return 0
   elif [[ $1 == ble/widget/* ]]; then
     local IFS=$_ble_term_IFS
-    local cmd=${1#ble/widget/}; cmd=${cmd%%[$' \t\n']*}
+    local cmd=${1#ble/widget/}; cmd=${cmd%%["$_ble_term_IFS"]*}
     [[ $cmd == vi_imap/* || " ${_ble_keymap_vi_imap_white_list[*]} " == *" $cmd "*  ]] && return 0
   fi
   return 1
@@ -892,7 +892,7 @@ function ble/keymap:vi/register#set-edit {
   local reg=$1 type=$2 content=$3
   if [[ $reg == '' || $reg == 34 ]]; then
     local IFS=$_ble_term_IFS
-    local widget=${WIDGET%%[$' \t\n']*}
+    local widget=${WIDGET%%["$_ble_term_IFS"]*}
     if [[ $content == *$'\n'* || " $widget " == " ${_ble_keymap_vi_register_49_widget_list[*]} " ]]; then
       local n
       for ((n=9;n>=2;n--)); do
@@ -3771,7 +3771,7 @@ function ble/widget/vi_nmap/kill-forward-line-and-insert {
 
 function ble/widget/vi-command/forward-word.impl {
   local arg=$1 flag=$2 reg=$3 rex_word=$4
-  local ifs=$' \t\n'
+  local ifs=$_ble_term_IFS
   if [[ $flag == c && ${_ble_edit_str:_ble_edit_ind:1} != [$ifs] ]]; then
     # Note: cw cW は特別な動作
     #   http://vim-jp.org/vimdoc-ja/change.html#cw
@@ -3795,7 +3795,7 @@ function ble/widget/vi-command/forward-word.impl {
 }
 function ble/widget/vi-command/forward-word-end.impl {
   local arg=$1 flag=$2 reg=$3 rex_word=$4 opts=$5
-  local IFS=$' \t\n'
+  local IFS=$_ble_term_IFS
   local rex="^([$IFS]*($rex_word)?){0,$arg}" # 単語末端に止まる。空行には止まらない
   local offset=1; [[ :$opts: == *:allow_here:* ]] && offset=0
   [[ ${_ble_edit_str:_ble_edit_ind+offset} =~ $rex ]]
@@ -4455,7 +4455,7 @@ function ble/keymap:vi/text-object/word.extend-backward {
 
 function ble/keymap:vi/text-object/word.impl {
   local arg=$1 flag=$2 reg=$3 type=$4
-  local space=$' \t' nl=$'\n' ifs=$' \t\n'
+  local space=$' \t' nl=$'\n' ifs=$_ble_term_IFS
   ((arg==0)) && return 0
 
   local rex_word
@@ -4700,7 +4700,7 @@ function ble/keymap:vi/text-object/block.impl {
 ##   @var[in] beg
 ##   @var[out] end
 function ble/keymap:vi/text-object:tag/.find-end-tag {
-  local ifs=$' \t\n' ret rex
+  local ifs=$_ble_term_IFS ret rex
 
   rex="^<([^$ifs/>!]+)"; [[ ${_ble_edit_str:beg} =~ $rex ]] || return 1
   ble/string#escape-for-extended-regex "${BASH_REMATCH[1]}"; local tagname=$ret
@@ -4733,7 +4733,7 @@ function ble/keymap:vi/text-object/tag.impl {
     fi
   fi
 
-  local ifs=$' \t\n'
+  local ifs=$_ble_term_IFS
 
   local beg=$pivot count=$arg
   rex="<([^$ifs/>!]+([$ifs]+([^>]*[^/])?)?|/[^>]*)>\$"
@@ -4855,7 +4855,7 @@ function ble/keymap:vi/text-object/sentence.impl {
 
   # at は後方 (forward) に空白を確保できなければ前方 (backward) に空白を確保する。
   if [[ $type != i* && ! $is_interval ]]; then
-    local ifs=$' \t\n'
+    local ifs=$_ble_term_IFS
     if ((end)) && [[ ${_ble_edit_str:end-1:1} != ["$ifs"] ]]; then
       rex="^.*(^$LF?|$LF$LF|[.!?][])'\"]*([ $HT$LF]))([ $HT$LF]*)\$"
       if [[ ${_ble_edit_str::beg} =~ $rex ]]; then
