@@ -105,6 +105,7 @@
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
 - main: work around sourcing `ble.sh` inside subshells `#D1554` bbc2a90
   - main: fix exit status for `bash ble.sh --test` (fixup bbc2a90) `#D1558` 641238a
+  - main: fix reloading after ble-update (fixup bbc2a90) `#D1558` 0000000
 - main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
 - Makefile: create `run` directory instead of `tmp` `#D1557` 9bdb37d
 - main: fix the workaround for `set -e` `#D1564` 0000000

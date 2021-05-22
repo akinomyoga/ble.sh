@@ -999,7 +999,7 @@ function ble-update/.make {
   fi
 }
 function ble-update/.reload {
-  local ext=$?
+  local ext=$1
   if [[ $ext -eq 0 || $ext -eq 6 && $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]]; then
     if [[ ! -e $_ble_base/ble.sh ]]; then
       ble/util/print "ble-update: new ble.sh not found at '$_ble_base/ble.sh'." >&2
