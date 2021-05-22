@@ -38,7 +38,7 @@
 - main: support `ble` `#D1544` 750ca38
 - main (`ble-update`): support package updates and `sudo` updates (motivated by huresche, oc1024) `#D1548` 0bc2660
   - main (`ble-update`): fix help message (contributed by NoahGorny) 50288bf
-- syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 0000000
+- syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 4df29a6
 
 ## Changes
 
@@ -70,11 +70,11 @@
 - main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
 - prompt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1541` 24a88ce
 - prompt: adjust behavior of `LINENO` and prompt sequence `\#` (reported by tycho-kirchner) `#D1542` 8b0257e
-  - prompt: update `PS0` between multiple commands (motivated by tycho-kirchner) `#D1560` 000000
+  - prompt: update `PS0` between multiple commands (motivated by tycho-kirchner) `#D1560` 8f29203
 - edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
-  - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 0000000
+  - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
 
 ## Fixes
 
@@ -104,9 +104,10 @@
 - bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
 - main: work around sourcing `ble.sh` inside subshells `#D1554` bbc2a90
-  - main: fix exit status for `bash ble.sh --test` (fixup bbc2a90) `#D1558` 0000000
+  - main: fix exit status for `bash ble.sh --test` (fixup bbc2a90) `#D1558` 641238a
 - main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
-- Makefile: create `run` directory instead of `tmp` `#D1557` 0000000
+- Makefile: create `run` directory instead of `tmp` `#D1557` 9bdb37d
+- main: fix the workaround for `set -e` `#D1564` 0000000
 
 ## Compatibility
 
@@ -118,7 +119,7 @@
 - complete: work around `bash-completion` bugs (reported by oc1024) `#D1533` 9d4ad56
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
 - util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
-- global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 0000000
+- global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 
 ## Internal changes and fixes
 
@@ -141,7 +142,7 @@
   - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
-- global: use `_ble_term_IFS` `#D1557` 0000000
+- global: use `_ble_term_IFS` `#D1557` d23ad3c
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

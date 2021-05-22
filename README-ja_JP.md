@@ -27,17 +27,17 @@
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
 
 ```bash
-# インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
-
-git clone --recursive https://github.com/akinomyoga/ble.sh.git
-make -C ble.sh install PREFIX=~/.local
-echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
-
 # 簡単お試し (インストールせずにお試しいただけます)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh
 source ble.sh/out/ble.sh
+
+# インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh install PREFIX=~/.local
+echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 
 # 更新 (ble.sh をロードした状態で)
 

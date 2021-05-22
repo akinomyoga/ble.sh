@@ -1446,9 +1446,10 @@ function blehook {
       ble/array#push print "_ble_hook_h_$arg"
     elif [[ $arg =~ $rex2 ]]; then
       local name=${BASH_REMATCH[1]}
-      if builtin eval "[[ ! \${_ble_hook_c_$name+set} ]]"; then
+      local var_counter=_ble_hook_c_$name
+      if [[ ! ${!var_counter+set} ]]; then
         if [[ ${BASH_REMATCH[2]} == :* ]]; then
-          ((_ble_hook_c_$name=0))
+          (($var_counter=0))
         else
           ble/util/print "blehook: hook \"$name\" is not defined." >&2
           flags=E$flags

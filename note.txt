@@ -1272,28 +1272,21 @@ bash_tips
     bug-bash, third-party bugs
 -------------------------------------------------------------------------------
 
+2021-05-21
+
+  * bash: fix a problem that "set -e; builtin eval false || true" exits the shell
+    false || true # OK
+    eval false || true # OK
+    builtine eval false || true # 駄目
+
 2021-05-20
 
   * grc: -F を指定したら正規表現の種類が競合しているとのエラーになる
-
-2021-05-16
-
-  * complete: tar xf groff-1.19.2.ta[TAB] でエラーが発生する
-
-    と思ったらこれは bash-completion だった。
 
 2021-05-06
 
   * bash: complete -p の -F はやはり quote するべきなのではないか。
     $var となっている場合、!! となっている場合、{1..10} となっている場合。
-
-  * bash-completion
-    https://github.com/akinomyoga/ble.sh/issues/97
-    https://github.com/scop/bash-completion/pull/492
-    Ref #D1533
-
-    python のテストを自分で実装したりしなければならず面倒である。
-    実装した。PR を update した。これは無効の反応待ち状態である。
 
   * bug-bash localvar_inherit: dynamic variables の性質も継承されるのは意図的か。
     Ref #D1532
@@ -1383,6 +1376,24 @@ bash_tips
 0.6 ErrorMsg
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
+
+2021-05-23
+
+  * main: BASH_XTRACEFD による出力の抑制?
+
+    | 更に set -x についてもまた駄目になっているかもしれない。→試してみた所
+    | attach 部分で無駄なメッセージが沢山表示される様になっていたが実行自体には
+    | 問題はない様である。然し、BASH_XTRACEFD を使った方が良いのではないか。こ
+    | れについてはまた別の機会について考える事にする。
+
+    現在の手法だと必要なエラーまで抑制してしまうし、標準エラー出力を抑制する為
+    に結構無理な事をしている。BASH_XTRACEFD を使って実装した方が綺麗になるので
+    はないか。然し、また色々と実装上の不都合が生じるかもしれないので取り敢えず
+    後でゆっくり対処する事にする。
+
+2021-05-21
+
+  * progcolor: 取り敢えず builtin から始めるのが良いのではないかという気がする。
 
 2021-05-19
 
@@ -4543,6 +4554,41 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-05-22
+
+  * main: set -e の時にロードできない [#D1564]
+
+    またロードできなくなっている。これは本当は定期的にテストしなければならない
+    事の気がする。
+
+    * adjust-builtins で失敗している。alias 定義を読み取る時の alias ... と、
+      alias を削除する時の unalias に於いて存在しない alias を取り扱おうとする
+      と exit status が 1 になって駄目の様である。
+
+    * prompt attach の際にも問題が生じていた。二箇所条件の書き方を変更した。
+
+      * blehook でも失敗している。中に於ける if builtin eval ... ; then ... が
+        駄目の様だ。試してみると
+
+        false || true # OK
+        eval false || true # OK
+        builtine eval false || true # 駄目
+
+        という具合の動作になっている。bash-4.4, dev で確認した。3.0, 3.2 でも同
+        様の振る舞いである。これは後でバグ報告に持っていく事にする。
+
+        問題の箇所は eval を使わない形式に書き換える事にした。
+
+    これでまたロードできる様になった。本当は blehook, ble-bind その他のインター
+    フェイスについても set -e に対する対策をするべきの気もするが取り敢えず何も
+    設定しない限りに於いては動くので良しとする事にする。そもそも set -e で対話
+    シェルを使おうとする事自体があり得ない想定なので余り深く考えなくて良い。
+
+  * 2021-05-16 complete: tar xf groff-1.19.2.ta[TAB] でエラーが発生する [#D1563]
+
+    と思ったらこれは bash-completion だった。また確認してみたところ、これは5週
+    間前に既に修正されていた様だ。
+
 2021-05-20
 
   * 2021-05-13 tmux-resurrect により vi_imap が empty になる問題 (reported by RakibFiha) [#D1562]
@@ -5613,6 +5659,14 @@ bash_tips
     bash-completion で修正を掛けるのは面倒だし時間がかかりそう。更に、各種
     distribution に波及する迄に更に時間もかかりそうなので取り敢えず暫定的に、
     ble.sh の側で bash-completion の実装を上書きする事にしてしまう。
+
+    * 2021-05-06 bash-completion
+      https://github.com/akinomyoga/ble.sh/issues/97
+      https://github.com/scop/bash-completion/pull/492
+      Ref #D1533
+
+      python のテストを自分で実装したりしなければならず面倒である。
+      実装した。PR を update した。これは向こうの反応待ち状態である。
 
   * 2021-04-06 localvar_inherit で動かなくなっている  [#D1532]
 

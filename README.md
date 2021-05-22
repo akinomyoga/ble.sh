@@ -28,17 +28,17 @@ For detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-fr
 [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
 
 ```bash
+# TRIAL without installation
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh
+source ble.sh/out/ble.sh
+
 # Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
-
-# Quick TRIAL without installation
-
-git clone --recursive https://github.com/akinomyoga/ble.sh.git
-make -C ble.sh
-source ble.sh/out/ble.sh
 
 # UPDATE (in a ble.sh session)
 

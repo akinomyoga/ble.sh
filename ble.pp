@@ -249,12 +249,12 @@ function ble/base/adjust-builtin-wrappers-1 {
 
     builtin local defs
     ble/base/adjust-builtin-wrappers/.assign '
-      \builtin declare -f "${builtins1[@]}"
-      \builtin alias "${builtins1[@]}" "${keywords1[@]}"'
+      \builtin declare -f "${builtins1[@]}" || ((1))
+      \builtin alias "${builtins1[@]}" "${keywords1[@]}" || ((1))' # set -e 対策
     _ble_bash_builtins_save=$defs
   fi
   builtin unset -f "${builtins1[@]}"
-  builtin unalias "${builtins1[@]}" "${keywords1[@]}"
+  builtin unalias "${builtins1[@]}" "${keywords1[@]}" || ((1)) # set -e 対策
   ble/base/unset-POSIXLY_CORRECT
 } 2>/dev/null
 function ble/base/adjust-builtin-wrappers-2 {
@@ -267,12 +267,12 @@ function ble/base/adjust-builtin-wrappers-2 {
 
   # function :, alias : の保存
   local defs
-  ble/base/adjust-builtin-wrappers/.assign 'LC_ALL= LC_MESSAGES=C builtin type :; alias :'
+  ble/base/adjust-builtin-wrappers/.assign 'LC_ALL= LC_MESSAGES=C builtin type :; alias :' || ((1)) # set -e 対策
   defs=${defs#$': is a function\n'}
   _ble_bash_builtins_save=$_ble_bash_builtins_save$'\n'$defs
 
   builtin unset -f :
-  builtin unalias :
+  builtin unalias : || ((1)) # set -e 対策
 } 2>/dev/null
 function ble/base/restore-builtin-wrappers {
   if [[ $_ble_bash_builtins_adjusted ]]; then
@@ -286,7 +286,7 @@ function ble/base/restore-builtin-wrappers {
 } 2>/dev/null # set -x 対策
 
 function ble/base/adjust-bash-options {
-  [[ $_ble_bash_options_adjusted ]] && return 1 || ((1))
+  [[ $_ble_bash_options_adjusted ]] && return 1 || ((1)) # set -e 対策
   _ble_bash_options_adjusted=1
 
   # Note: set -e 対策が最初でないと && chaining で失敗する
@@ -1233,7 +1233,7 @@ function ble-attach {
     esac
   fi
 
-  [[ $_ble_attached ]] && return 0
+  [[ ! $_ble_attached ]] || return 0
   _ble_attached=1
   BLE_ATTACHED=1
 
@@ -1354,17 +1354,17 @@ function ble/base/attach-from-PROMPT_COMMAND {
       local prompt_command=$1 lambda=$2
 
       # 待避していた内容を復元・実行
-      [[ $PROMPT_COMMAND != "$lambda" ]] && local PROMPT_COMMAND
+      [[ $PROMPT_COMMAND == "$lambda" ]] || local PROMPT_COMMAND
       PROMPT_COMMAND=$prompt_command
       local ble_base_attach_from_prompt_command=processing
       ble/prompt/update/.eval-prompt_command 2>&3
       ble/util/unlocal ble_base_attach_from_prompt_command
-      blehook PRECMD-="$lambda"
+      blehook PRECMD-="$lambda" || ((1)) # set -e 対策
 
       # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
       #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ
       #   イレクトにより stdout.off の効果が巻き戻されるのを防ぐ為。
-      [[ $ble_base_attach_from_prompt_command == processing ]] && return
+      [[ $ble_base_attach_from_prompt_command != processing ]] || return
     fi
 
     # 既に attach 状態の時は処理はスキップ
