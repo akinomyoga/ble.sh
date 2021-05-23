@@ -4626,6 +4626,10 @@ bash_tips
 
 2021-05-23
 
+  * contrib/git-prompt.sh の変数達は localvar_inherit で駄目なのではないか [#D1566]
+    というか他にも同様の変数宣言の仕方をしている箇所は色々ある気がする。
+    →検索して修正した。
+
   * keymap/vi: vim モード表示に関して (reported by huresche) [#D1565]
     https://github.com/akinomyoga/ble.sh/issues/114
 

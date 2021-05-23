@@ -141,7 +141,7 @@ ble/test ble/util/setexit 255 exit=255
   }
 
   function f1 {
-    local "${VARNAMES[@]}"
+    local "${VARNAMES[@]/%/=}"
 
     name=1 x=2 y=3 count=4 data=(aa bb cc dd)
     print-status

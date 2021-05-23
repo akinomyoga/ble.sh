@@ -146,6 +146,7 @@
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
 - global: use `_ble_term_IFS` `#D1557` d23ad3c
+- global: work around `localvar_inherit` for varname-list init `#D1566` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

@@ -5117,7 +5117,7 @@ function ble/syntax/highlight {
   ble/array#push vars "${_ble_highlight_layer_plain_VARNAMES[@]}"
   ble/array#push vars "${_ble_highlight_layer_syntax_VARNAMES[@]}"
 
-  local "${vars[@]}"
+  local "${vars[@]/%/=}"
   if [[ $cache_prefix ]] && ((${cache_prefix}_INITIALIZED++)); then
     ble/util/restore-vars "$cache_prefix" "${vars[@]}"
 
@@ -6976,7 +6976,7 @@ function ble/syntax/progcolor {
 
   # コマンド名に対しては既定の着色を実行
   if [[ ${tree_words[0]} ]]; then
-    local "${_ble_syntax_progcolor_vars[@]}"
+    local "${_ble_syntax_progcolor_vars[@]/%/=}"
     ble/syntax/progcolor/load-word-data "${tree_words[0]}"
     [[ $wattr == - ]] && ble/syntax/progcolor/word:default
   fi
