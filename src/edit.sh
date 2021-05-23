@@ -1342,6 +1342,7 @@ function ble/edit/info/hide {
   ble/edit/info/.clear-content
 }
 function ble/edit/info/reveal {
+  blehook/invoke info_reveal
   if [[ $_ble_edit_info_scene == default ]]; then
     ble/edit/info/.render-content "${_ble_edit_info_default[@]}"
   fi

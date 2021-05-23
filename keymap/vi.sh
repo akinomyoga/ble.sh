@@ -371,21 +371,42 @@ bleopt/declare -v keymap_vi_mode_name_visual    'VISUAL'
 bleopt/declare -v keymap_vi_mode_name_select    'SELECT'
 bleopt/declare -v keymap_vi_mode_name_linewise  'LINE'
 bleopt/declare -v keymap_vi_mode_name_blockwise 'BLOCK'
+function bleopt/check:keymap_vi_mode_name_insert    { ble/keymap:vi/update-mode-name; }
+function bleopt/check:keymap_vi_mode_name_replace   { ble/keymap:vi/update-mode-name; }
+function bleopt/check:keymap_vi_mode_name_vreplace  { ble/keymap:vi/update-mode-name; }
+function bleopt/check:keymap_vi_mode_name_visual    { ble/keymap:vi/update-mode-name; }
+function bleopt/check:keymap_vi_mode_name_select    { ble/keymap:vi/update-mode-name; }
+function bleopt/check:keymap_vi_mode_name_linewise  { ble/keymap:vi/update-mode-name; }
+function bleopt/check:keymap_vi_mode_name_blockwise { ble/keymap:vi/update-mode-name; }
+
+
+## @fn ble/keymap:vi/script/get-vi-keymap
+##   現在の vi キーマップ名 (vi_?map) を取得します。
+##   もし現在 vi キーマップにない場合には失敗します。
+function ble/keymap:vi/script/get-vi-keymap {
+  local i=${#_ble_decode_keymap_stack[@]}
+
+  keymap=$_ble_decode_keymap
+  while [[ $keymap != vi_?map || $keymap == emacs ]]; do
+    ((i--)) || return 1
+    keymap=${_ble_decode_keymap_stack[i]}
+  done
+  [[ $keymap == vi_?map ]]
+}
 
 ## @fn ble/keymap:vi/script/get-mode
 ##   @var[out] mode
 function ble/keymap:vi/script/get-mode {
   mode=
 
-  local kmap=$_ble_decode_keymap
-  [[ $kmap == auto_complete ]] && kmap=vi_imap
+  local keymap; ble/keymap:vi/script/get-vi-keymap
 
   # /[iR^R]?/
-  if [[ $_ble_keymap_vi_single_command || $kmap == vi_imap ]]; then
+  if [[ $_ble_keymap_vi_single_command || $keymap == vi_imap ]]; then
     local overwrite=
-    if [[ $kmap == vi_imap ]]; then
+    if [[ $keymap == vi_imap ]]; then
       overwrite=$_ble_edit_overwrite_mode
-    elif [[ $kmap == vi_[noxs]map ]]; then
+    elif [[ $keymap == vi_[noxs]map ]]; then
       overwrite=$_ble_keymap_vi_single_command_overwrite
     fi
     case $overwrite in
@@ -396,7 +417,7 @@ function ble/keymap:vi/script/get-mode {
   fi
 
   # /[nvV^VsS^S]?/
-  case $kmap:${_ble_edit_mark_active%+} in
+  case $keymap:${_ble_edit_mark_active%+} in
   (vi_xmap:vi_line) mode=$mode'V' ;;
   (vi_xmap:vi_block)mode=$mode$'\x16' ;; # C-v
   (vi_xmap:*)       mode=$mode'v' ;;
@@ -410,19 +431,34 @@ function ble/keymap:vi/script/get-mode {
   esac
 }
 
+_ble_keymap_vi_mode_name_dirty=
+function ble/keymap:vi/info_reveal.hook {
+  [[ $_ble_keymap_vi_mode_name_dirty ]] || return 0
+  _ble_keymap_vi_mode_name_dirty=
+  ble/keymap:vi/update-mode-name
+}
+blehook info_reveal+=ble/keymap:vi/info_reveal.hook
+
 function ble/keymap:vi/update-mode-name {
-  local kmap=$_ble_decode_keymap cursor=
-  if [[ $kmap == vi_imap ]]; then
+  if ! [[ $_ble_attached && $_ble_edit_layout == normal ]]; then
+    _ble_keymap_vi_mode_name_dirty=1
+    return 0
+  fi
+
+  local keymap
+  ble/keymap:vi/script/get-vi-keymap || return 0
+
+  if [[ $keymap == vi_imap ]]; then
     ble/util/buffer "$bleopt_term_vi_imap"
-  elif [[ $kmap == vi_nmap ]]; then
+  elif [[ $keymap == vi_nmap ]]; then
     ble/util/buffer "$bleopt_term_vi_nmap"
-  elif [[ $kmap == vi_xmap ]]; then
+  elif [[ $keymap == vi_xmap ]]; then
     ble/util/buffer "$bleopt_term_vi_xmap"
-  elif [[ $kmap == vi_smap ]]; then
+  elif [[ $keymap == vi_smap ]]; then
     ble/util/buffer "$bleopt_term_vi_smap"
-  elif [[ $kmap == vi_omap ]]; then
+  elif [[ $keymap == vi_omap ]]; then
     ble/util/buffer "$bleopt_term_vi_omap"
-  elif [[ $kmap == vi_cmap ]]; then
+  elif [[ $keymap == vi_cmap ]]; then
     ble/edit/info/default text ''
     ble/util/buffer "$bleopt_term_vi_cmap"
     return 0
@@ -435,11 +471,11 @@ function ble/keymap:vi/update-mode-name {
   local name=
   if [[ $bleopt_keymap_vi_mode_show ]]; then
     local show= overwrite=
-    if [[ $kmap == vi_imap ]]; then
+    if [[ $keymap == vi_imap ]]; then
       show=1 overwrite=$_ble_edit_overwrite_mode
-    elif [[ $_ble_keymap_vi_single_command && ( $kmap == vi_nmap || $kmap == vi_omap ) ]]; then
+    elif [[ $_ble_keymap_vi_single_command && ( $keymap == vi_nmap || $keymap == vi_omap ) ]]; then
       show=1 overwrite=$_ble_keymap_vi_single_command_overwrite
-    elif [[ $kmap == vi_[xs]map ]]; then
+    elif [[ $keymap == vi_[xs]map ]]; then
       show=x overwrite=$_ble_keymap_vi_single_command_overwrite
     else
       name=$bleopt_keymap_vi_mode_string_nmap
@@ -462,7 +498,7 @@ function ble/keymap:vi/update-mode-name {
     if [[ $show == x ]]; then
       local mark_type=${_ble_edit_mark_active%+}
       local visual_name=$bleopt_keymap_vi_mode_name_visual
-      [[ $kmap == vi_smap ]] && visual_name=$bleopt_keymap_vi_mode_name_select
+      [[ $keymap == vi_smap ]] && visual_name=$bleopt_keymap_vi_mode_name_select
       if [[ $mark_type == vi_line ]]; then
         visual_name=$visual_name' '$bleopt_keymap_vi_mode_name_linewise
       elif [[ $mark_type == vi_block ]]; then

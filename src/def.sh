@@ -52,6 +52,7 @@ blehook/declare PREEXEC
 blehook/declare POSTEXEC
 blehook/declare widget_bell
 blehook/declare textarea_render_defer
+blehook/declare info_reveal
 
 # deprecated function
 function ble-edit/prompt/print { ble/prompt/print "$@"; }

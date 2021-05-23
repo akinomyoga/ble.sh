@@ -75,6 +75,7 @@
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
+- keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 0000000
 
 ## Fixes
 
@@ -105,10 +106,10 @@
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
 - main: work around sourcing `ble.sh` inside subshells `#D1554` bbc2a90
   - main: fix exit status for `bash ble.sh --test` (fixup bbc2a90) `#D1558` 641238a
-  - main: fix reloading after ble-update (fixup bbc2a90) `#D1558` 0000000
+  - main: fix reloading after ble-update (fixup bbc2a90) (fixed by oc1024) `#D1558` 9372670
 - main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
 - Makefile: create `run` directory instead of `tmp` `#D1557` 9bdb37d
-- main: fix the workaround for `set -e` `#D1564` 0000000
+- main: fix the workaround for `set -e` `#D1564` ab2f70b
 
 ## Compatibility
 
