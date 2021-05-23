@@ -1782,7 +1782,7 @@ function ble/complete/source:glob {
 ##   補完候補のデータを一つの配列に纏めたもの。
 ##   要素を使用する際は以下の様に変数に展開して使う。
 ##
-##     local "${_ble_complete_cand_varnames[@]}"
+##     local "${_ble_complete_cand_varnames[@]/%/=}"
 ##     ble/complete/cand/unpack "${cand_pack[0]}"
 ##
 ##   先頭に ACTION が格納されているので
@@ -2457,7 +2457,7 @@ function ble/complete/menu/construct-single-entry {
   fi
 
   if [[ :$opts: != *:use_vars:* ]]; then
-    local "${_ble_complete_cand_varnames[@]}"
+    local "${_ble_complete_cand_varnames[@]/%/=}"
     ble/complete/cand/unpack "$1"
   fi
 
@@ -2812,7 +2812,7 @@ function ble/complete/menu/style:desc/construct-page {
     ((x+=pad+${#desc_prefix}))
 
     # 説明表示
-    local "${_ble_complete_cand_varnames[@]}"
+    local "${_ble_complete_cand_varnames[@]/%/=}"
     ble/complete/cand/unpack "$pack"
     local desc="(action: $ACTION)"
     ble/function#try ble/complete/action:"$ACTION"/get-desc
@@ -3039,7 +3039,7 @@ function ble/complete/menu/generate-candidates-from-menu {
   # remaining candidates
   cand_count=${#_ble_complete_menu_pack[@]}
   cand_cand=() cand_word=() cand_pack=()
-  local pack "${_ble_complete_cand_varnames[@]}"
+  local pack "${_ble_complete_cand_varnames[@]/%/=}"
   for pack in "${_ble_complete_menu_pack[@]}"; do
     ble/complete/cand/unpack "$pack"
     ble/array#push cand_cand "$CAND"
@@ -3184,7 +3184,7 @@ function ble/widget/complete {
   fi
 
   if [[ :$opts: == *:insert_all:* ]]; then
-    local "${_ble_complete_cand_varnames[@]}"
+    local "${_ble_complete_cand_varnames[@]/%/=}"
     local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
     for pack in "${cand_pack[@]}"; do
       ble/complete/cand/unpack "$pack"
@@ -3228,7 +3228,7 @@ function ble/widget/complete {
     # 一意確定の時
     local ACTION=${cand_pack[0]%%:*}
     if ble/is-function ble/complete/action:"$ACTION"/complete; then
-      local "${_ble_complete_cand_varnames[@]}"
+      local "${_ble_complete_cand_varnames[@]/%/=}"
       ble/complete/cand/unpack "${cand_pack[0]}"
       ble/complete/action:"$ACTION"/complete
       (($?==148)) && return 148
@@ -3299,7 +3299,7 @@ function ble/complete/menu-filter/.filter-candidates {
   cand_pack=()
 
   local iloop=0 interval=$bleopt_complete_polling_cycle
-  local filter_type pack "${_ble_complete_cand_varnames[@]}"
+  local filter_type pack "${_ble_complete_cand_varnames[@]/%/=}"
   local comps_filter_pattern
   for filter_type in head substr hsubseq subseq; do
     ble/path#remove-glob comp_type '[amA]'
@@ -3573,7 +3573,7 @@ function ble/complete/menu-complete/select {
 
     local x=${fields[0]} y=${fields[1]}
 
-    local "${_ble_complete_cand_varnames[@]}"
+    local "${_ble_complete_cand_varnames[@]/%/=}"
     ble/complete/cand/unpack "${text::fields[4]}"
     value=$INSERT
 
@@ -3760,7 +3760,7 @@ function ble/widget/menu_complete/exit {
         local comps_fixed=${_ble_complete_menu0_comp[6]}
 
         # 補完候補のロード
-        local "${_ble_complete_cand_varnames[@]}"
+        local "${_ble_complete_cand_varnames[@]/%/=}"
         ble/complete/cand/unpack "$pack"
 
         ble/complete/action:"$ACTION"/complete
@@ -3985,7 +3985,7 @@ function ble/complete/auto-complete/.check-context {
   local insert=$word suffix=
   local ACTION=${cand_pack[0]%%:*}
   if ble/is-function ble/complete/action:"$ACTION"/complete; then
-    local "${_ble_complete_cand_varnames[@]}"
+    local "${_ble_complete_cand_varnames[@]/%/=}"
     ble/complete/cand/unpack "${cand_pack[0]}"
     ble/complete/action:"$ACTION"/complete
   fi
