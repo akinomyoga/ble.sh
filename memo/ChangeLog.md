@@ -76,7 +76,7 @@
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
-- keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 0000000
+- keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 11ac106
 
 ## Fixes
 
@@ -147,6 +147,7 @@
 - util: inherit special file descriptors `#D1552` 98835b5
 - global: use `_ble_term_IFS` `#D1557` d23ad3c
 - global: work around `localvar_inherit` for varname-list init `#D1566` 0000000
+- util: fix `ble/util/dense-array#fill-range` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

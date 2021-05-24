@@ -631,7 +631,7 @@ function ble/array#replace {
 }
 
 function ble/dense-array#fill-range {
-  ble/array#reserve-prototype $(($2-$1))
+  ble/array#reserve-prototype $(($3-$2))
   local _ble_script='
     local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
     ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
