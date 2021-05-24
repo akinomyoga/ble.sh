@@ -39,6 +39,7 @@
 - main (`ble-update`): support package updates and `sudo` updates (motivated by huresche, oc1024) `#D1548` 0bc2660
   - main (`ble-update`): fix help message (contributed by NoahGorny) 50288bf
 - syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 4df29a6
+- lib: support `lib/vim-airline` (motivated by huresche) `#D1565` 0000000
 
 ## Changes
 

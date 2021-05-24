@@ -69,6 +69,7 @@ outfiles += $(OUTDIR)/lib/core-decode.vi_imap-rlfunc.txt
 outfiles += $(OUTDIR)/lib/core-decode.vi_nmap-rlfunc.txt
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
+outfiles += $(OUTDIR)/lib/vim-airline.sh
 outfiles += $(OUTDIR)/lib/test-main.sh
 outfiles += $(OUTDIR)/lib/test-util.sh
 outfiles += $(OUTDIR)/lib/test-canvas.sh

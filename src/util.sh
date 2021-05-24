@@ -3883,7 +3883,7 @@ function ble-autoload {
 ##     絶対パスで指定した場合にはそのファイルを使用します。
 ##     それ以外の場合には $_ble_base:$_ble_base/local:$_ble_base/share から検索します。
 ##
-_ble_util_import_guards=()
+_ble_util_import_files=()
 
 ## @fn ble/util/import/search/.check-directory name dir
 ##   @var[out] ret
@@ -3917,10 +3917,18 @@ function ble/util/import/is-loaded {
 }
 # called by ble/base/unload (ble.pp)
 function ble/util/import/finalize {
-  local guard
-  for guard in "${_ble_util_import_guards[@]}"; do
+  local file
+  for file in "${_ble_util_import_files[@]}"; do
+    local guard=ble/util/import/guard:$file
     builtin unset -f "$guard"
+
+    local onload=ble/util/import/onload:$file
+    if ble/is-function "$onload"; then
+      "$onload" ble/util/unlocal
+      builtin unset -f "$onload"
+    fi
   done
+  _ble_util_import_files=()
 }
 ## @fn ble/util/import/.read-arguments args...
 ##   @var[out] files
@@ -3989,9 +3997,12 @@ function ble/util/import {
     local guard=ble/util/import/guard:$file
     ble/is-function "$guard" && return 0
     [[ -e $file ]] || return 1
-    source "$file" &&
-      builtin eval "function $guard { :; }" &&
-      ble/array#push _ble_util_import_guards "$guard" || ext=$?
+    source "$file" || { ext=$?; continue; }
+    builtin eval "function $guard { :; }"
+    ble/array#push _ble_util_import_files "$file"
+
+    local onload=ble/util/import/onload:$file
+    ble/function#try "$onload" ble/util/invoke-hook
   done
   return "$ext"
 }
@@ -4020,6 +4031,27 @@ function ble-import {
   fi
 
   ble/util/import "${files[@]}"
+}
+
+_ble_util_import_onload_count=0
+function ble/util/import/eval-after-load {
+  local ret file
+  if ! ble/util/import/search "$1"; then
+    ble/util/print "ble-import: file '$1' not found." >&2
+    return 2
+  fi; file=$ret
+
+  local guard=ble/util/import/guard:$file
+  if ble/is-function "$guard"; then
+    builtin eval -- "$2"
+  else
+    local onload=ble/util/import/onload:$file
+    if ! ble/is-function "$onload"; then
+      local q=\' Q="'\''" list=_ble_util_import_onload_$((_ble_util_import_onload_count++))
+      builtin eval -- "$list=(); function $onload { \"\$1\" $list \"\${@:2}\"; }"
+    fi
+    "$onload" ble/array#push "$2"
+  fi
 }
 
 ## @fn ble-stackdump [message]

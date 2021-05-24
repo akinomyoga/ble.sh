@@ -936,7 +936,7 @@ function ble/prompt/.instantiate {
     # Note: "ESC k ... ESC \" 等を対象とするプロンプト文字列は trace 不要
     x=0 y=0 g=0 lc=32 lg=0
     esc=$expanded
-  elif trace_hash=$COLUMNS:$expanded; [[ $trace_hash != "$trace_hash0" ]]; then
+  elif trace_hash=$opts:$COLUMNS:$expanded; [[ $trace_hash != "$trace_hash0" ]]; then
     local trace_opts=$opts:prompt
     [[ $bleopt_internal_suppress_bash_output ]] || trace_opts=$trace_opts:left-char
     x=0 y=0 g=0 lc=32 lg=0
@@ -1093,16 +1093,14 @@ function ble/prompt/update {
 
     # background color
     ble/color/face2g prompt_status_line; local g0=$ret
-    if ((g0)); then
-      ble/color/g2sgr "$g0"; local sgr=$ret
-      if ((_ble_term_bce)); then
-        ble/canvas/put.draw "$sgr$_ble_term_el$_ble_term_sgr0"
-      else
-        ble/string#reserve-prototype "$cols"
-        ble/canvas/put.draw "$sgr${_ble_string_prototype::cols}"
-        ble/canvas/put-cub.draw "$cols"
-        ble/canvas/put.draw "$_ble_term_sgr0"
-      fi
+    ble/color/g2sgr "$g0"; local sgr=$ret
+    if ((g0==0||_ble_term_bce)); then
+      ble/canvas/put.draw "$sgr$_ble_term_el$_ble_term_sgr0"
+    else
+      ble/string#reserve-prototype "$cols"
+      ble/canvas/put.draw "$sgr${_ble_string_prototype::cols}"
+      ble/canvas/put-cub.draw "$cols"
+      ble/canvas/put.draw "$_ble_term_sgr0"
     fi
 
     # bleopt prompt_status_align
@@ -1205,6 +1203,7 @@ function ble/edit/info#panel::invalidate {
 function ble/edit/info#panel::render {
   (($1!=_ble_edit_info_panel)) && return 0
   [[ $_ble_edit_info_invalidated ]] || return 0
+  _ble_edit_info_invalidated=
   ((_ble_canvas_panel_height[$1])) || return 0
 
   local -a DRAW_BUFF=()
@@ -1902,12 +1901,29 @@ function ble-edit/attach/TRAPWINCH {
   local FUNCNEST=
   local IFS=$_ble_term_IFS
   if ((_ble_edit_attached)); then
-    if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
+    if [[ $_ble_term_state == internal ]]; then
       _ble_textmap_pos=()
       ble-edit/bind/stdout.on
-      ble/edit/enter-command-layout
-      ble/util/buffer "$_ble_term_ed"
-      ble/application/render
+
+      # 処理中に届いた WINCH は失われる様だ。連続的サイズ変化を通知す
+      # る端末の場合、途中のサイズの WINCH の処理中に最終的なサイズの
+      # WINCH を逃して表示が乱れたままになる。対策として描画終了時に処
+      # 理中にサイズ変化が起こっていないか確認する。
+
+      local old_size= i
+      for ((i=0;i<20;i++)); do
+        # 次の待つと共にサブシェルで checkwinsize を誘発
+        (ble/util/msleep 50)
+        # trap 中だと bash のバグでジョブが溜まるので逐次捌く
+        ble/util/joblist.check ignore-volatile-jobs
+        local size=$LINES:$COLUMNS
+        [[ $size == "$old_size" ]] && break
+
+        old_size=$size
+        ble/canvas/panel/invalidate height # 高さの再確保も含めて。
+        ble/application/render
+      done
+
       ble-edit/bind/stdout.off
     fi
   fi

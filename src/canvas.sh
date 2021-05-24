@@ -584,6 +584,8 @@ function ble/canvas/put-clear-lines.draw {
 ##   @param[in,opt] opts
 ##     コロン区切りのオプションの列を指定します。
 ##
+##     [配置制御]
+##
 ##     truncate
 ##       LINES COLUMNS で指定される範囲外に出た時、処理を中断します。
 ##
@@ -595,10 +597,6 @@ function ble/canvas/put-clear-lines.draw {
 ##       LINES COLUMNS の範囲外に文字を出力しようとした時に、
 ##       三点リーダを末尾に上書きします。
 ##
-##     relative
-##       x y を相対位置と考えて移動を行います。
-##       改行などの制御は全て座標に基づいた移動に変換されます。
-##
 ##     clip=X1xY1,X2xY2
 ##     clip=XxY+WxH
 ##       @param[in] X1 Y1 X2 Y2
@@ -608,24 +606,39 @@ function ble/canvas/put-clear-lines.draw {
 ##
 ##     justify
 ##     justify=SEPSPEC
+##       横揃えを設定します。
+##
+##     [範囲計測]
 ##
 ##     measure-bbox
 ##       @var[out] x1 x2 y1 y2
+##       カーソル移動範囲を x1 x2 y1 y2 に返します。
+##     measure-gbox
+##       @var[out] gx1 gx2 gy1 gy2
 ##       描画範囲を x1 x2 y1 y2 に返します。
-##
 ##     left-char
 ##       @var[in,out] lc lg
 ##       bleopt_internal_suppress_bash_output= の時、
 ##       出力開始時のカーソル左の文字コードを指定します。
 ##       出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
 ##
-##     terminfo
-##       ANSI制御シーケンスではなく現在の端末のシーケンスとして
-##       制御機能SGRを解釈します。
+##     [出力制御機能]
 ##
+##     relative
+##       x y を相対位置と考えて移動を行います。
+##       改行などの制御は全て座標に基づいた移動に変換されます。
+##     ansi
+##       ANSI制御シーケンスで出力を構築します。
+##       後で trace で再解析を行う場合などに指定できます。
 ##     g0 face0
 ##       背景色・既定属性として用いる属性値または描画設定を指定します。
 ##       両方指定された場合は g0 を優先させます。
+##
+##     [その他]
+##
+##     terminfo
+##       ANSI制御シーケンスではなく現在の端末のシーケンスとして
+##       制御機能SGRを解釈します。
 ##
 ##   @var[in,out] DRAW_BUFF[]
 ##     ble/canvas/trace.draw の出力先の配列です。
@@ -684,8 +697,8 @@ function ble/canvas/trace/.put-sgr.draw {
   if ((g==0)); then
     ble/canvas/put.draw "$opt_sgr0"
   else
-    ble/color/g#compose "$opt_g0" "$g"
-    ble/color/g2sgr "$g"
+    ble/color/g.compose "$opt_g0" "$g"
+    "$trace_g2sgr" "$g"
     ble/canvas/put.draw "$ret"
   fi
 }
@@ -1339,6 +1352,10 @@ function ble/canvas/trace/.impl {
     local cx=$cx1 cy=$cy1 cg=
   fi
 
+  local trace_g2sgr=ble/color/g2sgr
+  [[ :$opts: == *:ansi:* || $trace_flags == *C*J* ]] &&
+    trace_g2sgr=ble/color/g2sgr-ansi
+
   local opt_g0= opt_sgr0=$_ble_term_sgr0
   if rex=':g0=([^:]+):'; [[ :$opts: =~ $rex ]]; then
     opt_g0=${BASH_REMATCH[1]}
@@ -1346,7 +1363,7 @@ function ble/canvas/trace/.impl {
     ble/color/face2g "${BASH_REMATCH[1]}"; opt_g0=$ret
   fi
   if [[ $opt_g0 ]]; then
-    ble/color/g2sgr "$opt_g0"; opt_sgr0=$ret
+    "$trace_g2sgr" "$opt_g0"; opt_sgr0=$ret
     ble/canvas/put.draw "$opt_sgr0"
     g=$opt_g0
   fi
@@ -1566,7 +1583,9 @@ function ble/canvas/trace/.impl {
     if [[ $trace_flags == *C* ]]; then
       ble/canvas/sflush.draw
       x=$xinit y=$yinit g=$ginit
-      ble/canvas/trace/.impl "$ret" clip="$cx1,$cy1-$cx2,$cy2"
+      local trace_opts=clip=$cx1,$cy1-$cx2,$cy2
+      [[ :$opts: == *:ansi:* ]] && trace_opts=$trace_opts:ansi
+      ble/canvas/trace/.impl "$ret" "$trace_opts"
       cx=$x cy=$y cg=$g
     fi
   fi
@@ -2679,6 +2698,17 @@ function ble/canvas/panel/clear {
   ble/canvas/bflush.draw
 }
 function ble/canvas/panel/invalidate {
+  local opts=$1
+  if [[ :$opts: == *:height:* ]]; then
+    local -a DRAW_BUFF=()
+    ble/canvas/excursion-end.draw
+    ble/canvas/put.draw "$_ble_term_cr$_ble_term_ed"
+    _ble_canvas_x=0 _ble_canvas_y=0
+    ble/dense-array#fill-range _ble_canvas_panel_height 0 "${#_ble_canvas_panel_height[@]}" 0
+    ble/canvas/panel/reallocate-height.draw
+    ble/canvas/bflush.draw
+  fi
+
   local index n=${#_ble_canvas_panel_class[@]}
   for ((index=0;index<n;index++)); do
     local panel_class=${_ble_canvas_panel_class[index]}

@@ -88,8 +88,8 @@ You may also install `ble.sh` through package-management systems (currently only
   [**transient prompt**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A74-Editing#user-content-bleopt-prompt_ps1_transient),
   [**xterm title**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A74-Editing#user-content-bleopt-prompt_xterm_title), etc.
 
-Note: ble.sh does not provide a specific settings for the prompt, aliases, functions, etc.
-ble.sh provides a more fundamental infrastructure so that users can set up their own settings for prompts, aliases, etc.
+Note: ble.sh does not provide specific settings of the prompt, aliases, functions, etc.
+ble.sh provides a more fundamental infrastructure so that users can set up their own prompt, aliases, functions, etc.
 Of course ble.sh can be used in combination with other Bash configurations such as `bash-it` and `oh-my-bash`.
 
 > Demo (version 0.2)

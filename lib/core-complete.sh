@@ -5413,7 +5413,7 @@ function ble/highlight/layer:menu_filter/getg {
       ble/color/face2g menu_filter_input; local g0=$ret
     fi
     ble/highlight/layer/update/getg "$index"
-    ble/color/g#append "$g0"
+    ble/color/g.append "$g0"
   fi
 }
 
