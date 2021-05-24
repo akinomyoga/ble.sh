@@ -101,17 +101,7 @@ bleopt/declare -v highlight_timeout_sync 50
 bleopt/declare -v highlight_timeout_async 5000
 bleopt/declare -v syntax_eval_polling_interval 50
 
-if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  builtin unset -v _ble_syntax_highlight_filetype
-  builtin unset -v _ble_syntax_highlight_lscolors_ext
-  if ((_ble_bash>=40300)); then
-    declare -gA _ble_syntax_highlight_filetype=()
-    declare -gA _ble_syntax_highlight_lscolors_ext=()
-  else
-    declare -A _ble_syntax_highlight_filetype=()
-    declare -A _ble_syntax_highlight_lscolors_ext=()
-  fi
-fi
-
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_filetype}"
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_lscolors_ext}"
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_bash_simple_eval}"
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_bash_simple_eval_full}"

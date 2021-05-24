@@ -1349,9 +1349,9 @@ fi
 
 if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   if ((_ble_bash>=40200)); then
-    _ble_util_gdict_declare='declare -gA NAME=()'
+    _ble_util_gdict_declare='{ unset -v NAME; declare -gA NAME; NAME=(); }'
   else
-    _ble_util_gdict_declare='declare -A NAME=()'
+    _ble_util_gdict_declare='{ unset -v NAME; declare -A NAME=(); }'
   fi
   function ble/gdict#set   { ble/dict#set   "$@"; }
   function ble/gdict#get   { ble/dict#get   "$@"; }
@@ -1582,13 +1582,8 @@ _ble_builtin_trap_reserved=()
 _ble_builtin_trap_handlers=()
 _ble_builtin_trap_DEBUG=
 _ble_builtin_trap_inside=
-if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  builtin unset -v _ble_builtin_trap_n2i
-  if ((_ble_bash>=40300)); then
-    declare -gA _ble_builtin_trap_n2i=()
-  else
-    declare -A _ble_builtin_trap_n2i=()
-  fi
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_trap_n2i}"
   function ble/builtin/trap/.register {
     local index=$1 name=$2
     _ble_builtin_trap_signames[index]=$name

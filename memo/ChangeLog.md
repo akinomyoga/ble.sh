@@ -93,6 +93,7 @@
 - benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
 - global: work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
+  - global: use a better workaround of bash-4.2 `declare -gA` by separating assignment `#D1567` 0000000
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be

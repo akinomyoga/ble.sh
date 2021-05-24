@@ -781,13 +781,8 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   ## @fn ble/builtin/history/.add-rskip file delta
   ##   @param[in] file
   ##
-  if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-    builtin unset -v _ble_builtin_history_rskip_dict
-    if ((_ble_bash>=40300)); then
-      declare -gA _ble_builtin_history_rskip_dict=()
-    else
-      declare -A _ble_builtin_history_rskip_dict=()
-    fi
+  if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+    builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_history_rskip_dict}"
     function ble/builtin/history/.get-rskip {
       local file=$1
       rskip=${_ble_builtin_history_rskip_dict[$file]}

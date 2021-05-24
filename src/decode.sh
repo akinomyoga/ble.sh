@@ -114,15 +114,10 @@ _ble_decode_FunctionKeyBase=0x110000
 ##
 ## @fn ble-decode-kbd/.get-keycode keyname
 ##   @var[out] ret
-if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
   _ble_decode_kbd__n=0
-  builtin unset -v _ble_decode_kbd__k2c
-  if ((_ble_bash>=40300)); then
-    declare -gA _ble_decode_kbd__k2c=()
-  else
-    declare -A _ble_decode_kbd__k2c=()
-  fi
+  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_decode_kbd__k2c}"
   _ble_decode_kbd__c2k=()
 
   function ble-decode-kbd/.set-keycode {
