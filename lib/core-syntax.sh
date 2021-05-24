@@ -4543,7 +4543,7 @@ function ble-syntax/highlight/cmdtype2 {
 ##   @param[in] word
 ##     シェル展開・クォート除去を実行する前の文字列を指定します。
 ##   @var[out] type
-if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # Note: 連想配列 _ble_syntax_highlight_filetype は ble-syntax-lazy.sh で先に定義される。
 
   _ble_syntax_highlight_filetype_version=-1
