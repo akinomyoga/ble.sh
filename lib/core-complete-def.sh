@@ -18,8 +18,9 @@ _ble_complete_insert_hook=()
 
 if ! declare -p _ble_complete_sabbrev &>/dev/null; then # reload #D0875
   builtin unset -v _ble_complete_sabbrev
-  if ((_ble_bash>=40300)); then
-    declare -gA _ble_complete_sabbrev=()
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_complete_sabbrev
+    _ble_complete_sabbrev=()
   elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     declare -A _ble_complete_sabbrev=()
   fi
