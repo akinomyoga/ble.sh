@@ -168,7 +168,7 @@ function ble/array#reverse {
 }
 
 function ble/dense-array#fill-range {
-  _ble_util_array_prototype.reserve $(($2-$1))
+  _ble_util_array_prototype.reserve $(($3-$2))
   local _ble_script='
     local -a sARR; sARR=("${_ble_util_array_prototype[@]::$3-$2}")
     ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
