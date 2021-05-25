@@ -25,10 +25,10 @@ function 0neGal/set-up-status-line {
 
     # Change the default color of status line
     case $mode in 
-    (*n)          ble-color-setface prompt_status_line bg=gray,fg=white ;;
-    (*[vVsS]) ble-color-setface prompt_status_line bg=teal,fg=white ;;
-    (*[iR])     ble-color-setface prompt_status_line bg=navy,fg=white ;;
-    (*)           ble-color-setface prompt_status_line bg=240,fg=231 ;;
+    (*n)          ble-face prompt_status_line=bg=gray,fg=white ;;
+    (*[vVsS]) ble-face prompt_status_line=bg=teal,fg=white ;;
+    (*[iR])     ble-face prompt_status_line=bg=navy,fg=white ;;
+    (*)           ble-face prompt_status_line=bg=240,fg=231 ;;
     esac
   }
 

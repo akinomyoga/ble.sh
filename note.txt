@@ -1336,6 +1336,7 @@ bash_tips
   * bash: fix a problem that "set -e; builtin eval false || true" exits the shell
     false || true # OK
     eval false || true # OK
+    builtin false || true # OK
     builtine eval false || true # 駄目
 
 2021-05-20
@@ -1448,16 +1449,28 @@ bash_tips
       辞書に関しては theme は bash-4.1 以下でも動く様に gdict を使わなければな
       らずややこしい。
 
+    * 何れにしても huresche に対する返答で説明するので、その内容を後で Wiki に
+      転記すれば良い。
+
+    * _modified には対応していない。履歴項目については現在の内容とずれている時
+      に modified にできる。最新項目については何か文字列があれば modified にで
+      きる。
+
+    * themes は自動的に変換する様にできたら良いが調べてみると面倒な気がする。
+
+  * prompt: 最適化 git の現在の dirty 状態は background で取得できる様にしたい。
+
+    prompt-git.bash に実装したい。という事を考えると、
+    prompt-git.bash は早晩に lib に移動するべきなのではないかという気がする。
+
+  * prompt: ble/prompot/clear については各プロンプト毎に設定できる様にするべき。
+    再描画部分についても dirty かどうかを保持して更新するかしないかを判定するべ
+    きの気がする。
+
 2021-05-23
 
   * menu-complete: SIGWINCH による info#panel::invalidate の際にメニュー項目の
     再配置を実行するべきである。
-
-  * ble-color-setface の出力で ref: を認識する
-  * bleopt xxx@xxx=xxxx で一括設定ができる様にする
-  * bleopt 既定値からずれている物だけ出力する機能
-  * blehook internal hook は表示しない機能
-  * bleopt 既定値に戻す機能
 
   * main: BASH_XTRACEFD による出力の抑制?
 
@@ -1639,12 +1652,15 @@ bash_tips
 
     * bottom panel ... 一つは bottom panel かもしれないがそんなに便利なのかとい
       うと微妙な所である。tmux の方の設定で似たような物を表示できる筈だし特に便
-      利でもない。
+      利でもない。見た目に派手なので最初は喜んで使う人がいるかもしれないという
+      位。
 
     * enhanced history ... 相対パスでファイル名を参照しているのを記録したい。そ
       れを auto-complete の実装に役立てたい。
 
     * TUI configuration?
+
+    逆に欠けている物。ex mode の :cmd が全然対応できていない。
 
 2021-05-06
 
@@ -4633,6 +4649,19 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-05-25
+
+  * util: 設定インターフェイスの細かい修正 [#D1568]
+    * ble-face 導入
+      * done: ble-color-setface の出力で ref: を認識する
+      * done: ble-color-setface で @ の形式に対応する?
+      * done: ble-face -r で元に戻せる様にしないと themes の切り替えに困る
+      * done: ble-face -u で変更された face を表示する。
+    * done: bleopt xxx@xxx=xxxx で一括設定ができる様にする
+    * done: bleopt 既定値からずれている物だけ出力する機能
+    * done: bleopt 既定値に戻す機能
+    * done: blehook internal hook は既定では表示しない機能
 
 2021-05-24
 

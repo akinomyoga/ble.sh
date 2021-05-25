@@ -4,6 +4,112 @@
 #------------------------------------------------------------------------------
 # ble.sh options
 
+function bleopt/.read-arguments/process-option {
+  local name=$1
+  case $name in
+  (help)
+    flags=H$flags ;;
+  (color|color=always)
+    flags=c${flags//[cn]} ;;
+  (color=never)
+    flags=n${flags//[cn]} ;;
+  (color=auto)
+    flags=${flags//[cn]} ;;
+  (reset)   flags=r$flags ;;
+  (changed) flags=u$flags ;;
+  (*)
+    ble/util/print "bleopt: unrecognized long option '--$name'" >&2
+    flags=E$flags ;;
+  esac
+}
+
+## @fn bleopt/expand-variable-pattern pattern opts
+##   @var[out] ret
+function bleopt/expand-variable-pattern {
+  ret=()
+  local pattern=$1
+  if [[ $pattern == *@* ]]; then
+    builtin eval -- "ret=(\"\${!${pattern%%@*}@}\")"
+    ble/array#filter-by-glob ret "${pattern//@/?*}"
+  elif [[ ${!pattern+set} || :$opts: == :allow-undefined: ]]; then
+    ret=("$pattern")
+  fi
+  ((${#ret[@]}))
+}
+
+## @fn bleopt/.read-arguments
+##   @var[out] flags
+##     H --help
+##     c --color=always
+##     n --color=never
+##     r --reset
+##     u --changed
+##   @var[out] pvars
+##   @var[out] specs
+function bleopt/.read-arguments {
+  flags= pvars=() specs=()
+  while (($#)); do
+    local arg=$1; shift
+    case $arg in
+    (--)
+      ble/array#push specs "$@"
+      break ;;
+    (--*)
+      bleopt/.read-arguments/process-option "${arg:2}" ;;
+    (-*)
+      local i c
+      for ((i=1;i<${#arg};i++)); do
+        c=${arg:i:1}
+        case $c in
+        (r) bleopt/.read-arguments/process-option reset ;;
+        (u) bleopt/.read-arguments/process-option changed ;;
+        (*)
+          ble/util/print "bleopt: unrecognized option '-c'" >&2
+          flags=E$flags ;;
+        esac
+      done ;;
+    (*)
+      if local rex='^([_a-zA-Z0-9@]+)(:?=|$)(.*)'; [[ $arg =~ $rex ]]; then
+        local var=bleopt_${BASH_REMATCH[1]#bleopt_}
+        local op=${BASH_REMATCH[2]}
+        local value=${BASH_REMATCH[3]}
+
+        # check/expand variable names
+        if [[ $op == ':=' ]]; then
+          if [[ $var == *@* ]]; then
+            ble/util/print "bleopt: \`${var#bleopt_}': wildcard cannot be used in the definition." >&2
+            flags=E$flags
+            continue
+          fi
+        else
+          local ret
+          if bleopt/expand-variable-pattern "$var"; then
+            var=("${ret[@]}")
+          else
+            ble/util/print "bleopt: option \`${var#bleopt_}' not found" >&2
+            flags=E$flags
+            continue
+          fi
+        fi
+
+        if [[ $op ]]; then
+          ble/array#push specs "${var[@]/%/=$value}"
+        else
+          ble/array#push pvars "${var[@]}"
+        fi
+      else
+        ble/util/print "bleopt: unrecognized argument '$arg'" >&2
+        flags=E$flags
+      fi ;;
+    esac
+  done
+}
+
+function bleopt/changed.predicate {
+  local cur=$1 def=_ble_opt_def_${1#bleopt_}
+  [[ ! ${!def+set} || ${!cur} != "${!def}" ]]
+}
+
 ## @fn bleopt args...
 ##   @params[in] args
 ##     args は以下の内の何れかの形式を持つ。
@@ -17,48 +123,6 @@
 ##     var
 ##       変数の設定内容を表示する
 ##
-function bleopt/.read-arguments {
-  flags= pvars=() specs=()
-
-  while (($#)); do
-    local arg=$1; shift
-    case $arg in
-    (--)
-      ble/array#push specs "$@"
-      break ;;
-    (--help)
-      flags=H$flags ;;
-    (--color|--color=always)
-      flags=c${flags//[cn]} ;;
-    (--color=never)
-      flags=n${flags//[cn]} ;;
-    (--color=auto)
-      flags=${flags//[cn]} ;;
-    (-*)
-      ble/util/print "bleopt: unrecognized option '$arg'" >&2
-      flags=E$flags ;;
-    (*)
-      if local rex='^([_a-zA-Z0-9]+)(:?=|$)'; [[ $arg =~ $rex ]]; then
-        local var=bleopt_${BASH_REMATCH[1]#bleopt_}
-        if [[ ${BASH_REMATCH[2]} != ':=' && ! ${!var+set} ]]; then
-          flags=E$flags
-          ble/util/print "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
-          continue
-        fi
-
-        if [[ ${BASH_REMATCH[2]} ]]; then
-          local value=${arg:${#BASH_REMATCH}}
-          ble/array#push specs "$var=$value"
-        else
-          ble/array#push pvars "$var"
-        fi
-      else
-        ble/util/print "bleopt: unrecognized argument '$spec'" >&2
-        flags=E$flags
-      fi ;;
-    esac
-  done
-}
 function bleopt {
   local flags pvars specs
   bleopt/.read-arguments "$@"
@@ -66,16 +130,21 @@ function bleopt {
     return 2
   elif [[ $flags == *H* ]]; then
     ble/util/print-lines \
-      'usage: bleopt [NAME|NAME=VALUE|NAME:=VALUE]...' \
+      'usage: bleopt [OPTION] [NAME|NAME=VALUE|NAME:=VALUE]...' \
       '    Set ble.sh options. Without arguments, this prints all the settings.' \
       '' \
-      '  Options:' \
-      '    --help      Print this help.' \
+      '  Options' \
+      '    --help        Print this help.' \
+      '    -r, --reset   Reset options to the default values' \
+      '    -u, --changed Only select changed options' \
       '' \
-      '  Arguments:' \
+      '  Arguments' \
       '    NAME        Print the value of the option.' \
       '    NAME=VALUE  Set the value to the option.' \
-      '    NAME:=VALUE Set or create the value to the option.'
+      '    NAME:=VALUE Set or create the value to the option.' \
+      '' \
+      '  NAME can contain "@" as a wildcard.' \
+      ''
     return 0
   fi
 
@@ -85,6 +154,20 @@ function bleopt {
       ble/is-function "bleopt/obsolete:${var#bleopt_}" && continue
       pvars[ip++]=$var
     done
+  fi
+
+  [[ $flags == *u* ]] &&
+    ble/array#filter pvars bleopt/changed.predicate
+
+  # --reset: pvars を全て既定値の設定に読み替える
+  if [[ $flags == *r* ]]; then
+    local var
+    for var in "${pvars[@]}"; do
+      local def=_ble_opt_def_${var#bleopt_}
+      [[ ${!def+set} && ${!var-} != "${!def}" ]] &&
+        ble/array#push specs "$var=${!def}"
+    done
+    pvars=()
   fi
 
   if ((${#specs[@]})); then
@@ -105,10 +188,8 @@ function bleopt {
   fi
 
   if ((${#pvars[@]})); then
-    local q="'" Q="'\''" var
-
     # 着色
-    local sgr{0..3}=
+    local sgr0= sgr1= sgr2= sgr3=
     if [[ $flags == *c* || $flags != *n* && -t 1 ]]; then
       local ret
       ble/color/face2sgr command_function; sgr1=$ret
@@ -119,20 +200,9 @@ function bleopt {
 
     local var
     for var in "${pvars[@]}"; do
-      if [[ ${!var+set} ]]; then
-        local value chars=$'\a\b\e\f\n\r\t\v'
-        if [[ ${!var} == *["$chars"]* ]]; then
-          local ret; ble/string#escape-for-bash-escape-string "${!var}"
-          value=$sgr3\$\'$ret\'$sgr0
-        else
-          local ret; ble/string#quote-word "${!var}" sgrq="$sgr3":sgr0="$sgr0"
-          value=$ret
-        fi
-        ble/util/print "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$value"
-      else
-        flags=E$flags
-        ble/util/print "bleopt: invalid ble option name '${var#bleopt_}'" >&2
-      fi
+      local ret
+      ble/string#quote-word "${!var}" sgrq="$sgr3":sgr0="$sgr0"
+      ble/util/print "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$ret"
     done
   fi
 
@@ -571,6 +641,11 @@ function ble/array#remove-by-regex/.predicate { ! [[ $1 =~ $_ble_local_rex ]]; }
 function ble/array#remove-by-regex {
   local _ble_local_rex=$2
   ble/array#filter "$1" ble/array#remove-by-regex/.predicate
+}
+function ble/array#filter-by-glob/.predicate { [[ $1 == $_ble_local_glob ]]; }
+function ble/array#filter-by-glob {
+  local _ble_local_glob=$2
+  ble/array#filter "$1" ble/array#filter-by-glob/.predicate
 }
 ## @fn ble/array#remove arr element
 function ble/array#remove/.predicate { [[ $1 != "$_ble_local_value" ]]; }
@@ -1373,10 +1448,11 @@ fi
 ## @fn blehook/.print
 ##   @var[in] flags
 function blehook/.print {
-  local out= q=\' Q="'\''" nl=$'\n'
+  (($#)) || return
 
-  local sgr{0..3}=
-  if [[ $flags == *c* || $flags == *a* && -t 1 ]]; then
+  local out= q=\' Q="'\''" nl=$'\n'
+  local sgr0= sgr1= sgr2= sgr3=
+  if [[ $flags == *c* ]]; then
     local ret
     ble/color/face2sgr command_function; sgr1=$ret
     ble/color/face2sgr syntax_varname; sgr2=$ret
@@ -1394,11 +1470,11 @@ function blehook/.print {
       out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0=$nl"
     fi'
 
-  (($#)) || set -- "${!_ble_hook_h_@}"
   local hookname
   for hookname; do
     ble/is-array "$hookname" || continue
-    builtin eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
+    [[ $flags == *a* || ${hookname#_ble_hook_h_} != *[a-z]* ]] &&
+      builtin eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
   done
   ble/util/put "$out"
 }
@@ -1409,41 +1485,55 @@ function blehook/.print-help {
     '' \
     '  Options:' \
     '    --help      Print this help.' \
+    '    -a, --all   Print all including internal hooks.' \
     '' \
     '  Arguments:' \
     '    NAME            Print the corresponding hooks.' \
     '    NAME=COMMAND    Set hook after removing the existing hooks.' \
     '    NAME+=COMMAND   Add hook.' \
     '    NAME-=COMMAND   Remove hook.' \
-    '    NAME-+=COMMAND  Add hook if the command is not registered.'
+    '    NAME-+=COMMAND  Add hook if the command is not registered.' \
+    ''
 }
 
-function blehook {
-  local flags=a
-  if (($#==0)); then
-    blehook/.print
-    return 0
-  fi
-
-  local -a print=()
-  local -a process=()
-  local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
-  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?-?\+?=)(.*)$'
+## @fn blehook/.read-arguments args...
+##   @var[out] flags
+function blehook/.read-arguments {
+  flags= print=() process=()
+  local opt_color=always
   while (($#)); do
     local arg=$1; shift
     if [[ $arg == -* ]]; then
       case $arg in
       (--help)
         flags=H$flags ;;
-      (--color|--color=always) flags=c${flags//[ac]} ;;
-      (--color=auto) flags=a${flags//[ac]} ;;
-      (--color=never) flags=${flags//[ac]} ;;
-      (*)
-        ble/util/print "blehook: unrecognized option '$arg'." >&2
+      (--color|--color=always) opt_color=always ;;
+      (--color=auto) opt_color=auto ;;
+      (--color=never) opt_color=never ;;
+      (--all) flags=a$flags ;;
+      (--*)
+        ble/util/print "blehook: unrecognized long option '$arg'." >&2
         flags=E$flags ;;
+      (*)
+        local i c
+        for ((i=1;i<${#arg};i++)); do
+          c=${arg:i:1}
+          case $c in
+          (a) flags=a$flags ;;
+          (*)
+            ble/util/print "blehook: unrecognized option '-$c'." >&2
+            flags=E$flags ;;
+          esac
+        done ;;
       esac
     elif [[ $arg =~ $rex1 ]]; then
-      ble/array#push print "_ble_hook_h_$arg"
+      local hookvar=_ble_hook_h_$arg
+      if [[ ${!hookvar+set} ]]; then
+        ble/array#push print "$hookvar"
+      else
+        ble/util/print "blehook: undefined hook '$arg'." >&2
+        flags=E$flags
+      fi
     elif [[ $arg =~ $rex2 ]]; then
       local name=${BASH_REMATCH[1]}
       local var_counter=_ble_hook_c_$name
@@ -1461,17 +1551,25 @@ function blehook {
       flags=E$flags
     fi
   done
+  [[ $opt_color == always || $opt_color == auto && -t 1 ]] && flags=c$flags
+}
+
+function blehook {
+  local flags print process
+  local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
+  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?-?\+?=)(.*)$'
+  blehook/.read-arguments "$@"
   if [[ $flags == *[HE]* ]]; then
     if [[ $flags == *H* ]]; then
+      [[ $flags == *E* ]] &&
+        ble/util/print >&2
       blehook/.print-help
-    else
-      blehook/.print-help >&2
     fi
     [[ $flags != *E* ]]; return "$?"
   fi
 
-  if ((${#print[@]}||${#process[@]}+${#print[@]}==0)); then
-    blehook/.print "${print[@]}"
+  if ((${#print[@]}==0&&${#process[@]}==0)); then
+    print=("${!_ble_hook_h_@}")
   fi
 
   local proc ext=0
@@ -1493,6 +1591,11 @@ function blehook {
     [[ ${type#:} != '-=' && $value ]] &&
       ble/array#push "_ble_hook_h_$name" "$value"
   done
+
+  if ((${#print[@]})); then
+    blehook/.print "${print[@]}"
+  fi
+
   return "$ext"
 }
 blehook/.compatibility-ble-0.3

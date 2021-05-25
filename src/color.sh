@@ -981,8 +981,8 @@ function ble-color-setface {
 }
 
 # 遅延関数 (後で上書き)
-function ble/color/defface   { local q=\' Q="'\''"; blehook color_init_defface+="ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
-function ble/color/setface   { local q=\' Q="'\''"; blehook color_init_setface+="ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble/color/defface   { local q=\' Q="'\''"; blehook color_init_defface+="ble/color/defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble/color/setface   { local q=\' Q="'\''"; blehook color_init_setface+="ble/color/setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble/color/face2g    { ble/color/initialize-faces && ble/color/face2g    "$@"; }
 function ble/color/face2sgr  { ble/color/initialize-faces && ble/color/face2sgr  "$@"; }
 function ble/color/iface2g   { ble/color/initialize-faces && ble/color/iface2g   "$@"; }
@@ -1046,7 +1046,9 @@ function ble/color/initialize-faces {
     local name=_ble_faces__$1 spec=$2 ret
     (($name)) && return 0
     (($name=++_ble_faces_count))
-    ble/color/setface/.spec2g "$spec"; _ble_faces[$name]=$ret
+    ble/color/setface/.spec2g "$spec"
+    _ble_faces[$name]=$ret
+    _ble_faces_def[$name]=$ret
   }
   function ble/color/setface {
     local name=_ble_faces__$1 spec=$2 ret
@@ -1081,26 +1083,261 @@ function ble/color/initialize-faces {
 
 ## @fn ble/color/list-faces opts
 function ble/color/list-faces {
-  local opt_color=
-  [[ :$1: == *:color:* ]] && opt_color=1
+  local flags=
+  [[ :$1: == *:color:* ]] && flags=c
 
   local ret sgr0= sgr1= sgr2=
-  if [[ $opt_color ]]; then
+  if [[ $flags == *c* ]]; then
     sgr0=$_ble_term_sgr0
     ble/color/face2sgr command_function; sgr1=$ret
     ble/color/face2sgr syntax_varname; sgr2=$ret
   fi
 
-  local key g
+  local key
   for key in "${!_ble_faces__@}"; do
-    local name=${key#_ble_faces__}
-    ble/color/g2gspec $((_ble_faces[key])); local gspec=$ret
-    if [[ $opt_color ]]; then
-      ble/color/iface2sgr $((key))
-      gspec=$ret$gspec$_ble_term_sgr0
-    fi
-    printf '%s %s %s\n' "${sgr1}ble-color-setface$sgr0" "$sgr2$name$sgr0" "$gspec"
+    ble-face/.print-face "$key"
   done
+}
+
+function ble-face/.read-arguments/process-set {
+  local o=$1 face=$2 value=$3
+  if local rex='^[_a-zA-Z0-9@][_a-zA-Z0-9@]*$'; ! [[ $face =~ $rex ]]; then
+    ble/util/print "ble-face: invalid face name '$face'." >&2
+    flags=E$flags
+    return 1
+  elif [[ $o == '-d' && $face == *@* ]]; then
+    ble/util/print "ble-face: wildcards cannot be used in the face name '$face' for definition." >&2
+    flags=E$flags
+    return 1
+  fi
+
+  local assign='='
+  [[ $o == -d ]] && assign=':='
+  ble/array#push setface "$face$assign$value"
+}
+
+## @fn ble-face/.read-arguments args...
+##   @var[out] flags
+##     H = help
+##     E = error
+##     L = literal
+##     c = color
+##     r = reset
+##     u = changed
+function ble-face/.read-arguments {
+  flags= setface=() print=()
+  local opt_color=auto
+  local args iarg narg=$#; args=("$@")
+  for ((iarg=0;iarg<narg;)); do
+    local arg=${args[iarg++]}
+    if [[ $arg == -* ]]; then
+      if [[ $flags == *L* ]]; then
+        ble/util/print "ble-face: unrecognized argument '$arg'." >&2
+        flags=E$flags
+      else
+        case $arg in
+        (--help) flags=H$flags ;;
+        (--color)
+          opt_color=always ;;
+        (--color=always | --color=auto | --color=never)
+          opt_color=${arg#*=} ;;
+        (--color=*)
+          ble/util/print "ble-face: unrecognized option argument for '--color' (${arg*#=})" >&2
+          flags=E$flags ;;
+        (--reset) flags=r$flags ;;
+        (--changed) flags=u$flags ;;
+        (--) flags=L$flags ;;
+        (-?*)
+          local i c
+          for ((i=1;i<${#arg};i++)); do
+            c=${arg:i:1}
+            case $c in
+            ([ru]) flags=$c$flags ;;
+            ([sd])
+              if ((i+1<${#arg})); then
+                local lhs=${arg:i+1}
+              else
+                local lhs=${args[iarg++]}
+              fi
+              local rhs=${args[iarg++]}
+              if ((iarg>narg)); then
+                ble/util/print "ble-face: missing option argument for '-$c FACE SPEC'." >&2
+                flags=E$flags
+                continue
+              fi
+              ble-face/.read-arguments/process-set "${arg::2}" "$lhs" "$rhs"
+              break ;;
+            esac
+          done ;;
+        (*)
+          ble/util/print "ble-face: unrecognized option '$arg'." >&2
+          flags=E$flags ;;
+        esac
+      fi
+
+    elif [[ $arg == *=* ]]; then
+      if local rex='^[_a-zA-Z@][_a-zA-Z0-9@]*:?='; [[ $arg =~ $rex ]]; then
+        ble/array#push setface "$arg"
+      else
+        local lhs=${arg%%=*}; lhs=${lhs%:}
+        ble/util/print "ble-face: invalid left-hand side '$lhs' ($arg)." >&2
+        flags=E$flags
+      fi
+
+    else
+      if local rex='^[_a-zA-Z@][_a-zA-Z0-9@]*$'; [[ $arg =~ $rex ]]; then
+        ble/array#push print "$arg"
+      else
+        ble/util/print "ble-face: unrecognized form of argument '$arg'." >&2
+        flags=E$flags
+      fi
+    fi
+  done
+
+  [[ $opt_color == auto && -t 1 || $opt_color == always ]] && flags=c$flags
+  [[ $flags != *E* ]]
+}
+function ble-face/.print-help {
+  ble/util/print-lines >&2 \
+    'ble-face --help' \
+    'ble-face [FACE[:=|=][TYPE:]SPEC | -[sd] FACE [TYPE:]SPEC]]...' \
+    'ble-face [-ur] [FACE...]' \
+    '' \
+    '  OPTIONS/ARGUMENTS' \
+    '' \
+    '    FACE=[TYPE:]SPEC' \
+    '    -s FACE [TYPE:]SPEC' \
+    '            Set a face' \
+    '' \
+    '    FACE:=[TYPE:]SPEC' \
+    '    -d FACE [TYPE:]SPEC' \
+    '            Define a face' \
+    '' \
+    '    FACE...' \
+    '            Print faces.  If faces are not specified, all faces are selected.' \
+    '    -r FACE...' \
+    '            Reset faces.  If faces are not specified, all faces are selected.' \
+    '' \
+    '  FACE      Specifies a face name.  The character @ in the face name is treated' \
+    '            as a wildcard' \
+    '' \
+    '  TYPE      Specifies the format of SPEC. The following values are available.' \
+    '    gspec   Comma separated graphic attribute list' \
+    '    g       Integer value' \
+    '    ref     Face name or id (reference)' \
+    '    copy    Face name or id (copy value)' \
+    '    sgrspec Parameters to the control function SGR' \
+    '    ansi    ANSI Sequences' \
+    ''
+  return 0
+}
+## @fn ble/color/.print-face key
+##   @param[in] key
+##   @var[in] flags sgr0 sgr1 sgr2
+function ble-face/.print-face {
+  local key=$1 ret
+  local name=${key#_ble_faces__}
+  local cur=${_ble_faces[key]}
+  if [[ $flags == *u* ]]; then
+    local def=_ble_faces_def[key]
+    [[ ${!def+set} && $cur == "${!def}" ]] && return 0
+  fi
+  local def=${_ble_faces[key]}
+  if [[ $cur == '_ble_faces['*']' ]]; then
+    cur=${cur#'_ble_faces['}
+    cur=${cur%']'}
+    cur=ref:${cur#_ble_faces__}
+  else
+    ble/color/g2gspec $((cur)); cur=$ret
+  fi
+  if [[ $flags == *c* ]]; then
+    ble/color/iface2sgr $((key))
+    cur=$ret$cur$_ble_term_sgr0
+  fi
+  printf '%s %s=%s\n' "${sgr1}ble-face$sgr0" "$sgr2$name$sgr0" "$cur"
+}
+## @fn ble/color/.print-face key
+##   @param[in] key
+##   @var[in] flags sgr0 sgr1 sgr2
+function ble-face/.reset-face {
+  local key=$1 ret
+  [[ ${_ble_faces_def[key]+set} ]] &&
+    _ble_faces[key]=${_ble_faces_def[key]}
+}
+function ble-face {
+  local flags setface print
+  ble-face/.read-arguments "$@"
+  if [[ $flags == *H* ]]; then
+    ble-face/.print-help
+    return 2
+  elif [[ $flags == *E* ]]; then
+    return 2
+  fi
+
+  if ((!${#print[@]}&&!${#setface[@]})); then
+    print=(@)
+  fi
+
+  local spec
+  for spec in "${setface[@]}"; do
+    if local rex='^([_a-zA-Z@][_a-zA-Z0-9@]*)(:?=)(.*)$'; ! [[ $spec =~ $rex ]]; then
+      ble/util/print "ble-face: unrecognized setting '$spec'" >&2
+      flags=E$flags
+      continue
+    fi
+
+    local var=${BASH_REMATCH[1]}
+    local type=${BASH_REMATCH[2]}
+    local value=${BASH_REMATCH[3]}
+    if [[ $type == ':=' ]]; then
+      if [[ $var == *@* ]]; then
+        ble/util/print "ble-face: wild card @ cannot be used for face definition ($spec)." >&2
+        flags=E$flags
+      else
+        ble/color/defface "$var" "$value"
+      fi
+    else
+      local ret face
+      if bleopt/expand-variable-pattern "_ble_faces__$var"; then
+        for face in "${ret[@]}"; do
+          ble/color/setface "${face#_ble_faces__}" "$value"
+        done
+      else
+        ble/util/print "ble-face: face '$var' not found" >&2
+        flags=E$flags
+      fi
+    fi
+  done
+
+  if ((${#print[@]})); then
+    # initialize
+    local ret sgr0= sgr1= sgr2=
+    if [[ $flags == *c* ]]; then
+      sgr0=$_ble_term_sgr0
+      ble/color/face2sgr command_function; sgr1=$ret
+      ble/color/face2sgr syntax_varname; sgr2=$ret
+    fi
+
+    local spec
+    for spec in "${print[@]}"; do
+      local ret face
+      if bleopt/expand-variable-pattern "_ble_faces__$spec"; then
+        if [[ $flags == *r* ]]; then
+          for face in "${ret[@]}"; do
+            ble-face/.reset-face "$face"
+          done
+        else
+          for face in "${ret[@]}"; do
+            ble-face/.print-face "$face"
+          done
+        fi
+      else
+        ble/util/print "ble-face: face '$spec' not found" >&2
+        flags=E$flags
+      fi
+    done
+  fi
+  [[ $flags != *E* ]]
 }
 
 #------------------------------------------------------------------------------

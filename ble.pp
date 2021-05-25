@@ -1160,7 +1160,7 @@ function ble/dispatch/.help {
     '  # Configuration' \
     '  opt     ... alias of bleopt' \
     '  bind    ... alias of ble-bind' \
-    '  face    ... alias of ble-color-setface' \
+    '  face    ... alias of ble-face' \
     '  hook    ... alias of blehook' \
     '  sabbrev ... alias of ble-sabbrev' \
     '  palette ... alias of ble-color-show' \
@@ -1179,7 +1179,7 @@ function ble/dispatch {
   (detach)  ble-detach "$@" ;;
   (update)  ble-update "$@" ;;
   (reload)  ble-reload "$@" ;;
-  (face)    ble-color-setface "$@" ;;
+  (face)    ble-face "$@" ;;
   (bind)    ble-bind "$@" ;;
   (opt)     bleopt "$@" ;;
   (hook)    blehook "$@" ;;

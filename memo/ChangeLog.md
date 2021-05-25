@@ -39,8 +39,11 @@
 - main (`ble-update`): support package updates and `sudo` updates (motivated by huresche, oc1024) `#D1548` 0bc2660
   - main (`ble-update`): fix help message (contributed by NoahGorny) 50288bf
 - syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 4df29a6
-- lib: support `lib/vim-airline` (motivated by huresche) `#D1565` 0000000
-
+- lib: support `lib/vim-airline` (motivated by huresche) `#D1565` da1d0ff
+- color: support new face setting function `ble-face` `#D1568` 0000000
+- util (`bleopt`): support option `-r` and `-u` and wildcards in option names `#D1568` 0000000
+- util (`blehook`): hide internal hooks by default and support option `-a` `#D1568` 0000000
+ 
 ## Changes
 
 - syntax: exclude <code>\\ + LF</code> at the word beginning from words (motivated by cmplstofB) `#D1431` 67e62d6
@@ -93,7 +96,7 @@
 - benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
 - global: work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
-  - global: use a better workaround of bash-4.2 `declare -gA` by separating assignment `#D1567` 0000000
+  - global: use a better workaround of bash-4.2 `declare -gA` by separating assignment `#D1567` 2408a20
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
@@ -147,8 +150,8 @@
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
 - global: use `_ble_term_IFS` `#D1557` d23ad3c
-- global: work around `localvar_inherit` for varname-list init `#D1566` 0000000
-- util: fix `ble/util/dense-array#fill-range` 0000000
+- global: work around `localvar_inherit` for varname-list init `#D1566` 5c2edfc
+- util: fix `ble/util/dense-array#fill-range` a46fdaf
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
