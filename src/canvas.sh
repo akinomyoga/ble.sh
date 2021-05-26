@@ -881,7 +881,7 @@ function ble/canvas/trace/.justify/next-field {
 ## @fn ble/canvas/trace/.justify/unpack packed_data
 ##   @var[out] sep wmin xI yI xF yF x1 y1 x2 y2 esc
 function ble/canvas/trace/.justify/unpack {
-  local data=$1
+  local data=$1 buff
   sep=${data::1}; data=${data:2}
   wmin=${data%%:*}; data=${data#*:}
   ble/string#split buff , "${data%%:*}"; data=${data#*:}
@@ -1392,12 +1392,6 @@ function ble/canvas/trace/.impl {
     local lc=32 lg=0
   fi
 
-  local flag_justify=
-  if [[ $trace_flags == *J* ]]; then
-    flag_justify=1
-    ble/canvas/trace/.justify/begin-line
-  fi
-
   # prepare measure
   local flag_bbox= flag_gbox=
   if [[ $trace_flags == *[BJ]* ]]; then
@@ -1424,6 +1418,12 @@ function ble/canvas/trace/.impl {
   # に xenl について処理するので、フィールド内追跡では xenl は気にしなくて良い。
   local xlimit=$cols
   [[ $opt_relative || $trace_flags == *J* ]] && xenl=1 xlimit=$((cols-1))
+
+  local flag_justify=
+  if [[ $trace_flags == *J* ]]; then
+    flag_justify=1
+    ble/canvas/trace/.justify/begin-line
+  fi
 
   local i=0 iN=${#text}
   while ((i<iN)); do

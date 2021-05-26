@@ -412,11 +412,11 @@ function ble/debug/print {
 ##   ```
 ##   eval "${_ble_debug_check_leak_variable//@var/ret}"
 ##   ...codes1...
-##   ble/util/.check-leak-variable ret tag1
+##   ble/debug/.check-leak-variable ret tag1
 ##   ...codes2...
-##   ble/util/.check-leak-variable ret tag2
+##   ble/debug/.check-leak-variable ret tag2
 ##   ...codes3...
-##   ble/util/.check-leak-variable ret tag3
+##   ble/debug/.check-leak-variable ret tag3
 ##   ```
 _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
 function ble/debug/.check-leak-variable {
@@ -1933,6 +1933,7 @@ function ble/builtin/trap/install-hook {
     # - INT は bind -x 内だと改めて設定しないと有効にならない(?)様なの
     #   で既に登録されていても、builtin trap は省略できない。
     #
+    local trap
     ble/util/assign trap "builtin trap -p $name"
     [[ $trap_command == "$trap" ]] && return 0
   fi

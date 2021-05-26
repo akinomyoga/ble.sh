@@ -156,6 +156,7 @@
 - global: use `_ble_term_IFS` `#D1557` d23ad3c
 - global: work around `localvar_inherit` for varname-list init `#D1566` 5c2edfc
 - util: fix `ble/util/dense-array#fill-range` a46fdaf
+- util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
