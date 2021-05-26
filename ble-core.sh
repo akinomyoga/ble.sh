@@ -74,6 +74,7 @@ function ble/builtin/trap/set-readline-signal {
   fi
 
   # Skip if already registered
+  local trap
   ble/util/assign trap "builtin trap -p $sig"
   local cmd="trap -- '$handler' SIG$sig"
   [[ $cmd == "$trap" ]] && return 0
