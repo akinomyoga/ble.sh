@@ -296,7 +296,7 @@ bleopt edit_abell=
 
 ## 2.6 Highlight Colors
 
-The colors and attributes used in the syntax highlighting are controlled by `ble-color-setface` function. The following code reproduces the default configuration:
+The colors and attributes used in the syntax highlighting are controlled by `ble-face` function. The following code reproduces the default configuration:
 ```bash
 # highlighting related to editing
 ble-face -s region                    bg=60,fg=white
@@ -365,9 +365,9 @@ ble-face -s varname_transform         fg=29,bold
 ble-face -s varname_unset             fg=124
 ```
 
-The current list of faces can be obtained by the following command (`ble-color-setface` without arguments):
+The current list of faces can be obtained by the following command (`ble-face` without arguments):
 ```console
-$ ble-color-setface
+$ ble-face
 ```
 
 The color codes can be checked in output of the function `ble-color-show` (defined in `ble.sh`):

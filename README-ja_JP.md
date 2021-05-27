@@ -323,7 +323,7 @@ bleopt edit_abell=
 
 ## 2.6 着色の設定
 
-構文に従った着色で使用される、各文法要素の色と属性は `ble-color-setface` シェル関数で設定します。
+構文に従った着色で使用される、各文法要素の色と属性は `ble-face` シェル関数で設定します。
 既定の設定は以下のコードに対応します:
 ```bash
 # 編集に関連する着色の設定
@@ -393,9 +393,9 @@ ble-face -s varname_transform         fg=29,bold
 ble-face -s varname_unset             fg=124
 ```
 
-現在の描画設定の一覧は以下のコマンドでも確認できます (`ble-color-setface` を無引数で呼び出す)。
+現在の描画設定の一覧は以下のコマンドでも確認できます (`ble-face` を無引数で呼び出す)。
 ```console
-$ ble-color-setface
+$ ble-face
 ```
 
 色コードはシェル関数 `ble-color-show` (`ble.sh` 内で定義) で確認できます。

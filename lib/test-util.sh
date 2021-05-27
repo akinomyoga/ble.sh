@@ -1033,25 +1033,25 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
 (
   # declare hook
   blehook/declare FOO
-  ble/test 'blehook FOO' stdout='blehook FOO='
+  ble/test 'blehook --color=never FOO' stdout='blehook FOO='
   ble/test 'blehook/has-hook FOO' exit=1
 
   # add/remove hook
   blehook FOO+='echo hello'
-  ble/test 'blehook FOO' \
+  ble/test 'blehook --color=never FOO' \
            stdout="blehook FOO+='echo hello'"
   ble/test 'blehook/has-hook FOO'
   blehook FOO+='echo world'
-  ble/test 'blehook FOO' \
+  ble/test 'blehook --color=never FOO' \
            stdout="blehook FOO+='echo hello'" \
            stdout="blehook FOO+='echo world'"
   ble/test 'blehook/has-hook FOO'
   blehook FOO-='echo hello'
-  ble/test 'blehook FOO' \
+  ble/test 'blehook --color=never FOO' \
            stdout="blehook FOO+='echo world'"
   ble/test 'blehook/has-hook FOO'
   blehook FOO-='echo world'
-  ble/test 'blehook FOO' \
+  ble/test 'blehook --color=never FOO' \
            stdout='blehook FOO='
   ble/test 'blehook/has-hook FOO' exit=1
 
@@ -1059,7 +1059,7 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   blehook FOO+='echo hello'
   blehook FOO+='echo world'
   blehook FOO='echo empty'
-  ble/test 'blehook FOO' \
+  ble/test 'blehook --color=never FOO' \
            stdout="blehook FOO+='echo empty'"
   ble/test 'blehook/has-hook FOO'
 
@@ -1067,7 +1067,7 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   blehook FOO+='echo hello'
   blehook FOO+='echo world'
   blehook FOO=
-  ble/test 'blehook FOO' \
+  ble/test 'blehook --color=never FOO' \
            stdout='blehook FOO='
   ble/test 'blehook/has-hook FOO' exit=1
 

@@ -41,9 +41,11 @@
 - syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 4df29a6
 - lib: support `lib/vim-airline` (motivated by huresche) `#D1565` da1d0ff
   - util (`ble/gdict`): refactor `#D1569` 0000000
-- color: support new face setting function `ble-face` `#D1568` 0000000
-- util (`bleopt`): support option `-r` and `-u` and wildcards in option names `#D1568` 0000000
-- util (`blehook`): hide internal hooks by default and support option `-a` `#D1568` 0000000
+- util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
+  - color: support new face setting function `ble-face`
+  - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
+  - util (`blehook`): hide internal hooks by default and support option `-a`
+  - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` 0000000
  
 ## Changes
 

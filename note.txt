@@ -4655,6 +4655,22 @@ bash_tips
 
 2021-05-27
 
+  * 新しい ble-face, blehook, bleopt で問題が起こっている [#D1571]
+
+    * fixed: blehook で新しい hook を作成できなくなっている。何故だろうか。これ
+      は引数解析のバグである。
+
+    * fixed: ble-face --hel でエラーにならずにコマンドを実行することができてい
+      る。これは修正した。他にも '-' に対する処理を blehook, bleopt と共に修正
+      した。
+
+    * fixed: ble-face --color=xxxx のエラーメッセージ表示時にエラーが発生する。
+      直した。blehook, bleopt についても --color=xxxx と指定した時のエラーメッ
+      セージを改善した。
+
+    * done: ble-face の使い方を wiki にまとめる
+    * done: --help に color の説明を含める。
+
   * bash-3.0 の初期化時に bleopt が出力されてしまっている [#D1570]
 
     % bash-3.1 では特に問題は起こっていない。という事はまた何かの bash bug に嵌っ

@@ -15,10 +15,13 @@ function bleopt/.read-arguments/process-option {
     flags=n${flags//[cn]} ;;
   (color=auto)
     flags=${flags//[cn]} ;;
+  (color=*)
+    ble/util/print "bleopt: '${name#*=}': unrecognized option argument for '--color'." >&2
+    flags=E$flags ;;
   (reset)   flags=r$flags ;;
   (changed) flags=u$flags ;;
   (*)
-    ble/util/print "bleopt: unrecognized long option '--$name'" >&2
+    ble/util/print "bleopt: unrecognized long option '--$name'." >&2
     flags=E$flags ;;
   esac
 }
@@ -54,6 +57,9 @@ function bleopt/.read-arguments {
     (--)
       ble/array#push specs "$@"
       break ;;
+    (-)
+      ble/util/print "bleopt: unrecognized argument '$arg'." >&2
+      flags=E$flags ;;
     (--*)
       bleopt/.read-arguments/process-option "${arg:2}" ;;
     (-*)
@@ -64,7 +70,7 @@ function bleopt/.read-arguments {
         (r) bleopt/.read-arguments/process-option reset ;;
         (u) bleopt/.read-arguments/process-option changed ;;
         (*)
-          ble/util/print "bleopt: unrecognized option '-c'" >&2
+          ble/util/print "bleopt: unrecognized option '-c'." >&2
           flags=E$flags ;;
         esac
       done ;;
@@ -138,6 +144,8 @@ function bleopt {
       '    --help        Print this help.' \
       '    -r, --reset   Reset options to the default values' \
       '    -u, --changed Only select changed options' \
+      '    --color[=always|never|auto]' \
+      '                  Change color settings.' \
       '' \
       '  Arguments' \
       '    NAME        Print the value of the option.' \
@@ -1529,6 +1537,8 @@ function blehook/.print-help {
     '  Options:' \
     '    --help      Print this help.' \
     '    -a, --all   Print all including internal hooks.' \
+    '    --color[=always|never|auto]' \
+    '                  Change color settings.' \
     '' \
     '  Arguments:' \
     '    NAME            Print the corresponding hooks.' \
@@ -1550,12 +1560,18 @@ function blehook/.read-arguments {
       case $arg in
       (--help)
         flags=H$flags ;;
-      (--color|--color=always) opt_color=always ;;
-      (--color=auto) opt_color=auto ;;
-      (--color=never) opt_color=never ;;
+      (--color) opt_color=always ;;
+      (--color=always|--color=auto|--color=never)
+        opt_color=${arg#*=} ;;
+      (--color=*)
+        ble/util/print "blehook: '${arg#*=}': unrecognized option argument for '--color'." >&2
+        flags=E$flags ;;
       (--all) flags=a$flags ;;
       (--*)
         ble/util/print "blehook: unrecognized long option '$arg'." >&2
+        flags=E$flags ;;
+      (-)
+        ble/util/print "blehook: unrecognized argument '$arg'." >&2
         flags=E$flags ;;
       (*)
         local i c
@@ -1571,7 +1587,7 @@ function blehook/.read-arguments {
       esac
     elif [[ $arg =~ $rex1 ]]; then
       local hookvar=_ble_hook_h_$arg
-      if [[ ${!hookvar+set} ]]; then
+      if ble/is-array "$hookvar"; then
         ble/array#push print "$hookvar"
       else
         ble/util/print "blehook: undefined hook '$arg'." >&2

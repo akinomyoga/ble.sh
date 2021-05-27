@@ -1030,7 +1030,7 @@ function ble/color/initialize-faces {
     (copy:*|face:*|iface:*)
       # `face:*' and `iface:*' are obsoleted forms.
       [[ $spec == copy:* ]] ||
-        ble/util/print "ble-color-setface: \"${spec%%:*}:*\" is obsoleted. Use \"copy:*\" instead." >&2
+        ble/util/print "ble-face: \"${spec%%:*}:*\" is obsoleted. Use \"copy:*\" instead." >&2
       if [[ ! ${value//[0-9]} ]]; then
         ble/color/iface2g "$value"
       else
@@ -1139,14 +1139,17 @@ function ble-face/.read-arguments {
         (--help) flags=H$flags ;;
         (--color)
           opt_color=always ;;
-        (--color=always | --color=auto | --color=never)
+        (--color=always|--color=auto|--color=never)
           opt_color=${arg#*=} ;;
         (--color=*)
-          ble/util/print "ble-face: unrecognized option argument for '--color' (${arg*#=})" >&2
+          ble/util/print "ble-face: '${arg#*=}': unrecognized option argument for '--color'." >&2
           flags=E$flags ;;
         (--reset) flags=r$flags ;;
         (--changed) flags=u$flags ;;
         (--) flags=L$flags ;;
+        (--*)
+          ble/util/print "ble-face: unrecognized long option '$arg'." >&2
+          flags=E$flags ;;
         (-?*)
           local i c
           for ((i=1;i<${#arg};i++)); do
@@ -1167,10 +1170,13 @@ function ble-face/.read-arguments {
               fi
               ble-face/.read-arguments/process-set "${arg::2}" "$lhs" "$rhs"
               break ;;
+            (*)
+              ble/util/print "ble-face: unrecognized option '-$c'." >&2
+              flags=E$flags ;;
             esac
           done ;;
-        (*)
-          ble/util/print "ble-face: unrecognized option '$arg'." >&2
+        (-)
+          ble/util/print "ble-face: unrecognized argument '$arg'." >&2
           flags=E$flags ;;
         esac
       fi
@@ -1200,26 +1206,33 @@ function ble-face/.read-arguments {
 function ble-face/.print-help {
   ble/util/print-lines >&2 \
     'ble-face --help' \
-    'ble-face [FACE[:=|=][TYPE:]SPEC | -[sd] FACE [TYPE:]SPEC]]...' \
-    'ble-face [-ur] [FACE...]' \
+    'ble-face [FACEPAT[:=|=][TYPE:]SPEC | -[sd] FACEPAT [TYPE:]SPEC]]...' \
+    'ble-face [-ur|--color[=WHEN]] [FACE...]' \
     '' \
     '  OPTIONS/ARGUMENTS' \
     '' \
-    '    FACE=[TYPE:]SPEC' \
-    '    -s FACE [TYPE:]SPEC' \
-    '            Set a face' \
+    '    FACEPAT=[TYPE:]SPEC' \
+    '    -s FACEPAT [TYPE:]SPEC' \
+    '            Set a face.  FACEPAT can include a wildcard @ which matches one or' \
+    '            more characters.' \
     '' \
     '    FACE:=[TYPE:]SPEC' \
     '    -d FACE [TYPE:]SPEC' \
     '            Define a face' \
     '' \
-    '    FACE...' \
+    '    [-u | --color[=always|never|auto]]... FACEPAT...' \
     '            Print faces.  If faces are not specified, all faces are selected.' \
-    '    -r FACE...' \
+    '            If -u is specified, only the faces with different values from their' \
+    '            default will be printed.  The option "--color" controls the output' \
+    '            color settings.  The default is "auto".' \
+    '' \
+    '    -r FACEPAT...' \
     '            Reset faces.  If faces are not specified, all faces are selected.' \
     '' \
-    '  FACE      Specifies a face name.  The character @ in the face name is treated' \
-    '            as a wildcard' \
+    '  FACEPAT   Specifies a face name.  The character @ in the face name is treated' \
+    '            as a wildcard.' \
+    '' \
+    '  FACE      Specifies a face name.  Wildcard @ cannot be used.' \
     '' \
     '  TYPE      Specifies the format of SPEC. The following values are available.' \
     '    gspec   Comma separated graphic attribute list' \
