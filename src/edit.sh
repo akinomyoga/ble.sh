@@ -4305,7 +4305,7 @@ function ble-edit/undo/.check-hindex {
   if [[ $_ble_edit_undo_hindex ]]; then
     local uindex=${_ble_edit_undo_index:-${#_ble_edit_undo[@]}}
     local q=\' Q="'\''" value
-    ble/util/sprintf value "'%s' " "$uindex" "${_ble_edit_undo[@]//$q/$Q}"
+    ble/util/sprintf value "'%s' " "$uindex" "${_ble_edit_undo[@]//$q/$Q}" # WA #D1570 checked
     _ble_edit_undo_history[_ble_edit_undo_hindex]=$value
   fi
 

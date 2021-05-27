@@ -3810,7 +3810,7 @@ function ble/syntax:bash/is-complete {
 
   # 構文 if..fi, etc が閉じているか?
   local attrs ret
-  IFS= eval 'attrs="::${_ble_syntax_attr[*]/%/::}"'
+  IFS= eval 'attrs="::${_ble_syntax_attr[*]/%/::}"' # WA #D1570 checked
   ble/string#count-string "$attrs" ":$ATTR_KEYWORD_BEGIN:"; local nbeg=$ret
   ble/string#count-string "$attrs" ":$ATTR_KEYWORD_END:"; local nend=$ret
   ((nbeg>nend)) && return 1
