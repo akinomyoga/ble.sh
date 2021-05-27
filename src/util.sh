@@ -93,7 +93,8 @@ function bleopt/.read-arguments {
         fi
 
         if [[ $op ]]; then
-          ble/array#push specs "${var[@]/%/=$value}"
+          var=("${var[@]}") # #D1570: WA bash-3.0 ${scal[@]/x} bug
+          ble/array#push specs "${var[@]/%/=$value}" # #D1570 WA checked
         else
           ble/array#push pvars "${var[@]}"
         fi
@@ -709,7 +710,7 @@ function ble/dense-array#fill-range {
   ble/array#reserve-prototype $(($3-$2))
   local _ble_script='
     local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
+    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 checked
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
@@ -1149,15 +1150,15 @@ else
   function ble/string#quote-words {
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@//$q/$Q}")
-    ret=("${ret[@]/%/$q}")
-    ret="${ret[*]/#/$q}"
+    ret=("${ret[@]/%/$q}") # WA #D1570 checked
+    ret="${ret[*]/#/$q}"   # WA #D1570 checked
   }
   function ble/string#quote-command {
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@:2}")
-    ret=("${ret[@]//$q/$Q}")
-    ret=("${ret[@]/%/$q}")
-    ret="$1 ${ret[*]/#/$q}"
+    ret=("${ret[@]//$q/$Q}") # WA #D1570 checked
+    ret=("${ret[@]/%/$q}")   # WA #D1570 checked
+    ret="$1 ${ret[*]/#/$q}"  # WA #D1570 checked
   }
 fi
 ## @fn ble/string#quote-word text opts
@@ -1409,8 +1410,8 @@ function ble/adict#keys {
   local keylist=${1}_keylist; keylist=${!keylist%:}
   ble/string#split ret : "$keylist"
   if [[ $keylist == *"$_ble_term_FS"* ]]; then
-    ret=("${ret[@]//$_ble_term_FS./:}")
-    ret=("${ret[@]//$_ble_term_FS,/$_ble_term_FS}")
+    ret=("${ret[@]//$_ble_term_FS./:}")             # WA #D1570 checked
+    ret=("${ret[@]//$_ble_term_FS,/$_ble_term_FS}") # WA #D1570 checked
   fi
 }
 

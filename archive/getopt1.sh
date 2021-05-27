@@ -3,7 +3,7 @@
 
 # Usage
 #
-#   local "${ble_getopt_vars[@]/%/=}"
+#   local "${ble_getopt_vars[@]/%/=}" # WA #D1570 checked
 #   ble-getopt-begin "progname" "m:n c:n,n k:n,n" "$@"
 #   ble-getopt
 #

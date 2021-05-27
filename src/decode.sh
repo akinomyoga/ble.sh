@@ -1333,7 +1333,7 @@ function ble-decode-char/print {
       else
         ble-decode-unkbd "$key"
         qkspec="'${ret//$q/$Q}'"
-        qcnames="'${cnames[*]//$q/$Q}'"
+        qcnames="'${cnames[*]//$q/$Q}'" # WA #D1570 checked
       fi
       ble/util/print "${sgrf}ble-bind$sgr0 $sgro-k$sgr0 $qcnames $qkspec"
     fi

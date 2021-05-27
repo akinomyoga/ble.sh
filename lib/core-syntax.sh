@@ -4580,7 +4580,7 @@ function ble/syntax:bash/is-complete {
 
   # 構文 if..fi, etc が閉じているか?
   local attrs ret
-  IFS= builtin eval 'attrs="::${_ble_syntax_attr[*]/%/::}"'
+  IFS= builtin eval 'attrs="::${_ble_syntax_attr[*]/%/::}"' # WA #D1570 checked
   ble/string#count-string "$attrs" ":$ATTR_KEYWORD_BEGIN:"; local nbeg=$ret
   ble/string#count-string "$attrs" ":$ATTR_KEYWORD_END:"; local nend=$ret
   ((nbeg>nend)) && return 1
@@ -5117,7 +5117,7 @@ function ble/syntax/highlight {
   ble/array#push vars "${_ble_highlight_layer_plain_VARNAMES[@]}"
   ble/array#push vars "${_ble_highlight_layer_syntax_VARNAMES[@]}"
 
-  local "${vars[@]/%/=}"
+  local "${vars[@]/%/=}" # WA #D1570 checked
   if [[ $cache_prefix ]] && ((${cache_prefix}_INITIALIZED++)); then
     ble/util/restore-vars "$cache_prefix" "${vars[@]}"
 
@@ -6861,7 +6861,7 @@ function ble/syntax/progcolor/word:default {
 ##   @var[in] tree_words
 ##   @var[in,out] color_umin color_umax
 function ble/syntax/progcolor/default {
-  local i "${_ble_syntax_progcolor_vars[@]}"
+  local i "${_ble_syntax_progcolor_vars[@]/%/=}" # WA #D1570 checked
   for ((i=1;i<${#comp_words[@]};i++)); do
     local ref=${tree_words[i]}
     [[ $ref ]] || continue
@@ -6926,7 +6926,7 @@ function ble/syntax/progcolor {
 
   # コマンド名に対しては既定の着色を実行
   if [[ ${tree_words[0]} ]]; then
-    local "${_ble_syntax_progcolor_vars[@]/%/=}"
+    local "${_ble_syntax_progcolor_vars[@]/%/=}" # WA #D1570 checked
     ble/syntax/progcolor/load-word-data "${tree_words[0]}"
     [[ $wattr == - ]] && ble/syntax/progcolor/word:default
   fi

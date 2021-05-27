@@ -3440,7 +3440,7 @@ function ble/complete/source:dynamic-history {
 ##   補完候補のデータを一つの配列に纏めたもの。
 ##   要素を使用する際は以下の様に変数に展開して使う。
 ##
-##     local "${_ble_complete_cand_varnames[@]/%/=}"
+##     local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
 ##     ble/complete/cand/unpack "${cand_pack[0]}"
 ##
 ##   先頭に ACTION が格納されているので
@@ -4164,7 +4164,7 @@ function ble/complete/menu-complete.class/render-item {
     local menu_common_part=$_ble_complete_menu_common_part
   fi
 
-  local "${_ble_complete_cand_varnames[@]/%/=}"
+  local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/unpack "$1"
 
   local prefix_len=$PREFIX_LEN
@@ -4264,7 +4264,7 @@ function ble/complete/menu-complete.class/render-item {
 
 function ble/complete/menu-complete.class/get-desc {
   local item=$1
-  local "${_ble_complete_cand_varnames[@]/%/=}"
+  local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/unpack "$item"
   desc="(action: $ACTION)"
   ble/function#try ble/complete/action:"$ACTION"/get-desc
@@ -4274,7 +4274,7 @@ function ble/complete/menu-complete.class/onselect {
   local nsel=$1 osel=$2
   local insert=${_ble_complete_menu_original:-${_ble_complete_menu_comp[2]}}
   if ((nsel>=0)); then
-    local "${_ble_complete_cand_varnames[@]/%/=}"
+    local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
     ble/complete/cand/unpack "${_ble_complete_menu_items[nsel]}"
     insert=$INSERT
   fi
@@ -4421,7 +4421,7 @@ function ble/complete/menu/generate-candidates-from-menu {
   # remaining candidates
   cand_count=${#_ble_complete_menu_items[@]}
   cand_cand=() cand_word=() cand_pack=()
-  local pack "${_ble_complete_cand_varnames[@]}"
+  local pack "${_ble_complete_cand_varnames[@]/=}" # #D1570 WA checked
   for pack in "${_ble_complete_menu_items[@]}"; do
     ble/complete/cand/unpack "$pack"
     ble/array#push cand_cand "$CAND"
@@ -4523,7 +4523,7 @@ function ble/complete/insert-common {
     # 一意確定の時
     local ACTION=${cand_pack[0]%%:*}
     if ble/is-function ble/complete/action:"$ACTION"/complete; then
-      local "${_ble_complete_cand_varnames[@]/%/=}"
+      local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
       ble/complete/cand/unpack "${cand_pack[0]}"
       ble/complete/action:"$ACTION"/complete
       (($?==148)) && return 148
@@ -4575,7 +4575,7 @@ function ble/complete/insert-common {
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-all {
-  local "${_ble_complete_cand_varnames[@]/%/=}"
+  local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
   local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
   for pack in "${cand_pack[@]}"; do
     ble/complete/cand/unpack "$pack"
@@ -5239,7 +5239,7 @@ function ble/complete/menu-filter/.filter-candidates {
   cand_pack=()
 
   local iloop=0 interval=$bleopt_complete_polling_cycle
-  local filter_type pack "${_ble_complete_cand_varnames[@]}"
+  local filter_type pack "${_ble_complete_cand_varnames[@]/=}" # #D1570 WA checked
   for filter_type in head substr hsubseq subseq; do
     ble/path#remove-glob comp_type '[maA]'
     case $filter_type in
@@ -5511,7 +5511,7 @@ function ble/widget/menu_complete/exit {
         local comps_fixed=${_ble_complete_menu0_comp[6]}
 
         # 補完候補のロード
-        local "${_ble_complete_cand_varnames[@]/%/=}"
+        local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
         ble/complete/cand/unpack "$pack"
 
         ble/complete/action:"$ACTION"/complete
@@ -5745,7 +5745,7 @@ function ble/complete/auto-complete/.check-context {
   local insert=$word suffix=
   local ACTION=${cand_pack[0]%%:*}
   if ble/is-function ble/complete/action:"$ACTION"/complete; then
-    local "${_ble_complete_cand_varnames[@]/%/=}"
+    local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
     ble/complete/cand/unpack "${cand_pack[0]}"
     ble/complete/action:"$ACTION"/complete
   fi
@@ -6660,7 +6660,7 @@ function ble/cmdinfo/complete:cd/.impl {
   ((ext==148||ext==0)) && return "$ext"
 
   local is_pwd_visited= is_cdpath_generated=
-  "${_ble_util_set_declare[@]//NAME/visited}"
+  "${_ble_util_set_declare[@]//NAME/visited}" # WA #D1570 checked
 
   # Check CDPATH first
   local name names; ble/string#split names : "$CDPATH"

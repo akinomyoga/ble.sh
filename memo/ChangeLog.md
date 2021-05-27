@@ -116,6 +116,7 @@
 - main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
 - Makefile: create `run` directory instead of `tmp` `#D1557` 9bdb37d
 - main: fix the workaround for `set -e` `#D1564` ab2f70b
+- util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 0000000
 
 ## Compatibility
 

@@ -276,6 +276,11 @@ function sub:scan/bash300bug {
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
   grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh
+
+  # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
+  grc '\$\{[a-zA-Z_0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
+    grep -v '#D1570'
+
 }
 
 function sub:scan/bash301bug-array-element-length {
@@ -349,6 +354,11 @@ function sub:scan/eval-literal {
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zeval "(\$[[:alnum:]_]+)+(\[[^]["'\''\$`]+\])?\+?=Zd
       g'
+}
+
+function sub:scan/WA-localvar_inherit {
+  echo "--- $FUNCNAME ---"
+  grc 'local [^;&|()]*"\$\{[a-zA-Z_0-9]+\[@*\]\}"'
 }
 
 function sub:scan {
@@ -429,6 +439,7 @@ function sub:scan {
       \Zreadonly -f unsetZd
       g'
   sub:scan/eval-literal
+  sub:scan/WA-localvar_inherit
 
   sub:scan/memo-numbering
 }
