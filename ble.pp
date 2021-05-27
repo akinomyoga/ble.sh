@@ -494,7 +494,7 @@ fi
 
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 _ble_bash_loaded_in_function=0
-[[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
+local _ble_local_test 2>/dev/null && _ble_bash_loaded_in_function=1
 
 _ble_version=0
 BLE_VERSION=$_ble_init_version

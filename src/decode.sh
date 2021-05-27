@@ -114,45 +114,21 @@ _ble_decode_FunctionKeyBase=0x110000
 ##
 ## @fn ble-decode-kbd/.get-keycode keyname
 ##   @var[out] ret
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  _ble_decode_kbd_ver=4
-  _ble_decode_kbd__n=0
-  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_decode_kbd__k2c}"
-  _ble_decode_kbd__c2k=()
+_ble_decode_kbd_ver=gdict
+_ble_decode_kbd__n=0
+_ble_decode_kbd__c2k=()
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_decode_kbd__k2c}"
+ble/is-assoc _ble_decode_kbd__k2c || _ble_decode_kbd_ver=adict
 
-  function ble-decode-kbd/.set-keycode {
-    local keyname=$1
-    local code=$2
-    : ${_ble_decode_kbd__c2k[code]:=$keyname}
-    _ble_decode_kbd__k2c[$keyname]=$code
-  }
-  function ble-decode-kbd/.get-keycode {
-    ret=${_ble_decode_kbd__k2c[$1]}
-  }
-else
-  _ble_decode_kbd_ver=3
-  _ble_decode_kbd__n=0
-  _ble_decode_kbd__k2c_keys=
-  _ble_decode_kbd__k2c_vals=()
-  _ble_decode_kbd__c2k=()
-  function ble-decode-kbd/.set-keycode {
-    local keyname=$1
-    local code=$2
-    : ${_ble_decode_kbd__c2k[code]:=$keyname}
-    _ble_decode_kbd__k2c_keys=$_ble_decode_kbd__k2c_keys:$keyname:
-    _ble_decode_kbd__k2c_vals[${#_ble_decode_kbd__k2c_vals[@]}]=$code
-  }
-  function ble-decode-kbd/.get-keycode {
-    local keyname=$1
-    local tmp=${_ble_decode_kbd__k2c_keys%%:$keyname:*}
-    if [[ ${#tmp} == ${#_ble_decode_kbd__k2c_keys} ]]; then
-      ret=
-    else
-      local -a arr; ble/string#split-words arr "${tmp//:/ }"
-      ret=${_ble_decode_kbd__k2c_vals[${#arr[@]}]}
-    fi
-  }
-fi
+function ble-decode-kbd/.set-keycode {
+  local keyname=$1
+  local code=$2
+  : "${_ble_decode_kbd__c2k[code]:=$keyname}"
+  ble/gdict#set _ble_decode_kbd__k2c "$keyname" "$code"
+}
+function ble-decode-kbd/.get-keycode {
+  ble/gdict#get _ble_decode_kbd__k2c "$1"
+}
 
 ## @fn ble-decode-kbd/.get-keyname keycode
 ##

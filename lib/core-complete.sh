@@ -6099,95 +6099,43 @@ function ble/complete/sabbrev/.print-definition {
 ##   @param[in] key
 ##   @var[out] ret
 ##
-if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  function ble/complete/sabbrev/register {
-    local key=$1 value=$2
-    _ble_complete_sabbrev[$key]=$value
-  }
-  function ble/complete/sabbrev/list {
-    (($#)) || set -- "${!_ble_complete_sabbrev[@]}"
-    (($#)) || return 0
 
-    local sgr0 sgr1 sgr2 sgr3 sgro
-    ble/complete/sabbrev/.initialize-print
-
-    local key ext=0
-    for key; do
-      if [[ ${_ble_complete_sabbrev[$key]+set} ]]; then
-        local value=${_ble_complete_sabbrev[$key]}
-        ble/complete/sabbrev/.print-definition "$key" "$value"
-      else
-        ble/util/print "ble-sabbrev: $key: not found." >&2
-        ext=1
-      fi
-    done
-    return "$ext"
-  }
-  function ble/complete/sabbrev/get {
-    local key=$1
-    ret=${_ble_complete_sabbrev[$key]}
-    [[ $ret ]]
-  }
-  function ble/complete/sabbrev/get-keys {
-    keys=("${!_ble_complete_sabbrev[@]}")
-  }
-else
-  if ! ble/is-array _ble_complete_sabbrev_keys; then # reload #D0875
-    _ble_complete_sabbrev_keys=()
-    _ble_complete_sabbrev_values=()
+# Note: _ble_complete_sabbrev は core-complete-def.sh で定義
+function ble/complete/sabbrev/register {
+  local key=$1 value=$2
+  ble/gdict#set _ble_complete_sabbrev "$key" "$value"
+}
+function ble/complete/sabbrev/list {
+  local keys ret; keys=("$@")
+  if ((${#keys[@]}==0)); then
+    ble/gdict#keys _ble_complete_sabbrev
+    keys=("${ret[@]}")
+    ((${#keys[@]})) || return 0
   fi
-  function ble/complete/sabbrev/register {
-    local key=$1 value=$2 i=0
-    for key2 in "${_ble_complete_sabbrev_keys[@]}"; do
-      [[ $key2 == "$key" ]] && break
-      ((i++))
-    done
-    _ble_complete_sabbrev_keys[i]=$key
-    _ble_complete_sabbrev_values[i]=$value
-  }
-  function ble/complete/sabbrev/list {
-    local sgr0 sgr1 sgr2 sgr3 sgro
-    ble/complete/sabbrev/.initialize-print
 
-    if (($#)); then
-      local key ret ext=0
-      for key; do
-        if ble/array#index _ble_complete_sabbrev_keys "$key"; then
-          local value=${_ble_complete_sabbrev_values[ret]}
-          ble/complete/sabbrev/.print-definition "$key" "$value"
-        else
-          ble/util/print "ble-sabbrev: $key: not found." >&2
-          ext=1
-        fi
-      done
-      return "$ext"
+  local sgr0 sgr1 sgr2 sgr3 sgro
+  ble/complete/sabbrev/.initialize-print
+
+  local key ext=0
+  for key in "${keys[@]}"; do
+    if ble/gdict#get _ble_complete_sabbrev "$key"; then
+      ble/complete/sabbrev/.print-definition "$key" "$ret"
     else
-      local i N=${#_ble_complete_sabbrev_keys[@]}
-      for ((i=0;i<N;i++)); do
-        local key=${_ble_complete_sabbrev_keys[i]}
-        local value=${_ble_complete_sabbrev_values[i]}
-        ble/complete/sabbrev/.print-definition "$key" "$value"
-      done
-      return 0
+      ble/util/print "ble-sabbrev: $key: not found." >&2
+      ext=1
     fi
-  }
-  function ble/complete/sabbrev/get {
-    ret=
-    local key=$1 value=$2 i=0
-    for key in "${_ble_complete_sabbrev_keys[@]}"; do
-      if [[ $key == "$1" ]]; then
-        ret=${_ble_complete_sabbrev_values[i]}
-        break
-      fi
-      ((i++))
-    done
-    [[ $ret ]]
-  }
-  function ble/complete/sabbrev/get-keys {
-    keys=("${_ble_complete_sabbrev_keys[@]}")
-  }
-fi
-
+  done
+  return "$ext"
+}
+function ble/complete/sabbrev/get {
+  local key=$1
+  ble/gdict#get _ble_complete_sabbrev "$key"
+}
+function ble/complete/sabbrev/get-keys {
+  local ret
+  ble/gdict#keys _ble_complete_sabbrev
+  keys=("${ret[@]}")
+}
 
 function ble/complete/sabbrev/read-arguments {
   while (($#)); do

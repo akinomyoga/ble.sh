@@ -1347,12 +1347,12 @@ fi
 #--------------------------------------
 # dict
 
-_ble_util_adict_declare=''
+_ble_util_adict_declare='declare NAME'
 ## @fn ble/dict#.resolve dict key
 function ble/adict#.resolve {
   # _ble_local_key
   _ble_local_key=$2
-  _ble_local_key=${_ble_local_key//$_ble_term_FS/$_ble_term_FS$_ble_term_FS}
+  _ble_local_key=${_ble_local_key//$_ble_term_FS/$_ble_term_FS,}
   _ble_local_key=${_ble_local_key//:/$_ble_term_FS.}
 
   local keylist=${1}_keylist; keylist=:${!keylist}
@@ -1405,6 +1405,14 @@ function ble/adict#has {
 function ble/adict#clear {
   builtin eval -- "${1}_keylist= $1=()"
 }
+function ble/adict#keys {
+  local keylist=${1}_keylist; keylist=${!keylist%:}
+  ble/string#split ret : "$keylist"
+  if [[ $keylist == *"$_ble_term_FS"* ]]; then
+    ret=("${ret[@]//$_ble_term_FS./:}")
+    ret=("${ret[@]//$_ble_term_FS,/$_ble_term_FS}")
+  fi
+}
 
 if ((_ble_bash>=40000)); then
   _ble_util_dict_declare='declare -A NAME'
@@ -1413,34 +1421,68 @@ if ((_ble_bash>=40000)); then
   function ble/dict#unset { builtin eval -- "builtin unset -v '$1[x\$2]'"; }
   function ble/dict#has   { builtin eval -- "[[ \${$1[x\$2]+set} ]]"; }
   function ble/dict#clear { builtin eval -- "$1=()"; }
+  function ble/dict#keys  { builtin eval -- 'ret=("${!'"$1"'[@]}"); ret=("${ret[@]#x}")'; }
 else
-  _ble_util_dict_declare='declare NAME NAME_keylist'
+  _ble_util_dict_declare='declare NAME NAME_keylist='
   function ble/dict#set   { ble/adict#set   "$@"; }
   function ble/dict#get   { ble/adict#get   "$@"; }
   function ble/dict#unset { ble/adict#unset "$@"; }
   function ble/dict#has   { ble/adict#has   "$@"; }
   function ble/dict#clear { ble/adict#clear "$@"; }
+  function ble/dict#keys  { ble/adict#keys  "$@"; }
 fi
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  if ((_ble_bash>=40200)); then
-    _ble_util_gdict_declare='{ unset -v NAME; declare -gA NAME; NAME=(); }'
-  else
-    _ble_util_gdict_declare='{ unset -v NAME; declare -A NAME=(); }'
-  fi
+if ((_ble_bash>=40200)); then
+  _ble_util_gdict_declare='{ builtin unset -v NAME; declare -gA NAME; NAME=(); }'
   function ble/gdict#set   { ble/dict#set   "$@"; }
   function ble/gdict#get   { ble/dict#get   "$@"; }
   function ble/gdict#unset { ble/dict#unset "$@"; }
   function ble/gdict#has   { ble/dict#has   "$@"; }
   function ble/gdict#clear { ble/dict#clear "$@"; }
+  function ble/gdict#keys  { ble/dict#keys  "$@"; }
+elif ((_ble_bash>=40000)); then
+  _ble_util_gdict_declare='{ if ! ble/is-assoc NAME; then if local _ble_local_test 2>/dev/null; then NAME_keylist=; else builtin unset -v NAME NAME_keylist; declare -A NAME; fi fi; NAME=(); }'
+  function ble/gdict#.is-adict {
+    local keylist=${1}_keylist
+    [[ ${!keylist+set} ]]
+  }
+  function ble/gdict#set   { if ble/gdict#.is-adict "$1"; then ble/adict#set   "$@"; else ble/dict#set   "$@"; fi; }
+  function ble/gdict#get   { if ble/gdict#.is-adict "$1"; then ble/adict#get   "$@"; else ble/dict#get   "$@"; fi; }
+  function ble/gdict#unset { if ble/gdict#.is-adict "$1"; then ble/adict#unset "$@"; else ble/dict#unset "$@"; fi; }
+  function ble/gdict#has   { if ble/gdict#.is-adict "$1"; then ble/adict#has   "$@"; else ble/dict#has   "$@"; fi; }
+  function ble/gdict#clear { if ble/gdict#.is-adict "$1"; then ble/adict#clear "$@"; else ble/dict#clear "$@"; fi; }
+  function ble/gdict#keys  { if ble/gdict#.is-adict "$1"; then ble/adict#keys  "$@"; else ble/dict#keys  "$@"; fi; }
 else
-  _ble_util_gdict_declare=
+  _ble_util_gdict_declare='{ builtin unset -v NAME NAME_keylist; NAME_keylist= NAME=(); }'
   function ble/gdict#set   { ble/adict#set   "$@"; }
   function ble/gdict#get   { ble/adict#get   "$@"; }
   function ble/gdict#unset { ble/adict#unset "$@"; }
   function ble/gdict#has   { ble/adict#has   "$@"; }
   function ble/gdict#clear { ble/adict#clear "$@"; }
+  function ble/gdict#keys  { ble/adict#keys  "$@"; }
 fi
+
+
+function ble/dict/.print {
+  declare -p "$2" &>/dev/null || return 1
+  local ret _ble_local_key _ble_local_value
+
+  ble/util/print "builtin eval -- \"\${_ble_util_${1}_declare//NAME/$2}\""
+  ble/"$1"#keys "$2"
+  for _ble_local_key in "${ret[@]}"; do
+    ble/"$1"#get "$2" "$_ble_local_key"
+    ble/string#quote-word "$ret" quote-empty
+    _ble_local_value=$ret
+
+    ble/string#quote-word "$_ble_local_key" quote-empty
+    _ble_local_key=$ret
+
+    ble/util/print "ble/$1#set $2 $_ble_local_key $_ble_local_value"
+  done
+}
+function ble/dict#print { ble/dict/.print dict "$1"; }
+function ble/adict#print { ble/dict/.print adict "$1"; }
+function ble/gdict#print { ble/dict/.print gdict "$1"; }
 
 #------------------------------------------------------------------------------
 # blehook
@@ -1685,51 +1727,29 @@ _ble_builtin_trap_reserved=()
 _ble_builtin_trap_handlers=()
 _ble_builtin_trap_DEBUG=
 _ble_builtin_trap_inside=
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_trap_n2i}"
-  function ble/builtin/trap/.register {
-    local index=$1 name=$2
-    _ble_builtin_trap_signames[index]=$name
-    _ble_builtin_trap_n2i[$name]=$index
-  }
-  function ble/builtin/trap/.get-sig-index {
-    if [[ $1 && ! ${1//[0-9]} ]]; then
-      ret=$1
-      return 0
-    else
-      ret=${_ble_builtin_trap_n2i[$1]}
-      [[ $ret ]] && return 0
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_trap_n2i}"
+function ble/builtin/trap/.register {
+  local index=$1 name=$2
+  _ble_builtin_trap_signames[index]=$name
+  ble/gdict#set _ble_builtin_trap_n2i "$name" "$index"
+}
+function ble/builtin/trap/.get-sig-index {
+  if [[ $1 && ! ${1//[0-9]} ]]; then
+    ret=$1
+    return 0
+  else
+    ble/gdict#get _ble_builtin_trap_n2i "$1"
+    [[ $ret ]] && return 0
 
-      ble/string#toupper "$1"; local upper=$ret
-      ret=${_ble_builtin_trap_n2i[$upper]}
-      if [[ ! $ret ]]; then
-        ret=${_ble_builtin_trap_n2i[SIG$upper]}
-        [[ $ret ]] || return 1
-      fi
-      _ble_builtin_trap_n2i[$1]=$ret
-      return 0
-    fi
-  }
-else
-  function ble/builtin/trap/.register {
-    local index=$1 name=$2
-    _ble_builtin_trap_signames[index]=$name
-  }
-  function ble/builtin/trap/.get-sig-index {
-    if [[ $1 && ! ${1//[0-9]} ]]; then
-      ret=$1
-      return 0
-    else
-      ble/string#toupper "$1"; local spec=$ret
-      for ret in "${!_ble_builtin_trap_signames[@]}"; do
-        local name=${_ble_builtin_trap_signames[ret]}
-        [[ $spec == $name || SIG$spec == $name ]] && return 0
-      done
-      ret=
+    ble/string#toupper "$1"; local upper=$ret
+    ble/gdict#get _ble_builtin_trap_n2i "$upper" ||
+      ble/gdict#get _ble_builtin_trap_n2i "SIG$upper" ||
       return 1
-    fi
-  }
-fi
+    ble/gdict#set _ble_builtin_trap_n2i "$1" "$ret"
+    return 0
+  fi
+}
+
 function ble/builtin/trap/.initialize {
   function ble/builtin/trap/.initialize { :; }
   local ret i

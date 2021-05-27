@@ -6287,50 +6287,26 @@ function ble/syntax/highlight/cmdtype/.impl {
 ##   @param[in] word
 ##     シェル展開・クォート除去を実行する前の文字列を指定します。
 ##   @var[out] type
-if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  # Note: 連想配列 _ble_syntax_highlight_filetype は core-syntax-def.sh で先に定義される。
 
-  _ble_syntax_highlight_filetype_version=-1
-  function ble/syntax/highlight/cmdtype {
-    local cmd=$1 _0=$2
+# Note: 連想配列 _ble_syntax_highlight_filetype は core-syntax-def.sh で先に定義される。
+_ble_syntax_highlight_filetype_version=-1
+function ble/syntax/highlight/cmdtype {
+  local cmd=$1 _0=$2
 
-    # check cache
-    if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
-      _ble_syntax_highlight_filetype=()
-      ((_ble_syntax_highlight_filetype_version=_ble_edit_LINENO))
-    fi
+  # check cache
+  if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
+    ble/gdict#clear _ble_syntax_highlight_filetype
+    ((_ble_syntax_highlight_filetype_version=_ble_edit_LINENO))
+  fi
 
-    type=${_ble_syntax_highlight_filetype[x$_0]}
-    [[ $type ]] && return 0
+  if local ret; ble/gdict#get _ble_syntax_highlight_filetype "$_0"; then
+    type=$ret
+    return 0
+  fi
 
-    ble/syntax/highlight/cmdtype/.impl "$cmd" "$_0"
-    _ble_syntax_highlight_filetype["x$_0"]=$type
-  }
-else
-  _ble_syntax_highlight_filetype=()
-  _ble_syntax_highlight_filetype_version=-1
-  function ble/syntax/highlight/cmdtype {
-    local cmd=$1 _0=$2
-
-    # check cache
-    if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
-      _ble_syntax_highlight_filetype=()
-      ((_ble_syntax_highlight_filetype_version=_ble_edit_LINENO))
-    fi
-
-    local i iN
-    for ((i=0,iN=${#_ble_syntax_highlight_filetype[@]}/2;i<iN;i++)); do
-      if [[ ${_ble_syntax_highlight_filetype[2*i]} == x"$_0" ]]; then
-        type=${_ble_syntax_highlight_filetype[2*i+1]}
-        return 0
-      fi
-    done
-
-    ble/syntax/highlight/cmdtype/.impl "$cmd" "$_0"
-    _ble_syntax_highlight_filetype[2*iN]=x$_0
-    _ble_syntax_highlight_filetype[2*iN+1]=$type
-  }
-fi
+  ble/syntax/highlight/cmdtype/.impl "$cmd" "$_0"
+  ble/gdict#set _ble_syntax_highlight_filetype "$_0" "$type"
+}
 
 #------------------------------------------------------------------------------
 # ble/syntax/highlight/filetype
@@ -6392,7 +6368,7 @@ function ble/syntax/highlight/filetype {
 
 function ble/syntax/highlight/ls_colors/.clear {
   _ble_syntax_highlight_lscolors=()
-  _ble_syntax_highlight_lscolors_ext=()
+  ble/gdict#clear _ble_syntax_highlight_lscolors_ext
 }
 
 ## @fn ble/syntax/highlight/ls_colors/.register-extension key value
@@ -6400,41 +6376,15 @@ function ble/syntax/highlight/ls_colors/.clear {
 ## @fn ble/syntax/highlight/ls_colors/.read-extension key
 ##   @param[in] key
 ##   @var[out] ret
-if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  # 連想配列による実装
-  function ble/syntax/highlight/ls_colors/.register-extension {
-    local key=$1 value=$2
-    _ble_syntax_highlight_lscolors_ext[$key]=$value
-  }
-  function ble/syntax/highlight/ls_colors/.read-extension {
-    ret=${_ble_syntax_highlight_lscolors_ext[$1]}
-    [[ $ret ]]
-  }
-else
-  # 通常配列による実装
-  ## @fn ble/syntax/highlight/ls_colors/.find-extension key
-  ##   @var[out] ret
-  function ble/syntax/highlight/ls_colors/.find-extension {
-    local key=$1
-    local i N=${#_ble_syntax_highlight_lscolors_ext[@]}
-    for ((i=0;i<N;i+=2)); do
-      [[ ${_ble_syntax_highlight_lscolors_ext[i]} == "$key" ]] && break
-    done
-    ret=$i
-  }
-  function ble/syntax/highlight/ls_colors/.register-extension {
-    local key=$1 value=$2 ret
-    ble/syntax/highlight/ls_colors/.find-extension "$key"
-    _ble_syntax_highlight_lscolors_ext[ret]=$key
-    _ble_syntax_highlight_lscolors_ext[ret+1]=$value
-  }
-  function ble/syntax/highlight/ls_colors/.read-extension {
-    local key=$1
-    ble/syntax/highlight/ls_colors/.find-extension "$key"
-    ret=${_ble_syntax_highlight_lscolors_ext[ret+1]}
-    [[ $ret ]]
-  }
-fi
+
+# Note: _ble_syntax_highlight_lscolors_ext は core-syntax-def.sh で先に定義
+function ble/syntax/highlight/ls_colors/.register-extension {
+  local key=$1 value=$2
+  ble/gdict#set _ble_syntax_highlight_lscolors_ext "$key" "$value"
+}
+function ble/syntax/highlight/ls_colors/.read-extension {
+  ble/gdict#get _ble_syntax_highlight_lscolors_ext "$1"
+}
 
 function ble/syntax/highlight/ls_colors/.parse {
   ble/syntax/highlight/ls_colors/.clear

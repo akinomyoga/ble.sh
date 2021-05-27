@@ -40,6 +40,7 @@
   - main (`ble-update`): fix help message (contributed by NoahGorny) 50288bf
 - syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 4df29a6
 - lib: support `lib/vim-airline` (motivated by huresche) `#D1565` da1d0ff
+  - util (`ble/gdict`): refactor `#D1569` 0000000
 - color: support new face setting function `ble-face` `#D1568` 0000000
 - util (`bleopt`): support option `-r` and `-u` and wildcards in option names `#D1568` 0000000
 - util (`blehook`): hide internal hooks by default and support option `-a` `#D1568` 0000000

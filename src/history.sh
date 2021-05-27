@@ -781,49 +781,25 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   ## @fn ble/builtin/history/.add-rskip file delta
   ##   @param[in] file
   ##
-  if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-    builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_history_rskip_dict}"
-    function ble/builtin/history/.get-rskip {
-      local file=$1
-      rskip=${_ble_builtin_history_rskip_dict[$file]}
-    }
-    function ble/builtin/history/.set-rskip {
-      local file=$1
-      _ble_builtin_history_rskip_dict[$file]=$2
-    }
-    function ble/builtin/history/.add-rskip {
-      local file=$1
-      # Note: 当初 ((dict[\$file]+=$2)) の形式を使っていたが、これは
-      #   shopt -s assoc_expand_once の場合に動作しない事が判明したので、
-      #   一旦、別の変数で計算してから代入する事にする。
-      local value=${_ble_builtin_history_rskip_dict[$file]}
-      ((value+=$2))
-      _ble_builtin_history_rskip_dict[$file]=$value
-    }
-  else
-    _ble_builtin_history_rskip_path=()
-    _ble_builtin_history_rskip_skip=()
-    function ble/builtin/history/.find-rskip-index {
-      local file=$1
-      local n=${#_ble_builtin_history_rskip_path[@]}
-      for ((index=0;index<n;index++)); do
-        [[ $file == ${_ble_builtin_history_rskip_path[index]} ]] && return 0
-      done
-      _ble_builtin_history_rskip_path[index]=$file
-    }
-    function ble/builtin/history/.get-rskip {
-      local index; ble/builtin/history/.find-rskip-index "$1"
-      rskip=${_ble_builtin_history_rskip_skip[index]}
-    }
-    function ble/builtin/history/.set-rskip {
-      local index; ble/builtin/history/.find-rskip-index "$1"
-      _ble_builtin_history_rskip_skip[index]=$2
-    }
-    function ble/builtin/history/.add-rskip {
-      local index; ble/builtin/history/.find-rskip-index "$1"
-      ((_ble_builtin_history_rskip_skip[index]+=$2))
-    }
-  fi
+  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_history_rskip_dict}"
+  function ble/builtin/history/.get-rskip {
+    local file=$1 ret
+    ble/gdict#get _ble_builtin_history_rskip_dict "$file"
+    rskip=$ret
+  }
+  function ble/builtin/history/.set-rskip {
+    local file=$1
+    ble/gdict#set _ble_builtin_history_rskip_dict "$file" "$2"
+  }
+  function ble/builtin/history/.add-rskip {
+    local file=$1 ret
+    # Note: 当初 ((dict[\$file]+=$2)) の形式を使っていたが、これは
+    #   shopt -s assoc_expand_once の場合に動作しない事が判明したので、
+    #   一旦、別の変数で計算してから代入する事にする。
+    ble/gdict#get _ble_builtin_history_rskip_dict "$file"
+    ((ret+=$2))
+    ble/gdict#set _ble_builtin_history_rskip_dict "$file" "$ret"
+  }
 fi
 
 ## @fn ble/builtin/history/.initialize opts
