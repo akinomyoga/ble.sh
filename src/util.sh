@@ -1356,7 +1356,7 @@ fi
 #--------------------------------------
 # dict
 
-_ble_util_adict_declare='declare NAME'
+_ble_util_adict_declare='declare NAME NAME_keylist'
 ## @fn ble/dict#.resolve dict key
 function ble/adict#.resolve {
   # _ble_local_key
@@ -1415,12 +1415,21 @@ function ble/adict#clear {
   builtin eval -- "${1}_keylist= $1=()"
 }
 function ble/adict#keys {
-  local keylist=${1}_keylist; keylist=${!keylist%:}
-  ble/string#split ret : "$keylist"
-  if [[ $keylist == *"$_ble_term_FS"* ]]; then
+  local _ble_local_keylist=${1}_keylist
+  _ble_local_keylist=${!_ble_local_keylist%:}
+  ble/string#split ret : "$_ble_local_keylist"
+  if [[ $_ble_local_keylist == *"$_ble_term_FS"* ]]; then
     ret=("${ret[@]//$_ble_term_FS./:}")             # WA #D1570 checked
     ret=("${ret[@]//$_ble_term_FS,/$_ble_term_FS}") # WA #D1570 checked
   fi
+
+  # filter out unset elements
+  local _ble_local_keys _ble_local_i _ble_local_ref=$1[_ble_local_i]
+  _ble_local_keys=("${ret[@]}") ret=()
+  for _ble_local_i in "${!_ble_local_keys[@]}"; do
+    [[ ${_ble_local_ref+set} ]] &&
+      ble/array#push ret "${_ble_local_keys[_ble_local_i]}"
+  done
 }
 
 if ((_ble_bash>=40000)); then
@@ -1492,6 +1501,20 @@ function ble/dict/.print {
 function ble/dict#print { ble/dict/.print dict "$1"; }
 function ble/adict#print { ble/dict/.print adict "$1"; }
 function ble/gdict#print { ble/dict/.print gdict "$1"; }
+
+function ble/dict/.copy {
+  local ret
+  ble/"$1"#keys "$2"
+  ble/"$1"#clear "$3"
+  local _ble_local_key
+  for _ble_local_key in "${ret[@]}"; do
+    ble/"$1"#get "$2" "$_ble_local_key"
+    ble/"$1"#set "$3" "$_ble_local_key" "$ret"
+  done
+}
+function ble/dict#cp { ble/dict/.copy dict "$1" "$2"; }
+function ble/adict#cp { ble/dict/.copy adict "$1" "$2"; }
+function ble/gdict#cp { ble/dict/.copy gdict "$1" "$2"; }
 
 #------------------------------------------------------------------------------
 # blehook
@@ -4055,28 +4078,52 @@ function ble-autoload {
 ##
 _ble_util_import_files=()
 
+bleopt/declare -n import_path "${XDG_DATA_HOME:-$HOME/.local/share}/blesh/local"
+
 ## @fn ble/util/import/search/.check-directory name dir
 ##   @var[out] ret
 function ble/util/import/search/.check-directory {
-  local name=$1 dir=$2
+  local name=$1 dir=${2%/}
+  [[ -d ${dir:=/} ]] || return 1
+
+  # {lib,contrib}/ で始まるパスの時は lib,contrib ディレクトリのみで探索
+  if [[ $name == lib/* ]]; then
+    [[ $dir == */lib ]] || return 1
+    dir=${dir%/lib}
+  elif [[ $name == contrib/* ]]; then
+    [[ $dir == */contrib ]] || return 1
+    dir=${dir%/contrib}
+  fi
+
   if [[ -f $dir/$name ]]; then
     ret=$dir/$name
+    return 0
   elif [[ $name != *.bash && -f $dir/$name.bash ]]; then
     ret=$dir/$name.bash
+    return 0
   elif [[ $name != *.sh && -f $dir/$name.sh ]]; then
     ret=$dir/$name.sh
-  else
-    return 1
+    return 0
   fi
-  return 0
+  return 1
 }
 function ble/util/import/search {
   ret=$1
-  if [[ $ret != /* && $ret != ./* ]]; then
-    ble/util/import/search/.check-directory "$ret" "$_ble_base" ||
-      ble/util/import/search/.check-directory "$ret" "$_ble_base/local" ||
-      ble/util/import/search/.check-directory "$ret" "$_ble_base/share" ||
-      return 1
+  if [[ $ret != /* && $ret != ./* && $ret != ../* ]]; then
+    local -a dirs=()
+    if [[ $bleopt_import_path ]]; then
+      local tmp; ble/string#split tmp : "$bleopt_import_path"
+      ble/array#push dirs "${tmp[@]}"
+    fi
+    ble/array#push dirs "$_ble_base"{,/contrib,/lib}
+
+    "${_ble_util_set_declare[@]//NAME/checked}"
+    local path
+    for path in "${dirs[@]}"; do
+      ble/set#contains checked "$path" && continue
+      ble/set#add checked "$path"
+      ble/util/import/search/.check-directory "$ret" "$path" && break
+    done
   fi
   [[ -e $ret && ! -d $ret ]]
 }

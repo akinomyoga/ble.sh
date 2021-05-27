@@ -2,16 +2,10 @@
 #
 # airline.vim (https://github.com/vim-airline/vim-airline) の模倣実装
 #
-# 以下の機能については未対応
-#
-# - airline_mode_map (モードからモード名への対応)
-# - 自動省略 (automatic truncation)
-#
 # * "g:airline_mode_map" is partially supported
 #
 #   Unsupported mappings
 #   
-#   'c'     : 'COMMAND'
 #   'ic'    : 'INSERT COMPL',
 #   'ix'    : 'INSERT COMPL',
 #   'multi' : 'MULTI'
@@ -19,16 +13,33 @@
 #
 
 ble-import keymap/vi
-ble-import contrib/prompt-git
+ble-import prompt-git
+
+bleopt/declare -n vim_airline_theme dark
+function bleopt/check:vim_airline_theme {
+  local init=ble/lib/vim-airline/theme:"$value"/initialize
+  if ! ble/is-function "$init"; then
+    local ret
+    if ! ble/util/import/search "airline/$value"; then
+      ble/util/print "ble/lib/vim-airline: theme '$value' not found." >&2
+      return 1
+    fi
+    ble/util/import "$ret"
+    ble/is-function "$init" || return 1
+  fi
+
+  "$init"
+  return 0
+}
 
 function ble/lib/vim-airline/invalidate { ble/prompt/clear; }
 
-bleopt/declare -v vim_airline_section_a '\q{lib/vim-airline/mode}'
+bleopt/declare -v vim_airline_section_a '\e[1m\q{lib/vim-airline/mode}'
 bleopt/declare -v vim_airline_section_b '\q{lib/vim-airline/gitstatus}'
 bleopt/declare -v vim_airline_section_c '\w'
 bleopt/declare -v vim_airline_section_x 'bash'
 bleopt/declare -v vim_airline_section_y '$_ble_util_locale_encoding[unix]'
-bleopt/declare -v vim_airline_section_z '\e[1m!\q{lib/vim-airline/history-index}/\!\e[22m'
+bleopt/declare -v vim_airline_section_z ' \q{ble/history/percentile} !\e[1m\q{ble/history/index}/\!'
 function bleopt/check:vim_airline_section_a { ble/lib/vim-airline/invalidate; }
 function bleopt/check:vim_airline_section_b { ble/lib/vim-airline/invalidate; }
 function bleopt/check:vim_airline_section_c { ble/lib/vim-airline/invalidate; }
@@ -48,63 +59,71 @@ function bleopt/check:vim_airline_left_alt_sep  { ble/lib/vim-airline/invalidate
 function bleopt/check:vim_airline_right_sep     { ble/lib/vim-airline/invalidate; }
 function bleopt/check:vim_airline_right_alt_sep { ble/lib/vim-airline/invalidate; }
 
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_lib_vim_airline_mode_map_default}"
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'i'  'INSERT'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'n'  'NORMAL'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'in' '(INSERT)'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'o'  'OP PENDING'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'R'  'REPLACE'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default '' 'V REPLACE'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'v'  'VISUAL'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'V'  'V-LINE'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default '' 'V-BLOCK'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 's'  'SELECT'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'S'  'S-LINE'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default '' 'S-BLOCK'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default '?'  '------'
+ble/gdict#set _ble_lib_vim_airline_mode_map_default 'c'  'COMMAND'
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_lib_vim_airline_mode_map_atomic}"
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 'i'  'I'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 'n'  'N'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 'R'  'R'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 'v'  'V'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 'V'  'V-L'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic '' 'V-B'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 's'  'S'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 'S'  'S-L'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic '' 'S-B'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic '?'  '--'
+ble/gdict#set _ble_lib_vim_airline_mode_map_atomic 'c'  'C'
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_lib_vim_airline_mode_map}"
-ble/gdict#set _ble_lib_vim_airline_mode_map 'i'  'INSERT'
-ble/gdict#set _ble_lib_vim_airline_mode_map 'n'  'NORMAL'
-ble/gdict#set _ble_lib_vim_airline_mode_map 'in' '(INSERT)'
-ble/gdict#set _ble_lib_vim_airline_mode_map 'o'  'OP PENDING'
-ble/gdict#set _ble_lib_vim_airline_mode_map 'R'  'REPLACE'
-ble/gdict#set _ble_lib_vim_airline_mode_map '' 'V REPLACE'
-ble/gdict#set _ble_lib_vim_airline_mode_map 'v'  'VISUAL'
-ble/gdict#set _ble_lib_vim_airline_mode_map 'V'  'V-LINE'
-ble/gdict#set _ble_lib_vim_airline_mode_map '' 'V-BLOCK'
-ble/gdict#set _ble_lib_vim_airline_mode_map 's'  'SELECT'
-ble/gdict#set _ble_lib_vim_airline_mode_map 'S'  'S-LINE'
-ble/gdict#set _ble_lib_vim_airline_mode_map '' 'S-BLOCK'
-ble/gdict#set _ble_lib_vim_airline_mode_map '?'  '------'
+ble/gdict#cp _ble_lib_vim_airline_mode_map_default _ble_lib_vim_airline_mode_map
 
-ble/color/defface vim_airline_a             fg=17,bg=45,bold
-ble/color/defface vim_airline_b             fg=231,bg=27
-ble/color/defface vim_airline_c             fg=231,bg=18
-ble/color/defface vim_airline_x             ref:vim_airline_c
-ble/color/defface vim_airline_y             ref:vim_airline_b
-ble/color/defface vim_airline_z             ref:vim_airline_a
-ble/color/defface vim_airline_a_normal      ref:vim_airline_a
-ble/color/defface vim_airline_b_normal      ref:vim_airline_b
-ble/color/defface vim_airline_c_normal      ref:vim_airline_c
-ble/color/defface vim_airline_x_normal      ref:vim_airline_c_normal
-ble/color/defface vim_airline_y_normal      ref:vim_airline_b_normal
-ble/color/defface vim_airline_z_normal      ref:vim_airline_a_normal
-ble/color/defface vim_airline_a_insert      ref:vim_airline_a
-ble/color/defface vim_airline_b_insert      ref:vim_airline_b
-ble/color/defface vim_airline_c_insert      ref:vim_airline_c
-ble/color/defface vim_airline_x_insert      ref:vim_airline_c_insert
-ble/color/defface vim_airline_y_insert      ref:vim_airline_b_insert
-ble/color/defface vim_airline_z_insert      ref:vim_airline_a_insert
-ble/color/defface vim_airline_a_replace     ref:vim_airline_a_insert
-ble/color/defface vim_airline_b_replace     ref:vim_airline_b_insert
-ble/color/defface vim_airline_c_replace     ref:vim_airline_c_insert
-ble/color/defface vim_airline_x_replace     ref:vim_airline_c_replace
-ble/color/defface vim_airline_y_replace     ref:vim_airline_b_replace
-ble/color/defface vim_airline_z_replace     ref:vim_airline_a_replace
-ble/color/defface vim_airline_a_visual      ref:vim_airline_a
-ble/color/defface vim_airline_b_visual      ref:vim_airline_b
-ble/color/defface vim_airline_c_visual      ref:vim_airline_c
-ble/color/defface vim_airline_x_visual      ref:vim_airline_c_visual
-ble/color/defface vim_airline_y_visual      ref:vim_airline_b_visual
-ble/color/defface vim_airline_z_visual      ref:vim_airline_a_visual
-ble/color/defface vim_airline_a_commandline ref:vim_airline_a
-ble/color/defface vim_airline_b_commandline ref:vim_airline_b
-ble/color/defface vim_airline_c_commandline ref:vim_airline_c
-ble/color/defface vim_airline_x_commandline ref:vim_airline_c_commandline
-ble/color/defface vim_airline_y_commandline ref:vim_airline_b_commandline
-ble/color/defface vim_airline_z_commandline ref:vim_airline_a_commandline
-ble/color/defface vim_airline_a_inactive    ref:vim_airline_a
-ble/color/defface vim_airline_b_inactive    ref:vim_airline_b
-ble/color/defface vim_airline_c_inactive    ref:vim_airline_c
-ble/color/defface vim_airline_x_inactive    ref:vim_airline_c_inactive
-ble/color/defface vim_airline_y_inactive    ref:vim_airline_b_inactive
-ble/color/defface vim_airline_z_inactive    ref:vim_airline_a_inactive
+function ble/lib/vim-airline/initialize-faces {
+  # default (taken from dark.vim insert)
+  ble/color/defface vim_airline_a       fg=17,bg=45
+  ble/color/defface vim_airline_b       fg=231,bg=27
+  ble/color/defface vim_airline_c       fg=231,bg=18
+  ble/color/defface vim_airline_error   fg=16,bg=88   # fg=#000000,bg=#990000
+  ble/color/defface vim_airline_term    fg=158,bg=234 # fg=#9cffd3,bg=#202020
+  ble/color/defface vim_airline_warning fg=16,bg=166  # fg=#000000,bg=#df5f00
+
+
+  # "abc" spezialized for map is by default mirror of "abc" for
+  # general map (except for _replace)
+  local section map
+  for section in a b c error term warning; do
+    for map in _normal _insert _visual _commandline _inactive; do
+      ble/color/defface "vim_airline_$section$map" ref:"vim_airline_$section"
+    done
+    ble/color/defface "vim_airline_${section}_replace" ref:"vim_airline_${section}_insert"
+  done
+
+  # "zyx" is mirror of "abc" by default
+  local map
+  for map in '' _normal _insert _replace _visual _commandline _inactive; do
+    ble/color/defface "vim_airline_x$map" ref:"vim_airline_c$map"
+    ble/color/defface "vim_airline_y$map" ref:"vim_airline_b$map"
+    ble/color/defface "vim_airline_z$map" ref:"vim_airline_a$map"
+  done
+
+  # "modified" is mirror of unmodified by default
+  local name
+  for name in {a,b,c,x,y,z,error,term,warning}{,_normal,_insert,_replace,_visual,_commandline,_inactive}; do
+    ble/color/defface "vim_airline_${name}_modified" ref:"vim_airline_$name"
+  done
+}
+ble/lib/vim-airline/initialize-faces
 
 function ble/lib/vim-airline/convert-theme/.to-color256 {
   local R=$((16#${1:1:2}))
@@ -122,27 +141,27 @@ function ble/lib/vim-airline/convert-theme/.setface {
 function ble/lib/vim-airline/convert-theme {
   local file=$1
   sed -n 's/let s:airline_\([a-zA-Z_0-9]\{1,\}\)[^[:alnum:]]\{1,\}\(\#[0-9a-fA-F]\{6\}\)[^[:alnum:]]\{1,\}\(\#[0-9a-fA-F]\{6\}\).*/\1 \2 \3/p' "$file" |
-    while read -r face fg bg; do
+    while builtin read -r face fg bg; do
       ble/lib/vim-airline/convert-theme/.setface "$face" "$fg" "$bg"
     done
 }
 
 # themes/dark.vim (default)
-ble/color/setface vim_airline_a_normal      fg=17,bg=190,bold  # fg=#00005f,bg=#dfff00
-ble/color/setface vim_airline_b_normal      fg=231,bg=238      # fg=#ffffff,bg=#444444
-ble/color/setface vim_airline_c_normal      fg=158,bg=234      # fg=#9cffd3,bg=#202020
-ble/color/setface vim_airline_a_insert      fg=17,bg=45,bold   # fg=#00005f,bg=#00dfff
-ble/color/setface vim_airline_b_insert      fg=231,bg=27       # fg=#ffffff,bg=#005fff
-ble/color/setface vim_airline_c_insert      fg=231,bg=18       # fg=#ffffff,bg=#000080
-ble/color/setface vim_airline_a_visual      fg=16,bg=214,bold  # fg=#000000,bg=#ffaf00
-ble/color/setface vim_airline_b_visual      fg=16,bg=202       # fg=#000000,bg=#ff5f00
-ble/color/setface vim_airline_c_visual      fg=231,bg=52       # fg=#ffffff,bg=#5f0000
-ble/color/setface vim_airline_a_inactive    fg=239,bg=234,bold # fg=#4e4e4e,bg=#1c1c1c
-ble/color/setface vim_airline_b_inactive    fg=239,bg=235      # fg=#4e4e4e,bg=#262626
-ble/color/setface vim_airline_c_inactive    fg=239,bg=236      # fg=#4e4e4e,bg=#303030
-ble/color/setface vim_airline_a_commandline fg=17,bg=40,bold   # fg=#00005f,bg=#00d700
-ble/color/setface vim_airline_b_commandline fg=231,bg=238      # fg=#ffffff,bg=#444444
-ble/color/setface vim_airline_c_commandline fg=158,bg=234      # fg=#9cffd3,bg=#202020
+ble/color/setface vim_airline_a_normal      fg=17,bg=190  # fg=#00005f,bg=#dfff00
+ble/color/setface vim_airline_b_normal      fg=231,bg=238 # fg=#ffffff,bg=#444444
+ble/color/setface vim_airline_c_normal      fg=158,bg=234 # fg=#9cffd3,bg=#202020
+ble/color/setface vim_airline_a_insert      fg=17,bg=45   # fg=#00005f,bg=#00dfff
+ble/color/setface vim_airline_b_insert      fg=231,bg=27  # fg=#ffffff,bg=#005fff
+ble/color/setface vim_airline_c_insert      fg=231,bg=18  # fg=#ffffff,bg=#000080
+ble/color/setface vim_airline_a_visual      fg=16,bg=214  # fg=#000000,bg=#ffaf00
+ble/color/setface vim_airline_b_visual      fg=16,bg=202  # fg=#000000,bg=#ff5f00
+ble/color/setface vim_airline_c_visual      fg=231,bg=52  # fg=#ffffff,bg=#5f0000
+ble/color/setface vim_airline_a_inactive    fg=239,bg=234 # fg=#4e4e4e,bg=#1c1c1c
+ble/color/setface vim_airline_b_inactive    fg=239,bg=235 # fg=#4e4e4e,bg=#262626
+ble/color/setface vim_airline_c_inactive    fg=239,bg=236 # fg=#4e4e4e,bg=#303030
+ble/color/setface vim_airline_a_commandline fg=17,bg=40   # fg=#00005f,bg=#00d700
+ble/color/setface vim_airline_b_commandline fg=231,bg=238 # fg=#ffffff,bg=#444444
+ble/color/setface vim_airline_c_commandline fg=158,bg=234 # fg=#9cffd3,bg=#202020
 
 #------------------------------------------------------------------------------
 
@@ -161,6 +180,12 @@ function ble/lib/vim-airline/.update-mode {
   (*n)          m='normal' ;;
   (*)           m='inactive' ;;
   esac
+
+  local index entry
+  ble/history/get-index
+  ble/history/get-entry "$index"
+  [[ $_ble_edit_str != "$entry" ]] && m=${m}_modified
+
   _ble_lib_vim_airline_keymap=$keymap
   _ble_lib_vim_airline_mode=$m
   _ble_lib_vim_airline_rawmode=$mode
@@ -181,8 +206,34 @@ function ble/prompt/backslash:lib/vim-airline/mode/.resolve {
     (R)              ble/prompt/backslash:lib/vim-airline/mode/.resolve i ;;
     ([S])          ble/prompt/backslash:lib/vim-airline/mode/.resolve s ;;
     ([Vs])         ble/prompt/backslash:lib/vim-airline/mode/.resolve v ;;
-    ([ivnc])         ble/prompt/backslash:lib/vim-airline/mode/.resolve '?' ;;
-    (*)              ret='???' ;;
+    ([ivnc])
+      ret=
+      case $_ble_lib_vim_airline_rawmode in
+      (i*) ret=$bleopt_keymap_vi_mode_name_insert ;;
+      (R*) ret=$bleopt_keymap_vi_mode_name_replace ;;
+      (*) ret=$bleopt_keymap_vi_mode_name_vreplace ;;
+      esac
+      [[ $_ble_lib_vim_airline_rawmode == [iR]?* ]] &&
+        ble/string#tolower "($insert) "
+
+      case $_ble_lib_vim_airline_rawmode in
+      (*n)
+        if [[ ! $ret ]]; then
+          local rex='[[:alnum:]](.*[[:alnum:]])?'
+          [[ $bleopt_keymap_vi_mode_string_nmap =~ $rex ]]
+          ret=${BASH_REMATCH[0]:-NORMAL}
+        fi ;;
+      (*v)  ret="${ret}${ret:+ }$bleopt_keymap_vi_mode_name_visual" ;;
+      (*V)  ret="${ret}${ret:+ }$bleopt_keymap_vi_mode_name_visual $bleopt_keymap_vi_mode_name_line" ;;
+      (*) ret="${ret}${ret:+ }$bleopt_keymap_vi_mode_name_visual $bleopt_keymap_vi_mode_name_block" ;;
+      (*s)  ret="${ret}${ret:+ }$bleopt_keymap_vi_mode_name_select" ;;
+      (*S)  ret="${ret}${ret:+ }$bleopt_keymap_vi_mode_name_select $bleopt_keymap_vi_mode_name_line" ;;
+      (*) ret="${ret}${ret:+ }$bleopt_keymap_vi_mode_name_select $bleopt_keymap_vi_mode_name_block" ;;
+      (*c)  ret="${ret}${ret:+ }COMMAND" ;;
+      esac
+      [[ $ret ]] ||
+        ble/prompt/backslash:lib/vim-airline/mode/.resolve '?' ;;
+    (*) ret='?__' ;;
     esac
   fi
 }
@@ -210,11 +261,18 @@ function ble/prompt/backslash:lib/vim-airline/gitstatus {
   fi
 }
 
-blehook history_onleave+=ble/lib/vim-airline/invalidate
-function ble/prompt/backslash:lib/vim-airline/history-index {
+blehook history_onleave-+=ble/lib/vim-airline/invalidate
+function ble/prompt/backslash:ble/history/index {
   local index
   ble/history/get-index -v index
   ble/canvas/put.draw $((index+1))
+}
+function ble/prompt/backslash:ble/history/percentile {
+  local index count
+  ble/history/get-index
+  ble/history/get-count
+  ((count||count++))
+  ble/canvas/put.draw "$(((index-1)*100/(count-1)))%"
 }
 
 function ble/lib/vim-airline/.instantiate-section {
@@ -223,7 +281,7 @@ function ble/lib/vim-airline/.instantiate-section {
   local face=vim_airline_${section}_$_ble_lib_vim_airline_mode
   local save_prefix=_ble_lib_vim_airline_section_${section}_
   local -a save_vars=(show data bbox)
-  local "${save_vars[@]/%/=}"
+  local "${save_vars[@]/%/=}" # WA #D1570 checked
   if [[ ${!bleopt} ]]; then
     local ps=${!bleopt}
     local trace_opts=confine:relative:measure-bbox:noscrc:face0="$face":ansi:measure-gbox
@@ -294,9 +352,15 @@ function ble/lib/vim-airline/.print-section {
 }
 
 function ble/prompt/backslash:lib/vim-airline {
-  local "${_ble_contrib_prompt_git_vars[@]/%/=}"
+  local "${_ble_contrib_prompt_git_vars[@]/%/=}" # WA #D1570 checked
   ble/lib/vim-airline/.update-mode
-  ble/color/setface prompt_status_line "copy:vim_airline_c_$_ble_lib_vim_airline_mode"
+
+  # Set background color
+  local ret bg=0
+  ble/color/face2g "vim_airline_c_$_ble_lib_vim_airline_mode"
+  ble/color/g#getbg "$ret"
+  ble/color/g#setbg bg "$ret"
+  ble/color/setface prompt_status_line "g:$bg"
 
   local cols=$COLUMNS; ((_ble_term_xenl||cols--))
   local section rest_cols=$((cols-4))

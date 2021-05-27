@@ -41,6 +41,7 @@
 - syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 4df29a6
 - lib: support `lib/vim-airline` (motivated by huresche) `#D1565` da1d0ff
   - util (`ble/gdict`): refactor `#D1569` 7732eed
+  - vim-airline: support `bleopt vim_airline_theme` `#D1589` 0000000
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
@@ -128,7 +129,7 @@
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
 - syntax: fix a bug that argument completion is attempted in nested commands (reported by huresche) `#D1579` 301d40f
 - edit (brackated-paste): fix incomplete `CR => LF` conversion (reported by alborotogarcia) `#D1587` 8d6da16
-- main (adjust-bash-options): adjust `LC_COLLATE=C` `#D1588` 0000000
+- main (adjust-bash-options): adjust `LC_COLLATE=C` `#D1588` e87ac21
 
 ## Compatibility
 

@@ -1482,25 +1482,7 @@ bash_tips
 
 2021-05-24
 
-  * airline: 説明書を書く。theme の枠組みを整える
-    https://github.com/akinomyoga/ble.sh/issues/114 (2)
-
-    * themes の枠組みを整えたい気がする。現状だとユーザーがそれぞれ対応しなけれ
-      ばならない。面倒である。うーん。取り敢えず contrib に適当に加えてみるとい
-      うのも良い気がする。
-
-    * 説明に関しては theme を用意してそれを見てもらえれば十分の気がする。但し、
-      辞書に関しては theme は bash-4.1 以下でも動く様に gdict を使わなければな
-      らずややこしい。
-
-    * 何れにしても huresche に対する返答で説明するので、その内容を後で Wiki に
-      転記すれば良い。
-
-    * _modified には対応していない。履歴項目については現在の内容とずれている時
-      に modified にできる。最新項目については何か文字列があれば modified にで
-      きる。
-
-    * themes は自動的に変換する様にできたら良いが調べてみると面倒な気がする。
+  * airline: 使い方を説明に書く
 
   * prompt: 最適化 git の現在の dirty 状態は background で取得できる様にしたい。
 
@@ -4703,6 +4685,73 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-06-07
+
+  * 2021-05-24 airline: 説明書を書く。theme の枠組みを整える [#D1589]
+    https://github.com/akinomyoga/ble.sh/issues/114 (2)
+
+    * done: themes の枠組みを整えたい気がする。現状だとユーザーがそれぞれ対応し
+      なければならない。面倒である。うーん。取り敢えず contrib に適当に加えてみ
+      るというのも良い気がする。
+
+    * done: _modified には対応していない。
+
+      履歴項目については現在の内容とずれている時に modified にできる。最新項目
+      については何か文字列があれば modified にできる→これは対応した。
+
+    * done: themes は自動的に変換する様にできたら良いが調べてみると面倒な気がする。
+
+      自動変換は vim スクリプトを書いて行った。取り敢えず themes は現状で良い気
+      がする。mode_map も抜き出そうと思ったが実は atomic.vim しか設定している物
+      はなかった。
+
+      contrib に一括で追加しようと思ったが止めて置く事にした。もっと普通のファ
+      イルが増えてからにするのが良い気がする。或いは要求したら自動的に何処から
+      かダウンロードするというのも手なのかもしれない。
+
+    * reject: テーマ用の bleopt を用意する
+
+      bleopt vim_airline_theme=xxxx
+
+      を設定したら自動で ble-import contrib/airline/xxxx を読み込む様にしたい。
+      或いはよく考えたら直接 ble-import contrib/airline/xxxx と書けば良いだけな
+      のではないか。
+
+    * 説明に関しては theme を用意してそれを見てもらえれば十分の気がする。但し、
+      辞書に関しては theme は bash-4.1 以下でも動く様に gdict を使わなければな
+      らずややこしい。
+
+      何れにしても huresche に対する返答で説明するので、その内容を後で Wiki に
+      転記すれば良い。
+
+    * done: というか、考えてみたら ble-import する時に毎回 contrib まで指定する
+      必要があるのは変な気がする。source path を指定したら其処から自由に source
+      してもらうべきなのではないのか。
+
+      ble-import vim-airline
+      ble-import core-syntax
+      ble-import keymap-vi
+      ble-import prompt-git
+      ble-import fzf-bingings
+      ble-import fzf-completion
+      ble-import airline/landscape
+
+      別にこれで良い気がする。寧ろこちらの方が良い。
+
+      local user=${XDG_DATA_HOME:-$HOME/.local/share/blesh}
+      BLE_IMPORT_PATH=$user:$user/lib:$_ble_base:$_ble_base/contrib:$_ble_base/lib
+
+    x emacs mode にいる時に vim-airline を呼び出すと真っ黒になって何も表示され
+      ない。と思ったらこれは inactive face が使われていて、この inactive の設定
+      が物凄く見にくいという事だった。微妙に色が見える。じれが dark.vim の設定
+      という事なのでそのままにする事にする。
+
+    x 2021-06-10 ble-import の search path として ~/.local/share/blesh を追加し
+      たが、これだと異なる version の設定ファイルが混在する原因である。そうする
+      と不整合を生んで変な事になる。特に keymap/vi や keymap/emacs は致命的な問
+      題を引き起こし得る。という事を考えると、 ~/local/share/blesh は直接は追加
+      せずに ~/.local/share/blesh/local 等から読み取る様にするべきである。
 
 2021-06-05
 

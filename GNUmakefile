@@ -105,10 +105,10 @@ update-contrib:
 	git submodule update --init --recursive
 contrib/.git:
 	git submodule update --init --recursive
-outdirs += $(OUTDIR)/contrib
-contrib-files = $(wildcard contrib/*.bash)
+outdirs += $(OUTDIR)/contrib $(OUTDIR)/contrib/airline
+contrib-files = $(wildcard contrib/*.bash contrib/airline/*.bash)
 outfiles += $(contrib-files:contrib/%=$(OUTDIR)/contrib/%)
-$(OUTDIR)/contrib/%.bash: contrib/%.bash | contrib/.git $(OUTDIR)/contrib
+$(OUTDIR)/contrib/%.bash: contrib/%.bash | contrib/.git $(OUTDIR)/contrib $(OUTDIR)/contrib/airline
 	cp -p $< $@
 
 #------------------------------------------------------------------------------

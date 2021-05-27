@@ -717,17 +717,18 @@ function blerc/vim-load-hook {
   # bleopt term_vi_cmap=
 
   ## vim-surround
-  #ble-import lib/vim-surround
+  #ble-import vim-surround
   #bleopt vim_surround_45:=$'$( \r )'
   #bleopt vim_surround_61:=$'$(( \r ))'
 
   ## vim-arpeggio
-  #ble-import lib/vim-arpeggio
+  #ble-import vim-arpeggio
   #bleopt vim_arpeggio_timeoutlen=10
   #ble/lib/vim-arpeggio.sh/bind -s jk 'hello'
 
   ## vim-airline
-  #ble-import lib/vim-airline
+  #ble-import vim-airline
+  #bleopt vim_airline_theme=light
 }
 blehook/eval-after-load keymap_vi blerc/vim-load-hook
 
