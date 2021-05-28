@@ -4728,7 +4728,6 @@ else
     #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
     #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
     #   :& が正しく実行されないことになるのでこちらの実装に切り替える。
-    local _ble_util_read_stdout_tmp=$_ble_util_read_stdout_tmp.1
     local line1= line2=
     ble/util/assign line1 'HISTTIMEFORMAT= builtin history 1'
     builtin history -p -- '' &>/dev/null
@@ -6794,9 +6793,11 @@ ble/util/isfunction ble/util/idle.push &&
 ## 関数 ble/widget/command-help/.read-man
 ##   @var[out] man_content
 function ble/widget/command-help/.read-man {
-  local pager="sh -c 'cat >| \"\$BLETMPFILE\"'" tmp=$_ble_util_read_stdout_tmp
-  BLETMPFILE=$tmp MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
-  ble/util/readfile man_content "$tmp" # 80ms
+  local -x _ble_local_tmpfile; ble/util/assign/.mktmp
+  local pager="sh -c 'cat >| \"\$_ble_local_tmpfile\"'"
+  MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
+  ble/util/readfile man_content "$_ble_local_tmpfile" # 80ms
+  ble/util/assign/.rmtmp
   return "$ext"
 }
 

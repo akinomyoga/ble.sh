@@ -501,8 +501,8 @@ else
   }
 fi
 
-## 関数 ble/util/assign var command...
-##   var=$(command ...) の高速な代替です。
+## @fn ble/util/assign var command
+##   var=$(command) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
 ##   @param[in] var
@@ -511,26 +511,56 @@ fi
 ##     実行するコマンドを指定します。
 ##
 _ble_util_read_stdout_tmp="$_ble_base_run/$$.ble_util_assign.tmp"
+
+_ble_util_assign_base=$_ble_base_run/$$.util.assign.tmp
+_ble_util_assign_level=0
+if ((_ble_bash>=40000)); then
+  function ble/util/assign/.mktmp {
+    _ble_local_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    ((BASH_SUBSHELL)) && _ble_local_tmpfile=$_ble_local_tmpfile.$BASHPID
+  }
+else
+  function ble/util/assign/.mktmp {
+    _ble_local_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    ((BASH_SUBSHELL)) && _ble_local_tmpfile=$_ble_local_tmpfile.$RANDOM
+  }
+fi
+function ble/util/assign/.rmtmp {
+  ((_ble_util_assign_level--))
+#%if !release
+  if ((BASH_SUBSHELL)); then
+    printf 'caller %s\n' "${FUNCNAME[@]}" >| "$_ble_local_tmpfile"
+  else
+    : >| "$_ble_local_tmpfile"
+  fi
+#%else
+  : >| "$_ble_local_tmpfile"
+#%end
+}
 if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-    local _ret=$? __arr
-    mapfile -t __arr < "$_ble_util_read_stdout_tmp"
-    IFS=$'\n' eval "$1=\"\${__arr[*]-}\""
-    return "$_ret"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
+    local _ble_local_ret=$? _ble_local_arr=
+    mapfile -t _ble_local_arr < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
+    IFS=$'\n' builtin eval "$1=\"\${_ble_local_arr[*]}\""
+    return "$_ble_local_ret"
   }
 else
   function ble/util/assign {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-    local _ret=$?
-    TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
-    eval "$1=\${$1%$'\n'}"
-    return "$_ret"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
+    local _ble_local_ret=$?
+    TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
+    builtin eval "$1=\${$1%$'\n'}"
+    return "$_ble_local_ret"
   }
 fi
-## 関数 ble/util/assign-array arr command...
-##   mapfile -t arr <(command ...) の高速な代替です。
+## @fn ble/util/assign-array arr command args...
+##   mapfile -t arr < <(command ...) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
 ##   @param[in] arr
@@ -540,17 +570,20 @@ fi
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-    local _ret=$?
-    mapfile -t "$1" < "$_ble_util_read_stdout_tmp"
-    return "$_ret"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
+    local _ble_local_ret=$?
+    mapfile -t "$1" < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
+    return "$_ble_local_ret"
   }
 else
   function ble/util/assign-array {
-    local _ble_local_tmp=$_ble_util_read_stdout_tmp
-    builtin eval "$2" >| "$_ble_local_tmp"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
-    ble/util/mapfile "$1" < "$_ble_local_tmp"
+    ble/util/mapfile "$1" < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
     return "$_ble_local_ret"
   }
 fi
