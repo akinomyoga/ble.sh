@@ -2501,7 +2501,9 @@ function ble/complete/progcomp/.compgen {
   else
     ble/util/assign compdef 'builtin complete -p -- "$compcmd" 2>/dev/null'
   fi
-  compdef=${compdef%"$compcmd"} # strip -I, -D, or command_name
+  # strip -I, -D, or command_name
+  # #D1579 bash-5.1 では空コマンドに限り '' と出力する様である。
+  compdef=${compdef%"${compcmd:-''}"}
   compdef=${compdef%' '}' '
 
   local comp_prog comp_func compoptions flag_noquote
@@ -2553,7 +2555,7 @@ function ble/complete/progcomp/.compgen {
     local _ble_complete_retry_guard=1
     opts=:$opts:
     opts=${opts//:default:/:}
-    ble/complete/progcomp/.compgen "${opts//:default:/:}"
+    ble/complete/progcomp/.compgen "$opts"
     return "$?"
   fi
 

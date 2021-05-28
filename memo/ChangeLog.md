@@ -124,6 +124,7 @@
 - sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 5d85238
 - main: fix the workaround for `set -u` `#D1575` 76073a9
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
+- syntax: fix a bug that argument completion is attempted in nested commands (reported by huresche) `#D1579` 0000000
 
 ## Compatibility
 

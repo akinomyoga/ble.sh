@@ -5450,9 +5450,18 @@ function ble/syntax/completion-context/.check-prefix/ctx:quote/.check-container-
 
   local wlen2=${nest[1]}; ((wlen2>=0)) || return 1
   local wbeg2=$((wlen2<0?wlen2:inest-wlen2))
-
   if ble/syntax:bash/simple-word/is-simple-or-open-simple "${text:wbeg2:index-wbeg2}"; then
-    ble/syntax/completion-context/.add argument "$wbeg2"
+    local wt=${nest[2]}
+    [[ ${_ble_syntax_bash_command_EndWtype[wt]} ]] &&
+      wt=${_ble_syntax_bash_command_EndWtype[wt]}
+    if ((wt==CTX_CMDI)); then
+      ble/syntax/completion-context/.add command "$wbeg2"
+    elif ((wt==CTX_ARGI||wt==CTX_ARGVI||wt==CTX_ARGEI||wt==CTX_FARGI2||wt==CTX_CARGI2)); then
+      ble/syntax/completion-context/.add argument "$wbeg2"
+    elif ((wt==CTX_CPATI)); then # case pattern の内部
+      #ble/syntax/completion-context/.add file "$wbeg2"
+      return
+    fi
   fi
 }
 
