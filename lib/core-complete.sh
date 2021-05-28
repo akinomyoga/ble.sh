@@ -1405,7 +1405,9 @@ function ble/complete/source:argument/.progcomp {
   else
     ble/util/assign compdef 'complete -p -- "$compcmd" 2>/dev/null'
   fi
-  compdef=${compdef%"$compcmd"} # strip -I, -D, or command_name
+  # strip -I, -D, or command_name
+  # #D1579 bash-5.1 では空コマンドに限り '' と出力する様である。
+  compdef=${compdef%"${compcmd:-''}"}
   compdef=${compdef%' '}' '
 
   local comp_prog comp_func compoptions flag_noquote
