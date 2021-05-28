@@ -156,6 +156,7 @@
 - tui, edit: add a new render mode for full-screen applications 817889d
 - main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` c89aa23
   - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
+  - util (`ble/util/assign`): work around subshell conflits `#D1578` 0000000
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
 - global: use `_ble_term_IFS` `#D1557` d23ad3c

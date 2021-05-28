@@ -228,8 +228,10 @@ _ble_bash_builtins_adjusted=
 _ble_bash_builtins_save=
 function ble/base/adjust-builtin-wrappers/.assign {
   if [[ $_ble_util_assign_base ]]; then
-    builtin eval -- "$1" >| "$_ble_util_assign_base.adjust-builtin"
-    IFS= builtin read -r -d '' defs < "$_ble_util_assign_base.adjust-builtin"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$1" >| "$_ble_local_tmpfile"
+    IFS= builtin read -r -d '' defs < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
   else
     defs=$(builtin eval -- "$1")
   fi || ((1))
@@ -620,7 +622,7 @@ if ! ble/.check-environment; then
 fi
 
 # src/util で awk を使う
-function ble/bin/awk {
+function ble/bin/awk/.instantiate {
   local path q=\' Q="'\''"
   if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
     # Solaris の既定の awk は全然駄目なので /usr/xpg4 以下の awk を使う。
@@ -647,7 +649,11 @@ function ble/bin/awk {
   else
     return 1
   fi
-  ble/bin/awk "$@"
+}
+
+function ble/bin/awk {
+  ble/bin/awk/.instantiate &&
+    ble/bin/awk "$@"
 }
 # Do not overwrite by .freeze-utility-path
 function ble/bin/.frozen:awk { :; }

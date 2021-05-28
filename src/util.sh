@@ -2329,26 +2329,50 @@ function ble/util/readarray {
 ##   @param[in] command...
 ##     実行するコマンドを指定します。
 ##
-_ble_util_assign_base=$_ble_base_run/$$.ble_util_assign.tmp
+
+_ble_util_assign_base=$_ble_base_run/$$.util.assign.tmp
 _ble_util_assign_level=0
+if ((_ble_bash>=40000)); then
+  function ble/util/assign/.mktmp {
+    _ble_local_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    ((BASH_SUBSHELL)) && _ble_local_tmpfile=$_ble_local_tmpfile.$BASHPID
+  }
+else
+  function ble/util/assign/.mktmp {
+    _ble_local_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    ((BASH_SUBSHELL)) && _ble_local_tmpfile=$_ble_local_tmpfile.$RANDOM
+  }
+fi
+function ble/util/assign/.rmtmp {
+  ((_ble_util_assign_level--))
+#%if !release
+  if ((BASH_SUBSHELL)); then
+    printf 'caller %s\n' "${FUNCNAME[@]}" >| "$_ble_local_tmpfile"
+  else
+    : >| "$_ble_local_tmpfile"
+  fi
+#%else
+  : >| "$_ble_local_tmpfile"
+#%end
+}
 if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
-    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$? _ble_local_arr=
-    ((_ble_util_assign_level--))
-    mapfile -t _ble_local_arr < "$_ble_local_tmp"
+    mapfile -t _ble_local_arr < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
     IFS=$'\n' builtin eval "$1=\"\${_ble_local_arr[*]}\""
     return "$_ble_local_ret"
   }
 else
   function ble/util/assign {
-    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
-    ((_ble_util_assign_level--))
-    TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
+    TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
     builtin eval "$1=\${$1%$'\n'}"
     return "$_ble_local_ret"
   }
@@ -2366,47 +2390,50 @@ fi
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
-    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
-    ((_ble_util_assign_level--))
-    mapfile -t "$1" < "$_ble_local_tmp"
+    mapfile -t "$1" < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
     return "$_ble_local_ret"
   }
 else
   function ble/util/assign-array {
-    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
-    ((_ble_util_assign_level--))
-    ble/util/mapfile "$1" < "$_ble_local_tmp"
+    ble/util/mapfile "$1" < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
     return "$_ble_local_ret"
   }
 fi
 
 if ! ((_ble_bash>=40400)); then
   function ble/util/assign-array0 {
-    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
-    ((_ble_util_assign_level--))
-    mapfile -d '' -t "$1" < "$_ble_local_tmp"
+    mapfile -d '' -t "$1" < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
     return "$_ble_local_ret"
   }
 else
   function ble/util/assign-array0 {
-    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval -- "$2" >| "$_ble_local_tmp"
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
-    ((_ble_util_assign_level--))
     local IFS= i=0 _ble_local_arr
-    while builtin read -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmp"
+    while builtin read -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
     [[ ${_ble_local_arr[--i]} ]] || builtin unset -v "_ble_local_arr[i]"
     ble/util/unlocal i IFS
     builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
     return "$_ble_local_ret"
   }
 fi
+
+# ble/bin/awk の初期化に ble/util/assign を使うので
+ble/bin/awk/.instantiate
 
 #
 # functions
@@ -3195,7 +3222,7 @@ function ble/util/msleep/.use-read-timeout {
       # tmpfile
       case $file in
       (fifo)
-        _ble_util_msleep_tmp=$_ble_base_run/$$.ble_util_msleep.pipe
+        _ble_util_msleep_tmp=$_ble_base_run/$$.util.msleep.pipe
         if [[ ! -p $_ble_util_msleep_tmp ]]; then
           [[ -e $_ble_util_msleep_tmp ]] && ble/bin/rm -rf "$_ble_util_msleep_tmp"
           ble/bin/mkfifo "$_ble_util_msleep_tmp"

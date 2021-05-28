@@ -1413,11 +1413,12 @@ function ble/syntax:bash/simple-word/eval/.impl {
     [[ $__ble_sync_timeout ]] &&
       __ble_sync_opts=$__ble_sync_opts:timeout=$((__ble_sync_timeout))
 
-    local __ble_simple_word_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local __ble_simple_word_tmpfile=$_ble_local_tmpfile
     local __ble_script
     ble/util/assign __ble_script 'ble/util/conditional-sync "$__ble_sync_command" "" "$__ble_sync_weight" "$__ble_sync_opts"' &>/dev/null; local ext=$?
     builtin eval -- "$__ble_script"
-    ((_ble_util_assign_level--))
+    ble/util/assign/.rmtmp
   else
     builtin eval "ble/syntax:bash/simple-word/eval/.set-result $__ble_word" &>/dev/null; local ext=$?
     builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
