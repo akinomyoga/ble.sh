@@ -309,7 +309,7 @@ function ble/base/adjust-bash-options {
   # Note: expand_aliases はユーザー設定を復元する為に記録する
   _ble_bash_expand_aliases=
   shopt -q expand_aliases 2>/dev/null &&
-    _ble_bash_expand_aliases=1 && shopt -u expand_aliases
+    _ble_bash_expand_aliases=1
 } 2>/dev/null # set -x 対策 #D0930
 function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1

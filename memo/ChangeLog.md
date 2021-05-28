@@ -40,12 +40,12 @@
   - main (`ble-update`): fix help message (contributed by NoahGorny) 50288bf
 - syntax: support undocumented `${a~}` and `${a~~}` `#D1561` 4df29a6
 - lib: support `lib/vim-airline` (motivated by huresche) `#D1565` da1d0ff
-  - util (`ble/gdict`): refactor `#D1569` 0000000
+  - util (`ble/gdict`): refactor `#D1569` 7732eed
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
   - util (`blehook`): hide internal hooks by default and support option `-a`
-  - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` 0000000
+  - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` bb53271
  
 ## Changes
 
@@ -73,7 +73,8 @@
 - complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` e5be0c1
 - main: preserve user-space overridden builtins `#D1519` 0860be0
   - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 45b30a7
-  - main: preserve user's `expand_aliases` and allow aliases in internal space (fixup 0860be0) `#D1574` 0000000
+  - main: preserve user's `expand_aliases` and allow aliases in internal space (fixup 0860be0) `#D1574` afc4112
+  - main: main: fix expand_aliases unset on ble-reload (fixup afc4112) `#D1577` 0000000
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
 - main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
 - prompt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1541` 24a88ce
@@ -119,10 +120,10 @@
 - main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
 - Makefile: create `run` directory instead of `tmp` `#D1557` 9bdb37d
 - main: fix the workaround for `set -e` `#D1564` ab2f70b
-- util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 0000000
-- sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 0000000
-- main: fix the workaround for `set -u` `#D1575` 0000000
-- history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 0000000
+- util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 24f79da
+- sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 5d85238
+- main: fix the workaround for `set -u` `#D1575` 76073a9
+- history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
 
 ## Compatibility
 
@@ -160,7 +161,7 @@
 - global: use `_ble_term_IFS` `#D1557` d23ad3c
 - global: work around `localvar_inherit` for varname-list init `#D1566` 5c2edfc
 - util: fix `ble/util/dense-array#fill-range` a46fdaf
-- util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 0000000
+- util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 5967d6c
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
