@@ -283,6 +283,11 @@ function ble/base/restore-builtin-wrappers {
 {
   ble/base/adjust-builtin-wrappers-1
   ble/base/adjust-builtin-wrappers-2
+
+  # 対策 expand_aliases (暫定) 終了
+  if [[ $_ble_bash_expand_aliases ]]; then
+    shopt -s expand_aliases
+  fi
 } 2>/dev/null # set -x 対策
 
 function ble/base/adjust-bash-options {
@@ -299,6 +304,8 @@ function ble/base/adjust-bash-options {
   _ble_bash_nocasematch=
   shopt -q nocasematch 2>/dev/null &&
     _ble_bash_nocasematch=1 && shopt -u nocasematch
+
+  # Note: expand_aliases はユーザー設定を復元する為に記録する
   _ble_bash_expand_aliases=
   shopt -q expand_aliases 2>/dev/null &&
     _ble_bash_expand_aliases=1 && shopt -u expand_aliases
@@ -306,23 +313,22 @@ function ble/base/adjust-bash-options {
 function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=
-  [[ $_ble_bash_expand_aliases ]] && shopt -s expand_aliases
   [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
   [[ $_ble_bash_setv && ! -o verbose ]] && set -v
   [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
   [[ $_ble_bash_sete && ! -o errexit ]] && set -e # set -e は最後
 } 2>/dev/null # set -x 対策 #D0930
-function ble/base/reinforce-bash-options {
-  # bind -x が終わる度に設定が復元されてしまうので毎回設定し直す。
-  shopt -u expand_aliases
+function ble/base/recover-bash-options {
+  # bind -x が終わる度に設定が復元されてしまうので毎回設定し直す #D1526 #D1574
+  if [[ $_ble_bash_expand_aliases ]]; then
+    shopt -s expand_aliases
+  else
+    shopt -u expand_aliases
+  fi
 }
 
-{
-  # 対策 expand_aliases (暫定) 終了
-  [[ $_ble_bash_expand_aliases ]] && shopt -s expand_aliases || ((1))
-  ble/base/adjust-bash-options
-} &>/dev/null # set -x 対策 #D0930
+{ ble/base/adjust-bash-options; } &>/dev/null # set -x 対策 #D0930
 
 builtin bind &>/dev/null # force to load .inputrc
 
