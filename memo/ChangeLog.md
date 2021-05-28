@@ -122,6 +122,7 @@
 - util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 0000000
 - sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 0000000
 - main: fix the workaround for `set -u` `#D1575` 0000000
+- history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 0000000
 
 ## Compatibility
 

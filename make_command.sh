@@ -361,6 +361,11 @@ function sub:scan/WA-localvar_inherit {
   grc 'local [^;&|()]*"\$\{[a-zA-Z_0-9]+\[@*\]\}"'
 }
 
+function sub:scan/mistake-_ble_bash {
+  echo "--- $FUNCNAME ---"
+  grc '\(\(.*\b_ble_base\b.*\)\)'
+}
+
 function sub:scan {
   if ! type grc >/dev/null; then
     echo 'blesh check: grc not found. grc can be found in github.com:akinomyoga/mshex.git/' >&2
@@ -441,6 +446,7 @@ function sub:scan {
       g'
   sub:scan/eval-literal
   sub:scan/WA-localvar_inherit
+  sub:scan/mistake-_ble_bash
 
   sub:scan/memo-numbering
 }

@@ -37,9 +37,7 @@ function ble/builtin/history/is-empty {
   # Note: 状況によって history -p で項目が減少するので
   #  サブシェルの中で評価する必要がある。
   #  但し、サブシェルの中に既にいる時にはこの fork は省略できる。
-  #  Bash 3.2 以前ではサブシェルの中にいるかどうかの判定自体に
-  #  fork&exec が必要になるので常にサブシェルで評価する。
-  if ((_ble_base<40000)) || [[ $BASHPID == "$$" ]]; then
+  if ((!BASH_SUBSHELL)); then
     (! builtin history -p '!!')
   else
     ! builtin history -p '!!'
