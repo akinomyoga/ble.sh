@@ -1452,7 +1452,7 @@ function ble/decode/keymap#unload {
   done
 }
 
-if [[ $_ble_decode_kmaps ]]; then
+if [[ ${_ble_decode_kmaps-} ]]; then
   ## @fn ble/decode/keymap/cleanup-old-keymaps
   ##   古い形式の keymap を削除する (#D1076)
   ##   0.4.0-devel1+e13e979 以前は unload 時に keymaps を削除していなかった為に、

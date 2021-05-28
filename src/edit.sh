@@ -8194,7 +8194,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   fi
 fi
 
-[[ $_ble_edit_detach_flag != reload ]] &&
+[[ ${_ble_edit_detach_flag-} != reload ]] &&
   _ble_edit_detach_flag=
 function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。

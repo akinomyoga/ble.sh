@@ -290,6 +290,7 @@ function ble/base/restore-builtin-wrappers {
   fi
 } 2>/dev/null # set -x 対策
 
+: "${_ble_bash_options_adjusted=}"
 function ble/base/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1 || ((1)) # set -e 対策
   _ble_bash_options_adjusted=1
@@ -483,7 +484,7 @@ if ! ble/base/read-blesh-arguments "$@"; then
   return 2 2>/dev/null || builtin exit 2
 fi
 
-if [[ $_ble_base ]]; then
+if [[ ${_ble_base-} ]]; then
   [[ $_ble_init_command ]] && _ble_init_attached=$_ble_attached
   if ! ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
@@ -754,7 +755,7 @@ function ble/base/.create-user-directory {
 ##
 function ble/base/initialize-base-directory {
   local src=$1
-  local defaultDir=$2
+  local defaultDir=${2-}
 
   # resolve symlink
   if [[ -h $src ]] && type -t readlink &>/dev/null; then
@@ -854,7 +855,7 @@ function ble/base/clean-up-runtime-directory {
   for file in "$_ble_base_run"/[1-9]*.*; do
     [[ -e $file ]] || continue
     pid=${file##*/}; pid=${pid%%.*}
-    [[ ${mark[pid]} ]] && continue
+    [[ ${mark[pid]+set} ]] && continue
     mark[pid]=1
     if ! builtin kill -0 "$pid" &>/dev/null; then
       removed=("${removed[@]}" "$_ble_base_run/$pid."*)
@@ -1370,7 +1371,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
       # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
       #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ
       #   イレクトにより stdout.off の効果が巻き戻されるのを防ぐ為。
-      [[ $ble_base_attach_from_prompt_command != processing ]] || return
+      [[ ${ble_base_attach_from_prompt_command-} != processing ]] || return
     fi
 
     # 既に attach 状態の時は処理はスキップ
@@ -1434,9 +1435,9 @@ ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
         blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
       fi
     else
-      local q=\' Q="'\''"
+      local q=\' Q="'\''" prompt_command=${PROMPT_COMMAND-}
       ble/function#lambda PROMPT_COMMAND \
-                          "ble/base/attach-from-PROMPT_COMMAND '${PROMPT_COMMAND//$q/$Q}' \"\$FUNCNAME\""
+                          "ble/base/attach-from-PROMPT_COMMAND '${prompt_command//$q/$Q}' \"\$FUNCNAME\""
       if [[ $_ble_edit_detach_flag == reload ]]; then
         _ble_edit_detach_flag=prompt-attach
         blehook PRECMD+="$PROMPT_COMMAND"

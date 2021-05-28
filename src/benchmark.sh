@@ -19,7 +19,7 @@ function ble-measure/.loop {
 ##     計測にかかった総時間を返します。
 ##   @var[out] usec
 ##     1評価当たりの時間を返します。
-if [[ $ZSH_VERSION ]]; then
+if [[ ${ZSH_VERSION-} ]]; then
   _ble_measure_resolution=1000 # [usec]
   function ble-measure/.time {
     local result

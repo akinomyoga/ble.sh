@@ -24,7 +24,7 @@ function ble/color/define-options {
     ncolor=88
   fi
   bleopt/declare -v term_true_colors semicolon
-  bleopt/declare -v term_index_colors "$bleopt_term_index_colors"
+  bleopt/declare -v term_index_colors "$ncolor"
 }
 ble/color/define-options
 
@@ -922,7 +922,7 @@ function ble/color/ansi2g {
 # @hook color_init_setface (defined in src/def.sh)
 
 # 遅延初期化
-if [[ ! $_ble_faces_count ]]; then # reload #D0875
+if [[ ! ${_ble_faces_count-} ]]; then # reload #D0875
   _ble_faces_count=0
   _ble_faces=()
 fi

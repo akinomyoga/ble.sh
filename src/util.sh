@@ -1426,7 +1426,7 @@ function ble/adict#keys {
 if ((_ble_bash>=40000)); then
   _ble_util_dict_declare='declare -A NAME'
   function ble/dict#set   { builtin eval -- "$1[x\$2]=\$3"; }
-  function ble/dict#get   { builtin eval -- "ret=\${$1[x\$2]}; [[ \${$1[x\$2]+set} ]]"; }
+  function ble/dict#get   { builtin eval -- "ret=\${$1[x\$2]-}; [[ \${$1[x\$2]+set} ]]"; }
   function ble/dict#unset { builtin eval -- "builtin unset -v '$1[x\$2]'"; }
   function ble/dict#has   { builtin eval -- "[[ \${$1[x\$2]+set} ]]"; }
   function ble/dict#clear { builtin eval -- "$1=()"; }
@@ -1905,7 +1905,7 @@ function ble/builtin/trap/.handler {
 }
 
 function ble/builtin/trap/install-hook {
-  local ret opts=:$2:
+  local ret opts=:${2-}:
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1"
   local sig=$ret name=${_ble_builtin_trap_signames[ret]}
@@ -2623,7 +2623,7 @@ function ble/function#push/call-top {
   "ble/function#push/$((index-1)):$func" "$@"
 }
 
-[[ $_ble_util_lambda_count ]] || _ble_util_lambda_count=0
+: "${_ble_util_lambda_count:=0}"
 ## @fn ble/function#lambda var body
 ##   無名関数を定義しその実際の名前を変数 var に格納します。
 function ble/function#lambda {
@@ -3142,7 +3142,7 @@ function ble/util/msleep/calibrate {
 ##     procsub
 ##       9< <(sleep) を使います。
 function ble/util/msleep/.use-read-timeout {
-  local msleep_type=$1
+  local msleep_type=$1 opts=${2-}
   _ble_util_msleep_fd=
   case $msleep_type in
   (socket)
@@ -3279,6 +3279,7 @@ function ble/util/msleep/.use-read-timeout {
   return 0
 }
 
+_ble_util_msleep_builtin_available=
 if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
   _ble_util_msleep_builtin_available=1
   _ble_util_msleep_delay=300
@@ -4621,7 +4622,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle.push/.impl {
     local base=$1 entry=$2
     local i=$base
-    while [[ ${_ble_util_idle_task[i]} ]]; do ((i++)); done
+    while [[ ${_ble_util_idle_task[i]-} ]]; do ((i++)); done
     _ble_util_idle_task[i]=$entry
   }
   function ble/util/idle.push {
