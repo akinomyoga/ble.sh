@@ -13,6 +13,19 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/widget/dabbrev-expand
 
 function ble-sabbrev {
+  # check arguments for printing
+  local arg print=
+  for arg; do
+    if [[ $arg != -* && $arg != *=* ]]; then
+      print=1
+      break
+    fi
+  done
+  if (($#==0)) || [[ $print ]]; then
+    ble-import lib/core-complete && ble-sabbrev "$@"
+    return $?
+  fi
+
   local ret; ble/string#quote-command "$FUNCNAME" "$@"
   blehook/eval-after-load complete "$ret"
 }
