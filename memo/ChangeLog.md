@@ -139,6 +139,7 @@
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
 - util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
+- decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) [#D1585]
 
 ## Internal changes and fixes
 

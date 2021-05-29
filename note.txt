@@ -4690,6 +4690,86 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-05-30
+
+  * decode: Kitty の modifyOtherKeys でまた問題が生じている (reported by lyiriyah) [#D1585]
+    https://github.com/akinomyoga/ble.sh/issues/118
+
+    報告によるとコマンドを実行する前には ESC は ESC としての用を為さないという
+    事の様である。そしてコマンドを実行すると動く様になるという事。
+
+    手許で Kitty で試してみた所再現した。modifyOtherKeys を internal/external 0
+    に設定すると問題は再現しない。internal 2 にすると再現する。internal 1 に設
+    定すると問題が発生してしかもコマンドを実行しても直らない。
+
+    どうも Kitty で 2 に設定すると一回は modifyOtherKeys が有効になるが、それ以
+    降は modifyOtherKeys は無効化される? 或いは 2 に設定しようとしても何も起こ
+    らないという事だろうか。うーん。2 に設定しようとしても何も起こらないという
+    事の様である。然し、それならば不思議なのは ble.sh は 4;2 を設定する前に 4;1
+    を送信する様にしているという事。それなのに 4;2 の効果がないというのは不思議
+    な事である。実際に手許で試してみても 4;1 に設定して 4;2 に設定すると、4;1
+    に設定したのと同じ状態になる。
+
+    問題は二種類ある
+
+    * Kitty で \e[>4;1m の時に送信されるキーシーケンスが ble.sh で認識されてい
+      ない。実際に試してみると ESC を押した瞬間に何かしら送信はされている様であ
+      る。
+
+      これに関しては具体的に何が送信されているのかを確認する。
+
+      keylog で調べてみると "ESC [ 2 7 u" を送信して来ている。decode.sh を確認
+      したがちゃんと認識している。と思ったが isolated ESC ではなくて modifier
+      ESC として認識されている気がしてきた。調べてみた所、以下の様な流れで処理
+      される事になり、modifier ESC になってしまう。
+
+      ble-decode-char
+        ble-decode-char/.getent
+          ble-decode-char/csi/consume
+            ble-decode-char/csi/.decode
+              csistat 設定
+          csistat を ent にコピー
+        ble-decode-char/csi/clear
+        ble-decode-char/.send-modified-key "$ent" "$seq"
+          此処で $1 == 27 の時に
+          ble-decode-char/.process-modifier Meta を呼び出している。
+
+      csi で受信した文字が 27 の場合には IsolatedESC として処理する事にした。特
+      に CSI シーケンスの処理結果として得られた 27 が modifier ESC になる事はあ
+      り得ない気がするので csi/.decode の戻り値に対して一括で処理する事にした。
+
+    * Kitty で 2 に復帰した時に \e[>4;0m の状態になっている気がする。
+      \e[>4;1m\e[>4;2m で 2 に設定している筈なのに不思議である。手許で自分で設
+      定するとちゃんと 4;1 の状態になっている。
+
+      次の問題はこれである…。実際に確かめてみると、そもそも有効化の 4;1; 4;2
+      の所に入っていない様だ。確認してみると
+      ble/term/modifyOtherKeys/.supported が false になっている。更に調べると
+      _ble_term_TERM が vte になってしまっている。
+
+      DA2R を見て判断する事にする。Kitty の DA2R は一体どういう形式なのだろう。
+      調べると以下が該当するコードである。
+
+        ./kitty/screen.c:1460: write_escape_code_to_child(self, CSI, ">1;"
+        xstr(PRIMARY_VERSION) ";" xstr(SECONDARY_VERSION) "c"); // VT-220 +
+        primary version + secondary version
+
+      そしてこれらの値は setup.py に於いて
+
+        constants = os.path.join('kitty', 'constants.py')
+        version = tuple( map(int, re.search( r"^version: Version =
+          Version\((\d+), (\d+), (\d+)\)", constants, re.MULTILINE ).group(1, 2, 3)
+          ))
+        cppflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
+        cppflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
+
+      という具合にして初期化されている。kitty/constants.py には以下の様な行がある。
+
+        version: Version = Version(0, 19, 3)
+
+      どうも Kitty の version は永年 0 の様だ? 取り敢えず適当に kitty 用の判定
+      条件を追加する事にした。
+
 2021-05-29
 
   * syntax: \? を着色したい [#D1584]

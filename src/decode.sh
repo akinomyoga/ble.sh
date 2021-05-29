@@ -944,6 +944,7 @@ function ble-decode-char/csi/consume {
     elif ((64<=char&&char<127)); then
       _ble_decode_csi_mode=0
       ble-decode-char/csi/.decode "$char"
+      ((csistat==27)) && csistat=$_ble_decode_IsolatedESC
     else
       _ble_decode_csi_mode=0
     fi ;;

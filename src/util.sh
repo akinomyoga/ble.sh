@@ -5254,7 +5254,9 @@ function ble/term/DA2/initialize-term {
 
   case $_ble_term_DA2R in
   ('1;'*)
-    if ((da2r[1]>=2000)); then
+    if ((4000<=da2r[1]&&da2r[1]<4100&&3<=da2r[2])); then
+      _ble_term_TERM=kitty
+    elif ((da2r[1]>=2000)); then
       _ble_term_TERM=vte
     fi ;;
   ('99;'*)
@@ -5385,10 +5387,10 @@ function ble/term/modifyOtherKeys/leave {
   local value=$bleopt_term_modifyOtherKeys_external
   if [[ $value == auto ]]; then
     value=1
-    # 問題を起こす端末で無効化。
-    if [[ $TERM == xterm-kitty ]]; then
+    if [[ $_ble_term_TERM == kitty ]]; then
       value=0 # Kitty は 1 では無効にならない。変な振る舞い
     else
+      # 問題を起こす端末で無効化。
       ble/term/modifyOtherKeys/.supported || value=
     fi
   fi
