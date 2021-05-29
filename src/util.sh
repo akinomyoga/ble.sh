@@ -3158,6 +3158,13 @@ function ble/term/modifyOtherKeys/.update {
   esac
   _ble_term_modifyOtherKeys_current=$1
 }
+function ble/term/modifyOtherKeys/.iskitty {
+  [[ $TERM == xterm-kitty ]] && return 0
+  [[ $_ble_term_DA2R == '1;'* ]] || return 1
+  local da2r
+  ble/string#split da2r ';' "$_ble_term_DA2R"
+  ((4000<=da2r[1]&&da2r[1]<4100&&3<=da2r[2]))
+}
 function ble/term/modifyOtherKeys/.supported {
   # libvte は SGR(>4) を直接画面に表示してしまう
   [[ $_ble_term_DA2R == '1;'* ]] && return 1
@@ -3184,10 +3191,10 @@ function ble/term/modifyOtherKeys/leave {
   local value=$bleopt_term_modifyOtherKeys_external
   if [[ $value == auto ]]; then
     value=1
-    # 問題を起こす端末で無効化。
-    if [[ $TERM == xterm-kitty ]]; then
+    if ble/term/modifyOtherKeys/.iskitty; then
       value=0 # Kitty は 1 では無効にならない。変な振る舞い
     else
+      # 問題を起こす端末で無効化。
       ble/term/modifyOtherKeys/.supported || value=
     fi
   fi
