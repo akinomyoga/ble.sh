@@ -2785,16 +2785,21 @@ function ble/fd#alloc/.nextfd {
 ##   @param[in] redirect
 ##     リダイレクトを指定します。
 ##   @param[in,opt] opts
+##     export
+##       指定した変数を export します。
 ##     inherit
 ##       既に fdvar が存在して有効な fd であれば何もしません。新しく fd を確保
-##       した場合には終了処理を登録せず、また fdvar を export します。
+##       した場合には終了処理を登録しません。また上記の export を含みます。
 ##     share
 ##       >&NUMBER の形式のリダイレクトの場合に fd を複製する代わりに単に NUMBER
 ##       を fdvar に代入します。
+##     overwrite
+##       既に fdvar が存在する場合その fd を上書きします。
 _ble_util_openat_fdlist=()
 function ble/fd#alloc {
+  local _ble_local_preserve=
   if [[ :$3: == *:inherit:* ]]; then
-    [[ ${!1} ]] &&
+    [[ ${!1-} ]] &&
       ble/fd#is-open "${!1}" &&
       return 0
   fi
@@ -2807,7 +2812,10 @@ function ble/fd#alloc {
     fi
   fi
 
-  if ((_ble_bash>=40100)) && [[ :$3: != *:base:* ]]; then
+  if [[ ${!1-} && :$3: == *:overwrite:* ]]; then
+    _ble_local_preserve=1
+    builtin eval "exec ${!1}$2"
+  elif ((_ble_bash>=40100)) && [[ :$3: != *:base:* ]]; then
     builtin eval "exec {$1}$2"
   else
     ble/fd#alloc/.nextfd "$1"
@@ -2816,9 +2824,9 @@ function ble/fd#alloc {
     builtin eval "exec ${!1}>&- ${!1}$2"
   fi; local _ble_local_ext=$?
 
-  if [[ :$3: == *:inherit:* ]]; then
+  if [[ :$3: == *:inherit:* || :$3: == *:export:* ]]; then
     export "$1"
-  else
+  elif [[ ! $_ble_local_preserve ]]; then
     ble/array#push _ble_util_openat_fdlist "${!1}"
   fi
   return "$_ble_local_ext"
@@ -2846,17 +2854,17 @@ function ble/fd#close {
 ## @var _ble_util_fd_zero
 ##   既に定義されている場合は継承する
 if [[ -t 0 ]]; then
-  ble/fd#alloc _ble_util_fd_stdin '<&0' base:inherit
+  ble/fd#alloc _ble_util_fd_stdin '<&0' base:overwrite:export
 else
   ble/fd#alloc _ble_util_fd_stdin '< /dev/tty' base:inherit
 fi
 if [[ -t 1 ]]; then
-  ble/fd#alloc _ble_util_fd_stdout '>&1' base:inherit
+  ble/fd#alloc _ble_util_fd_stdout '>&1' base:overwrite:export
 else
   ble/fd#alloc _ble_util_fd_stdout '> /dev/tty' base:inherit
 fi
 if [[ -t 2 ]]; then
-  ble/fd#alloc _ble_util_fd_stderr '>&2' base:inherit
+  ble/fd#alloc _ble_util_fd_stderr '>&2' base:overwrite:export
 else
   ble/fd#alloc _ble_util_fd_stderr ">&$_ble_util_fd_stdout" base:inherit:share
 fi

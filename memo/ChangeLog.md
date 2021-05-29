@@ -46,8 +46,8 @@
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
   - util (`blehook`): hide internal hooks by default and support option `-a`
   - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` bb53271
-- progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` 0000000
-- syntax: highlight quotes of the `\?` form `#D1584` 0000000
+- progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
+- syntax: highlight quotes of the `\?` form `#D1584` 5076a03
  
 ## Changes
 
@@ -139,7 +139,7 @@
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
 - util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
-- decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) [#D1585]
+- decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 
 ## Internal changes and fixes
 
@@ -163,6 +163,7 @@
   - util (`ble/util/assign`): work around subshell conflicts `#D1578` 6e4bb12
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
+  - util: fix a bug that old tty is used in new sessions `#D1586` 0000000
 - global: use `_ble_term_IFS` `#D1557` d23ad3c
 - global: work around `localvar_inherit` for varname-list init `#D1566` 5c2edfc
 - util: fix `ble/util/dense-array#fill-range` a46fdaf
