@@ -2498,6 +2498,9 @@ function ble/complete/progcomp/.compgen {
   if [[ $is_special_completion ]]; then
     # -I, -D, etc.
     ble/util/assign compdef 'builtin complete -p "$compcmd" 2>/dev/null'
+  elif ble/syntax:bash/simple-word/is-simple "$compcmd"; then
+    # 既に呼び出し元で quote されている想定
+    ble/util/assign compdef "builtin complete -p -- $compcmd 2>/dev/null"
   else
     ble/util/assign compdef 'builtin complete -p -- "$compcmd" 2>/dev/null'
   fi
@@ -2636,10 +2639,70 @@ function ble/complete/progcomp/.compline-rewrite-command {
   [[ $1 != "$ocmd" ]] || (($#>=2)) || return 1
   local IFS=$_ble_term_IFS
   local ins="$*"
-  comp_line=$ins${comp_line:${#ocmd}}
-  ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))
+  if (($#==0)); then
+    # コマンド除去 (aliasで空に展開された時)
+    local ret; ble/string#ltrim "${comp_line:${#ocmd}}"
+    ((comp_point-=${#comp_line}-${#ret}))
+    comp_line=$ret
+  else
+    comp_line=$ins${comp_line:${#ocmd}}
+    ((comp_point-=${#ocmd}))
+  fi
+  ((comp_point<0&&(comp_point=0),comp_point+=${#ins}))
   comp_words=("$@" "${comp_words[@]:1}")
   ((comp_cword&&(comp_cword+=$#-1)))
+}
+
+function ble/complete/progcomp/.split-alias-words {
+  local tail=$1
+  local rex_redir='^'$_ble_syntax_bash_RexRedirect
+  local rex_word='^'$_ble_syntax_bash_simple_rex_element'+'
+  local rex_delim=$'^[\n;|&]'
+  local rex_spaces=$'^[ \t]+'
+  local rex_misc='^[<>()]+'
+
+  local -a words=()
+  while [[ $tail ]]; do
+    if [[ $tail =~ $rex_redir && $tail != ['<>']'('* ]]; then
+      ble/array#push words "$BASH_REMATCH"
+      tail=${tail:${#BASH_REMATCH}}
+    elif [[ $tail =~ $rex_word ]]; then
+      local w=$BASH_REMATCH
+      tail=${tail:${#w}}
+      if [[ $tail && $tail != ["$_ble_term_IFS;|&<>()"]* ]]; then
+        local s=${tail%%["$_ble_term_IFS"]*}
+        tail=${tail:${#s}}
+        w=$w$s
+      fi
+      ble/array#push words "$w"
+    elif [[ $tail =~ $rex_delim ]]; then
+      words=()
+      tail=${tail:${#BASH_REMATCH}}
+    elif [[ $tail =~ $rex_spaces ]]; then
+      tail=${tail:${#BASH_REMATCH}}
+    elif [[ $tail =~ $rex_misc ]]; then
+      ble/array#push words "$BASH_REMATCH"
+      tail=${tail:${#BASH_REMATCH}}
+    else
+      local w=${tail%%["$_ble_term_IFS"]*}
+      ble/array#push words "$w"
+      tail=${tail:${#w}}
+    fi
+  done
+
+  # skip assignments/redirections
+  local i=0 rex_assign='^[a-zA-Z_0-9]+(\['$_ble_syntax_bash_simple_rex_element'*\])?\+?='
+  while ((i<${#words[@]})); do
+   if [[ ${words[i]} =~ $rex_assign ]]; then
+     ((i++))
+   elif [[ ${words[i]} =~ $rex_redir && ${words[i]} != ['<>']'('* ]]; then
+     ((i+=2))
+   else
+     break
+   fi
+  done
+
+  ret=("${words[@]:i}")
 }
 
 ## @fn ble/complete/progcomp cmd opts
@@ -2654,30 +2717,52 @@ function ble/complete/progcomp {
   comp_words=("${tmp[@]}")
 
   local -a alias_args=()
-  local alias_checked=' '
+  [[ :$opts: == *:__recursive__:* ]] ||
+    local alias_checked=' '
   while :; do
-    if ble/is-function "ble/cmdinfo/complete:$cmd"; then
-      ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
-      "ble/cmdinfo/complete:$cmd" "$opts"
+
+    # @var cmd   ... 元のコマンド名
+    # @var ucmd  ... simple-word/eval したコマンド名
+    # @var qcmds ... simple-word/eval x quote-word したコマンド
+    local ret ucmd qcmds
+    ucmd=$cmd qcmds=("$cmd")
+    if ble/syntax:bash/simple-word/is-simple "$cmd" &&
+        ble/syntax:bash/simple-word/eval "$cmd" noglob &&
+        [[ $ret != "$cmd" || ${#ret[0]} -ne 1 ]]; then
+
+      ucmd=${ret[0]} qcmds=()
+      local word
+      for word in "${ret[@]}"; do
+        ble/string#quote-word "$word" quote-empty
+        ble/array#push qcmds "$ret"
+      done
+    fi
+
+    if ble/is-function "ble/cmdinfo/complete:$ucmd"; then
+      ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
+      "ble/cmdinfo/complete:$ucmd" "$opts"
       return "$?"
-    elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
-      ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
-      "ble/cmdinfo/complete:${cmd##*/}" "$opts"
+    elif [[ $ucmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${ucmd##*/}"; then
+      ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
+      ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
+      "ble/cmdinfo/complete:${ucmd##*/}" "$opts"
       return "$?"
-    elif builtin complete -p "$cmd" &>/dev/null; then
-      ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
+    elif builtin complete -p "$ucmd" &>/dev/null; then
+      ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
-    elif [[ $cmd == */?* ]] && builtin complete -p "${cmd##*/}" &>/dev/null; then
-      ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+    elif [[ $ucmd == */?* ]] && builtin complete -p "${ucmd##*/}" &>/dev/null; then
+      ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
+      ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
     elif
       # bash-completion の loader を呼び出して遅延補完設定をチェックする。
-      ble/function#try __load_completion "${cmd##*/}" &>/dev/null &&
-        builtin complete -p "${cmd##*/}" &>/dev/null
+      ble/function#try __load_completion "${ucmd##*/}" &>/dev/null &&
+        builtin complete -p "${ucmd##*/}" &>/dev/null
     then
-      ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+      ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
+      ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
     fi
@@ -2688,7 +2773,21 @@ function ble/complete/progcomp {
 
     local ret
     ble/util/expand-alias "$cmd"
-    ble/string#split-words ret "$ret"
+    [[ $ret == "$cmd" ]] && break
+    ble/complete/progcomp/.split-alias-words "$ret"
+    if ((${#ret[@]}==0)); then
+      # alias 展開により内容が消滅した時は次の単語をコマンドとして再度展開を繰り返す
+      ble/complete/progcomp/.compline-rewrite-command "${alias_args[@]}"
+      if ((${#comp_words[@]})); then
+        if ((comp_cword==0)); then
+          ble/complete/source:command
+        else
+          ble/complete/progcomp "${comp_words[0]}" "__recursive__:$opts"
+        fi
+      fi
+      return $?
+    fi
+
     [[ $alias_checked != *" $ret "* ]] || break
     cmd=$ret
     ((${#ret[@]}>=2)) &&

@@ -46,6 +46,7 @@
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
   - util (`blehook`): hide internal hooks by default and support option `-a`
   - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` bb53271
+- progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` 0000000
  
 ## Changes
 
@@ -74,7 +75,7 @@
 - main: preserve user-space overridden builtins `#D1519` 0860be0
   - util (`ble/util/type`): fix a bug that aliases are not properly highlighted (reported by 3ximus) `#D1526` 45b30a7
   - main: preserve user's `expand_aliases` and allow aliases in internal space (fixup 0860be0) `#D1574` afc4112
-  - main: main: fix expand_aliases unset on ble-reload (fixup afc4112) `#D1577` 0000000
+  - main: main: fix expand_aliases unset on ble-reload (fixup afc4112) `#D1577` 3417388
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
 - main: accept non-regular files as `blerc` and add option `--norc` `#D1530` 7244e2f
 - prompt: let `stderr` pass through to tty in evaluating `PS0` (reported by tycho-kirchner) `#D1541` 24a88ce
@@ -124,7 +125,7 @@
 - sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 5d85238
 - main: fix the workaround for `set -u` `#D1575` 76073a9
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
-- syntax: fix a bug that argument completion is attempted in nested commands (reported by huresche) `#D1579` 0000000
+- syntax: fix a bug that argument completion is attempted in nested commands (reported by huresche) `#D1579` 301d40f
 
 ## Compatibility
 
@@ -157,7 +158,7 @@
 - tui, edit: add a new render mode for full-screen applications 817889d
 - main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` c89aa23
   - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
-  - util (`ble/util/assign`): work around subshell conflits `#D1578` 0000000
+  - util (`ble/util/assign`): work around subshell conflicts `#D1578` 6e4bb12
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
 - global: use `_ble_term_IFS` `#D1557` d23ad3c

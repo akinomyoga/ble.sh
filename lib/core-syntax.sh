@@ -1484,7 +1484,7 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ##       cached
 ##         展開結果をキャッシュします。
 ##
-##     以下はパス名展開の起こる可能性にある単語に大して有効です。
+##     以下はパス名展開の起こる可能性にある単語に対して有効です。
 ##
 ##       stopcheck
 ##         ユーザー入力があった場合に中断します。

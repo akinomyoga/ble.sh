@@ -1442,20 +1442,6 @@ bash_tips
 
 2021-05-29
 
-  * complete: そもそも -F に指定する事のできる文字列には制限がある筈である。こ
-    れを満たさない場合には強制的に其処で終端させる等の対策が必要なのではないか。
-
-    然し、;&| 等が含まれていた場合にどの様に取り扱うべきかは不明である。明らか
-    に何かが間違っているけれども、だからと言ってその直前までを関数名と捉えるの
-    にも無理がある様な気がする。然し、それ以外に解釈のしようがないとも言える。
-
-  * complete: quote していると補完関数が認識されない。例えば git co とすると OK
-    だが 'git' co とすると反応しない。然し実の所、これは普通の bash でも同様で
-    ある。普通の bash でも 'git' としている時には git の補完関数は呼び出されな
-    い。
-
-  * complete: alias の展開結果で変数代入を除去するべきではないか
-
   * syntax: \q を着色したい
 
 2021-05-28
@@ -4705,6 +4691,86 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-05-29
+
+  * complete: quote されているコマンド名に対しても補完関数を適切に探索 [#D1583]
+
+    quote していると補完関数が認識されない。例えば git co とすると OK だが
+    'git' co とすると反応しない。然し実の所、これは普通の bash でも同様である。
+    普通の bash でも 'git' としている時には git の補完関数は呼び出されない。
+
+    unquote した上で補完を探索するべきである気がする。但し、alias 展開などに関
+    しては quote された物で実行するという事。comp_line, comp_words に入っている
+    のは展開前の quote された物であるので余計な事は考えなくて良い。
+
+  * [reject] complete: そもそも -F に指定する事のできる文字列には制限がある筈である [#D1582]
+
+    これを満たさない場合には強制的に其処で終端させる等の対策が必要なのではない
+    か。
+
+    然し、;&| 等が含まれていた場合にどの様に取り扱うべきかは不明である。明らか
+    に何かが間違っているけれども、だからと言ってその直前までを関数名と捉えるの
+    にも無理がある様な気がする。然し、それ以外に解釈のしようがないとも言える。
+
+    或いは途中に空白がある場合には ble.sh の拡張として関数に余分の引数を渡す事
+    にする? 然し、これは最新の bash-5.1 では使えない事なので古い Bash だけで使
+    える機能として提供しても仕方がない。結局これは失敗するべきなのではないか。
+    そして失敗するのだとしたら現状の動作のままで良いという事の気がする。
+
+  * complete: alias の展開結果で変数代入を除去するべきではないか [#D1581]
+
+    というより実の所 simple-word でできるだけ解析していくべきの気がする。と思っ
+    たが、 ; や変数代入があった時の振る舞い、文法エラーがある場合の振る舞いなど
+    は用途によってまちまちなのでこんｋ内は core-complete.sh の側で実装する事に
+    した。
+
+    simple-word の終端しない版というのはあっただろうか。なかったが
+    simple_rex_element をそのまま使えば良い。
+
+    * __load_completion を呼び出すと -D に相当する処理が勝手に入ってしまう。
+      complete が駄目な気がする。自前で補完定義を探してロードする関数を作ってみ
+      たが、その後で気づいたのは __load_completion は別に見つからなかった時に勝
+      手に既定の定義を使う訳ではないのだという事。
+
+      以下の自前の定義は結局使われる事はないのだった。
+
+      | _ble_complete_progcomp_bashcomp_initialized=
+      | _ble_complete_progcomp_bashcomp_dirs=()
+      | function ble/complete/progcomp/.bashcomp-initialize {
+      |   if [[ ! $_ble_complete_progcomp_bashcomp_initialized ]]; then
+      |     _ble_complete_progcomp_bashcomp_initialized=1
+      |
+      |     local user repo bin
+      |     user=${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions
+      |     [[ $BASH_COMPLETION_USER_DIR ]] && user=$BASH_COMPLETION_USER_DIR/completions
+      |     ble/string#split repo : "${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+      |     bin=./completions
+      |     [[ $BASH_SOURCE == */* ]] && user=${BASH_SOURCE%/*}/completions
+      |
+      |     local path
+      |     for path in "$user" "${repo[@]}" "$bin"; do
+      |       [[ -d $path ]] && ble/array#push _ble_complete_progcomp_bashcomp_dirs "$path"
+      |     done
+      |   fi
+      | }
+      | function ble/complete/progcomp/.load-bash-completion {
+      |   local cmd=$1
+      |   ble/is-function __load_completion || return 1
+      |   ble/complete/progcomp/.bashcomp-initialize
+      |
+      |   local dir file
+      |   for dir in "${dirs[@]}"; do
+      |     for file in "$dir"/{"$cmd","$cmd.bash","_$cmd"}; do
+      |       [[ -s $file ]] || continue
+      |       source "$file"
+      |       return 0
+      |     done
+      |   done
+      |
+      |   ((_ble_base>=40000)) || return 1
+      |   ble/is-function _filedir_xspec &&
+      |     [[ ${_xspecs[$cmd]+set} ]] &&
+      |     complete -F _filedir_xspec "$cmd"
+      | }
 
   * complete: "\a" 等のコマンド名の補完で問題が起こる (reported by huresche) [#D1579]
     https://github.com/akinomyoga/ble.sh/issues/116
