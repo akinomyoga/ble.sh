@@ -33,6 +33,7 @@ CTX_EXPR        8  # context,attr: in arithmetic expression
 ATTR_ERR        6  # attr: error
 ATTR_VAR        7  # attr: variable
 ATTR_QDEL       9  # attr: delimiters for quotation
+ATTR_QESC       81 # attr: \q
 ATTR_DEF        10 # attr: default (currently not used)
 ATTR_DEL        12 # attr: delimiters
 ATTR_HISTX      21 # 履歴展開 (!!$ など)

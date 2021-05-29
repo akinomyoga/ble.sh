@@ -1885,6 +1885,19 @@ function ble/syntax/highlight/vartype {
   fi
 }
 
+function ble/syntax:bash/check-plain-with-escape {
+  local rex='^('$1'|\\.)' is_quote=$2
+  [[ $tail =~ $rex ]] || return 1
+  if [[ $BASH_REMATCH == '\'? &&
+          ( ! $is_quote || $BASH_REMATCH == '\'[$'\\`$\n'] ) ]]; then
+    ((_ble_syntax_attr[i]=ATTR_QESC))
+  else
+    ((_ble_syntax_attr[i]=ctx))
+  fi
+  ((i+=${#BASH_REMATCH}))
+  return 0
+}
+
 function ble/syntax:bash/check-dollar {
   [[ $tail == '$'* ]] || return 1
 
@@ -2015,7 +2028,7 @@ function ble/syntax:bash/check-quotes {
   fi
 
   if ((ctx!=CTX_QUOT)); then
-    if rex='^(\$?")([^'"${_ble_syntax_bash_chars[CTX_QUOT]}"']|\\.)*("?)' && [[ $tail =~ $rex ]]; then
+    if rex='^(\$?")([^'"${_ble_syntax_bash_chars[CTX_QUOT]}"']*)("?)' && [[ $tail =~ $rex ]]; then
       local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
       if [[ ${BASH_REMATCH[3]} ]]; then
         # 終端まで行った場合
@@ -2040,11 +2053,30 @@ function ble/syntax:bash/check-quotes {
         fi
       fi
       return 0
-    elif rex='^\$'\''([^'\''\]|\\(.|$))*('\''?)' && [[ $tail =~ $rex ]]; then
-      ((_ble_syntax_attr[i]=aqdel,
-        _ble_syntax_attr[i+2]=aquot,
-        i+=${#BASH_REMATCH},
-        _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}?aqdel:ATTR_ERR))
+    elif rex='^\$'\''(([^'\''\]|\\(.|$))*)('\''?)' && [[ $tail =~ $rex ]]; then
+      ((_ble_syntax_attr[i]=aqdel,i+=2))
+      local t=${BASH_REMATCH[1]} rematch4=${BASH_REMATCH[4]}
+
+      local rex='\\[abefnrtvE"'\''\?]|\\[0-7]{1,3}|\\c.|\\x[0-9a-fA-F]{1,2}'
+      ((_ble_bash>=40200)) && rex=$rex'|\\u[0-9a-fA-F]{1,4}|\\U[0-9a-fA-F]{1,8}'
+      local rex='^([^'\''\]*)('$rex'|(\\.))'
+      while [[ $t =~ $rex ]]; do
+        local m1=${BASH_REMATCH[1]} m2=${BASH_REMATCH[2]}
+        [[ $m1 ]] && ((_ble_syntax_attr[i]=aquot,i+=${#m1}))
+        if [[ ${BASH_REMATCH[3]} ]]; then
+          ((_ble_syntax_attr[i]=aquot))
+        else
+          ((_ble_syntax_attr[i]=ATTR_QESC))
+        fi
+        ((i+=${#m2}))
+        t=${t:${#BASH_REMATCH}}
+      done
+      [[ $t ]] && ((_ble_syntax_attr[i]=aquot,i+=${#t}))
+      if [[ $rematch4 ]]; then
+        ((_ble_syntax_attr[i++]=aqdel))
+      else
+        ((_ble_syntax_attr[i-1]=ATTR_ERR))
+      fi
       return 0
     fi
   fi
@@ -2318,10 +2350,7 @@ function ble/syntax:bash/starts-with-histchars {
 _BLE_SYNTAX_FCTX[CTX_QUOT]=ble/syntax:bash/ctx-quot
 function ble/syntax:bash/ctx-quot {
   # 文字列の中身
-  local rex
-  if rex='^([^'"${_ble_syntax_bash_chars[CTX_QUOT]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  if ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[CTX_QUOT]}]+" 1; then
     return 0
   elif [[ $tail == '"'* ]]; then
     ((_ble_syntax_attr[i]=ATTR_QDEL,
@@ -2379,9 +2408,7 @@ function ble/syntax:bash/ctx-globpat/get-stop-chars {
 function ble/syntax:bash/ctx-globpat {
   # glob () の中身 (extglob @(...) や case in (...) の中)
   local chars; ble/syntax:bash/ctx-globpat/get-stop-chars
-  if local rex='^([^'$chars']|\\.)+'; [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  if ble/syntax:bash/check-plain-with-escape "[^$chars]+"; then
     return 0
   elif ble/syntax:bash/check-process-subst; then
     return 0
@@ -2484,9 +2511,7 @@ function ble/syntax:bash/ctx-bracket-expression {
     ((_ble_syntax_attr[i]=${force_attr:-ctx},
       i+=${#BASH_REMATCH}))
     return 0
-  elif rex='^([^'$chars']|\\.)+' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=${force_attr:-ctx},
-      i+=${#BASH_REMATCH}))
+  elif ctx=${force_attr:-$ctx} ble/syntax:bash/check-plain-with-escape "[^$chars]+"; then
     return 0
   elif ble/syntax:bash/check-process-subst; then
     return 0
@@ -2603,10 +2628,7 @@ function ble/syntax:bash/ctx-param {
 }
 function ble/syntax:bash/ctx-pword {
   # パラメータ展開 - word 部
-  local rex
-  if rex='^([^'"${_ble_syntax_bash_chars[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  if ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}]+"; then
     return 0
   elif ((ctx==CTX_PWORDR)) && [[ $tail == '/'* ]]; then
     ((_ble_syntax_attr[i++]=CTX_PARAM,ctx=CTX_PWORD))
@@ -2782,9 +2804,7 @@ function ble/syntax:bash/ctx-expr {
   elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ATTR_VAR_NUMBER,i+=${#BASH_REMATCH}))
     return 0
-  elif rex='^([^'"${_ble_syntax_bash_chars[ctx]}"'a-zA-Z_0-9]|\\.)+'; [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}a-zA-Z_0-9]+" 1; then
     return 0
   elif [[ $tail == ['][()}']* ]]; then
     local char=${tail::1} ntype
@@ -2952,9 +2972,7 @@ function ble/syntax:bash/ctx-brace-expansion {
   local chars=",${_ble_syntax_bash_chars[CTX_ARGI]//'~:'}"
   ((ctx==CTX_BRACE2)) && chars="}$chars"
   ble/syntax:bash/cclass/update/reorder chars
-  if local rex='^([^'$chars']|\\.)+'; [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  if ble/syntax:bash/check-plain-with-escape "[^$chars]+"; then
     return 0
   elif ble/syntax:bash/check-process-subst; then
     return 0
@@ -3057,9 +3075,9 @@ function ble/syntax:bash/check-tilde-expansion {
     fi
     ((_ble_syntax_attr[i]=attr,i+=${#str}))
   else
+    ((_ble_syntax_attr[i]=ctx,i++)) # skip tilde
     local chars=${_ble_syntax_bash_chars[CTX_ARGI]}
-    local rex='^~([^'$chars']|\\.)*'; [[ $tail =~ $rex ]]
-    ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+    ble/syntax:bash/check-plain-with-escape "[^$chars]+" # 追加(失敗してもOK)
   fi
 
   return 0
@@ -3888,7 +3906,7 @@ function ble/syntax:bash/ctx-command {
   local flagConsume=0
   if ble/syntax:bash/check-variable-assignment; then
     flagConsume=1
-  elif local rex='^([^'${_ble_syntax_bash_chars[CTX_ARGI]}']|\\.)+'; [[ $tail =~ $rex ]]; then
+  elif local rex='^([^'${_ble_syntax_bash_chars[CTX_ARGI]}']+|\\.)'; [[ $tail =~ $rex ]]; then
     local rematch=$BASH_REMATCH
     local attr=$ctx
     if ((attr==CTX_FARGI1)); then
@@ -3898,6 +3916,8 @@ function ble/syntax:bash/ctx-command {
       else
         attr=$ATTR_ERR
       fi
+    elif [[ $BASH_REMATCH == '\'? ]]; then
+      attr=$ATTR_QESC
     fi
     ((_ble_syntax_attr[i]=attr,i+=${#rematch}))
     flagConsume=1
@@ -4156,9 +4176,7 @@ function ble/syntax:bash/ctx-values {
 
   if ble/syntax:bash/check-variable-assignment; then
     return 0
-  elif local rex='^([^'${_ble_syntax_bash_chars[CTX_ARGI]}']|\\.)+' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[CTX_ARGI]}]+"; then
     return 0
   elif ble/syntax:bash/check-process-subst; then
     return 0
@@ -4245,9 +4263,7 @@ function ble/syntax:bash/ctx-conditions {
 
   if ble/syntax:bash/check-variable-assignment; then
     return 0
-  elif local rex='^([^'${_ble_syntax_bash_chars[CTX_ARGI]}']|\\.)+' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[CTX_ARGI]}]+"; then
     return 0
   elif ble/syntax:bash/check-process-subst; then
     return 0
@@ -4331,10 +4347,7 @@ function ble/syntax:bash/ctx-redirect {
   # 単語開始の設置
   ble/syntax:bash/ctx-redirect/check-word-begin
 
-  local rex
-  if rex='^([^'${_ble_syntax_bash_chars[CTX_ARGI]}']|\\.)+' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+  if ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[CTX_ARGI]}]+"; then
     return 0
   elif ble/syntax:bash/check-process-subst; then
     return 0
@@ -6012,6 +6025,7 @@ function ble/syntax/faces-onload-hook {
   ble/color/defface syntax_command           fg=brown
   ble/color/defface syntax_quoted            fg=green
   ble/color/defface syntax_quotation         fg=green,bold
+  ble/color/defface syntax_escape            fg=magenta
   ble/color/defface syntax_expr              fg=26
   ble/color/defface syntax_error             bg=203,fg=231 # bg=224
   ble/color/defface syntax_varname           fg=202
@@ -6085,6 +6099,7 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define ATTR_ERR     syntax_error
   ble/syntax/attr2iface/.define ATTR_VAR     syntax_varname
   ble/syntax/attr2iface/.define ATTR_QDEL    syntax_quotation
+  ble/syntax/attr2iface/.define ATTR_QESC    syntax_escape
   ble/syntax/attr2iface/.define ATTR_DEF     syntax_default
   ble/syntax/attr2iface/.define ATTR_DEL     syntax_delimiter
   ble/syntax/attr2iface/.define CTX_PARAM    syntax_param_expansion

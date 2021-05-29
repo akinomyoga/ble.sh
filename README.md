@@ -318,6 +318,7 @@ ble-face -s syntax_default            none
 ble-face -s syntax_command            fg=brown
 ble-face -s syntax_quoted             fg=green
 ble-face -s syntax_quotation          fg=green,bold
+ble-face -s syntax_escape             fg=magenta
 ble-face -s syntax_expr               fg=26
 ble-face -s syntax_error              bg=203,fg=231
 ble-face -s syntax_varname            fg=202

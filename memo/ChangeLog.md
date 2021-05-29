@@ -47,6 +47,7 @@
   - util (`blehook`): hide internal hooks by default and support option `-a`
   - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` bb53271
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` 0000000
+- syntax: highlight quotes of the `\?` form `#D1584` 0000000
  
 ## Changes
 
