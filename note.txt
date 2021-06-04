@@ -4683,6 +4683,21 @@ bash_tips
 
 2021-06-12
 
+  * complete: "complete -p" 解析の修正 + 細かい修正 [#D1611]
+
+    complete に対する細かい修正が溜まっているのでいい加減に push する。
+
+    * 一つは quote された progcomp　が正しく unquote されずに続く complete -p
+      の関数名抽出に渡っている問題の修正。
+
+    他は m scan に関連する軽微なミスである。
+
+    * local "${_ble_complete_cand_varnames[@]}" の localvar_inherit に対する対
+      策が間違っている問題。
+
+    * 文字数を数えるのに ${#ret[0]} の形式を使ってしまっている問題 (bash-3.0
+      bug)
+
   * util: bleopt の unknown option の表示が空になる [#D1610]
 
     bleopt で誤ったオプション名を指定した時のエラーメッセージでオプション名が空

@@ -58,6 +58,7 @@
   - util (`bleopt`): do no select obsoleted options by wildcards `#D1595` f4312df
   - util (`bleopt`): fix error messages for unknown options `#D1610` 0000000
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
+  - progcomp: fix a bug that command names may stray into completer function names `#D1611` 0000000
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
 - prompt: support a new backslash sequence `\g{...}` `#D1609` 0000000
  

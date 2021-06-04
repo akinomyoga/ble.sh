@@ -2501,6 +2501,7 @@ function ble/complete/progcomp/.compgen {
   elif ble/syntax:bash/simple-word/is-simple "$compcmd"; then
     # 既に呼び出し元で quote されている想定
     ble/util/assign compdef "builtin complete -p -- $compcmd 2>/dev/null"
+    local ret; ble/syntax:bash/simple-word/eval "$compcmd"; compcmd=$ret
   else
     ble/util/assign compdef 'builtin complete -p -- "$compcmd" 2>/dev/null'
   fi
@@ -2728,7 +2729,7 @@ function ble/complete/progcomp {
     ucmd=$cmd qcmds=("$cmd")
     if ble/syntax:bash/simple-word/is-simple "$cmd" &&
         ble/syntax:bash/simple-word/eval "$cmd" noglob &&
-        [[ $ret != "$cmd" || ${#ret[0]} -ne 1 ]]; then
+        [[ $ret != "$cmd" || ${#ret} -ne 1 ]]; then
 
       ucmd=${ret[0]} qcmds=()
       local word
@@ -4522,7 +4523,7 @@ function ble/complete/menu/generate-candidates-from-menu {
   # remaining candidates
   cand_count=${#_ble_complete_menu_items[@]}
   cand_cand=() cand_word=() cand_pack=()
-  local pack "${_ble_complete_cand_varnames[@]/=}" # #D1570 WA checked
+  local pack "${_ble_complete_cand_varnames[@]/%/=}" # #D1570 WA checked
   for pack in "${_ble_complete_menu_items[@]}"; do
     ble/complete/cand/unpack "$pack"
     ble/array#push cand_cand "$CAND"
@@ -5340,7 +5341,7 @@ function ble/complete/menu-filter/.filter-candidates {
   cand_pack=()
 
   local iloop=0 interval=$bleopt_complete_polling_cycle
-  local filter_type pack "${_ble_complete_cand_varnames[@]/=}" # #D1570 WA checked
+  local filter_type pack "${_ble_complete_cand_varnames[@]/%/=}" # #D1570 WA checked
   for filter_type in head substr hsubseq subseq; do
     ble/path#remove-glob comp_type '[maA]'
     case $filter_type in
