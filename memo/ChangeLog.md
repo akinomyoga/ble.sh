@@ -127,6 +127,7 @@
 - main: fix the workaround for `set -u` `#D1575` 76073a9
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
 - syntax: fix a bug that argument completion is attempted in nested commands (reported by huresche) `#D1579` 301d40f
+- edit (brackated-paste): fix incomplete `CR => LF` conversion (reported by alborotogarcia) `#D1587` 0000000
 
 ## Compatibility
 
@@ -163,7 +164,7 @@
   - util (`ble/util/assign`): work around subshell conflicts `#D1578` 6e4bb12
 - test (`test-canvas`): fix dependency on `ext/contra` `#D1525` c89aa23
 - util: inherit special file descriptors `#D1552` 98835b5
-  - util: fix a bug that old tty is used in new sessions `#D1586` 0000000
+  - util: fix a bug that old tty is used in new sessions `#D1586` 0e55b8e
 - global: use `_ble_term_IFS` `#D1557` d23ad3c
 - global: work around `localvar_inherit` for varname-list init `#D1566` 5c2edfc
 - util: fix `ble/util/dense-array#fill-range` a46fdaf

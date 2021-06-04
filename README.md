@@ -412,7 +412,7 @@ $ ble-bind -L
 
 When the command line string contains a newline character, `ble.sh` enters the MULTILINE mode.
 
-By typing <kbd>C-v RET</kbd> or <kbd>C-q RET</kbd>, you can insert a newline character in the command line string.
+By typing <kbd>C-v C-j</kbd> or <kbd>C-q C-j</kbd>, you can insert a newline character in the command line string.
 In the MULTILINE mode, <kbd>RET</kbd> (<kbd>C-m</kbd>) causes insertion of a new newline character.
 In the MULTILINE mode, the command can be executed by typing <kbd>C-j</kbd>.
 
