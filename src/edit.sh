@@ -2527,10 +2527,10 @@ function ble/widget/bracketed-paste.hook {
     return 148
   fi
 
-  chars=$chars:
-  chars=${chars//:13:10:/:10:} # CR LF -> LF
+  chars=:${chars//:/::}:
+  chars=${chars//:13::10:/:10:} # CR LF -> LF
   chars=${chars//:13:/:10:} # CR -> LF
-  chars=(${chars//:/' '})
+  ble/string#split-words chars "${chars//:/ }"
 
   local proc=$_ble_edit_bracketed_paste_proc
   _ble_edit_bracketed_paste_proc=
