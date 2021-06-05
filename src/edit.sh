@@ -186,7 +186,7 @@ function ble-edit/prompt/initialize {
 
   if [[ $OSTYPE == cygwin* ]]; then
     local windir=/cygdrive/c/Windows
-    if [[ $WINDIR == [A-Za-z]:\\* ]]; then
+    if [[ $WINDIR == [a-zA-Z]:\\* ]]; then
       local bsl='\' sl=/
       local c=${WINDIR::1} path=${WINDIR:3}
       if [[ $c == [A-Z] ]]; then
