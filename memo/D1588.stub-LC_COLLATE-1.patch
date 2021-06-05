@@ -1,0 +1,209 @@
+From 7c28903712ecc6c2709f78f94743a2049f5edb8e Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Sat, 5 Jun 2021 06:44:52 +0900
+Subject: [PATCH] stub: work around LC_COLLATE (1)
+
+---
+ lib/core-syntax.sh | 39 ++++++++++++++++++++++-----------------
+ make_command.sh    |  9 +++++++++
+ 2 files changed, 31 insertions(+), 17 deletions(-)
+
+diff --git a/lib/core-syntax.sh b/lib/core-syntax.sh
+index e6c5167..4ac774b 100644
+--- a/lib/core-syntax.sh
++++ b/lib/core-syntax.sh
+@@ -2057,8 +2057,8 @@ function ble/syntax:bash/check-quotes {
+       ((_ble_syntax_attr[i]=aqdel,i+=2))
+       local t=${BASH_REMATCH[1]} rematch4=${BASH_REMATCH[4]}
+ 
+-      local rex='\\[abefnrtvE"'\''\?]|\\[0-7]{1,3}|\\c.|\\x[0-9a-fA-F]{1,2}'
+-      ((_ble_bash>=40200)) && rex=$rex'|\\u[0-9a-fA-F]{1,4}|\\U[0-9a-fA-F]{1,8}'
++      local rex='\\[abefnrtvE"'\''\?]|\\[0-7]{1,3}|\\c.|\\x[0-9a-fA-F]{1,2}' # #D1588 WA LC_COLLATE ok
++      ((_ble_bash>=40200)) && rex=$rex'|\\u[0-9a-fA-F]{1,4}|\\U[0-9a-fA-F]{1,8}' # #D1588 WA LC_COLLATE ok
+       local rex='^([^'\''\]*)('$rex'|(\\.))'
+       while [[ $t =~ $rex ]]; do
+         local m1=${BASH_REMATCH[1]} m2=${BASH_REMATCH[2]}
+@@ -2801,10 +2801,10 @@ function ble/syntax:bash/ctx-expr {
+     local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" readvar:expr
+     ((_ble_syntax_attr[i]=ret,i+=${#rematch}))
+     return 0
+-  elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
++  elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then # #D1588 WA LC_COLLATE
+     ((_ble_syntax_attr[i]=ATTR_VAR_NUMBER,i+=${#BASH_REMATCH}))
+     return 0
+-  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}a-zA-Z_0-9]+" 1; then
++  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}a-zA-Z_0-9]+" 1; then # #D1588 WA LC_COLLATE
+     return 0
+   elif [[ $tail == ['][()}']* ]]; then
+     local char=${tail::1} ntype
+@@ -2856,7 +2856,7 @@ function ble/syntax:bash/ctx-expr {
+ function ble/syntax:bash/check-brace-expansion {
+   [[ $tail == '{'* ]] || return 1
+ 
+-  local rex='^\{[-+0-9a-zA-Z.]*(\}?)'
++  local rex='^\{[-+0-9a-zA-Z.]*(\}?)' # #D1588 WA LC_COLLATE
+   [[ $tail =~ $rex ]]
+   local str=$BASH_REMATCH
+ 
+@@ -2897,7 +2897,7 @@ function ble/syntax:bash/check-brace-expansion {
+     ctx=${_ble_syntax_bash_command_IsAssign[ctx]}
+ 
+   # {a..b..c} の形式のブレース展開
+-  if rex='^\{(([-+]?[0-9]+)\.\.[-+]?[0-9]+|[a-zA-Z]\.\.[a-zA-Z])(\.\.[-+]?[0-9]+)?\}$'; [[ $str =~ $rex ]]; then
++  if rex='^\{(([-+]?[0-9]+)\.\.[-+]?[0-9]+|[a-zA-Z]\.\.[a-zA-Z])(\.\.[-+]?[0-9]+)?\}$'; [[ $str =~ $rex ]]; then # #D1588 WA LC_COLLATE
+     if [[ $force_attr ]]; then
+       ((_ble_syntax_attr[i]=force_attr,i+=${#str}))
+     else
+@@ -3139,7 +3139,7 @@ function ble/syntax:bash/check-variable-assignment {
+   else
+     suffix="$suffix|\["
+   fi
+-  local rex_assign="^([a-zA-Z_][a-zA-Z_0-9]*)($suffix)"
++  local rex_assign="^([a-zA-Z_][a-zA-Z_0-9]*)($suffix)" # #D1588 WA LC_COLLATE
+   [[ $tail =~ $rex_assign ]] || return 1
+   local rematch=$BASH_REMATCH
+   local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
+@@ -3333,7 +3333,7 @@ function ble/syntax:bash/ctx-coproc/.is-next-compound {
+   local is_compound=
+   if [[ $tail == '('* ]]; then
+     is_compound=1
+-  elif rex='^[a-z]+|^\[\[?|^[{}!]'; [[ $tail =~ $rex ]]; then
++  elif rex='^[a-z]+|^\[\[?|^[{}!]'; [[ $tail =~ $rex ]]; then # #D1588 WA LC_COLLATE
+     local rematch=$BASH_REMATCH
+ 
+     ((p+=${#rematch}))
+@@ -3367,7 +3367,7 @@ function ble/syntax:bash/ctx-coproc/check-word-end {
+   local word=${text:wbegin:wlen}
+   local wt=$wtype
+ 
+-  if local rex='^[_a-zA-Z0-9]+$'; [[ $word =~ $rex ]]; then
++  if local rex='^[_a-zA-Z0-9]+$'; [[ $word =~ $rex ]]; then # #D1588 WA LC_COLLATE
+     if ble/syntax:bash/ctx-coproc/.is-next-compound; then
+       # Note: [_a-zA-Z0-9]+ は一回の読み取りの筈なので、
+       #   此処で遡って代入しても問題ない筈。
+@@ -3911,7 +3911,7 @@ function ble/syntax:bash/ctx-command {
+     local attr=$ctx
+     if ((attr==CTX_FARGI1)); then
+       # for var in ... の var の部分は変数名をチェックして着色
+-      if rex='^[a-zA-Z_][a-zA-Z_0-9]*'; ((i==wbegin)) && [[ $rematch =~ $rex ]]; then
++      if rex='^[a-zA-Z_][a-zA-Z_0-9]*'; ((i==wbegin)) && [[ $rematch =~ $rex ]]; then # #D1588 WA LC_COLLATE
+         local ret; ble/syntax/highlight/vartype "$BASH_REMATCH"; attr=$ret
+       else
+         attr=$ATTR_ERR
+@@ -4653,11 +4653,11 @@ function ble/syntax:bash/find-rhs {
+ 
+   local rex=
+   if ((wtype==ATTR_VAR)); then
+-    rex='^[a-zA-Z0-9_]+(\+?=|\[)'
++    rex='^[a-zA-Z0-9_]+(\+?=|\[)' # #D1588 WA LC_COLLATE
+   elif ((wtype==CTX_VALI)); then
+     if [[ :$opts: == *:element-assignment:* ]]; then
+       # 配列要素に対しても変数代入の形式を許す
+-      rex='^[a-zA-Z0-9_]+(\+?=|\[)|^(\[)'
++      rex='^[a-zA-Z0-9_]+(\+?=|\[)|^(\[)' # #D1588 WA LC_COLLATE
+     else
+       rex='^(\[)'
+     fi
+@@ -4985,6 +4985,7 @@ function ble/syntax/parse {
+   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return 0
+ 
+   local IFS=$_ble_term_IFS
++  local LC_ALL= LC_COLLATE=C 2>/dev/null # #D1588 WA regex range expression
+ 
+   local shift=$((end-end0))
+ #%if !release
+@@ -5116,6 +5117,8 @@ function ble/syntax/parse {
+     '((${#_ble_syntax_stat[@]}==iN+1))' \
+     "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_array_prototype[@]} should be >= $iN"
+ #%end
++
++  ble/util/unlocal LC_ALL LC_COLLATE 2>/dev/null # #D1588 WA regex range expression
+ }
+ 
+ ## @fn ble/syntax/highlight text [lang]
+@@ -5199,7 +5202,7 @@ function ble/syntax/completion-context/.add {
+ ## @fn ble/syntax/completion-context/.check/parameter-expansion
+ ##   @var[in] text istat index ctx
+ function ble/syntax/completion-context/.check/parameter-expansion {
+-  local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
++  local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$' # #D1588 WA LC_COLLATE
+   if [[ ${text:istat:index-istat} =~ $rex_paramx ]]; then
+     local rematch1=${BASH_REMATCH[1]}
+     local source=variable
+@@ -5314,7 +5317,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-command {
+     ble/syntax/completion-context/.add command "$istat"
+ 
+     # 変数・代入のチェック
+-    if local rex='^[a-zA-Z_][a-zA-Z_0-9]*(\+?=)?$' && [[ $word =~ $rex ]]; then
++    if local rex='^[a-zA-Z_][a-zA-Z_0-9]*(\+?=)?$' && [[ $word =~ $rex ]]; then # #D1588 WA LC_COLLATE
+       if [[ $word == *= ]]; then
+         if ((_ble_bash>=30100)) || [[ $word != *+= ]]; then
+           # VAR=<argument>: 現在位置から argument 候補を生成する
+@@ -5515,7 +5518,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:rhs {
+   ble/syntax/completion-context/.check/parameter-expansion
+   if ((wlen>=0)); then
+     local p=$wbeg
+-    local rex='^[a-zA-Z0-9_]+(\+?=|\[)'
++    local rex='^[a-zA-Z0-9_]+(\+?=|\[)' # #D1588 WA LC_COLLATE
+     ((ctx==CTX_VALR)) && rex='^(\[)'
+     if [[ ${text:p:index-p} =~ $rex ]]; then
+       if [[ ${BASH_REMATCH[1]} == '[' ]]; then
+@@ -5568,7 +5571,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:param {
+ ##   数式中の変数名を補完する文脈
+ _ble_syntax_bash_complete_check_prefix[CTX_EXPR]=expr
+ function ble/syntax/completion-context/.check-prefix/ctx:expr {
+-  local tail=${text:istat:index-istat} rex='[a-zA-Z_]+$'
++  local tail=${text:istat:index-istat} rex='[a-zA-Z_]+$' # #D1588 WA LC_COLLATE
+   if [[ $tail =~ $rex ]]; then
+     local p=$((index-${#BASH_REMATCH}))
+     ble/syntax/completion-context/.add variable:a "$p"
+@@ -5649,7 +5652,7 @@ function ble/syntax/completion-context/.search-last-istat {
+ ##   @var[in] index
+ ##   @var[out] sources
+ function ble/syntax/completion-context/.check-prefix {
+-  local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
++  local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$' # #D1588 WA LC_COLLATE
+   local from=${1:-$((index-1))}
+ 
+   local ret
+@@ -5737,8 +5740,10 @@ function ble/syntax/completion-context/generate {
+   sources=()
+   ((index<0&&(index=0)))
+ 
++  local LC_ALL= LC_COLLATE=C 2>/dev/null # #D1588 WA regex-ranges
+   ble/syntax/completion-context/.check-prefix
+   ble/syntax/completion-context/.check-here
++  ble/util/unlocal LC_ALL LC_COLLATE 2>/dev/null # #D1588 WA regex-ranges
+ }
+ 
+ #------------------------------------------------------------------------------
+diff --git a/make_command.sh b/make_command.sh
+index 1a1a629..75828f3 100755
+--- a/make_command.sh
++++ b/make_command.sh
+@@ -366,6 +366,14 @@ function sub:scan/mistake-_ble_bash {
+   grc '\(\(.*\b_ble_base\b.*\)\)'
+ }
+ 
++function sub:scan/WA-regex-range {
++  echo "--- $FUNCNAME ---"
++  grc --color -i 'a-fA-F|a-zA-Z' --exclude=ext |
++    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
++      \Z#D1588Zd
++      g'
++}
++
+ function sub:scan {
+   if ! type grc >/dev/null; then
+     echo 'blesh check: grc not found. grc can be found in github.com:akinomyoga/mshex.git/' >&2
+@@ -447,6 +455,7 @@ function sub:scan {
+   sub:scan/eval-literal
+   sub:scan/WA-localvar_inherit
+   sub:scan/mistake-_ble_bash
++  sub:scan/WA-regex-range
+ 
+   sub:scan/memo-numbering
+ }
+-- 
+2.21.3
+

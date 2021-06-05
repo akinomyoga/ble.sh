@@ -505,7 +505,7 @@ function ble/variable#copy-state {
   if [[ ${!src+set} ]]; then
     builtin eval -- "$dst=\${$src}"
   else
-    builtin unset -v "$dst"
+    builtin unset -v "$dst[0]" 2>/dev/null || builtin unset -v "$dst"
   fi
 }
 

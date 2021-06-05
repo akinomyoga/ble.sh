@@ -292,6 +292,16 @@ function ble/base/restore-builtin-wrappers {
   fi
 } 2>/dev/null # set -x 対策
 
+# From src/util.sh
+function ble/variable#copy-state {
+  local src=$1 dst=$2
+  if [[ ${!src+set} ]]; then
+    builtin eval -- "$dst=\${$src}"
+  else
+    builtin unset -v "$dst[0]" 2>/dev/null || builtin unset -v "$dst"
+  fi
+}
+
 : "${_ble_bash_options_adjusted=}"
 function ble/base/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1 || ((1)) # set -e 対策
@@ -312,10 +322,40 @@ function ble/base/adjust-bash-options {
   _ble_bash_expand_aliases=
   shopt -q expand_aliases 2>/dev/null &&
     _ble_bash_expand_aliases=1
+
+  # locale 待避
+  ble/variable#copy-state LC_ALL _ble_bash_LC_ALL
+  if [[ ${LC_ALL-} ]]; then
+    ble/variable#copy-state LC_CTYPE    _ble_bash_LC_CTYPE
+    ble/variable#copy-state LC_MESSAGES _ble_bash_LC_MESSAGES
+    ble/variable#copy-state LC_NUMERIC  _ble_bash_LC_NUMERIC
+    ble/variable#copy-state LC_TIME     _ble_bash_LC_TIME
+    ble/variable#copy-state LANG        _ble_bash_LANG
+    [[ ${LC_CTYPE-}    ]] && LC_CTYPE=$LC_ALL
+    [[ ${LC_MESSAGES-} ]] && LC_MESSAGES=$LC_ALL
+    [[ ${LC_NUMERIC-}  ]] && LC_NUMERIC=$LC_ALL
+    [[ ${LC_TIME-}     ]] && LC_TIME=$LC_ALL
+    LANG=$LC_ALL
+    LC_ALL=
+  fi
+  ble/variable#copy-state LC_COLLATE _ble_bash_LC_COLLATE
+  LC_COLLATE=C
 } 2>/dev/null # set -x 対策 #D0930
 function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=
+
+  # locale 復元
+  ble/variable#copy-state _ble_bash_LC_COLLATE LC_COLLATE
+  if [[ $_ble_bash_LC_ALL ]]; then
+    ble/variable#copy-state _ble_bash_LC_CTYPE    LC_CTYPE
+    ble/variable#copy-state _ble_bash_LC_MESSAGES LC_MESSAGES
+    ble/variable#copy-state _ble_bash_LC_NUMERIC  LC_NUMERIC
+    ble/variable#copy-state _ble_bash_LC_TIME     LC_TIME
+    ble/variable#copy-state _ble_bash_LANG        LANG
+  fi
+  ble/variable#copy-state _ble_bash_LC_ALL LC_ALL
+
   [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
   [[ $_ble_bash_setv && ! -o verbose ]] && set -v
