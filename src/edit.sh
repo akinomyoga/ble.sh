@@ -155,11 +155,6 @@ bleopt/declare -v prompt_term_status  ''
 bleopt/declare -o rps1 prompt_rps1
 bleopt/declare -o rps1_transient prompt_rps1_transient
 
-function bleopt/check:prompt_rps1 { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
-function bleopt/check:prompt_xterm_title { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
-function bleopt/check:prompt_screen_title { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
-function bleopt/check:prompt_term_status { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
-
 ## @bleopt prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
 
@@ -167,12 +162,10 @@ bleopt/declare -v prompt_status_line  ''
 bleopt/declare -n prompt_status_align $'justify=\r'
 ble/color/defface prompt_status_line fg=231,bg=240
 
-function bleopt/check:prompt_status_line { [[ $_ble_attached ]] && ble/prompt/clear; return 0; }
 function bleopt/check:prompt_status_align {
   case $value in
   (left|right|center|justify|justify=?*)
-    [[ $bleopt_prompt_status_line && $_ble_attached ]] &&
-      ble/prompt/clear
+    ble/prompt/unit#clear _ble_prompt_status hash
     return 0 ;;
   (*)
     ble/util/print "bleopt prompt_status_align: unsupported value: '$value'" >&2
@@ -317,7 +310,6 @@ _ble_prompt_status_panel=3
 _ble_prompt_status_dirty=
 _ble_prompt_status_data=()
 _ble_prompt_status_bbox=()
-_ble_prompt_status_line=(0 0 '')
 
 function ble/prompt/status#panel::invalidate {
   _ble_prompt_status_dirty=1
@@ -343,10 +335,10 @@ function ble/prompt/status#panel::render {
     ((height==0)) && return 0
   fi
 
-  local esc=${_ble_prompt_status_line[2]}
+  local esc=${_ble_prompt_status_data[10]}
   if [[ $esc ]]; then
-    local prox=${_ble_prompt_status_line[0]}
-    local proy=${_ble_prompt_status_line[1]}
+    local prox=${_ble_prompt_status_data[11]}
+    local proy=${_ble_prompt_status_data[12]}
     ble/canvas/panel#goto.draw "$_ble_prompt_status_panel"
     ble/canvas/panel#put.draw "$_ble_prompt_status_panel" "$esc" "$prox" "$proy"
   else
@@ -357,7 +349,7 @@ function ble/prompt/status#panel::render {
 function ble/prompt/status#panel::getHeight {
   if [[ $_ble_edit_layout == command ]]; then
     height=0:0
-  elif [[ ${_ble_prompt_status_line[2]} ]]; then
+  elif [[ ${_ble_prompt_status_data[10]} ]]; then
     height=0:1
   else
     height=0:0
@@ -376,9 +368,10 @@ function ble/prompt/status#collapse {
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
 
-## @var _ble_prompt_update
+## @var _ble_prompt_version
 ##   ble/prompt/update でのプロンプト更新の度にインクリメントする変数
-_ble_prompt_update=0
+_ble_prompt_hash=
+_ble_prompt_version=0
 
 ## called by ble-edit/initialize
 function ble/prompt/initialize {
@@ -451,46 +444,149 @@ function ble/prompt/initialize {
   fi
 }
 
-## @var _ble_edit_prompt
+## @arr PREFIX_data
+##   プロンプトに表示するデータの単位です。
+##   他のデータに対する依存性等を管理する機能を有します。
+##
+##   @var PREFIX_data[0]    version
+##     prompt 情報の更新回数を保持します。
+##   @var PREFIX_data[1]    hashref
+##   @var PREFIX_data[2]    hash
+##     依存性追跡に使われる変数です。
+##
+## @fn ble/prompt/unit#update TYPE PREFIX ARGS...
+##   依存性を追跡しつつデータを更新します。
+##
+##   @fn[in] ble/prompt/unit:TYPE/update
+##     データの更新をします。データに変化があった場合に 0 を返します。
+##     それ以外の場合に 1 を返します。
+##
+##     @var[in]     prompt_unit
+##     @var[in,out] prompt_unit_changed
+##     @var[in]     prompt_unit_expired
+##     @var[in,out] prompt_hashref_dep
+##     @var[in,out] prompt_hashref_var
+##
+##   @var[in,opt]  prompt_hashref_base
+##
+##   @var[in] prompt_unit
+##     ble/prompt/unit:PREFIX/update が入れ子で呼び出される時に設定される変数です。
+##     親プロンプトの PREFIX を保持します。
+##     prompt 間の依存性を追跡する為に呼び出し元の以下の変数を更新します。
+##
+##     @var[ref,opt] prompt_hashref_dep
+##
+function ble/prompt/unit#update {
+  local unit=$1
+
+  local prompt_unit_changed=
+  local prompt_unit_expired=
+
+  local ohashref=${unit}_data[1]; ohashref=${!ohashref-}
+  if [[ ! $ohashref ]]; then
+    prompt_unit_expired=1
+  else
+    ble/prompt/unit#update/.update-dependencies "$ohashref"
+    local ohash=${unit}_data[2]; ohash=${!ohash}
+    builtin eval -- "nhash=\"$ohashref\"" 2>/dev/null
+    [[ $nhash != "$ohash" ]] && prompt_unit_expired=1
+  fi
+
+  if [[ $prompt_unit_expired ]]; then
+    local prompt_unit=$unit
+    local prompt_hashref_dep= # プロンプト間依存性
+    local prompt_hashref_var= # 変数に対する依存性
+
+    ble/prompt/unit:"$unit"/update "$unit" &&
+      ((prompt_unit_changed=1,${unit}_data[0]++))
+
+    local hashref=${prompt_hashref_base-'$_ble_prompt_version'}:$prompt_hashref_dep:$prompt_hashref_var
+    builtin eval -- "${unit}_data[1]=\$hashref"
+    builtin eval -- "${unit}_data[2]=\"$hashref\"" 2>/dev/null
+    ble/util/unlocal prompt_unit prompt_hashref_dep
+  fi
+
+  # 呼び出し元 prompt_hashref_dep の更新 (依存性登録)
+  if [[ $prompt_unit ]]; then
+    local ref1='$'$unit'_data'
+    [[ ,$prompt_hashref_dep, != *,"$ref1",* ]] &&
+      prompt_hashref_dep=$prompt_hashref_dep${prompt_hashref_dep:+,}$ref1
+  fi
+  [[ $prompt_unit_changed ]]
+}
+function ble/prompt/unit#update/.update-dependencies {
+  local ohashref=$1
+  local otree=${ohashref#*:}; otree=${otree%%:*}
+  if [[ $otree ]]; then
+    ble/string#split otree , "$otree"
+
+    local prompt_unit= # 依存関係の登録はしない
+    local child
+    for child in "${otree[@]}"; do
+      [[ $child == '$'?*'_data' ]] || continue
+      child=${child:1:${#child}-6}
+      ble/is-function ble/prompt/unit:"$child"/update &&
+        ble/prompt/unit#update "$child"
+    done
+  fi
+}
+function ble/prompt/unit#clear {
+  builtin eval -- "${prefix}_data[2]="
+}
+
+function ble/prompt/unit/assign {
+  local var=$1 value=$2
+  [[ $value == "${!var}" ]] && return 1
+  prompt_unit_changed=1
+  builtin eval -- "$var=\$value"
+}
+
+## @fn ble/prompt/unit/add-hash hashref
+##   プロンプトの更新検出に用いるシェル単語を指定します。
+function ble/prompt/unit/add-hash {
+  [[ $prompt_unit && ,$prompt_hashref_var, != *,"$1",* ]] &&
+    prompt_hashref_var=$prompt_hashref_var${prompt_hashref_var:+,}$1
+  return 0
+}
+
+## @var _ble_prompt_ps1_data
+## @var _ble_prompt_rps1_data
+## @var _ble_prompt_status_data
+## @var _ble_prompt_xterm_title_data
+## @var _ble_prompt_screen_title_data
+## @var _ble_prompt_term_status_data
 ##   構築した prompt の情報をキャッシュします。
-##   @var _ble_edit_prompt[0]    version
-##     prompt 情報を作成した時の _ble_edit_LINENO を表します。
-##   @var _ble_edit_prompt[1..3] x y g
+##
+##   @var PREFIX_data[3..5] x y g
 ##     prompt を表示し終わった時のカーソルの位置と描画属性を表します。
-##   @var _ble_edit_prompt[4..5] lc lg
+##   @var PREFIX_data[6..7] lc lg
 ##     bleopt_internal_suppress_bash_output= の時、
 ##     prompt を表示し終わった時の左側にある文字とその描画属性を表します。
 ##     それ以外の時はこの値は使われません。
-##   @var _ble_edit_prompt[6]    ps1out
+##   @var PREFIX_data[8]    ps1out (esc)
 ##     prompt を表示する為に出力する制御シーケンスを含んだ文字列です。
-##   @var _ble_edit_prompt[7]    trace_hash
+##   @var PREFIX_data[9]    trace_hash
 ##     COLUMNS:ps1esc の形式の文字列です。
 ##     調整前の ps1out を格納します。
 ##     ps1out の計算 (trace) を省略する為に使用します。
-_ble_edit_prompt_dirty=
-_ble_edit_prompt=("" 0 0 0 32 0 "" "")
-_ble_edit_rprompt_bbox=()
-_ble_edit_rprompt=()
-_ble_edit_rprompt_dirty=
-_ble_edit_rprompt_shown=
+##
+##   @var PREFIX_data[10...] tailored
+##     ps1out の結果を加工して得られるデータ。
+##     加工だけを後で再実行する事もあるので統一的に管理する。
+##
+_ble_prompt_ps1_dirty=
+_ble_prompt_ps1_data=(0 '' '' 0 0 0 32 0 '' '')
+_ble_prompt_rps1_dirty=
+_ble_prompt_rps1_data=()
+_ble_prompt_rps1_gbox=()
+_ble_prompt_rps1_shown=
 
-_ble_prompt_xterm_title=()
-_ble_prompt_screen_title=()
-_ble_prompt_term_status=()
-
-## @fn ble/prompt/.load
-##   @var[out] x y g
-##   @var[out] lc lg
-##   @var[out] ret
-##     プロンプトを描画するための文字列
-function ble/prompt/.load {
-  x=${_ble_edit_prompt[1]}
-  y=${_ble_edit_prompt[2]}
-  g=${_ble_edit_prompt[3]}
-  lc=${_ble_edit_prompt[4]}
-  lg=${_ble_edit_prompt[5]}
-  ret=${_ble_edit_prompt[6]}
-}
+_ble_prompt_xterm_title_dirty=
+_ble_prompt_xterm_title_data=()
+_ble_prompt_screen_title_dirty=
+_ble_prompt_screen_title_data=()
+_ble_prompt_term_status_dirty=
+_ble_prompt_term_status_data=()
 
 ## @fn ble/prompt/print text
 ##   プロンプト構築中に呼び出す関数です。
@@ -546,6 +642,7 @@ function ble/prompt/.process-backslash {
     (\[) ble/canvas/put.draw $'\001' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
     (\]) ble/canvas/put.draw $'\002' ;;
     ('#') # コマンド番号 (本当は history に入らない物もある…)
+      ble/prompt/unit/add-hash '$_ble_edit_CMD'
       ble/canvas/put.draw "$_ble_edit_CMD" ;;
     (\!) # 編集行の履歴番号
       local count
@@ -603,29 +700,52 @@ function ble/prompt/backslash:a { # 0 BEL
   ble/canvas/put.draw ""
   return 0
 }
+function ble/prompt/backslash:e {
+  ble/canvas/put.draw $'\e'
+  return 0
+}
+function ble/prompt/backslash:n {
+  ble/canvas/put.draw $'\n'
+  return 0
+}
+function ble/prompt/backslash:r {
+  ble/canvas/put.draw "$_ble_term_cr"
+  return 0
+}
+
+_ble_prompt_cache_vars=(
+  prompt_cache_d
+  prompt_cache_t
+  prompt_cache_A
+  prompt_cache_T
+  prompt_cache_at
+  prompt_cache_j
+  prompt_cache_wd
+)
+
 function ble/prompt/backslash:d { # ? 日付
-  [[ $cache_d ]] || ble/util/strftime -v cache_d '%a %b %d'
-  ble/prompt/print "$cache_d"
+  [[ $prompt_cache_d ]] || ble/util/strftime -v prompt_cache_d '%a %b %d'
+  ble/prompt/print "$prompt_cache_d"
   return 0
 }
 function ble/prompt/backslash:t { # 8 時刻
-  [[ $cache_t ]] || ble/util/strftime -v cache_t '%H:%M:%S'
-  ble/prompt/print "$cache_t"
+  [[ $prompt_cache_t ]] || ble/util/strftime -v prompt_cache_t '%H:%M:%S'
+  ble/prompt/print "$prompt_cache_t"
   return 0
 }
 function ble/prompt/backslash:A { # 5 時刻
-  [[ $cache_A ]] || ble/util/strftime -v cache_A '%H:%M'
-  ble/prompt/print "$cache_A"
+  [[ $prompt_cache_A ]] || ble/util/strftime -v prompt_cache_A '%H:%M'
+  ble/prompt/print "$prompt_cache_A"
   return 0
 }
 function ble/prompt/backslash:T { # 8 時刻
-  [[ $cache_T ]] || ble/util/strftime -v cache_T '%I:%M:%S'
-  ble/prompt/print "$cache_T"
+  [[ $prompt_cache_T ]] || ble/util/strftime -v prompt_cache_T '%I:%M:%S'
+  ble/prompt/print "$prompt_cache_T"
   return 0
 }
 function ble/prompt/backslash:@ { # ? 時刻
-  [[ $cache_at ]] || ble/util/strftime -v cache_at '%I:%M %p'
-  ble/prompt/print "$cache_at"
+  [[ $prompt_cache_at ]] || ble/util/strftime -v prompt_cache_at '%I:%M %p'
+  ble/prompt/print "$prompt_cache_at"
   return 0
 }
 function ble/prompt/backslash:D {
@@ -639,10 +759,6 @@ function ble/prompt/backslash:D {
   fi
   return 0
 }
-function ble/prompt/backslash:e {
-  ble/canvas/put.draw $'\e'
-  return 0
-}
 function ble/prompt/backslash:h { # = ホスト名
   ble/prompt/print "$_ble_prompt_const_h"
   return 0
@@ -652,24 +768,16 @@ function ble/prompt/backslash:H { # = ホスト名
   return 0
 }
 function ble/prompt/backslash:j { #   ジョブの数
-  if [[ ! $cache_j ]]; then
+  if [[ ! $prompt_cache_j ]]; then
     local joblist
     ble/util/joblist
-    cache_j=${#joblist[@]}
+    prompt_cache_j=${#joblist[@]}
   fi
-  ble/canvas/put.draw "$cache_j"
+  ble/canvas/put.draw "$prompt_cache_j"
   return 0
 }
 function ble/prompt/backslash:l { #   tty basename
   ble/prompt/print "$_ble_prompt_const_l"
-  return 0
-}
-function ble/prompt/backslash:n {
-  ble/canvas/put.draw $'\n'
-  return 0
-}
-function ble/prompt/backslash:r {
-  ble/canvas/put.draw "$_ble_term_cr"
   return 0
 }
 function ble/prompt/backslash:s { # 4 "bash"
@@ -689,16 +797,18 @@ function ble/prompt/backslash:V { # = bash version %d.%d.%d
   return 0
 }
 function ble/prompt/backslash:w { # PWD
+  ble/prompt/unit/add-hash '$PWD'
   ble/prompt/.update-working-directory
-  ble/prompt/print "$cache_wd"
+  ble/prompt/print "$prompt_cache_wd"
   return 0
 }
 function ble/prompt/backslash:W { # PWD短縮
+  ble/prompt/unit/add-hash '$PWD'
   if [[ ! ${PWD//'/'} ]]; then
     ble/prompt/print "$PWD"
   else
     ble/prompt/.update-working-directory
-    ble/prompt/print "${cache_wd##*/}"
+    ble/prompt/print "${prompt_cache_wd##*/}"
   fi
   return 0
 }
@@ -717,27 +827,72 @@ function ble/prompt/backslash:q {
       ble/util/print "ble/propmt: undefined named sequence \\q{$word}" >&2
       return 2
     else
-      ble/prompt/backslash:"${word[@]}"; return "$?"
+      ble/util/joblist.check
+      ble/prompt/backslash:"${word[@]}"; local ext=$?
+      ble/util/joblist.check ignore-volatile-jobs
+      return "$?"
     fi
   else
     ble/prompt/print "\\$c"
   fi
   return 0
 }
+function ble/prompt/backslash:position {
+  ((_ble_textmap_dbeg>=0)) && ble/widget/.update-textmap
+  local fmt=${1:-'(%s,%s)'} pos
+  ble/prompt/unit/add-hash '${_ble_textmap_pos[_ble_edit_ind]}'
+  ble/string#split-words pos "${_ble_textmap_pos[_ble_edit_ind]}"
+  ble/util/sprintf pos "$fmt" $((pos[1]+1)) $((pos[0]+1))
+  ble/prompt/print "$pos"
+}
+function ble/prompt/backslash:row {
+  ((_ble_textmap_dbeg>=0)) && ble/widget/.update-textmap
+  local pos
+  ble/prompt/unit/add-hash '${_ble_textmap_pos[_ble_edit_ind]}'
+  ble/string#split-words pos "${_ble_textmap_pos[_ble_edit_ind]}"
+  ble/prompt/print $((pos[1]+1))
+}
+function ble/prompt/backslash:column {
+  ((_ble_textmap_dbeg>=0)) && ble/widget/.update-textmap
+  local pos
+  ble/prompt/unit/add-hash '${_ble_textmap_pos[_ble_edit_ind]}'
+  ble/string#split-words pos "${_ble_textmap_pos[_ble_edit_ind]}"
+  ble/prompt/print $((pos[0]+1))
+}
+function ble/prompt/backslash:point {
+  ble/prompt/unit/add-hash '$_ble_edit_ind'
+  ble/prompt/print "$_ble_edit_ind"
+}
+function ble/prompt/backslash:mark {
+  ble/prompt/unit/add-hash '$_ble_edit_mark'
+  ble/prompt/print "$_ble_edit_mark"
+}
+function ble/prompt/backslash:history-index {
+  ble/prompt/unit/add-hash '$_ble_history_INDEX'
+  ble/canvas/put.draw $((_ble_history_INDEX+1))
+}
+function ble/prompt/backslash:history-percentile {
+  ble/prompt/unit/add-hash '$_ble_history_INDEX'
+  ble/prompt/unit/add-hash '$_ble_history_COUNT'
+  local index=$_ble_history_INDEX
+  local count=$_ble_history_COUNT
+  ((count||count++))
+  ble/canvas/put.draw "$((index*100/count))%"
+}
 
 ## @fn ble/prompt/.update-working-directory
-##   @var[in,out] cache_wd
+##   @var[in,out] prompt_cache_wd
 function ble/prompt/.update-working-directory {
-  [[ $cache_wd ]] && return 0
+  [[ $prompt_cache_wd ]] && return 0
 
   if [[ ! ${PWD//'/'} ]]; then
-    cache_wd=$PWD
+    prompt_cache_wd=$PWD
     return 0
   fi
 
   local head= body=${PWD%/}
   if [[ $body == "$HOME" ]]; then
-    cache_wd='~'
+    prompt_cache_wd='~'
     return 0
   elif [[ $body == "$HOME"/* ]]; then
     head='~/'
@@ -757,7 +912,7 @@ function ble/prompt/.update-working-directory {
     fi
   fi
 
-  cache_wd=$head$body
+  prompt_cache_wd=$head$body
 }
 
 function ble/prompt/.escape/check-double-quotation {
@@ -878,6 +1033,8 @@ function ble/prompt/.escape {
 ## @fn ble/prompt/.get-keymap-for-current-mode
 ##   @var[out] keymap
 function ble/prompt/.get-keymap-for-current-mode {
+  ble/prompt/unit/add-hash '$_ble_decode_keymap,${_ble_decode_keymap_stack[*]}'
+
   keymap=$_ble_decode_keymap
   local index=${#_ble_decode_keymap_stack}
   while :; do
@@ -887,10 +1044,22 @@ function ble/prompt/.get-keymap-for-current-mode {
   done
 }
 ## @fn ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 esc0 trace_hash0]
-##   @var[out] x y g lc lg esc trace_hash
+##
+##   @var[out] x y g
+##     プロンプトの描画開始点を指定します。
+##     プロンプトを描画した後の位置を返します。
+##   @var[out] lc lg
+##     bleopt_internal_suppress_bash_output= の際に、
+##     描画開始点の左の文字コードを指定します。
+##     描画終了点の左の文字コードが分かる場合にそれを返します。
+##   @var[out] esc
+##     プロンプトを描画する為の文字列を返します。
+##   @var[out] trace_hash
+##
 ##   @var[in,out] x1 x2 y1 y2
 ##     opts に measure-bbox を指定した時。
-##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
+##   @var[in,out] "${_ble_prompt_cache_vars[@]}"
+##
 function ble/prompt/.instantiate {
   trace_hash= esc= x=0 y=0 g=0 lc=32 lg=0
   local ps=$1 opts=$2 x0=$3 y0=$4 g0=$5 lc0=$6 lg0=$7 esc0=$8 trace_hash0=$9
@@ -936,7 +1105,7 @@ function ble/prompt/.instantiate {
     # Note: "ESC k ... ESC \" 等を対象とするプロンプト文字列は trace 不要
     x=0 y=0 g=0 lc=32 lg=0
     esc=$expanded
-  elif trace_hash=$opts:$COLUMNS:$expanded; [[ $trace_hash != "$trace_hash0" ]]; then
+  elif trace_hash=$opts:$LINES,$COLUMNS:$expanded; [[ $trace_hash != "$trace_hash0" ]]; then
     local trace_opts=$opts:prompt
     [[ $bleopt_internal_suppress_bash_output ]] || trace_opts=$trace_opts:left-char
     x=0 y=0 g=0 lc=32 lg=0
@@ -950,29 +1119,219 @@ function ble/prompt/.instantiate {
     return 2
   fi
 }
-## @fn ble/prompt/.instantiate-constrol-string name ps
-##   @var[in] version
-##   @var[out] ret
-##
-##   @var[in,out] $name
-##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
-function ble/prompt/.instantiate-control-string {
-  local name=$1 ps=$2
-  ret=
-  local -a prompt_data=()
-  if [[ $ps ]]; then
-    local -a prompt_data; builtin eval "prompt_data=(\"\${$name[@]}\")"
-    local trace_hash esc x y g lc lg
-    LINES=1 ble/prompt/.instantiate "$ps" confine:no-trace "${prompt_data[@]:1}"
-    prompt_data=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
 
-    local LC_ALL= LC_COLLATE=C
-    ret=${esc//[! -~]/'#'}
-  fi
-  builtin eval -- "$name=(\"\${prompt_data[@]}\")"
+## @fn ble/prompt/unit:{section}/clear prefix type
+##   プロンプト内容の再計算を要求。
+##   以前の内容と一致したら付属処理は省略。
+##
+##   @param[in,opt] type
+##     hash ... hash 消去     (プロンプト内容の再計算を実施)
+##     tail ... tail 情報消去 (プロンプト内容計算後の付加処理を再実施)
+##     draw ... dirty 設定    (プロンプト内容の再描画)
+##     all  ... 全消去        (全て再計算)
+##
+function ble/prompt/unit:{section}/clear {
+  local prefix=$1 type=${2:-hash:draw}
+  [[ :$type: == *:hash:* ]] &&
+    builtin eval -- "${prefix}_data[2]="
+  [[ :$type: == *:tail:* ]] &&
+    builtin eval -- "${prefix}_data=(\"\${${prefix}_data[@]::10}\")"
+  [[ :$type: == *:draw:* ]] &&
+    builtin eval -- "${prefix}_dirty=1"
+  [[ :$type: == *:all:* ]] &&
+    builtin eval -- "${prefix}_data=(\"\${${prefix}_data[0]}\")"
+  return 0
 }
-# suppress locale error #D1440
-ble/function#suppress-stderr ble/prompt/.instantiate-control-string
+
+function ble/prompt/unit:{section}/get {
+  local ref=${1}_data[8]; ret=${!ref}
+}
+
+## @fn ble/prompt/unit:{section}/update prefix ps opts
+##   @param[in] prefix
+##   @param[in] ps
+##   @param[in] opts
+##     コロン区切りの trace オプションです。
+##
+##     show-mode-in-prompt
+##       現在のモード名を付加します。
+##
+##     no-trace
+##       ble/canvas/trace による変換・計測をせず、
+##       プロンプト文字列の処理のみを行います。
+##       これは制御列など端末に出力しない内容を解析するのに使います。
+##
+function ble/prompt/unit:{section}/update {
+  local prefix=$1 ps=$2 opts=$3
+
+  # Load variables
+  local -a vars; vars=(data dirty)
+  [[ :$opts: == *:measure-bbox:* ]] && ble/array#push vars bbox
+  [[ :$opts: == *:measure-gbox:* ]] && ble/array#push vars gbox
+  local "${vars[@]/%/=}" # #D1570 OK
+  ble/util/restore-vars "${prefix}_" "${vars[@]}"
+
+  local has_changed=
+  if [[ $prompt_unit_expired ]]; then
+    local original_esc=${data[8]}:${data[9]}:${data[10]} # esc:trace_hash:tailor
+
+    if [[ $ps ]]; then
+      # load
+      [[ :$opts: == *:measure-bbox:* ]] &&
+        local x1=${bbox[0]} y1=${bbox[1]} x2=${bbox[2]} y2=${bbox[3]}
+      [[ :$opts: == *:measure-gbox:* ]] &&
+        local gx1=${gbox[0]} gy1=${gbox[1]} gx2=${gbox[2]} gy2=${gbox[3]}
+
+      local trace_hash esc x y g lc lg
+      ble/prompt/.instantiate "$ps" "$opts" "${data[@]:3:7}"
+      data=("${data[0]:-0}" '' '' "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash" "${data[@]:10}")
+
+      # store
+      [[ :$opts: == *:measure-bbox:* ]] &&
+        bbox=("$x1" "$y1" "$x2" "$y2")
+      [[ :$opts: == *:measure-gbox:* ]] &&
+        gbox=("$gx1" "$gy1" "$gx2" "$gy2")
+    else
+      data=("${data[0]:-0}" '' '' 0 0 0 32 0 '' '' "${data[@]:10}")
+      [[ :$opts: == *:measure-bbox:* ]] && bbox=()
+      [[ :$opts: == *:measure-gbox:* ]] && gbox=()
+    fi
+
+    [[ ${data[8]}:${data[9]}:${data[10]} != "$original_esc" ]] && has_changed=1
+  fi
+
+  [[ $has_changed ]] && ((dirty=1))
+
+  # Save variables
+  ble/util/save-vars "${prefix}_" "${vars[@]}"
+
+  [[ $has_changed ]]
+}
+
+#----------------------------------------------------------
+# Definitions of prompt sections
+
+function ble/prompt/unit:_ble_prompt_ps1/update {
+  ble/prompt/unit/add-hash '$prompt_ps1'
+  ble/prompt/unit:{section}/update _ble_prompt_ps1 "$prompt_ps1" show-mode-in-prompt
+}
+
+function ble/prompt/unit:_ble_prompt_rps1/update {
+  ble/prompt/unit/add-hash '$prompt_rps1'
+  ble/prompt/unit/add-hash '$_ble_prompt_ps1_data'
+  local cols=${COLUMNS-80}
+  local ps1x=${_ble_prompt_ps1_data[3]}
+  local ps1y=${_ble_prompt_ps1_data[4]}
+  LINES=$((ps1y+1)) ble/prompt/unit:{section}/update _ble_prompt_rps1 "$prompt_rps1" confine:relative:right:measure-gbox || return 1
+
+  local esc=${_ble_prompt_rps1_data[8]} width=
+  if [[ $esc ]]; then
+    ((width=_ble_prompt_rps1_gbox[2]-_ble_prompt_rps1_gbox[0]))
+    ((width&&20+width<cols&&ps1x+10+width<cols)) || esc= width=
+  fi
+  _ble_prompt_rps1_data[10]=$esc
+  _ble_prompt_rps1_data[11]=$width
+  return 0
+}
+
+function  ble/prompt/unit:_ble_prompt_xterm_title/update {
+  ble/prompt/unit/add-hash '$bleopt_prompt_xterm_title'
+  LINES=1 ble/prompt/unit:{section}/update _ble_prompt_xterm_title "$bleopt_prompt_xterm_title" confine:no-trace || return 1
+
+  local esc=${_ble_prompt_xterm_title_data[8]}
+  [[ $esc ]] && esc=$'\e]0;'${esc//[! -~]/'#'}$'\a'
+  _ble_prompt_xterm_title_data[10]=$esc
+  return 0
+}
+
+function ble/prompt/unit:_ble_prompt_screen_title/update {
+  ble/prompt/unit/add-hash '$bleopt_prompt_screen_title'
+  LINES=1 ble/prompt/unit:{section}/update _ble_prompt_screen_title "$bleopt_prompt_screen_title" confine:no-trace || return 1
+
+  local esc=${_ble_prompt_screen_title_data[8]}
+  [[ $esc ]] && esc=$'\ek'${esc//[! -~]/'#'}$'\e\\'
+  _ble_prompt_screen_title_data[10]=$esc
+  return 0
+}
+
+function ble/prompt/unit:_ble_prompt_term_status/update {
+  ble/prompt/unit/add-hash '$bleopt_prompt_term_status'
+  LINES=1 ble/prompt/unit:{section}/update _ble_prompt_term_status "$bleopt_prompt_term_status" confine:no-trace || return 1
+
+  local esc=${_ble_prompt_term_status_data[8]}
+  if [[ $esc ]]; then
+    esc=$_ble_term_tsl${esc//[! -~]/'#'}$_ble_term_fsl
+  else
+    # 非空文字列から空文字列になった時はステータス行をクリア
+    esc=$_ble_term_dsl
+  fi
+  _ble_prompt_term_status_data[10]=$esc
+  return 0
+}
+
+function ble/prompt/unit:_ble_prompt_status/update {
+  ble/prompt/unit/add-hash '$bleopt_prompt_status_align'
+  ble/prompt/unit/add-hash '$bleopt_prompt_status_line'
+  local ps=$bleopt_prompt_status_line
+  local cols=$COLUMNS; ((_ble_term_xenl||cols--))
+  local trace_opts=confine:relative:measure-bbox:noscrc:face0=prompt_status_line
+  local rex='^justify(=[^:]+)?$'
+  [[ $bleopt_prompt_status_align =~ $rex ]] &&
+    trace_opts=$trace_opts:$BASH_REMATCH
+
+  LINES=1 COLUMNS=$cols ble/prompt/unit:{section}/update _ble_prompt_status "$ps" "$trace_opts" || return 1
+
+  # tailor
+  local esc=${_ble_prompt_status_data[8]}
+  if [[ $ps && $esc ]]; then
+    local x=${_ble_prompt_status_data[3]}
+    local y=${_ble_prompt_status_data[4]}
+    local x1=${_ble_prompt_status_bbox[0]}
+    local x2=${_ble_prompt_status_bbox[2]}
+
+    local -a DRAW_BUFF=()
+
+    # background color
+    local ret
+    ble/color/face2g prompt_status_line; local g0=$ret
+    ble/color/g2sgr "$g0"; local sgr=$ret
+    if ((g0==0||_ble_term_bce)); then
+      ble/canvas/put.draw "$sgr$_ble_term_el$_ble_term_sgr0"
+    else
+      ble/string#reserve-prototype "$cols"
+      ble/canvas/put.draw "$sgr${_ble_string_prototype::cols}"
+      ble/canvas/put-cub.draw "$cols"
+      ble/canvas/put.draw "$_ble_term_sgr0"
+    fi
+
+    # bleopt prompt_status_align
+    local xshift=0
+    case $bleopt_prompt_status_align in
+    (center) ((xshift=cols/2-(x2+x1)/2)) ;;
+    (right)  ((xshift=cols-x2)) ;;
+    esac
+    if ((xshift>0)); then
+      ((x+=xshift))
+      ble/canvas/put-cuf.draw "$xshift"
+    fi
+
+    ble/canvas/put.draw "$esc"
+    ble/canvas/sflush.draw -v esc
+
+    _ble_prompt_status_data[10]=$esc
+    _ble_prompt_status_data[11]=$x
+    _ble_prompt_status_data[12]=$y
+  else
+    _ble_prompt_status_data[10]=
+    _ble_prompt_status_data[11]=
+    _ble_prompt_status_data[12]=
+  fi
+
+  return 0
+}
+
+#----------------------------------------------------------
+# Update prompts for textarea
 
 function ble/prompt/update/.has-prompt_command {
   [[ ${PROMPT_COMMAND[*]} ]]
@@ -999,177 +1358,98 @@ function ble/prompt/update/.eval-prompt_command {
 ##
 ##   @var[in]  _ble_edit_PS1
 ##     構築されるプロンプトの内容を指定します。
-##   @var[out] _ble_edit_prompt
+##   @var[out] _ble_prompt_ps1_data
 ##     構築したプロンプトの情報を格納します。
-##   @var[out] ret
-##     プロンプトを描画する為の文字列を返します。
-##   @var[in,out] x y g
-##     プロンプトの描画開始点を指定します。
-##     プロンプトを描画した後の位置を返します。
-##   @var[in,out] lc lg
-##     bleopt_internal_suppress_bash_output= の際に、
-##     描画開始点の左の文字コードを指定します。
-##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble/prompt/update {
-  local opts=:$1: is_leave_rewrite=
+  local opts=:$1: dirty=
+
+  # Update PS1 in PROMPT_COMMAND / PRECMD
+  local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
+  if [[ $_ble_prompt_hash != "$version" && $opts != *:leave:* ]]; then
+    if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
+      ble-edit/restore-PS1
+      ble/prompt/update/.eval-prompt_command
+      ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
+      ble-edit/adjust-PS1
+    fi
+  fi
+
+  local prompt_opts=
+  local prompt_ps1=$_ble_edit_PS1
+  local prompt_rps1=$bleopt_prompt_rps1
   if [[ $opts == *:leave:* ]]; then
     local ps1f=$bleopt_prompt_ps1_final
     local rps1f=$bleopt_prompt_rps1_final
     local ps1t=$bleopt_prompt_ps1_transient
     [[ :$ps1t: == *:trim:* || :$ps1t: == *:same-dir:* && $PWD != $_ble_edit_line_opwd ]] && ps1t=
-    [[ $ps1f || $rps1f || $ps1t ]] && is_leave_rewrite=
+    if [[ $ps1f || $rps1f || $ps1t ]]; then
+      prompt_opts=$prompt_opts:leave-rewrite
+      [[ $ps1f || $ps1t ]] && prompt_ps1=$ps1f
+      [[ $rps1f ]] && prompt_rps1=$rps1f
+      ble/textarea#invalidate
+    fi
   fi
 
-  local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
-  if [[ ! $is_leave_rewrite && ${_ble_edit_prompt[0]} == "$version" ]]; then
-    ble/prompt/.load
-    return 0
+  if [[ :$prompt_opts: == *:leave-rewrite:* || $_ble_prompt_hash != "$version" ]]; then
+    _ble_prompt_hash=$version
+    ((_ble_prompt_version++))
   fi
 
-  ((_ble_prompt_update++))
-  local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
+  ble/history/update-position
+  local prompt_hashref_base='$_ble_prompt_version'
+  local "${_ble_prompt_cache_vars[@]/%/=}" # #D1570 OK
 
-  # update PS1
-  if [[ ! $is_leave_rewrite ]] && { ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; }; then
-    ble-edit/restore-PS1
-    ble/prompt/update/.eval-prompt_command
-    ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
-    ble-edit/adjust-PS1
-  fi
-
-  local ps1=$_ble_edit_PS1 rps1=$bleopt_prompt_rps1
-  if [[ $is_leave_rewrite ]]; then
-    [[ $ps1f || $ps1t ]] && ps1=$ps1f
-    [[ $ps1f ]] && rps1=$rps1f
-    ble/textarea#invalidate
-  fi
-  local trace_hash esc
-  ble/prompt/.instantiate "$ps1" show-mode-in-prompt "${_ble_edit_prompt[@]:1}" &&
-    _ble_edit_prompt_dirty=1
-  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
-  ret=$esc
+  ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
 
   # Note #D1392: mc (midnight commander) の中では補助プロンプトは全て off
-  [[ $MC_SID == $$ ]] && return 0
+  [[ $MC_SID == $$ ]] && { [[ $dirty ]]; return $?; }
 
-  # update edit_rps1
-  if [[ $rps1 ]]; then
-    local ps1_height=$((y+1))
-    local trace_hash esc x y g lc lg # Note: これ以降は local の x y g lc lg
-    local gx1=${_ble_edit_rprompt_bbox[0]}
-    local gy1=${_ble_edit_rprompt_bbox[1]}
-    local gx2=${_ble_edit_rprompt_bbox[2]}
-    local gy2=${_ble_edit_rprompt_bbox[3]}
-    LINES=$ps1_height ble/prompt/.instantiate "$rps1" confine:relative:right:measure-gbox "${_ble_edit_rprompt[@]:1}" &&
-      _ble_edit_rprompt_dirty=1
-    _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
-    _ble_edit_rprompt_bbox=("$gx1" "$gy1" "$gx2" "$gy2")
-  elif [[ $_ble_edit_rprompt ]]; then
-    # 新しい rps1 が空の場合、前回の rps1 が残っていればクリア
-    _ble_edit_rprompt_dirty=1
-    _ble_edit_rprompt_bbox=()
-    _ble_edit_rprompt=()
-  fi
+  # Note: 補助プロンプトは _ble_textarea_panel==0 の時だけ有効 #D1027
+  ((_ble_textarea_panel==0)) || { [[ $dirty ]]; return $?; }
 
-  # bleopt prompt_status_line
-  if [[ $bleopt_prompt_status_line ]]; then
-    local ps=$bleopt_prompt_status_line
-    local cols=$COLUMNS; ((_ble_term_xenl||cols--))
-    local trace_opts=confine:relative:measure-bbox:noscrc:face0=prompt_status_line
+  # bleopt prompt_rps1
+  if ((_ble_textarea_panel==0)); then
+    if [[ :$opts: == *:leave:* && ! $rps1f && $bleopt_prompt_rps1_transient ]]; then
+      # prompt_rps1_transient による消去 (以前の大きさを保持)
+      [[ ${_ble_prompt_rps1_data[10]} ]] && dirty=1 rps1_enabled=erase
 
-    local rex='^justify(=[^:]+)?$'
-    [[ $bleopt_prompt_status_align =~ $rex ]] &&
-      trace_opts=$trace_opts:$BASH_REMATCH
-
-    local trace_hash esc x y g lc lg
-    local x1=${_ble_prompt_status_bbox[0]}
-    local y1=${_ble_prompt_status_bbox[1]}
-    local x2=${_ble_prompt_status_bbox[2]}
-    local y2=${_ble_prompt_status_bbox[3]}
-    LINES=1 COLUMNS=$cols ble/prompt/.instantiate "$ps" "$trace_opts" "${_ble_prompt_status_data[@]:1}"
-
-    local x_line=$x y_line=$y esc_line=$esc
-    local -a DRAW_BUFF=()
-
-    # background color
-    ble/color/face2g prompt_status_line; local g0=$ret
-    ble/color/g2sgr "$g0"; local sgr=$ret
-    if ((g0==0||_ble_term_bce)); then
-      ble/canvas/put.draw "$sgr$_ble_term_el$_ble_term_sgr0"
     else
-      ble/string#reserve-prototype "$cols"
-      ble/canvas/put.draw "$sgr${_ble_string_prototype::cols}"
-      ble/canvas/put-cub.draw "$cols"
-      ble/canvas/put.draw "$_ble_term_sgr0"
+      [[ $prompt_rps1 || ${_ble_prompt_rps1_data[10]} ]] &&
+        ble/prompt/unit#update _ble_prompt_rps1 && dirty=1
+      [[ ${_ble_prompt_rps1_data[10]} ]] && rps1_enabled=1
     fi
-
-    # bleopt prompt_status_align
-    local xshift=0
-    case $bleopt_prompt_status_align in
-    (center) ((xshift=cols/2-(x2+x1)/2)) ;;
-    (right)  ((xshift=cols-x2)) ;;
-    esac
-    if ((xshift>0)); then
-      ((x_line+=xshift))
-      ble/canvas/put-cuf.draw "$xshift"
-    fi
-
-    ble/canvas/put.draw "$esc"
-    ble/canvas/sflush.draw -v esc_line
-
-    _ble_prompt_status_dirty=1
-    _ble_prompt_status_data=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
-    _ble_prompt_status_bbox=("$x1" "$y1" "$x2" "$y2")
-    _ble_prompt_status_line=("$x_line" "$y_line" "$esc_line")
-  elif [[ $_ble_prompt_status_line ]]; then
-    # 新しく空になった時
-    _ble_prompt_status_dirty=1
-    _ble_prompt_status_data=()
-    _ble_prompt_status_bbox=()
-    _ble_prompt_status_line=()
   fi
 
   # bleopt prompt_xterm_title
   case ${_ble_term_TERM:-$TERM} in
   (sun*|minix) ;; # black list
   (*)
-    local ret
-    ble/prompt/.instantiate-control-string _ble_prompt_xterm_title "$bleopt_prompt_xterm_title"
-    [[ $ret ]] && ret=$'\e]0;'$ret$'\a'
-    _ble_prompt_xterm_title[6]=$ret ;;
+    [[ $bleopt_prompt_xterm_title || ${_ble_prompt_xterm_title_data[10]} ]] &&
+      ble/prompt/unit#update _ble_prompt_xterm_title && dirty=1 ;;
   esac
 
   # bleopt prompt_screen_title
   case ${_ble_term_TERM:-$TERM} in
   (screen|tmux|contra|screen.*|screen-*)
-    local ret
-    ble/prompt/.instantiate-control-string _ble_prompt_screen_title "$bleopt_prompt_screen_title"
-    [[ $ret ]] && ret=$'\ek'$ret$'\e\\'
-    _ble_prompt_screen_title[6]=$ret ;;
+    [[ $bleopt_prompt_screen_title || ${_ble_prompt_screen_title_data[10]} ]] &&
+      ble/prompt/unit#update _ble_prompt_screen_title && dirty=1 ;;
   esac
 
   # bleopt prompt_term_status
   if [[ $_ble_term_tsl && $_ble_term_fsl ]]; then
-    local ret
-    ble/prompt/.instantiate-control-string _ble_prompt_term_status "$bleopt_prompt_term_status"
-    if [[ $ret ]]; then
-      ret=$_ble_term_tsl$ret$_ble_term_fsl
-    elif [[ $bleopt_prompt_term_status ]]; then
-      # bleopt_prompt_term_status が設定されているのに結果が空の時、ステータス行をクリアする
-      ret=$_ble_term_dsl
-    fi
-    _ble_prompt_term_status[6]=$ret
+    [[ $bleopt_prompt_term_status || ${_ble_prompt_term_status_data[10]} ]] &&
+      ble/prompt/unit#update _ble_prompt_term_status && dirty=1
   fi
+
+  # bleopt prompt_status_line
+  [[ $bleopt_prompt_status_line || ${_ble_prompt_status_data[10]} ]] &&
+    ble/prompt/unit#update _ble_prompt_status && dirty=1
+
+  [[ $dirty ]]
 }
 function ble/prompt/clear {
-  _ble_edit_prompt[0]=
+  _ble_prompt_hash=
   ble/textarea#invalidate
-}
-function ble/prompt/notify-readline-mode-change {
-  if ble/util/test-rl-variable show-mode-in-prompt; then
-    ble/prompt/clear
-    ble/textarea#invalidate
-  fi
 }
 
 # 
@@ -1988,7 +2268,7 @@ _ble_textarea_local_VARNAMES=()
 ##   @var[out] height
 function ble/textarea#panel::getHeight {
   if [[ $1 == "$_ble_textarea_panel" ]]; then
-    local min=$((_ble_edit_prompt[2]+1)) max=$((_ble_textmap_endy+1))
+    local min=$((_ble_prompt_ps1_data[4]+1)) max=$((_ble_textmap_endy+1))
     ((min<max&&min++))
     height=$min:$max
   else
@@ -2021,12 +2301,6 @@ _ble_textarea_bufferName=
 ## @fn lc lg; ble/textarea#update-text-buffer; cx cy lc lg
 ##
 ##   @param[in    ] text  編集文字列
-##   @param[in    ] index カーソルの index
-##   @param[in,out] x     編集文字列開始位置、終了位置。
-##   @param[in,out] y     編集文字列開始位置、終了位置。
-##   @param[in,out] lc lg
-##     カーソル左の文字のコードと gflag を返します。
-##     カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
 ##   @var  [in,out] umin umax
 ##     umin,umax は再描画の必要な範囲を文字インデックスで返します。
 ##
@@ -2058,51 +2332,65 @@ function ble/textarea#update-text-buffer {
   fi
 
   _ble_textarea_bufferName=$HIGHLIGHT_BUFF
-
-  # update lc, lg
-  #
-  #   lc, lg は bleopt_internal_suppress_bash_output= の時に bash に出力させる文字と
-  #   その属性を表す。READLINE_LINE が空だと C-d を押した時にその場でログアウト
-  #   してしまったり、エラーメッセージが表示されたりする。その為 READLINE_LINE
-  #   に有限の長さの文字列を設定したいが、そうするとそれが画面に出てしまう。
-  #   そこで、ble.sh では現在のカーソル位置にある文字と同じ文字を READLINE_LINE
-  #   に設定する事で、bash が文字を出力しても見た目に問題がない様にしている。
-  #
-  #   cx==0 の時には現在のカーソル位置の右にある文字を READLINE_LINE に設定し
-  #   READLINE_POINT=0 とする。cx>0 の時には現在のカーソル位置の左にある文字を
-  #   READLINE_LINE に設定し READLINE_POINT=(左の文字のバイト数) とする。
-  #   (READLINE_POINT は文字数ではなくバイトオフセットである事に注意する。)
-  #
+}
+## @fn ble/textarea#update-left-char index
+##   update lc, lg.
+##
+##   @param[in] index
+##     カーソルの index
+##   @param[out] lc lg
+##     カーソル左の文字のコードと gflag を返します。
+##     カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
+##
+##   lc, lg は bleopt_internal_suppress_bash_output= の時に bash に出力させる文字と
+##   その属性を表す。READLINE_LINE が空だと C-d を押した時にその場でログアウト
+##   してしまったり、エラーメッセージが表示されたりする。その為 READLINE_LINE
+##   に有限の長さの文字列を設定したいが、そうするとそれが画面に出てしまう。
+##   そこで、ble.sh では現在のカーソル位置にある文字と同じ文字を READLINE_LINE
+##   に設定する事で、bash が文字を出力しても見た目に問題がない様にしている。
+##
+##   cx==0 の時には現在のカーソル位置の右にある文字を READLINE_LINE に設定し
+##   READLINE_POINT=0 とする。cx>0 の時には現在のカーソル位置の左にある文字を
+##   READLINE_LINE に設定し READLINE_POINT=(左の文字のバイト数) とする。
+##   (READLINE_POINT は文字数ではなくバイトオフセットである事に注意する。)
+##
+function ble/textarea#update-left-char {
+  local index=$1
   if [[ $bleopt_internal_suppress_bash_output ]]; then
     lc=32 lg=0
-  else
-    # index==0 の場合は受け取った lc lg をそのまま返す
-    if ((index>0)); then
-      local cx cy
-      ble/textmap#getxy.cur --prefix=c "$index"
+    return 0
+  fi
 
-      local lcs ret
-      if ((cx==0)); then
-        # 次の文字
-        if ((index==iN)); then
-          # 次の文字がない時は空白
-          ret=32
-        else
-          lcs=${_ble_textmap_glyph[index]}
-          ble/util/s2c "$lcs"
-        fi
+  # index==0 の場合はプロンプトの右端に於ける値
+  if ((index==0)); then
+    lc=${_ble_prompt_ps1_data[6]}
+    lg=${_ble_prompt_ps1_data[7]}
+    return 0
+  fi
 
-        # 次が改行の時は空白にする
-        local g; ble/highlight/layer/getg "$index"; lg=$g
-        ((lc=ret==10?32:ret))
-      else
-        # 前の文字
-        lcs=${_ble_textmap_glyph[index-1]}
-        ble/util/s2c "${lcs:${#lcs}-1}"
-        local g; ble/highlight/layer/getg $((index-1)); lg=$g
-        ((lc=ret))
-      fi
+  local cx cy
+  ble/textmap#getxy.cur --prefix=c "$index"
+
+  local lcs ret
+  if ((cx==0)); then
+    # 次の文字
+    if ((index==iN)); then
+      # 次の文字がない時は空白
+      ret=32
+    else
+      lcs=${_ble_textmap_glyph[index]}
+      ble/util/s2c "$lcs"
     fi
+
+    # 次が改行の時は空白にする
+    local g; ble/highlight/layer/getg "$index"; lg=$g
+    ((lc=ret==10?32:ret))
+  else
+    # 前の文字
+    lcs=${_ble_textmap_glyph[index-1]}
+    ble/util/s2c "${lcs:${#lcs}-1}"
+    local g; ble/highlight/layer/getg $((index-1)); lg=$g
+    ((lc=ret))
   fi
 }
 ## @fn ble/textarea#slice-text-buffer [beg [end]]
@@ -2158,11 +2446,12 @@ _ble_textarea_gendy=0
 _ble_textarea_invalidated=1
 
 function ble/textarea#invalidate {
-  if [[ $1 == str ]]; then
+  if [[ $1 == str || $1 == partial ]]; then
     ((_ble_textarea_version++))
   else
     _ble_textarea_invalidated=1
   fi
+  return 0
 }
 
 ## @fn ble/textarea#render/.erase-forward-line.draw opts
@@ -2334,9 +2623,9 @@ function ble/textarea#render/.show-scroll-at-first-line {
 ##   @var[in] cols
 ##     rps1 の幅の分だけ減少させた後の cols を指定します。
 function ble/textarea#render/.erase-rprompt {
-  [[ $_ble_edit_rprompt_shown ]] || return 0
-  _ble_edit_rprompt_shown=
-  local rps1_height=${_ble_edit_rprompt_bbox[3]}
+  [[ $_ble_prompt_rps1_shown ]] || return 0
+  _ble_prompt_rps1_shown=
+  local rps1_height=${_ble_prompt_rps1_gbox[3]}
   local -a DRAW_BUFF=()
   local y=0
   for ((y=0;y<rps1_height;y++)); do
@@ -2361,32 +2650,39 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
     ((index++))
   done
   ble/canvas/bflush.draw
-  _ble_edit_rprompt_shown=
+  _ble_prompt_rps1_shown=
 }
 
-## @fn ble/textarea#render/.show-prompt
+## @fn ble/textarea#render/.show-control-string prefix [force]
+function ble/textarea#render/.show-control-string {
+  local ref_dirty=${1}_dirty ref_output=${1}_data[10] force=$2
+  [[ $force || ${!ref_dirty} ]] || return 0
+  ble/canvas/put.draw "${!ref_output}"
+  builtin eval -- "$ref_dirty="
+  return 0
+}
+## @fn ble/textarea#render/.show-prompt [force]
 function ble/textarea#render/.show-prompt {
-  local esc=${_ble_edit_prompt[6]}
-  esc=${_ble_prompt_xterm_title[6]}$esc
-  esc=${_ble_prompt_screen_title[6]}$esc
-  esc=${_ble_prompt_term_status[6]}$esc
-  local prox=${_ble_edit_prompt[1]}
-  local proy=${_ble_edit_prompt[2]}
+  [[ $1 || $_ble_prompt_ps1_dirty ]] || return 0
+  local esc=${_ble_prompt_ps1_data[8]}
+  local prox=${_ble_prompt_ps1_data[3]}
+  local proy=${_ble_prompt_ps1_data[4]}
   ble/canvas/panel#goto.draw "$_ble_textarea_panel"
   ble/canvas/panel#put.draw "$_ble_textarea_panel" "$esc" "$prox" "$proy"
-  _ble_edit_prompt_dirty=
+  _ble_prompt_ps1_dirty=
 }
-## @fn ble/textarea#render/.show-rprompt
+## @fn ble/textarea#render/.show-rprompt [force]
 ##   @var[in] cols
 function ble/textarea#render/.show-rprompt {
-  local rps1out=${_ble_edit_rprompt[6]}
-  local rps1x=$((_ble_edit_rprompt[1]+COLUMNS-_ble_edit_rprompt_bbox[2]))
-  local rps1y=${_ble_edit_rprompt[2]}
+  [[ $1 || $_ble_prompt_rps1_dirty ]] || return 0
+  local rps1out=${_ble_prompt_rps1_data[8]}
+  local rps1x=$((_ble_prompt_rps1_data[3]+COLUMNS-_ble_prompt_rps1_gbox[2]))
+  local rps1y=${_ble_prompt_rps1_data[4]}
   # Note: cols は画面右端ではなく textmap の右端
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
   ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" "$rps1x" "$rps1y"
-  _ble_edit_rprompt_dirty=
-  _ble_edit_rprompt_shown=1
+  _ble_prompt_rps1_dirty=
+  _ble_prompt_rps1_shown=1
 }
 
 ## @fn ble/textarea#focus
@@ -2417,10 +2713,12 @@ _ble_textarea_version=0
 function ble/textarea#render {
   local opts=$1
   local ble_textarea_render_flag=1 # ble/textarea#panel::onHeightChange から参照する
-
   local caret_state=$_ble_textarea_version:$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode
-  local dirty=
-  if ((_ble_edit_dirty_draw_beg>=0)); then
+
+  local dirty= rps1_enabled=
+  if ble/prompt/update "$opts"; then
+    dirty=1
+  elif ((_ble_edit_dirty_draw_beg>=0)); then
     dirty=1
   elif [[ $_ble_textarea_invalidated ]]; then
     dirty=1
@@ -2440,34 +2738,13 @@ function ble/textarea#render {
   #-------------------
   # 描画内容の計算 (配置情報、着色文字列)
 
-  local ret
   local cols=${COLUMNS-80}
-
-  # rps1: _ble_textarea_panel==1 の時だけ有効 #D1027
-  local rps1_enabled=; [[ $bleopt_prompt_rps1 ]] && ((_ble_textarea_panel==0)) && rps1_enabled=1
-
-  # rps1_transient
-  if [[ $rps1_enabled && :$opts: == *:leave:* && ! $bleopt_prompt_rps1_final && $bleopt_prompt_rps1_transient ]]; then
-    # Note: ble/prompt/update を実行するよりも前に現在の表示内容を消去する。
-    local rps1_width=$((_ble_edit_rprompt_bbox[2]-_ble_edit_rprompt_bbox[0]))
-    local prox=${_ble_edit_prompt[1]}
-    if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
-      rps1_enabled=
-      ((cols-=rps1_width+1,_ble_term_xenl||cols--))
-      ble/textarea#render/.erase-rprompt
-    fi
-  fi
-
-  local x y g lc lg=0
-  ble/prompt/update "$opts" # x y lc ret
-
-  # rps1
+  local rps1_width=${_ble_prompt_rps1_data[11]}
+  _ble_prompt_rps1_data[12]=$rps1_enabled
   if [[ $rps1_enabled ]]; then
-    local rps1_width=$((_ble_edit_rprompt_bbox[2]-_ble_edit_rprompt_bbox[0]))
-    local prox=${_ble_edit_prompt[1]}
-    if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
-      ((cols-=rps1_width+1,_ble_term_xenl||cols--))
-    else
+    ((cols-=rps1_width+1,_ble_term_xenl||cols--))
+    if [[ $rps1_enabled == erase ]]; then
+      ble/textarea#render/.erase-rprompt
       rps1_enabled=
     fi
   fi
@@ -2478,18 +2755,24 @@ function ble/textarea#render {
   ((index<0?(index=0):(index>iN&&(index=iN))))
 
   local umin=-1 umax=-1
+  local x=${_ble_prompt_ps1_data[3]}
+  local y=${_ble_prompt_ps1_data[4]}
 
   # 配置情報の更新
   local render_opts=
   [[ $rps1_enabled ]] && render_opts=relative
-  COLUMNS=$cols ble/textmap#update "$text" "$render_opts"
-  ble/urange#update "$_ble_textmap_umin" "$_ble_textmap_umax"
+  COLUMNS=$cols ble/textmap#update "$text" "$render_opts" # [ref] x y
+  ble/urange#update "$_ble_textmap_umin" "$_ble_textmap_umax" # [ref] umin umax
   ble/urange#clear --prefix=_ble_textmap_
 
   # 着色の更新
   local DMIN=$_ble_edit_dirty_draw_beg
   ble-edit/content/update-syntax
-  ble/textarea#update-text-buffer # text index -> lc lg
+  ble/textarea#update-text-buffer # [in] text index [ref] lc lg;
+
+  local lc=32 lg=0
+  [[ $bleopt_internal_suppress_bash_output ]] ||
+    ble/textarea#update-left-char "$index"
 
   #-------------------
   # 描画領域の決定とスクロール
@@ -2525,7 +2808,7 @@ function ble/textarea#render {
   if [[ ! $_ble_textarea_invalidated ]]; then
     # 部分更新の場合
 
-    [[ ! $rps1_enabled && $_ble_edit_rprompt_shown || $rps1_enabled && $_ble_edit_rprompt_dirty ]] &&
+    [[ ! $rps1_enabled && $_ble_prompt_rps1_shown || $rps1_enabled && $_ble_prompt_rps1_dirty ]] &&
       ble/textarea#render/.cleanup-trailing-spaces-after-newline
 
     # スクロール
@@ -2533,10 +2816,11 @@ function ble/textarea#render {
     _ble_textarea_scroll_new=$_ble_textarea_scroll
 
     # プロンプトに更新があれば表示
-    [[ $rps1_enabled && $_ble_edit_rprompt_dirty ]] &&
-      ble/textarea#render/.show-rprompt
-    [[ $_ble_edit_prompt_dirty ]] &&
-      ble/textarea#render/.show-prompt
+    [[ $rps1_enabled ]] && ble/textarea#render/.show-rprompt
+    ble/textarea#render/.show-prompt
+    ble/textarea#render/.show-control-string _ble_prompt_xterm_title
+    ble/textarea#render/.show-control-string _ble_prompt_screen_title
+    ble/textarea#render/.show-control-string _ble_prompt_term_status
 
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
@@ -2564,12 +2848,14 @@ function ble/textarea#render {
   else
     # 全体更新
     ble/canvas/panel#clear.draw "$_ble_textarea_panel"
-    _ble_edit_rprompt_shown=
+    _ble_prompt_rps1_shown=
 
     # プロンプト描画
-    [[ $rps1_enabled ]] &&
-      ble/textarea#render/.show-rprompt
-    ble/textarea#render/.show-prompt
+    [[ $rps1_enabled ]] && ble/textarea#render/.show-rprompt force
+    ble/textarea#render/.show-prompt force
+    ble/textarea#render/.show-control-string _ble_prompt_xterm_title  force
+    ble/textarea#render/.show-control-string _ble_prompt_screen_title force
+    ble/textarea#render/.show-control-string _ble_prompt_term_status  force
 
     # 全体描画
     _ble_textarea_scroll=$scroll
@@ -2637,10 +2923,10 @@ function ble/textarea#render {
       fi
     fi
 
-    local esc=${_ble_edit_prompt[6]}
-    esc=${_ble_prompt_xterm_title[6]}$esc
-    esc=${_ble_prompt_screen_title[6]}$esc
-    esc=${_ble_prompt_term_status[6]}$esc
+    local esc=${_ble_prompt_ps1_data[8]}
+    esc=${_ble_prompt_xterm_title_data[10]}$esc
+    esc=${_ble_prompt_screen_title_data[10]}$esc
+    esc=${_ble_prompt_term_status_data[10]}$esc
     _ble_textarea_cache=(
       "$esc$esc_line"
       "${_ble_textarea_cur[@]}"
@@ -2732,8 +3018,8 @@ function ble/textarea#save-state {
   local prefix=$1
   local -a vars=()
 
-  # _ble_edit_prompt
-  ble/array#push vars _ble_edit_PS1 _ble_edit_prompt
+  # _ble_prompt_ps1_data
+  ble/array#push vars _ble_edit_PS1 _ble_prompt_ps1_data
 
   # _ble_edit_*
   ble/array#push vars "${_ble_edit_VARNAMES[@]}"
@@ -2803,8 +3089,14 @@ ble/function#try ble/util/idle.push-background ble/textarea#render-defer.idle
 #------------------------------------------------------------------------------
 
 function ble/widget/.update-textmap {
-  local text=$_ble_edit_str x=$_ble_textmap_begx y=$_ble_textmap_begy
-  ble/textmap#update "$text"
+  # rps1 がある時の幅の再現
+  local cols=${COLUMNS:-80}
+  local rps1w=${_ble_prompt_rps1_data[11]}
+  local rps1q=${_ble_prompt_rps1_data[12]}
+  [[ $rps1q ]] && ((cols-=rps1w+1,_ble_term_xenl||cols--))
+
+  local x=$_ble_textmap_begx y=$_ble_textmap_begy
+  COLUMNS=$cols ble/textmap#update "$_ble_edit_str"
 }
 function ble/widget/do-lowercase-version {
   local flag=$((KEYS[0]&_ble_decode_MaskFlag)) char=$((KEYS[0]&_ble_decode_MaskChar))
@@ -3228,10 +3520,11 @@ function ble/widget/insert-arg.impl {
   local beg=$1 end=$2 index=$3 delta=$4 nth=$5
   ((delta)) || delta=1
 
+  ble/history/initialize
   local hit= lastarg=
   local decl=$(
     local original=${_ble_edit_str:beg:end-beg}
-    local count=; ((delta>0)) && ble/history/get-count
+    local count=; ((delta>0)) && count=_ble_history_COUNT
     while :; do
       # index = next history index to check
       if ((delta>0)); then
@@ -3274,16 +3567,18 @@ function ble/widget/insert-arg.impl {
   fi
 }
 function ble/widget/insert-nth-argument {
+  ble/history/initialize
   local arg; ble-edit/content/get-arg '^'
   local beg=$_ble_edit_ind end=$_ble_edit_ind
-  local index; ble/history/get-index
+  local index=$_ble_history_INDEX
   local delta=-1 nth=$arg
   ble/widget/insert-arg.impl "$beg" "$end" "$index" "$delta" "$nth"
 }
 function ble/widget/insert-last-argument {
+  ble/history/initialize
   local arg; ble-edit/content/get-arg '$'
   local beg=$_ble_edit_ind end=$_ble_edit_ind
-  local index; ble/history/get-index
+  local index=$_ble_history_INDEX
   local delta=-1 nth=$arg
   ble/widget/insert-arg.impl "$beg" "$end" "$index" "$delta" "$nth" || return "$?"
   _ble_edit_mark_active=insert
@@ -4056,11 +4351,12 @@ function ble/widget/forward-history-line.impl {
     fi
   fi
 
-  local index; ble/history/get-index
+  ble/history/initialize
+  local index=$_ble_history_INDEX
 
   local expr_next='--index>=0'
   if ((arg>0)); then
-    local count; ble/history/get-count
+    local count=$_ble_history_COUNT
     expr_next="++index<=$count"
   fi
 
@@ -4771,19 +5067,19 @@ else
   }
 fi
 
-_ble_edit_prompt0=()
+_ble_prompt_ps10_data=()
+function ble/prompt/unit:_ble_prompt_ps10/update {
+  ble/prompt/unit:{section}/update _ble_prompt_ps10 "$PS0" ''
+}
+
 function ble-edit/exec/print-PS0 {
   if [[ $PS0 ]]; then
-    local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count:$_ble_edit_CMD
-    if [[ ${_ble_edit_prompt0[0]} == "$version" ]]; then
-      local esc=${_ble_edit_prompt0[6]}
-    else
-      local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
-      local val esc x y g lc lg trace_hash
-      ble/prompt/.instantiate "$PS0" '' "${_ble_edit_prompt0[@]:1}"
-      _ble_edit_prompt0=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
-    fi
-    ble/util/put "$esc"
+    local version=$COLUMNS,$_ble_edit_lineno,$_ble_history_count,$_ble_edit_CMD
+    local prompt_hashref_base='$version'
+    local "${_ble_prompt_cache_vars[@]/%/=}" # #D1570 OK
+    ble/prompt/unit#update _ble_prompt_ps10
+    ble/prompt/unit:{section}/get _ble_prompt_ps10
+    ble/util/put "$ret"
   fi
 }
 
@@ -5152,7 +5448,7 @@ function ble/widget/.insert-newline/trim-prompt {
   local ps1t=$bleopt_prompt_ps1_transient
   if [[ ! $ps1f && :$ps1t: == *:trim:* ]]; then
     [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_edit_line_opwd ]] && return
-    local y=${_ble_edit_prompt[2]}
+    local y=${_ble_prompt_ps1_data[4]}
     if ((y)); then
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
       ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" $((-y)) shift
@@ -5344,9 +5640,9 @@ function ble/widget/default/accept-line {
 
 function ble/widget/accept-and-next {
   ble-edit/content/clear-arg
-  local index count
-  ble/history/get-index -v index
-  ble/history/get-count -v count
+  ble/history/initialize
+  local index=$_ble_history_INDEX
+  local count=$_ble_history_COUNT
 
   if ((index+1<count)); then
     local HISTINDEX_NEXT=$((index+1)) # to be modified in accept-line
@@ -5356,7 +5652,7 @@ function ble/widget/accept-and-next {
     local content=$_ble_edit_str
     ble/widget/accept-line
 
-    ble/history/get-count -v count
+    count=$_ble_history_COUNT
     if ((count)); then
       local entry; ble/history/get-entry $((count-1))
       if [[ $entry == "$content" ]]; then
@@ -5890,9 +6186,9 @@ bleopt/declare -v history_preserve_point ''
 function ble-edit/history/goto {
   ble/history/initialize
 
-  local histlen= index0= index1=$1
-  ble/history/get-count -v histlen
-  ble/history/get-index -v index0
+  local histlen=$_ble_history_COUNT
+  local index0=$_ble_history_INDEX
+  local index1=$1
 
   ((index0==index1)) && return 0
 
@@ -5913,7 +6209,7 @@ function ble-edit/history/goto {
     #   ble-edit/history/goto を呼び出す事はない。
     if ((index0==histlen||index1==histlen)); then
       ble/builtin/history/option:n
-      local histlen2; ble/history/get-count -v histlen2
+      local histlen2=$_ble_history_COUNT
       if ((histlen!=histlen2)); then
         ble/textarea#invalidate
         ble-edit/history/goto $((index1==histlen?histlen:index1))
@@ -5968,8 +6264,8 @@ blehook history_message+=ble-edit/history/history-message.hook
 function ble/widget/history-next {
   if [[ $_ble_history_prefix || $_ble_history_load_done ]]; then
     local arg; ble-edit/content/get-arg 1
-    local index; ble/history/get-index
-    ble-edit/history/goto $((index+arg))
+    ble/history/initialize
+    ble-edit/history/goto $((_ble_history_INDEX+arg))
   else
     ble-edit/content/clear-arg
     ble/widget/.bell
@@ -5977,8 +6273,8 @@ function ble/widget/history-next {
 }
 function ble/widget/history-prev {
   local arg; ble-edit/content/get-arg 1
-  local index; ble/history/get-index
-  ble-edit/history/goto $((index-arg))
+  ble/history/initialize
+  ble-edit/history/goto $((_ble_history_INDEX-arg))
 }
 function ble/widget/history-beginning {
   ble-edit/content/clear-arg
@@ -5987,8 +6283,8 @@ function ble/widget/history-beginning {
 function ble/widget/history-end {
   ble-edit/content/clear-arg
   if [[ $_ble_history_prefix || $_ble_history_load_done ]]; then
-    local count; ble/history/get-count
-    ble-edit/history/goto "$count"
+    ble/history/initialize
+    ble-edit/history/goto "$_ble_history_COUNT"
   else
     ble/widget/.bell
   fi
@@ -6459,7 +6755,8 @@ function ble-edit/isearch/.next-history.fib {
     # initialize new search
     local needle=${2-$_ble_edit_isearch_str} isAdd=
     [[ :$opts: == *:append:* ]] && isAdd=1
-    local start; ble/history/get-index -v start
+    ble/history/initialize
+    local start=$_ble_history_INDEX
     local index=$start
   fi
 
@@ -7404,7 +7701,6 @@ function ble-decode/keymap:safe/bind-arg {
 }
 
 function ble/widget/safe/__attach__ {
-  ble/prompt/notify-readline-mode-change
   ble/edit/info/set-default text ''
 }
 function ble-decode/keymap:safe/define {
@@ -7546,7 +7842,7 @@ function ble-decode/keymap:read/define {
 _ble_edit_read_history=()
 _ble_edit_read_history_edit=()
 _ble_edit_read_history_dirt=()
-_ble_edit_read_history_ind=0
+_ble_edit_read_history_index=0
 
 function ble/builtin/read/.process-option {
   case $1 in
@@ -7616,7 +7912,7 @@ function ble/builtin/read/.set-up-textarea {
 
   # edit/prompt
   _ble_edit_PS1=$opt_prompt
-  _ble_edit_prompt=("" 0 0 0 32 0 "" "")
+  _ble_prompt_ps1_data=(0 '' '' 0 0 0 32 0 "" "")
 
   # edit
   _ble_edit_dirty_observer=()
@@ -7629,7 +7925,7 @@ function ble/builtin/read/.set-up-textarea {
   ble-edit/undo/clear-all
 
   # edit/history
-  _ble_history_prefix=_ble_edit_read_
+  ble/history/set-prefix _ble_edit_read_
 
   # syntax, highlight
   _ble_syntax_lang=text

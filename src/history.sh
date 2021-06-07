@@ -18,13 +18,13 @@ bleopt/declare -v history_limit_length 10000
 ##   _ble_history_dirt は編集されたかどうかを保持する。
 ##   _ble_history の各項目と対応し、変更のあったい要素にのみ値 1 を持つ。
 ##
-## @var _ble_history_ind
+## @var _ble_history_index
 ##   現在の履歴項目の番号
 ##
 _ble_history=()
 _ble_history_edit=()
 _ble_history_dirt=()
-_ble_history_ind=0
+_ble_history_index=0
 
 ## @var _ble_history_count
 ##   現在の履歴項目の総数
@@ -50,18 +50,6 @@ function ble/builtin/history/.get-min {
 function ble/builtin/history/.get-max {
   ble/util/assign max 'builtin history 1'
   ble/string#split-words max "$max"
-}
-
-function ble/history:bash/update-count {
-  [[ $_ble_history_count ]] && return 0
-  if [[ $_ble_history_load_done ]]; then
-    _ble_history_count=${#_ble_history[@]}
-  else
-    local min max
-    ble/builtin/history/.get-min
-    ble/builtin/history/.get-max
-    ((_ble_history_count=max-min+1))
-  fi
 }
 
 #------------------------------------------------------------------------------
@@ -392,7 +380,8 @@ function ble/history:bash/initialize {
   local old_count=$_ble_history_count new_count=${#_ble_history[@]}
   _ble_history_load_done=1
   _ble_history_count=$new_count
-  _ble_history_ind=$_ble_history_count
+  _ble_history_index=$_ble_history_count
+  ble/history/.update-position
 
   # Note: 追加読み込みをした際に対応するデータを shift (history_share)
   local delta=$((new_count-old_count))
@@ -871,8 +860,9 @@ function ble/builtin/history/.load-recent-entries {
   ble/history:bash/load append:count=$delta
 
   local ocount=$_ble_history_count ncount=${#_ble_history[@]}
-  ((_ble_history_ind==_ble_history_count)) && _ble_history_ind=$ncount
+  ((_ble_history_index==_ble_history_count)) && _ble_history_index=$ncount
   _ble_history_count=$ncount
+  ble/history/.update-position
   blehook/invoke history_insert "$ocount" "$delta"
 }
 ## @fn ble/builtin/history/.read file [skip [fetch]]
@@ -1056,12 +1046,13 @@ function ble/builtin/history/option:c {
       _ble_history=()
       _ble_history_edit=()
       _ble_history_count=0
-      _ble_history_ind=0
+      _ble_history_index=0
     else
       # history load が完了していなければ読み途中のデータを破棄して戻る
       ble/history:bash/clear-background-load
       _ble_history_count=
     fi
+    ble/history/.update-position
     blehook/invoke history_clear
   fi
 }
@@ -1100,10 +1091,10 @@ function ble/builtin/history/option:d {
       local N=${#_ble_history[@]}
       local b=$((beg-1+N-max)) e=$((end+N-max))
       blehook/invoke history_delete "$b-$e"
-      if ((_ble_history_ind>=e)); then
-        ((_ble_history_ind-=e-b))
-      elif ((_ble_history_ind>=b)); then
-        _ble_history_ind=$b
+      if ((_ble_history_index>=e)); then
+        ((_ble_history_index-=e-b))
+      elif ((_ble_history_index>=b)); then
+        _ble_history_index=$b
       fi
       _ble_history=("${_ble_history[@]::b}" "${_ble_history[@]:e}")
       _ble_history_edit=("${_ble_history_edit[@]::b}" "${_ble_history_edit[@]:e}")
@@ -1113,6 +1104,7 @@ function ble/builtin/history/option:d {
       ble/history:bash/clear-background-load
       _ble_history_count=
     fi
+    ble/history/.update-position
   fi
   local max; ble/builtin/history/.get-max
   _ble_builtin_history_prevmax=$max
@@ -1267,7 +1259,7 @@ function ble/builtin/history/option:s {
     _ble_history[topIndex]=$cmd
     _ble_history_edit[topIndex]=$cmd
     _ble_history_count=$((topIndex+1))
-    _ble_history_ind=$_ble_history_count
+    _ble_history_index=$_ble_history_count
 
     # _ble_bash<30100 の時は必ずここを通る。
     # 初期化時に _ble_history_load_done=1 になるので。
@@ -1277,7 +1269,7 @@ function ble/builtin/history/option:s {
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
       # history -s でも HISTCONTROL に対するフィルタはされる。
       # history -s で項目が追加されたかどうかはスクリプトからは分からないので
-      # _ble_history_count は一旦クリアする。
+      # _ble_history_count をクリアして再計算する
       _ble_history_count=
     else
       # HISTCONTROL がなければ多分 history -s で必ず追加される。
@@ -1286,6 +1278,7 @@ function ble/builtin/history/option:s {
         ((_ble_history_count++))
     fi
   fi
+  ble/history/.update-position
 
   if [[ $histfile ]]; then
     # bash < 3.1 workaround
@@ -1394,14 +1387,14 @@ function history { ble/builtin/history "$@"; }
 ##   空文字列の時、コマンド履歴を対象とする。以下の変数を用いる。
 ##
 ##     _ble_history
-##     _ble_history_ind
+##     _ble_history_index
 ##     _ble_history_edit
 ##     _ble_history_dirt
 ##
 ##   空でない文字列 prefix のとき、以下の変数を操作対象とする。
 ##
 ##     ${prefix}_history
-##     ${prefix}_history_ind
+##     ${prefix}_history_index
 ##     ${prefix}_history_edit
 ##     ${prefix}_history_dirt
 ##
@@ -1417,6 +1410,38 @@ function history { ble/builtin/history "$@"; }
 ##
 _ble_history_prefix=
 
+function ble/history/set-prefix {
+  _ble_history_prefix=$1
+  ble/history/.update-position
+}
+
+_ble_history_COUNT=
+_ble_history_INDEX=
+function ble/history/.update-position {
+  if [[ $_ble_history_prefix ]]; then
+    builtin eval -- "_ble_history_COUNT=\${#${_ble_history_prefix}_history[@]}"
+    ((_ble_history_INDEX=${_ble_history_prefix}_history_index))
+  else
+    # 履歴読込完了前の時
+    if [[ ! $_ble_history_load_done ]]; then
+      if [[ ! $_ble_history_count ]]; then
+        local min max
+        ble/builtin/history/.get-min
+        ble/builtin/history/.get-max
+        ((_ble_history_count=max-min+1))
+      fi
+      _ble_history_index=$_ble_history_count
+    fi
+
+    _ble_history_COUNT=$_ble_history_count
+    _ble_history_INDEX=$_ble_history_index
+  fi
+}
+function ble/history/update-position {
+  [[ $_ble_history_prefix$_ble_history_load_done ]] ||
+    ble/history/.update-position
+}
+
 ## @hook history_onleave (defined in def.sh)
 
 function ble/history/onleave.fire {
@@ -1431,30 +1456,18 @@ function ble/history/initialize {
 function ble/history/get-count {
   local _var=count _ret
   [[ $1 == -v ]] && { _var=$2; shift 2; }
-
-  if [[ $_ble_history_prefix ]]; then
-    builtin eval "_ret=\${#${_ble_history_prefix}_history[@]}"
-  else
-    ble/history:bash/update-count
-    _ret=$_ble_history_count
-  fi
-
-  (($_var=_ret))
+  ble/history/.update-position
+  (($_var=_ble_history_COUNT))
 }
 function ble/history/get-index {
   local _var=index
   [[ $1 == -v ]] && { _var=$2; shift 2; }
-  if [[ $_ble_history_prefix ]]; then
-    (($_var=${_ble_history_prefix}_history_ind))
-  elif [[ $_ble_history_load_done ]]; then
-    (($_var=_ble_history_ind))
-  else
-    ble/history/get-count -v "$_var"
-  fi
+  ble/history/.update-position
+  (($_var=_ble_history_INDEX))
 }
 function ble/history/set-index {
-  local index=$1
-  ((${_ble_history_prefix:-_ble}_history_ind=index))
+  _ble_history_INDEX=$1
+  ((${_ble_history_prefix:-_ble}_history_index=_ble_history_INDEX))
 }
 function ble/history/get-entry {
   ble/history/initialize
@@ -1493,7 +1506,8 @@ function ble/history/.add-command-history {
 
   if [[ $_ble_history_load_done ]]; then
     # 登録・不登録に拘わらず取り敢えず初期化
-    _ble_history_ind=${#_ble_history[@]}
+    _ble_history_index=${#_ble_history[@]}
+    ble/history/.update-position
 
     # _ble_history_edit を未編集状態に戻す
     local index
@@ -1532,7 +1546,9 @@ function ble/history/add {
       local topIndex=${#PREFIX_history[@]}
       PREFIX_history[topIndex]=$command
       PREFIX_history_edit[topIndex]=$command
-      PREFIX_history_ind=$((topIndex+1))'
+      PREFIX_history_index=$((++topIndex))
+      _ble_history_COUNT=$topIndex
+      _ble_history_INDEX=$topIndex'
     builtin eval -- "${code//PREFIX/$_ble_history_prefix}"
   else
     blehook/invoke ADDHISTORY "$command" &&

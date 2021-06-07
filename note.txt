@@ -1489,9 +1489,19 @@ bash_tips
     prompt-git.bash に実装したい。という事を考えると、
     prompt-git.bash は早晩に lib に移動するべきなのではないかという気がする。
 
-  * prompt: ble/prompot/clear については各プロンプト毎に設定できる様にするべき。
-    再描画部分についても dirty かどうかを保持して更新するかしないかを判定するべ
-    きの気がする。
+  * prompt: 最適化 ble/prompt/.get-keymap-for-current-mode や
+    ble/keymap:vi/script/get-mode に関しては一旦計算値を別の変数に格納してそれ
+    を参照して値を計算するべきの気がする。これは git 等の最適化と一緒に新しく枠
+    組みを考える事にする。
+
+  * prompt: プロンプト更新検出に於いてプロンプトに含まれている変数展開 $XXXX も
+    自動検出する? 然しエスケープや $() 等も拘ってくると複雑である。適当な方法で
+    解析できたりしないだろうか。というか、終端を処理する為に parse していた様な
+    気もする。その辺りについてはまた後で確認する。
+
+    $RANDOM や $EPOCHREALTIME 等については除外するべきである。これらの変数への
+    nref の検出は困難である。という事を考えるとやはりユーザーに任せるという可能
+    性も考えられるが。
 
 2021-05-23
 
@@ -4687,6 +4697,470 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-06-07
+
+  * prompt: [最適化] 依存関係追跡の整理・最適化 [#D1591]
+
+    x .instantiate の section update で git 情報や現在の vim モードに依存してい
+      るが、一方で自動的な依存解決による section update が git 情報や vim モー
+      ドを初期化する前に呼び出されている。
+
+    これに関しては本来は git の情報は ble/prompt#update _alpha '' prompt-data
+    等として初期化する必要があるのではないかという気がする。というか
+    ble/prompt#update を流用する必要があるのかは謎である。実はデータ専用の関数
+    を用意しても良いのではないだろうか。そしてデータは好きな様に利用する。
+
+    ? そもそも配列を共有している理由はあるのだろうか。。。
+
+      version hashref hash に関しては依存関係の管理に関係している。
+      これは一つ上の枠組みで管理される物なので切り離しても良いのではないか。
+      一方で (instantiate 7つ組) 及び (tailor データ) はプロンプト情報固有の物である。
+
+      但し、version 更新の条件として (instantiate 7つ組) または (tailor データ)
+      による更新が実際にあったかどうかを使っている。然し、version は一般に外から
+      その内容が変更されたかどうかを判定する為に用いているから、やはり version
+      hashref hash の組で管理するべきである。
+
+      取り敢えず veresion hashref hash の順序を変更する事にする。
+
+    うーん。何だか分からなくなってきた。そもそも現在の構造に欠陥がある様な気が
+    する。hash を見て更新する必要があるかどうかを観察する事になっているが、依存
+    関係がある時には hash で参照している先を初めに更新しておかなければ反映され
+    ない。なので、依存先を先に更新しようと考える訳だが更新に使用する引数が分か
+    らないという問題が生じる。
+
+    a 依存先の hashref を展開して長大な hash で更新確認をする案
+
+      % これは version で参照しているから行けないのであって、依存先の hash 本体を
+      % 依存元が取り込んでしまえば問題ないのでは? とも思われるがそれは変数の時だ
+      % けである。history index や git の情報など何らかの処理によって確認を取って
+      % 値を計算してから出ないと分からない物に関してはやはり変数で参照していても
+      % 駄目である。
+
+      依存の更新がグローバル変数の変化を通してのみ発生する場合にはこれで良いが、
+      実際には git 等の様に現在の値をその都度更新する必要がある物もある。
+
+      history index/count に関しても既存のコードを大きく変えたくないので、同様
+      の仕組みを使って実装したいと考えている。と思ったが、history に関しては変
+      数経由にした方が良い様な気もする。描画(カーソル移動も含めて)の回数と履歴
+      移動の回数を数えたら断然描画の回数の方が多いだろうから。
+
+    b そもそも各 unit に外から引数を与えられる様になっているのが変である。外か
+      らプロンプト文字列を与えられなくてもそれ単体として更新をできる様にする。
+      これはそんなに難しくない筈である。というより、今まで外から引数を指定でき
+      る形で更新していた事自体が変なのである。
+
+      この場合に真面目に考えなければならないのは特定の条件で on/off される様な
+      プロンプトの存在である。うーん。特定の条件で表示非表示を切り替える様な物
+      の場合には、消去のコードも自分で生成するか或いは消去は外に任せる事にして、
+      自身は表示している時の状態を保持し続けるという事か。うーん。これについて
+      は外からの支持で動作するというので良い気がする。つまり、今までの振る舞い
+      で良い。特に rps1, xterm_title, etc. に関しては他から参照される事もないの
+      で、外から呼び出された時にだけ更新すれば良い。更新する必要がないのに古い
+      依存関係経由で呼び出されるという様な事はないので大丈夫。
+
+      1 先ず更新は全て unit#update 経由で実行するという事。現在は class 等とし
+        て {section}/update を定義しているがこれは廃止する。個別にちゃんと
+        /update で実装するという事。unit#update には引数は渡さない
+
+        prompt-expand-{gbox,bbox} は廃止する。必要ならば呼び出し元で抽出を行う。
+        と思ったが、helper 関数として存在しても良いのではという気がしないでもな
+        い。何れにしてもこれは後回し。先ずは大きな構造の方を整理する事にする。
+
+    * done: ble/prompt/section#update 廃止
+
+    * done: vim-airline-mode は unit として実装する。
+
+    * done: ble/prompt/unit:UNIT/section::tailor 削除
+
+      これは明らかに実装を複雑化させている。そして tailor だけを invalidate す
+      るというのも元々は効率の為だったが、既に様々な無駄がある中で余り意味のあ
+      る最適化である様にも思われない。従って tailor は削除する。
+
+    * done: history index/count は変数にする
+
+      取り敢えず _ble_history_INDEX 及び _ble_history_COUNT
+
+      ? _ble_history_prefix が謎である。設定している箇所は見つかるが解除してい
+        る所が見つからない。local で宣言している訳でもないし textarea vars に設
+        定されている訳でもないから復元される事もない様な気がする。
+
+        例えば vi.sh で _ble_history_prefix=_ble_keymap_vi_filter_ を設定してい
+        る。これは ble/keymap:vi/async-commandline-mode から
+        ble/textarea#save-state _ble_keymap_vi_cmap を呼び出した後に実行されて
+        いる。と思ったらこれについては _ble_keymap_vi_cmap_history_prefix に手
+        動で保管して、その後で手動で復元している。vi.sh の中にある物は全てこれ
+        だった。
+
+        ./src/edit.sh:7857:  _ble_history_prefix=_ble_edit_read_
+        これに関しては subshell で実行しているので戻さなくて大丈夫。
+
+        他に設定している箇所はない。
+
+      他の ble/history/get-{count,index} に関しては明らかに history を
+      initialize しなければならない所以外は現状のままで関数経由で取得する事にし
+      た。直後に history を initialize する場合にはその場で
+      ble/history/initialize を呼び出して直接 _ble_history_{COUNT,INDEX} を参照
+      する様に書き換えた。
+
+    x 2021-06-09 textmap が更新される前に表示しようとすると col がずれてしまう。
+      これはその場で更新してしまっても問題ないのではないか。特に textmap の更新
+      が必要になるという事は dirty という事なので。
+
+      →うーん。此処で気づいてしまったが。textmap で使用する文字幅を決定する為
+      には rps1 の幅が必要で、一方で rps1 の中に配置情報を表示しようとするとそ
+      の前に textmap を計算しなければならない。取り敢えず rps1 の中に含まれる情
+      報は 前回の rps1 の幅に基づく textmap の情報と解釈する事にする。
+
+      後、もう一つの問題は ble/widget/.update-textmap の内部で呼び出している
+      textmap が rps1 の幅を考慮できていないという事。
+      ble/widget/.update-textmap の実装をちゃんと rps1 の幅を考慮に入れる物に書
+      き換えて、更に backslash:position 等の中から ble/widget/.update-textmap
+      を呼び出す様に修正した。
+
+  * prompt: [最適化] 依存関係の追跡と部分更新の対応 [#D1590]
+
+    ble/prompot/clear については各プロンプト毎に設定できる様にするべき。
+    再描画部分についても dirty かどうかを保持して更新するかしないかを判定するべ
+    きの気がする。
+
+    各プロンプト毎に何に依存しているかのリストと依存している物に対する hash を
+    自動で生成する様な仕組みが欲しい気がする。仕様としては各プロンプト内部で情
+    報を参照した時に ble/prompt/add-dependency xxxx を呼び出す。プロンプトの実
+    体化を司る側ではこれをリストにして管理する。hash を生成する時には、
+    ble/prompt/data:xxxx/hash を通して関数を呼び出し hash+=:xxxx=$hash を実行す
+    る。然しこれだと hash のインスタンス化自体に split, for, += が必要になって
+    重そうである。それよりは、直接 eval できる形にした方が良いのかもしれない。
+
+    % つまり
+    %
+    % _ble_prompt_version_ref+='$LINENO'
+    % eval "_ble_prompt_version=$_ble_prompt_version_ref"
+    %
+    % という具合にする。invalidate する時には各変数について ((LINENO++)) する等し
+    % て処理を行う。各プロンプト要素を個別に invalidate できる様に各プロンプト固
+    % 有の変数も用意する。コマンド実行後には全て更新する様にしたいので共通の更新
+    % 条件としてそれも含めて置くことにする。
+    %
+    % 実際には ble/prompt/add-dependency は重複して呼び出す可能性もあるので [[
+    % :$version_ref: == *:'$LINENO':* ]] 等を用いて重複を排除する。
+
+    vim-airline の様に複数のサブプロンプトを組み合わせる形の場合には、サブプロ
+    ンプトの version_ref を集めて判断する必要がある気がする。然し、そうすると長
+    大な version 文字列になってしまうがそれで良いのだろうか。或いは無条件にサブ
+    プロンプトを巡回して、その後で全体更新が必要かどうかについて判断するという
+    のでも良い。その場合にはサブプロンプトの version 番号だけを参照する事にすれ
+    ば良い。プロンプトのリストに登録する順序に注意する必要がある。
+
+    _psx_hashdef  ... eval をすれば _psx_hash を計算できるパラメータ展開のコロ
+                      ン区切りのリスト。
+    _psx_hash     ... _psx_hash を eval して得られた文字列。更新を要求する場合
+                      (invalidate) にはこの変数を空にすれば良い。
+    _psx_version  ... プロンプト描画内容が変更された時に増加する番号。
+    _psx_gdirty   ... プロンプト描画内容が更新された時に 1 に設定。
+
+    同様に共通 hash を保持する。これが変化した時は全てのプロンプトは強制的に更
+    新する様に仕組まれる。つまり、全てのプロンプトはこの共通 "prompt" に依存性
+    を持つとする。この共通 "prompt" には実体が存在しない。PROMPT_COMMAND 及び
+    PRECMD はこの仮想プロンプトに対して更新する。
+
+    _prompt_hashdef
+    _prompt_hash
+    _prompt_version
+
+    for p in prompt-list; do
+      local _hash=${p}_hash _hashdef=${p}_hashdef
+      eval "local new_hash=${!_hashdef}"
+      [[ ${!_hash} == "$new_hash" ]] && continue
+
+      hashdef='$_prompt_version'
+
+      update....
+
+      内容に変更があった && ((${p}_version++))
+      eval "$_hash=$hashdef $_hashdef=\$hashdef"
+    done
+
+    hashdef の定義は更新時に毎回行う。最初は依存対象として $_prompt_version か
+    ら始める。
+
+    function ble/prompt/reference-prompt { hashdef+=:\$${1}_version; }
+    function ble/prompt/reference-variable { hashdef+=:\$$1; }
+
+    ? 全てのプロンプトを巡回しているとすると使われていないのに更新される物が出
+      てくるのではないか。そう思うと使う物から順番に要求して、深さ優先順序で更
+      新していく様にするべきなのではないか。その為には依存先のプロンプトの一覧
+      を個別に保持する必要がある様な気もする。
+
+      hashdef=$_prompt_version:$ps1_version,$ps2_version,...:$var1:$var2:$var3
+
+      の様な形にして : で区切った二番目の要素を , で split して其処から依存先を
+      抽出する様にするというのはどうだろうか。
+
+    ? 現在の履歴項目内部の位置など一部の物は事前に関数の実行等が必要になる気が
+      する。その場合にはどの様に対応するのか。$(ble/history/get-index;echo
+      $index) を埋め込むのは遅そうである。では評価の前に関数を実行するのかと問
+      われるとそれもよく分からない。そもそも更新の必要性はプロンプト毎に固定と
+      いう訳ではなくて、現在表示している内容に依存している。
+
+      或いは現在の履歴項目内の位置を常に変数で参照できる様にするべきなのだろう
+      か。というか何故その様になっていないのだったか。
+
+      うーん。history コマンドの使用によって不意に履歴がロードされたり、或いは、
+      初期化によって history がロードされたりという事を想定しての事の気がする。
+      実の所、この手のチェックは prologue か何処かで行ってしまえば良いのだとい
+      う気がする。
+
+      うーん。というか現在の履歴項目の位置というのも、read 等によって別の履歴に
+      切り替わっている時にそれを反映するべきかというのも議論の余地がある。うー
+      ん。_ble_history_prefix を設定する時にその辺りの更新処理も実行する必要が
+      ある気がする。
+
+      後、共通の変数名をどうするのかというのも困る。_ble_history_ind 及び
+      _ble_history_count は既にメインのコマンド履歴の為に使われてい
+      る。_ble_history_count を例えば _ble_history_cnt に解明して、その上で新し
+      く_ble_history_{count,index} を現在の index/count の変数とする事にすると、
+      今度は cnt,ind との区別が分かりにくい。やはり名前空間を分けたい気がする。
+      然し一方でコマンド履歴は特別なので _ble_history, _ble_history_edit に格納
+      されているというのも妥当である様に思われる。
+
+      - reject: _ble_hist_index, _ble_hist_count というのも変である。
+      - reject: _ble_history_current_index, _ble_history_current_count
+      - reject: _ble_history_cur_index, _ble_history_cur_count
+      - reject: _ble_history_prefix_index, _ble_history_prefix_count
+      - reject: _ble_history_i, _ble_history_c
+      - reject: _ble_history_cindex, _ble_history_ccount (common)
+      - reject: _ble_history_gindex, _ble_history_gcount (global)
+      - reject: _ble_history_pindex, _ble_history_pcount (prefix)
+      - reject: _ble_history__index, _ble_history__count
+      - reject: _ble_history_Index, _ble_history_Count
+      - _ble_history_lineno, _ble_history_lines
+        これだと繋がりが分かりにくい。
+      - BLE_HISTORY_INDEX, BLE_HISTORY_COUNT
+        これは一つの手な気がするがこれをユーザーへの公開変数とする意義はあるのか。
+        慎重になった方が良い気がする。
+      - _ble_history_INDEX, _ble_history_COUNT
+        後でまた仕様変更できるのだという事を考えるとこれぐらいで良いのかもしれない。
+
+    ? 設定を新しく変更して別のプロンプトに依存する様になったらどうするのか。うー
+      ん。そう考えるとプロンプト更新は順番に呼び出すというよりは、必要になった
+      時に不定期に何度でも更新すれば良い気がする。循環参照にならない様に注意さ
+      えしておけば特に問題はないだろうという気がする。
+
+    [実装]
+
+    * done: プロンプト周りの整理が必要になる
+
+      先ず ble/prompt/update はプロンプト全般の情報更新に努め、PS1 の結果は呼び
+      出し元で必要になった時に読み出す様に変更する。
+
+      ble/prompt/update の結果の内 x y lc lg は後で使用されている。一方で、g 及
+      び ret に関しては使われていない気がする。特に ret は直後に別の物で上書き
+      されているので関係ない。
+
+      * ok: 変数 g を削除しても問題ないだろうか。
+
+        g に関しては本当の所はどうだろうか。昔の実装では、trace を実行する時に
+        入力していた様な気もするが…うーん。やはり違うかもしれない。結局 trace
+        は使っていないし専ら textmap, slice, etc. で使っているのみである。もし
+        使う事があるとすれば、一番最初の文字の着色だけである。然し、着色に関し
+        てはに layer に任されている。layer では最初の g を認識して着色を省略す
+        る等の事はしていただろうか。と考えるとしていない気がする。そもそも
+        prompt の終端で g を sgr0 以外にしておく必要も分からない。
+
+        実際に出力する場所を確認してみると必ず textarea#slice-text-buffer を使
+        用している。そしてこの関数では必ず端点の g を読み取ってそれに対して sgr
+        を生成して付加している。なので、prompt 終端の g が表示に影響を与えると
+        は考えにくい。それとも highlight/layer の実装で g の値を参照する可能性
+        はあるだろうか。うーん。外の g がどういう値になっているかは定義されてい
+        ない筈なので参照していない筈。
+
+      * reject: PS0 の最後の g をコマンド列の既定着色として用いる可能性:
+
+        と思ったが、ユーザーがコマンドに色をつけようとしてわざと g として変な値
+        を残しておくという事も考えられるだろうか。まあ、それに関しては余り考え
+        ない事にする。少なくとも現在の実装では考慮に入れていないし、考慮に入れ
+        るとしても別項目で考察するべき内容である。
+
+        それに既定着色を指定できる様にするとなると SGR を生成する段階で様々の修
+        正が必要になってくる。変更として大きくなってしまうし有用性がよく分から
+        ないのでこのままにする。そもそも色を設定したいのであれば、ble-face を用
+        いて設定するべきであって、PS1 経由で着色をするというのは避けてもらうべ
+        きである。
+
+      lc lg の計算は現在 ble/textarea#update-text-buffer 内部で実行しているがこ
+      れは別の関数にする方が自然なのではないか→別の関数にした。
+
+      ble/prompt/.load は最早誰も使っていないので削除しても良いのでは→削除した。
+      引数の詳しい説明については ble/prompt/.instantiate に移動した。
+
+      これ以上の整理に関しては枠組みが完成してからにするべきという気がする。
+
+    * 試験的に新しい枠組みを作成する
+
+      プロンプトを指定する番号はどの様にしたら良いだろうか。というか番号で指定
+      できる必要はあるだろうか。考えてみればどうせ色々の変数は指定した prefix
+      の下で変数を複数作って管理するのだった。という事を考えると実は prefix で
+      指定すれば良いだけなのではないだろうか。取り敢えず prefix で指定する様に
+      する。
+
+      一番最初は依存関係の解決等は考えずにただ単純に更新するだけの関数にしてみる。
+
+      * done: control-string 系全てに _data を付加する
+
+      * ok: dirty が個別に設定されていなくても全て再描画する必要が生じる場合も
+        ある。というか新しいプロンプトを表示する時は常にそう。invalidate の際に
+        全てに dirty を設定する必要がある?
+
+        % 普通に hashref_base (_ble_prompt_version) を確認するだけだと、プロン
+        % プトの再計算までは行われるが内容が以前と一致した場合に再描画迄は行か
+        % ない可能性がある。今迄は内容を再計算した時には必ず dirty が代入されて
+        % プロンプトまで再描画していたが、今回は内容を再計算して更に変化があっ
+        % た時にだけ dirty が設定されているので、再描画が実施されるとは限らない。
+
+        と思って確認したが ble/textarea#invalidate が呼び出された時には全体描画
+        になって、その時には改めて全て描画される様である。dirty が参照されるの
+        は一部だけ更新されている時だけである。なのでこれについては気にしなくて
+        良い。
+
+      考えるに dirty は参照される時には参照されるが、参照されない時には参照され
+      ない。何れにしても全て再描画される場合には dirty は見ずに常に再描画する仕
+      組みになっているので問題ない。
+
+      * done: 変数を参照した時にそれを登録する為の関数を定義する。
+
+        関数名は何が良いだろうか。
+
+        - reject: ble/prompt/add-variable var
+        - reject: ble/prompt/add-variable-reference var
+        - reject: ble/prompt/add-varref var
+        - reject: ble/prompt/reference-variable var
+        - reject: ble/prompt/listen var
+        - reject: ble/prompt/listen-variable var
+        - reject: ble/prompt/hook-variable var
+        - reject: ble/prompt/depend-on var
+        - reject: ble/prompt/add-dependencies var...
+        - reject: ble/prompt/cite-variable var
+        - reject: ble/prompt/cite-var var
+        - ble/prompt/ref var
+        - ble/prompt/onchange var
+        - ble/prompt/detect var
+        - ble/prompt/cite var
+        - ble/prompt/cite-vars var...
+        - ble/prompt/reference var
+
+        a 将来的に変数以外の物を参照する可能性があるかどうかという事で var を関
+          数名に入れるかいれないかが決まる気がする。考えて見るに eval して fork
+          を伴わない物と言えば変数展開以外には算術式展開しか考えられない。とい
+          う事を考えるとやはり reference で良いのではないだろうか。
+
+        b 或いは、"変数" である事を示唆する様な動詞が存在すればそれを使うのが良
+          い。例えば reference と言えば変数である。
+
+        c というか良く考えたら追加する式を直接指定すれば良いだけの話の気がして
+          きた。つまり、
+
+        - ble/prompt/reference '$var'
+        - ble/prompt/hash '$var'
+        - ble/prompt/add-hash '$var'
+        - ble/prompt/add-hashref '$var'
+
+        うーん。add-hash が一番無難な気がする。結局内部で何をするかがこの関数名
+        だけで分かるので。もっと分かりやすくするならば、add-update-hash 等にな
+        るだろうか。然し短いほうが良いので add-hash にする。
+
+      * done: うーん。vim-airline で子プロンプトを参照する様にしたが、よく考え
+        ると、チェックを行うのは子プロンプトを更新する前なので、子プロンプトの
+        更新による変化を検出できない。子プロンプトの更新を実施してからチェック
+        を行う必要がある。
+
+        然しここで問題になるのは、子プロンプトに渡すオプションやプロンプト文字
+        列は事前には分からないという事。子プロンプトが存在する場合には先に子プ
+        ロンプトを更新してから更新判定を実行する必要がある。うーん。或いは。や
+        はりプロンプト毎に更新を行う関数を事前に登録しておくべきなのだろうか。
+
+        プロンプト section_a を更新する為の関数を登録することにした。
+
+      * done: ble/prompt/clear は個別に invalidate または自動検出にする
+
+        というか実は更新の必要すらないかもしれない。今となっては必ず全ての
+        prompt について hashref のインスタンス化を試す様になっている。ここに ps
+        も含めるべきなのではないか。
+
+        と思ったが、現在の実装だと ble/textarea#redraw は何も変更がないと即座に
+        抜けてしまう様になっている。少なくともプロンプトに関しては更新を行わな
+        いと駄目なのではないか。
+
+        * ble/prompt/clear の使用箇所を改めて確認する
+
+          ./ext/.../fzf-marks.plugin.bash:317:    [[ $PWD != "$pwd" ]] && ble/prompt/clear
+            これは \w または \W を参照している時に呼び出す事にする。
+            他に埋め込まれている変数の場合の可能性もあるが気にしない。
+
+          ./keymap/vi.sh:468:    ble/prompt/clear
+
+            これは show-mode-in-prompt の時に呼び出す物。これは変数に変える事が
+            できるのでは。
+
+          ./src/edit.sh:169:      ble/prompt/clear
+
+            bleopt_prompt_status_align の変更に伴って更新を行う。うーん。これに
+            関しては実は prompt#update の hash に値を含めても意味がない。最終的
+            に生成される esc が同じである以上は dirty と判定されないからである。
+            特に left と right の切り替えに対してちゃんと処理できない。という事
+            を考えると hash をクリアするしかない気がする。
+
+            結局、ble/prompt#update の内部から ble/prompt:"$prefix"/tailor とい
+            う関数を呼び出させてその中で加工処理を行う事にした。tailor だけの
+            invalidate として、ble/prompt#clear _ble_prompt_status tail を呼び
+            出させる事にした。
+
+          ./src/edit.sh:1275:    ble/prompt/clear
+
+            これは ble/prompt/notify-readline-mode-change である。更にこの関数
+            の呼び出し元も調べる必要がある?
+
+          ./src/edit.sh:7568:  ble/prompt/notify-readline-mode-change
+
+            これは ble/widget/safe/__attach__ から
+
+          ./keymap/vi.sh:7649:  ble/prompt/notify-readline-mode-change
+
+            これは ble/widget/vi_imap/__attach__ から
+
+          というか本当にちゃんと更新されるのだろうか。と思った
+          が、./keymap/vi.sh:468: ble/prompt/clear は実の所
+          ble/prompt/notify-readline-mode-change に変えるべきなのでは? と思った
+          が、vi.sh:468 は show-mode-in-prompt だけでなくプロンプトの表示を切り
+          替えるのに使う物の気がする。うーん。
+
+      * done: ble/prompt/notify-readline-mode-change に関しては自然に変数経由で
+        更新を検知できる様にする。関数自体を削除した。
+
+    x fixed: 何か入力した場合に何も表示されなくなってしまっているこれは何だろう
+      か。恐らくこれは単に更新した時に expand gbox,bbox が解釈されていないのが
+      原因だろう。
+
+      修正した。問題は発生しなくなった。
+
+    x fixed: 2021-06-09 history: isearch 検索を中止した時に履歴の先頭に移動する
+      様になってしまっている。検索を開始する前の初期化に関係するのだろうか。と
+      思ったがそうでもない様だ。履歴がロードされた後でも同様に問題が再現する。
+
+      これは最近発生する様になった問題である。明らかに prompt の改良に伴っ
+      て_ble_history_INDEX の記録関係に失敗する様になっている。うーん。
+      get-index ではちゃんと大きな値を取得する事ができている。逆に復元する時の
+      様子を見てみると…。
+
+      _ble_edit_isearch_arr=([0]="29801:-:0:0:" [1]="29769:-:22:23:f" [2]="29305:-:6:8:fd" [3]="29305:-:6:9:fds")
+      step=([0]="29801"
+
+      うーん。ちゃんと正しい値を読み出す事ができている気がする。という事は現在
+      の履歴位置が間違っているという事になるのだろうか。うーん。何と、
+      history/goto の直後に _ble_history_INDEX は空欄になってしまっている。どう
+      いう事だろうか。
+
+      これは分かった。ble/history/set-index の実装で存在しない変数 (削除した変
+      数) を参照していた。修正した。
 
   * 2021-05-24 airline: 説明書を書く。theme の枠組みを整える [#D1589]
     https://github.com/akinomyoga/ble.sh/issues/114 (2)

@@ -32,20 +32,12 @@ function bleopt/check:vim_airline_theme {
   return 0
 }
 
-function ble/lib/vim-airline/invalidate { ble/prompt/clear; }
-
 bleopt/declare -v vim_airline_section_a '\e[1m\q{lib/vim-airline/mode}'
 bleopt/declare -v vim_airline_section_b '\q{lib/vim-airline/gitstatus}'
 bleopt/declare -v vim_airline_section_c '\w'
 bleopt/declare -v vim_airline_section_x 'bash'
 bleopt/declare -v vim_airline_section_y '$_ble_util_locale_encoding[unix]'
-bleopt/declare -v vim_airline_section_z ' \q{ble/history/percentile} !\e[1m\q{ble/history/index}/\!'
-function bleopt/check:vim_airline_section_a { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_section_b { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_section_c { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_section_x { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_section_x { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_section_y { ble/lib/vim-airline/invalidate; }
+bleopt/declare -v vim_airline_section_z ' \q{history-percentile} \e[1m!\q{history-index}/\!\e[22m \q{position}'
 
 bleopt/declare -v vim_airline_left_sep      $'\uE0B0'
 bleopt/declare -v vim_airline_left_alt_sep  $'\uE0B1'
@@ -54,10 +46,10 @@ bleopt/declare -v vim_airline_right_alt_sep $'\uE0B3'
 bleopt/declare -v vim_airline_symbol_branch $'\uE0A0'
 bleopt/declare -v vim_airline_symbol_dirty  $'\u26A1'
 
-function bleopt/check:vim_airline_left_sep      { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_left_alt_sep  { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_right_sep     { ble/lib/vim-airline/invalidate; }
-function bleopt/check:vim_airline_right_alt_sep { ble/lib/vim-airline/invalidate; }
+function bleopt/check:vim_airline_left_sep      { ble/prompt/unit#clear _ble_prompt_status; }
+function bleopt/check:vim_airline_left_alt_sep  { ble/prompt/unit#clear _ble_prompt_status; }
+function bleopt/check:vim_airline_right_sep     { ble/prompt/unit#clear _ble_prompt_status; }
+function bleopt/check:vim_airline_right_alt_sep { ble/prompt/unit#clear _ble_prompt_status; }
 
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_lib_vim_airline_mode_map_default}"
 ble/gdict#set _ble_lib_vim_airline_mode_map_default 'i'  'INSERT'
@@ -165,10 +157,13 @@ ble/color/setface vim_airline_c_commandline fg=158,bg=234 # fg=#9cffd3,bg=#20202
 
 #------------------------------------------------------------------------------
 
+# unit:_ble_lib_vim_airline_mode
+
+_ble_lib_vim_airline_mode_data=()
 _ble_lib_vim_airline_keymap=
 _ble_lib_vim_airline_mode=
 _ble_lib_vim_airline_rawmode=
-function ble/lib/vim-airline/.update-mode {
+function ble/prompt/unit:_ble_lib_vim_airline_mode/update {
   local keymap mode m
   ble/keymap:vi/script/get-vi-keymap
   ble/keymap:vi/script/get-mode
@@ -181,14 +176,17 @@ function ble/lib/vim-airline/.update-mode {
   (*)           m='inactive' ;;
   esac
 
-  local index entry
-  ble/history/get-index
-  ble/history/get-entry "$index"
+  ble/prompt/unit/add-hash '$_ble_edit_str'
+  ble/prompt/unit/add-hash '$_ble_history_INDEX'
+
+  local entry
+  ble/history/get-entry "$_ble_history_INDEX"
   [[ $_ble_edit_str != "$entry" ]] && m=${m}_modified
 
-  _ble_lib_vim_airline_keymap=$keymap
-  _ble_lib_vim_airline_mode=$m
-  _ble_lib_vim_airline_rawmode=$mode
+  ble/prompt/unit/assign _ble_lib_vim_airline_keymap  "$keymap"
+  ble/prompt/unit/assign _ble_lib_vim_airline_mode    "$m"
+  ble/prompt/unit/assign _ble_lib_vim_airline_rawmode "$mode"
+  [[ $prompt_unit_changed ]]
 }
 
 ## @fn ble/prompt/backslash:lib/vim-airline/mode/.resolve rawmode
@@ -261,48 +259,24 @@ function ble/prompt/backslash:lib/vim-airline/gitstatus {
   fi
 }
 
-blehook history_onleave-+=ble/lib/vim-airline/invalidate
-function ble/prompt/backslash:ble/history/index {
-  local index
-  ble/history/get-index -v index
-  ble/canvas/put.draw $((index+1))
-}
-function ble/prompt/backslash:ble/history/percentile {
-  local index count
-  ble/history/get-index
-  ble/history/get-count
-  ((count||count++))
-  ble/canvas/put.draw "$(((index-1)*100/(count-1)))%"
-}
-
-function ble/lib/vim-airline/.instantiate-section {
+function ble/prompt/unit:{vim-airline-section}/update {
   local section=$1
-  local bleopt=bleopt_vim_airline_section_$section
+  local ref_ps=bleopt_vim_airline_section_$section
   local face=vim_airline_${section}_$_ble_lib_vim_airline_mode
-  local save_prefix=_ble_lib_vim_airline_section_${section}_
-  local -a save_vars=(show data bbox)
-  local "${save_vars[@]/%/=}" # WA #D1570 checked
-  if [[ ${!bleopt} ]]; then
-    local ps=${!bleopt}
-    local trace_opts=confine:relative:measure-bbox:noscrc:face0="$face":ansi:measure-gbox
-    ble/util/restore-vars "$save_prefix" "${save_vars[@]}"
+  local prefix=_ble_lib_vim_airline_section_$section
 
-    local trace_hash esc x y g lc lg
-    local x1=${bbox[0]} y1=${bbox[1]} x2=${bbox[2]} y2=${bbox[3]}
-    local gx1=${bbox[4]} gy1=${bbox[5]} gx2=${bbox[6]} gy2=${bbox[7]}
-    LINES=1 COLUMNS=$cols ble/prompt/.instantiate "$ps" "$trace_opts" "${data[@]:1}"
-
-    local version=N/A
-    data=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
-    bbox=("$x1" "$y1" "$x2" "$y2" "$gx1" "$gy1" "$gx2" "$gy2")
-    if [[ $gx1 ]] && ((x2+2<=rest_cols)); then
-      ((show=1,rest_cols-=x2+2))
-    else
-      show=
-    fi
-  fi
-  ble/util/save-vars "$save_prefix" "${save_vars[@]}"
+  ble/prompt/unit/add-hash '$_ble_lib_vim_airline_mode_data'
+  ble/prompt/unit/add-hash "\$$ref_ps"
+  local trace_opts=confine:relative:noscrc:face0="$face":ansi:measure-bbox:measure-gbox
+  LINES=1 COLUMNS=$cols ble/prompt/unit:{section}/update "$prefix" "${!ref_ps}" "$trace_opts"
 }
+function ble/prompt/unit:_ble_lib_vim_airline_section_a/update { ble/prompt/unit:{vim-airline-section}/update a; }
+function ble/prompt/unit:_ble_lib_vim_airline_section_b/update { ble/prompt/unit:{vim-airline-section}/update b; }
+function ble/prompt/unit:_ble_lib_vim_airline_section_c/update { ble/prompt/unit:{vim-airline-section}/update c; }
+function ble/prompt/unit:_ble_lib_vim_airline_section_x/update { ble/prompt/unit:{vim-airline-section}/update x; }
+function ble/prompt/unit:_ble_lib_vim_airline_section_y/update { ble/prompt/unit:{vim-airline-section}/update y; }
+function ble/prompt/unit:_ble_lib_vim_airline_section_z/update { ble/prompt/unit:{vim-airline-section}/update z; }
+
 function ble/lib/vim-airline/.print-section {
   local section=$1
   local ret g0 bg
@@ -339,10 +313,10 @@ function ble/lib/vim-airline/.print-section {
   fi
 
   local ref_show=_ble_lib_vim_airline_section_${section}_show
-  local ref_esc=_ble_lib_vim_airline_section_${section}_data[6]
   if [[ ${!ref_show} ]]; then
+    ble/prompt/unit:{section}/get "_ble_lib_vim_airline_section_$section"; local esc=$ret
     ble/color/g2sgr-ansi "$g0"
-    ble/prompt/print "$ret ${!ref_esc}$ret "
+    ble/prompt/print "$ret $esc$ret "
   fi
   [[ $section == c ]] && ble/prompt/print $'\r'
 
@@ -353,7 +327,7 @@ function ble/lib/vim-airline/.print-section {
 
 function ble/prompt/backslash:lib/vim-airline {
   local "${_ble_contrib_prompt_git_vars[@]/%/=}" # WA #D1570 checked
-  ble/lib/vim-airline/.update-mode
+  ble/prompt/unit#update _ble_lib_vim_airline_mode
 
   # Set background color
   local ret bg=0
@@ -363,12 +337,18 @@ function ble/prompt/backslash:lib/vim-airline {
   ble/color/setface prompt_status_line "g:$bg"
 
   local cols=$COLUMNS; ((_ble_term_xenl||cols--))
-  local section rest_cols=$((cols-4))
-  for section in a c z b y x; do
-    ble/lib/vim-airline/.instantiate-section "$section"
+  local unit rest_cols=$((cols-4))
+  for unit in _ble_lib_vim_airline_section_{a,c,z,b,y,x}; do
+    ble/prompt/unit#update "$unit"
+
+    local gx1=${unit}_gbox[0]; gx1=${!gx1}
+    local x2=${unit}_bbox[2]; x2=${!x2}
+    local show=
+    [[ $gx1 ]] && ((x2+2<=rest_cols)) && ((show=1,rest_cols-=x2+2))
+    builtin eval -- "${unit}_show=\$show"
   done
 
-  local prev_section= prev_g0= prev_bg=
+  local section prev_section= prev_g0= prev_bg=
   for section in a b c x y z; do
     ble/lib/vim-airline/.print-section "$section"
   done

@@ -384,6 +384,7 @@ function bleopt/check:keymap_vi_mode_name_blockwise { ble/keymap:vi/update-mode-
 ##   現在の vi キーマップ名 (vi_?map) を取得します。
 ##   もし現在 vi キーマップにない場合には失敗します。
 function ble/keymap:vi/script/get-vi-keymap {
+  ble/prompt/unit/add-hash '$_ble_decode_keymap,${_ble_decode_keymap_stack[*]}'
   local i=${#_ble_decode_keymap_stack[@]}
 
   keymap=$_ble_decode_keymap
@@ -397,6 +398,9 @@ function ble/keymap:vi/script/get-vi-keymap {
 ## @fn ble/keymap:vi/script/get-mode
 ##   @var[out] mode
 function ble/keymap:vi/script/get-mode {
+  ble/prompt/unit/add-hash '$_ble_decode_keymap,${_ble_decode_keymap_stack[*]}'
+  ble/prompt/unit/add-hash '$_ble_keymap_vi_single_command,$_ble_edit_mark_active'
+
   mode=
 
   local keymap; ble/keymap:vi/script/get-vi-keymap
@@ -464,9 +468,7 @@ function ble/keymap:vi/update-mode-name {
     return 0
   fi
 
-  if [[ $bleopt_keymap_vi_mode_update_prompt ]] || ble/util/test-rl-variable show-mode-in-prompt; then
-    ble/prompt/clear
-  fi
+  [[ $bleopt_keymap_vi_mode_update_prompt ]] && ble/prompt/clear
 
   local name=
   if [[ $bleopt_keymap_vi_mode_show ]]; then
@@ -1939,7 +1941,7 @@ _ble_keymap_vi_filter_repeat=()
 _ble_keymap_vi_filter_history=()
 _ble_keymap_vi_filter_history_edit=()
 _ble_keymap_vi_filter_history_dirt=()
-_ble_keymap_vi_filter_history_ind=0
+_ble_keymap_vi_filter_history_index=0
 
 function ble/highlight/layer:region/mark:vi_filter/get-face {
   face=region_target
@@ -1974,7 +1976,7 @@ function ble/keymap:vi/operator:filter {
     _ble_edit_mark_active=vi_filter
     ble/keymap:vi/async-commandline-mode 'ble/keymap:vi/operator:filter/.hook'
     _ble_edit_PS1='!'
-    _ble_history_prefix=_ble_keymap_vi_filter
+    ble/history/set-prefix _ble_keymap_vi_filter
     _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
     _ble_keymap_vi_cmap_cancel_hook=ble/keymap:vi/operator:filter/cancel.hook
     _ble_syntax_lang=bash
@@ -2379,7 +2381,7 @@ function ble/keymap:vi/mark/history-onleave.hook {
   fi
 }
 
-# 履歴がロードされていない時は取り敢えず _ble_history_ind=0 で登録をしておく。
+# 履歴がロードされていない時は取り敢えず _ble_history_index=0 で登録をしておく。
 # 履歴がロードされた後の初めての利用のときに正しい履歴番号に修正する。
 function ble/keymap:vi/mark/update-mark-history {
   local h; ble/history/get-index -v h
@@ -5040,7 +5042,7 @@ function ble/widget/vi-command/text-object {
 _ble_keymap_vi_commandline_history=()
 _ble_keymap_vi_commandline_history_edit=()
 _ble_keymap_vi_commandline_history_dirt=()
-_ble_keymap_vi_commandline_history_ind=0
+_ble_keymap_vi_commandline_history_index=0
 
 ## @arr _ble_keymap_vi_cmap_is_cancel_key
 ##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
@@ -5059,7 +5061,7 @@ function ble/widget/vi-command/commandline {
   ble/keymap:vi/clear-arg
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
-  _ble_history_prefix=_ble_keymap_vi_commandline
+  ble/history/set-prefix _ble_keymap_vi_commandline
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 147
 }
@@ -5121,7 +5123,7 @@ _ble_keymap_vi_search_matched=
 _ble_keymap_vi_search_history=()
 _ble_keymap_vi_search_history_edit=()
 _ble_keymap_vi_search_history_dirt=()
-_ble_keymap_vi_search_history_ind=0
+_ble_keymap_vi_search_history_index=0
 
 ## @bleopt keymap_vi_search_match_current
 ##   非空の文字列が設定されている時 /, ?, n, N で
@@ -5388,14 +5390,14 @@ function ble/widget/vi-command/search.impl {
 function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
-  _ble_history_prefix=_ble_keymap_vi_search
+  ble/history/set-prefix _ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 147
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
-  _ble_history_prefix=_ble_keymap_vi_search
+  ble/history/set-prefix _ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 147
 }
@@ -7646,7 +7648,6 @@ function ble-decode/keymap:vi_smap/define {
 # vi_imap
 
 function ble/widget/vi_imap/__attach__ {
-  ble/prompt/notify-readline-mode-change
   ble/keymap:vi/update-mode-name
   return 0
 }
@@ -7989,7 +7990,7 @@ _ble_keymap_vi_cmap_before_command=
 _ble_keymap_vi_cmap_history=()
 _ble_keymap_vi_cmap_history_edit=()
 _ble_keymap_vi_cmap_history_dirt=()
-_ble_keymap_vi_cmap_history_ind=0
+_ble_keymap_vi_cmap_history_index=0
 
 function ble/keymap:vi/async-commandline-mode {
   local hook=$1
@@ -8014,7 +8015,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # edit/prompt
   _ble_edit_PS1=$PS2
-  _ble_edit_prompt=("" 0 0 0 32 0 "" "")
+  _ble_prompt_ps1_data=("" 0 0 0 32 0 "" "")
 
   # edit
   #   Note: ble/widget/.newline/clear-content の中で
@@ -8029,7 +8030,7 @@ function ble/keymap:vi/async-commandline-mode {
   ble-edit/undo/clear-all
   
   # edit/history
-  _ble_history_prefix=_ble_keymap_vi_cmap
+  ble/history/set-prefix _ble_keymap_vi_cmap
 
   # syntax, highlight
   _ble_syntax_lang=text
@@ -8053,7 +8054,7 @@ function ble/widget/vi_cmap/accept {
   ble/textarea#clear-state _ble_keymap_vi_cmap
   ble/util/restore-vars _ble_keymap_vi_cmap _ble_canvas_panel_focus
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
-  _ble_history_prefix=$_ble_keymap_vi_cmap_history_prefix
+  ble/history/set-prefix "$_ble_keymap_vi_cmap_history_prefix"
 
   ble/decode/keymap/pop
   ble/keymap:vi/update-mode-name

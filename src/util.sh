@@ -4117,7 +4117,7 @@ function ble/util/import/search {
     fi
     ble/array#push dirs "$_ble_base"{,/contrib,/lib}
 
-    "${_ble_util_set_declare[@]//NAME/checked}"
+    "${_ble_util_set_declare[@]//NAME/checked}" # #D1570
     local path
     for path in "${dirs[@]}"; do
       ble/set#contains checked "$path" && continue

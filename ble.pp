@@ -340,7 +340,7 @@ function ble/base/adjust-bash-options {
   fi
   ble/variable#copy-state LC_COLLATE _ble_bash_LC_COLLATE
   LC_COLLATE=C
-} 2>/dev/null # set -x 対策 #D0930
+} 2>/dev/null # set -x 対策 #D0930 / locale 変更
 function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=
@@ -361,7 +361,7 @@ function ble/base/restore-bash-options {
   [[ $_ble_bash_setv && ! -o verbose ]] && set -v
   [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
   [[ $_ble_bash_sete && ! -o errexit ]] && set -e # set -e は最後
-} 2>/dev/null # set -x 対策 #D0930
+} 2>/dev/null # set -x 対策 #D0930 / locale 変更
 function ble/base/recover-bash-options {
   # bind -x が終わる度に設定が復元されてしまうので毎回設定し直す #D1526 #D1574
   if [[ $_ble_bash_expand_aliases ]]; then
