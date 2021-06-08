@@ -44,6 +44,7 @@
   - vim-airline: support `bleopt vim_airline_theme` `#D1589` 0000000
   - prompt: track dependencies and detect changes `#D1590` `#D1591` 0000000
   - prompt: preserve `LINES` and `COLUMNS` for custom sequences `#D1592` 0000000
+  - color: fix the face initialiation order for uses in prompts (motivated by jmederosalvarado) `#D1593` 0000000
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names

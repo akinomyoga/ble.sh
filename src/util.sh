@@ -5041,7 +5041,7 @@ function ble/term/visible-bell/defface.hook {
   ble/color/defface vbell_flash reverse,fg=green
   ble/color/defface vbell_erase bg=252
 }
-blehook color_init_defface+=ble/term/visible-bell/defface.hook
+blehook color_defface_load+=ble/term/visible-bell/defface.hook
 
 function ble/term/visible-bell/.show {
   local bell_type=${_ble_term_visible_bell_prev[0]}

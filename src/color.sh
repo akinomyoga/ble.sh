@@ -918,8 +918,8 @@ function ble/color/ansi2g {
 # _ble_faces
 
 # 遅延初期化登録
-# @hook color_init_defface (defined in src/def.sh)
-# @hook color_init_setface (defined in src/def.sh)
+# @hook color_defface_load (defined in src/def.sh)
+# @hook color_setface_load (defined in src/def.sh)
 
 # 遅延初期化
 if [[ ! ${_ble_faces_count-} ]]; then # reload #D0875
@@ -981,14 +981,15 @@ function ble-color-setface {
 }
 
 # 遅延関数 (後で上書き)
-function ble/color/defface   { local q=\' Q="'\''"; blehook color_init_defface+="ble/color/defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
-function ble/color/setface   { local q=\' Q="'\''"; blehook color_init_setface+="ble/color/setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble/color/defface   { local q=\' Q="'\''"; blehook color_defface_load+="ble/color/defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble/color/setface   { local q=\' Q="'\''"; blehook color_setface_load+="ble/color/setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble/color/face2g    { ble/color/initialize-faces && ble/color/face2g    "$@"; }
 function ble/color/face2sgr  { ble/color/initialize-faces && ble/color/face2sgr  "$@"; }
 function ble/color/iface2g   { ble/color/initialize-faces && ble/color/iface2g   "$@"; }
 function ble/color/iface2sgr { ble/color/initialize-faces && ble/color/iface2sgr "$@"; }
 
 # 遅延初期化子
+_ble_color_faces_initialized=
 function ble/color/initialize-faces {
   local _ble_color_faces_initializing=1
   local -a _ble_color_faces_errors=()
@@ -1065,8 +1066,11 @@ function ble/color/initialize-faces {
     fi
   }
 
-  blehook/invoke color_init_defface
-  blehook/invoke color_init_setface
+  _ble_color_faces_initialized=1
+  blehook/invoke color_defface_load
+  blehook/invoke color_setface_load
+  blehook color_defface_load=
+  blehook color_setface_load=
 
   if ((${#_ble_color_faces_errors[@]})); then
     if ((_ble_edit_attached)) && [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
@@ -1080,6 +1084,7 @@ function ble/color/initialize-faces {
     return 0
   fi
 }
+ble/function#try ble/util/idle.push ble/color/initialize-faces
 
 ## @fn ble/color/list-faces opts
 function ble/color/list-faces {
@@ -1289,6 +1294,14 @@ function ble-face {
 
   if ((!${#print[@]}&&!${#setface[@]})); then
     print=(@)
+  fi
+
+  ((${#print[@]})) && ble/color/initialize-faces
+  if [[ ! $_ble_color_faces_initialized ]]; then
+    local ret
+    ble/string#quote-command ble-face "${setface[@]}"
+    blehook color_setface_load+="$ret"
+    return 0
   fi
 
   local spec
@@ -1564,7 +1577,7 @@ function ble/highlight/layer:plain/getg {
 #------------------------------------------------------------------------------
 # ble/highlight/layer:region
 
-function ble/color/faces-defface-hook {
+function ble/color/defface.onload {
   ble/color/defface region         bg=60,fg=white
   ble/color/defface region_target  bg=153,fg=black
   ble/color/defface region_match   bg=55,fg=white
@@ -1572,7 +1585,7 @@ function ble/color/faces-defface-hook {
   ble/color/defface disabled       fg=242
   ble/color/defface overwrite_mode fg=black,bg=51
 }
-blehook color_init_defface+=ble/color/faces-defface-hook
+blehook color_defface_load+=ble/color/defface.onload
 
 ## @arr _ble_highlight_layer_region_buff
 ##

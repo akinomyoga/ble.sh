@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ble/function#try ble/util/idle.push 'ble/util/import "$_ble_base/lib/core-complete.sh"'
+ble/is-function ble/util/idle.push && ble-import -d "$_ble_base/lib/core-complete.sh"
 
 #------------------------------------------------------------------------------
 # 公開関数と公開関数

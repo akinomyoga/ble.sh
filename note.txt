@@ -4698,6 +4698,42 @@ bash_tips
 
 2021-06-09
 
+  * color: initialize-faces の遅延に関する問題 (motivated by jmederosalvarado) [#D1593]
+    https://github.com/akinomyoga/ble.sh/issues/96#issuecomment-813185300
+
+    * vim-airline: theme を blerc で設定しても何故か暫くすると dark の配色が読み
+      込まれている気がする。改めて設定し直すと問題は起こらない。theme を変えた瞬
+      間の配色が何だか変になる。
+
+      うーん。調べてみると initialize-faces が2回呼び出されている気がする。何故だ
+      ろうか。ble/syntax/attr2g 経由である。うーん。分かった。core-syntax.sh が定
+      義している関数で ble/syntax/attr2g の初期化を遅延しようとしている。然し、最
+      初にプロンプトを表示した時点で既に initialize-faces が実行されるので、その
+      後で ble/syntax/attr2g { initialie-faces && ble/syntax/attr2g "$@"; } 等と
+      すると二重に初期化される様になるのである。eval-after-load 的な仕組みで登録
+      する必要があるのではないか。
+
+    * また、initialize-faces が実行されたら実行した hook はクリアする事にする。
+
+    * この際なので GitHub #96 のコメントで指摘されている遅延についても対処する。
+
+      沢山の setface 設定を仕込んでいると最初のキーストロークの反応が遅いという
+      話。これに関しては initialize-faces を idle で実行すれば良い。
+
+      idle の登録順序はどうなっているだろうか。ロードした直後の idle の順序を確
+      認する。complet を絶対パスでロードするように変更して、また syntax より後
+      にロードする様に変更した。変更後の様子は以下の通り。
+
+      [0]="R\\ble/history:bash/resolve-multiline async"
+      [1]="R\\ble/util/import '/home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh'"
+      [2]="R\\ble/util/import '/home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh'"
+      [3]="R\\ble/util/import '/etc/profile.d/modules.sh'"
+      [10000]="R\\ble/util/msleep/calibrate"
+      [10001]="R\\ble/textarea#render-defer.idle")
+
+      うーん。syntax よりは前に faces は initialize して良いのではないか。とい
+      う事を考えると、実は一番最初に登録してしまっても問題ない。登録した。
+
   * vim-airline を blerc からロードする様にすると余分な行が表示される [#D1592]
 
     | 調べると \q{lib/vim-airline} の中で問題が発生している。更に調べると

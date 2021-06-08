@@ -30,8 +30,8 @@ blehook/declare DA2R
 
 # color.sh
 
-blehook/declare color_init_defface
-blehook/declare color_init_setface
+blehook/declare color_defface_load
+blehook/declare color_setface_load
 
 # history.sh
 
