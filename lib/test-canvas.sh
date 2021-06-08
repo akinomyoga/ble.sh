@@ -35,7 +35,7 @@ function ble/test:canvas/trace.contra {
 #------------------------------------------------------------------------------
 # from lib/test-canvas.sh
 
-ble/test/start-section 'ble/canvas/trace (relative:confine:measure-bbox)' 10
+ble/test/start-section 'ble/canvas/trace (relative:confine:measure-bbox)' 12
 
 # test1
 
@@ -269,5 +269,46 @@ EOF
 if [[ $_ble_test_canvas_contra ]]; then
   ble/test 'echo "bbox:$x1,$y1-$x2,$y2"' stdout='bbox:2,0-6,1'
 fi
+
+#------------------------------------------------------------------------------
+# trace-text
+
+ble/test/start-section 'ble/canvas/trace-text' 11
+
+(
+  sgr0= sgr1=
+
+  # truncate
+  lines=1 cols=10 _ble_term_xenl=1 x=0 y=0
+  ble/test 'ble/canvas/trace-text "Hello World";ret="$x,$y,$ret"' ret='10,0,Hello Worl'
+  lines=1 cols=10 _ble_term_xenl= x=0 y=0
+  ble/test 'ble/canvas/trace-text "Hello World";ret="$x,$y,$ret"' ret='9,0,Hello Wor'
+  lines=1 cols=10 _ble_term_xenl=1 x=3 y=0
+  ble/test 'ble/canvas/trace-text "Hello World";ret="$x,$y,$ret"' ret='10,0,Hello W'
+
+  # 折返し
+  lines=3 cols=10 _ble_term_xenl=1 x=3 y=0
+  ble/test 'ble/canvas/trace-text "Hello Bash World";ret="$x,$y,$ret"' ret='9,1,Hello Bash World'
+
+  # 全角文字の折返し (nonewline on/off)
+  lines=3 cols=10 _ble_term_xenl=1 x=3 y=0
+  ble/test 'ble/canvas/trace-text "これは日本語の文章";ret="$x,$y,$ret"' ret=$'2,2,これは\n日本語の文章'
+  lines=3 cols=10 _ble_term_xenl=1 x=3 y=0
+  ble/test 'ble/canvas/trace-text "これは日本語の文章" nonewline;ret="$x,$y,$ret"' ret='2,2,これは 日本語の文章'
+
+  # 行末での改行 (nonewline)
+  lines=3 cols=10 _ble_term_xenl=1 x=0 y=0
+  ble/test 'ble/canvas/trace-text "これは日本";ret="$x,$y,$ret"' ret=$'0,1,これは日本\n'
+  lines=3 cols=10 _ble_term_xenl=0 x=0 y=0
+  ble/test 'ble/canvas/trace-text "これは日本";ret="$x,$y,$ret"' ret=$'0,1,これは日本'
+  lines=3 cols=10 _ble_term_xenl=1 x=0 y=0
+  ble/test 'ble/canvas/trace-text "これは日本" nonewline;ret="$x,$y,$ret"' ret=$'10,0,これは日本'
+  lines=3 cols=10 _ble_term_xenl=0 x=0 y=0
+  ble/test 'ble/canvas/trace-text "これは日本" nonewline;ret="$x,$y,$ret"' ret=$'0,1,これは日本'
+
+  # 改行は ^J と表示
+  lines=1 cols=12 _ble_term_xenl=1 x=0 y=0
+  ble/test $'ble/canvas/trace-text "あ\nい\nう" external-sgr;ret="$x,$y,$ret"' ret=$'10,0,あ^Jい^Jう'
+)
 
 ble/test/end-section

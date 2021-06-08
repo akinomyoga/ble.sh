@@ -268,7 +268,8 @@ function ble/prompt/unit:{vim-airline-section}/update {
   ble/prompt/unit/add-hash '$_ble_lib_vim_airline_mode_data'
   ble/prompt/unit/add-hash "\$$ref_ps"
   local trace_opts=confine:relative:noscrc:face0="$face":ansi:measure-bbox:measure-gbox
-  LINES=1 COLUMNS=$cols ble/prompt/unit:{section}/update "$prefix" "${!ref_ps}" "$trace_opts"
+  local prompt_rows=1 prompt_cols=$cols # Note: cols は \q{lib/vim-airline} で設定される
+  ble/prompt/unit:{section}/update "$prefix" "${!ref_ps}" "$trace_opts"
 }
 function ble/prompt/unit:_ble_lib_vim_airline_section_a/update { ble/prompt/unit:{vim-airline-section}/update a; }
 function ble/prompt/unit:_ble_lib_vim_airline_section_b/update { ble/prompt/unit:{vim-airline-section}/update b; }
@@ -355,6 +356,5 @@ function ble/prompt/backslash:lib/vim-airline {
 }
 
 bleopt keymap_vi_mode_show=
-bleopt keymap_vi_mode_update_prompt=1
 bleopt prompt_status_line='\q{lib/vim-airline}'
 bleopt prompt_status_align=$'justify=\r'

@@ -1636,59 +1636,58 @@ function ble/canvas/trace {
 ##
 function ble/canvas/trace-text/.put-simple {
   local nchar=$1
+  ((nchar)) || return 0
 
-  if ((y+(x+nchar)/cols<lines)); then
-    out=$out$2
-    ((x+=nchar%cols,
-      y+=nchar/cols,
-      (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)))
-  else
-    # 画面をはみ出る場合
-    flag_overflow=1
-    out=$out${2::lines*cols-(y*cols+x)}
-    ((x=cols,y=lines-1))
-    ble/canvas/trace-text/.put-nl-if-eol
-  fi
+  local nput=$((cols*lines-!_ble_term_xenl-(y*cols+x)))
+  ((nput>0)) || return 1
+  ((nput>nchar)) && nput=$nchar
+  out=$out${2::nput}
+  ((x+=nput,y+=x/cols,x%=cols))
+  ((_ble_term_xenl&&x==0&&(y--,x=cols)))
+  ((nput==nchar)); return $?
 }
 ## @fn x y cols out ; ble/canvas/trace-text/.put-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
+##   範囲に収まり切らない時に失敗します。
 function ble/canvas/trace-text/.put-atomic {
   local w=$1 c=$2
 
+  # 収まらない時は skip
+  ((y*cols+x+w<=cols*lines-!_ble_term_xenl)) || return 1
+
   # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
   if ((x<cols&&cols<x+w)); then
-    if ((y+1>=lines)); then
-      # 画面に入らない時は表示しない
-      flag_overflow=1
-      if [[ :$opts: == *:nonewline:* ]]; then
-        ble/string#reserve-prototype $((cols-x))
-        out=$out${_ble_string_prototype::cols-x}
-        ((x=cols))
-      else
-        out=$out$'\n'
-        ((y++,x=0))
-      fi
-      return 0
+    if [[ :$opts: == *:nonewline:* ]]; then
+      ble/string#reserve-prototype $((cols-x))
+      out=$out${_ble_string_prototype::cols-x}
+      ((x=cols))
+    else
+      out=$out$'\n'
+      ((y++,x=0))
     fi
-    ble/string#reserve-prototype $((cols-x))
-    out=$out${_ble_string_prototype::cols-x}
-    ((x=cols))
+  fi
+
+  # w!=0 のとき行末にいたら次の行へ暗黙移動
+  ((w&&x==cols&&(y++,x=0)))
+
+  # 改行しても尚行内に収まらない時は ## で代用
+  local limit=$((cols-(y+1==lines&&!_ble_term_xenl)))
+  if ((x+w>limit)); then
+    ble/string#reserve-prototype $((limit-x))
+    local pad=${_ble_string_prototype::limit-x}
+    out=$out$sgr1${pad//?/'#'}$sgr0
+    x=$limit
+    ((y+1<lines)); return $?
   fi
 
   out=$out$c
-
-  # 移動
-  if ((w>0)); then
-    ((x+=w))
-    while ((_ble_term_xenl?x>cols:x>=cols)); do
-      ((y++,x-=cols))
-    done
-  fi
+  ((x+=w,!_ble_term_xenl&&x==cols&&(y++,x=0)))
+  return 0
 }
 ## @fn x y cols out ; ble/canvas/trace-text/.put-nl-if-eol ; x y out
 ##   行末にいる場合次の行へ移動します。
 function ble/canvas/trace-text/.put-nl-if-eol {
-  if ((x==cols)); then
+  if ((x==cols&&y+1<lines)); then
     [[ :$opts: == *:nonewline:* ]] && return 0
     ((_ble_term_xenl)) && out=$out$'\n'
     ((y++,x=0))
@@ -1728,11 +1727,11 @@ function ble/canvas/trace-text {
     for ((i=0;i<iN;)); do
       local tail=${text:i}
       if [[ $tail == $glob ]]; then
-        local span=${tail%%$globx}
+        local span=${tail%%$globx}; ((i+=${#span}))
         ble/canvas/trace-text/.put-simple "${#span}" "$span"
-        ((i+=${#span}))
       else
-        ble/util/s2c "${text:i:1}"
+        local c=${tail::1}; ((i++))
+        ble/util/s2c "$c"
         local code=$ret w=0
         if ((code<32)); then
           ble/util/c2s $((code+64))
@@ -1744,12 +1743,10 @@ function ble/canvas/trace-text {
           ble/canvas/trace-text/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
         else
           ble/util/c2w "$code"
-          ble/canvas/trace-text/.put-atomic "$ret" "${text:i:1}"
+          ble/canvas/trace-text/.put-atomic "$ret" "$c"
         fi
-
-        ((i++))
-      fi
-      ((y*cols+x>=lines*cols)) && break
+      fi && ((y*cols+x<lines*cols)) ||
+        { flag_overflow=1; break; }
     done
   fi
 
@@ -1757,7 +1754,6 @@ function ble/canvas/trace-text {
   ret=$out
 
   # 収まったかどうか
-  ((y>=lines)) && flag_overflow=1
   [[ ! $flag_overflow ]]
 }
 # Note: suppress LC_COLLATE errors #D1205 #D1262 #1341 #D1440
@@ -2336,7 +2332,7 @@ _ble_canvas_panel_height=(1 0 0)
 _ble_canvas_panel_focus=
 _ble_canvas_panel_vfill=
 _ble_canvas_panel_bottom= # 現在下部に居るかどうか
-_ble_canvas_panel_tmargin=1 # for visible-bell
+_ble_canvas_panel_tmargin='LINES!=1?1:0' # for visible-bell
 
 ## @fn ble/canvas/panel/layout/.extract-heights
 ##   @arr[out] mins maxs
@@ -2736,7 +2732,7 @@ function ble/canvas/panel/render {
 ## @fn ble/canvas/panel/ensure-terminal-top-line
 ##   visible-bell で使う為
 function ble/canvas/panel/ensure-tmargin.draw {
-  local tmargin=$_ble_canvas_panel_tmargin
+  local tmargin=$((_ble_canvas_panel_tmargin))
   ((tmargin>LINES)) && tmargin=$LINES
   ((tmargin>0)) || return 0
 

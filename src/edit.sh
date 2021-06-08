@@ -1059,6 +1059,7 @@ function ble/prompt/.get-keymap-for-current-mode {
 ##   @var[in,out] x1 x2 y1 y2
 ##     opts に measure-bbox を指定した時。
 ##   @var[in,out] "${_ble_prompt_cache_vars[@]}"
+##   @var[in,out] prompt_rows prompt_cols
 ##
 function ble/prompt/.instantiate {
   trace_hash= esc= x=0 y=0 g=0 lc=32 lg=0
@@ -1105,11 +1106,16 @@ function ble/prompt/.instantiate {
     # Note: "ESC k ... ESC \" 等を対象とするプロンプト文字列は trace 不要
     x=0 y=0 g=0 lc=32 lg=0
     esc=$expanded
-  elif trace_hash=$opts:$LINES,$COLUMNS:$expanded; [[ $trace_hash != "$trace_hash0" ]]; then
+  elif
+    local rows=${prompt_rows:-${LINES:-25}}
+    local cols=${prompt_cols:-${COLUMNS:-80}}
+    trace_hash=$opts:$rows,$cols:$expanded
+    [[ $trace_hash != "$trace_hash0" ]]
+  then
     local trace_opts=$opts:prompt
     [[ $bleopt_internal_suppress_bash_output ]] || trace_opts=$trace_opts:left-char
     x=0 y=0 g=0 lc=32 lg=0
-    ble/canvas/trace "$expanded" "$trace_opts"; local traced=$ret
+    LINES=$rows COLUMNS=$cols ble/canvas/trace "$expanded" "$trace_opts"; local traced=$ret
     ((lc<0&&(lc=0)))
     esc=$traced
     return 0
@@ -1161,6 +1167,7 @@ function ble/prompt/unit:{section}/get {
 ##       プロンプト文字列の処理のみを行います。
 ##       これは制御列など端末に出力しない内容を解析するのに使います。
 ##
+##   @param[in] prompt_rows prompt_cols
 function ble/prompt/unit:{section}/update {
   local prefix=$1 ps=$2 opts=$3
 
@@ -1222,7 +1229,8 @@ function ble/prompt/unit:_ble_prompt_rps1/update {
   local cols=${COLUMNS-80}
   local ps1x=${_ble_prompt_ps1_data[3]}
   local ps1y=${_ble_prompt_ps1_data[4]}
-  LINES=$((ps1y+1)) ble/prompt/unit:{section}/update _ble_prompt_rps1 "$prompt_rps1" confine:relative:right:measure-gbox || return 1
+  local prompt_rows=$((ps1y+1)) prompt_cols=$cols
+  ble/prompt/unit:{section}/update _ble_prompt_rps1 "$prompt_rps1" confine:relative:right:measure-gbox || return 1
 
   local esc=${_ble_prompt_rps1_data[8]} width=
   if [[ $esc ]]; then
@@ -1236,7 +1244,8 @@ function ble/prompt/unit:_ble_prompt_rps1/update {
 
 function  ble/prompt/unit:_ble_prompt_xterm_title/update {
   ble/prompt/unit/add-hash '$bleopt_prompt_xterm_title'
-  LINES=1 ble/prompt/unit:{section}/update _ble_prompt_xterm_title "$bleopt_prompt_xterm_title" confine:no-trace || return 1
+  local prompt_rows=1
+  ble/prompt/unit:{section}/update _ble_prompt_xterm_title "$bleopt_prompt_xterm_title" confine:no-trace || return 1
 
   local esc=${_ble_prompt_xterm_title_data[8]}
   [[ $esc ]] && esc=$'\e]0;'${esc//[! -~]/'#'}$'\a'
@@ -1246,7 +1255,8 @@ function  ble/prompt/unit:_ble_prompt_xterm_title/update {
 
 function ble/prompt/unit:_ble_prompt_screen_title/update {
   ble/prompt/unit/add-hash '$bleopt_prompt_screen_title'
-  LINES=1 ble/prompt/unit:{section}/update _ble_prompt_screen_title "$bleopt_prompt_screen_title" confine:no-trace || return 1
+  local prompt_rows=1
+  ble/prompt/unit:{section}/update _ble_prompt_screen_title "$bleopt_prompt_screen_title" confine:no-trace || return 1
 
   local esc=${_ble_prompt_screen_title_data[8]}
   [[ $esc ]] && esc=$'\ek'${esc//[! -~]/'#'}$'\e\\'
@@ -1256,7 +1266,8 @@ function ble/prompt/unit:_ble_prompt_screen_title/update {
 
 function ble/prompt/unit:_ble_prompt_term_status/update {
   ble/prompt/unit/add-hash '$bleopt_prompt_term_status'
-  LINES=1 ble/prompt/unit:{section}/update _ble_prompt_term_status "$bleopt_prompt_term_status" confine:no-trace || return 1
+  local prompt_rows=1
+  ble/prompt/unit:{section}/update _ble_prompt_term_status "$bleopt_prompt_term_status" confine:no-trace || return 1
 
   local esc=${_ble_prompt_term_status_data[8]}
   if [[ $esc ]]; then
@@ -1279,7 +1290,8 @@ function ble/prompt/unit:_ble_prompt_status/update {
   [[ $bleopt_prompt_status_align =~ $rex ]] &&
     trace_opts=$trace_opts:$BASH_REMATCH
 
-  LINES=1 COLUMNS=$cols ble/prompt/unit:{section}/update _ble_prompt_status "$ps" "$trace_opts" || return 1
+  local prompt_cols=1 prompt_cols=$cols
+  ble/prompt/unit:{section}/update _ble_prompt_status "$ps" "$trace_opts" || return 1
 
   # tailor
   local esc=${_ble_prompt_status_data[8]}
@@ -1395,8 +1407,11 @@ function ble/prompt/update {
     ((_ble_prompt_version++))
   fi
 
+  # initialize variables
   ble/history/update-position
   local prompt_hashref_base='$_ble_prompt_version'
+  local prompt_rows=${LINES:-25}
+  local prompt_cols=${COLUMNS:-80}
   local "${_ble_prompt_cache_vars[@]/%/=}" # #D1570 OK
 
   ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
@@ -1559,8 +1574,8 @@ function ble/edit/info/.render-content {
   ble/canvas/panel#clear.draw "$_ble_edit_info_panel"
   ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
   ble/canvas/put.draw "$content"
-  ble/canvas/bflush.draw
   ((_ble_canvas_y+=y,_ble_canvas_x=x))
+  ble/canvas/bflush.draw
 }
 
 _ble_edit_info_default=(0 0 "")
@@ -3537,7 +3552,7 @@ function ble/widget/insert-arg.impl {
         ((index<0&&(index=0)))
       fi
 
-      local entry; ble/history/get-editted-entry "$index"
+      local entry; ble/history/get-edited-entry "$index"
       builtin history -s -- "$entry"
       local hist_expanded
       if ble-edit/hist_expanded.update '!!:'"$nth" &&
@@ -4366,7 +4381,7 @@ function ble/widget/forward-history-line.impl {
       return "$?"
     fi
 
-    local entry; ble/history/get-editted-entry "$index"
+    local entry; ble/history/get-edited-entry "$index"
     if [[ $entry == *$'\n'* ]]; then
       local ret; ble/string#count-char "$entry" $'\n'
       if ((rest<=ret)); then
@@ -5076,6 +5091,8 @@ function ble-edit/exec/print-PS0 {
   if [[ $PS0 ]]; then
     local version=$COLUMNS,$_ble_edit_lineno,$_ble_history_count,$_ble_edit_CMD
     local prompt_hashref_base='$version'
+    local prompt_rows=${LINES:-25}
+    local prompt_cols=${COLUMNS:-80}
     local "${_ble_prompt_cache_vars[@]/%/=}" # #D1570 OK
     ble/prompt/unit#update _ble_prompt_ps10
     ble/prompt/unit:{section}/get _ble_prompt_ps10
@@ -6219,12 +6236,12 @@ function ble-edit/history/goto {
   fi
 
   # store
-  ble/history/set-editted-entry "$index0" "$_ble_edit_str"
+  ble/history/set-edited-entry "$index0" "$_ble_edit_str"
   ble/history/onleave.fire
 
   # restore
   ble/history/set-index "$index1"
-  local entry; ble/history/get-editted-entry -v entry "$index1"
+  local entry; ble/history/get-edited-entry -v entry "$index1"
   ble-edit/content/reset "$entry" history
 
   # point
@@ -6781,7 +6798,7 @@ function ble-edit/isearch/.next-history.fib {
     # 見付かった場合
 
     # 一致範囲 beg-end を取得
-    local str; ble/history/get-editted-entry -v str "$index"
+    local str; ble/history/get-edited-entry -v str "$index"
     if [[ $needle ]]; then
       if [[ $_ble_edit_isearch_dir == - ]]; then
         local prefix=${str%"$needle"*}
@@ -7127,7 +7144,7 @@ function ble-edit/nsearch/.goto-match {
   elif [[ :$opts: == *:action=load:* ]]; then
     local old_index; ble/history/get-index -v old_index
     if ((index!=old_index)); then
-      local line; ble/history/get-editted-entry -v line "$index"
+      local line; ble/history/get-edited-entry -v line "$index"
       ble-edit/content/reset-and-check-dirty "$line"
     fi
   else

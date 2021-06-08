@@ -4696,6 +4696,260 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-06-09
+
+  * vim-airline を blerc からロードする様にすると余分な行が表示される [#D1592]
+
+    | 調べると \q{lib/vim-airline} の中で問題が発生している。更に調べると
+    | ble/prompt/unit:_ble_lib_vim_airline_mode/update の中の
+    | ble/history/get-entry により何かが出力されている。出力内容を調べるとエスケー
+    | プシーケンスを出力している。エスケープシーケンスの出処を調べる。
+    |
+    | | ble-attach
+    | |   ble/term/initialize
+    | |     ble/term/test-DECSTBM
+    | |       ESC7
+    | |       ESC[1;2r
+    | |       ESC[2;1H
+    | |       ESC[1B
+    | |       ESC[6n
+    | |       ESC[;r
+    | |       ESC8
+    | |   ble/decode/attach
+    | |     ESC[>c
+    |
+    | 上記の出力内容は単に buffer に残っていただけ。
+    | これらは特に何も問題を起こさない。
+    | 以下の内容が問題を起こしている。
+    |
+    | | ESC(BESC[m^MESC[2KESC[1M
+    | | ESC(BESC[mESC[30C
+    |
+    | もっと分かり易く書くと以下の形になる。
+    |
+    |   SGR0 CR
+    |   EL(2) DL(1) ... put-dl.draw
+    |   LF SGR0 CUR(30)
+    |
+    | EL(2) DL(1) の組み合わせは put-dl.draw が使っている物である。put-dl.draw に
+    | 仕掛けて FUNCNAME[@] を出力してみると以下の結果になった。
+    |
+    | | ble/canvas/put-dl.draw
+    | | ble/canvas/panel#set-height.draw
+    | | ble/canvas/panel/reallocate-height.draw
+    | | ble/edit/info/.render-content
+    | | ble/edit/info/show
+    | | ble/edit/info/immediate-show
+    | | ble-edit/history/history-message.hook
+    | | blehook/invoke
+    | | ble/history:bash/load
+    | | ble/history:bash/initialize
+    | | ble/history/initialize
+    | | ble/history/get-entry
+    | | ble/prompt/unit:_ble_lib_vim_airline_mode/update
+    | | ble/prompt/unit#update
+    | | ble/prompt/backslash:lib/vim-airline
+    | | ble/prompt/backslash:q
+    | | ble/function#try
+    | | ble/prompt/.process-backslash
+    | | ble/prompt/process-prompt-string
+    | | ble/prompt/.instantiate
+    | | ble/prompt/unit:{section}/update
+    | | ble/prompt/unit:_ble_prompt_status/update
+    | | ble/prompt/unit#update
+    | | ble/prompt/update
+    | | ble/textarea#render
+    | | ble/textarea#redraw
+    | | ble-attach
+    | | ble/base/attach-from-PROMPT_COMMAND
+    | | ble/function#lambda/0
+    |
+    | つまり、ble-attach から呼び出したプロンプト再描画の中で vim-airline が呼び
+    | 出されて、その中での modified の判定の為に get-edited-entry が呼び出されて
+    | いるという事。get-edited-entry は内部で ble/edit/info/immediate-show を呼び
+    | 出して居て、結果として何らかの不都合が生じて計算がずれる。
+    |
+    | a reject: 一つの可能性として DRAW_BUFF に出した出力が中途半端になっている事
+    |   によって問題が生じているのではないかと思ったが、DRAW_BUFF を覗いた感じだ
+    |   と特に何も登録はされていない。なので出力のバッファリングが輻輳していると
+    |   いう可能性は考えなくて良い。
+    |
+    | b reject: 或いは buffer に既に入っている内容が問題になっている? と思ったが
+    |   そうでもない。その場で buffer.flush して、get-edited-entry の出力だけ潰し
+    |   ても特に問題は生じない。
+    |
+    | c reject: 或いは端末に繋がっている時だけしか問題のある出力をしない可能性は
+    |   あるだろうか。つまり e.log に出力された内容を今は観察しているが、実際には
+    |   端末に繋がっている時に限りもっと色々な出力をしている。具体的には非端末の
+    |   時にはble/history/initialize は info で何も表示しない可能性。一旦
+    |   get-edited-entry の直後で sleep を入れて何か表示されるのか確認してみる事
+    |   にする
+    |
+    |   →特に何も表示されない。恐らく端末に繋がっているかどうかの違いで振る舞い
+    |   が変わるという訳ではないと思われる。
+    |
+    |   →実際に非端末の出力先として 2> >(cat) を使った場合にも問題が再現する。と
+    |   いう訳なので観察している出力で確かに問題が発生しているのだという事。
+    |
+    | d reject: もう一つの可能性は後で遅延して履歴読み込みが完了した時に info を
+    |   削除する時に問題が生じているという可能性。
+    |
+    |   →これは関係ない。実際に get-edited-entry の stderr を潰せば問題は生じな
+    |   くなっているし、その imbalance が生じる事によって表示が偶々正しくなってい
+    |   るという様には考えがたい。
+    |
+    | e reject: 或いは get-edited-entry を呼び出した直後に buffer に入っている内
+    |   容が後になって問題を起こしている可能性? → 確認したが、get-edited-entry
+    |   直後には buffer は何も入っていない。これは関係ない。
+    |
+    | f もう一つの可能性として全体更新が中途半端になっている事によって座標計算が
+    |   ずれているのではないかという事。然し、問題が生じているのは ble-attach か
+    |   ら直接 ble/textarea#redraw を呼び出した時であって、これは panel/render で
+    |   はないので、textarea と info の描画は独立の筈である。
+    |
+    | となって来ると、info から呼び出した set-height の実装か、或いは位置計算に問
+    | 題が生じているという事になる気がする。出力内容と _ble_canvas_x,y の状態につ
+    | いて確認する必要がある。
+    |
+    | | _ble_lib_vim_airline_mode
+    | | declare -- _ble_canvas_x="30"
+    | | declare -- _ble_canvas_y="0"
+    | | declare -- _ble_canvas_excursion=""
+    | | ^[(B^[[m^M^[[2K^[[1M
+    | | ^[(B^[[m^[[30Cdeclare -- _ble_canvas_x="30"
+    | | declare -- _ble_canvas_y="0"
+    | | declare -- _ble_canvas_excursion=""
+    |
+    | うーん。これを見る限りは canvas 的にはカーソル位置は動かしていないつもりな
+    | のである。改めてこのシーケンスがどの様に生成されているか確認する。
+    |
+    | | _ble_lib_vim_airline_mode
+    | | declare -- _ble_canvas_x="30"
+    | | declare -- _ble_canvas_y="0"
+    | | declare -- _ble_canvas_excursion=""
+    | | declare -a _ble_canvas_panel_height=([0]="1" [1]="0" [2]="0")
+    | | [delta=-1,opts=]
+    | | ^[(B^[[m^M^[[2K^[[1M
+    | | ^[(B^[[m^[[30C[delta=0,opts=]
+    | | declare -- _ble_canvas_x="30"
+    | | declare -- _ble_canvas_y="0"
+    | | declare -- _ble_canvas_excursion=""
+    | | declare -a _ble_canvas_panel_height=([0]="0" [1]="0" [2]="0")
+    |
+    | うーん。どうやら panel#0 の高さが潰れてしまっている様子。然し、高さが潰れて
+    | しまっているからと言ってカーソルの位置が変わるのは変である。うーん。
+    | set-height までは別に座標計算が変な事にはなっていない様だ。set-height を抜
+    | けた後で座標位置を復元している箇所があって、其処で計算がずれているという事
+    | の気がする。
+    |
+    | うーん。分かった。以下の様な状態になっている。x=0 y=0 content=$'\n' になっ
+    | ている。content に改行が入っているのだから、本来は y=1 でなければならない筈
+    | である。何故この様な内容が生成されるのか確認する必要がある。
+    |
+    | declare -a _ble_edit_info=([0]="0" [1]="0" [2]=$'\n')
+    |
+    | 更に調べると ble/edit/info/.construct-content text 'loading history...' の
+    | 構築結果がその様になっている。
+    |
+    | % 更に辿ると ble/canvas/trace-text がまるで動かなくなっている。何故。。。
+    | %
+    | %   x=0 y=0; ble/canvas/trace-text 'ABC'; echo "($x,$y)[$ret]"
+    | %
+    | % とすると x=0 y=0 ret=$'\n\n' 二重改行になってしまっている。これは大事。
+    | % いつからこの様な事態になっていたのだろう。今まで気づかなかったのも不思
+    | % 議である。というより、殆どの機能で着色を使っているので trace-text は余
+    | % り使われてこなかったのである。更に遡って調べてみると v0.3.0 の時点で既
+    | % に trace-text は動作していなかった様だ。0.2 系列では
+    | % ble-edit/info/.construct-text という関数で現在の実装とは全く異なる物凄
+    | % く単純な実装だった。この時は勿論問題はなかった。
+    | %
+    | % まとめると ble/canvas/trace-text は可也昔から壊れていた。v0.3.0 の時点
+    | % で駄目。一方で v0.2 の段階ではその前身である
+    | % ble-edit/info/.construct-text だったが、これはとても単純な関数でまた問
+    | % 題も存在しなかった…と思ったが微妙に関数の仕様を勘違いしていた。
+    | % trace-text は領域の大きさを外部から与える必要があったのである。
+
+    結局何が起こっていたのかというと、ble/edit/info/.construct-content に於いて、
+    ble/edit/info/.initialize-size が lines=0 を返して、それに対して
+    ble/canvas/trace-text が変な振る舞いをしていたという事。
+
+    問題が3つある。
+
+    x fixed: ble/canvas/trace-text は lines が限界に達しているのにも関わらず改
+      行を末尾に付加してしまう。これは個別に対応した。
+
+    x ok: 改行を付加したのにも関わらず y を増やしていない。これは trace-text を
+      ほぼ再実装した結果発生しなくなった。何故元の実装でこれが発生していたのか
+      は分からない。そもそも改行 \n ですら trace-text では ^J と表示される。
+
+      →これは分かった。ble/canvas/trace-text/.put-nl-if-eol が put-simple の中
+      と終了時の2回呼び出されている。cols=0 の時には一回実行したとしてもまだ行
+      末にいると判定されるので二回実行されるのである。
+
+    x fixed: ble/canvas/trace-text を初期化する前に、何故か
+      ble/edit/info/.initialize-size が lines=0 を結果として与えている。
+
+      中では ble/canvas/panel/layout/.get-available-height を呼び出している。
+
+      % 中で戻り値を確認すると ret=9730ret という謎の値が生成されている。と思っ
+      % たがこれは debug コードのミスだった。
+
+      改めて調べるとこの時点で 0 が生成されている。
+
+      declare -a mins=([0]="1" [1]="0" [2]="0" [3]="0")
+      declare -a maxs=([0]="1" [1]="0" [2]="1" [3]="0")
+      declare -a heights=([0]="0" [1]="0" [2]="0" [3]="0")
+      declare -- index="2"
+      declare -- ret="0"
+
+      うーん。この時点で maxs に LINES が設定されて欲しいが 1 になってしまって
+      いる。うーん。原因が分かった。プロンプトの処理を行っている最中は LINES
+      COLUMNS を通して描画範囲の大きさを指定しているが、これだと本来のレイアウ
+      ト処理に影響を与えてしまう。
+
+      取り敢えずは ble/canvas/trace は引き続き LINES COLUMNS を参照する事にして
+      おいて、その外側の instantiate 等については LINES/COLUMNS は別変数経由で
+      指定する事にする。
+
+      書き換えた。これで現在 LINES= 及び COLUMNS= を設定している箇所は全て
+      ble/canvas/trace の呼び出しか、または ble/textmap#update の呼び出しに限ら
+      れる事となった。
+
+    x fixed: 何故 panel#0 の高さが潰れてしまうのか。本来は此処で高さを変更する
+      必要はないのではないか。というより高さ 1 の儘であるべきなのではないのか。
+      特に ble/prompt/update の段階では。
+
+      これは LINES=1 を設定していた為に visible-bell 専用の行が引き算されて 0
+      になってしまっているという事だろう。LINES=1 の時には visible-bell も表示
+      しない様に修正する必要がある。もしくは visible-bell の表示方法を変更して、
+      即座に行送りにする。と思ったが、visible-bell を表示した時点で現在の表示内
+      容を保持する事ができないので、やはり LINES=1 の時には visible-bell は表示
+      しない様に変更するのが適切だろう。
+
+    * done: この問題とは独立に get-edited-entry に於いて最新の値を参照している
+      時には履歴をロードせずに済ませる様に実装する様にした方が良い。実装した。
+      取り敢えず vim-airline の modified はこれでもちゃんと動いている。
+
+    * done: trace-text のテストを拡充
+
+    x 2021-06-08 airline: ロード時に keymap_vi_mode_show=1 に再設定すると表示が
+      ずれてモード行の位置にプロンプトの残像が残ってしまう
+
+      →これは #D1592 を修正したら再現しなくなった。
+
+    x 2021-06-08 airline: status 行を表示している時の空コマンド行による改行がス
+      ムーズではない。
+
+      →これも #D1592 の修正で再現しなくなった。LINES/COLUMNS によりレイアウト
+      再構成が毎回走っていたという事なのだろうか。何れにしても空コマンド行によ
+      る改行で status line を出した儘にしているかどうかだけ、実装について確認す
+      るのが良い。
+
+      →確認した。textarea (panel#0) の再描画しかしていないので statusline 等に
+      ついてはその儘の筈。但しプロンプトの再計算が入るので結局再描画はされる様
+      な気もしないでもない。うまく cache が働いていれば dirty にもならずに再描
+      画もなくそのまま前の表示が使われるのではないかという気がする。
+
 2021-06-07
 
   * prompt: [最適化] 依存関係追跡の整理・最適化 [#D1591]

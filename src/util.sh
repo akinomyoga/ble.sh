@@ -5111,6 +5111,10 @@ function ble/term/visible-bell {
   local message=$1 opts=$2
   message=${message:-$bleopt_vbell_default_message}
 
+  # Note: 1行しかない時は表示しない。0行の時は全てログに行くので出力する。空文
+  # 字列の時は設定されていないだけなので表示する。
+  ((LINES==1)) && return 0
+
   if ble/is-function ble/canvas/trace-text; then
     ble/term/visible-bell:canvas/init "$message"
   else

@@ -1470,19 +1470,25 @@ function ble/history/set-index {
   ((${_ble_history_prefix:-_ble}_history_index=_ble_history_INDEX))
 }
 function ble/history/get-entry {
-  ble/history/initialize
   local __var=entry
   [[ $1 == -v ]] && { __var=$2; shift 2; }
-  builtin eval "$__var=\${${_ble_history_prefix:-_ble}_history[\$1]}"
+  if [[ $_ble_history_prefix$_ble_history_load_done ]]; then
+    builtin eval -- "$__var=\${${_ble_history_prefix:-_ble}_history[\$1]}"
+  else
+    builtin eval -- "$__var="
+  fi
 }
-function ble/history/get-editted-entry {
-  ble/history/initialize
+function ble/history/get-edited-entry {
   local __var=entry
   [[ $1 == -v ]] && { __var=$2; shift 2; }
-  builtin eval "$__var=\${${_ble_history_prefix:-_ble}_history_edit[\$1]}"
+  if [[ $_ble_history_prefix$_ble_history_load_done ]]; then
+    builtin eval -- "$__var=\${${_ble_history_prefix:-_ble}_history_edit[\$1]}"
+  else
+    builtin eval -- "$__var=\$_ble_edit_str"
+  fi
 }
-## @fn ble/history/set-editted-entry index str
-function ble/history/set-editted-entry {
+## @fn ble/history/set-edited-entry index str
+function ble/history/set-edited-entry {
   ble/history/initialize
   local index=$1 str=$2
   local code='

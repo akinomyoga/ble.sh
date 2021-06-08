@@ -5767,7 +5767,7 @@ function ble/complete/auto-complete/.search-history-heavy {
   _ble_complete_ac_history_needle=$needle
   ((ext)) && return "$ext"
 
-  ble/history/get-editted-entry -v ret "$index"
+  ble/history/get-edited-entry -v ret "$index"
   return 0
 }
 
@@ -6553,7 +6553,7 @@ function ble/complete/dabbrev/.search.fib {
   local dabbrev_pos=$pos
   local dabbrev_current_match=${_ble_edit_str:_ble_edit_mark:_ble_edit_ind-_ble_edit_mark}
 
-  local line; ble/history/get-editted-entry -v line "$index"
+  local line; ble/history/get-edited-entry -v line "$index"
   if ! ble/complete/dabbrev/search-in-history-entry "$line" "$index"; then
     ((index--,dabbrev_pos=0))
 
