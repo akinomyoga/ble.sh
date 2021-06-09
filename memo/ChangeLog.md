@@ -135,6 +135,7 @@
 - syntax: fix a bug that argument completion is attempted in nested commands (reported by huresche) `#D1579` 301d40f
 - edit (brackated-paste): fix incomplete `CR => LF` conversion (reported by alborotogarcia) `#D1587` 8d6da16
 - main (adjust-bash-options): adjust `LC_COLLATE=C` `#D1588` e87ac21
+- highlight (`layer:region`): fix blocked lower-layer changes without selection changes `#D1596` 0000000
 
 ## Compatibility
 
