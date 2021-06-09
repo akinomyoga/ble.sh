@@ -88,10 +88,21 @@ function bleopt/.read-arguments {
             continue
           fi
         else
-          local ret
-          if bleopt/expand-variable-pattern "$var"; then
-            var=("${ret[@]}")
-          else
+          local ret; bleopt/expand-variable-pattern "$var"
+
+          # obsolete な物は除外
+          var=()
+          local v i=0
+          for v in "${ret[@]}"; do
+            ble/is-function "bleopt/obsolete:${v#bleopt_}" && continue
+            var[i++]=$v
+          done
+
+          # 表示目的で obsolete しかない時は obsolete でも表示
+          [[ ! $op && ${#var[@]} == 0 ]] && var=("${ret[@]}")
+
+          # 適した物が見つからない場合は失敗
+          if ((${#var[@]}==0)); then
             ble/util/print "bleopt: option \`${var#bleopt_}' not found" >&2
             flags=E$flags
             continue
@@ -640,21 +651,37 @@ function ble/array#filter {
     ARR=("${aARR[@]}")
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
+function ble/array#filter/not.predicate { ! "$_ble_local_pred" "$1"; }
+function ble/array#remove-if {
+  local _ble_local_pred=$2
+  ble/array#filter "$1" ble/array#filter/not.predicate
+}
 ## @fn ble/array#filter-by-regex arr regex
-function ble/array#filter-by-regex/.predicate { [[ $1 =~ $_ble_local_rex ]]; }
+function ble/array#filter/regex.predicate { [[ $1 =~ $_ble_local_rex ]]; }
 function ble/array#filter-by-regex {
   local _ble_local_rex=$2
-  ble/array#filter "$1" ble/array#filter-by-regex/.predicate
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
+  ble/array#filter "$1" ble/array#filter/regex.predicate
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
 }
-function ble/array#remove-by-regex/.predicate { ! [[ $1 =~ $_ble_local_rex ]]; }
 function ble/array#remove-by-regex {
   local _ble_local_rex=$2
-  ble/array#filter "$1" ble/array#remove-by-regex/.predicate
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
+  ble/array#remove-if "$1" ble/array#filter/regex.predicate
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
 }
-function ble/array#filter-by-glob/.predicate { [[ $1 == $_ble_local_glob ]]; }
+function ble/array#filter/glob.predicate { [[ $1 == $_ble_local_glob ]]; }
 function ble/array#filter-by-glob {
   local _ble_local_glob=$2
-  ble/array#filter "$1" ble/array#filter-by-glob/.predicate
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
+  ble/array#filter "$1" ble/array#filter/glob.predicate
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
+}
+function ble/array#remove-by-glob {
+  local _ble_local_glob=$2
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
+  ble/array#remove-if "$1" ble/array#filter/glob.predicate
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
 }
 ## @fn ble/array#remove arr element
 function ble/array#remove/.predicate { [[ $1 != "$_ble_local_value" ]]; }
@@ -1547,8 +1574,7 @@ function blehook/.print {
   local hookname
   for hookname; do
     ble/is-array "$hookname" || continue
-    [[ $flags == *a* || ${hookname#_ble_hook_h_} != *[a-z]* ]] &&
-      builtin eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
+    builtin eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
   done
   ble/util/put "$out"
 }
@@ -1652,6 +1678,7 @@ function blehook {
 
   if ((${#print[@]}==0&&${#process[@]}==0)); then
     print=("${!_ble_hook_h_@}")
+    [[ $flags == *a* ]] || ble/array#remove-by-glob print '_ble_hook_h_*[a-z]*'
   fi
 
   local proc ext=0

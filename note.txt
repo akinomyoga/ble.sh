@@ -1442,9 +1442,6 @@ bash_tips
 
 2021-05-29
 
-  * bleopt: wildcard を使った時に obsoleted な物も列挙されている
-    複数単語に展開された時にはフィルタする様にしたら良い。
-
   * syntax: 単語が sabbrev に一致する場合には着色するのが親切だ
 
     これは sabbrev に対する仕様拡張を行ってからでも遅くないのではないか。
@@ -4697,6 +4694,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-06-09
+
+  * 2021-05-29 bleopt: wildcard を使った時に obsoleted な物も列挙されている [#D1595]
+    複数単語に展開された時にはフィルタする様にしたら良い。
+
+  * blehook: -a を指定しないと直接 hook を指定しても表示されない [#D1594]
+
+    % blehook -a face_name による結果の表示も一緒に遅延されている気が
+    % する。というかそもそも blehook に遅延機能があったのだろうか。。
+    % そしてその理由は? うーん。見た感じは遅延機能等ない。と思ったが分
+    % かった。blehook 自体が faces にアクセスしようとして、それで初期
+    % 化が発生している。
 
   * color: initialize-faces の遅延に関する問題 (motivated by jmederosalvarado) [#D1593]
     https://github.com/akinomyoga/ble.sh/issues/96#issuecomment-813185300
