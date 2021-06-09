@@ -422,10 +422,12 @@
 ## aborted to avoid excessive processing time.  "complete_limit" is used for
 ## TAB completion.  When its value is empty, the size checks are disabled.
 ## "complete_limit_auto" is used for auto-completion.  When its value is empty,
-## the setting "complete_limit" is used instead.
+## the setting "complete_limit" is used instead. "complete_limit_auto_menu" is
+## used for auto-menu.
 
 #bleopt complete_limit=500
 #bleopt complete_limit_auto=200
+#bleopt complete_limit_auto_menu=100
 
 
 ## The following setting controls the timeout for the pathname expansions

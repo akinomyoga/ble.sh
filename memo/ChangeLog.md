@@ -61,6 +61,7 @@
   - progcomp: fix a bug that command names may stray into completer function names `#D1611` 1f2d45f
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
+- complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 0000000
  
 ## Changes
 

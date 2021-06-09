@@ -1305,15 +1305,21 @@ function ble/complete/action:variable/init-menu-item {
 ##   @var[in,out] cand_limit_reached
 ##
 function ble/complete/source/test-limit {
-  local value=$1
-  if [[ :$comp_type: == *:auto:* && $bleopt_complete_limit_auto ]]; then
-    local limit=$bleopt_complete_limit_auto
+  local value=$1 limit=
+  if [[ :$comp_type: == *:auto_menu:* && $bleopt_complete_limit_auto_menu ]]; then
+    limit=$bleopt_complete_limit_auto_menu
+  elif [[ :$comp_type: == *:auto:* && $bleopt_complete_limit_auto ]]; then
+    limit=$bleopt_complete_limit_auto
   else
-    local limit=$bleopt_complete_limit
+    limit=$bleopt_complete_limit
   fi
 
   if [[ $limit && value -gt limit ]]; then
     cand_limit_reached=1
+
+    # Note: #D1618 自動候補一覧表示で失敗した時は不完全なリストが生成
+    #   されるのを防ぐ為に補完全体をキャンセルする。
+    [[ :$comp_type: == *:auto_menu: ]] && cand_limit_reached=cancel
     return 1
   else
     return 0
@@ -4549,6 +4555,7 @@ function ble/complete/generate-candidates-from-opts {
 
   # 補完源の生成
   comp_type=
+  [[ :$opts: == *:auto_menu:* ]] && comp_type=auto_menu
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   local sources
   ble/complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return "$?"
@@ -5228,6 +5235,11 @@ _ble_complete_state=
 ##     no-bell
 ##       候補が存在しなかった時のベルを発生させません。
 ##
+##     auto_menu
+##       auto-menu 経由で呼び出されている事を指定します。
+##       補完候補数の制限に complete_limit_auto_menu を使います。
+##       一部の補完源で complete_limit に達した時に補完全体を中止します。
+##
 function ble/widget/complete {
   local opts=$1
   ble-edit/content/clear-arg
@@ -5280,6 +5292,10 @@ function ble/widget/complete {
     if [[ $cand_limit_reached ]]; then
       [[ :$opts: != *:no-bell:* ]] &&
         ble/widget/.bell 'complete: limit reached'
+      if [[ $cand_limit_reached == cancel ]]; then
+        ble/edit/info/clear
+        return 1
+      fi
     fi
     if ((ext!=0||cand_count==0)); then
       [[ :$opts: != *:no-bell:* && ! $cand_limit_reached ]] &&
@@ -5950,7 +5966,7 @@ function ble/complete/auto-menu.idle {
   local until=$((_idle_clock_start+bleopt_complete_auto_menu))
   ble/util/idle.sleep-until "$until" checked && return 0
 
-  ble/widget/complete show_menu:no-empty:no-bell
+  ble/widget/complete auto_menu:show_menu:no-empty:no-bell
 }
 
 ble/function#try ble/util/idle.push-background ble/complete/auto-complete.idle
