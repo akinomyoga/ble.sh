@@ -2498,8 +2498,9 @@ if ((_ble_bash>=40000)); then
 
     ble/util/idle.clock/.initialize
     ble/util/idle.clock/.restart
-
-    local _idle_start=$_ble_util_idle_sclock
+    ble/util/idle.clock
+    local _idle_clock_start=$ret
+    local _idle_sclock_start=$_ble_util_idle_sclock
     local _idle_is_first=1
     local _idle_processed=
     while :; do
@@ -2548,7 +2549,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle.do/.call-task {
     local _command=$1
     local ble_util_idle_status=
-    local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
+    local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_sclock_start))
     builtin eval "$_command"; local ext=$?
     if ((ext==148)); then
       _ble_util_idle_task[_idle_key]=R:$_command
@@ -2627,7 +2628,7 @@ if ((_ble_bash>=40000)); then
     do
       # Note: 変数 ble_util_idle_elapsed は
       #   $((bleopt_idle_interval)) の評価時に参照される。
-      local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
+      local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_sclock_start))
       local interval=$((bleopt_idle_interval))
 
       if [[ ! $sleep_amount ]] || ((interval<sleep_amount)); then
@@ -2655,36 +2656,53 @@ if ((_ble_bash>=40000)); then
     [[ ${ble_util_idle_status+set} ]]
   }
   function ble/util/idle.sleep {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     local ret; ble/util/idle.clock
     ble_util_idle_status=S$((ret+$1))
   }
   function ble/util/idle.isleep {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=W$((_ble_util_idle_sclock+$1))
   }
+  ## @fn ble/util/idle.sleep-until clock opts
+  function ble/util/idle.sleep-until {
+    [[ ${ble_util_idle_status+set} ]] || return 2
+    if [[ :$2: == *:checked:* ]]; then
+      local ret; ble/util/idle.clock
+      (($1>ret)) || return 1
+    fi
+    ble_util_idle_status=S$1
+  }
+  ## @fn ble/util/idle.isleep-until sclock opts
+  function ble/util/idle.isleep-until {
+    [[ ${ble_util_idle_status+set} ]] || return 2
+    if [[ :$2: == *:checked:* ]]; then
+      (($1>_ble_util_idle_sclock)) || return 1
+    fi
+    ble_util_idle_status=W$1
+  }
   function ble/util/idle.wait-user-input {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=I
   }
   function ble/util/idle.wait-process {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=P$1
   }
   function ble/util/idle.wait-file-content {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=F$1
   }
   function ble/util/idle.wait-filename {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=E$1
   }
   function ble/util/idle.wait-condition {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=C$1
   }
   function ble/util/idle.continue {
-    [[ ${ble_util_idle_status+set} ]] || return 1
+    [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=R
   }
 
