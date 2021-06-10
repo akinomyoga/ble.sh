@@ -5,7 +5,7 @@
 # * "g:airline_mode_map" is partially supported
 #
 #   Unsupported mappings
-#   
+#
 #   'ic'    : 'INSERT COMPL',
 #   'ix'    : 'INSERT COMPL',
 #   'multi' : 'MULTI'
@@ -119,7 +119,7 @@ ble/lib/vim-airline/initialize-faces
 
 function ble/lib/vim-airline/convert-theme/.to-color256 {
   local R=$((16#${1:1:2}))
-  local G=$((16#${1:3:2})) 
+  local G=$((16#${1:3:2}))
   local B=$((16#${1:5:2}))
   ble/color/convert-rgb24-to-color256 "$R" "$G" "$B"
 }
@@ -255,7 +255,8 @@ function ble/prompt/backslash:lib/vim-airline/gitstatus {
     else
       ble/prompt/print '$bleopt_vim_airline_symbol_branch???????'
     fi
-    git diff --quiet || ble/prompt/print "$bleopt_vim_airline_symbol_dirty"
+    ble/contrib/prompt-git/is-dirty &&
+      ble/prompt/print "$bleopt_vim_airline_symbol_dirty"
   fi
 }
 
