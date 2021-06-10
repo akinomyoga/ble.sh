@@ -2354,6 +2354,14 @@ function ble/util/clock/.initialize {
       local now; printf -v now '%(%s)T'
       ((ret=(now-_ble_util_clock_base)*1000))
     }
+  elif [[ $SECONDS && ! ${SECONDS//[0-9]} ]]; then
+    _ble_util_clock_base=$SECONDS
+    _ble_util_clock_reso=1000
+    _ble_util_clock_type=SECONDS
+    function ble/util/clock {
+      local now=$SECONDS
+      ((ret=(now-_ble_util_clock_base)*1000))
+    }
   else
     ble/util/strftime -v _ble_util_clock_base '%s'
     _ble_util_clock_reso=1000
@@ -2483,7 +2491,7 @@ if ((_ble_bash>=40000)); then
   ##
   _ble_util_idle_task=()
 
-  ## 関数 ble/util/idle.do
+  ## @fn ble/util/idle.do
   ##   待機状態の処理を開始します。
   ##
   ##   @exit
@@ -2652,6 +2660,16 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle.push-background {
     ble/util/idle.push/.impl 10000 "R:$*"
   }
+  function ble/util/idle.cancel {
+    local command=$1 i removed=
+    for i in "${!_ble_util_idle_task[@]}"; do
+      [[ ${_ble_util_idle_task[i]} == *:"$command" ]] &&
+        unset -v '_ble_util_idle_task[i]' &&
+        removed=1
+    done
+    [[ $removed ]]
+  }
+
   function ble/util/is-running-in-idle {
     [[ ${ble_util_idle_status+set} ]]
   }
