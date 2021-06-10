@@ -5946,11 +5946,8 @@ function ble/complete/auto-menu.idle {
   [[ $_ble_edit_str ]] || return 0
 
   # bleopt_complete_auto_delay だけ経過してから処理
-  local rest_delay=$((bleopt_complete_auto_menu-ble_util_idle_elapsed))
-  if ((rest_delay>0)); then
-    ble/util/idle.sleep "$rest_delay"
-    return 0
-  fi
+  local until=$((_idle_clock_start+bleopt_complete_auto_menu))
+  ble/util/idle.sleep-until "$until" checked && return 0
 
   ble/widget/complete show_menu:no-empty:no-bell
 }
