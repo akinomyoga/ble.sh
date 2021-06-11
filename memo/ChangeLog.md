@@ -29,6 +29,7 @@
 - syntax: properly support case patterns `#D1474` `#D1475` `#D1476` 64b55b7
 - keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
 - prompt: support multiline `prompt_rps1` `#D1502` 4fa139a
+  - canvas: fix wrong coordinate calculation on linefolding `#D1602` 0000000
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795

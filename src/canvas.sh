@@ -760,7 +760,7 @@ function ble/canvas/trace/.implicit-move {
       # 一杯になると仮定しているが端末による]
       ((y++,x=w<xlimit?w:xlimit))
     else
-      ((x+=w,y+=x/cols,x%=cols,
+      ((y+=x/cols,x%=cols,
         xenl&&x==0&&(y--,x=cols)))
     fi
     if [[ $flag_bbox ]]; then

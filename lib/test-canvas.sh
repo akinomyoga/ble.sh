@@ -35,7 +35,7 @@ function ble/test:canvas/trace.contra {
 #------------------------------------------------------------------------------
 # from lib/test-canvas.sh
 
-ble/test/start-section 'ble/canvas/trace (relative:confine:measure-bbox)' 12
+ble/test/start-section 'ble/canvas/trace (relative:confine:measure-bbox)' 17
 
 # test1
 
@@ -98,6 +98,14 @@ EOF
 [[ $_ble_test_canvas_contra ]] &&
   ble/test 'echo "$x1-$x2:$y1-$y2"' stdout='0-10:-1-1'
 
+(
+  LINES=10 COLUMNS=10 _ble_term_xenl=1
+  ble/test 'x=0 y=0; ble/canvas/trace "HelloWorld"; ret=$x,$y' ret=10,0
+  ble/test 'x=0 y=0; ble/canvas/trace "HelloWorldH"; ret=$x,$y' ret=1,1
+  ble/test 'x=0 y=0; ble/canvas/trace "HelloWorldHello"; ret=$x,$y' ret=5,1
+  ble/test 'x=0 y=0; ble/canvas/trace "HelloWorldHelloWorldHello"; ret=$x,$y' ret=5,2
+  ble/test 'x=0 y=0; ble/canvas/trace "HelloWorldHelloWorldHelloWorldHello"; ret=$x,$y' ret=5,3
+)
 
 #------------------------------------------------------------------------------
 # from test/check-trace.sh
