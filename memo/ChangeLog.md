@@ -47,8 +47,8 @@
   - prompt: preserve `LINES` and `COLUMNS` for custom sequences `#D1592` 040016d
   - color: fix the face initialiation order for uses in prompts (motivated by jmederosalvarado) `#D1593` 321371f
   - prompt (`contrib/prompt-git`): support dirty checking `#D1601` b2713d9
-  - prompt (`contrib/prompt-git`): do not use `ble/util/idle` in Bash 3 `#D1606` 0000000
-  - util (`bleopt`): add new option `-I` to reinitialize user settings on reload `#D1607` 0000000
+  - prompt (`contrib/prompt-git`): do not use `ble/util/idle` in Bash 3 `#D1606` 959cf27
+  - util (`bleopt`): add new option `-I` to reinitialize user settings on reload `#D1607` 959cf27
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
@@ -56,11 +56,11 @@
   - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` bb53271
   - util (`blehook`): show explicitly specified internal hooks `#D1594` f4312df
   - util (`bleopt`): do no select obsoleted options by wildcards `#D1595` f4312df
-  - util (`bleopt`): fix error messages for unknown options `#D1610` 0000000
+  - util (`bleopt`): fix error messages for unknown options `#D1610` 66df3e2
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
-  - progcomp: fix a bug that command names may stray into completer function names `#D1611` 0000000
+  - progcomp: fix a bug that command names may stray into completer function names `#D1611` 1f2d45f
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
-- prompt: support a new backslash sequence `\g{...}` `#D1609` 0000000
+- prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
  
 ## Changes
 
@@ -91,7 +91,7 @@
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
 - keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 11ac106
-- main: show notifications against debug versions of Bash `#D1612` 0000000
+- main: show notifications against debug versions of Bash `#D1612` 8f974aa
 
 ## Fixes
 
@@ -136,10 +136,10 @@
 - main (adjust-bash-options): adjust `LC_COLLATE=C` `#D1588` e87ac21
 - highlight (`layer:region`): fix blocked lower-layer changes without selection changes `#D1596` 5ede3c6
 - complete (`auto-menu`): fix sleep loops by clock/sclock difference `#D1597` 53dd018
-- history: fix a bug that history data is cleared on `history -r` `#D1605` 0000000
-- util (`ble/string#quote-command`): remove redundant trailing spaces for single word command `#D1613` 0000000
-- util: work around the Bash 3 bug of array assignments with `^A` and `^?` in Bash 3.2 `#D1614` 0000000
-- benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` 0000000
+- history: fix a bug that history data is cleared on `history -r` `#D1605` 72c274e
+- util (`ble/string#quote-command`): remove redundant trailing spaces for single word command `#D1613` 94556b4
+- util: work around the Bash 3 bug of array assignments with `^A` and `^?` in Bash 3.2 `#D1614` b9f7611
+- benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` a034c91
 
 ## Optimization
 
@@ -152,11 +152,12 @@
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 - complete (`ble/complete/source:file`): remove slow old codes (reported by timjrd) `#D1512` e5be0c1
 - syntax (`ble/syntax:bash/simple-word/eval`): optimize large array passing (motivated by timjrd) `#D1522` c89aa23
-  - syntax (`ble/syntax:bash/simple-word/eval`): use `mapfile -d ''` for Bash 5.2 `#D1604` 0000000
+  - syntax (`ble/syntax:bash/simple-word/eval`): use `mapfile -d ''` for Bash 5.2 `#D1604` 72c274e
 - main: prefer `nawk` over `mawk` and `gawk` `#D1523` `#D1524` c89aa23
   - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
   - util (`ble/util/assign`): work around subshell conflicts `#D1578` 6e4bb12
-- history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 0000000
+- history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
+- prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 0000000
 
 ## Compatibility
 

@@ -820,17 +820,19 @@ function ble/prompt/backslash:q {
     local rematch=$BASH_REMATCH
     ((i+=${#rematch}))
     local word; ble/string#split-words word "${BASH_REMATCH[1]}"
-    if [[ ! $word ]]; then
-      ble/util/print "ble/prompt: invalid sequence \\q$rematch" >&2
-      return 2
-    elif ! ble/is-function ble/prompt/backslash:"$word"; then
-      ble/util/print "ble/propmt: undefined named sequence \\q{$word}" >&2
-      return 2
-    else
+    if [[ $word ]] && ble/is-function ble/prompt/backslash:"$word"; then
       ble/util/joblist.check
       ble/prompt/backslash:"${word[@]}"; local ext=$?
       ble/util/joblist.check ignore-volatile-jobs
       return "$?"
+    else
+      if [[ ! $word ]]; then
+        ble/term/visible-bell "ble/prompt: invalid sequence \\q$rematch"
+      elif ! ble/is-function ble/prompt/backslash:"$word"; then
+        ble/term/visible-bell "ble/propmt: undefined named sequence \\q{$word}"
+      fi
+      ble/prompt/print "\\q$BASH_REMATCH"
+      return 2
     fi
   else
     ble/prompt/print "\\$c"
@@ -1079,12 +1081,37 @@ function ble/prompt/.instantiate {
   local ps=$1 opts=$2 x0=$3 y0=$4 g0=$5 lc0=$6 lg0=$7 esc0=$8 trace_hash0=$9
   [[ ! $ps ]] && return 0
 
-  # 設定
-  local prompt_noesc=
-  shopt -q promptvars &>/dev/null || prompt_noesc=1
+  local expanded=
+  local chars_safe_esc='][0-7aenrdtAT@DhHjlsuvV!$\wW'
+  if ((_ble_bash>=40400)) && [[ $ps != *'\'[!"$chars_safe_esc"]* ]]; then
+    [[ $ps == *'\'[wW]* ]] && ble/prompt/unit/add-hash '$PWD'
+    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+                builtin eval 'expanded=${ps@P}'
 
-  # 1. PS1 に含まれる \c を処理する
-  local -a DRAW_BUFF=()
+  else
+    # 展開設定
+    local prompt_noesc=
+    shopt -q promptvars &>/dev/null || prompt_noesc=1
+
+    # 1. PS1 に含まれる \c を処理する
+    local -a DRAW_BUFF=()
+    ble/prompt/process-prompt-string "$ps"
+    local processed; ble/canvas/sflush.draw -v processed
+
+    # 2. PS1 に含まれる \\ や " をエスケープし、
+    #   eval して各種シェル展開を実行する。
+    if [[ ! $prompt_noesc ]]; then
+      local ret
+      ble/prompt/.escape "$processed"; local escaped=$ret
+      expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
+      ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
+      BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+                  builtin eval "expanded=\"$escaped\""
+    else
+      expanded=$processed
+    fi
+  fi
+
   if [[ :$opts: == *:show-mode-in-prompt:* ]]; then
     if ble/util/test-rl-variable show-mode-in-prompt; then
       local keymap; ble/prompt/.get-keymap-for-current-mode
@@ -1095,23 +1122,8 @@ function ble/prompt/.instantiate {
       (vi_[noxs]map) ble/util/read-rl-variable vi-cmd-mode-string ;;
       (emacs) ble/util/read-rl-variable emacs-mode-string ;;
       esac
-      [[ $ret ]] && ble/prompt/print "$ret"
+      [[ $ret ]] && expanded=$expanded$ret
     fi
-  fi
-  ble/prompt/process-prompt-string "$ps"
-  local processed; ble/canvas/sflush.draw -v processed
-
-  # 2. PS1 に含まれる \\ や " をエスケープし、
-  #   eval して各種シェル展開を実行する。
-  if [[ ! $prompt_noesc ]]; then
-    local ret
-    ble/prompt/.escape "$processed"; local escaped=$ret
-    local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
-    ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
-      builtin eval "expanded=\"$escaped\""
-  else
-    local expanded=$processed
   fi
 
   # 3. 端末への出力を構成する
