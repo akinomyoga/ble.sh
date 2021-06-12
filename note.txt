@@ -4683,6 +4683,12 @@ bash_tips
 
 2021-06-12
 
+  * main: DEBUG version の bash で警告を表示する [#D1612]
+
+    relstatus が alp*|bet*|dev*|rc*|releng*|maint* の時にはロード時に "遅い" と
+    いう事を警告するべきではないか。同時に wiki か README にも注意書きを書く必
+    要はあるだろうか。
+
   * complete: "complete -p" 解析の修正 + 細かい修正 [#D1611]
 
     complete に対する細かい修正が溜まっているのでいい加減に push する。
