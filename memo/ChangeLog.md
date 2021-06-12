@@ -139,6 +139,7 @@
 - history: fix a bug that history data is cleared on `history -r` `#D1605` 0000000
 - util (`ble/string#quote-command`): remove redundant trailing spaces for single word command `#D1613` 0000000
 - util: work around the Bash 3 bug of array assignments with `^A` and `^?` in Bash 3.2 `#D1614` 0000000
+- benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` 0000000
 
 ## Optimization
 
