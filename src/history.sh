@@ -75,6 +75,7 @@ if ((_ble_bash>=40000)); then
   # history > tmp
   ## @fn ble/history:bash/load/.background-initialize
   ##   @var[in] arg_count
+  ##   @var[in] load_strategy
   function ble/history:bash/load/.background-initialize {
     if ble/builtin/history/is-empty; then
       # Note: rcfile から呼び出すと history が未ロードなのでロードする。
@@ -110,40 +111,158 @@ if ((_ble_bash>=40000)); then
     fi
     local HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
-    local opt_cygwin=; [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]] && opt_cygwin=1
+
+    local -x opt_source= opt_null=
+    if [[ $load_strategy == source ]]; then
+      opt_source=1
+    elif [[ $load_strategy == mapfile ]]; then
+      opt_null=1
+    fi
 
     local apos=\'
     # 482ms for 37002 entries
-    builtin history $arg_count | ble/bin/awk -v apos="$apos" -v opt_cygwin="$opt_cygwin" '
+    builtin history $arg_count | ble/bin/awk -v apos="$apos" -v arg_offset="$arg_offset" -v _ble_bash="$_ble_bash" '
+      #------------------------------------------------------------------------
+      # util (from ble/util/writearay)
+
+      function s2i_initialize() {
+        for (i = 0; i < 16; i++)
+          xdigit2int[sprintf("%x", i)] = i;
+        for (i = 10; i < 16; i++)
+          xdigit2int[sprintf("%X", i)] = i;
+      }
+      function s2i(s, base, _, i, n, r) {
+        if (!base) base = 10;
+        r = 0;
+        n = length(s);
+        for (i = 1; i <= n; i++)
+          r = r * base + xdigit2int[substr(s, i, 1)];
+        return r;
+      }
+
+      # ENCODING: UTF-8
+      function c2s_initialize(_, i) {
+        if (sprintf("%c", 945) == "α") {
+          C2S_UNICODE_PRINTF_C = 1;
+        } else {
+          C2S_UNICODE_PRINTF_C = 0;
+          for (i = 1; i <= 255; i++)
+            c2s_byte2char[i] = sprintf("%c", i);
+        }
+      }
+      function c2s(code, _, leadbyte_mark, leadbyte_sup, tail) {
+        if (C2S_UNICODE_PRINTF_C)
+          return sprintf("%c", code);
+
+        leadbyte_sup = 128; # 0x80
+        leadbyte_mark = 0;
+        tail = "";
+        while (leadbyte_sup && code >= leadbyte_sup) {
+          leadbyte_sup /= 2;
+          leadbyte_mark = leadbyte_mark ? leadbyte_mark / 2 : 65472; # 0xFFC0
+          tail = c2s_byte2char[128 + int(code % 64)] tail;
+          code = int(code / 64);
+        }
+        return c2s_byte2char[(leadbyte_mark + code) % 256] tail;
+      }
+
+      function es_initialize(_, c) {
+        es_control_chars["a"] = "\a";
+        es_control_chars["b"] = "\b";
+        es_control_chars["t"] = "\t";
+        es_control_chars["n"] = "\n";
+        es_control_chars["v"] = "\v";
+        es_control_chars["f"] = "\f";
+        es_control_chars["r"] = "\r";
+        es_control_chars["e"] = "\033";
+        es_control_chars["E"] = "\033";
+        es_control_chars["?"] = "?";
+        es_control_chars[apos] = apos;
+        es_control_chars["\""] = "\"";
+        es_control_chars["\\"] = "\\";
+
+        for (c = 32; c < 127; c++)
+          es_s2c[sprintf("%c", c)] = c;
+      }
+      function es_unescape(s, _, head, c) {
+        head = "";
+        while (match(s, /^[^\\]*\\/)) {
+          head = head substr(s, 1, RLENGTH - 1);
+          s = substr(s, RLENGTH + 1);
+          if ((c = es_control_chars[substr(s, 1, 1)])) {
+            head = head c;
+            s = substr(s, 2);
+          } else if (match(s, /^[0-9]([0-9][0-9]?)?/)) {
+            head = head c2s(s2i(substr(s, 1, RLENGTH), 8) % 256);
+            s = substr(s, RLENGTH + 1);
+          } else if (match(s, /^x[0-9a-fA-F][0-9a-fA-F]?/)) {
+            head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+            s = substr(s, RLENGTH + 1);
+          } else if (match(s, /^U[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
+            # \\U[0-9]{5,8}
+            head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+            s = substr(s, RLENGTH + 1);
+          } else if (match(s, /^[uU][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
+            # \\[uU][0-9]{1,4}
+            head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+            s = substr(s, RLENGTH + 1);
+          } else if (match(s, /^c[ -~]/)) {
+#%          # \\c[ -~] (非ASCIIは未対応)
+            c = es_s2c[substr(s, 2, 1)];
+            head = head c2s(_ble_bash >= 40400 && c == 63 ? 127 : c % 32);
+            s = substr(s, 3);
+          } else {
+            head = head "\\";
+          }
+        }
+        return head s;
+      }
+
+      #------------------------------------------------------------------------
+
       BEGIN {
-        n = 0;
-        hindex = 0;
+        s2i_initialize();
+        c2s_initialize();
+        es_initialize();
+
         INDEX_FILE = ENVIRON["INDEX_FILE"];
-        printf("") > INDEX_FILE; # create file
-        if (opt_cygwin) print "_ble_history=(";
+        opt_null = ENVIRON["opt_null"];
+        opt_source = ENVIRON["opt_source"];
+        if (!opt_null && !opt_source)
+          printf("") > INDEX_FILE; # create file
+
+        n = 0;
+        hindex = arg_offset;
       }
 
       function flush_line() {
         if (n < 1) return;
 
-        if (n == 1) {
+        if (opt_null) {
           if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
-            print hindex > INDEX_FILE;
-          hindex++;
-        } else {
-          gsub(/['$apos'\\]/, "\\\\&", t);
-          gsub(/\n/, "\\n", t);
-          print hindex > INDEX_FILE;
-          t = "eval -- $" apos t apos;
-          hindex++;
-        }
+            t = es_unescape(substr(t, 11, length(t) - 11));
+          printf("%s%c", t, 0);
 
-        if (opt_cygwin) {
+        } else if (opt_source) {
+          if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+            t = es_unescape(substr(t, 11, length(t) - 11));
           gsub(/'$apos'/, "'$apos'\\'$apos$apos'", t);
-          t = apos t apos;
+          print "_ble_history[" hindex "]=" apos t apos;
+
+        } else {
+          if (n == 1) {
+            if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+              print hindex > INDEX_FILE;
+          } else {
+            gsub(/['$apos'\\]/, "\\\\&", t);
+            gsub(/\n/, "\\n", t);
+            print hindex > INDEX_FILE;
+            t = "eval -- $" apos t apos;
+          }
+          print t;
         }
 
-        print t;
+        hindex++;
         n = 0;
         t = "";
       }
@@ -154,10 +273,7 @@ if ((_ble_bash>=40000)); then
         t = ++n == 1 ? $0 : t "\n" $0;
       }
 
-      END {
-        flush_line();
-        if (opt_cygwin) print ")";
-      }
+      END { flush_line(); }
     ' >| "$history_tmpfile.part"
     ble/bin/mv -f "$history_tmpfile.part" "$history_tmpfile"
   }
@@ -168,21 +284,22 @@ if ((_ble_bash>=40000)); then
   ##       非同期で読み取ります。
   ##     append
   ##       現在読み込み済みの履歴情報に追加します。
-  ##     offset=NUMBER
-  ##       _ble_history 配列の途中から書き込みます。
   ##     count=NUMBER
   ##       最近の NUMBER 項目だけ読み取ります。
   function ble/history:bash/load {
     local opts=$1
     local opt_async=; [[ :$opts: == *:async:* ]] && opt_async=1
-    local opt_cygwin=; [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]] && opt_cygwin=1
+
+    local load_strategy=mapfile
+    if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
+      load_strategy=source
+    elif ((_ble_bash<50200)); then
+      load_strategy=nlfix
+    fi
 
     local arg_count= arg_offset=0
-    if [[ :$opts: == *:append:* ]]; then
+    [[ :$opts: == *:append:* ]] &&
       arg_offset=${#_ble_history[@]}
-    elif local rex=':offset=([0-9]+):'; [[ :$opts: =~ $rex ]]; then
-      arg_offset=${BASH_REMATCH[1]}
-    fi
     local rex=':count=([0-9]+):'; [[ :$opts: =~ $rex ]] && arg_count=${BASH_REMATCH[1]}
 
     local history_tmpfile=$_ble_base_run/$$.history.load
@@ -236,30 +353,42 @@ if ((_ble_bash>=40000)); then
 
       # 47ms _ble_history 初期化 (37000項目)
       (3) _ble_history_load_bgpid=
-          if [[ $opt_cygwin ]]; then
-            # 620ms Cygwin (99000項目) cf #D0701
+          ((arg_offset==0)) && _ble_history=()
+          if [[ $load_strategy == source ]]; then
+            # Cygwin #D0701 #D1605
+            #   620ms 99000項目 @ #D0701
             source "$history_tmpfile"
-          else
+          elif [[ $load_strategy == nlfix ]]; then
             builtin mapfile -O "$arg_offset" -t _ble_history < "$history_tmpfile"
+          else
+            builtin mapfile -O "$arg_offset" -t -d '' _ble_history < "$history_tmpfile"
           fi
           ((_ble_history_load_resume++)) ;;
 
       # 47ms _ble_history_edit 初期化 (37000項目)
-      (4) if [[ $opt_cygwin ]]; then
+      (4) ((arg_offset==0)) && _ble_history_edit=()
+          if [[ $load_strategy == source ]]; then
             # 504ms Cygwin (99000項目)
             _ble_history_edit=("${_ble_history[@]}")
-          else
+          elif [[ $load_strategy == nlfix ]]; then
             builtin mapfile -O "$arg_offset" -t _ble_history_edit < "$history_tmpfile"
+          else
+            builtin mapfile -O "$arg_offset" -t -d '' _ble_history_edit < "$history_tmpfile"
           fi
           : >| "$history_tmpfile"
-          ((_ble_history_load_resume++)) ;;
+
+          if [[ $load_strategy != nlfix ]]; then
+            ((_ble_history_load_resume+=3))
+            return 0
+          else
+            ((_ble_history_load_resume++))
+          fi ;;
 
       # 11ms 複数行履歴修正 (107/37000項目)
       (5) local -a indices_to_fix
           ble/util/mapfile indices_to_fix < "$history_indfile"
           local i rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
           for i in "${indices_to_fix[@]}"; do
-            ((i+=arg_offset))
             [[ ${_ble_history[i]} =~ $rex ]] &&
               builtin eval "_ble_history[i]=${_ble_history[i]:8}"
           done
@@ -270,13 +399,12 @@ if ((_ble_bash>=40000)); then
           [[ ${indices_to_fix+set} ]] ||
             ble/util/mapfile indices_to_fix < "$history_indfile"
           for i in "${indices_to_fix[@]}"; do
-            ((i+=arg_offset))
             [[ ${_ble_history_edit[i]} =~ $rex ]] &&
               builtin eval "_ble_history_edit[i]=${_ble_history_edit[i]:8}"
           done
+          ((_ble_history_load_resume++)) ;;
 
-          [[ $opt_async ]] || blehook/invoke history_message
-
+      (7) [[ $opt_async ]] || blehook/invoke history_message
           ((_ble_history_load_resume++))
           return 0 ;;
 

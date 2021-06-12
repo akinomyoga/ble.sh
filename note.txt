@@ -1342,9 +1342,9 @@ bash_tips
     builtin false || true # OK
     builtine eval false || true # 駄目
 
-2021-05-20
+2021-05-08
 
-  * grc: -F を指定したら正規表現の種類が競合しているとのエラーになる
+  * bash: Cygwin でも mapfile/read で unbuffered read に変更できないだろうか。
 
 2021-05-06
 
@@ -1412,15 +1412,27 @@ bash_tips
       >     new_var->assign_func = old_var->assign_func;
       >   }
 
+    2021-06-09 SECONDS も影響を受けるだろうか。
+
+    より現実的な例として以下の様な場合を考える事ができる。
+
+    evaluate_prompt() {
+      local BASH_COMMAND=$(HISTTIMEFORMAT=x history 1 | sed '1s/^[[:space:]0-9]*x//')
+      result=${PS1@P}
+    }
+
+    Note: 実は上記の BASH_COMMAND 抽出方法は正確ではない。複数コマンドがある場
+    合、本来 BASH_COMMAND は一番最後のコマンドだけを含む。また、HISTCONTROL 等
+    によって履歴にコマンドが登録されなかった場合にも結果がずれる事になる。例示
+    するならば具体的に結果を無理に模倣しようとせずに、何か適当に内容を書く事に
+    するのが良い気がする。例えば、
+
+    evaluate_prompt() {
+      local BASH_COMMAND='echo "Hello, world!"'
+      result=${PS1@P}
+    }
+
 2021-05-04
-
-  * mapfile -d "" が buffered になったら
-    ble/syntax:bash/simple-word/eval/.print-result (lib/core-syntax.sh) を修正
-
-    2021-05-08 もう修正されている。然し、Cygwin に対しても動作を変更できないか
-    どうか尋ねてその上で改めて一緒に修正するのが良い気がする。
-
-    read -t ... についても同様に bash-5.2 以降で実装を切り替えて良い気がする。
 
   * empty associative array subscripts: これは結局返事がないが ToDo リストに入っ
     ているのかもしれない。或いはそうでもないのかもしれない。何れにしても、今少
@@ -4669,12 +4681,282 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-06-12
+
+  * history: cygwin に於いて arg_offset を処理していない気がするが大丈夫なのか [#D1605]
+
+    ble/builtin/history/.load-recent-entries から append:count=$delta という形
+    で呼び出されている。Cygwin の時でも同様である。count により追加分だけが
+    background で dump される様子である。arg_offset が使えない時には arg_count
+    をクリアする等の工夫もされていない。つまり、Cygwin 上では正しく動かないとい
+    う事? これを実装した時にどう考えていたのか後でログを確認する必要がある気が
+    する。或いはもしかして何か ToDo に項目が残っていたりするだろうか。
+
+    * 現在の実装について記録を確認
+
+      うーん。何か ToDo に残っていないか探してみたが cygwin/Cygwin　では引っかか
+      らない。次に arg_offset を導入した時のログを確認してみる。
+
+      a 1bfc8ebe 2019-07-09 16:42:26 +0900 が怪しい。うーん。当時の記録を確認して
+        みたが offset 等の実装の詳細に関する議論は全く残っていない。これは
+        history.sh を導入した時の議論であって、恐らくこの時に現在の実装の様に
+        history コマンドの模倣も実装してその過程で offset を導入した。
+
+      b と思ったが、その前の f204bc73 src/edit.sh 2019-06-27 20:38:34 +0900 の段
+        階で既に arg_offset は導入されていた様である。一応 offset がどうのこうの
+        という議論はあるみたいだが、これはまた別の機能の offset の話の様である。
+        この時の実装の arg_offset に関係する議論ではない様に見える。更に明示的に
+        arg_offset で検索をかけてみたが done.txt の中には何も残っていない様である。
+
+      c 更にその前の commit に行ってみたらもう arg_offset は残っていない。履歴の
+        読み取りも直接 mapfile を呼び出しているに留まっている。
+
+      うーん。或いは cygwin　では offset は使わない様になっていたという可能性はあ
+      るだろうか。何故 Cygwin の事を考えずに変更を行ったのかかなり理解に苦しむ。
+      うーん。それとも += を使う事にしていた可能性? うーん。然し再度確認してみて
+      もその様な雰囲気は見られない。
+
+    或いは実はちゃんと実装されていて Cygwin の時には arg_offset があっても問題
+    ない様になっている可能性? うーん。そんな風になっている雰囲気は見られないが。。
+    取り敢えず、Cygwin でもちゃんと途中からの追記になる様に修正する必要はあるだ
+    ろう。
+
+    * history: mapfile -O offset で読み取り始めると既存の項目がクリアされない様
+      だが良いのか? これは Cygwin での実装をどの様にするのかという事にも関連し
+      ている。
+
+      現在の実装を見ている感じだと offset は任意に指定できる訳ではなくて常に末
+      尾を指定する様になっている気がする。もしそれが正しいのだとしたら既存の項
+      目の truncate 等について悩む必要はないという事になる。
+
+      * ok: 一方で、_ble_history_edit に関しては一番最後に要素が追加されている
+        可能性があるという事を考えると、やはり truncate しておくべきの気がする。
+        と思ったが、_ble_history_edit に関しては Cygwin では単に _ble_history
+        からコピーしているだけなので気にしなくて良い。
+
+      * done: 末尾以外の offset を指定できる機能は削除するべきだろうか
+
+        別の問題として特に末尾以外の offset が指定された時に後ろに続いているデー
+        タを削除するべきか或いは保持するべきかという事。やはり offset を指定し
+        ている箇所がないか確認が必要な気がする。という訳で '\boffset=' で検索し
+        てみると。
+
+        > $ grc '\boffset=[^=]' --exclude=ext | grep -v 'local offset='
+        > ./keymap/vi.sh:2973:  local ind=${1:-$_ble_edit_ind} offset=$2
+        > ./lib/core-complete.sh:2221:  local word1 index=0 offset=0 sep=
+        > ./lib/core-complete.sh:4411:##     offset=NUMBER
+        > ./lib/test-edit.sh:11:  local _ble_edit_str=$1 index=$2 offset=$3
+        > ./lib/test-edit.sh:16:  local _ble_edit_str=$1 index=$2 offset=$3
+        > ./src/edit.sh:1880:  local index=${1:-$_ble_edit_ind} offset=${2:-0}
+        > ./src/edit.sh:1914:  local index=${1:-$_ble_edit_ind} offset=${2:-0}
+        > ./src/history.sh:283:  ##     offset=NUMBER
+        > ./src/history.sh:301:    elif local rex=':offset=([0-9]+):'; [[ :$opts: =~ $rex ]]; then
+        > ./src/util.sh:617:  # Note: Bash 4.3 以下では ${arr[@]:${2:-1}} が offset='${2'
+
+        やはり誰も　offset は指定していない。この機能は削除する。
+
+      結局 truncate はしなくて良いと判断する。何故なら offset が指定されるとし
+      ても常に末尾に対する追加だからである。
+
+    * 次の問題は Cygwin に於いてどの様に追記を実装するのかという事である。
+
+      % += を使うと 3.0 で使えない。然し ble/array#push は遅そうである。うーん。
+      % 複雑になるが opt_source と arg_offset に応じて分岐する事にする。という
+      % 訳で offset==0 の時には今まで通りにして、それ以外で bash-3.1 以上の場合
+      % は += に置き換える。bash-3.0 の場合には _ble_history[10000]='str' とい
+      % う具合に直接 index を指定して出力する事にする。
+      %
+      % →結局 arr=() arr+=() は遅いという事が分かったので、arr[ind]=str 一本で
+      % 実装する事にする。
+
+      ? 然し改めて思ったのだが、そもそも array=() や array+=() は arra[]='...'
+        よりも高速なのだろうか。実験してみる価値はある。
+
+        $ for a in {0..3}; do history; done | sed 's/'\''//g;s/^[[:space:]]*[0-9]\{1,\}[[:space:]]*//' > h.txt
+        $ < h.txt awk 'BEGIN{apos="'\''"}{print "_dbg_history[" NR - 1 "]=" apos $0 apos}' > a.txt
+        $ < h.txt awk 'BEGIN{apos="'\''";print "_dbg_history+=(";}{print apos $0 apos}END{print ")";}' > b.txt
+        $ time source a.txt
+        0.222
+        $ _dbg_history=(); time source b.txt
+        0.211
+
+        うーん。Cygwin で試してみた限りでは大して変わらない様に見える。若干
+        arr+=() の方が速いぐらいである。でも bash-3.0 では試していない。Cygwin
+        には bash 3.0..3.2 は入れていない。然し、一応 Linux で bash 3 でどちら
+        かが致命的に遅かったりという事がないかを確認する事にする。
+
+        $ bash -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.454s
+        $ bash -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        0.483s
+        $ bash-3.0 -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.886s
+        $ bash-3.0 -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        b.txt: line 1: syntax error near unexpected token `newline'
+        b.txt: line 1: `_dbg_history+=('
+        0.002s
+        [ble: exit 1]
+        $ bash-3.1 -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.770s
+        $ bash-3.1 -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        物凄く時間がかかるので中止した
+        $ bash-3.2 -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.757s
+        $ bash-3.2 -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        ^C
+        [ble: exit 130]
+        $ bash-4.0 -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.782s
+        $ bash-4.0 -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        ^C
+        [ble: exit 130]
+        $ bash-4.2 -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.613s
+        $ bash-4.2 -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        0.929s
+        $ bash-4.4 -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.474s
+        $ bash-4.4 -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        0.911s
+        $ bash-5.0 -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.457s
+        $ bash-5.0 -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        0.494s
+        $ bash-dev -c 'TIMEFORMAT="%Rs"; time source a.txt'
+        0.322s
+        $ bash-dev -c 'TIMEFORMAT="%Rs"; time source b.txt'
+        0.383s
+
+        この結果を見ると arr+=() は古い bash では致命的に遅い。arr=() について
+        も確認して置いた方が良いのではないか?
+
+        $ < h.txt awk 'BEGIN{apos="'\''";print "_dbg_history=(";}{print apos $0 apos}END{print ")";}' > c.txt
+        $ bash-dev -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        0.385s
+        $ bash-4.4 -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        0.901s
+        $ bash-4.2 -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        0.915s
+        $ bash-4.1 -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        1.098s
+        $ bash-4.0 -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        1.099s
+        $ bash-3.2 -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        1.091s
+        $ bash-3.1 -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        1.111s
+        $ bash-3.0 -c 'TIMEFORMAT="%Rs"; time source c.txt'
+        1.155s
+
+        うーん。この結果を見る限りは arr=() に関しては問題は存在しなかった様で
+        ある。但しそうだとしても、arr[]=() の方式の方が安定して高速な結果を出し
+        ている。これは完全に arr[]='...' に切り替えた方が実装もすっきりするので
+        はないか。
+
+      * ok: 一応 #D0701 に議論がある様なので確認しておく。確認した。この時の記
+        録を見る限りは "_ble_history[index]='...'" 的な方法については速度を計測
+        していないのだという気がする。なので、この方法自体に何か問題があったと
+        いう訳ではなく、当時は一顧だにしなかったという事なのだろう。
+
+      arr[index]=str を使うように切り替えた。awk 内部での hindex の取り扱いも変
+      更した。これに伴って nlfix の時の修正インデックスの解釈も変更。nlfix につ
+      いてはちゃんと変更後も動いている事を確認した。
+
+      x fixed: 後は Cygwin で問題なく動くかを確認する。と思ったら動かない。フリー
+        ズしてしまう。何故だろう。
+
+        * うーん。どうも動かない様に見えたのは _ble_history_edit の方をロードし
+          ていなかったからの様だ。
+
+        * C-r でフリーズするのも _ble_history_edit に有限の内容が含まれる様に変
+          更したら直った。然し、だからと言ってそれだけでフリーズするというのも
+          解せない。
+
+          それだと履歴が全く無い時にはどうなるのだろうか。試してみたが特に問題
+          は生じなかった。どうも履歴項目で引数が多い物があってそれで遅くなって
+          しまっているという事の気がする。これはまた再現したら対処するという事
+          で良い事にする。
+
+    これで offset 問題は解決だろうか。trunate に関しては arg_offset が有限の時
+    は常に末尾に対する追記という事にした。arg_offset=0 の時には配列をクリアする
+    事にした。その上で offset については Cygwin　の場合には直接 arr[index]=str
+    の形式で初期化する事にしたので問題ない。他の環境では mapfile -O を今まで通
+    り使う。大丈夫な気がする。
+
+  * 2021-05-04 折を見て simple-word/eval のデータ授受にも mapfile -d '' を使う [#D1604]
+    Ref #D1522
+
+    mapfile -d "" が buffered になったら
+    ble/syntax:bash/simple-word/eval/.print-result (lib/core-syntax.sh) を修正する。
+
+    2021-05-08 もう bash の側では修正されている。然し、Cygwin に対しても動作を
+    変更できないかどうか尋ねてその上で改めて一緒に修正するのが良い気がする。
+
+    2021-06-12 未だ Cygwin についても修正できないかの問い合わせはしていないが、
+    代わりに history のロードの側でも mapfile -d "" を使う様に変更したので、こ
+    の際一緒に変更を適用する事にする。先に修正のある simple-word/eval を差し置
+    いて history の方で利用するのは変だし、だからと言って history の方に対する
+    変更も pending にするのには変更が大きすぎる。
+
+    * reject: read -t ... についても同様に bash-5.2 以降で実装を切り替えて良い気がする。
+
+      2021-06-12 今改めて考えると read -t の何の振る舞いを切り替えるのか分から
+      ない。今まで unbuffered になっていた事によって read -d "" を使いたくても
+      使えなかったのを控えていた箇所はあっただろうか。後、read -t というのは
+      timeout の指定の事だが、今回の buffered/unbuffered の変化が timeout の振
+      る舞いにどう影響を与えるのかは不明である。"read -t" の "-t" は唯単に手の
+      癖で入力した物の様な気がする。
+
+      これに関しては取り敢えず棄却で良い気がする。
+
+  * history: [最適化] 初期化に新しい mapfile -d '' を使えないか [#D1603]
+    Ref #D0681
+
+    これは ble/util/readarray -d '' で実装されている。と思ったが…そもそも
+    builtin mapfile を直接使えば良いのではという疑惑もある。一応、他の version
+    の bash でも使える様にしてあるという利点はあるが。
+
+    | というよりそもそも現在の実装になっているのは mapfile -d '' が遅かったからと
+    | いう解釈は正しいのだろうか。ログを調べてみる必要がある。うーん。適当に検索
+    | してみたが難しい。git blame で観察してみると
+    |
+    | 1bfc8ebe src/history.sh に移動
+    |
+    |   現在の実装は 2019-07-09 に大きく書き換えられている。と思ったが…これは単
+    |   にコードを移動しただけの話かもしれない→うーん。やはりそうだった。
+    |
+    | f204bc73 src/edit.sh: history -nr の対応
+    |
+    | 18fdaf2a Cygwin 対策
+    |
+    | c0c7f13e 2018-03-14 これ。この時点で mapfile & nlfix を実装している。まと
+    |   まった議論があるのもこの時のログである。#D0681 である。
+
+    うーん。当時のログを確認してみるとそもそも mapfile -d '' で NUL 区切りのデー
+    タを読み込めるという事を認識していなかった様な節がある。今回改めて実験及び
+    実装をして見る事にする。Bash version 毎の配列コピー時間についても確認する。
+
+    - 取り敢えず実装した。ちゃんと読み込めている。やはり配列コピーよりも
+      mapfile の方が高速の様である。
+
+    * done: 後で printf '[[%s]]\n' "${_ble_history[@]}" > a.txt 等として出力し
+      た結果を比較して正しいかどうかを検証する。
+
+    * done: Cygwin に於ける動作も変更したので動作確認の必要がある。
+
+      Cygwin では awk 側で unescape をする様にしたので nlfix は不要である。
+
+      動作確認の結果 mapfile -d '' の為に書いたコードでやったのと同じミスを修正
+      するのを忘れていた。それを修正したらちゃんと動く様になった。OK
+
+  これを機に以前の mapfile の修正も適用してしまう事にする。
+
 2021-06-11
 
   * 2021-05-16 edit: BUG とても長いプロンプトにした時に列計算が壊れている (reported by telometto) [#D1602]
     また右端から入力を始めた時の折返しが正しくできていない。
 
-    2021-06-11 stackoverflow で報告されていた (by telometto@stackoverflow)
+    2021-06-11 stackoverflow で報告されていた (by telometto)
     https://stackoverflow.com/questions/67917673/odd-long-space-in-bash-when-writing-commands
 
     | うーん。ble.sh のバグが stackoverflow で報告されている。これは自分でも気
@@ -4683,7 +4965,6 @@ bash_tips
     | る。
 
     取り敢えず修正する。抑々 trace が怪しいという事なので計算結果について確認する。
-
 
     $ x=0 y=0; LINES=10 COLUMNS=10 ble/canvas/trace 'HelloWorld'; declare -p x y ret
     x=10 y=0

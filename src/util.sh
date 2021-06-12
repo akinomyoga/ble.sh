@@ -2098,21 +2098,9 @@ function ble/util/writearray {
       REP_SL = "\\";
       if (IS_XPG4) REP_SL = "\\\\";
 
-      es_control_chars["a"] = "\a";
-      es_control_chars["b"] = "\b";
-      es_control_chars["t"] = "\t";
-      es_control_chars["n"] = "\n";
-      es_control_chars["v"] = "\v";
-      es_control_chars["f"] = "\f";
-      es_control_chars["r"] = "\r";
-      es_control_chars["e"] = "\033";
-
-      for (i = 0; i < 16; i++)
-        xdigit2int[sprintf("%x", i)] = i;
-      for (i = 10; i < 16; i++)
-        xdigit2int[sprintf("%X", i)] = i;
-
+      s2i_initialize();
       c2s_initialize();
+      es_initialize();
 
       decl = "";
     }
@@ -2122,6 +2110,12 @@ function ble/util/writearray {
       return str;
     }
 
+    function s2i_initialize() {
+      for (i = 0; i < 16; i++)
+        xdigit2int[sprintf("%x", i)] = i;
+      for (i = 10; i < 16; i++)
+        xdigit2int[sprintf("%X", i)] = i;
+    }
     function s2i(s, base, _, i, n, r) {
       if (!base) base = 10;
       r = 0;
@@ -2157,19 +2151,25 @@ function ble/util/writearray {
       return c2s_byte2char[(leadbyte_mark + code) % 256] tail;
     }
 
-    function unquote_dq(s, _, head) {
-      head = "";
-      while (match(s, /^([^\\]|\\[^$`"\\])*\\[$`"\\]/)) {
-        head = head substr(s, 1, RLENGTH - 2) substr(s, RLENGTH, 1);
-        s = substr(s, RLENGTH + 1);
-      }
-      return head s;
+    function es_initialize() {
+      es_control_chars["a"] = "\a";
+      es_control_chars["b"] = "\b";
+      es_control_chars["t"] = "\t";
+      es_control_chars["n"] = "\n";
+      es_control_chars["v"] = "\v";
+      es_control_chars["f"] = "\f";
+      es_control_chars["r"] = "\r";
+      es_control_chars["e"] = "\033";
+      es_control_chars["E"] = "\033";
+      es_control_chars["?"] = "?";
+      es_control_chars["'\''"] = "'\''";
+      es_control_chars["\""] = "\"";
+      es_control_chars["\\"] = "\\";
+
+      for (c = 32; c < 127; c++)
+        es_s2c[sprintf("%c", c)] = c;
     }
-    function unquote_sq(s) {
-      gsub(/'\'\\\\\'\''/, "'\''", s);
-      return s;
-    }
-    function unquote_es(s, _, head, c) {
+    function es_unescape(s, _, head, c) {
       head = "";
       while (match(s, /^[^\\]*\\/)) {
         head = head substr(s, 1, RLENGTH - 1);
@@ -2191,18 +2191,36 @@ function ble/util/writearray {
           # \\[uU][0-9]{1,4}
           head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
           s = substr(s, RLENGTH + 1);
+        } else if (match(s, /^c[ -~]/)) {
+#%        # \\c[ -~] (非ASCIIは未対応)
+          c = es_s2c[substr(s, 2, 1)];
+          head = head c2s(_ble_bash >= 40400 &&c == 63 ? 127 : c % 32);
+          s = substr(s, 3);
         } else {
           head = head "\\";
         }
       }
       return head s;
     }
+
+    function unquote_dq(s, _, head) {
+      head = "";
+      while (match(s, /^([^\\]|\\[^$`"\\])*\\[$`"\\]/)) {
+        head = head substr(s, 1, RLENGTH - 2) substr(s, RLENGTH, 1);
+        s = substr(s, RLENGTH + 1);
+      }
+      return head s;
+    }
+    function unquote_sq(s) {
+      gsub(/'\'\\\\\'\''/, "'\''", s);
+      return s;
+    }
     function unquote(s, _, c) {
       c = substr(s, 1, 1);
       if (c == "\"")
         return unquote_dq(substr(s, 2, length(s) - 2));
       else if (c == "$")
-        return unquote_es(substr(s, 3, length(s) - 3));
+        return es_unescape(substr(s, 3, length(s) - 3));
       else if (c == "'\''")
         return unquote_sq(substr(s, 2, length(s) - 2));
       else if (c == "\\")
@@ -2352,13 +2370,13 @@ function ble/util/readarray {
       mapfile -t ARR'
   else
     local _ble_local_script='
-      local IFS= ARRI=0 ARR
+      local IFS= ARRI=0; ARR=()
       while builtin read -r -d "" "ARR[ARRI++]"; do :; done'
   fi
 
   if [[ $_ble_local_nlfix ]]; then
     _ble_local_script=$_ble_local_script'
-      local ARRN=${#ARR[@]}
+      local ARRN=${#ARR[@]} ARRF ARRI
       if ((ARRN--)); then
         ble/string#split-words ARRF "${ARR[ARRN]}"
         builtin unset -v "ARR[ARRN]"

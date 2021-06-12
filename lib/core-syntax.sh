@@ -1329,13 +1329,11 @@ function ble/syntax:bash/simple-word/eval/.print-result {
     # でデータを親シェルに転送する。Cygwin では mapfile/read が unbuffered で遅
     # いので、ファイル数が遅くても quote&eval を使う。
 
-    # # もし mapfile -d "" が buffered になったら以下のコードを使用したい。
-    # if ((_ble_bash>=50200)); then
-    #   printf '%s\0' "$@" >| "$__ble_simple_word_tmpfile"
-    #   ble/util/print 'ble/util/readarray -d "" __ble_ret < "$__ble_simple_word_tmpfile"'
-    #   return 0
-    # fi
-    if ((_ble_bash>=40000)); then
+    if ((_ble_bash>=50200)); then
+      printf '%s\0' "$@" >| "$__ble_simple_word_tmpfile"
+      ble/util/print 'ble/util/readarray -d "" __ble_ret < "$__ble_simple_word_tmpfile"'
+      return 0
+    elif ((_ble_bash>=40000)); then
       ret=("$@")
       ble/util/writearray --nlfix ret >| "$__ble_simple_word_tmpfile"
       ble/util/print 'ble/util/readarray --nlfix __ble_ret < "$__ble_simple_word_tmpfile"'
