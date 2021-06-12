@@ -1193,7 +1193,12 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
 
 # ble/util/writearray
 (
-  x=($'\1' $'\2' $'\32' ' ' $'\a' $'\b' $'\t' $'\n' $'\v' $'\f' $'\r' $'\177' a \" \' \$ \! \` \~)
+  # Note: Bash-3.x で arr=() の形式には ^A 及び ^? を変化させるバグが
+  # あるので、 改めて正しい値を代入する。
+  x=($'\177' $'\1' $'\2' $'\32' ' ' $'\a' $'\b' $'\t' $'\n' $'\v' $'\f' $'\r' a \" \' \$ \! \` \~)
+  x[0]=$'\177'
+  x[1]=$'\1'
+
   ble/test "ble/util/writearray -d '' x | sha256sum | awk '{print \$1}'" stdout=$(printf '%s\0' "${x[@]}" | sha256sum | awk '{print $1}')
 )
 
@@ -1458,11 +1463,11 @@ ble/test ble/util/is-running-in-subshell exit=1
     ble/test "declare -p $name x$name | cat -A >&2; [[ \$$name == \$x$name ]]"
   done
 
-  function status { echo "${#a[*]}:(""${a[*]}"")"; }
+  function status { eval 'ret="${#'$1'[*]}:(""${'$1'[*]}"")"'; }
   xa0=() sa0='0:()'
   xa1=('') sa1='1:()'
   for k in {2..8}; do
-    eval "xa$k=(\"\$xv${k}a\" \"\$xv${k}b\")"
+    eval "xa$k=(); xa$k[0]=\"\$xv${k}a\"; xa$k[1]=\"\$xv${k}b\""
     eval "sa$k=\"2:(\$xv${k}a \$xv${k}b)\""
   done
   eval -- "$(
@@ -1473,7 +1478,7 @@ ble/test ble/util/is-running-in-subshell exit=1
 
   for name in a0 a1 a{2..8}; do
     stdout_var=s$name
-    ble/test "a=(\"\${$name[@]}\"); status" stdout="${!stdout_var}"
+    ble/test "status $name" ret="${!stdout_var}"
   done
 )
 
