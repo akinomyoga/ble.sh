@@ -204,6 +204,15 @@ IFS=$' \t\n'
 #------------------------------------------------------------------------------
 # Initialize version information
 
+# DEBUG version の Bash では遅いという通知
+case ${BASH_VERSINFO[4]} in
+(alp*|bet*|dev*|rc*|releng*|maint*)
+  printf '%s\n' \
+    "ble.sh may become very slow because this is a debug version of Bash" \
+    "  (version '$BASH_VERSION', release status: '${BASH_VERSINFO[4]}')." \
+    "  We recommend using ble.sh with a release version of Bash." >&2 ;;
+esac
+
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 _ble_bash_loaded_in_function=0
 [[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
