@@ -837,6 +837,19 @@ function ble/prompt/backslash:q {
   fi
   return 0
 }
+function ble/prompt/backslash:g {
+  local rex='^\{([^{}]*)\}'
+  if [[ ${tail:2} =~ $rex ]]; then
+    ((i+=${#BASH_REMATCH}))
+    local ret
+    ble/color/gspec2g "${BASH_REMATCH[1]}"
+    ble/color/g2sgr-ansi "$ret"
+    ble/prompt/print "$ret"
+  else
+    ble/prompt/print "\\$c"
+  fi
+  return 0
+}
 function ble/prompt/backslash:position {
   ((_ble_textmap_dbeg>=0)) && ble/widget/.update-textmap
   local fmt=${1:-'(%s,%s)'} pos
