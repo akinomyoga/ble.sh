@@ -205,50 +205,97 @@ function ble/util/array-fill-range {
 }
 
 function ble/util/declare-print-definitions {
-  if [[ $# -gt 0 ]]; then
-    declare -p "$@" | awk -v _ble_bash="$_ble_bash" -v OSTYPE="$OSTYPE" '
-      BEGIN {
-        decl = "";
-        flag_escape_cr = OSTYPE == "msys";
+  (($#==0)) && return 0
+
+  declare -p "$@" | awk -v _ble_bash="$_ble_bash" -v OSTYPE="$OSTYPE" '
+    BEGIN {
+      decl = "";
+      flag_escape_cr = OSTYPE == "msys";
+    }
+
+    function fix_value(value) {
+#%    # bash-3.0 の declare -p は改行について誤った出力をする。
+      if (_ble_bash < 30100) gsub(/\\\n/, "\n", value);
+
+#%    # #D1238 bash-4.3 以前の declare -p は ^A, ^? を
+#%    #   ^A^A, ^A^? と出力してしまうので補正する。
+#%    # #D1325 更に Bash-3.0 では "x${_ble_term_DEL}y" とすると
+#%    #   _ble_term_DEL の中身が消えてしまうので
+#%    #   "x""${_ble_term_DEL}""y" とする必要がある。
+      if (_ble_bash < 30100) {
+        gsub(/\001\001/, "\"\"${_ble_term_SOH}\"\"", value);
+        gsub(/\001\177/, "\"\"${_ble_term_DEL}\"\"", value);
+      } else if (_ble_bash < 40400) {
+        gsub(/\001\001/, "${_ble_term_SOH}", value);
+        gsub(/\001\177/, "${_ble_term_DEL}", value);
       }
-      function declflush(_, isArray){
-        if (decl) {
-          isArray = (decl ~ /declare +-[fFgilrtux]*[aA]/);
 
-          # bash-3.0 の declare -p は改行について誤った出力をする。
-          if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
+      if (flag_escape_cr)
+        gsub(/\015/, "${_ble_term_CR}", value);
+      return value;
+    }
 
-          if (_ble_bash < 40000) {
-            # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
-            #   ^A^A, ^A^? と出力してしまうので補正する。
-            gsub(/\001\001/, "${_ble_term_SOH}", decl);
-            gsub(/\001\177/, "${_ble_term_DEL}", decl);
-          }
-          if (flag_escape_cr)
-            gsub(/\015/, "${_ble_term_CR}", decl);
+#%  # #D1522 #D1614 Bash-3.2 未満で配列要素に ^A または ^? を含む場合は
+#%  #   arr=(...) の形式だと評価時に ^A, ^? が倍加するので、
+#%  #   要素ごとに代入を行う必要がある。
+    function print_array_elements(decl, _, name, out, key, value) {
+      if (match(decl, /^[_a-zA-Z][_a-zA-Z0-9]*=\(/) == 0) return 0;
+      name = substr(decl, 1, RLENGTH - 2);
+      decl = substr(decl, RLENGTH + 1, length(decl) - RLENGTH - 1);
+      sub(/^[[:space:]]+/, decl);
 
-          # declare 除去
-          sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
-          if(isArray){
-            if(decl~/^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/){
-              sub(/='\''\(/,"=(",decl);
-              sub(/\)'\''$/,")",decl);
-              gsub(/'\'\\\\\'\''/,"'\''",decl);
-            }
-          }
-          print decl;
-          decl="";
+      out = name "=()\n";
+
+      while (match(decl, /^\[[0-9]+\]=/)) {
+        key = substr(decl, 2, RLENGTH - 3);
+        decl = substr(decl, RLENGTH + 1);
+
+        value = "";
+        if (match(decl, /^('\''[^'\'']*'\''|\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^[:space:]"'\''`;&|()])*/)) {
+          value = substr(decl, 1, RLENGTH)
+          decl = substr(decl, RLENGTH + 1)
         }
+
+        out = out name "[" key "]=" fix_value(value) "\n";
+        sub(/^[[:space:]]+/, decl);
       }
-      /^declare /{
-        declflush();
-        decl=$0;
-        next;
+
+      if (decl != "") return 0;
+
+      print out;
+      return 1;
+    }
+
+    function declflush(_, isArray) {
+      if (!decl) return 0;
+      isArray = (decl ~ /^declare +-[ilucnrtxfFgGI]*[aA]/);
+
+#%    # declare 除去
+      sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
+      if (isArray) {
+        if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
+          sub(/='\''\(/, "=(", decl);
+          sub(/\)'\''$/, ")", decl);
+          gsub(/'\'\\\\\'\''/, "'\''", decl);
+        }
+
+        if (_ble_bash < 40000 && decl ~ /[\001\177]/)
+          if (print_array_elements(decl))
+            return 1;
       }
-      {decl=decl "\n" $0;}
-      END{declflush();}
-    '
-  fi
+
+      print fix_value(decl);
+      decl = "";
+      return 1;
+    }
+    /^declare / {
+      declflush();
+      decl = $0;
+      next;
+    }
+    { decl = decl "\n" $0; }
+    END { declflush(); }
+  '
 }
 
 _ble_util_array_prototype=()
