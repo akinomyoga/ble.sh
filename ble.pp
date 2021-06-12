@@ -62,6 +62,15 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
+# DEBUG version の Bash では遅いという通知
+case ${BASH_VERSINFO[4]} in
+(alp*|bet*|dev*|rc*|releng*|maint*)
+  printf '%s\n' \
+    "ble.sh may become very slow because this is a debug version of Bash" \
+    "  (version '$BASH_VERSION', release status: '${BASH_VERSINFO[4]}')." \
+    "  We recommend using ble.sh with a release version of Bash." >&2 ;;
+esac
+
 if ((BASH_SUBSHELL)); then
   builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&2
   return 1 2>/dev/null || builtin exit 1
