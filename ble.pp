@@ -1184,7 +1184,7 @@ blehook ERR+='ble/function#try TRAPERR'
 #%x inc.r|@|lib/core-syntax-def|
 #%x inc.r|@|lib/core-complete-def|
 
-bleopt/check-all
+bleopt -I
 #------------------------------------------------------------------------------
 #%if measure_load_time
 time {

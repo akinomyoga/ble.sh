@@ -46,7 +46,9 @@
   - prompt: track dependencies and detect changes `#D1590` `#D1591` cf8d949
   - prompt: preserve `LINES` and `COLUMNS` for custom sequences `#D1592` 040016d
   - color: fix the face initialiation order for uses in prompts (motivated by jmederosalvarado) `#D1593` 321371f
-  - prompt: support `contrib/prompt-git` dirty checking `#D1601` b2713d9
+  - prompt (`contrib/prompt-git`): support dirty checking `#D1601` b2713d9
+  - prompt (`contrib/prompt-git`): do not use `ble/util/idle` in Bash 3 `#D1606` 0000000
+  - util (`bleopt`): add new option `-I` to reinitialize user settings on reload `#D1607` 0000000
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names

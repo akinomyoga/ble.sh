@@ -6420,7 +6420,7 @@ function ble/syntax/highlight/getg-from-filename {
 function bleopt/check:filename_ls_colors {
   ble/syntax/highlight/ls_colors/.parse "$value"
 }
-value=$bleopt_filename_ls_colors bleopt/check:filename_ls_colors
+bleopt -I filename_ls_colors
 
 #------------------------------------------------------------------------------
 # ble/syntax/progcolor

@@ -20,6 +20,7 @@ function bleopt/.read-arguments/process-option {
     flags=E$flags ;;
   (reset)   flags=r$flags ;;
   (changed) flags=u$flags ;;
+  (initialize) flags=I$flags ;;
   (*)
     ble/util/print "bleopt: unrecognized long option '--$name'." >&2
     flags=E$flags ;;
@@ -47,6 +48,7 @@ function bleopt/expand-variable-pattern {
 ##     n --color=never
 ##     r --reset
 ##     u --changed
+##     I --initialize
 ##   @var[out] pvars
 ##   @var[out] specs
 function bleopt/.read-arguments {
@@ -69,6 +71,7 @@ function bleopt/.read-arguments {
         case $c in
         (r) bleopt/.read-arguments/process-option reset ;;
         (u) bleopt/.read-arguments/process-option changed ;;
+        (I) bleopt/.read-arguments/process-option initialize ;;
         (*)
           ble/util/print "bleopt: unrecognized option '-c'." >&2
           flags=E$flags ;;
@@ -152,11 +155,12 @@ function bleopt {
       '    Set ble.sh options. Without arguments, this prints all the settings.' \
       '' \
       '  Options' \
-      '    --help        Print this help.' \
-      '    -r, --reset   Reset options to the default values' \
-      '    -u, --changed Only select changed options' \
+      '    --help           Print this help.' \
+      '    -r, --reset      Reset options to the default values' \
+      '    -I, --initialize Re-initialize settings' \
+      '    -u, --changed    Only select changed options' \
       '    --color[=always|never|auto]' \
-      '                  Change color settings.' \
+      '                     Change color settings.' \
       '' \
       '  Arguments' \
       '    NAME        Print the value of the option.' \
@@ -183,9 +187,17 @@ function bleopt {
   if [[ $flags == *r* ]]; then
     local var
     for var in "${pvars[@]}"; do
-      local def=_ble_opt_def_${var#bleopt_}
+      local name=${var#bleopt_}
+      ble/is-function bleopt/obsolete:"$name" && continue
+      local def=_ble_opt_def_$name
       [[ ${!def+set} && ${!var-} != "${!def}" ]] &&
         ble/array#push specs "$var=${!def}"
+    done
+    pvars=()
+  elif [[ $flags == *I* ]]; then
+    local var
+    for var in "${pvars[@]}"; do
+      bleopt/reinitialize "${var#bleopt_}"
     done
     pvars=()
   fi
@@ -256,21 +268,20 @@ function bleopt/declare {
   esac
   return 0
 }
-function bleopt/check-all {
-  local name defname varname
-  for defname in "${!_ble_opt_def_@}"; do
-    name=${defname#_ble_opt_def_}
-    varname=bleopt_$name
-    [[ ${!varname} == "${!defname}" ]] && continue
-    ble/is-function bleopt/obsolete:"$name" && continue
-    ble/is-function bleopt/check:"$name" || continue
+function bleopt/reinitialize {
+  local name=$1
+  local defname=_ble_opt_def_$name
+  local varname=bleopt_$name
+  [[ ${!defname+set} ]] || return 1
+  [[ ${!varname} == "${!defname}" ]] && return 0
+  ble/is-function bleopt/obsolete:"$name" && return 0
+  ble/is-function bleopt/check:"$name" || return 0
 
-    # 一旦値を既定値に戻して改めてチェックを行う。
-    local value=${!varname}
-    builtin eval -- "$varname=\$$defname"
-    bleopt/check:"$name" &&
-      builtin eval "$varname=\$value"
-  done
+  # 一旦値を既定値に戻して改めてチェックを行う。
+  local value=${!varname}
+  builtin eval -- "$varname=\$$defname"
+  bleopt/check:"$name" &&
+    builtin eval "$varname=\$value"
 }
 
 ## @bleopt input_encoding

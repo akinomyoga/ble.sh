@@ -356,6 +356,7 @@ function ble/prompt/backslash:lib/vim-airline {
   done
 }
 
+bleopt -I vim_airline_@
 bleopt keymap_vi_mode_show=
 bleopt prompt_status_line='\q{lib/vim-airline}'
 bleopt prompt_status_align=$'justify=\r'
