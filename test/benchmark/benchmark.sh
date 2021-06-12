@@ -58,27 +58,20 @@ else
   _ble_measure_resolution=1000 # [usec]
   function ble-measure/.time {
     utot=0 usec=0
-    local word utot1 usec1
-    local head=
-    for word in $({ time ble-measure/.loop "$n" "$*" &>/dev/null;} 2>&1); do
-      local rex='(([0-9])+m)?([0-9]+)(\.([0-9]+))?s'
-      if [[ $word =~  $rex ]]; then
-        local m=${BASH_REMATCH[2]}
-        local s=${BASH_REMATCH[3]}
-        local ms=${BASH_REMATCH[5]}000; ms=${ms::3}
         
-        ((utot1=((10#$m*60+10#$s)*1000+10#$ms)*1000,
-          usec1=utot1/n))
-        # printf '  %-5s%9dus/op\n' "$head" "$usec1"
-        (((utot1>utot)&&(utot=utot1),
-          (usec1>usec)&&(usec=usec1)))
-        head=
-      else
-        head="$head$word "
-      fi
-    done
+    local result TIMEFORMAT='[%R]' command=$1
+    if declare -f ble/util/assign &>/dev/null; then
+      ble/util/assign result '{ time ble-measure/.loop "$n" "$command" &>/dev/null;} 2>&1'
+    else
+      result=$({ time ble-measure/.loop "$n" "$1" &>/dev/null;} 2>&1)
+    fi
 
-    [[ $utot1 ]]
+    local rex='\[([0-9]+)(\.([0-9]+))?\]'
+    [[ $result =~  $rex ]] || return 1
+    local s=${BASH_REMATCH[1]}
+    local ms=${BASH_REMATCH[3]}000; ms=${ms::3}
+    ((utot=(10#$s*1000+10#$ms)*1000,usec=utot1/n))
+    return 0
   }
 fi
 
@@ -93,7 +86,6 @@ _ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上にな
 ##   @var[out] nsec
 ##     実行時間を nsec 単位で返します。
 function ble-measure {
-  local TIMEFORMAT=
   if [[ ! $_ble_measure_base ]]; then
     _ble_measure_base=0 nsec=0
     # : よりも a=1 の方が速い様だ
