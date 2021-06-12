@@ -79,7 +79,8 @@ function bleopt/.read-arguments {
       done ;;
     (*)
       if local rex='^([_a-zA-Z0-9@]+)(:?=|$)(.*)'; [[ $arg =~ $rex ]]; then
-        local var=bleopt_${BASH_REMATCH[1]#bleopt_}
+        local name=${BASH_REMATCH[1]#bleopt_}
+        local var=bleopt_$name
         local op=${BASH_REMATCH[2]}
         local value=${BASH_REMATCH[3]}
 
@@ -106,7 +107,7 @@ function bleopt/.read-arguments {
 
           # 適した物が見つからない場合は失敗
           if ((${#var[@]}==0)); then
-            ble/util/print "bleopt: option \`${var#bleopt_}' not found" >&2
+            ble/util/print "bleopt: option \`$name' not found" >&2
             flags=E$flags
             continue
           fi

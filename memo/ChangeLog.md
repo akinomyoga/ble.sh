@@ -56,6 +56,7 @@
   - util, color: fix argument analysis of `bleopt`, `blehook`, and `ble-face` (fixup c94d292) `#D1571` bb53271
   - util (`blehook`): show explicitly specified internal hooks `#D1594` f4312df
   - util (`bleopt`): do no select obsoleted options by wildcards `#D1595` f4312df
+  - util (`bleopt`): fix error messages for unknown options `#D1610` 0000000
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
 - prompt: support a new backslash sequence `\g{...}` `#D1609` 0000000
