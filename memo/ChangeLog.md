@@ -62,6 +62,7 @@
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
+- canvas: support grapheme clusters (motivated by huresche) `#D1619` 0000000
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
  
 ## Changes

@@ -301,6 +301,17 @@
 
 #bleopt emoji_version=13.1
 
+## "emoji_opts" is a colon-separated list that represents the terminal
+## capability for emojis.  When "tpvs" and "epvs" are specified, TPVS and EPVS
+## (text/emoji presentation variation selectors), respectively, can be used to
+## change he representation of emoji characters.  When "zwj" is specified, the
+## emoji ZWJ sequences are supported.  When "ri" is specified, the flag emojis
+## formed by two Regional_Indicators are supported.  When "unqualified" is
+## specified, unqualified emojis are treated as emojis as well as the qualified
+## emojis.
+
+#bleopt emoji_opts=tpvs:epvs:ri
+
 
 ##-----------------------------------------------------------------------------
 ## User input settings
