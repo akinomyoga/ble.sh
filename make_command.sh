@@ -82,14 +82,19 @@ function sub:ignoreeof-messages {
   ) >| lib/core-edit.ignoreeof-messages.new
 }
 
-function sub:update-emoji-database {
-  local unicode_version=$(wget https://unicode.org/Public/emoji/ -O - | grep -Eo 'href="[0-9]+\.[0-9]+/"' a.html | sed 's,^href=",,;s,/"$,,' | tail -n 1)
-  local cache=out/data/unicode-emoji-$unicode_version.txt
-  if [[ ! -s $cache ]]; then
-    mkd out/data
-    wget https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt -O "$cache.part" &&
-      mv "$cache.part" "$cache"
+function download {
+  local url=$1 dst=$2
+  if [[ ! -s $dst ]]; then
+    [[ $dst == ?*/* ]] && mkd "${dst%/*}"
+    wget "$url" -O "$dst.part" && mv "$dst.part" "$dst"
   fi
+}
+
+function sub:update-emoji-database {
+  #local unicode_version=$(wget https://unicode.org/Public/emoji/ -O - | grep -Eo 'href="[0-9]+\.[0-9]+/"' | sed 's,^href=",,;s,/"$,,' | tail -n 1)
+  local unicode_version=14.0
+  local cache=out/data/unicode-emoji-$unicode_version.txt
+  download "https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt" "$cache"
 
   local q=\'
   local versions=$(gawk 'match($0, / E([0-9]+\.[0-9]+)/, m) > 0 { print m[1]; }' "$cache" | sort -Vu | tr '\n' ' ')
@@ -105,89 +110,593 @@ function sub:update-emoji-database {
     }
 
     BEGIN {
-      split(versions, vers);
-      nvers = length(vers);
+      EmojiStatus_None               = 0;
+      EmojiStatus_FullyQualified     = 1;
+      EmojiStatus_MinimallyQualified = 2;
+      EmojiStatus_Unqualified        = 3;
+      EmojiStatus_Component          = 4;
+      print "_ble_unicode_EmojiStatus_None="               EmojiStatus_None;
+      print "_ble_unicode_EmojiStatus_FullyQualified="     EmojiStatus_FullyQualified;
+      print "_ble_unicode_EmojiStatus_MinimallyQualified=" EmojiStatus_MinimallyQualified;
+      print "_ble_unicode_EmojiStatus_Unqualified="        EmojiStatus_Unqualified;
+      print "_ble_unicode_EmojiStatus_Component="          EmojiStatus_Component;
     }
-    # 単一絵文字 (sequence でない) のみを登録する。
-    # unqualified 絵文字を含めるかどうかは微妙だが、既存の端末は含めている気がする。
-    #$3 == "fully-qualified" && match($0, / E([0-9]+\.[0-9]+)/, m) > 0 {
-    ($3 == "fully-qualified" || $3 == "unqualified") && match($0, / E([0-9]+\.[0-9]+)/, m) > 0 {
-      char_code = strtonum("0x" $1);
-      char_emoji_version = m[1];
 
+    function register_codepoint(char_code, char_emoji_version, char_qtype, _, i) {
       for (i = nvers; i >= 1; i--) {
         emoji_version = vers[i];
         data[emoji_version, char_code]++;
         data[emoji_version, char_code + 1]++;
+        data_qtype[emoji_version, char_code] = char_qtype;
         if (char_emoji_version == emoji_version) break;
       }
 
-      if (char_code <= 0x2000 || 0x2E80 <= char_code && char_code <= 0xA4D0) {
-        printf("_ble_util_c2w_except[0x%04X]=-2\n", char_code);
-      } else {
-        if (char_code < 0x10000) {
-          if (bmp_min == "" || char_code < bmp_min) bmp_min = char_code;
-          if (bmp_max == "" || char_code > bmp_max) bmp_max = char_code;
-        } else {
-          if (smp_min == "" || char_code < smp_min) smp_min = char_code;
-          if (smp_max == "" || char_code > smp_max) smp_max = char_code;
-        }
+      if (0x2E80 <= char_code && char_code <= 0xA4D0)
+        printf("_ble_util_c2w_zenkaku_except[0x%04X]=-2\n", char_code);
+    }
+
+    function register_RegionalIndicators(_, code) {
+      for (code = 0x1F1E6; code <= 0x1F1FF; code++)
+        register_codepoint(code, "0.6", EmojiStatus_FullyQualified);
+    }
+
+    BEGIN {
+      split(versions, vers);
+      nvers = length(vers);
+      register_RegionalIndicators();
+    }
+
+    # 単一絵文字 (sequence でない) のみを登録する。
+    #
+    # 2021-06-18 やはり unqualified は絵文字に含めない。多くの場合は既定では通
+    # 常文字で EPVS によって絵文字として表示する様である。component は肌の色
+    # (Extend) と髪 (Pictographic) の2種類がある。取り敢えず幅2で計算する。
+    #
+    match($0, / E([0-9]+\.[0-9]+)/, m) > 0 {
+      if ($3 == "fully-qualified") {
+        register_codepoint(strtonum("0x" $1), m[1], EmojiStatus_FullyQualified);
+      } else if ($3 == "component") {
+        register_codepoint(strtonum("0x" $1), m[1], EmojiStatus_Component);
+      } else if ($3 == "unqualified") {
+        register_codepoint(strtonum("0x" $1), m[1], EmojiStatus_Unqualified);
       }
     }
 
     function get_database_name(version, _, m) {
       if (match(version, /^0*([0-9]+)\.0*([0-9]+)$/, m) > 0)
-        return sprintf("_ble_canvas_emoji_database_%04d", m[1] * 100 + m[2]);
+        return sprintf("_ble_unicode_EmojiStatus_%04d", m[1] * 100 + m[2]);
       else
         return "";
     }
 
-    function start_emoji_version(version) {
-      if (version == g_emoji_version) return 0;
-      end_emoji_version();
+
+    function etable_start(version) {
       g_emoji_version = version;
+      g_prev_qtype = EmojiStatus_None;
+      delete etable;
       return 1;
     }
-    function end_emoji_version(_, database_name, _list) {
+
+    function etable_register_boundary(code, qtype) {
+      etable[code] = qtype;
+    }
+
+    function etable_end(_, database_name, i, n, code, qtype, prev_code, prev_qtype, codes, bcodes, nbcodes, ranges, iranges, qtypes, iqtypes) {
       if (g_emoji_version == "") return;
 
       if ((database_name = get_database_name(g_emoji_version))) {
-        asorti(g_emoji_list, _list, "@ind_num_asc");
-        g_def_wranges[g_emoji_version] = database_name "=(" join(_list, " ") ")";
+
+        # @arr bcodes: determine boundary codes
+        nbcodes = 0;
+        n = asorti(etable, codes, "@ind_num_asc");
+        prev_qtype = EmojiStatus_None;
+        for (i = 1; i <= n; i++) {
+          code = codes[i];
+          qtype = etable[code];
+          if (qtype == prev_qtype) continue;
+          prev_qtype = qtype;
+          bcodes[++nbcodes] = code;
+        }
+
+        # @arr ranges, qtypes
+        iranges = 0;
+        iqtypes = 0;
+        prev_code = 0;
+        prev_qtype = EmojiStatus_None;
+        for (i = 1; i <= nbcodes; i++) {
+          code = bcodes[i];
+          qtype = etable[code];
+          if (i + 1 < nbcodes && (n = bcodes[i + 1]) - code <= 1) {
+            for (; code < n; code++)
+              qtypes[++iqtypes] = "[" code "]=" qtype;
+          } else if (qtype != prev_qtype) {
+            ranges[++iranges] = code;
+            qtypes[++iqtypes] = "[" code "]=" qtype;
+
+            # 非孤立領域の範囲
+            p = int(code);
+            if (qtype == EmojiStatus_None) p--;
+            if (p < 0x10000) {
+              if (bmp_min == "" || p < bmp_min) bmp_min = p;
+              if (bmp_max == "" || p > bmp_max) bmp_max = p;
+            } else {
+              if (smp_min == "" || p < smp_min) smp_min = p;
+              if (smp_max == "" || p > smp_max) smp_max = p;
+            }
+            if (prev_qtype != EmojiStatus_None && prev_code < 0x10000 && 0x10000 < code)
+              print "\x1b[31mEmojiStatus_xmaybe: a BMP-SMP crossing range unexpected.\x1b[m" > "/dev/stderr";
+            prev_code = code;
+            prev_qtype = qtype;
+          }
+        }
+
+        g_def_ranges[g_emoji_version] = database_name "_ranges=(" join(ranges, " ") ")";
+        g_def_status[g_emoji_version] = database_name "=(" join(qtypes, " ") ")"
       }
 
       g_emoji_version = "";
-      delete g_emoji_list;
     }
-    END {
-      printf("_ble_canvas_emoji_expr_maybe='$q'_ble_util_c2w_except[code]==-2||%d<=code&&code<=%d||%d<=code&&code<=%d'$q'\n", bmp_min, bmp_max, smp_min, smp_max);
-      # printf("_ble_canvas_emoji_bmp_min=%-6d # U+%04X\n", bmp_min, bmp_min);
-      # printf("_ble_canvas_emoji_bmp_max=%-6d # U+%04X\n", bmp_max, bmp_max);
-      # printf("_ble_canvas_emoji_smp_min=%-6d # U+%04X\n", smp_min, smp_min);
-      # printf("_ble_canvas_emoji_smp_max=%-6d # U+%04X\n", smp_max, smp_max);
 
-      n = asorti(data, boundaries);
-      emoji_version = "";
+    function print_database(_, i, n, pairs, pair, version, code, qtype, emoji_version, latest_version) {
+      # Scan "version SUBSEP code" pairs
+      n = asorti(data, pairs);
+      g_emoji_version = "";
       for (i = 1; i <= n; i++) {
-        if (data[boundaries[i]] % 2 != 1) continue;
-        split(boundaries[i], fields, SUBSEP);
-        code = fields[2];
-
-        start_emoji_version(fields[1]);
-        g_emoji_list[code]++;
+        split(pairs[i], pair, SUBSEP);
+        version = pair[1];
+        if (version != g_emoji_version) {
+          if (g_emoji_version != "") etable_end();
+          etable_start(version);
+        }
+        code = pair[2];
+        qtype = data_qtype[pairs[i]];
+        if (qtype == "") qtype = EmojiStatus_None;
+        etable_register_boundary(code, qtype);
       }
-      end_emoji_version();
+      if (g_emoji_version != "") etable_end();
+
+      printf("_ble_unicode_EmojiStatus_xmaybe='$q'%d<=code&&code<=%d||%d<=code&&code<=%d'$q'\n", bmp_min, bmp_max, smp_min, smp_max);
+      # printf("_ble_unicode_EmojiStatus_bmp_min=%-6d # U+%04X\n", bmp_min, bmp_min);
+      # printf("_ble_unicode_EmojiStatus_bmp_max=%-6d # U+%04X\n", bmp_max, bmp_max);
+      # printf("_ble_unicode_EmojiStatus_smp_min=%-6d # U+%04X\n", smp_min, smp_min);
+      # printf("_ble_unicode_EmojiStatus_smp_max=%-6d # U+%04X\n", smp_max, smp_max);
 
       for (i = 1; i <= nvers; i++) {
         emoji_version = vers[i];
-        if (emoji_version >= 1.0)
-          print g_def_wranges[emoji_version];
+        if (emoji_version >= 1.0) {
+          print g_def_ranges[emoji_version];
+          print g_def_status[emoji_version];
+        }
       }
       latest_version = vers[nvers];
       print "bleopt/declare -n emoji_version " latest_version;
-      print "_ble_canvas_emoji_database=(\"${" get_database_name(latest_version) "[@]}\")";
+      print "_ble_unicode_EmojiStatus_ranges=(\"${" get_database_name(latest_version) "_ranges[@]}\")";
+      print "ble/idict#copy _ble_unicode_EmojiStatus " get_database_name(latest_version);
     }
-  ' "$cache" | ifold -w 119 --spaces --no-text-justify --indent=.. > src/canvas.emoji.sh
+
+    END { print_database(); }
+  ' "$cache" | ifold -w 131 --spaces --no-text-justify --indent=.. > src/canvas.emoji.sh
+}
+
+function sub:generate-grapheme-cluster-table {
+  local url=http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakProperty.txt
+  local cache=out/data/unicode-GraphemeBreakProperty-latest.txt
+  if [[ ! -s $cache ]]; then
+    mkd out/data
+    wget "$url" -O "$cache.part" && mv "$cache.part" "$cache"
+  fi
+
+  local url2=https://www.unicode.org/Public/UCD/latest/ucd/emoji/emoji-data.txt
+  local cache2=out/data/unicode-emoji-data-latest.txt
+  if [[ ! -s $cache2 ]]; then
+    mkd out/data
+    wget "$url2" -O "$cache2.part" && mv "$cache2.part" "$cache2"
+  fi
+
+  local url3=http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt
+  local cache3=out/data/unicode-GraphemeBreakTest-latest.txt
+  if [[ ! -s $cache3 ]]; then
+    mkd out/data
+    wget "$url3" -O "$cache3.part" && mv "$cache3.part" "$cache3"
+  fi
+
+  gawk '
+    BEGIN {
+      #ITEMS_PER_LINE = 6;
+      MAX_COLUMNS = 160;
+      apos = "'\''";
+      out = "   ";
+      out_length = 3;
+      out_count = 0;
+    }
+    { sub(/[[:space:]]*#.*$/, ""); sub(/[[:space:]]+$/, ""); }
+    $0 == "" {next}
+
+    function out_flush() {
+      if (!out_count) return;
+      print out;
+      out = "   ";
+      out_length = 3;
+      out_count = 0;
+    }
+
+    function process_case(line, _, m, i, b, str, ans) {
+      i = b = 0;
+      ans = "";
+      str = "";
+      while (match(line, /([÷×])[[:space:]]*([[:xdigit:]]+)[[:space:]]*/, m) > 0) {
+        if (m[1] == "÷") b = i;
+        str = str "\\U" m[2];
+        ans = ans (ans == "" ? "" : ",") b;
+        line = substr(line, RLENGTH + 1);
+        i++;
+      }
+      n = i;
+      if (line == "÷") {
+        ans = ans (ans == "" ? "" : ",") i;
+      } else
+        print "GraphemeBreakTest.txt: Unexpected line (" $0 ")" >"/dev/stderr";
+
+      ent = ans ":" apos str apos;
+      entlen = length(ent) + 1
+
+      if (out_length + entlen >= MAX_COLUMNS) out_flush();
+      out = out " " ent;
+      out_length += entlen;
+      out_count++;
+      #if (out_count % ITEMS_PER_LINE == 0) out_flush();
+    }
+    {
+      gsub(/000D × 000A/, "000D ÷ 000A"); # Tailored
+      process_case($0);
+    }
+    END { out_flush(); }
+  ' "$cache3" > lib/test-canvas.GraphemeClusterTest.sh
+
+  {
+    echo '# __Grapheme_Cluster_Break__'
+    cat "$cache"
+    echo '# __Extended_Pictographic__'
+    cat "$cache2"
+  } | gawk '
+    BEGIN {
+      # ble.sh 実装では CR/LF は独立した制御文字として扱う
+
+      PropertyCount = 13;
+      prop2v["Other"]              = Other              = 0;
+      prop2v["CR"]                 = CR                 = 1;
+      prop2v["LF"]                 = LF                 = 1;
+      prop2v["Control"]            = Control            = 1;
+      prop2v["ZWJ"]                = ZWJ                = 2;
+      prop2v["Prepend"]            = Prepend            = 3;
+      prop2v["Extend"]             = Extend             = 4;
+      prop2v["SpacingMark"]        = SpacingMark        = 5;
+      prop2v["Regional_Indicator"] = Regional_Indicator = 6;
+      prop2v["L"]                  = L                  = 7;
+      prop2v["V"]                  = V                  = 8;
+      prop2v["T"]                  = T                  = 9;
+      prop2v["LV"]                 = LV                 = 10;
+      prop2v["LVT"]                = LVT                = 11;
+      prop2v["Pictographic"]       = Pictographic       = 12;
+
+      v2c[0] = "O";
+      v2c[1] = "C";
+      v2c[2] = "Z";
+      v2c[3] = "P";
+      v2c[4] = "E";
+      v2c[5] = "S";
+      v2c[6] = "R";
+      v2c[7] = "L";
+      v2c[8] = "V";
+      v2c[9] = "T";
+      v2c[10] = "v";
+      v2c[11] = "t";
+      v2c[12] = "G";
+    }
+
+    function process_GraphemeClusterBreak(_, v, m, b, e, i) {
+      v = prop2v[$3];
+      if (match($1, /([[:xdigit:]]+)\.\.([[:xdigit:]]+)/, m) > 0) {
+        b = strtonum("0x" m[1]);
+        e = strtonum("0x" m[2]);
+      } else {
+        b = e = strtonum("0x" $1);
+      }
+
+      for (i = b; i <= e; i++)
+        table[i] = v;
+
+      if (e > max_code) max_code = e;
+    }
+    function process_ExtendedPictographic(m, b, e, i) {
+      if (match($1, /([[:xdigit:]]+)\.\.([[:xdigit:]]+)/, m) > 0) {
+        b = strtonum("0x" m[1]);
+        e = strtonum("0x" m[2]);
+      } else {
+        b = e = strtonum("0x" $1);
+      }
+
+      for (i = b; i <= e; i++) {
+        if (table[i])
+          printf("Extended_Pictograph: U+%04X already has Grapheme_Cluster_Break Property '\''%s'\''.\n", i, v2c[table[i]]) > "/dev/stderr";
+        else
+          table[i] = Pictographic;
+      }
+
+      if (e > max_code) max_code = e;
+    }
+
+    /__Grapheme_Cluster_Break__/ {mode = "break";}
+    /__Extended_Pictographic__/ {mode = "picto";}
+    /^[[:space:]]*(#|$)/ {next;}
+    mode == "break" && $2 == ";" { process_GraphemeClusterBreak(); }
+    mode == "picto" && /Extended_Pictographic/ { process_ExtendedPictographic(); }
+
+    function rule_add(i, j, value) {
+       if (rule[i, j] != "") return;
+       rule[i, j] = value;
+    }
+    function rule_initialize() {
+       for (i = 0; i < PropertyCount; i++) {
+         rule_add(Control, i, 0);
+         rule_add(i, Control, 0);
+       }
+       rule_add(L, L, 1);
+       rule_add(L, V, 1);
+       rule_add(L, LV, 1);
+       rule_add(L, LVT, 1);
+       rule_add(LV, V, 1);
+       rule_add(LV, T, 1);
+       rule_add(V, V, 1);
+       rule_add(V, T, 1);
+       rule_add(LVT, T, 1);
+       rule_add(T, T, 1);
+       for (i = 0; i < PropertyCount; i++) {
+         rule_add(i, Extend, 1);
+         rule_add(i, ZWJ, 1);
+       }
+       for (i = 0; i < PropertyCount; i++) {
+         rule_add(i, SpacingMark, 2);
+         rule_add(Prepend, i, 2);
+       }
+       rule_add(ZWJ, Pictographic, 3);
+       rule_add(Regional_Indicator, Regional_Indicator, 4);
+    }
+    function rule_print(_, i, j, t, out) {
+      out = "";
+      for (i = 0; i < PropertyCount; i++) {
+        out = out " ";
+        for (j = 0; j < PropertyCount; j++) {
+          t = rule[i, j];
+          if (t == "") t = 0;
+          out = out " " t;
+        }
+        out = out "\n";
+      }
+      print "_ble_unicode_GraphemeClusterBreak_rule=(";
+      print out ")";
+    }
+
+    function print_table(_, out, i, p) {
+      out = ""
+      for (i = 0; i <= max_code; i++) {
+        p = v2c[table[i]];
+        if (p == "") p = "O";
+        out = out p;
+        if ((i + 1) % 128 == 0)
+          out = out "\n";
+      }
+      print out;
+    }
+
+    # 孤立した物は先に出力
+    function print_isolated(_, out, c, i, j, v) {
+      out = "";
+      count = 0;
+      for (i = 0; i <= max_code; i = j) {
+        j = i + 1;
+        while (j <= max_code && table[j] == table[i]) j++;
+        if (j - i <= 2) {
+          v = table[i];
+          if (v == "") v = 0;
+          for (k = i; k < j; k++) {
+            table[k] = "-";
+            if (count++ % 16 == 0)
+              out = out (out == "" ? "  " : "\n  ")
+            out = out "[" k "]=" v " ";
+          }
+        }
+      }
+      print "_ble_unicode_GraphemeClusterBreak=("
+      print "  # isolated Grapheme_Cluster_Break property (" count " chars)"
+      print out;
+    }
+    function print_ranges(_, out1, c, i, j, v) {
+      out1 = "";
+      count1 = 0;
+      count2 = 0;
+      for (i = 0; i <= max_code; i = j) {
+        j = i + 1;
+        while (j <= max_code && table[j] == table[i] || table[j] == "-") j++;
+
+        v = table[i];
+        if (v == "") v = 0;
+
+        if (count1++ % 16 == 0)
+          out1 = out1 (out1 == "" ? "  " : "\n  ")
+        out1 = out1 "[" i "]=" v " ";
+
+        if (count2++ % 32 == 0)
+          out2 = out2 (out2 == "" ? "  " : "\n  ")
+        out2 = out2 i " ";
+      }
+      print "";
+      print "  # Grapheme_Cluster_Break ranges (" count1 " ranges)"
+      print out1;
+      print ")"
+      print "_ble_unicode_GraphemeClusterBreak_ranges=("
+      print out2 (max_code+1);
+      print ")"
+    }
+
+    function prop_print(_, key) {
+      print "_ble_unicode_GraphemeClusterBreak_Count=" PropertyCount;
+      for (key in prop2v)
+        if (key != "CR" && key != "LF")
+          print "_ble_unicode_GraphemeClusterBreak_" key "=" prop2v[key];
+    }
+
+    END {
+      #print_table();
+
+      prop_print();
+
+      print "_ble_unicode_GraphemeClusterBreak_MaxCode=" (max_code + 1);
+      print_isolated();
+      print_ranges();
+
+      rule_initialize();
+      rule_print();
+    }
+  ' > src/canvas.GraphemeClusterBreak.sh
+}
+
+function sub:update-EastAsianWidth {
+  local version
+  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0}.0; do
+    local data=out/data/unicode-EastAsianWidth-$version.txt
+    download http://www.unicode.org/Public/$version/ucd/EastAsianWidth.txt "$data"
+    gawk '
+      /^[[:space:]]*(#|$)/ {next;}
+
+      BEGIN {
+        prev_end = 0;
+        prev_w = "";
+        cjkwidth = 1;
+      }
+
+      function determine_width(eastAsianWidth, generalCategory) {
+        if (generalCategory ~ /^(M[ne]|Cf)$/)
+          return 0;
+        else if (eastAsianWidth == "A")
+          return cjkwidth;
+        else if (eastAsianWidth == "W" || eastAsianWidth == "F")
+          return 2;
+        else
+          return 1;
+      }
+
+      function register_width(beg, end, w) {
+        if (end > beg && w != prev_w) {
+          printf("U+%04X %s\n", beg, w);
+          prev_w = w;
+        }
+        prev_end = end;
+      }
+
+      $2 == "#" {
+        if (match($1, /^([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+          beg = strtonum("0x" m[1]);
+          end = beg + 1;
+          eaw = m[2];
+        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+          beg = strtonum("0x" m[1]);
+          end = strtonum("0x" m[2]) + 1;
+          eaw = m[3];
+        } else {
+          next;
+        }
+
+        w = determine_width(eaw, $3);
+
+        # Undefined characters
+        register_width(prev_end, beg, 1);
+
+        # Current range
+        register_width(beg, end, w);
+      }
+      END {
+        register_width(prev_end, 0x110000, 1);
+      }
+    ' "$data" > "out/data/c2w.eaw-$version.txt"
+  done
+}
+
+function sub:update-GeneralCategory {
+  local version
+  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0}.0; do
+    local data=out/data/unicode-UnicodeData-$version.txt
+    download "http://www.unicode.org/Public/$version/ucd/UnicodeData.txt" "$data" || continue
+
+    # 4.1 -> 401, 13.0 -> 1300, etc.
+    local VER; IFS=. eval 'VER=($version)'
+    printf -v VER '%d%02d' "${VER[0]}" "${VER[1]}"
+
+    gawk -F ';' -v VER="$VER" '
+      BEGIN {
+        mode = 0;
+        range_beg = 0;
+        range_end = 0;
+        range_cat = "";
+        table = "";
+        range = "";
+      }
+
+      function register_range(beg, end, cat, _, i) {
+        # printf("%x %x %s\n", beg, end, cat);
+        if (end - beg <= 2) {
+          for (i = beg; i < end; i++)
+            table = table " [" i "]=" cat;
+        } else {
+          range = range " " beg;
+          table = table " [" beg "]=" cat;
+        }
+      }
+
+      function close_range(){
+        if (range_cat != "")
+          register_range(range_beg, range_end, range_cat);
+        if (code > range_end)
+          register_range(range_end, code, "Cn");
+      }
+
+      {
+        code = strtonum("0x" $1);
+        cat = $3;
+
+        if (mode == 1) {
+          if (!($2 ~ /Last>/)) {
+            print "Error: <..., First> is expected" > "/dev/stderr";
+          } else if (range_cat != cat) {
+            print "Error: mismatch of General_Category of First and Last." > "/dev/stderr";
+          }
+          range_end = code + 1;
+          mode = 0;
+        } else {
+          if (code > range_end || range_cat != cat){
+            close_range();
+            range_beg = code;
+            range_cat = cat;
+          }
+          range_end = code + 1;
+
+          if ($2 ~ /First>/) {
+            mode = 1;
+          } else if ($2 ~ /Last>/) {
+            print "Error: <..., Last> is unexpected" > "/dev/stderr";
+          }
+        }
+      }
+
+      END {
+        code = 0x110000;
+        close_range();
+
+        print "_ble_unicode_GeneralCategory" VER "=(" substr(table, 2) ")";
+        print "_ble_unicode_GeneralCategory" VER "_range=(" substr(range, 2) ")";
+      }
+    ' "$data" | ifold -w 131 --spaces --no-text-justify --indent=.. > "out/data/GeneralCategory.$version.txt"
+  done
 }
 
 #------------------------------------------------------------------------------
@@ -254,7 +763,7 @@ function sub:scan/builtin {
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
-    sed -E 'h;s/'"$esc"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g' 
+    sed -E 'h;s/'"$esc"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g'
 }
 
 function sub:scan/check-todo-mark {
@@ -525,7 +1034,7 @@ function sub:release-note/.find-commit-pairs {
     mode == "master" && (i = title2index[$2]) != "" && commit_master[i] == "" {
       commit_master[i] = $1;
     }
-    
+
     END {
       for (i = 0; i < nlist; i++) {
         print commit_head[i] ":" commit_master[i] ":" titles[i];

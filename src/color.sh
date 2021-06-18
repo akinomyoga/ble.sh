@@ -1521,23 +1521,24 @@ ble/highlight/layer:plain/initialize-vars
 ##   @var[in,out] ch
 function ble/highlight/layer:plain/update/.getch {
   [[ $ch == [' '-'~'] ]] && return 0
-  if [[ $ch == [-] ]]; then
+  if [[ $ch == [$'\t\n\177'] ]]; then
     if [[ $ch == $'\t' ]]; then
       ch=${_ble_string_prototype::it}
     elif [[ $ch == $'\n' ]]; then
       ch=$_ble_term_el$_ble_term_nl
-    elif [[ $ch == '' ]]; then
+    elif [[ $ch == $'\177' ]]; then
       ch='^?'
-    else
-      local ret
-      ble/util/s2c "$ch"
-      ble/util/c2s $((ret+64))
-      ch="^$ret"
     fi
   else
-    # C1 characters
     local ret; ble/util/s2c "$ch"
-    if ((0x80<=ret&&ret<=0x9F)); then
+    local cs=${_ble_unicode_GraphemeCluster_ControlRepresentation[ret]}
+    if [[ $cs ]]; then
+      ch=$cs
+    elif ((ret<0x20)); then
+      ble/util/c2s $((ret+64))
+      ch="^$ret"
+    elif ((0x80<=ret&&ret<=0x9F)); then
+      # C1 characters
       ble/util/c2s $((ret-64))
       ch="M-^$ret"
     fi

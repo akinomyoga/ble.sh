@@ -15,7 +15,7 @@ ifeq ($(GAWK),)
   ifeq ($(GAWK),)
     $(error Sorry, gawk/awk could not be found. Please check your PATH environment variable.)
   endif
-  ifeq ($(shell $(GAWK) --version | grep -Fi 'GNU Awk'),)
+  ifeq ($(shell $(GAWK) --version 2>/dev/null | grep -Fi 'GNU Awk'),)
     $(error Sorry, gawk could not be found. Please install gawk (GNU Awk).)
   endif
 endif
@@ -80,6 +80,8 @@ $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
 $(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh lib/core-syntax-ctx.def | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 $(OUTDIR)/lib/init-msys1.sh: lib/init-msys1.sh lib/init-msys1-helper.c | $(OUTDIR)/lib
+	$(MWGPP) $< > $@
+$(OUTDIR)/lib/test-canvas.sh: lib/test-canvas.sh lib/test-canvas.GraphemeClusterTest.sh | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 
 #outfiles += $(OUTDIR)/lib/init-msleep.sh

@@ -769,6 +769,16 @@ function ble/dense-array#fill-range {
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
+function ble/idict#copy {
+  local _ble_script='
+    '$1'=()
+    local i'$1$2'
+    for i'$1$2' in "${!'$2'[@]}"; do
+      '$1'[i'$1$2']=${'$2'[i'$1$2']}
+    done'
+  builtin eval -- "$_ble_script"
+}
+
 _ble_string_prototype='        '
 function ble/string#reserve-prototype {
   local n=$1 c

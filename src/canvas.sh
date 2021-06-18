@@ -55,16 +55,22 @@ function bleopt/check:char_width_mode {
   fi
 }
 
+_ble_util_c2w=()
+
 ## @fn ble/util/c2w ccode
 ##   @var[out] ret
 function ble/util/c2w {
-  "ble/util/c2w+$bleopt_char_width_mode" "$1"
+  ret=${_ble_util_c2w[$1]}
+  [[ $ret ]] || "ble/util/c2w+$bleopt_char_width_mode" "$1"
 }
 ## @fn ble/util/c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
 ##   @var[out] ret
 function ble/util/c2w-edit {
-  if (($1<32||127<=$1&&$1<160)); then
+  local cs=${_ble_unicode_GraphemeCluster_ControlRepresentation[$1]}
+  if [[ $cs ]]; then
+    ret=${#cs}
+  elif (($1<32||127<=$1&&$1<160)); then
     # 制御文字は ^? と表示される。
     ret=2
     # TAB は???
@@ -75,22 +81,31 @@ function ble/util/c2w-edit {
     ble/util/c2w "$1"
   fi
 }
-# ## @fn ble/util/c2w-edit ccode
-# ##   @var[out] ret
-# function ble/util/s2w {
-#   ble/util/s2c "${1:$2:1}"
-#   "ble/util/c2w+$bleopt_char_width_mode" "$ret"
-# }
+## @fn ble/util/s2w      text
+## @fn ble/util/s2w-edit text [opts]
+##   @param[in] text
+##   @var[out] ret
+function ble/util/s2w-edit {
+  local text=$1 iN=${#1} flags=$2 i
+  ret=0
+  for ((i=0;i<iN;i++)); do
+    local c w cs cb extend
+    ble/unicode/GraphemeCluster/match "$text" "$i" "$flags"
+    ((ret+=w,i+=extend))
+  done
+}
+function ble/util/s2w {
+  ble/util/s2w-edit "$1" R
+}
 
 # ---- 文字種判定 ----
 
-## @arr _ble_util_c2w_except
+## @arr _ble_util_c2w_zenkaku_except
 _ble_util_c2w_zenkaku_min=11904 # 0x2E80
 _ble_util_c2w_zenkaku_max=42192 # 0xA4D0
-_ble_util_c2w_except=(
+_ble_util_c2w_zenkaku_except=(
   # 0x2E80..0xA4D0 の範囲内で飛び地になっている全角とは限らない文字
   [0x303F]=1 # 半角スペース
-  [0x3030]=-2 [0x303d]=-2 [0x3297]=-2 [0x3299]=-2 # 絵文字
 )
 ## @fn ble/util/c2w/.determine-unambiguous
 ##   @var[out] ret
@@ -106,7 +121,7 @@ function ble/util/c2w/.determine-unambiguous {
 
   # 以下は全角に確定している範囲
   if ((code<0xFB00)); then
-    ((_ble_util_c2w_zenkaku_min<=code&&code<_ble_util_c2w_zenkaku_max&&!_ble_util_c2w_except[code]||
+    ((_ble_util_c2w_zenkaku_min<=code&&code<_ble_util_c2w_zenkaku_max&&!_ble_util_c2w_zenkaku_except[code]||
       0xAC00<=code&&code<0xD7A4||
       0xF900<=code||
       0x1100<=code&&code<0x1160||
@@ -121,17 +136,22 @@ function ble/util/c2w/.determine-unambiguous {
   fi
 }
 
-## @var _ble_canvas_emoji_expr_maybe
-## @arr _ble_canvas_emoji_database
-## @arr _ble_canvas_emoji_database_????
+## @var _ble_unicode_EmojiStatus_xmaybe
+## @arr _ble_unicode_EmojiStatus_ranges
+## @arr _ble_unicode_EmojiStatus_????
+## @arr _ble_unicode_EmojiStatus_????_ranges
 ## @bleopt emoji_version
 ##
 ##   ファイル src/canvas.emoji.sh は以下のコマンドで生成する。
 ##   $ ./make_command.sh update-emoji-database
 ##
+## Note: canvas.emoji.sh は _ble_util_c2w_zenkaku_except を修正するので、
+## _ble_util_c2w_zenkaku_except の初期化よりも後に include する。
+##
 #%< canvas.emoji.sh
 
-bleopt/declare -n emoji_width 2
+bleopt/declare -v emoji_width 2
+bleopt/declare -v emoji_opts ri:tpvs:epvs
 
 function bleopt/check:emoji_version {
   local rex='^0*([0-9]+)\.0*([0-9]+)$'
@@ -141,28 +161,51 @@ function bleopt/check:emoji_version {
   fi
 
   local src
-  ble/util/sprintf src _ble_canvas_emoji_database_%04d $((BASH_REMATCH[1]*100+BASH_REMATCH[2]))
+  ble/util/sprintf src _ble_unicode_EmojiStatus_%04d $((BASH_REMATCH[1]*100+BASH_REMATCH[2]))
   if ! ble/is-array "$src"; then
     ble/util/print "bleopt: Unsupported emoji_version '$value'." >&2
     return 1
   fi
 
-  builtin eval -- "_ble_canvas_emoji_database=(\"\${$src[@]}\")"
+  ble/idict#copy _ble_unicode_EmojiStatus "$src"
+  builtin eval -- "_ble_unicode_EmojiStatus_ranges=(\"\${${src}_ranges[@]}\")"
+  return 0
+}
+
+_ble_unicode_EmojiStatus_xIsEmoji='ret&&ret!=_ble_unicode_EmojiStatus_Unqualified'
+function bleopt/check:emoji_opts {
+  _ble_unicode_EmojiStatus_xIsEmoji='ret'
+  [[ :$value: != *:unqualified:* ]] &&
+    _ble_unicode_EmojiStatus_xIsEmoji=$_ble_unicode_EmojiStatus_xIsEmoji'&&ret!=_ble_unicode_EmojiStatus_Unqualified'
+  local rex=':min=U\+([0-9a-fA-F]+):'
+  [[ :$value: =~ $rex ]] &&
+    _ble_unicode_EmojiStatus_xIsEmoji=$_ble_unicode_EmojiStatus_xIsEmoji'&&code>=0x'${BASH_REMATCH[1]}
+  return 0
+}
+
+function ble/unicode/EmojiStatus {
+  local code=$1
+  ret=${_ble_unicode_EmojiStatus[code]}
+  [[ $ret ]] && return 0
+  ret=$_ble_unicode_EmojiStatus_None
+  if ((_ble_unicode_EmojiStatus_xmaybe)); then
+    local l=0 u=${#_ble_unicode_EmojiStatus_ranges[@]} m
+    while ((l+1<u)); do
+      ((_ble_unicode_EmojiStatus_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+    done
+    ret=${_ble_unicode_EmojiStatus[_ble_unicode_EmojiStatus_ranges[l]]:-0}
+  fi
+
+  _ble_unicode_EmojiStatus[code]=$ret
   return 0
 }
 
 ## @fn ble/util/c2w/is-emoji code
 ##   @param[in] code
 function ble/util/c2w/is-emoji {
-  local code=$1
-  ((_ble_canvas_emoji_expr_maybe)) || return 1
-
-  local l=0 u=${#_ble_canvas_emoji_database[@]} m
-  while ((l+1<u)); do
-    ((_ble_canvas_emoji_database[m=(l+u)/2]<=code?(l=m):(u=m)))
-  done
-
-  (((l&1)==0)); return "$?"
+  local code=$1 ret
+  ble/unicode/EmojiStatus "$code"
+  ((_ble_unicode_EmojiStatus_xIsEmoji))
 }
 
 # ---- char_width_mode ----
@@ -249,7 +292,7 @@ function ble/util/c2w+west {
   if ((ret<0)); then
     if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
       ((ret=bleopt_emoji_width))
-    elif ((_ble_util_c2w_except[$1]==-2)); then
+    elif ((_ble_util_c2w_zenkaku_except[$1]==-2)); then
       ret=2 # (絵文字の可能性があったため曖昧だった) 全角
     else
       ret=1
@@ -283,7 +326,7 @@ function ble/util/c2w+east {
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
     return 0
-  elif ((_ble_util_c2w_except[$1]==-2)); then
+  elif ((_ble_util_c2w_zenkaku_except[$1]==-2)); then
     ret=2 # (絵文字の可能性があったため曖昧だった) 全角
     return 0
   fi
@@ -348,6 +391,252 @@ function ble/util/c2w+auto/update.hook {
   local l=$1 c=$2
   local w=$((c-1-_ble_util_c2w_auto_update_x0))
   ((_ble_util_c2w_auto_width=w==1?1:2))
+}
+
+bleopt/declare -v grapheme_cluster extended
+function bleopt/check:grapheme_cluster {
+  case $value in
+  (extended|legacy|'') return 0 ;;
+  (*)
+    ble/util/print "bleopt: invalid value for grapheme_cluster: '$value'." >&2
+    return 1 ;;
+  esac
+}
+
+#%< canvas.GraphemeClusterBreak.sh
+
+function ble/unicode/GraphemeCluster/c2break {
+  local code=$1
+  ret=${_ble_unicode_GraphemeClusterBreak[code]}
+  [[ $ret ]] && return 0
+  ((ret>_ble_unicode_GraphemeClusterBreak_MaxCode)) && { ret=0; return 0; }
+
+  local l=0 u=${#_ble_unicode_GraphemeClusterBreak_ranges[@]} m
+  while ((l+1<u)); do
+    ((_ble_unicode_GraphemeClusterBreak_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+  done
+
+  ret=${_ble_unicode_GraphemeClusterBreak[_ble_unicode_GraphemeClusterBreak_ranges[l]]:-0}
+  _ble_unicode_GraphemeClusterBreak[code]=$ret
+  return 0
+}
+
+## @fn ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ
+##   @var[in] text i
+##   @var[out] ret
+function ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ {
+  if [[ :$bleopt_emoji_opts: != *:zwj:* ]]; then
+    ((ret=i))
+    return 0
+  fi
+
+  local j=$((i-1))
+  for ((j=i-1;j>0;j--)); do
+    ble/util/s2c "${text:j-1:1}"
+    ble/unicode/GraphemeCluster/c2break "$ret"
+    ((ret==_ble_unicode_GraphemeClusterBreak_Extend)) || break
+  done
+
+  if ((j==0||ret!=_ble_unicode_GraphemeClusterBreak_Pictographic)); then
+    #             sot | Extend* ZWJ | Pictographic
+    # [^Pictographic] | Extend* ZWJ | Pictographic
+    #                 ^--- j        ^--- i
+    ((ret=i))
+    return 0
+  else
+    #    Pictographic | Extend* ZWJ | Pictographic
+    #                 ^--- j        ^--- i
+    ((i=j-1,b1=ret))
+    return 1
+  fi
+}
+## @fn ble/unicode/GraphemeCluster/find-previous-boundary/.RI
+##   @var[in] text i
+##   @var[out] ret
+function ble/unicode/GraphemeCluster/find-previous-boundary/.RI {
+  if [[ :$bleopt_emoji_opts: != *:ri:* ]]; then
+    ((ret=i))
+    return 0
+  fi
+
+  local j=$((i-1))
+  for ((j=i-1;j>0;j--)); do
+    ble/util/s2c "${text:j-1:1}"
+    ble/unicode/GraphemeCluster/c2break "$ret"
+    ((ret==_ble_unicode_GraphemeClusterBreak_Regional_Indicator)) || break
+  done
+
+  if ((i-j==1)); then
+    ((i=j,b1=_ble_unicode_GraphemeClusterBreak_Regional_Indicator))
+    return 1
+  else
+    ((ret=(i-j)%2==1?i-1:i))
+    return 0
+  fi
+}
+function ble/unicode/GraphemeCluster/find-previous-boundary {
+  local text=$1 i=$2
+  if [[ $bleopt_grapheme_cluster ]] && ((i&&--i)); then
+    ble/util/s2c "${text:i:1}"
+    ble/unicode/GraphemeCluster/c2break "$ret"; local b1=$ret
+    while ((i>0)); do
+      local b2=$b1
+      ble/util/s2c "${text:i-1:1}"
+      ble/unicode/GraphemeCluster/c2break "$ret"; local b1=$ret
+      case ${_ble_unicode_GraphemeClusterBreak_rule[b1*_ble_unicode_GraphemeClusterBreak_Count+b2]} in
+      (0) break ;;
+      (1) ((i--)) ;;
+      (2) [[ $bleopt_grapheme_cluster != extended ]] && break; ((i--)) ;;
+      (3) ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ && return 0 ;;
+      (4) ble/unicode/GraphemeCluster/find-previous-boundary/.RI && return 0 ;;
+      esac
+    done
+  fi
+  ret=$i
+  return 0
+}
+
+_ble_unicode_GraphemeClusterBreak_isCore=()
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_Other]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_Control]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_Regional_Indicator]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_L]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_V]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_T]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_LV]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_LVT]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_Pictographic]=1
+
+## @fn ble/unicode/GraphemeCluster/extend-ascii text i
+##   @var[out] extend
+function ble/unicode/GraphemeCluster/extend-ascii {
+  extend=0
+  [[ $_ble_util_locale_encoding != UTF-8 || ! $bleopt_grapheme_cluster ]] && return 1
+  local text=$1 iN=${#1} i=$2 ret
+  for ((;i<iN;i++,extend++)); do
+    ble/util/s2c "${text:i:1}"
+    ble/unicode/GraphemeCluster/c2break "$ret"
+    case $ret in
+    ("$_ble_unicode_GraphemeClusterBreak_Extend"|"$_ble_unicode_GraphemeClusterBreak_ZWJ") ;;
+    ("$_ble_unicode_GraphemeClusterBreak_SpacingMark")
+      [[ $bleopt_grapheme_cluster == extended ]] || break ;;
+    (*) break ;;
+    esac
+  done
+  ((extend))
+}
+
+_ble_unicode_GraphemeCluster_ControlRepresentation=()
+function ble/unicode/GraphemeCluster/.get-ascii-rep {
+  local c=$1
+  cs=${_ble_unicode_GraphemeCluster_ControlRepresentation[c]}
+  if [[ ! $cs ]]; then
+    if ((c<32)); then
+      ble/util/c2s $((c+64))
+      cs=^$ret
+    elif ((c==127)); then
+      cs=^?
+    elif ((128<=c&&c<160)); then
+      ble/util/c2s $((c-64))
+      cs=M-^$ret
+    else
+      ble/util/sprintf cs 'U+%X' "$c"
+    fi
+    _ble_unicode_GraphemeCluster_ControlRepresentation[c]=$cs
+  fi
+}
+
+## @fn ble/unicode/GraphemeCluster/match text i flags
+##   @param[in] text i
+##   @param[in] flags
+##     R が含まれている時制御文字を (ASCII 表現ではなく) そのまま cs に格納しま
+##     す。幅は 0 で換算されます。
+##   @var[out] c w cs cb extend
+function ble/unicode/GraphemeCluster/match {
+  local text=$1 iN=${#1} i=$2 j=$2 flags=$3 ret
+  if ((i>=iN)); then
+    c=0 w=0 cs= cb= extend=0
+    return 1
+  elif [[ $_ble_util_locale_encoding != UTF-8 || ! $bleopt_grapheme_cluster ]]; then
+    cs=${text:i:1}
+    ble/util/s2c "$cs"; c=$ret
+    if [[ $flags != *R* ]] && {
+         ble/unicode/GraphemeCluster/c2break "$c"
+         ((ret==_ble_unicode_GraphemeClusterBreak_Control)); };  then
+      ble/unicode/GraphemeCluster/.get-ascii-rep "$c"
+      w=${#cs}
+    else
+      ble/util/c2w "$c"; w=$ret
+    fi
+    extend=0
+    return 0
+  fi
+
+  local b0 b1 b2 c0 c2
+  ble/util/s2c "${text:i:1}"; c0=$ret
+  ble/unicode/GraphemeCluster/c2break "$c0"; b0=$ret
+
+  local coreb= corec= npre=0 vs= ri=
+  c2=$c0 b2=$b0
+  while ((j<iN)); do
+    if ((_ble_unicode_GraphemeClusterBreak_isCore[b2])); then
+      [[ $coreb ]] || coreb=$b2 corec=$c2
+    elif ((b2==_ble_unicode_GraphemeClusterBreak_Prepend)); then
+      ((npre++))
+    elif ((c2==0xFE0E)); then # Variation selector TPVS
+      vs=tpvs
+    elif ((c2==0xFE0F)); then # Variation selector EPVS
+      vs=epvs
+    fi
+
+    ((j++))
+    b1=$b2
+    ble/util/s2c "${text:j:1}"; c2=$ret
+    ble/unicode/GraphemeCluster/c2break "$c2"; b2=$ret
+    case ${_ble_unicode_GraphemeClusterBreak_rule[b1*_ble_unicode_GraphemeClusterBreak_Count+b2]} in
+    (0) break ;;
+    (1) continue ;;
+    (2) [[ $bleopt_grapheme_cluster != extended ]] && break ;;
+    (3) [[ :$bleopt_emoji_opts: == *:zwj:* ]] &&
+          ((coreb==_ble_unicode_GraphemeClusterBreak_Pictographic)) || break ;;
+    (4) [[ :$bleopt_emoji_opts: == *:ri:* && ! $ri ]] || break; ri=1 ;;
+    esac
+  done
+
+  c=$corec cb=$coreb cs=${text:i:j-i}
+  ((extend=j-i-1))
+  if [[ ! $corec ]]; then
+    if [[ $flags != *R* ]]; then
+      ((c=c0,cb=0,corec=0x25CC)) # 基底が存在しない時は点線円
+      ble/util/c2s "$corec"
+      cs=${text:i:npre}$ret${text:i+npre:j-i-npre}
+    else
+      ble/util/s2c "$cs"; c=$ret corec=$ret
+      ble/unicode/GraphemeCluster/c2break "$c"; cb=$ret
+    fi
+  fi
+
+  if ((cb==_ble_unicode_GraphemeClusterBreak_Control)); then
+    if [[ $flags != *R* ]]; then
+      ble/unicode/GraphemeCluster/.get-ascii-rep "$c"
+      w=${#cs}
+    else
+      # ToDo: 全ての制御文字が幅0とは限らない。というより色々処理が必要。
+      w=0
+    fi
+
+  else
+    # 幅の計算 (Variation Selector を考慮に入れる)
+    if [[ $vs == tpvs && :$bleopt_emoji_opts: == *:tpvs:* ]]; then
+      bleopt_emoji_width= ble/util/c2w "$corec"; w=$ret
+    elif [[ $vs == epvs && :$bleopt_emoji_opts: == *:epvs:* ]]; then
+      w=${bleopt_emoji_width:-2}
+    else
+      ble/util/c2w "$corec"; w=$ret
+    fi
+  fi
+
+  return 0
 }
 
 #------------------------------------------------------------------------------
@@ -1541,10 +1830,15 @@ function ble/canvas/trace/.impl {
       fi
       ble/canvas/trace/.put-ascii.draw "$t"
       ((i+=${#s}))
+
+      if local extend; ble/unicode/GraphemeCluster/extend-ascii "$text" "$i"; then
+        ble/canvas/trace/.put-atomic.draw "${text:i:extend}" 0
+        ((i+=extend))
+      fi
+
     else
-      local ret
-      ble/util/s2c "${tail::1}"; local c=$ret
-      ble/util/c2w "$c"; local w=$ret
+      local c w cs cb extend
+      ble/unicode/GraphemeCluster/match "$text" "$i" R
       if [[ $opt_nooverflow ]] && ! ((x+w<=xlimit||y+1<lines&&w<=cols)); then
         is_overflow=1
       else
@@ -1557,9 +1851,9 @@ function ble/canvas/trace/.impl {
           fi
         fi
         lc=$c lg=$g
-        ble/canvas/trace/.put-atomic.draw "${tail::1}" "$w"
+        ble/canvas/trace/.put-atomic.draw "$cs" "$w"
       fi
-      ((i++))
+      ((i+=1+extend))
     fi
 
     [[ $is_overflow ]] && ble/canvas/trace/.process-overflow
@@ -1730,22 +2024,17 @@ function ble/canvas/trace-text {
       if [[ $tail == $glob ]]; then
         local span=${tail%%$globx}; ((i+=${#span}))
         ble/canvas/trace-text/.put-simple "${#span}" "$span"
-      else
-        local c=${tail::1}; ((i++))
-        ble/util/s2c "$c"
-        local code=$ret w=0
-        if ((code<32)); then
-          ble/util/c2s $((code+64))
-          ble/canvas/trace-text/.put-atomic 2 "$sgr1^$ret$sgr0"
-        elif ((code==127)); then
-          ble/canvas/trace-text/.put-atomic 2 "$sgr1^?$sgr0"
-        elif ((128<=code&&code<160)); then
-          ble/util/c2s $((code-64))
-          ble/canvas/trace-text/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
-        else
-          ble/util/c2w "$code"
-          ble/canvas/trace-text/.put-atomic "$ret" "$c"
+        if local extend; ble/unicode/GraphemeCluster/extend-ascii "$text" "$i"; then
+          out=$out${text:i:extend}
+          ((i+=extend))
         fi
+      else
+        local c w cs cb extend
+        ble/unicode/GraphemeCluster/match "$text" "$i"
+        ((i+=1+extend))
+        ((cb==_ble_unicode_GraphemeClusterBreak_Control)) &&
+          cs=$sgr1$cs$sgr0
+        ble/canvas/trace-text/.put-atomic "$w" "$cs"
       fi && ((y*cols+x<lines*cols)) ||
         { flag_overflow=1; break; }
     done
@@ -1901,8 +2190,8 @@ function ble/textmap#update {
   else
     if ((dbeg<0)); then
       # 表示幅も初期位置も内容も変更がない場合はOK
-      local -a pos
-      pos=(${_ble_textmap_pos[iN]})
+      local pos
+      ble/string#split-words pos "${_ble_textmap_pos[iN]}"
       ((x=pos[0]))
       ((y=pos[1]))
       _ble_textmap_endx=$x
@@ -1910,8 +2199,10 @@ function ble/textmap#update {
       return 0
     elif ((dbeg>0)); then
       # 途中から計算を再開
-      local -a pos
-      pos=(${_ble_textmap_pos[dbeg]})
+      local ret
+      ble/unicode/GraphemeCluster/find-previous-boundary "$text" "$dbeg"; dbeg=$ret
+      local pos
+      ble/string#split-words pos "${_ble_textmap_pos[dbeg]}"
       ((x=pos[0]))
       ((y=pos[1]))
     fi
@@ -1941,7 +2232,7 @@ function ble/textmap#update {
 
   ble/urange#shift --prefix=_ble_textmap_ "$dbeg" "$dend" "$dend0"
 
-  local i
+  local i extend
   for ((i=dbeg;i<iN;)); do
     if ble/util/isprint+ "${text:i}"; then
       local w=${#BASH_REMATCH}
@@ -1956,18 +2247,15 @@ function ble/textmap#update {
         _ble_textmap_glyph[i]=$cs
         _ble_textmap_pos[i+1]="$x $y 0"
       done
+      ble/unicode/GraphemeCluster/extend-ascii "$text" "$i"
     else
-      local ret
-      ble/util/s2c "${text:i:1}"
-      local code=$ret
-
-      local w=0 cs= changed=0
-      if ((code<32)); then
-        if ((code==9)); then
+      local c w cs cb extend changed=0
+      ble/unicode/GraphemeCluster/match "$text" "$i"
+      if ((c<32)); then
+        if ((c==9)); then
           if ((x+1>=cols)); then
-            cs=' '
+            cs=' ' w=0
             ble/textmap#update/.wrap
-            changed=1
           else
             local x2
             ((x2=(x/it+1)*it,
@@ -1976,7 +2264,8 @@ function ble/textmap#update {
               w!=it&&(changed=1)))
             cs=${_ble_string_prototype::w}
           fi
-        elif ((code==10)); then
+        elif ((c==10)); then
+          w=0
           if [[ :$opts: == *:relative:* ]]; then
             local pad=$((cols-x)) eraser=
             if ((pad)); then
@@ -1994,19 +2283,7 @@ function ble/textmap#update {
             cs=$_ble_term_el$_ble_term_nl
           fi
           ((y++,x=0))
-        else
-          ((w=2))
-          ble/util/c2s $((code+64))
-          cs="^$ret"
         fi
-      elif ((code==127)); then
-        w=2 cs="^?"
-      elif ((128<=code&&code<160)); then
-        ble/util/c2s $((code-64))
-        w=4 cs="M-^$ret"
-      else
-        ble/util/c2w "$code"
-        w=$ret cs=${text:i:1}
       fi
 
       local wrapping=0
@@ -2035,6 +2312,10 @@ function ble/textmap#update {
       _ble_textmap_pos[i+1]="$x $y $wrapping"
       ((i++))
     fi
+    while ((extend--)); do
+      _ble_textmap_glyph[i]=
+      _ble_textmap_pos[++i]="$x $y 0"
+    done
 
     if ((i>=dend)); then
       # 後は同じなので計算を省略
