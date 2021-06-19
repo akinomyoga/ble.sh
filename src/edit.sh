@@ -1140,6 +1140,7 @@ function ble/prompt/.instantiate {
     local trace_opts=$opts:prompt
     [[ $bleopt_internal_suppress_bash_output ]] || trace_opts=$trace_opts:left-char
     x=0 y=0 g=0 lc=32 lg=0
+    local ret
     LINES=$rows COLUMNS=$cols ble/canvas/trace "$expanded" "$trace_opts"; local traced=$ret
     ((lc<0&&(lc=0)))
     esc=$traced

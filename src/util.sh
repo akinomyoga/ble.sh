@@ -4665,6 +4665,7 @@ if ((_ble_bash>=40000)); then
     ((${#_ble_util_idle_task[@]}==0)) && return 1
     ble/util/buffer.flush >&2
 
+    local ret
     ble/util/idle.clock/.initialize
     ble/util/idle.clock/.restart
     ble/util/idle.clock
