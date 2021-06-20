@@ -5441,13 +5441,15 @@ function ble/term/DA2/initialize-term {
   ('1;'*)
     if ((4000<=da2r[1]&&da2r[1]<4100&&3<=da2r[2])); then
       _ble_term_TERM=kitty
-    elif ((da2r[1]>=2000)); then
+    elif ((2000<=da2r[1]&&da2r[1]<5400&&da2r[2]==0)); then
       _ble_term_TERM=vte
     fi ;;
   ('99;'*)
     _ble_term_TERM=contra ;;
   ('65;'*)
-    if ((da2r[1]>=100)); then
+    if ((5300<=da2r[1]&&da2r[2]==1)); then
+      _ble_term_TERM=vte
+    elif ((da2r[1]>=100)); then
       _ble_term_TERM=RLogin
     fi ;;
   ('67;'*)

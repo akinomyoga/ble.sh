@@ -93,6 +93,7 @@
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
 - keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 11ac106
 - main: show notifications against debug versions of Bash `#D1612` 8f974aa
+- term: update `vte` identification `#D1620` 0000000
 
 ## Fixes
 

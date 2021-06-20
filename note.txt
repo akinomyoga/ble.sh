@@ -4666,6 +4666,89 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-06-19
+
+  * term: どうも GNOME terminal が terminal identification を変更した様だ [#D1620]
+
+    65;600x;1 になっている。
+
+    | 6cd4713c5 src/vteseq.cc (2018-03-27) int const version = (VTE_MAJOR_VERSION * 100 + VTE_MINOR_VERSION) * 100 + VTE_MICRO_VERSION;
+    | 6cd4713c5 src/vteseq.cc (2018-03-27) reply(seq, VTE_REPLY_DECDA2R, {65, version, 1});
+    |
+    | fde88ef7f src/vteseq.cc (2018-03-27) if (version != NULL) {
+    | fde88ef7f src/vteseq.cc (2018-03-27)         for (i = 0; version[i] != NULL; i++) {
+    | fde88ef7f src/vteseq.cc (2018-03-27)                 ver = ver * 100;
+    | fde88ef7f src/vteseq.cc (2018-03-27)                 ver += atol(version[i]);
+    | fde88ef7f src/vteseq.cc (2018-03-27)         }
+    | fde88ef7f src/vteseq.cc (2018-03-27)         g_strfreev(version);
+    | fde88ef7f src/vteseq.cc (2018-03-27) }
+    | fde88ef7f src/vteseq.cc (2018-03-27) g_snprintf(buf, sizeof (buf), _VTE_CAP_ESC "[>65;%ld;0c", ver);
+    |
+    | Behdad Esfahbod
+    | 3b22bcc86 src/vteseq.c (2009-01-06) g_snprintf(buf, sizeof (buf), _VTE_CAP_ESC "[>1;%ld;0c", ver);
+    |
+    | f3d79059c src/vteseq.c (2006-02-10) version = g_strsplit(VERSION, ".", 0);
+    | f3d79059c src/vteseq.c (2006-02-10) if (version != NULL) {
+    | f3d79059c src/vteseq.c (2006-02-10)         for (i = 0; version[i] != NULL; i++) {
+    | f3d79059c src/vteseq.c (2006-02-10)                 ver = ver * 100;
+    | f3d79059c src/vteseq.c (2006-02-10)                 ver += atol(version[i]);
+    | f3d79059c src/vteseq.c (2006-02-10)         }
+    | f3d79059c src/vteseq.c (2006-02-10)         g_strfreev(version);
+    | f3d79059c src/vteseq.c (2006-02-10) }
+    | f3d79059c src/vteseq.c (2006-02-10)   ret = g_strdup_printf(_VTE_CAP_ESC "[>1;%ld;0c", ver);
+    |
+    | Nalin Dahyabhai
+    | ddad9e00e src/vte.c (2003-06-27) ret = g_strdup_printf(_VTE_CAP_ESC "[>1;%ld;0c", ver);
+    |
+    | 3c6d81bf0 src/vte.c (2002-08-22) version = g_strsplit(VERSION, ".", 0);
+    | 3c6d81bf0 src/vte.c (2002-08-22) if (version != NULL) {
+    | 3c6d81bf0 src/vte.c (2002-08-22)         for (i = 0; version[i] != NULL; i++) {
+    | 3c6d81bf0 src/vte.c (2002-08-22)                 ver = ver * 100;
+    | 3c6d81bf0 src/vte.c (2002-08-22)                 ver += atol(version[i]);
+    | 3c6d81bf0 src/vte.c (2002-08-22)         }
+    | 3c6d81bf0 src/vte.c (2002-08-22)         g_strfreev(version);
+    | 3c6d81bf0 src/vte.c (2002-08-22) }
+    | 3c6d81bf0 src/vte.c (2002-08-22) ret = g_strdup_printf("1;%ld;0c", ver);
+    |
+    | commit 3c6d81bf06becda3f9ab005c7310b2343588115e
+    | Author: Nalin Dahyabhai <nalin@src.gnome.org>
+    | Date:   Thu Aug 22 23:27:31 2002 +0000
+    |
+    |     * src/vte.c: Implement send-primary/secondary-device-attributes.  Bind
+    |             shift+insert to "paste PRIMARY".  Guard against NULL window/icon title
+    |             when telling the child app what they are.
+
+    この歴史を観察すると一番最初に vte に実装された時 2002-08 から 1;version;0 であったが、
+    2018-03 に 65;version;0 に変更された様である。VERSION は何処で定義されているのだろうか。
+
+    | 現在の version は meson.build の中に定義されている。
+    |
+    |   project(
+    |     'vte',
+    |     ['c', 'cpp'],
+    |     version: '0.65.0',
+    |
+    | meson に移行したのは 7566ad673 (2019-04-14) である。この時は 0.57.0
+    |
+    |   7566ad673 (Christian Persch 2019-04-14 21:11:43 +0200  20)   version: '0.57.0',
+    |
+    | それより前は configure.ac に定義されていた様だ。
+    |
+    |   m4_define([version_major],0)
+    |   m4_define([version_minor],57)
+    |   m4_define([version_micro],0)
+    |
+    | fde88ef7f の時点での version は 0.53.0 の様だ
+    |
+    |   137e16630 configure.in (Behdad Esfahbod      2010-06-30 15:27:30 -0400   1) m4_define([version_major],0)
+    |   6f330cc1a configure.ac (Christian Persch     2018-03-12 21:44:43 +0100   2) m4_define([version_minor],53)
+    |   b4b2eb2ce configure.ac (Christian Persch     2018-03-05 21:58:12 +0100   3) m4_define([version_micro],0)
+
+    従って 1;5300;0 から 65;5300;1 に移行したという事。
+
+    * 他の端末についても確認してみると konsole は 0;115;0 に固定である。
+      (src/Vt102Emulation.cpp Vt102Emulation::reportSecondaryAttributes)
+
 2021-06-13
 
   * 2021-06-06 complete: auto-menu の振る舞いの調整 [#D1618]
