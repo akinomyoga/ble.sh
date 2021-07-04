@@ -2503,6 +2503,8 @@ function ble/builtin/bind/.decode-chars.hook {
 ##   文字コードの列からキーの列へ変換します。
 ##   @arr[out] keys
 function ble/builtin/bind/.decode-chars {
+  ble-decode-bind/cmap/initialize
+
   # initialize
   local _ble_decode_csi_mode=0
   local _ble_decode_csi_args=
@@ -2517,6 +2519,11 @@ function ble/builtin/bind/.decode-chars {
   local _ble_keylogger_enabled=
 #%end
   local _ble_decode_keylog_enabled=
+
+  # suppress errors
+  local bleopt_decode_error_cseq_abell=
+  local bleopt_decode_error_cseq_vbell=
+  local bleopt_decode_error_cseq_discard=
 
   # setup hook and run
   local -a ble_decode_bind_keys=()
