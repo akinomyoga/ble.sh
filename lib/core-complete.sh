@@ -2523,10 +2523,11 @@ function ble/complete/progcomp/.compgen {
   if [[ $comp_func ]]; then
     # fzf
     [[ $comp_func == _fzf_* ]] &&
-      ble-import contrib/fzf-completion
+      ble-import -f contrib/fzf-completion
 
     # bash_completion
     if ble/is-function _quote_readline_by_ref; then
+      # https://github.com/scop/bash-completion/pull/492 (fixed in bash-completion 2.12)
       function _quote_readline_by_ref {
         if [[ $1 == \'* ]]; then
           printf -v "$2" %s "${1:1}"
@@ -2535,7 +2536,13 @@ function ble/complete/progcomp/.compgen {
           [[ ${!2} == \$* ]] && builtin eval "$2=${!2}"
         fi
       }
-      ble/function#suppress-stderr _filedir
+      ble/function#suppress-stderr _filedir 2>/dev/null
+
+      # https://github.com/scop/bash-completion/issues/509 (fixed in bash-completion 2.11)
+      ble/function#suppress-stderr _find 2>/dev/null
+
+      # https://github.com/scop/bash-completion/pull/556 (fixed in bash-completion 2.11)
+      ble/function#suppress-stderr _scp_remote_files 2>/dev/null
     fi
   fi
   if [[ $comp_prog ]]; then

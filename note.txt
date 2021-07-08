@@ -4666,6 +4666,18 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-07-04
+
+  * bash-completion (_find): error message (reported by oc1024) [#D1622]
+    https://github.com/akinomyoga/ble.sh/issues/121
+    https://github.com/scop/bash-completion/issues/509
+    https://github.com/scop/bash-completion/commit/f1ddf810e4ee6693acb9fab1be1794586aa111a0
+
+    これはどうしようもない。bash-completion が悪い。
+
+  * ble-0.3: bashrc で bind '"\e[D": backward-char' を実行した時にエラーメッセージ [#D1621]
+    https://github.com/akinomyoga/ble.sh/issues/122#issuecomment-872690396
+
 2021-06-19
 
   * term: どうも GNOME terminal が terminal identification を変更した様だ [#D1620]
