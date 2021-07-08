@@ -1751,6 +1751,8 @@ function ble/complete/util/eval-pathname-expansion {
     ble/array#push dtor 'GLOBIGNORE=$GLOBIGNORE_save'
   fi
 
+  ble/array#reverse dtor
+
   ret=()
   if [[ :$comp_type: == *:sync:* ]]; then
     IFS= builtin eval "ret=($pattern)" 2>/dev/null
@@ -1762,13 +1764,15 @@ function ble/complete/util/eval-pathname-expansion {
 
     local def
     ble/util/assign def 'ble/util/conditional-sync "$sync_command" "" "" "$sync_opts"' &>/dev/null; local ext=$?
-    ((ext==148)) && return 148
-    ble/complete/check-cancel && return 148
+    if ((ext==148)) || ble/complete/check-cancel; then
+      ble/util/invoke-hook dtor
+      return 148
+    fi
     builtin eval -- "$def"
   fi 2>&$_ble_util_fd_stderr
 
-  ble/array#reverse dtor
   ble/util/invoke-hook dtor
+  return 0
 }
 
 ## @fn ble/complete/source:file/.construct-ambiguous-pathname-pattern path

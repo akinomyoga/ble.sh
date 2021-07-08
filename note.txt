@@ -4666,6 +4666,17 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-07-08
+
+  * nullglob が勝手に on になってしまう現象 (reported by Lun4m) [#D1623]
+    https://github.com/akinomyoga/ble.sh/issues/123
+
+    nullglob を保存復元している ble/complete/util/eval-pathname-expansion が怪
+    しいと考えたが実際に動作を確認してみるとどうやらこの関数の外側で状態が書き
+    換わっている様である。また、補完の最中に設定が書き換わる事に違いない。と思っ
+    たが分かった…。148 で抜ける時に dtor を実行せずに eval-pathname-expansion
+    を抜けていた。修正した。
+
 2021-07-04
 
   * bash-completion (_find): error message (reported by oc1024) [#D1622]
