@@ -1417,15 +1417,22 @@ function ble/complete/source:argument/.progcomp {
   if [[ $comp_func ]]; then
     # bash_completion
     if ble/is-function _quote_readline_by_ref; then
+      # https://github.com/scop/bash-completion/pull/492 (fixed in bash-completion 2.12)
       function _quote_readline_by_ref {
         if [[ $1 == \'* ]]; then
           printf -v "$2" %s "${1:1}"
         else
           printf -v "$2" %q "$1"
-          [[ ${!2} == \$* ]] && eval $2=${!2}
+          [[ ${!2} == \$* ]] && builtin eval "$2=${!2}"
         fi
       }
-      ble/function#suppress-stderr _filedir
+      ble/function#suppress-stderr _filedir 2>/dev/null
+
+      # https://github.com/scop/bash-completion/issues/509 (fixed in bash-completion 2.12)
+      ble/function#suppress-stderr _find 2>/dev/null
+
+      # https://github.com/scop/bash-completion/pull/556 (fixed in bash-completion 2.12)
+      ble/function#suppress-stderr _scp_remote_files 2>/dev/null
     fi
   fi
   if [[ $comp_prog ]]; then
