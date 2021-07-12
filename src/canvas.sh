@@ -1128,7 +1128,7 @@ function ble/canvas/trace/.process-csi-sequence {
       return 0 ;;
     ([ABCDEFGIZ\`ade])
       local arg=0
-      [[ $param =~ ^[0-9]+$ ]] && arg=$param
+      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#$param))
       ((arg==0&&(arg=1)))
 
       local ox=$x oy=$y
@@ -1212,6 +1212,7 @@ function ble/canvas/trace/.process-csi-sequence {
       # HVP "CSI f"
       local -a params
       ble/string#split-words params "${param//[^0-9]/ }"
+      params=("${params[@]/#/10#}")
       local dstx dsty
       ((dstx=params[1]-1))
       ((dsty=params[0]-1))

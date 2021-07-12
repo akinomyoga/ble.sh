@@ -5420,26 +5420,13 @@ fi
 _ble_term_TERM=
 function ble/term/DA2/initialize-term {
   local rex='^[0-9]*(;[0-9]*)*$'; [[ $_ble_term_DA2R =~ $rex ]] || return
-  local da2r; ble/string#split da2r ';' "$_ble_term_DA2R"
-
-  # xterm
-  if rex='^xterm(-|$)'; [[ $TERM =~ $rex ]]; then
-    local version=${da2r[1]}
-    if rex='^1;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
-      # 2000以上は vte
-      ((version==0||95<=version&&version<2000))
-    elif rex='^0;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
-      ((95<=version))
-    elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
-      ((280<=version))
-    elif rex='^32;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
-      ((354<=version&&version<2000))
-    else
-      false
-    fi && { _ble_term_TERM=xterm:$version; return; }
-  fi
+  local da2r
+  ble/string#split da2r ';' "$_ble_term_DA2R"
+  da2r=("${da2r[@]/#/10#}") # 0で始まっていても 10 進数で解釈
 
   case $_ble_term_DA2R in
+  ('1;0'?????';0')
+    _ble_term_TERM=foot ;;
   ('1;'*)
     if ((4000<=da2r[1]&&da2r[1]<4100&&3<=da2r[2])); then
       _ble_term_TERM=kitty
@@ -5465,6 +5452,25 @@ function ble/term/DA2/initialize-term {
   ('84;0;0')
     _ble_term_TERM=tmux ;;
   esac
+  [[ $_ble_term_TERM ]] && return 0
+
+  # xterm
+  if rex='^xterm(-|$)'; [[ $TERM =~ $rex ]]; then
+    local version=${da2r[1]}
+    if rex='^1;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      # Note: vte (2000以上), kitty (4000以上) は処理済み
+      true
+    elif rex='^0;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      ((95<=version))
+    elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      ((280<=version))
+    elif rex='^32;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      ((354<=version&&version<2000))
+    else
+      false
+    fi && { _ble_term_TERM=xterm:$version; return; }
+  fi
+
   return 0
 }
 

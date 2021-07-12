@@ -61,7 +61,7 @@
   - progcomp: fix a bug that command names may stray into completer function names `#D1611` 1f2d45f
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
-- complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 0000000
+- complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 0000000
  
 ## Changes
@@ -94,7 +94,7 @@
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
 - keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 11ac106
 - main: show notifications against debug versions of Bash `#D1612` 8f974aa
-- term: update `vte` identification `#D1620` 0000000
+- term: update `vte` identification `#D1620` 00e74d8
 
 ## Fixes
 
@@ -143,7 +143,8 @@
 - util (`ble/string#quote-command`): remove redundant trailing spaces for single word command `#D1613` 94556b4
 - util: work around the Bash 3 bug of array assignments with `^A` and `^?` in Bash 3.2 `#D1614` b9f7611
 - benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` a034c91
-- complete: fix a bug that the shopt settings are not restored correctly (reported by Lun4m) `#D1623` 0000000
+- complete: fix a bug that the shopt settings are not restored correctly (reported by Lun4m) `#D1623` 899c114
+- decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` 0000000
 
 ## Optimization
 
@@ -161,7 +162,7 @@
   - main (`ble/bin/.freeze-utility-path`): fix unupdated temporary implementations `#D1528` c70a3b4
   - util (`ble/util/assign`): work around subshell conflicts `#D1578` 6e4bb12
 - history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
-- prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 0000000
+- prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
 
 ## Compatibility
 
@@ -175,7 +176,7 @@
 - util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
-- complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` 0000000
+- complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
 
 ## Internal changes and fixes
 

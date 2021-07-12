@@ -4666,6 +4666,23 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-07-13
+
+  * compat: terminal dnkl/foot は DA2 で 010801 などの文字列を返すようだ (reported by GorrillaRibs) [#D1625]
+    https://github.com/akinomyoga/ble.sh/issues/128
+
+    これが DA2 の判定で8進数と解釈されてしまって問題が発生している。
+    escape sequence に含まれる数字は全て明示的に10進数で解釈するべきである。
+
+    因みに dnkl/foot は DA3 で FOOT という文字列を返すそうだ。
+
+    * dnkl/foot を認識する様にした。
+    * CSI の解釈で 0 が前置されていても良い様に書き直した。
+      一部の CSI については既に対策されていたが今回全てに対して処理する事にした。
+    * DA2 の解析はまた別の箇所で行われていた。これも対処する事にした。
+    * ble/canvas/trace の諸々の制御機能についても対策した。
+    * SGR の解析部分 (ble/color/read-sgrspec) は既に対処済みだった
+
 2021-07-12
 
   * emacs モードで vi-bword 使う (requested by SolarAquarion) [#D1624]
