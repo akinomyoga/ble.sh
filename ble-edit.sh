@@ -555,10 +555,10 @@ function ble-edit/draw/trace/SGR/arg_next {
   fi
 
   if ((j<${#f[*]})); then
-    _ret=${f[j++]}
+    ((_ret=10#0${f[j++]}))
   else
     ((i++))
-    _ret=${specs[i]%%:*}
+    ((_ret=10#0${specs[i]%%:*}))
   fi
 
   (($_var=_ret))
@@ -575,68 +575,69 @@ function ble-edit/draw/trace/SGR {
   for ((i=0,iN=${#specs[@]};i<iN;i++)); do
     local spec=${specs[i]} f
     ble/string#split f : "$spec"
-    if ((30<=f[0]&&f[0]<50)); then
+    local arg=$((10#0${f[0]}))
+    if ((30<=arg&&arg<50)); then
       # colors
-      if ((30<=f[0]&&f[0]<38)); then
-        local color=$((f[0]-30))
+      if ((30<=arg&&arg<38)); then
+        local color=$((arg-30))
         ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-      elif ((40<=f[0]&&f[0]<48)); then
-        local color=$((f[0]-40))
+      elif ((40<=arg&&arg<48)); then
+        local color=$((arg-40))
         ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-      elif ((f[0]==38)); then
+      elif ((arg==38)); then
         local j=1 color cspace
         ble-edit/draw/trace/SGR/arg_next -v cspace
         if ((cspace==5)); then
           ble-edit/draw/trace/SGR/arg_next -v color
           ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
         fi
-      elif ((f[0]==48)); then
+      elif ((arg==48)); then
         local j=1 color cspace
         ble-edit/draw/trace/SGR/arg_next -v cspace
         if ((cspace==5)); then
           ble-edit/draw/trace/SGR/arg_next -v color
           ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
         fi
-      elif ((f[0]==39)); then
+      elif ((arg==39)); then
         ((g&=~(_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor)))
-      elif ((f[0]==49)); then
+      elif ((arg==49)); then
         ((g&=~(_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor)))
       fi
-    elif ((90<=f[0]&&f[0]<98)); then
-      local color=$((f[0]-90+8))
+    elif ((90<=arg&&arg<98)); then
+      local color=$((arg-90+8))
       ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-    elif ((100<=f[0]&&f[0]<108)); then
-      local color=$((f[0]-100+8))
+    elif ((100<=arg&&arg<108)); then
+      local color=$((arg-100+8))
       ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-    elif ((f[0]==0)); then
+    elif ((arg==0)); then
       g=0
-    elif ((f[0]==1)); then
+    elif ((arg==1)); then
       ((g|=_ble_color_gflags_Bold))
-    elif ((f[0]==22)); then
+    elif ((arg==22)); then
       ((g&=~_ble_color_gflags_Bold))
-    elif ((f[0]==4)); then
+    elif ((arg==4)); then
       ((g|=_ble_color_gflags_Underline))
-    elif ((f[0]==24)); then
+    elif ((arg==24)); then
       ((g&=~_ble_color_gflags_Underline))
-    elif ((f[0]==7)); then
+    elif ((arg==7)); then
       ((g|=_ble_color_gflags_Revert))
-    elif ((f[0]==27)); then
+    elif ((arg==27)); then
       ((g&=~_ble_color_gflags_Revert))
-    elif ((f[0]==3)); then
+    elif ((arg==3)); then
       ((g|=_ble_color_gflags_Italic))
-    elif ((f[0]==23)); then
+    elif ((arg==23)); then
       ((g&=~_ble_color_gflags_Italic))
-    elif ((f[0]==5)); then
+    elif ((arg==5)); then
       ((g|=_ble_color_gflags_Blink))
-    elif ((f[0]==25)); then
+    elif ((arg==25)); then
       ((g&=~_ble_color_gflags_Blink))
-    elif ((f[0]==8)); then
+    elif ((arg==8)); then
       ((g|=_ble_color_gflags_Invisible))
-    elif ((f[0]==28)); then
+    elif ((arg==28)); then
       ((g&=~_ble_color_gflags_Invisible))
-    elif ((f[0]==9)); then
+    elif ((arg==9)); then
       ((g|=_ble_color_gflags_Strike))
-    elif ((f[0]==29)); then
+    elif ((arg==29)); then
       ((g&=~_ble_color_gflags_Strike))
     fi
   done
@@ -655,7 +656,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       return ;;
     ([ABCDEFGIZ\`ade])
       local arg=0
-      [[ $param =~ ^[0-9]+$ ]] && arg=$param
+      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#$param))
       ((arg==0&&(arg=1)))
 
       local x0=$x y0=$y
@@ -722,6 +723,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       # HVP "CSI f"
       local -a params
       ble/string#split-words params "${param//[^0-9]/ }"
+      params=("${params[@]/#/10#}")
       ((x=params[1]-1))
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),

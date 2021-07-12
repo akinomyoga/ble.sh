@@ -395,19 +395,23 @@ function ble-decode-char/csi/.modify-kcode {
 function ble-decode-char/csi/.decode {
   local char=$1 rex kcode
   if ((char==126)); then
-    if rex='^27;([1-9][0-9]*);?([1-9][0-9]*)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
+    if rex='^>?27;([0-9]+);?([0-9]+)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm "CSI 2 7 ; <mod> ; <char> ~" sequences
-      local kcode=$((BASH_REMATCH[2]&ble_decode_MaskChar))
-      ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[1]}"
+      local param1=$((10#${BASH_REMATCH[1]}))
+      local param2=$((10#${BASH_REMATCH[2]}))
+      local kcode=$((param2&ble_decode_MaskChar))
+      ble-decode-char/csi/.modify-kcode "$param1"
       csistat=$kcode
       return
     fi
 
     if rex='^([1-9][0-9]*)(;([1-9][0-9]*))?$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # "CSI <kcode> ; <mod> ~" sequences
-      kcode=${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}
+      local param1=$((10#${BASH_REMATCH[1]}))
+      local param3=$((10#${BASH_REMATCH[3]}))
+      kcode=${_ble_decode_csimap_tilde[param1]}
       if [[ $kcode ]]; then
-        ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[3]}"
+        ble-decode-char/csi/.modify-kcode "$param3"
         csistat=$kcode
         return
       fi
@@ -415,11 +419,13 @@ function ble-decode-char/csi/.decode {
   elif ((char==94||char==64)); then
     if rex='^[1-9][0-9]*$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # rxvt "CSI <kcode> ^", "CSI <kcode> @" sequences
-      kcode=${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}
+      local param1=$((10#${BASH_REMATCH[1]}))
+      local param3=$((10#${BASH_REMATCH[3]}))
+      kcode=${_ble_decode_csimap_tilde[param1]}
       if [[ $kcode ]]; then
         ((kcode|=ble_decode_Ctrl,
           char==64&&(kcode|=ble_decode_Shft)))
-        ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[3]}"
+        ble-decode-char/csi/.modify-kcode "$param3"
         csistat=$kcode
         return
       fi
@@ -430,7 +436,8 @@ function ble-decode-char/csi/.decode {
   kcode=${_ble_decode_csimap_alpha[char]}
   if [[ $kcode ]]; then
     if rex='^(1?|1;([1-9][0-9]*))$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
-      ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[2]}"
+      local param2=$((10#${BASH_REMATCH[2]}))
+      ble-decode-char/csi/.modify-kcode "$param2"
       csistat=$kcode
       return
     fi
