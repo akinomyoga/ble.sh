@@ -62,7 +62,7 @@
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
-- rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 0000000
+- rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
  
 ## Changes
 
@@ -144,7 +144,7 @@
 - util: work around the Bash 3 bug of array assignments with `^A` and `^?` in Bash 3.2 `#D1614` b9f7611
 - benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` a034c91
 - complete: fix a bug that the shopt settings are not restored correctly (reported by Lun4m) `#D1623` 899c114
-- decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` 0000000
+- decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7
 
 ## Optimization
 
@@ -177,7 +177,8 @@
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
-- decode: workaround kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 0000000
+- decode: work around kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 27c80f9
+- util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 0000000
 
 ## Internal changes and fixes
 

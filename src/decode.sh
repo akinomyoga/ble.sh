@@ -1750,7 +1750,7 @@ function ble/decode/keymap#print {
       local o v
       case "$cmd" in
       ('ble/widget/.SHELL_COMMAND '*) o=c v=${cmd#'ble/widget/.SHELL_COMMAND '} ;;
-      ('ble/widget/.EDIT_COMMAND '*)  o=x v=${cmd'#ble/widget/.EDIT_COMMAND '} ;;
+      ('ble/widget/.EDIT_COMMAND '*)  o=x v=${cmd#'ble/widget/.EDIT_COMMAND '} ;;
       ('ble/widget/.MACRO '*)         o=s; ble/util/chars2keyseq ${cmd#*' '}; v=$ret ;;
       ('ble/widget/'*)                o=f v=${cmd#ble/widget/} ;;
       (*)                             o=@ v=$cmd  ;;

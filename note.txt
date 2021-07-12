@@ -4668,6 +4668,22 @@ bash_tips
 
 2021-07-13
 
+  * kitty, fzf: modifyOtherKeys で問題が生じている (reported by Nudin) [#D1627]
+    https://github.com/akinomyoga/ble.sh/issues/126
+
+    うーん。fzf が modifyOtherKeys で動かなくなっている。
+    というか補完全般で問題が生じるのだろうという気がする。
+
+    x 何故か知らないがまた kitty で動かなくなっている。うーん試して見た所、いつ
+      の間にかに \e[>4;0m ですら効かなくなっている様だ。\e[>4m としなければなら
+      ない。もう面倒なので kitty の時だけ異なる sequence を出力する様に修正する。
+
+      以前は確かに修正したと思ったのだが…。確認すると以下で動作する事を確認している。
+      ということはまた kitty の振る舞いが変わったという事である。
+      https://github.com/akinomyoga/ble.sh/issues/110#issuecomment-841839605
+
+      取り敢えず修正した。動作確認した。OK と思う。
+
   * kitty: keypad enter が変なシーケンスで送られてくる (reported by Nudin) [#D1626]
     https://github.com/akinomyoga/ble.sh/issues/127
 
