@@ -3229,7 +3229,18 @@ bleopt/declare -v term_modifyOtherKeys_internal auto
 
 _ble_term_modifyOtherKeys_current=
 function ble/term/modifyOtherKeys/.update {
-  [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] && return
+  [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] && return 0
+
+  if ble/term/modifyOtherKeys/.iskitty; then
+    # Note #D1549: 1 では無効にならない。変な振る舞い。
+    # Note #D1626: 更に最近の kitty では \e[>4;0m でも駄目で \e[>4m としなければならない様だ。
+    case $1 in
+    (0|1) ble/util/buffer $'\e[>4;0m\e[>4m' ;;
+    (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
+    esac
+    return 0
+  fi
+
   # Note: 対応していない端末が SGR と勘違いしても
   #  大丈夫な様に SGR を最後にクリアしておく。
   # Note: \e[>4;2m の時は、対応していない端末のため
@@ -3274,12 +3285,8 @@ function ble/term/modifyOtherKeys/leave {
   local value=$bleopt_term_modifyOtherKeys_external
   if [[ $value == auto ]]; then
     value=1
-    if ble/term/modifyOtherKeys/.iskitty; then
-      value=0 # Kitty は 1 では無効にならない。変な振る舞い
-    else
-      # 問題を起こす端末で無効化。
-      ble/term/modifyOtherKeys/.supported || value=
-    fi
+    # 問題を起こす端末で無効化。
+    ble/term/modifyOtherKeys/.supported || value=
   fi
   ble/term/modifyOtherKeys/.update "$value"
 }
@@ -3309,25 +3316,32 @@ function ble/term/rl-convert-meta/leave {
 
 #---- terminal enter/leave ----------------------------------------------------
 
-_ble_term_state=external
-function ble/term/enter {
-  [[ $_ble_term_state == internal ]] && return
-  ble/term/stty/enter
+function ble/term/enter-for-widget {
   ble/term/bracketed-paste-mode/enter
   ble/term/modifyOtherKeys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
+}
+function ble/term/leave-for-widget {
+  ble/term/bracketed-paste-mode/leave
+  ble/term/modifyOtherKeys/leave
+  ble/term/cursor-state/.update "$bleopt_term_cursor_external"
+  ble/term/cursor-state/.update-hidden reveal
+}
+
+_ble_term_state=external
+function ble/term/enter {
+  [[ $_ble_term_state == internal ]] && return 0
+  ble/term/stty/enter
   ble/term/rl-convert-meta/enter
+  ble/term/enter-for-widget
   _ble_term_state=internal
 }
 function ble/term/leave {
   [[ $_ble_term_state == external ]] && return
   ble/term/stty/leave
-  ble/term/bracketed-paste-mode/leave
-  ble/term/modifyOtherKeys/leave
-  ble/term/cursor-state/.update "$bleopt_term_cursor_external"
-  ble/term/cursor-state/.update-hidden reveal
   ble/term/rl-convert-meta/leave
+  ble/term/leave-for-widget
   _ble_term_cursor_current=unknown # vim は復元してくれない
   _ble_term_cursor_hidden_current=unknown
   _ble_term_state=external
