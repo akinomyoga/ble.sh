@@ -4666,6 +4666,104 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-07-12
+
+  * emacs モードで vi-bword 使う (requested by SolarAquarion) [#D1624]
+    https://github.com/akinomyoga/ble.sh/issues/125
+
+    調べると vi-bword vi-Bword があって、内部的にはそれぞれ vword uword として
+    いる。それなら edit.sh に既に定義されている vword, uword を代わりに呼び出し
+    たら良いのではないか、と考えたが、vword は定義されていない。実装を具体的に
+    観察すると単純に単語決定に使う文字集合を edit.sh に引き込めば良いという訳で
+    もない。
+
+    観察する限りでは別に emacs mode でこの vi-bword 等を呼び出しても特に問題は
+    生じない様にも見える。念の為どの変数を参照していてどの変数が emacs mode で
+    期待している値になっているのかについて確認する。
+
+    単語単位の移動は ble/widget/vi-command/forward-word.impl 等で実行されている。
+    特別な動作をするかどうかは渡された引数 flag で判定している。取り敢えず flag
+    が空だと仮定するとそのまま ble/widget/vi-command/exclusive-goto.impl
+    "$index" "$flag" "$reg" が呼び出される。そしてそのまま exclusive-range.impl
+    に渡される。ble/keymap:vi/needs-eol-fix "$dst" && ((dst--)) が呼び出されて、
+    移動して、 ble/keymap:vi/adjust-command-mode が呼び出さる。
+
+    * 最初の flag に関しては ble/keymap:vi/get-arg 経由で _ble_keymap_vi_reg の
+      値を読み取っている。これは get-arg を呼び出していれば clear されている筈。
+      一方で、set -o emacs 等を実行した時にちゃんとクリアされるだろうか。少なく
+      とも vi-command/accept-line の中では clear-arg が呼び出されている。
+
+      vi_imap の中にいる時にちゃんと clear されているのかというのは気になる。一
+      応 ble/widget/vi_nmap/.insert-mode を呼び出す時にはちゃんと
+      ble/keymap:vi/clear-arg が事前に呼び出される様に書いてある様である (見落
+      としはあるかもしれないが)。
+
+      emacs-editing-mode 経由で切り替えた時にちゃんと arg が clear されるのかど
+      うか。見た所は全く考慮に入れていない様に見える。
+
+      a reject: keymap に attach する時に clear する? 然し emacs 側で始末するの
+        も変である。本来独立に実装されているべきである。
+
+      b という事を考えると detach 時に処理できる様にするべき? 然しその場合には
+        新しく __detach__ という特別キーも定義する必要が出てくる。もし定義した
+        とすると、それを処理するのは何処で行うべきだろうか。
+        ble/decode/reset-default-keymap を弄れば良い様な気もするが、初回呼び出
+        しの際には既定で 'emacs' が代入されている為、detach が無意味に呼び出さ
+        れてしまう気がする。それは変だ。
+
+        a 或いは初期値を emacs 以外 (例えば safe) などにするという手もあるだろ
+          うか。
+
+        b 或いは初期値は空でも良いのかもしれない。例え emacs であっても初期化な
+          しに使える訳ではない筈だから、現状の実装で必ず初期化は実行されている
+          と見做すべきである様に思われる。
+
+        c 或いは safe を代入しておくのでも良いのかもしれない。然し確認してみた
+          所、safe であっても初期化なしには使えない様である。なので結局
+          _ble_decode_keymap の初期値は空文字列で良いのではないかという気がする。
+
+      もっと全然別の方法で clear される事を保証する事はできないのか。
+
+      c 例えば、emacs-editing-mode widget 自体に clear-arg を呼び出すコードを付
+        加しておくなど。
+
+      d それよりは change-editing-mode hook でも定義しておくのが良い様な気もす
+        る。然し、それだと結局 __detach__ の劣化版にしかならないので、それぐら
+        いならば b の __detach__ に対応するべきの気がする。
+
+      今の所 b が最有力の対処方法である。
+
+    ble/keymap:vi/needs-eol-fix については現在の keymap が vi[on]map でなければ
+    false になるので記にしなくて良い。
+
+    ble/keymap:vi/adjust-command-mode については
+
+    * _ble_keymap_vi_search_activate が非空の時に何か処理している。
+
+      これは様々の検索で使われている気がする。例えば単語検索等の一致で使われて
+      いる? この状態で vi_imap に入ったりすると値が残る気がする。と思ったが別に
+      値は代入されていなかった。改めてどの状況でクリアされるか確認する。
+
+    * _ble_edit_mark_active == vi_search の時にも何か処理している。
+
+      これはどうやら $_ble_keymap_vi_search_activate 経由で代入される様だ。
+
+    * _ble_keymap_vi_search_matched が何か有限の整数値を持っている時にも処理がある。
+
+      その他は特に何も無いように見える。これらの変数についてそれぞれどう設定さ
+      れてどう clear されるのか確認する。
+
+    うーん。上記に関しては .insert-mode の中で
+    ble/keymap:vi/search/clear-matched を呼び出す事にした。また、emacs mode に
+    対しては clear-arg の処理に際して同時に clear-matched も呼び出す事にした。
+
+    [動作確認]
+
+    o 取り敢えず __detach__ は実装して思い通りに動く事を確認した。
+
+    o また vi-bword が動作する事も確認した。テストが面倒なのでこれ以上の細かい
+      動作確認は省略する。
+
 2021-07-08
 
   * nullglob が勝手に on になってしまう現象 (reported by Lun4m) [#D1623]

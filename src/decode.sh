@@ -258,6 +258,8 @@ function ble-decode-kbd/.initialize {
   _ble_decode_KCODE_AFTER_WIDGET=$ret
   ble-decode-kbd/generate-keycode __attach__
   _ble_decode_KCODE_ATTACH=$ret
+  ble-decode-kbd/generate-keycode __detach__
+  _ble_decode_KCODE_DETACH=$ret
 
   ble-decode-kbd/generate-keycode shift
   _ble_decode_KCODE_SHIFT=$ret
@@ -1734,7 +1736,7 @@ function ble/decode/keymap#print {
 ##
 ##   呼び出し元の keymap を記録するスタック
 ##
-_ble_decode_keymap=emacs
+_ble_decode_keymap=
 _ble_decode_keymap_stack=()
 
 ## @fn ble/decode/keymap/push kmap
@@ -3849,9 +3851,14 @@ function ble/decode/initialize {
 
 function ble/decode/reset-default-keymap {
   # 現在の ble-decode/keymap の設定
+  local old_base_keymap=${_ble_decode_keymap_stack[0]:-$_ble_decode_keymap}
   ble-decode/INITIALIZE_DEFMAP -v _ble_decode_keymap # 0ms
   _ble_decode_keymap_stack=()
-  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
+  if [[ $_ble_decode_keymap != "$old_base_keymap" ]]; then
+    [[ $old_base_keymap ]] &&
+      _ble_decode_keymap=$old_base_keymap ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_DETACH"
+    ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
+  fi
 }
 
 ## @fn ble/decode/attach

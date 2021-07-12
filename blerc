@@ -35,7 +35,8 @@
 
 ## The following setting specifies the editor used by ble.sh.  This is used for
 ## the widget edit-and-execute (C-x C-e) and editor for a large amount of
-## command line texts.  Possible values are e.g. "vim", "emacs -nw" or "nano".
+## command line texts.  Possible values include, for example, "vim", "emacs
+## -nw" and "nano".
 
 #bleopt editor=vim
 

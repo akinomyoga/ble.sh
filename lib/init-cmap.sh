@@ -31,6 +31,7 @@
 #   __before_widget__
 #   __after_widget__
 #   __attach__
+#   __detach__
 #
 # 修飾キー
 #
@@ -50,6 +51,7 @@
 # 2020-03-12 __line_limit__ を追加
 # 2020-04-13 cmap キャッシュ生成バグ修正に伴う更新。
 # 2020-04-29 cmap キャッシュ生成バグ修正に伴う更新 (2)
+# 2021-07-12 __detach__ 追加
 
 function ble/init:cmap/bind-single-csi {
   ble-bind -k "ESC [ $1" "$2"

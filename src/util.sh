@@ -4092,6 +4092,8 @@ function ble/util/.read-arguments-for-no-option-command {
 ##
 function ble/util/autoload {
   local file=$1; shift
+  ble/util/import/is-loaded "$file" && return 0
+
   # ※$FUNCNAME は元から環境変数に設定されている場合、
   #   特別変数として定義されない。
   #   この場合無闇にコマンドとして実行するのは危険である。

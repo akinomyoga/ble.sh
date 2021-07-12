@@ -643,7 +643,7 @@ function ble/widget/vi_nmap/.insert-mode {
   _ble_keymap_vi_insert_overwrite=$overwrite
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
-  _ble_keymap_vi_search_matched=
+  ble/keymap:vi/search/clear-matched
   ble/decode/keymap/pop
   ble/keymap:vi/update-mode-name
 
@@ -7651,6 +7651,12 @@ function ble/widget/vi_imap/__attach__ {
   ble/keymap:vi/update-mode-name
   return 0
 }
+function ble/widget/vi_imap/__detach__ {
+  ble/edit/info/default clear
+  ble/keymap:vi/clear-arg
+  ble/keymap:vi/search/clear-matched
+  return 0
+}
 function ble/widget/vi_imap/accept-single-line-or {
   if ble-edit/is-single-complete-line; then
     ble/keymap:vi/imap-repeat/reset
@@ -7883,6 +7889,7 @@ function ble-decode/keymap:vi_imap/define {
   # vi bindings
 
   ble-bind -f __attach__        vi_imap/__attach__
+  ble-bind -f __detach__        vi_imap/__detach__
   ble-bind -f __default__       vi_imap/__default__
   ble-bind -f __before_widget__ vi_imap/__before_widget__
   ble-bind -f __line_limit__    __line_limit__

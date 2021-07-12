@@ -159,6 +159,7 @@ vi-search-again                   vi-rlfunc/search-again
 vi-set-mark                       vi-command/set-mark
 vi-subst                          vi-rlfunc/subst
 vi-tilde-expand                   -
+vi-undo                           vi_nmap/undo
 vi-unix-word-rubout               -
 vi-yank-arg                       vi-rlfunc/yank-arg
 vi-yank-pop                       -

@@ -11,6 +11,12 @@ function ble-edit/bind/load-editing-mode:emacs { :; }
 # 2021-01-25 force update (change mapping of C-w and M-w)
 # 2021-04-26 force update (rename ble/decode/keymap#.register)
 
+# vi functions referenced from core-decode.emacs-rlfunc.txt
+ble/util/autoload "$_ble_base/keymap/vi.sh" \
+                  ble/widget/vi-rlfunc/{prev,end,next}-word \
+                  ble/widget/vi-command/{forward,backward}-{v,u}word \
+                  ble/widget/vi-command/forward-{v,u}word-end
+
 #------------------------------------------------------------------------------
 
 _ble_keymap_emacs_white_list=(

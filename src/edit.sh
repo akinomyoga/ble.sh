@@ -1547,6 +1547,7 @@ function ble/edit/info/.construct-content {
 
   local type=$1 text=$2
   case "$1" in
+  (clear) ;;
   (ansi|esc)
     local trace_opts=truncate
     [[ $bleopt_info_display == bottom ]] && trace_opts=$trace_opts:noscrc

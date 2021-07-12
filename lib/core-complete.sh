@@ -2542,10 +2542,10 @@ function ble/complete/progcomp/.compgen {
       }
       ble/function#suppress-stderr _filedir 2>/dev/null
 
-      # https://github.com/scop/bash-completion/issues/509 (fixed in bash-completion 2.11)
+      # https://github.com/scop/bash-completion/issues/509 (fixed in bash-completion 2.12)
       ble/function#suppress-stderr _find 2>/dev/null
 
-      # https://github.com/scop/bash-completion/pull/556 (fixed in bash-completion 2.11)
+      # https://github.com/scop/bash-completion/pull/556 (fixed in bash-completion 2.12)
       ble/function#suppress-stderr _scp_remote_files 2>/dev/null
     fi
   fi
