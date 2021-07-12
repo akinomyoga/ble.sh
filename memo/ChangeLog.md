@@ -177,6 +177,7 @@
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
+- decode: workaround kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 0000000
 
 ## Internal changes and fixes
 

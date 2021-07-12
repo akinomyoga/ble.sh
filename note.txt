@@ -4668,6 +4668,12 @@ bash_tips
 
 2021-07-13
 
+  * kitty: keypad enter が変なシーケンスで送られてくる (reported by Nudin) [#D1626]
+    https://github.com/akinomyoga/ble.sh/issues/127
+
+    取り敢えず以下に挙げられているキーの番号を kitty 専用に判定する事にした。
+    https://sw.kovidgoyal.net/kitty/keyboard-protocol.html#functional-key-definitions
+
   * compat: terminal dnkl/foot は DA2 で 010801 などの文字列を返すようだ (reported by GorrillaRibs) [#D1625]
     https://github.com/akinomyoga/ble.sh/issues/128
 
