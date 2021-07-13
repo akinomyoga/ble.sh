@@ -82,20 +82,32 @@ if [[ -o posix ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
-_ble_bash_setu=
+_ble_bash_sete=
+_ble_bash_setx=
 _ble_bash_setv=
+_ble_bash_setu=
+_ble_bash_setk=
+_ble_bash_setB=
 _ble_bash_options_adjusted=
 function ble/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1
   _ble_bash_options_adjusted=1
+  _ble_bash_sete=; [[ -o errexit ]] && _ble_bash_sete=1 && set +e
+  _ble_bash_setx=; [[ -o xtrace  ]] && _ble_bash_setx=1 && set +x
   _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
   _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
+  _ble_bash_setk=; [[ -o keyword ]] && _ble_bash_setk=1 && set +k
+  _ble_bash_setB=; [[ -o braceexpand ]] && _ble_bash_setB=1 || set -B
 }
 function ble/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=
-  [[ $_ble_bash_setv && ! -o verbose ]] && set -v
+  [[ ! $_ble_bash_setB && -o braceexpand ]] && set +B
+  [[ $_ble_bash_setk && ! -o keyword ]] && set -k
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
+  [[ $_ble_bash_setv && ! -o verbose ]] && set -v
+  [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
+  [[ $_ble_bash_sete && ! -o errexit ]] && set -e
 }
 ble/adjust-bash-options
 
