@@ -4705,6 +4705,11 @@ bash_tips
     * ble/canvas/trace の諸々の制御機能についても対策した。
     * SGR の解析部分 (ble/color/read-sgrspec) は既に対処済みだった
 
+    https://github.com/akinomyoga/ble.sh/issues/128#issuecomment-878670622
+
+    追加修正。10# で後ろに何も数字が続いていないと 5.1 ではエラーになる。
+    これは修正した。多分大丈夫。
+
 2021-07-12
 
   * emacs モードで vi-bword 使う (requested by SolarAquarion) [#D1624]

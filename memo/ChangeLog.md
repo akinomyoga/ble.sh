@@ -144,7 +144,7 @@
 - util: work around the Bash 3 bug of array assignments with `^A` and `^?` in Bash 3.2 `#D1614` b9f7611
 - benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` a034c91
 - complete: fix a bug that the shopt settings are not restored correctly (reported by Lun4m) `#D1623` 899c114
-- decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7
+- decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7 0000000
 
 ## Optimization
 

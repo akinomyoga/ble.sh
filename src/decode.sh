@@ -839,8 +839,8 @@ function ble-decode-char/csi/.decode {
   if ((char==126)); then # ~
     if rex='^>?27;([0-9]+);?([0-9]+)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm "CSI 2 7 ; <mod> ; <char> ~" sequences
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param2=$((10#${BASH_REMATCH[2]}))
+      local param1=$((10#${BASH_REMATCH[1]:-0}))
+      local param2=$((10#${BASH_REMATCH[2]:-0}))
       local key=$((param2&_ble_decode_MaskChar))
       ble-decode-char/csi/.modify-key "$param1"
       csistat=$key
@@ -849,8 +849,8 @@ function ble-decode-char/csi/.decode {
 
     if rex='^>?([0-9]+)(;([0-9]+))?$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # "CSI <key> ; <mod> ~" sequences
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param3=$((10#${BASH_REMATCH[3]}))
+      local param1=$((10#${BASH_REMATCH[1]:-0}))
+      local param3=$((10#${BASH_REMATCH[3]:-0}))
       key=${_ble_decode_csimap_tilde[param1]}
       if [[ $key ]]; then
         ble-decode-char/csi/.modify-key "$param3"
@@ -864,7 +864,7 @@ function ble-decode-char/csi/.decode {
       # Note: 実は "CSI 1 ; mod u" が kp5 とする端末がある事に注意する。
       local rematch1=${BASH_REMATCH[1]}
       if [[ $rematch1 != 1 ]]; then
-        local key=$((10#$rematch1)) mods=$((10#${BASH_REMATCH:${#rematch1}+1}))
+        local key=$((10#${rematch1:-0})) mods=$((10#0${BASH_REMATCH:${#rematch1}+1}))
         [[ $_ble_term_TERM == kitty ]] && ble-decode/char/csi/.translate-kitty-csi-u
         ble-decode-char/csi/.modify-key "$mods"
         csistat=$key
@@ -874,8 +874,8 @@ function ble-decode-char/csi/.decode {
   elif ((char==94||char==64)); then # ^, @
     if rex='^[0-9]+$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # rxvt "CSI <key> ^", "CSI <key> @" sequences
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param3=$((10#${BASH_REMATCH[3]}))
+      local param1=$((10#${BASH_REMATCH[1]:-0}))
+      local param3=$((10#${BASH_REMATCH[3]:-0}))
       key=${_ble_decode_csimap_tilde[param1]}
       if [[ $key ]]; then
         ((key|=_ble_decode_Ctrl,
@@ -901,8 +901,8 @@ function ble-decode-char/csi/.decode {
     if rex='^([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
       # DSR(6) に対する応答 CPR "CSI Pn ; Pn R"
       # Note: Poderosa は DSR(Pn;Pn) "CSI Pn ; Pn n" で返す。
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param2=$((10#${BASH_REMATCH[2]}))
+      local param1=$((10#${BASH_REMATCH[1]:-0}))
+      local param2=$((10#${BASH_REMATCH[2]:-0}))
       ble/term/CPR/notify "$param1" "$param2"
       csistat=$_ble_decode_KCODE_IGNORE
       return 0
@@ -919,9 +919,9 @@ function ble-decode-char/csi/.decode {
       #     mouse1up mouse2up mouse3up mouse4up mouse5up
       #     mouse1drag mouse2drag mouse3drag mouse4drag mouse5drag
       #     wheelup wheeldown mouse_move
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param2=$((10#${BASH_REMATCH[2]}))
-      local param3=$((10#${BASH_REMATCH[3]}))
+      local param1=$((10#${BASH_REMATCH[1]:-0}))
+      local param2=$((10#${BASH_REMATCH[2]:-0}))
+      local param3=$((10#${BASH_REMATCH[3]:-0}))
       local button=$param1
       ((_ble_term_mouse_button=button&~0x1C,
         char==109&&(_ble_term_mouse_button|=0x70),
@@ -936,8 +936,8 @@ function ble-decode-char/csi/.decode {
   elif ((char==116)); then # t
     if rex='^<([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
       ## mouse_select
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param2=$((10#${BASH_REMATCH[2]}))
+      local param1=$((10#${BASH_REMATCH[1]:-0}))
+      local param2=$((10#${BASH_REMATCH[2]:-0}))
       ((_ble_term_mouse_button=128,
         _ble_term_mouse_x=param1-1,
         _ble_term_mouse_y=param2-1))
@@ -950,7 +950,7 @@ function ble-decode-char/csi/.decode {
   key=${_ble_decode_csimap_alpha[char]}
   if [[ $key ]]; then
     if rex='^(1?|>?1;([0-9]+))$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
-      local param2=$((10#${BASH_REMATCH[2]}))
+      local param2=$((10#${BASH_REMATCH[2]:-0}))
       ble-decode-char/csi/.modify-key "$param2"
       csistat=$key
       return 0

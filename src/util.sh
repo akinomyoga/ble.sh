@@ -4828,7 +4828,7 @@ if ((_ble_bash>=40000)); then
     local command=$1 i removed=
     for i in "${!_ble_util_idle_task[@]}"; do
       [[ ${_ble_util_idle_task[i]} == *"$_ble_util_idle_SEP$command" ]] &&
-        unset -v '_ble_util_idle_task[i]' &&
+        builtin unset -v '_ble_util_idle_task[i]' &&
         removed=1
     done
     [[ $removed ]]
@@ -5422,7 +5422,7 @@ function ble/term/DA2/initialize-term {
   local rex='^[0-9]*(;[0-9]*)*$'; [[ $_ble_term_DA2R =~ $rex ]] || return
   local da2r
   ble/string#split da2r ';' "$_ble_term_DA2R"
-  da2r=("${da2r[@]/#/10#}") # 0で始まっていても 10 進数で解釈
+  da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈 (#D1570 is-array OK)
 
   case $_ble_term_DA2R in
   ('1;0'?????';0')
