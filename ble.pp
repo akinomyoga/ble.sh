@@ -312,6 +312,8 @@ function ble/base/adjust-bash-options {
   _ble_bash_setx=; [[ -o xtrace  ]] && _ble_bash_setx=1 && set +x
   _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
   _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
+  _ble_bash_setk=; [[ -o keyword ]] && _ble_bash_setk=1 && set +k
+  _ble_bash_setB=; [[ -o braceexpand ]] && _ble_bash_setB=1 || set -B
 
   # Note: nocasematch は bash-3.0 以上
   _ble_bash_nocasematch=
@@ -357,6 +359,8 @@ function ble/base/restore-bash-options {
   ble/variable#copy-state _ble_bash_LC_ALL LC_ALL
 
   [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
+  [[ ! $_ble_bash_setB && -o braceexpand ]] && set +B
+  [[ $_ble_bash_setk && ! -o keyword ]] && set -k
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
   [[ $_ble_bash_setv && ! -o verbose ]] && set -v
   [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x

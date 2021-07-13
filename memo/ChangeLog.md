@@ -179,6 +179,7 @@
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
 - decode: work around kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 27c80f9
 - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 0000000
+- main: work around `set -B` and `set -k` `#D1628` 0000000
 
 ## Internal changes and fixes
 

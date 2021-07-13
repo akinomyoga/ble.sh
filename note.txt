@@ -4668,6 +4668,45 @@ bash_tips
 
 2021-07-13
 
+  * 2021-06-28 main: set -Bk 等の場合に対しても対策する [#D1628]
+
+    set -B に対してはブレース展開を使っているコードが影響を受ける。ブレース展開を使っているコードは以下で抽出する事ができる。
+
+    $ grc '[^$]\{[^[:space:]]*,[^[:space:]]*\}' --exclude={wiki,memo,test,ext} --exclude={lib/test-\*.sh,make_command.sh}
+    ./keymap/emacs.sh:21:  copy{,-forward,-backward}-{c,f,s,u}word
+    ./keymap/emacs.sh:22:  copy-region{,-or}
+    ./keymap/vi.sh:220:  delete-backward-{c,f,s,u}word
+    ./keymap/vi.sh:221:  copy{,-forward,-backward}-{c,f,s,u}word
+    ./keymap/vi.sh:222:  copy-region{,-or}
+    ./keymap/vi.sh:2799:  local _ble_keymap_vi_single_command{,_overwrite}= # single-command-mode は持続させる。
+    ./keymap/vi.sh:2813:  ble/util/unlocal _ble_keymap_vi_single_command{,_overwrite}
+    ./lib/core-complete-def.sh:78:                  ble/complete/menu-style:{align,dense}{,-nowrap}/construct-page \
+    ./lib/core-complete-def.sh:80:                  ble/complete/menu-style:desc{,-raw}/construct-page
+    ./lib/vim-airline.sh:114:  for name in {a,b,c,x,y,z,error,term,warning}{,_normal,_insert,_replace,_visual,_commandline,_inactive}; do
+    ./lib/vim-airline.sh:343:  for unit in _ble_lib_vim_airline_section_{a,c,z,b,y,x}; do
+    ./src/benchmark.sh:231:  for n in {1,10,100,1000,10000}\*{1,2,5}; do
+    ./src/decode.sh:3944:  'M&&E,A[i++]=_ble_decode_Erro|'{254,255}
+    ./src/edit.sh:7793:                  ble-decode/keymap:vi_{i,n,o,x,s,c}map/define
+    ./src/util.sh:2667:    builtin unset -f ble/function#advice/{before,after,around,original}:"$name" 2>/dev/null
+    ./src/util.sh:4218:    ble/array#push dirs "$_ble_base"{,/contrib,/lib}
+    $ grc '[^$]\{[0-9.]+\}' --exclude={wiki,memo,test,ext} --exclude={lib/test-\*.sh,make_command.sh}
+    ./lib/init-bind.sh:153:  for i in {128..255} {0..127}; do
+    ./src/decode.sh:3937:  'M&&E,A[i++]='{0..127}
+    ./src/decode.sh:3938:  'C=C<<6|'{0..63}',--M==0&&(A[i++]=C)'
+    ./src/decode.sh:3939:  'M&&E,C='{0..31}',M=1'
+    ./src/decode.sh:3940:  'M&&E,C='{0..15}',M=2'
+    ./src/decode.sh:3941:  'M&&E,C='{0..7}',M=3'
+    ./src/decode.sh:3942:  'M&&E,C='{0..3}',M=4'
+    ./src/decode.sh:3943:  'M&&E,C='{0..1}',M=5'
+    ./src/decode.sh:3985:  for i in {0..255}; do
+
+    それほど多い訳でもないが代替手段がある訳でもない様な物が多く含まれる。
+    うーん。これも ble.sh の内部では解除するオプションとするべきの気がする。
+
+    set -k に対しては bleopt a=b 等が影響を受ける。他にも影響を受ける物は多く存
+    在するかもしれない。何れにしてもこのオプションは非現実的である様に思われる
+    のでやはり ble.sh 内部では解除する事としたい。
+
   * kitty, fzf: modifyOtherKeys で問題が生じている (reported by Nudin) [#D1627]
     https://github.com/akinomyoga/ble.sh/issues/126
 
