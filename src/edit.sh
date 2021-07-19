@@ -1370,6 +1370,36 @@ function ble/prompt/unit:_ble_prompt_status/update {
 #----------------------------------------------------------
 # Update prompts for textarea
 
+# process TMOUT
+if ble/is-function ble/util/idle.push; then
+  _ble_prompt_timeout_task=
+  _ble_prompt_timeout_lineno=
+  function ble/prompt/timeout/process {
+    ble/util/idle.suspend # exit に失敗した時の為 task を suspend にする
+    _ble_edit_line_disabled=1 ble/widget/.insert-newline
+    ble/util/buffer.flush
+    ble/util/print "${_ble_term_setaf[12]}[ble: auto-logout]$_ble_term_sgr0 timed out waiting for input"
+    builtin exit 0 &>/dev/null
+    builtin exit 0 &>/dev/null
+  } >/dev/tty
+  function ble/prompt/timeout/check {
+    [[ $_ble_edit_lineno == "$_ble_prompt_timeout_lineno" ]] && return 0
+    _ble_prompt_timeout_lineno=$_ble_edit_lineno
+
+    if [[ ${TMOUT:-} =~ ^[0-9]+ ]] && ((BASH_REMATCH>0)); then
+      if [[ ! $_ble_prompt_timeout_task ]]; then
+        ble/util/idle.push -Z 'ble/prompt/timeout/process'
+        _ble_prompt_timeout_task=$_ble_util_idle_lasttask
+      fi
+      ble/util/idle#sleep "$_ble_prompt_timeout_task" $((BASH_REMATCH*1000))
+    elif [[ $_ble_prompt_timeout_task ]]; then
+      ble/util/idle#suspend "$_ble_prompt_timeout_task"
+    fi
+  }
+else
+  function ble/prompt/timeout/check { ((1)); }
+fi
+
 function ble/prompt/update/.has-prompt_command {
   [[ ${PROMPT_COMMAND[*]} ]]
 }
@@ -1399,6 +1429,8 @@ function ble/prompt/update/.eval-prompt_command {
 ##     構築したプロンプトの情報を格納します。
 function ble/prompt/update {
   local opts=:$1: dirty=
+
+  ble/prompt/timeout/check
 
   # Update PS1 in PROMPT_COMMAND / PRECMD
   local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count

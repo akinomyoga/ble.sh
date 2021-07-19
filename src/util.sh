@@ -4649,9 +4649,11 @@ if ((_ble_bash>=40000)); then
   ##     C<command>
   ##       コマンド <command> の実行結果が真になるのを待っているタスクです。
   ##       タスク内から ble/util/idle.wait-condition で設定します。
+  ##     Z
+  ##       停止中のタスクです。外部から状態を設定する事によって再開します。
   ##
   _ble_util_idle_task=()
-
+  _ble_util_idle_lasttask=
   _ble_util_idle_SEP=$_ble_term_FS
 
   ## @fn ble/util/idle.do
@@ -4690,6 +4692,7 @@ if ((_ble_bash>=40000)); then
         (E) [[ -e ${_idle_status:1} ]] && _idle_to_process=1 ;;
         (P) ! builtin kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
         (C) builtin eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
+        (Z) ;;
         (*) builtin unset -v '_ble_util_idle_task[_idle_key]'
         esac
 
@@ -4819,13 +4822,14 @@ if ((_ble_bash>=40000)); then
     local i=$base
     while [[ ${_ble_util_idle_task[i]-} ]]; do ((i++)); done
     _ble_util_idle_task[i]=$entry
+    _ble_util_idle_lasttask=$i
   }
   function ble/util/idle.push {
     local status=R nice=0
     while [[ $1 == -* ]]; do
       case $1 in
       (-[SWPFEC]) status=${1:1}$2; shift 2 ;;
-      (-[SWPFECIR]*) status=${1:1}; shift ;;
+      (-[SWPFECIRZ]*) status=${1:1}; shift ;;
       (-n) nice=$2; shift 2 ;;
       (-n*) nice=${1#-n}; shift ;;
       (*) break ;;
@@ -4848,6 +4852,10 @@ if ((_ble_bash>=40000)); then
 
   function ble/util/is-running-in-idle {
     [[ ${ble_util_idle_status+set} ]]
+  }
+  function ble/util/idle.suspend {
+    [[ ${ble_util_idle_status+set} ]] || return 2
+    ble_util_idle_status=Z
   }
   function ble/util/idle.sleep {
     [[ ${ble_util_idle_status+set} ]] || return 2
@@ -4899,6 +4907,24 @@ if ((_ble_bash>=40000)); then
     [[ ${ble_util_idle_status+set} ]] || return 2
     ble_util_idle_status=R
   }
+
+  function ble/util/idle/.delare-external-modifier {
+    local name=$1
+    builtin eval -- 'function ble/util/idle#'$name' {
+      local index=$1
+      [[ ${_ble_util_idle_task[index]+set} ]] || return 2
+      local ble_util_idle_status=${_ble_util_idle_task[index]%%"$_ble_util_idle_SEP"*}
+      local ble_util_idle_command=${_ble_util_idle_task[index]#*"$_ble_util_idle_SEP"}
+      ble/util/idle.'$name' "${@:2}"
+      _ble_util_idle_task[index]=$ble_util_idle_status$_ble_util_idle_SEP$ble_util_idle_command
+    }'
+  }
+  # @fn ble/util/idle#suspend
+  # @fn ble/util/idle#sleep time
+  # @fn ble/util/idle#isleep time
+  ble/util/idle/.delare-external-modifier suspend
+  ble/util/idle/.delare-external-modifier sleep
+  ble/util/idle/.delare-external-modifier isleep
 
   ble/util/idle.push-background 'ble/util/msleep/calibrate'
 else
