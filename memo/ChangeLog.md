@@ -146,6 +146,7 @@
 - complete: fix a bug that the shopt settings are not restored correctly (reported by Lun4m) `#D1623` 899c114
 - decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7 2ea48d7
 - history: fix the vanishing history entry used for `ble-attach` `#D1629` 0000000
+- global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 0000000
 
 ## Optimization
 

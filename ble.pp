@@ -342,6 +342,13 @@ function ble/base/adjust-bash-options {
   fi
   ble/variable#copy-state LC_COLLATE _ble_bash_LC_COLLATE
   LC_COLLATE=C
+
+  # TMOUT 確認 #D1630 WA readonly TMOUT
+  if local TMOUT= 2>/dev/null; then # #D1630 WA
+    _ble_bash_tmout_wa=()
+  else
+    _ble_bash_tmout_wa=(-t 2147483647)
+  fi
 } 2>/dev/null # set -x 対策 #D0930 / locale 変更
 function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1

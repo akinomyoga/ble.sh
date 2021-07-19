@@ -585,7 +585,7 @@ function ble-decode/.check-abort {
 if ((_ble_bash>=40400)); then
   function ble/decode/nonblocking-read {
     local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
-    local LC_ALL= LC_CTYPE=C TMOUT= IFS=
+    local LC_ALL= LC_CTYPE=C IFS=
     local -a data=()
     local line buff ext
     while ((loop--)); do
@@ -614,12 +614,12 @@ if ((_ble_bash>=40400)); then
 elif ((_ble_bash>=40000)); then
   function ble/decode/nonblocking-read {
     local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
-    local LC_ALL= LC_CTYPE=C TMOUT= IFS=
+    local LC_ALL= LC_CTYPE=C TMOUT= IFS= 2>/dev/null # #D1630 WA readonly TMOUT
     local -a data=()
     local line buff
     while ((loop--)); do
       builtin read -t 0 || break
-      builtin read -r -d '' -n 1 buff || break
+      builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' -n 1 buff || break
       if [[ $buff ]]; then
         line=$line$buff
       else
@@ -3269,8 +3269,8 @@ function ble/decode/read-inputrc {
   fi
 
   local -a script=()
-  local ret line= iline=0
-  while TMOUT= builtin read -r line || [[ $line ]]; do
+  local ret line= iline=0 TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+  while builtin read "${_ble_bash_tmout_wa[@]}" -r line || [[ $line ]]; do
     ((++iline))
     ble/string#trim "$line"; line=$ret
     [[ ! $line || $line == '#'* ]] && continue
@@ -3517,10 +3517,10 @@ function ble/builtin/bind/rlfunc2widget {
     dict=("${RLFUNC_DICT[@]}")'
     builtin eval -- "${script//RLFUNC_DICT/$rlfunc_dict}"
 
-    local line
+    local line TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     for line in "${dict[@]}"; do
       [[ $line == "$rlfunc "* ]] || continue
-      local rl widget; TMOUT= builtin read -r rl widget <<< "$line"
+      local rl widget; builtin read "${_ble_bash_tmout_wa[@]}" -r rl widget <<< "$line"
       if [[ $widget == - ]]; then
         ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'." >&2
         return 1

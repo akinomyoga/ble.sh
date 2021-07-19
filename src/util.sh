@@ -2033,12 +2033,13 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/util/readfile { # 465ms for man bash
-    TMOUT= IFS= builtin read -r -d '' "$1" < "$2"
+    local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "$1" < "$2"
   }
   function ble/util/mapfile {
-    local IFS= TMOUT=
+    local IFS= TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
-    while builtin read -r _ble_local_val || [[ $_ble_local_val ]]; do
+    while builtin read "${_ble_bash_tmout_wa[@]}" -r _ble_local_val || [[ $_ble_local_val ]]; do
       _ble_local_arr[_ble_local_i++]=$_ble_local_val
     done
     builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
@@ -2451,8 +2452,8 @@ else
   function ble/util/assign {
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
-    local _ble_local_ret=$?
-    TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmpfile"
+    local _ble_local_ret=$? TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
     builtin eval "$1=\${$1%$'\n'}"
     return "$_ble_local_ret"
@@ -3653,8 +3654,8 @@ function ble/util/conditional-sync {
 ## @fn ble/util/cat [files..]
 ##   cat の代替。直接扱えない NUL で区切って読み出す。
 function ble/util/cat/.impl {
-  local content= TMOUT= IFS=
-  while builtin read -r -d '' content; do
+  local content= TMOUT= IFS= 2>/dev/null # #D1630 WA readonly TMOUT
+  while builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' content; do
     printf '%s\0' "$content"
   done
   [[ $content ]] && printf '%s' "$content"
@@ -5759,9 +5760,9 @@ else
       return 0
     fi
 
-    local bytes byte
+    local bytes byte TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     ble/util/assign bytes '
-      while TMOUT= IFS= builtin read -r -n 1 byte; do
+      while IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -n 1 byte; do
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
     '

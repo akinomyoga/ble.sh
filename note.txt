@@ -4668,6 +4668,43 @@ bash_tips
 
 2021-07-19
 
+  * global: "TMOUT: readonly variable" というエラーメッセージが表示される (reported by farmerbobathan) [#D1630]
+    https://github.com/akinomyoga/ble.sh/issues/129
+
+    問題のエラーメッセージは ble-edit/io/check-stderr から出てきている。
+
+    これは /etc/profile.d/ 辺りに readonly TMOUT=xxxx 等という設定が書き込まれ
+    ているサーバーが存在する事があってその時に発生する。うーん。正直な所そうい
+    う設定を行うサーバーの方が悪いとしか言いようがない。然し勝手に読み込まれる
+    のはユーザーとしては仕方がない。
+
+
+    a TMOUT に変な値が設定されている時には -t 巨大な数 というのを指定して誤魔化
+      すしかない。一方で、毎回 TMOUT の値をチェックするのは効率が悪い。
+
+    b 或いは常に -t 巨大な数 を指定するという手もあるのかもしれないが、それだと
+      read を実行する度に alart/select が設定される事になって効率が悪い。
+
+    c 或いは TMOUT に有限の値を設定されている時に限り -t 巨大な数 を設定すると
+      いう手もあるのかもしれない。
+
+    d 或いはユーザー空間に入る時に TMOUT が readonly になっていないか確認して、
+      TMOUT が readonly になっていたら workaround の必要性を示す変数を設定する
+      という手がある。取り敢えず TMOUT が readonly の時にだけ振る舞いを変えるの
+      だとすればこの方針を貫くのが良い。
+
+    e 或いは enter する時に TMOUT を未設定にするという手もあるのだろうか? と思っ
+      たが、それだと session timeout としての TMOUT が動かなくなってしまうので
+      駄目→と思ったが、確認してみた所、そもそも session timeout としての TMOUT
+      は ble.sh ではちゃんと動作していなかった。となると、TMOUT は自前で実装す
+      る必要がある。自前で実装するのだとすれば ble.sh 内部では TMOUT= になる様にして、
+      read を実行する箇所で TMOUT= を実行する事はない様にすれば良いのである。
+
+      _ble_builtin_read_tmout_wa=(-t 巨大な数) 等でも適当に設定してこれを read
+      の引数に指定する事にする。
+
+    [修正] e の方針で実装した。取り敢えず動いている。
+
   * history: ble-attach に使ったコマンド履歴が欠けている。履歴番号にもずれが生じている [#D1629]
     Ref #D1120
 

@@ -8040,7 +8040,8 @@ function ble/builtin/read/.loop {
     fi
 
     # read 1 character
-    TMOUT= IFS= builtin read -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
+    local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
     if ((ext>128)); then
       # timeout
       #   Note: #D1467 Cygwin/Linux では read の timeout は 142 だが、これはシステム依存。
@@ -8429,8 +8430,8 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       #   since the $file might be /dev/null depending on the configuration.
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
-        local message= line
-        while TMOUT= IFS= builtin read -r line || [[ $line ]]; do
+        local message= line TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+        while IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
@@ -8490,8 +8491,8 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     }
 
     function ble-edit/io/check-ignoreeof-loop {
-      local line opts=:$1:
-      while TMOUT= IFS= builtin read -r line; do
+      local line opts=:$1: TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+      while IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r line; do
         if [[ $line == *[^$_ble_term_IFS]* ]]; then
           ble/util/print "$line" >> "$_ble_edit_io_fname2"
         fi
