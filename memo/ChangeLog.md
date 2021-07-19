@@ -144,7 +144,8 @@
 - util: work around the Bash 3 bug of array assignments with `^A` and `^?` in Bash 3.2 `#D1614` b9f7611
 - benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` a034c91
 - complete: fix a bug that the shopt settings are not restored correctly (reported by Lun4m) `#D1623` 899c114
-- decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7 0000000
+- decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7 2ea48d7
+- history: fix the vanishing history entry used for `ble-attach` `#D1629` 0000000
 
 ## Optimization
 
@@ -178,8 +179,8 @@
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
 - decode: work around kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 27c80f9
-- util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 0000000
-- main: work around `set -B` and `set -k` `#D1628` 0000000
+- util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
+- main: work around `set -B` and `set -k` `#D1628` a860769
 
 ## Internal changes and fixes
 

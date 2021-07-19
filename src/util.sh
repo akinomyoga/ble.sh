@@ -2513,6 +2513,17 @@ else
   }
 fi
 
+## @fn ble/util/assign.has-output command
+function ble/util/assign.has-output {
+  local _ble_local_tmpfile; ble/util/assign/.mktmp
+  builtin eval -- "$1" >| "$_ble_local_tmpfile"
+  [[ -s $_ble_local_tmpfile ]]
+  local _ble_local_ret=$?
+  ble/util/assign/.rmtmp
+  return "$_ble_local_ret"
+}
+
+
 # ble/bin/awk の初期化に ble/util/assign を使うので
 ble/bin/awk/.instantiate
 

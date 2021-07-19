@@ -34,15 +34,14 @@ _ble_history_index=0
 _ble_history_count=
 
 function ble/builtin/history/is-empty {
-  # Note: 状況によって history -p で項目が減少するので
-  #  サブシェルの中で評価する必要がある。
-  #  但し、サブシェルの中に既にいる時にはこの fork は省略できる。
-  if ((!BASH_SUBSHELL)); then
-    (! builtin history -p '!!')
-  else
-    ! builtin history -p '!!'
-  fi
-} &>/dev/null
+  # Note #D1629: 以前の実装 (#D1120) では ! builtin history -p '!!' を使ってい
+  #   たが、状況によって history -p で履歴項目が減少するのでサブシェルの中で評
+  #   価する必要がある。サブシェルの中に既にいる時にはこの fork は省略できると
+  #   考えていたが、サブシェルの中にいる場合でも後で履歴を使う為に履歴項目が変
+  #   化すると困るので、結局この手法だと常にサブシェルを起動する必要がある。代
+  #   わりに history 1 の出力を確認する実装に変更する事にした。
+  ! ble/util/assign.has-output 'history 1'
+}
 function ble/builtin/history/.get-min {
   ble/util/assign min 'builtin history | head -1'
   ble/string#split-words min "$min"
