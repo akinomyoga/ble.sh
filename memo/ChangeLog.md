@@ -183,6 +183,7 @@
 - decode: work around kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 27c80f9
 - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
 - main: work around `set -B` and `set -k` `#D1628` a860769
+- term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 0000000
 
 ## Internal changes and fixes
 

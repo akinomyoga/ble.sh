@@ -3935,10 +3935,18 @@ function ble/decode/attach {
   # ble.sh bind の設置
   ble/decode/bind/bind # 20ms
 
-  # Note #D1213: linux コンソール (kernel 5.0.0) は "\e[>"
-  #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
-  [[ $TERM == linux ]] ||
+  case $TERM in
+  (linux)
+    # Note #D1213: linux コンソール (kernel 5.0.0) は "\e[>"
+    #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
+    _ble_term_TERM=linux ;;
+  (st|st-*)
+    # st の unknown csi sequence メッセージに対して文句を言う人がいた。
+    # st は TERM で判定できるので DA2 はスキップできる。
+    _ble_term_TERM=st ;;
+  (*)
     ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
+  esac
   return 0
 }
 
