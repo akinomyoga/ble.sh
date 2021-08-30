@@ -2799,7 +2799,6 @@ function ble-edit+backward-uword {
 declare -a _ble_edit_accept_line=()
 declare _ble_edit_accept_line_lastexit=0
 function .ble-edit.accept-line.add {
-  local BASH_COMMAND="$1"
   ble/util/array-push _ble_edit_accept_line "$1"
 }
 function .ble-edit/exec/setexit {
@@ -3268,7 +3267,7 @@ function ble-edit+accept-single-line-or-newline {
 }
 
 function .ble-edit.bind.command {
-  local IFS=$_ble_term_IFS BASH_COMMAND=$1
+  local IFS=$_ble_term_IFS _ble_local_command=$1
   .ble-line-info.clear
   .ble-edit-draw.update
 
@@ -3279,12 +3278,12 @@ function .ble-edit.bind.command {
   _ble_line_x=0 _ble_line_y=0
   ((LINENO=++_ble_edit_LINENO))
 
-  # eval "$BASH_COMMAND"
+  # eval "$_ble_local_command"
   # .ble-edit/exec/adjust-eol
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
-  if [[ "${BASH_COMMAND//[ 	]/}" ]]; then
-    .ble-edit.accept-line.add "$BASH_COMMAND"
+  if [[ "${_ble_local_command//[ 	]/}" ]]; then
+    .ble-edit.accept-line.add "$_ble_local_command"
   fi
 
   .ble-edit-draw.set-dirty -1
