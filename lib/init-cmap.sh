@@ -42,6 +42,10 @@
 # 2019-05-06 ble-update 関連でバグがあったのを潰したので更新。
 # 2020-04-13 cmap キャッシュ生成のバグ修正に伴う更新。
 
+function ble/init:cmap/bind-single-csi {
+  ble-bind -k "ESC [ $1" "$2"
+  ble-bind -k "CSI $1" "$2"
+}
 function ble/init:cmap/bind-keypad-key {
   local Ft=$1 name=$2
   ble-bind --csi "$Ft" "$name"
@@ -229,6 +233,17 @@ function ble/init:cmap/initialize {
   # ble-bind -k "CAN @ h" hyper
   # ble-bind -k "CAN @ m" meta
   # ble-bind -k "CAN @ s" super
+
+  # st specific
+  ble/init:cmap/bind-single-csi '2 J' S-home
+  ble/init:cmap/bind-single-csi 'J' C-end
+  ble/init:cmap/bind-single-csi 'K' S-end
+  ble/init:cmap/bind-single-csi '4 l' S-insert
+  ble/init:cmap/bind-single-csi 'L'   C-insert
+  ble/init:cmap/bind-single-csi '4 h' insert
+  # ble/init:cmap/bind-single-csi 'M'   C-delete # conflicts with kpent
+  ble/init:cmap/bind-single-csi '2 K' S-delete
+  ble/init:cmap/bind-single-csi 'P'   delete
 
   ble-edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
 }
