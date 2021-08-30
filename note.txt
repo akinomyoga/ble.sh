@@ -4914,9 +4914,22 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-08-30
+
+  * 2021-08-19 st: insert で CSI 4h を送るなど色々変な key sequence を送ってくる [#D1633]
+
+    他に以下の物が見られる。
+
+      CSI L (C-insert)
+      CSI J (C-end)
+
+    他にも色々ありそうなので一つ一つ既に実装されている物と見比べて調べる必要が
+    ある。幾つか追加した。ESC[M は他とかちあっている。
+
 2021-08-19
 
-  * st: unknown csi error message (reported by ) [#D1632]
+  * st: unknown csi error message (reported by Shahabaz-Bagwan) [#D1632]
+    https://github.com/akinomyoga/ble.sh/issues/132
 
     * 先ず st は DA2 に応答しない。DA1 に対して CSI ?6c を返答する。
 
@@ -4937,6 +4950,9 @@ bash_tips
       れは雷絵文字の幅計算がずれているのが原因の様である。これはまあ仕方の無い
       ことである。もしちゃんと対応するのだとしたらまずは st をちゃんと検出でき
       る様にしなければならない。
+
+    2021-08-26 minux になっている箇所がある。
+    2021-08-30 #D1633 で一緒に直した。
 
 2021-07-19
 

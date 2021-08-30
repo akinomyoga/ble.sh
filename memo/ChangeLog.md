@@ -63,7 +63,7 @@
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
-- edit: support `TMOUT` for the session timeout `#D1631` 0000000
+- edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
  
 ## Changes
 
@@ -146,8 +146,8 @@
 - benchmark (`ble-measure`): fix a bug that the result is always 0 in Bash 3 and 4 (fixup bbc2a904) `#D1615` a034c91
 - complete: fix a bug that the shopt settings are not restored correctly (reported by Lun4m) `#D1623` 899c114
 - decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7 2ea48d7
-- history: fix the vanishing history entry used for `ble-attach` `#D1629` 0000000
-- global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 0000000
+- history: fix the vanishing history entry used for `ble-attach` `#D1629` eb34061
+- global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 44e6ec1
 
 ## Optimization
 
@@ -183,7 +183,8 @@
 - decode: work around kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 27c80f9
 - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
 - main: work around `set -B` and `set -k` `#D1628` a860769
-- term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 0000000
+- term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 92c7b26
+- cmap: add `st`-specific escape sequences for cursor keys `#D1633` 0000000
 
 ## Internal changes and fixes
 

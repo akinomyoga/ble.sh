@@ -5614,7 +5614,7 @@ function ble/term/modifyOtherKeys/.supported {
     # Note #D1213: linux (kernel 5.0.0) は "\e[>" でエスケープシーケンスを閉じ
     # てしまう。5.4.8 は大丈夫だがそれでも modifyOtherKeys に対応していない。
     return 1 ;;
-  (minux|sun*)
+  (minix|sun*)
     # minix, Solaris のコンソールもそのまま出力してしまう。
     return 1 ;;
   (st|st-*)
