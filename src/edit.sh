@@ -8749,8 +8749,8 @@ function ble/widget/internal-command {
 }
 function ble/widget/external-command {
   ble-edit/content/clear-arg
-  local command=$1
-  [[ ${command//[$_ble_term_IFS]} ]] || return 1
+  local _ble_local_command=$1
+  [[ ${_ble_local_command//[$_ble_term_IFS]} ]] || return 1
 
   ble/edit/enter-command-layout
   ble/textarea#invalidate
@@ -8760,7 +8760,7 @@ function ble/widget/external-command {
   ble/canvas/bflush.draw
   ble/term/leave
   ble/util/buffer.flush >&2
-  BASH_COMMAND=$command builtin eval -- "$command"; local ext=$?
+  BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"; local ext=$?
   ble/term/enter
   return "$ext"
 }

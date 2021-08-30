@@ -122,6 +122,7 @@
 - syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` b429095
 - decode: fix a hang on attach failure by cache corruption `#D1531` 24ea379
 - edit, etc: add workarounds for `localvar_inherit` `#D1532` 7b63c60
+  - edit: fix a bug that `command-help` doesn't work `#D1635` 0000000
 - progcomp: fix non-working `complete -C prog` (reported by Archehandoro) `#D1535` 026432d
 - bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
@@ -184,7 +185,7 @@
 - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
 - main: work around `set -B` and `set -k` `#D1628` a860769
 - term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 92c7b26
-- cmap: add `st`-specific escape sequences for cursor keys `#D1633` 0000000
+- cmap: add `st`-specific escape sequences for cursor keys `#D1633` acfb879
 
 ## Internal changes and fixes
 

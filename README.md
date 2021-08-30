@@ -22,7 +22,7 @@ in some part of initialization and cleanup code,
 processing of large data in completions, paste of large data, etc.
 
 Pronunciation: The easiest pronunciation of `ble.sh` that users use is /blɛʃ/, but you can actually pronounce it as you like.
-I do not specify no canonical way of pronoucing `ble.sh`.
+I do not specify the canonical way of pronoucing `ble.sh`.
 In fact, I personally read it verbosely as /biːɛliː dɑt ɛseɪtʃ/ in my head.
 
 ## Quick instructions

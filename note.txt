@@ -4916,6 +4916,18 @@ bash_tips
 
 2021-08-30
 
+  * edit: command-help が効かなくなっている [#D1635]
+
+    どうやら以下の commit で external-command を書き換えた時に、内部で使用して
+    いる変数名 command と command-help で使用している変数名が被ってしまって問題
+    が起こっている様だ。
+
+    7b63c60d src/edit.sh (Koichi Murase     2021-05-06 16:04:39 +0900 8755)   local command=$1
+
+    一旦は command-help の側でコマンド名を他の変数に待避する様に書き換えてみた
+    が、うーん。そもそも external-command は呼び出し元の変数名に影響が無い様に
+    特別な変数名を使うべきである。
+
   * README: やはり ble.sh の読み方を与えるべきかもしれない [#D1634]
     https://www.youtube.com/watch?v=YS1vxEhd2Pc
 
