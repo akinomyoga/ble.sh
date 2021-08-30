@@ -7371,16 +7371,16 @@ function ble/widget/print {
 }
 function ble/widget/internal-command {
   ble-edit/content/clear-arg
-  local BASH_COMMAND=$1
-  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+  local _ble_local_command=$1
+  [[ ${_ble_local_command//[$_ble_term_IFS]} ]] || return 1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
-  eval "$BASH_COMMAND"
+  BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"
 }
 function ble/widget/external-command {
   ble-edit/content/clear-arg
-  local BASH_COMMAND=$1
-  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+  local _ble_local_command=$1
+  [[ ${_ble_local_command//[$_ble_term_IFS]} ]] || return 1
 
   ble-edit/info/hide
   ble/textarea#invalidate
@@ -7390,21 +7390,21 @@ function ble/widget/external-command {
   ble/canvas/bflush.draw
   ble/term/leave
   ble/util/buffer.flush >&2
-  eval "$BASH_COMMAND"; local ext=$?
+  BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"; local ext=$?
   ble/term/enter
   return "$ext"
 }
 function ble/widget/execute-command {
   ble-edit/content/clear-arg
-  local BASH_COMMAND=$1
+  local _ble_local_command=$1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
 
   # Note: 空コマンドでも .insert-newline は実行する。
-  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+  [[ ${_ble_local_command//[$_ble_term_IFS]} ]] || return 1
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
-  ble-edit/exec/register "$BASH_COMMAND"
+  ble-edit/exec/register "$_ble_local_command"
 }
 
 ## 関数 ble/widget/.SHELL_COMMAND command
