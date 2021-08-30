@@ -30,8 +30,12 @@
 #
 # 2020-04-13 cmap キャッシュ生成のバグ修正に伴う更新。
 
+function ble/cmap/default/bind-single-csi {
+  ble-bind -k "ESC [ $1" "$2"
+  ble-bind -k "CSI $1" "$2"
+}
 function ble/cmap/default/bind-keypad-key {
-  local Ft="$1" name="$2"
+  local Ft=$1 name=$2
   ble-bind --csi "$Ft" "$name"
   (($3&1)) && ble-bind -k "ESC O $Ft" "$name"
   (($3&2)) && ble-bind -k "ESC ? $Ft" "$name"
@@ -189,6 +193,17 @@ function ble-bind-function-key+default {
   # ble-bind -k "CAN @ h" hyper
   # ble-bind -k "CAN @ m" meta
   # ble-bind -k "CAN @ s" super
+
+  # st specific
+  ble/cmap/default/bind-single-csi '2 J' S-home
+  ble/cmap/default/bind-single-csi 'J'   C-end
+  ble/cmap/default/bind-single-csi 'K'   S-end
+  ble/cmap/default/bind-single-csi '4 l' S-insert
+  ble/cmap/default/bind-single-csi 'L'   C-insert
+  ble/cmap/default/bind-single-csi '4 h' insert
+  # ble/cmap/default/bind-single-csi 'M'   C-delete # conflicts with kpent
+  ble/cmap/default/bind-single-csi '2 K' S-delete
+  ble/cmap/default/bind-single-csi 'P'   delete
 
   echo "ble/cmap/default.sh: updating key sequences... done" >&2
 }
