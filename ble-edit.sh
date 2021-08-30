@@ -4183,7 +4183,6 @@ _ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 function ble-edit/exec/register {
-  local BASH_COMMAND=$1
   ble/array#push _ble_edit_exec_lines "$1"
 }
 function ble-edit/exec/has-pending-commands {
@@ -7296,14 +7295,15 @@ function ble-decode/EPILOGUE {
 function ble/widget/.SHELL_COMMAND {
   ble-edit/content/clear-arg
 
-  local BASH_COMMAND=$1
+  local _ble_local_command=$1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
 
+  # Note: 空コマンドでも .insert-newline は実行する。
+  [[ ${_ble_local_command//[$_ble_term_IFS]} ]] || return 1
+
   # やはり通常コマンドはちゃんとした環境で評価するべき
-  if [[ "${BASH_COMMAND//[ 	]/}" ]]; then
-    ble-edit/exec/register "$BASH_COMMAND"
-  fi
+  ble-edit/exec/register "$_ble_local_command"
 }
 
 ## 関数 ble/widget/.EDIT_COMMAND command
