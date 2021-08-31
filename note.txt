@@ -4914,6 +4914,48 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-09-01
+
+  * auto-complete: idle.sleep で異なる時計を参照していた事による無限ループ (reported by rashil2000) [#D1636]
+    https://github.com/akinomyoga/ble.sh/issues/133
+
+    msys2 で auto-complete が特定の状況で実行されないという報告だったが、自分の
+    手元で complete_timeout_auto= にしてみたらどうやら無限ループになっている気
+    がする。調べてみると idle.sleep しているのに sleep していない。と思ったら、
+    どうやら異なる時計を参照していた為に msleep が skip されて、無限に msleep
+    の要求をし続けている状態になっていた。
+
+    これを直したらちゃんと補完候補が表示される様になった。
+
+    然しこれについては過去に修正した様な気がする。過去に修正した時の修正漏れか
+    或いは逆方向に間違えて修正したか。再度確認する必要がある。
+
+    * ble/complete/auto-menu.idle の #D1597 での修正
+
+      53dd018e で他の箇所を類似の問題により isleep から sleep に切り替えている。
+      #D1597 である。一方で今回問題になっている箇所は最初から sleep だった様だ。
+      #D1597 に詳しく説明が書かれている。
+
+      改めて実装を確認する。auto-menu.idle は _idle_clock_start を元にしてい
+      る。_idle_clock_start は ble/util/idle.clock を元にしている。
+      ble/util/idle.clock は色々実装を切り替えているので環境によって異なる。ま
+      た、idle.sleep もまた ble/util/idle.clock を元にしている。
+
+    * 今回の ble/complete/auto-complete.idle に関しては、唯単に idle.sleep を要
+      求しているだけの様に見える。但し、最後にユーザー入力があって以降の経過時
+      間を考慮に入れる為に ble_util_idle_elapsed を用いている。この
+      ble_util_idle_elapsed は _ble_util_idle_sclock-_idle_sclock_start を元に
+      していて、更にこれらは ble/util/idle/.sleep で積算される。
+
+      うーん。つまり、ble_util_idle_elapsed を参照する限りは isleep を使う必要
+      があるという事。一方で auto-complete の delay を処理するのは isleep に基
+      づくべきか sleep に基づくべきかという疑問もある。
+
+    * また macOS の 100% も関係しているかもしれない。報告によると履歴のロードに
+      関係しているという事だが、nawk が走っている間ずっと CPU が動いているとい
+      う状態になっている可能性もある。と思ったがそうでもなかった。そもそも履歴
+      の初期化では sleep は行っていない。
+
 2021-08-30
 
   * edit: command-help が効かなくなっている [#D1635]

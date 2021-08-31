@@ -149,6 +149,7 @@
 - decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7 2ea48d7
 - history: fix the vanishing history entry used for `ble-attach` `#D1629` eb34061
 - global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 44e6ec1
+- complete: fix a task scheduling bug of referencing two different clocks `#D1636` 0000000
 
 ## Optimization
 
