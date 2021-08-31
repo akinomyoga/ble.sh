@@ -1,6 +1,6 @@
 [ Languages: [English](README.md) (英語) | **日本語** ]
 
-<h1 align="center">ble.sh ―Bash Line Editor―</h1>
+<h1 align="center"><ruby>ble.sh<rp> (</rp><rt>/blɛʃ/</rt><rp>)</rp></ruby> ―Bash Line Editor―</h1>
 <p align="center">
 [ <b>README</b> | <a href="https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A71-%E5%9F%BA%E6%9C%AC">説明書</a> |
 <a href="https://github.com/akinomyoga/ble.sh/wiki/%E8%B3%AA%E5%95%8F%E3%81%A8%E5%9B%9E%E7%AD%94">Q&A</a> |
@@ -19,6 +19,9 @@
 ユーザーコマンド実行時には TTY 設定の為に `stty` (POSIX) を呼び出します。
 他にも処理の高速化の為に、初期化・終了処理、
 巨大なデータの処理 (補完、貼り付けなど) の局面でPOSIX 標準コマンドを利用しています。
+
+呼称: `ble.sh` はお好きな様に読んでいただいて問題ありませんが、一番短いのは標記の /blɛʃ/ になりましょう。
+しかし個人的には脳裡で /biːɛliː dɑt ɛseɪtʃ/ と読んでいるものですから、標記の読み方は飽くまで参考と受け止めていただければ幸いです。
 
 ## 簡単設定
 
@@ -55,7 +58,7 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 パッケージ管理システムを通じて `ble.sh` をインストールする事もできます (現在 AUR のみ)。
 
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@oc1024`](https://github.com/oc1024)
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@capezotte`](https://github.com/capezotte)
 
 ## 機能概要
 
@@ -255,26 +258,47 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 Vim モードについては [Wiki の説明ページ](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
 
-## 2.2 自動補完
+## 2.2 各機能の無効化
 
-自動補完は Bash 4.0 以上で利用することができ、既定で有効化されます。
-自動補完機能を無効にするには以下の設定を `~/.blerc` に記述します。
+よくお尋ね頂くご質問の一つにそれぞれの機能をどのように無効化すれば良いのかというものが御座います。
+各機能の無効化方法を以下にまとめます。
 
 ```bash
+# 構文着色を無効化
+bleopt highlight_syntax=
+
+# ファイル名に基づく構文着色を無効化
+bleopt highlight_filename=
+
+# 変数の種類に基づく構文着色の無効化
+bleopt highlight_variable=
+
+# 自動補完の無効化 (自動補完は Bash 4.0 以降にて既定で有効です)
 bleopt complete_auto_complete=
-```
-
-完全に自動補完を切るのではなくて、自動補完候補を表示するまでの遅延を設定するには以下のようにします。
-
-```bash
-# 例: 遅延を 300 ミリ秒に設定する
+# Tip: 代わりに自動補完の起動遅延をミリ秒単位でご指定いただくこともできます。
 bleopt complete_auto_delay=300
-```
 
-Bash のコマンド履歴に基づく補完候補を無効にするには以下のようにします。
-
-```bash
+# コマンド履歴に基づく自動補完の無効化
 bleopt complete_auto_history=
+
+# 曖昧補完の無効化
+bleopt complete_ambiguous=
+
+# TAB によるメニュー補完の無効化
+bleopt complete_menu_complete=
+
+# メニュー自動絞り込みの無効化 (Bash 4.0 以降にて既定で有効化されます)
+bleopt complete_menu_filter=
+
+# 行末マーカー "[ble: EOF]" の無効化
+bleopt prompt_eol_mark=''
+# Tip: 代わりに他の文字列をご指定頂くこともできます。
+bleopt prompt_eol_mark='⏎'
+
+# 終了ステータスマーカー "[ble: exit %d]" の無効化
+bleopt exec_errexit_mark=
+# Tip: 代わりに他の文字列をご指定頂くこともできます。
+bleopt exec_errexit_mark=$'\e[91m[error %d]\e[m'
 ```
 
 ## 2.3 曖昧文字幅

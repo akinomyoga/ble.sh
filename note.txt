@@ -4916,6 +4916,42 @@ bash_tips
 
 2021-08-30
 
+  * README: やはり ble.sh の読み方を与えるべきかもしれない [#D1634]
+    https://www.youtube.com/watch?v=YS1vxEhd2Pc
+
+    動画の最初で読み方に戸惑いが見られる。やはり発音しやすい発音として blesh を
+    呈示しておいた方が良い様な気がしてきた。別に正しい読み方がある訳でもないし、
+    寧ろ個人的には bee-elle-yee-dot-ess-eightch と読んでいるが、やはり膾炙する
+    のは発音しやすい読み方だろう。
+
+    或いは両方提示する。
+
+      /blɛʃ/ or /biːɛliː dɑt ɛseɪtʃ/
+
+    うーん。後者は態々 IPA で書く迄の事もなく、くどい感じがする。
+
+    少しずつ push した方が GitHub の suggestion に現れる様なので、
+    試みに今日から一日に 1 commit ずつ push する事にする。check の意味も兼ねて。
+
+    他の README に関連する編集も纏めて一つの commit にする事にする。
+
+    * README: @oc1024 がリンク切れになっている。やはり質問しているとは言え他の
+      人をどんどん README に追加していくのは出過ぎた真似だろうか。huesche の件
+      が偲ばれる。然し一方でこちらが正体を当てた事から oc1024 ではなくてちゃん
+      と capezotte という名前にアカウントを変更したのかもしれない。何れにしても
+      capezotte に変えるべきだろうと思われる。
+
+    * README: Wiki -> wiki?
+
+      Wiki ではなくて wiki なのではないか。README の他にも文頭でないのに Wiki と
+      書いている箇所があるかもしれない。
+
+      改めて検索してみると日本語の記事だと wiki を Wiki と書いている様である。つ
+      まり、Wiki と capitalize するのは日本語の習慣という事なのだろう。
+
+    * README: 各機能の無効化について記述する
+      https://github.com/akinomyoga/ble.sh/issues/134
+
   * 2021-08-19 st: insert で CSI 4h を送るなど色々変な key sequence を送ってくる [#D1633]
 
     他に以下の物が見られる。

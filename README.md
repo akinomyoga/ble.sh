@@ -1,6 +1,6 @@
 [ Languages: **English** | [日本語](README-ja_JP.md) (Japanese) ]
 
-<h1 align="center">ble.sh ―Bash Line Editor―</h1>
+<h1 align="center"><ruby>ble.sh<rp> (</rp><rt>/blɛʃ/</rt><rp>)</rp></ruby> ―Bash Line Editor―</h1>
 <p align="center">
 [ <b>README</b> | <a href="https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A71-Introduction">Manual</a> |
 <a href="https://github.com/akinomyoga/ble.sh/wiki/Q&A">Q&A</a> |
@@ -20,6 +20,10 @@ Disclaimer: The core part of the line editor is written in **pure Bash**, but
 It also uses other POSIX utilities for acceleration
 in some part of initialization and cleanup code,
 processing of large data in completions, paste of large data, etc.
+
+Pronunciation: The easiest pronunciation of `ble.sh` that users use is /blɛʃ/, but you can actually pronounce it as you like.
+I do not specify no canonical way of pronoucing `ble.sh`.
+In fact, I personally read it verbosely as /biːɛliː dɑt ɛseɪtʃ/ in my head.
 
 ## Quick instructions
 
@@ -56,7 +60,7 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 You may also install `ble.sh` through package-management systems (currently only AUR):
 
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@oc1024`](https://github.com/oc1024)
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@capezotte`](https://github.com/capezotte)
 
 ## Features
 
@@ -233,28 +237,49 @@ For detailed explanations please refer to [Manual](https://github.com/akinomyoga
 
 ## 2.1 Vim mode
 
-For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
+For the vi/vim mode, check [the wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
-## 2.2 Configure `auto-complete`
+## 2.2 Disable features
 
-The feature `auto-complete` is available for Bash 4.0+ and enabled by default.
-If you want to turn off `auto-complete`, please put the following line in your `~/.blerc`.
+One of frequently asked questions is the way to disable a specific feature that `ble.sh` adds.
+Here the settings for disabling features are summarized.
 
 ```bash
+# Disable syntax highlighting
+bleopt highlight_syntax=
+
+# Disable highlighting based on filenames
+bleopt highlight_filename=
+
+# Disable highlighting based on variable types
+bleopt highlight_variable=
+
+# Disable auto-complete (Note: auto-complete is enabled by default in bash-4.0+)
 bleopt complete_auto_complete=
-```
-
-Instead of completely turning off `auto-complete`, you can set a delay for `auto-complete`.
-
-```bash
-# Set the delay of the auto-complete to 300 milliseconds
+# Tip: you may instead specify the delay of auto-complete in millisecond
 bleopt complete_auto_delay=300
-```
 
-`auto-complete` candidates based on the bash command history can be turned off by the following line.
-
-```bash
+# Disable auto-complete based on the command history
 bleopt complete_auto_history=
+
+# Disable ambiguous completion
+bleopt complete_ambiguous=
+
+# Disable menu-complete by TAB
+bleopt complete_menu_complete=
+
+# Disable menu filtering (Note: auto-complete is enabled by default in bash-4.0+)
+bleopt complete_menu_filter=
+
+# Disable EOF marker like "[ble: EOF]"
+bleopt prompt_eol_mark=''
+# Tip: you may instead specify another string:
+bleopt prompt_eol_mark='⏎'
+
+# Disable error exit marker like "[ble: exit %d]"
+bleopt exec_errexit_mark=
+# Tip: you may instead specify another string:
+bleopt exec_errexit_mark=$'\e[91m[error %d]\e[m'
 ```
 
 ## 2.3 CJK Width
@@ -422,7 +447,7 @@ When the shell option `shopt -s cmdhist` is set (which is the default),
 ## 3.2 Use vim editing mode
 
 If `set -o vi` is specified in `.bashrc` or `set editing-mode vi` is specified in `.inputrc`, the vim mode is enabled.
-For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
+For details, please check [the wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
 ## 3.3 Use `auto-complete`
 
