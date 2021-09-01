@@ -1552,6 +1552,70 @@ bash_tips
 0.5 ControlPanel/TUI Framework
 0.4 progcolor
 
+2021-08-26
+
+  * CPU 100% in macOS (reported by killermoehre)
+    https://github.com/akinomyoga/ble.sh/issues/131
+
+    CPU 100% になっている時に同時に gawk が待機している様である。
+    100% になっている時の gawk の引数について尋ねたら返答が来た。
+
+    二つの bash について異なる gawk が呼び出されている。前者は
+    ble/history:bash/resolve-multiline/.awk で、後者は
+    ble/history:bash/load/.background-initialize である。両方とも
+    history に関係している。
+
+    Q というかどちらの bash が CPU 100% になっているのだろうか。或いは両方?
+
+    Q bash が起動した時に暫く 100% になるのか起動した後もずっと 100% のままなの
+      か。もし暫くしたら収まるのだとしたらどれぐらいの間 100% でいるのだろうか。
+      これがそんなに長くなければ少なくとも見た目の動作に影響がない限りはそのま
+      まにしておいても良い様な気がする。
+
+    Q CPU 100% になっている間 bash は応答するだろうか。応答するとしたら
+
+    Q いつでも現象は再現するだろうか。或いは確率的に発生するだろうか。
+
+    ----
+
+    取り敢えずやはり巨大な history が問題であるという事までは分かった。
+    自分の手許の linux では同じぐらいの巨大な history を用意したとしても
+    そんなに遅くはない。
+
+    ? 一方で向こうの報告によると builtin history を実行しているプロセスが重いと
+      いうことの様である。自分の手許で確認しようとしているがすぐに処理が終わっ
+      てしまうので確認できない。
+
+    * 終了時にもかなり待たされる。
+
+      終了時の nawk が滅茶苦茶遅くなる。gawk だと遅くないとかあるのだろうか。と
+      思って改めて観察してみると最初に bash が 100% になって、その次に nawk が
+      100% になるという具合に処理が進行している。
+
+      ble/builtin/history/.write で時間を消費している。
+
+      A:1630043056.816931
+      B:1630043056.936962 0.12s ... history/.get-min
+      C:1630043056.942516 0.06s ... history/.get-max
+      D:1630043079.487224 13s ... builtin history >> file
+      E:1630043092.465937 13s ... nawk の処理
+
+    Q hang と slow は区別しているのだろうか。自分的には hang というのは待っても
+      絶対に終わらないという意味である。然し、向こうは有限時間で終わるという事
+      を確認しているのにも関わらず hang と言っている可能性がある。よく分からな
+      い。
+
+2021-08-23
+
+  * bash-4.2 では [[ ${arr[*]} == *" 2 "* ]] (where arr=(1 2 '')) が駄目
+
+    一応該当しそうな物を検索すると以下の様な物がある。
+    何れも空白には関係なさそうなので問題は起こらなそうな気がする。
+
+    $ grc '\[\[ \$\{.*\[[*@]\].*\} [!=]= .* \]\]'
+    ./ble.pp:145:    { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
+    ./src/decode.sh:3632:    [[ ${keys[*]} != "$bind_keys" ]] &&
+
 2021-07-20
 
   * bind --help の exit status が 1 になっている
@@ -2257,6 +2321,17 @@ bash_tips
 
     rlwrap 等を使うという手もある? rlwrap のじっそうはやはり pty を開くという物
     のようである。rlfe という物もあるようである。
+
+    どうも gnuplot の場合には普通に gnuplot & で起動しても操作できる様
+    な気がする。ble.sh で _ble_syntax_lang=gnuplot として更に
+    exec:gnuplot を提供したらそれだけで普通に動く様な気がする。
+
+    - ble-edit/is-single-complete-line で syntax:bash を呼び出している
+      のをsyntax:$_ble_syntax_lang として呼び出す様に変更する必要があ
+      る。他にも accept-line が is-complete を呼び出している。
+
+    * shell-expand 系統の widget は gnuplot モードでは無効にしたい。
+    * command-help 系統の widget も gnuplot モードでは別の実装にする。
 
 2021-02-10
 
@@ -4915,6 +4990,31 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-01
+
+  * 2021-08-23 mandb: manpath コマンドを使っても MANPATH は得られる [#D1637]
+
+    また、MANPATH に空パスが含まれている場合にはそれは標準の manpath と解釈される様だ。
+
+    manpath の emulation についてちゃんと考える。
+
+    MANPATH が設定されていない時または空パスが含まれている時は/etc/man_db.conf
+    及び ~/.manpath を読み取る必要がある。MANDATORY_MANPATH 及び MANPATH_MAP を
+    解釈すれば良いだろう。更に PATH 中の bin を share/man に置き換えてディレク
+    トリが存在するかどうか確認する。
+
+    →その様に実装した。
+
+    * MANDB_MAP についても実装するべきなのではないか。というか MANDB_MAP とは何
+      か。説明を見ると MANPATH から CATPATH への対応表の様だが、CATPATH とは何
+      か。検索してみると整形済みの物をキャッシュしておく場所の様だ。つまり、cat
+      するだけで説明が読める様な状態でファイルを保存しておく場所という事なのだ
+      ろう。
+
+      実際に指定されている /var/cache/man の下を見ると index.db という 500kB の
+      ファイルが一個あるだけで、cat するだけという状態ではない様な気がするが、
+      然しデータベースとして記録しているのだろうと思う。
+
+      何れにしてもこれは ble.sh の関知する所ではない。気にしない。
 
   * auto-complete: idle.sleep で異なる時計を参照していた事による無限ループ (reported by rashil2000) [#D1636]
     https://github.com/akinomyoga/ble.sh/issues/133

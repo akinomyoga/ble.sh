@@ -2844,6 +2844,73 @@ function ble/complete/action:mandb/get-desc {
   desc=${fields[3]}
 }
 
+function ble/complete/mandb/load-mandb-conf {
+  [[ -s $1 ]] || return 0
+  local line words
+  while builtin read "${_ble_bash_tmout_wa[@]}" -r line || [[ $line ]]; do
+    ble/string#split-words words "${line%%'#'*}"
+    case ${words[0]} in
+    (MANDATORY_MANPATH)
+      [[ -d ${words[1]} ]] &&
+        ble/array#push manpath_mandatory "${words[1]}" ;;
+    (MANPATH_MAP)
+      ble/dict#set manpath_map "${words[1]}" "${words[2]}" ;;
+    esac
+  done < "$1"
+}
+
+_ble_complete_mandb_default_manpath=()
+function ble/complete/mandb/initialize-manpath {
+  ((${#_ble_complete_mandb_default_manpath[@]})) && return 0
+  local manpath
+  MANPATH= ble/util/assign manpath 'manpath || ble/bin/man -w' 2>/dev/null
+  ble/string#split manpath : "$manpath"
+  if ((${#manpath[@]}==0)); then
+    local -a manpath_mandatory=()
+    builtin eval "${_ble_util_dict_declare//NAME/manpath_map}"
+    ble/complete/mandb/load-mandb-conf /etc/man_db.conf
+    ble/complete/mandb/load-mandb-conf ~/.manpath
+
+    # default mandatory manpath
+    if ((${#manpath_mandatory[@]}==0)); then
+      local ret
+      ble/complete/util/eval-pathname-expansion '~/*/share/man'
+      ble/array#push manpath_mandatory "${ret[@]}"
+      ble/complete/util/eval-pathname-expansion '~/@(opt|.opt)/*/share/man'
+      ble/array#push manpath_mandatory "${ret[@]}"
+      for ret in /usr/local/share/man /usr/local/man /usr/share/man; do
+        [[ -d $ret ]] && ble/array#push manpath_mandatory "$ret"
+      done
+    fi
+
+    builtin eval "${_ble_util_dict_declare//NAME/mark}"
+
+    local paths path ret
+    ble/string#split paths : "$PATH"
+    for path in "${paths[@]}"; do
+      [[ -d $path ]] || continue
+      [[ $path == *?/ ]] && path=${path%/}
+      if ble/dict#get manpath_map "$path"; then
+        path=$ret
+      else
+        path=${path%/bin}/share/man
+      fi
+      if [[ -d $path ]] && ! ble/set#contains mark "$path"; then
+        ble/set#add mark "$path"
+        ble/array#push manpath "$path"
+      fi
+    done
+
+    for path in "${manpath_mandatory[@]}"; do
+      if [[ -d $path ]] && ! ble/set#contains mark "$path"; then
+        ble/set#add mark "$path"
+        ble/array#push manpath "$path"
+      fi
+    done
+  fi
+  _ble_complete_mandb_default_manpath=("${manpath[@]}")
+}
+
 function ble/complete/mandb/search-file/.extract-path {
   local command=$1
   [[ $_ble_complete_mandb_lang ]] &&
@@ -2868,10 +2935,25 @@ function ble/complete/mandb/search-file {
   ble/complete/mandb/search-file/.extract-path "$command"
   ble/complete/mandb/search-file/.check "$path" && return
 
-  local manpath=${MANPATH:-/usr/share/man:/usr/local/share/man:/usr/local/man}
-  ble/string#split manpath : "$manpath"
+  # Get manpaths
+  local ret; ble/string#split ret : "$MANPATH"
+
+  # Replace empty paths with the default manpaths
+  ((${#ret[@]})) || ret=('')
+  local -a manpath=()
+  for path in "${ret[@]}"; do
+    if [[ $path ]]; then
+      ble/array#push manpath "$path"
+    else
+      # system manpath
+      ble/complete/mandb/initialize-manpath
+      ble/array#push manpath "${_ble_complete_mandb_default_manpath[@]}"
+    fi
+  done
+
   local path
   for path in "${manpath[@]}"; do
+    [[ -d $path ]] || continue
     ble/complete/mandb/search-file/.check "$path/man1/$command.1" && return
     ble/complete/mandb/search-file/.check "$path/man1/$command.8" && return
     if ble/is-function ble/bin/gzip; then
