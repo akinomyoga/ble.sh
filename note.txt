@@ -1616,10 +1616,6 @@ bash_tips
     ./ble.pp:145:    { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
     ./src/decode.sh:3632:    [[ ${keys[*]} != "$bind_keys" ]] &&
 
-2021-07-20
-
-  * bind --help の exit status が 1 になっている
-
 2021-07-14
 
   * bash-it によるプロンプト設定が prompt attach で反映されない。
@@ -4990,6 +4986,12 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-01
+
+  * util (bleopt, bind): fix interfaces [#D1640]
+
+    * bleopt の unknown option のエラーメッセージでオプション名が '-c' 固定になっている。
+
+    * 2021-07-20 bind --help の exit status が 1 になっている。2 であるべき。
 
   * complete: 古い bash における -D, -I の対応 [#D1639]
 

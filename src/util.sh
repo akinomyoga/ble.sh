@@ -73,7 +73,7 @@ function bleopt/.read-arguments {
         (u) bleopt/.read-arguments/process-option changed ;;
         (I) bleopt/.read-arguments/process-option initialize ;;
         (*)
-          ble/util/print "bleopt: unrecognized option '-c'." >&2
+          ble/util/print "bleopt: unrecognized option '-$c'." >&2
           flags=E$flags ;;
         esac
       done ;;

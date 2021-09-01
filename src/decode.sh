@@ -3871,13 +3871,13 @@ function ble/builtin/bind {
     nocasematch=1
 
   ble/decode/initialize
-  local flags=
+  local flags= ext=0
   ble/builtin/bind/.process "$@"
   if [[ $_ble_decode_bind_state == none ]]; then
-    builtin bind "$@"
-  else
-    [[ $flags != *[eh]* ]]
-  fi; local ext=$?
+    builtin bind "$@"; ext=$?
+  elif [[ $flags == *[eh]* ]]; then
+    ext=2
+  fi
 
   [[ $nocasematch ]] &&
     shopt -s nocasematch

@@ -51,6 +51,7 @@
   - util (`blehook`): show explicitly specified internal hooks `#D1594` f4312df
   - util (`bleopt`): do no select obsoleted options by wildcards `#D1595` f4312df
   - util (`bleopt`): fix error messages for unknown options `#D1610` 66df3e2
+  - util (`bleopt`, `bind`): fix error message and exit status, respectively `#D1640` 0000000
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
   - progcomp: fix a bug that command names may stray into completer function names `#D1611` 1f2d45f
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
