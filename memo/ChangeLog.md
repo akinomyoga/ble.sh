@@ -59,6 +59,7 @@
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` 0000000
+- complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 0000000
  
 ## Changes
 

@@ -1651,8 +1651,8 @@ function ble/complete/source:command {
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
   local arg=$1
 
-  # Try progcomp by "complete -I"
-  if ((_ble_bash>=50000)); then
+  # Try progcomp by "complete -p -I" / "complete -p _InitialWorD_"
+  {
     local old_cand_count=$cand_count
 
     local comp_opts=:
@@ -1661,7 +1661,7 @@ function ble/complete/source:command {
     if ((ext==0)); then
       ((cand_count>old_cand_count)) && return "$ext"
     fi
-  fi
+  }
 
   ble/complete/source:sabbrev
 
@@ -2493,13 +2493,22 @@ function ble/complete/progcomp/.compgen {
   local compcmd= is_default_completion= is_special_completion=
   local -a alias_args=()
   if [[ :$opts: == *:initial:* ]]; then
-    is_special_completion=1
-    compcmd='-I'
+    if ((_ble_bash>=50000)); then
+      is_special_completion=1
+      compcmd='-I'
+    else
+      compcmd=_InitialWorD_
+    fi
   elif [[ :$opts: == *:default:* ]]; then
-    builtin complete -p -D &>/dev/null || return 1
-    is_special_completion=1
     is_default_completion=1
-    compcmd='-D'
+    if ((_ble_bash>=40100)); then
+      builtin complete -p -D &>/dev/null || return 1
+      is_special_completion=1
+      compcmd='-D'
+    else
+      builtin complete -p _DefaultCmD_ &>/dev/null || return 1
+      compcmd=_DefaultCmD_
+    fi
   else
     compcmd=${comp_words[0]}
   fi

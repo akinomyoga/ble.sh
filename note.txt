@@ -4991,6 +4991,17 @@ bash_tips
 
 2021-09-01
 
+  * complete: 古い bash における -D, -I の対応 [#D1639]
+
+    どうやら -D, -I はそれぞれ内部的には _DefaultCmD_, _InitialWorD_ という名
+    前のコマンドに対する補完として実装されている様である。だとすれば、古い bash
+    の version で -D, -I に対応するとしたらこれらの単語に対して検査すれば良いの
+    ではないか。
+
+    というか現在の実装で古い bash ではどの様に振る舞うのだったか。
+    確認した。 -I に関しては version を確認して処理している。
+    -D に関しては complete -p -D が成功するかどうかで動作を変更している。
+
   * 2021-05-03 edit: support bash-5.2 READLINE_ARGUMENT [#D1638]
 
     5.2 新機能: READLINE_ARGUMENT: 調べてみると引数が存在している時にのみ定義さ
