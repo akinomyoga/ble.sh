@@ -2040,7 +2040,7 @@ bash_tips
 
 2021-05-03
 
-  * rlfunc: C-x s spell-correct-word
+  * rlfunc: C-x s, spell-correct-word
   * rlvar: enable-active-region
   * rlbind: prior, next
   * vi-undo
@@ -4990,6 +4990,13 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-01
+
+  * 2021-05-03 edit: support bash-5.2 READLINE_ARGUMENT [#D1638]
+
+    5.2 新機能: READLINE_ARGUMENT: 調べてみると引数が存在している時にのみ定義さ
+    れる様である。また今気づいた事だが -x 属性が入っている。他の READLINE_* も
+    全て同様である。よく考えてみれば、bind -x で外部コマンドを呼び出す事もある
+    のだから -x 属性が入っていないと困る。
 
   * 2021-08-23 mandb: manpath コマンドを使っても MANPATH は得られる [#D1637]
 

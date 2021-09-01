@@ -58,6 +58,7 @@
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
+- edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` 0000000
  
 ## Changes
 

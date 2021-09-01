@@ -8785,9 +8785,11 @@ function ble/widget/.SHELL_COMMAND { ble/widget/execute-command "$@"; }
 ##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND {
   local command=$1
-  local READLINE_LINE=$_ble_edit_str
-  local READLINE_POINT=$_ble_edit_ind
-  local READLINE_MARK=$_ble_edit_mark
+  local -x READLINE_LINE=$_ble_edit_str
+  local -x READLINE_POINT=$_ble_edit_ind
+  local -x READLINE_MARK=$_ble_edit_mark
+  [[ $_ble_edit_arg ]] &&
+    local -x READLINE_ARGUMENT=$_ble_edit_arg
   ble/widget/.hide-current-line
   ble/util/buffer.flush >&2
   builtin eval -- "$command" || return 1
