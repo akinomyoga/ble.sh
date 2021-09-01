@@ -2779,6 +2779,7 @@ function ble/builtin/bind/.process {
           #   https://lists.gnu.org/archive/html/bug-bash/2019-02/msg00033.html
           [[ $_ble_decode_bind_state != none ]] &&
             (builtin bind --help)
+          flags=h$flags
         fi
         continue ;;
       (--*)
@@ -2849,13 +2850,13 @@ function ble/builtin/bind {
     shopt -u nocasematch &&
     nocasematch=1
 
-  local flags=
+  local flags= ext=0
   ble/builtin/bind/.process "$@"
   if [[ $_ble_decode_bind_state == none ]]; then
-    builtin bind "$@"
-  else
-    [[ $flags != *e* ]]
-  fi; local ext=$?
+    builtin bind "$@"; local ext=$?
+  elif [[ $flags == *[eh]* ]]; then
+    ext=2
+  fi
 
   [[ $nocasematch ]] &&
     shopt -s nocasematch
