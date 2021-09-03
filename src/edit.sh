@@ -7079,24 +7079,20 @@ function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
 function ble-edit/bind/stdout.finalize { :;}
 
 if [[ $bleopt_internal_suppress_bash_output ]]; then
-  _ble_edit_io_stdout=
   _ble_edit_io_stderr=
-  ble/util/openat _ble_edit_io_stdout '>&1'
   ble/util/openat _ble_edit_io_stderr '>&2'
-  _ble_edit_io_fname1=$_ble_base_run/$$.stdout
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr
 
   function ble-edit/bind/stdout.on {
-    exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr
+    exec 2>&$_ble_edit_io_stderr
   }
   function ble-edit/bind/stdout.off {
     ble/util/buffer.flush >&2
     ble-edit/bind/stdout/check-stderr
-    exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
+    exec 2>>$_ble_edit_io_fname2
   }
   function ble-edit/bind/stdout.finalize {
     ble-edit/bind/stdout.on
-    [[ -f $_ble_edit_io_fname1 ]] && ble/bin/rm -f "$_ble_edit_io_fname1"
     [[ -f $_ble_edit_io_fname2 ]] && ble/bin/rm -f "$_ble_edit_io_fname2"
   }
 
@@ -7191,7 +7187,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     function ble-edit/bind/stdout.off {
       ble/util/buffer.flush >&2
       ble-edit/bind/stdout/check-stderr
-      exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
+      exec 2>&$_ble_edit_fd_stderr_pipe
     }
   fi
 fi
