@@ -58,7 +58,8 @@
   - syntax: recognize escape \" in double-quoted strings `#D1641` 4b71449
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
-- canvas: support grapheme clusters (motivated by huresche) `#D1619` 0000000
+- canvas: support grapheme clusters (motivated by huresche) `#D1619` c0d997b
+  - canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 9a132b7
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
@@ -95,7 +96,7 @@
 - keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 11ac106
 - main: show notifications against debug versions of Bash `#D1612` 8f974aa
 - term: update `vte` identification `#D1620` 00e74d8
-- canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 0000000
+- edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` 0000000
 
 ## Fixes
 

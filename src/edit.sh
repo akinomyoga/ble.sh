@@ -8443,20 +8443,18 @@ function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
 function ble-edit/bind/stdout.finalize { :;}
 
 if [[ $bleopt_internal_suppress_bash_output ]]; then
-  _ble_edit_io_fname1=$_ble_base_run/$$.stdout
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr
 
   function ble-edit/bind/stdout.on {
-    exec 1>&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
+    exec 2>&$_ble_util_fd_stderr
   }
   function ble-edit/bind/stdout.off {
     ble/util/buffer.flush >&2
     ble-edit/io/check-stderr
-    exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
+    exec 2>>$_ble_edit_io_fname2
   }
   function ble-edit/bind/stdout.finalize {
     ble-edit/bind/stdout.on
-    [[ -f $_ble_edit_io_fname1 ]] && : >| "$_ble_edit_io_fname1"
     [[ -f $_ble_edit_io_fname2 ]] && : >| "$_ble_edit_io_fname2"
   }
 
@@ -8557,7 +8555,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       function ble-edit/bind/stdout.off {
         ble/util/buffer.flush >&2
         ble-edit/io/check-stderr
-        exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_io_fd2
+        exec 2>&$_ble_edit_io_fd2
       }
     elif . "$_ble_base/lib/init-msys1.sh"; ble-edit/io:msys1/start-background; then
       function ble-edit/bind/stdout.off {
@@ -8568,7 +8566,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
         #   メッセージを抑制するには先に >/dev/null してから別の exec で繋がな
         #   ければならない。同じ exec でリダイレクトしようとするとメッセージ本
         #   体は表示されないが、エラーメッセージの改行だけは出力されてしなう。
-        exec 1>>$_ble_edit_io_fname1 2>/dev/null
+        exec 2>/dev/null
         exec 2>>$_ble_edit_io_fname2.buff
       }
     fi

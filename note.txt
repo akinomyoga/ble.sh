@@ -1582,6 +1582,49 @@ bash_tips
 
 2021-09-15
 
+  * haiku: ble/builtin/bind/.reconstruct-user-settings の gawk が無限ループになっ
+    ている? 或いは滅茶苦茶遅くなっている。gawk 4.2 である。bash-4.4.23 から呼び
+    出している。変な事が起こる様な余地はない様な気がするが…或いは正規表現エン
+    ジンなどが壊れているという事なのかもしれない。
+
+  * solaris: ble-bind を bashrc 内部で呼び出した時点で未だ attach していないの
+    に色々と info を表示してしまっている。
+    $_ble_base_cache/decode.cmap.gdict.*.dump を削除した時に再現する。
+
+  * ディレクトリ構造の整理
+
+    * make ディレクトリに Unicode 関係のテーブルの生成コードを移動する?
+
+      現在は memo/ 以下にファイルを持っているが何だか違う気がする。他に leakvar
+      の whitelist のファイルなども make 以下に移動した方が良い様な気がする。
+      memo/ChangeLog.md や memo/Relases.md に関してはまた docs/ 等の下にある方
+      が分かりやすい筈である。
+
+    * docs ディレクトリに雑多のファイルを移動する?
+
+      x GitHub のシンボリックリンクの問題
+
+        色々のファイルを docs ディレクトリに押し込めようと思ったが、git clone
+        した時に分かりにくいので LICENSE と README に関してはせめて symbolic
+        link を置こうと思ったが…GitHubのインターフェイスだと symbolic link を
+        開いても中身の文字列が表示されるだけで、その指し示している先にジャンプ
+        する事ができない。これはかなり不便である。検索したが余りそういう要望は
+        ない様である。以下に何やら要望があるが、そもそもこの repository を
+        GitHub が見ているのかどうかも謎である。
+
+        https://github.com/dear-github/dear-github/issues/156
+
+    * keymap の下にある物も何処かのタイミングで lib/* に移動したい。0.5 に変更
+      する時に移動しようとも思っていたが、0.4 がいつ完成するか分からないし、コー
+      ドの移動を一度に実行すると code frequency にまた大きな spike が立ってしま
+      うので、release 等とは関係なく思い立った時に実行した方が良いのかもしれな
+      いとも思う。
+
+    何れにしても既存の物についてのディレクトリ構造の変更は、他の変更が pending
+    になっていない綺麗な状態で実行するべきである気がする。現在は Unicode 関係の
+    テーブル生成についても、中途半端である。少なくとも c2w 関連の実装が一区切り
+    してから考えるべきことである様に思われる。
+
   * grapheme: SpacingMark, Prepend の幅は一体どうなっているのだろうか [#T0007]
 
     現在の実装では幅を全く考慮に入れていないが、入れるべきの気がする。c2w で
@@ -5328,6 +5371,24 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-09-16
+
+  * edit: stdout.off で stderr だけ suppress という案について (motivated by rashil2000) [#D1646]
+    https://github.com/akinomyoga/ble.sh/issues/133#issuecomment-910543950
+
+    試してみたら普通に動く様である。つまり bash は stderr にしか物を出力しない。
+    他の環境でも同様に動くか確かめてから適用する事にする。
+
+    * Cygwin: OK
+    * Void Linux: OK
+    * Ubuntu: OK
+    * Solaris: OK
+    * Haiku: OK
+    * Minux: OK
+    * BSD: OK
+
+    うーん。置き換えてしまって問題ない気がする。
 
 2021-09-15
 
