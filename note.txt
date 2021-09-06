@@ -1744,7 +1744,6 @@ bash_tips
     れているという事だろうか。
 
   * progcomp の出力に関する議論 (reported by oc1024)
-
     https://github.com/akinomyoga/ble.sh/issues/121
 
     うーん。どうするのが良いのか微妙。Bash と同じ様に動作するべきなのか、或いは
@@ -5020,6 +5019,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-08
+
+  * width: char_width_mode を変えた時にキャッシュがクリアされていない気がする (reported by Barbarossa93) [#D1642]
+    https://github.com/akinomyoga/ble.sh/issues/135
 
   * syntax: "\"" が正しくエスケープ着色されない [#D1641]
     対応した。

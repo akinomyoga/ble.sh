@@ -51,7 +51,7 @@
   - util (`blehook`): show explicitly specified internal hooks `#D1594` f4312df
   - util (`bleopt`): do no select obsoleted options by wildcards `#D1595` f4312df
   - util (`bleopt`): fix error messages for unknown options `#D1610` 66df3e2
-  - util (`bleopt`, `bind`): fix error message and exit status, respectively `#D1640` 0000000
+  - util (`bleopt`, `bind`): fix error message and exit status, respectively `#D1640` b663cee
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
   - progcomp: fix a bug that command names may stray into completer function names `#D1611` 1f2d45f
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
@@ -60,8 +60,8 @@
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
-- edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` 0000000
-- complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 0000000
+- edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
+- complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 925b2cd
  
 ## Changes
 
@@ -106,7 +106,7 @@
   - mandb: improve extraction and cache for each locale `#D1480` 3588158
   - mandb: fix an infinite loop by a leak variable (reported by rlanore, riblo) `#D1550` 0efcb65
   - mandb: work around old groff in macOS (reported by killermoehre) `#D1551` d4f816b
-  - mandb: use `manpath` and `man -w`, and read `/etc/man_db.conf` and `~/.manpath` `#D1637` 0000000
+  - mandb: use `manpath` and `man -w`, and read `/etc/man_db.conf` and `~/.manpath` `#D1637` 2365e09
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -128,7 +128,7 @@
 - syntax: fix a bug that `eval() { :; }`, `declare() { :; }` are not treated as function definition `#D1529` b429095
 - decode: fix a hang on attach failure by cache corruption `#D1531` 24ea379
 - edit, etc: add workarounds for `localvar_inherit` `#D1532` 7b63c60
-  - edit: fix a bug that `command-help` doesn't work `#D1635` 0000000
+  - edit: fix a bug that `command-help` doesn't work `#D1635` 0f6a083
 - progcomp: fix non-working `complete -C prog` (reported by Archehandoro) `#D1535` 026432d
 - bind: fix a problem that `bind '"seq":"key"'` causes a loop macro `bind -s key key` (reported by thanosz) `#D1536` ea05fc5
   - bind: fix errors on readline macros (reported by RakibFiha) `#D1537` c257299
@@ -155,7 +155,8 @@
 - decode, canvas, etc.: explicitly treat CSI arguments as decimal numbers (reported by GorrillaRibs) `#D1625` c6473b7 2ea48d7
 - history: fix the vanishing history entry used for `ble-attach` `#D1629` eb34061
 - global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 44e6ec1
-- complete: fix a task scheduling bug of referencing two different clocks (reported by rashil2000) `#D1636` 0000000
+- complete: fix a task scheduling bug of referencing two different clocks (reported by rashil2000) `#D1636` fea5f5b
+- canvas: update prompt trace on `char_width_mode` change `#D1642` 0000000
 
 ## Optimization
 
