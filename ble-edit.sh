@@ -1307,7 +1307,7 @@ function ble-edit/prompt/update {
   local ps1esc
   ble-edit/draw/sflush -v ps1esc
   builtin eval "ps1esc=\"$ps1esc\""
-  local trace_hash=$COLUMNS:$ps1esc
+  local trace_hash=$LINES,$COLUMNS:$bleopt_char_width_mode:$ps1esc
   if [[ $trace_hash == "${_ble_edit_prompt[7]}" ]]; then
     # 前回と同じ ps1esc の場合は計測処理は省略
     _ble_edit_prompt[0]=$version
