@@ -633,7 +633,7 @@ function ble-edit/prompt/.instantiate {
   builtin eval "expanded=\"$escaped\""
 
   # 3. 端末への出力を構成する
-  trace_hash=$COLUMNS:$expanded
+  trace_hash=$opts:$LINES,$COLUMNS:$bleopt_char_width_mode:$expanded
   if [[ $trace_hash != "$trace_hash0" ]]; then
     x=0 y=0 g=0 lc=32 lg=0
     ble/canvas/trace "$expanded" "$opts:left-char"; local traced=$ret
