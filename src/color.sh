@@ -988,6 +988,8 @@ function ble/color/face2sgr  { ble/color/initialize-faces && ble/color/face2sgr 
 function ble/color/iface2g   { ble/color/initialize-faces && ble/color/iface2g   "$@"; }
 function ble/color/iface2sgr { ble/color/initialize-faces && ble/color/iface2sgr "$@"; }
 
+function ble/color/face2sgr-ansi { ble/color/initialize-faces && ble/color/face2sgr  "$@"; }
+
 # 遅延初期化子
 _ble_color_faces_initialized=
 function ble/color/initialize-faces {
@@ -1001,9 +1003,8 @@ function ble/color/initialize-faces {
   }
   ## @fn ble/color/face2sgr face
   ##   @var[out] ret
-  function ble/color/face2sgr {
-    ble/color/g2sgr $((_ble_faces[_ble_faces__$1]))
-  }
+  function ble/color/face2sgr { ble/color/g2sgr $((_ble_faces[_ble_faces__$1])); }
+  function ble/color/face2sgr-ansi { ble/color/g2sgr-ansi $((_ble_faces[_ble_faces__$1])); }
   ## @fn ble/color/iface2g iface
   ##   @var[out] ret
   function ble/color/iface2g {

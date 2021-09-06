@@ -374,6 +374,10 @@ function ble/complete/menu-style:desc/construct-page {
   local desc_x=$((cand_width+1)); ((desc_x>cols&&(desc_x=cols)))
   local desc_prefix=; ((cols-desc_x>30)) && desc_prefix='| '
 
+  local desc_sgr0=$'\e[m'
+  ble/color/face2sgr-ansi syntax_quoted; local desc_sgrq=$ret
+  ble/color/face2sgr-ansi syntax_delimiter; local desc_sgrt=$ret
+
   end=$begin x=0 y=0 esc=
   local entry w s pack esc1 x0 y0 pad index=$begin
   for entry in "${measure[@]}"; do
@@ -395,7 +399,7 @@ function ble/complete/menu-style:desc/construct-page {
     ((x+=pad+${#desc_prefix}))
 
     # 説明表示
-    local desc='(no description)'
+    local desc=$desc_sgrt'(no description)'$desc_sgr0
     ble/function#try "$menu_class"/get-desc "$pack"
     if [[ $opt_raw ]]; then
       y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace "$desc" truncate:relative:ellipsis
@@ -1255,21 +1259,47 @@ _ble_complete_action_command_desc[_ble_attr_CMD_BUILTIN]=builtin
 _ble_complete_action_command_desc[_ble_attr_CMD_ALIAS]=alias
 _ble_complete_action_command_desc[_ble_attr_CMD_FUNCTION]=function
 _ble_complete_action_command_desc[_ble_attr_CMD_FILE]=file
-_ble_complete_action_command_desc[_ble_attr_KEYWORD]=keyword
+_ble_complete_action_command_desc[_ble_attr_KEYWORD]=command
 _ble_complete_action_command_desc[_ble_attr_CMD_JOBS]=job
-_ble_complete_action_command_desc[_ble_attr_ERR]='???'
+_ble_complete_action_command_desc[_ble_attr_ERR]='command ???'
 _ble_complete_action_command_desc[_ble_attr_CMD_DIR]=directory
 function ble/complete/action:command/get-desc {
+  local title= value=
   if [[ -d $CAND ]]; then
-    desc=directory
+    title=directory
   else
     local type; ble/util/type type "$CAND"
     ble/syntax/highlight/cmdtype1 "$type" "$CAND"
-    if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
-      type=_ble_attr_CMD_FUNCTION
-    fi
-    desc=${_ble_complete_action_command_desc[type]:-'???'}
+
+    case $type in
+    ($_ble_attr_CMD_ALIAS)
+      local ret
+      ble/util/expand-alias "$CAND"
+      title=alias value=$ret ;;
+    ($_ble_attr_CMD_FILE)
+      local path; ble/util/assign path 'type -p -- "$CAND"'
+      [[ $path == ?*/"$CAND" ]] && path="from ${path%/"$CAND"}"
+      title=file value=$path ;;
+    ($_ble_attr_CMD_FUNCTION)
+      local def; ble/function#getdef "$CAND"
+      local ret
+      ble/string#quote-word "$def" ansi:sgrq="$desc_sgrq":quote-empty
+      title=function value=$ret ;;
+    ($_ble_attr_CMD_JOBS)
+      ble/util/joblist.check
+      local job; ble/util/assign job 'jobs -- "$CAND" 2>/dev/null' || job='???'
+      title=job value=${job:-(ambiguous)} ;;
+    ($_ble_attr_ERR)
+      if [[ $CAND == */ ]]; then
+        title='function namespace'
+      else
+        title=${_ble_complete_action_command_desc[_ble_attr_ERR]}
+      fi ;;
+    (*)
+      title=${_ble_complete_action_command_desc[type]:-'???'} ;;
+    esac
   fi
+  desc=${title:+$desc_sgrt($title)$desc_sgr0}${value:+ $value}
 }
 
 # action:variable
@@ -1292,6 +1322,29 @@ function ble/complete/action:variable/complete {
 }
 function ble/complete/action:variable/init-menu-item {
   local ret; ble/color/face2g syntax_varname; g=$ret
+}
+function ble/complete/action:variable/get-desc {
+  local _ble_local_title=variable
+  if ble/is-array "$CAND"; then
+    _ble_local_title=array
+  elif ble/is-assoc "$CAND"; then
+    _ble_local_title=assoc
+  fi
+
+  local _ble_local_value=
+  if [[ $_ble_local_title == array || $_ble_local_title == assoc ]]; then
+    builtin eval "local count=\${#$CAND[@]}"
+    if ((count==0)); then
+      count=empty
+    else
+      count="$count items"
+    fi
+    _ble_local_value=$'\e[94m['$count$']\e[m'
+  else
+    local ret; ble/string#quote-word "${!CAND}" ansi:sgrq="$desc_sgrq":quote-empty
+    _ble_local_value=$ret
+  fi
+  desc="$desc_sgrt($_ble_local_title)$desc_sgr0 $_ble_local_value"
 }
 
 #------------------------------------------------------------------------------
@@ -1639,6 +1692,36 @@ function ble/complete/source:command/gen {
     ble/complete/util/eval-pathname-expansion "$ret/"; (($?==148)) && return 148
     ble/complete/source/test-limit ${#ret[@]} || return 1
     ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
+  fi
+
+  # ジョブ名列挙
+  if [[ ! $COMPV || $COMPV == %* ]]; then
+    # %コマンド名
+    local q="'" Q="'\''"
+    local compv_quoted=${COMPV#'%'}
+    compv_quoted="'${compv_quoted//$q/$Q}'"
+    builtin compgen -j -P % -- "$compv_quoted"
+
+    # %ジョブ番号
+    local i joblist; ble/util/joblist
+    local job_count=${#joblist[@]}
+    for i in "${!joblist[@]}"; do
+      if [[ ${joblist[i]} =~ ^\[([0-9]+)\] ]]; then
+        joblist[i]=%${BASH_REMATCH[1]}
+      else
+        unset -v 'joblist[i]'
+      fi
+    done
+    joblist=("${joblist[@]}")
+
+    # %% %+ %-
+    if ((job_count>0)); then
+      ble/array#push joblist %% %+
+      ((job_count>=2)) &&
+        ble/array#push joblist %-
+    fi
+
+    builtin compgen -W '"${joblist[@]}"' -- "$compv_quoted"
   fi
 }
 ## ble/complete/source:command arg
@@ -4479,7 +4562,7 @@ function ble/complete/menu-complete.class/get-desc {
   local item=$1
   local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/unpack "$item"
-  desc="(action: $ACTION)"
+  desc="$desc_sgrt(action:$ACTION)$desc_sgr0"
   ble/function#try ble/complete/action:"$ACTION"/get-desc
 }
 
@@ -6510,7 +6593,7 @@ function ble/complete/action:sabbrev/init-menu-item {
 }
 function ble/complete/action:sabbrev/get-desc {
   local ret; ble/complete/sabbrev/get "$INSERT"
-  desc="(sabbrev expansion) $ret"
+  desc="$desc_sgrt(sabbrev)$desc_sgr0 $ret"
 }
 function ble/complete/source:sabbrev {
   local keys; ble/complete/sabbrev/get-keys

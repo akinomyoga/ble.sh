@@ -1241,8 +1241,11 @@ function ble/string#quote-word {
     [[ :$opts: =~ $rex ]] &&
       sgrq=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
     rex=':sgr0=(('$rex_csi'|[^:])*):'
-    [[ :$opts: =~ $rex ]] &&
+    if [[ :$opts: =~ $rex ]]; then
       sgr0=${BASH_REMATCH[1]}
+    elif [[ :$opts: == *:ansi:* ]]; then
+      sgr0=$'\e[m'
+    fi
   fi
 
   if [[ ! $ret ]]; then
