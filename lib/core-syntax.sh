@@ -1887,7 +1887,7 @@ function ble/syntax:bash/check-plain-with-escape {
   local rex='^('$1'|\\.)' is_quote=$2
   [[ $tail =~ $rex ]] || return 1
   if [[ $BASH_REMATCH == '\'? &&
-          ( ! $is_quote || $BASH_REMATCH == '\'[$'\\`$\n'] ) ]]; then
+          ( ! $is_quote || $BASH_REMATCH == '\'[$'\\`$\n"'] ) ]]; then
     ((_ble_syntax_attr[i]=ATTR_QESC))
   else
     ((_ble_syntax_attr[i]=ctx))
