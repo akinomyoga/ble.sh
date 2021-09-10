@@ -51,10 +51,23 @@ function ble/complete/get-wordbreaks {
 #==============================================================================
 # 選択インターフェイス (ble/complete/menu)
 
+## @arr _ble_complete_menu_icons
+##
+##   各要素は以下の形式の文字列である。
+##
+##   x0,y0,x1,y1,${#pack},${#esc1}[,bbox]:$pack$esc1
+##
+##   * x0,y0 と x1,y1 は menu 項目の描画開始点と終了点。
+##   * esc1 は実際に出力する描画シーケンス。
+##   * bbox は "x y cols lines" の形式をしていて、描画シーケンスを生成する際に
+##     使った bbox の情報を格納する。これは特に truncate が起こった時に、選択状
+##     態の描画を同じ条件で実行する時に参照する。
+
 _ble_complete_menu_items=()
 _ble_complete_menu_class=
 _ble_complete_menu_param=
 _ble_complete_menu_version=
+_ble_complete_menu_page_style=
 _ble_complete_menu_ipage=
 _ble_complete_menu_offset=
 _ble_complete_menu_icons=()
@@ -67,13 +80,21 @@ function ble/complete/menu#check-cancel {
     ble/decode/has-input
 }
 
-## @fn ble/complete/menu-style:$menu_style/construct
+## @fn ble/complete/menu-style:$menu_style/construct-page
 ##   候補一覧メニューの表示・配置を計算します。
 ##
 ##   @var[out] x y esc
 ##   @var[in] menu_style
 ##   @arr[in] menu_items
 ##   @var[in] menu_class menu_param
+##   @var[in] cols lines
+##
+## @fn ble/complete/menu-style:$menu_style/guess
+##   scroll 番目の候補がどのページにいるかを予測します。
+##   可能性のある最初のページ番号 ipage を返します。
+##
+##   @var[in] scroll
+##   @var[out] ipage begin end
 ##   @var[in] cols lines
 ##
 
@@ -349,81 +370,164 @@ function ble/complete/menu-style:linewise/guess {
 # ble/complete/menu-style:desc
 #
 
+_ble_complete_menu_desc_pageheight=()
+
 ## @fn ble/complete/menu-style:desc/construct-page opts
 ##   @var[in,out] begin end x y esc
+##   @var[in] ipage
 function ble/complete/menu-style:desc/construct-page {
   local opts=$1 ret
-  local opt_raw=; [[ $menu_style == desc-raw ]] && opt_raw=1
+  local opt_raw=; [[ $menu_style != desc-text ]] && opt_raw=1
 
-  # 各候補を描画して幅を計算する
-  local measure; measure=()
-  local max_cand_width=$(((cols+1)/2))
-  ((max_cand_width<10&&(max_cand_width=cols)))
-  local pack w esc1 max_width=0
-  for pack in "${menu_items[@]:begin:lines}"; do
-    ble/complete/menu#check-cancel && return 148
+  # 失敗時・エラー時の既定値
+  end=$begin esc= x=0 y=0
 
-    x=0 y=0
-    lines=1 cols=$max_cand_width ble/complete/menu#render-item "$pack"; esc1=$ret
-    ((w=y*cols+x,w>max_width&&(max_width=w)))
-
-    ble/array#push measure "$w:${#pack}:$pack$esc1"
-  done
-
-  local cand_width=$max_width
-  local desc_x=$((cand_width+1)); ((desc_x>cols&&(desc_x=cols)))
-  local desc_prefix=; ((cols-desc_x>30)) && desc_prefix='| '
-
+  local colsep=' | '
   local desc_sgr0=$'\e[m'
   ble/color/face2sgr-ansi syntax_quoted; local desc_sgrq=$ret
   ble/color/face2sgr-ansi syntax_delimiter; local desc_sgrt=$ret
 
-  end=$begin x=0 y=0 esc=
-  local entry w s pack esc1 x0 y0 pad index=$begin
-  for entry in "${measure[@]}"; do
-    ble/complete/menu#check-cancel && return 148
-
-    w=${entry%%:*} entry=${entry#*:}
-    s=${entry%%:*} entry=${entry#*:}
-    pack=${entry::s} esc1=${entry:s}
-
-    # 候補表示
-    ((x0=x,y0=y,x+=w))
-    _ble_complete_menu_style_icons[index]=$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1
-    ((index++))
-    esc=$esc$esc1
-
-    # 余白
-    ble/string#reserve-prototype $((pad=desc_x-x))
-    esc=$esc${_ble_string_prototype::pad}$desc_prefix
-    ((x+=pad+${#desc_prefix}))
-
-    # 説明表示
-    local desc=$desc_sgrt'(no description)'$desc_sgr0
-    ble/function#try "$menu_class"/get-desc "$pack"
-    if [[ $opt_raw ]]; then
-      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace "$desc" truncate:relative:ellipsis
-    else
-      y=0 lines=1 ble/canvas/trace-text "$desc" nonewline
+  local ncolumn=1 nline=$lines
+  if [[ $bleopt_menu_desc_multicolumn_width ]]; then
+    ncolumn=$((cols/bleopt_menu_desc_multicolumn_width))
+    local nrest_item=$((${#menu_items[@]}-begin))
+    if ((ncolumn<1)); then
+      ncolumn=1
+    elif ((ncolumn>nrest_item)); then
+      ncolumn=$nrest_item
     fi
-    esc=$esc$ret
-    ((y+1>=lines)) && break
-    ((x=0,++y))
-    esc=$esc$'\n'
+  fi
+  ((nline=(${#menu_items[@]}-begin+ncolumn-1)/ncolumn,
+    nline>lines&&(nline=lines)))
+  local ncolumn_max=$(((nrest_item+nline-1)/nline))
+  ((ncolumn>ncolumn_max&&(ncolumn=ncolumn_max)))
+
+  local wcolumn=$(((cols-${#colsep}*(ncolumn-1))/ncolumn))
+  local wcand_limit=$(((wcolumn+1)*2/3))
+  ((wcand_limit<10&&(wcand_limit=wcolumn)))
+
+  local -a DRAW_BUFF=()
+  local index=$begin icolumn ymax=0
+  for ((icolumn=0;icolumn<ncolumn;icolumn++)); do
+
+    # 各候補を描画して幅を計算する
+    local measure; measure=()
+    local pack w esc1 max_width=0
+    for pack in "${menu_items[@]:index:nline}"; do
+      ble/complete/menu#check-cancel && return 148
+
+      x=0 y=0
+      lines=1 cols=$wcand_limit ble/complete/menu#render-item "$pack"; esc1=$ret
+      ((w=y*wcolumn+x,w>max_width&&(max_width=w)))
+
+      ble/array#push measure "$w:${#pack}:$pack$esc1"
+    done
+
+    local cand_width=$max_width
+    local desc_x=$((cand_width+1)); ((desc_x>wcolumn&&(desc_x=wcolumn)))
+    local desc_prefix=; ((wcolumn-desc_x>30)) && desc_prefix=': '
+
+    local xcolumn=$((icolumn*(wcolumn+${#colsep})))
+
+    x=0 y=0
+    local entry w s pack esc1 x0 y0 pad
+    for entry in "${measure[@]}"; do
+      ble/complete/menu#check-cancel && return 148
+
+      w=${entry%%:*} entry=${entry#*:}
+      s=${entry%%:*} entry=${entry#*:}
+      pack=${entry::s} esc1=${entry:s}
+
+      # 候補表示
+      ((x0=x,y0=y,x+=w))
+      _ble_complete_menu_style_icons[index]=$((xcolumn+x0)),$y0,$((xcolumn+x)),$y,${#pack},${#esc1},"0 0 $wcand_limit 1":$pack$esc1
+      ((index++))
+      ble/canvas/put.draw "$esc1"
+
+      # 余白
+      ble/canvas/put-spaces.draw $((pad=desc_x-x))
+      ble/canvas/put.draw "$desc_prefix"
+      ((x+=pad+${#desc_prefix}))
+
+      # 説明表示
+      local desc=$desc_sgrt'(no description)'$desc_sgr0
+      ble/function#try "$menu_class"/get-desc "$pack"
+      if [[ $opt_raw ]]; then
+        y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$wcolumn ble/canvas/trace.draw "$desc" truncate:relative:ellipsis
+      else
+        y=0 lines=1 cols=$wcolumn ble/canvas/trace-text "$desc" nonewline
+        ble/canvas/put.draw "$ret"
+      fi
+      ble/canvas/put.draw "$_ble_term_sgr0"
+      ((y+1>=nline)) && break
+      ble/canvas/put-move.draw $((-x)) 1
+      ((x=0,++y))
+    done
+    ((y>ymax)) && ymax=$y
+
+    if ((icolumn+1<ncolumn)); then
+      # カラム仕切りを出力 (最後に次のカラムの先頭に移動)
+      ble/canvas/put-move.draw $((wcolumn-x)) $((-y))
+      for ((y=0;y<=ymax;y++)); do
+        ble/canvas/put.draw "$colsep"
+        if ((y<ymax)); then
+          ble/canvas/put-move.draw -${#colsep} 1
+        else
+          ble/canvas/put-move-y.draw $((-y))
+        fi
+      done
+    else
+      ((y<ymax)) && ble/canvas/put-move-y.draw $((ymax-y))
+      ((x+=xcolumn,y=ymax))
+    fi
   done
+
+  _ble_complete_menu_desc_pageheight[ipage]=$nline
   end=$index
+  ble/canvas/sflush.draw -v esc
 }
 function ble/complete/menu-style:desc/guess {
-  ((ipage=scroll/lines,
-    begin=ipage*lines,
+  local ncolumn=1
+  if [[ $bleopt_menu_desc_multicolumn_width ]]; then
+    ncolumn=$((cols/bleopt_menu_desc_multicolumn_width))
+    ((ncolumn<1)) && ncolumn=1
+  fi
+  local nitem_per_page=$((ncolumn*lines))
+  ((ipage=scroll/nitem_per_page,
+    begin=ipage*nitem_per_page,
     end=begin))
 }
-function ble/complete/menu-style:desc-raw/construct-page {
-  ble/complete/menu-style:desc/construct-page "$@"
+function ble/complete/menu-style:desc/locate {
+  local type=$1 osel=$2
+  local ipage=$_ble_complete_menu_ipage
+  local nline=${_ble_complete_menu_desc_pageheight[ipage]:-1}
+
+  case $type in
+  (right) ((ret=osel+nline)) ;;
+  (left)  ((ret=osel-nline)) ;;
+  (down)  ((ret=osel+1)) ;;
+  (up)    ((ret=osel-1)) ;;
+  (*) return 1 ;;
+  esac
+
+  local beg=$_ble_complete_menu_offset
+  local end=$((beg+${#_ble_complete_menu_icons[@]}))
+  if ((ret<beg)); then
+    ((ret=beg-1))
+  elif ((ret>end)); then
+    ((ret=end))
+  fi
+  return 0
 }
-function ble/complete/menu-style:desc-raw/guess {
-  ble/complete/menu-style:desc/guess
-}
+
+function ble/complete/menu-style:desc-text/construct-page { ble/complete/menu-style:desc/construct-page "$@"; }
+function ble/complete/menu-style:desc-text/guess { ble/complete/menu-style:desc/guess; }
+function ble/complete/menu-style:desc-text/locate { ble/complete/menu-style:desc/locate "$@"; }
+
+# Obsolete menu_style (now synonym to "desc")
+function ble/complete/menu-style:desc-raw/construct-page { ble/complete/menu-style:desc/construct-page "$@"; }
+function ble/complete/menu-style:desc-raw/guess { ble/complete/menu-style:desc/guess; }
+function ble/complete/menu-style:desc-raw/locate { ble/complete/menu-style:desc/locate "$@"; }
 
 ## @fn ble/complete/menu#construct/.initialize-size
 ##   @var[out] cols lines
@@ -479,9 +583,10 @@ function ble/complete/menu#construct {
   local version=$nitem:$lines:$cols
 
   # 項目がない時の特別表示
-  if ((${#menu_items[@]}==0)); then
+  if ((nitem==0)); then
     _ble_complete_menu_version=$version
     _ble_complete_menu_items=()
+    _ble_complete_menu_page_style=
     _ble_complete_menu_ipage=0
     _ble_complete_menu_offset=0
     _ble_complete_menu_icons=()
@@ -494,7 +599,7 @@ function ble/complete/menu#construct {
   local scroll=0 rex=':scroll=([0-9]+):' use_cache=
   if [[ :$menu_opts: =~ $rex ]]; then
     scroll=${BASH_REMATCH[1]}
-    ((${#menu_items[@]}&&(scroll%=nitem)))
+    ((nitem&&(scroll%=nitem)))
     [[ $_ble_complete_menu_version == $version ]] && use_cache=1
   fi
   if [[ ! $use_cache ]]; then
@@ -530,6 +635,7 @@ function ble/complete/menu#construct {
   _ble_complete_menu_items=("${menu_items[@]}")
   _ble_complete_menu_class=$menu_class
   _ble_complete_menu_param=$menu_param
+  _ble_complete_menu_page_style=$menu_style
   _ble_complete_menu_ipage=$ipage
   _ble_complete_menu_offset=$begin
   _ble_complete_menu_icons=("${_ble_complete_menu_style_icons[@]:begin:end-begin}")
@@ -615,9 +721,19 @@ function ble/complete/menu#select {
     local item=${text::fields[4]}
 
     # construct reverted candidate
-    local ret cols lines
-    ble/complete/menu#construct/.initialize-size
-    ble/complete/menu#render-item "$item" selected
+    local ret
+    if [[ ${fields[6]} ]]; then
+      local box cols lines
+      ble/string#split-words box "${fields[6]}"
+      x=${box[0]} y=${box[1]} cols=${box[2]} lines=${box[3]}
+      ble/complete/menu#render-item "$item" selected
+      ((x+=fields[0]-box[0]))
+      ((y+=fields[1]-box[1]))
+    else
+      local cols lines
+      ble/complete/menu#construct/.initialize-size
+      ble/complete/menu#render-item "$item" selected
+    fi
 
     if ((y<_ble_canvas_panel_height[_ble_edit_info_panel])); then
       # Note: 編集文字列の内容の変化により info panel が削れている事がある。
@@ -669,6 +785,33 @@ function ble/widget/menu/backward {
     fi
   fi
   ble/complete/menu#select "$nsel"
+}
+
+function ble/widget/menu/forward-column {
+  local osel=$((_ble_complete_menu_selected))
+  if local ret; ble/function#try ble/complete/menu-style:"$_ble_complete_menu_page_style"/locate right "$osel"; then
+    local nsel=$ret ncand=${#_ble_complete_menu_items[@]}
+    if ((0<=nsel&&nsel<ncand&&nsel!=osel)); then
+      ble/complete/menu#select "$nsel"
+    else
+      ble/widget/.bell "menu: no more candidates"
+    fi
+  else
+    ble/widget/menu/forward
+  fi
+}
+function ble/widget/menu/backward-column {
+  local osel=$((_ble_complete_menu_selected))
+  if local ret; ble/function#try ble/complete/menu-style:"$_ble_complete_menu_page_style"/locate left "$osel"; then
+    local nsel=$ret ncand=${#_ble_complete_menu_items[@]}
+    if ((0<=nsel&&nsel<ncand&&nsel!=osel)); then
+      ble/complete/menu#select "$nsel"
+    else
+      ble/widget/.bell "menu: no more candidates"
+    fi
+  else
+    ble/widget/menu/backward
+  fi
 }
 
 _ble_complete_menu_lastcolumn=
@@ -724,24 +867,31 @@ function ble/widget/menu/forward-line {
   local offset=$_ble_complete_menu_offset
   local osel=$_ble_complete_menu_selected
   ((osel>=0)) || return 1
-  local entry=${_ble_complete_menu_icons[osel-offset]}
-  local fields; ble/string#split fields , "${entry%%:*}"
-  local ox=${fields[0]} oy=${fields[1]}
-  ble/widget/menu/.check-last-column
-  local i=$osel nsel=-1 is_next_page=
-  for entry in "${_ble_complete_menu_icons[@]:osel+1-offset}"; do
-    ble/string#split fields , "${entry%%:*}"
-    local x=${fields[0]} y=${fields[1]}
-    ((y<=oy||y==oy+1&&x<=ox||nsel<0)) || break
-    ((++i,y>oy&&(nsel=i)))
-  done
-  ((nsel<0&&(is_next_page=1,nsel=offset+${#_ble_complete_menu_icons[@]})))
+
+  local nsel=-1 goto_column=
+  if local ret; ble/function#try ble/complete/menu-style:"$_ble_complete_menu_page_style"/locate down "$osel"; then
+    nsel=$ret
+  else
+    local entry=${_ble_complete_menu_icons[osel-offset]}
+    local fields; ble/string#split fields , "${entry%%:*}"
+    local ox=${fields[0]} oy=${fields[1]}
+    ble/widget/menu/.check-last-column
+    local i=$osel nsel=-1 is_next_page=
+    for entry in "${_ble_complete_menu_icons[@]:osel+1-offset}"; do
+      ble/string#split fields , "${entry%%:*}"
+      local x=${fields[0]} y=${fields[1]}
+      ((y<=oy||y==oy+1&&x<=ox||nsel<0)) || break
+      ((++i,y>oy&&(nsel=i)))
+    done
+    ((nsel<0&&(is_next_page=1,nsel=offset+${#_ble_complete_menu_icons[@]})))
+    ((is_next_page)) && goto_column=$ox
+  fi
 
   local ncand=${#_ble_complete_menu_items[@]}
   if ((0<=nsel&&nsel<ncand)); then
     ble/complete/menu#select "$nsel"
-    ((is_next_page)) &&
-      ble/widget/menu/.goto-column "$ox"
+    [[ $goto_column ]] && ble/widget/menu/.goto-column "$goto_column"
+    return 0
   else
     ble/widget/.bell 'menu: no more candidates'
     return 1
@@ -751,22 +901,29 @@ function ble/widget/menu/backward-line {
   local offset=$_ble_complete_menu_offset
   local osel=$_ble_complete_menu_selected
   ((osel>=0)) || return 1
-  local entry=${_ble_complete_menu_icons[osel-offset]}
-  local fields; ble/string#split fields , "${entry%%:*}"
-  local ox=${fields[0]} oy=${fields[1]}
-  ble/widget/menu/.check-last-column
-  local nsel=$osel
-  while ((--nsel>=offset)); do
-    entry=${_ble_complete_menu_icons[nsel-offset]}
-    ble/string#split fields , "${entry%%:*}"
-    local x=${fields[0]} y=${fields[1]}
-    ((y<oy-1||y==oy-1&&x<=ox)) && break
-  done
 
-  if ((nsel>=0)); then
+  local nsel=-1 goto_column=
+  if local ret; ble/function#try ble/complete/menu-style:"$_ble_complete_menu_page_style"/locate up "$osel"; then
+    nsel=$ret
+  else
+    local entry=${_ble_complete_menu_icons[osel-offset]}
+    local fields; ble/string#split fields , "${entry%%:*}"
+    local ox=${fields[0]} oy=${fields[1]}
+    ble/widget/menu/.check-last-column
+    local nsel=$osel
+    while ((--nsel>=offset)); do
+      entry=${_ble_complete_menu_icons[nsel-offset]}
+      ble/string#split fields , "${entry%%:*}"
+      local x=${fields[0]} y=${fields[1]}
+      ((y<oy-1||y==oy-1&&x<=ox)) && break
+    done
+    ((0<=nsel&&nsel<offset)) && goto_column=$ox
+  fi
+
+  local ncand=${#_ble_complete_menu_items[@]}
+  if ((0<=nsel&&nsel<ncand)); then
     ble/complete/menu#select "$nsel"
-    ((nsel<offset)) &&
-      ble/widget/menu/.goto-column "$ox"
+    [[ $goto_column ]] && ble/widget/menu/.goto-column "$goto_column"
   else
     ble/widget/.bell 'menu: no more candidates'
     return 1
@@ -825,12 +982,12 @@ function ble-decode/keymap:menu/define {
   ble-bind -f C-g         'menu/cancel'
   ble-bind -f 'C-x C-g'   'menu/cancel'
   ble-bind -f 'C-M-g'     'menu/cancel'
-  ble-bind -f C-f         'menu/forward'
-  ble-bind -f right       'menu/forward'
+  ble-bind -f C-f         'menu/forward-column'
+  ble-bind -f right       'menu/forward-column'
   ble-bind -f C-i         'menu/forward cyclic'
   ble-bind -f TAB         'menu/forward cyclic'
-  ble-bind -f C-b         'menu/backward'
-  ble-bind -f left        'menu/backward'
+  ble-bind -f C-b         'menu/backward-column'
+  ble-bind -f left        'menu/backward-column'
   ble-bind -f C-S-i       'menu/backward cyclic'
   ble-bind -f S-TAB       'menu/backward cyclic'
   ble-bind -f C-n         'menu/forward-line'
@@ -1706,7 +1863,7 @@ function ble/complete/source:command/gen {
     local i joblist; ble/util/joblist
     local job_count=${#joblist[@]}
     for i in "${!joblist[@]}"; do
-      if [[ ${joblist[i]} =~ ^\[([0-9]+)\] ]]; then
+      if local rex='^\[([0-9]+)\]'; [[ ${joblist[i]} =~ $rex ]]; then
         joblist[i]=%${BASH_REMATCH[1]}
       else
         unset -v 'joblist[i]'
@@ -3485,7 +3642,7 @@ function ble/complete/source:argument/.generate-from-mandb {
   done
 
   ((cand_count>old_cand_count)) &&
-    bleopt complete_menu_style=desc-raw
+    bleopt complete_menu_style=desc
 }
 
 function ble/complete/source:argument {
@@ -5857,12 +6014,12 @@ function ble-decode/keymap:menu_complete/define {
   ble-bind -f C-g         'menu_complete/cancel'
   ble-bind -f 'C-x C-g'   'menu_complete/cancel'
   ble-bind -f 'C-M-g'     'menu_complete/cancel'
-  ble-bind -f C-f         'menu/forward'
-  ble-bind -f right       'menu/forward'
+  ble-bind -f C-f         'menu/forward-column'
+  ble-bind -f right       'menu/forward-column'
   ble-bind -f C-i         'menu/forward cyclic'
   ble-bind -f TAB         'menu/forward cyclic'
-  ble-bind -f C-b         'menu/backward'
-  ble-bind -f left        'menu/backward'
+  ble-bind -f C-b         'menu/backward-column'
+  ble-bind -f left        'menu/backward-column'
   ble-bind -f C-S-i       'menu/backward cyclic'
   ble-bind -f S-TAB       'menu/backward cyclic'
   ble-bind -f C-n         'menu/forward-line'
@@ -6995,7 +7152,7 @@ function ble/cmdinfo/complete:cd/.impl {
     [[ $action == cdpath ]] && is_cdpath_generated=1
   done
   [[ $is_cdpath_generated ]] &&
-      bleopt complete_menu_style=desc-raw
+      bleopt complete_menu_style=desc
 
   # Check PWD next
   # カレントディレクトリが CDPATH に含まれていなかった時に限り通常の候補生成

@@ -1975,61 +1975,6 @@ bash_tips
       "|" で入力できるようにすれば良いと思ったが…普通に "|" を入力したいという
       時があるのでそれは駄目だ。やはり C-? の形の方が良い。
 
-  * menu: fish の様に twocolumn 形式で表示する desc を作っても良いのではないか (motivated by Shahabaz-Bagwan)
-    https://www.youtube.com/watch?v=YS1vxEhd2Pc
-    https://github.com/akinomyoga/ble.sh/issues/132
-
-    或いは任意の column の数に設定できる様にする。或いは、望ましい幅的な物 (最
-    小幅でも良いかもしれない) を設定して column 数を自動で決定する。
-
-    実装してみた。
-
-    x fixed: 再表示の際に truncate した内容が表示されてしまう。今までの実装では
-      候補は truncate されないという前提だったがそれが崩れているという事。
-
-    x done: desc/guess についても実装を更新する必要がある。というよりそもそも
-      guess とは何だったか。
-
-    x fixed: カーソルキーによる navigation を再設計する必要がある。今までは Z
-      型に走査する場合しか考えていなかった。
-
-      a N 型に走査する選択肢と Z 型に走査する選択肢の二種類に場合分けして実装す
-        るか、
-
-      b 或いは一般的なアルゴリズムを考えるか (これは効率の良いアルゴリズムは困
-        難の気がする。)
-
-      c 或いは menu-style 側で振る舞いを変更できる様にするか。
-
-      N型かZ型かに関してはページを構築した時に何処かの変数に補助情報として記録
-      すれば良い。N型だとしても desc の場合には上下左右の操作は自明であるのでN
-      型一般のアルゴリズムを用いるよりも、それ専用の処理を実装した方が良い気が
-      する。
-
-      menu-style 側でカスタムに実装できる様にする事にする。
-
-    x fixed: 座標計算がずれる。_ble_b[TAB] において。
-
-    x fixed: trace が無限ループになっている気がする。 _ble_[TAB] において。
-
-      これは単に各列の行数の計算を間違えて全ての項目を一つのページに含めようと
-      して巨大なページが出来上がっていたのが原因だった。
-
-    * done: desc-raw -> desc に改名する?
-
-      古い設定名は desc に移動する。
-
-      新しく desc-text を用意する。desc-text はもっと良い名前はないか。
-      desc-less, desc-esc, ... info が text, esc と言った名前を使っているのでや
-      はり text で良い気がする。
-
-      取り敢えず今は desc-raw は desc の synonym という事にしておく。ble-update
-      等した時に不整合が起きると問題だし、そもそもそれぐらいなら別に対応してい
-      ても大した問題にはならない。
-
-    * 新しい bleopt の名称を固定する。ドキュメントに記述する
-    * 新しい widget menu/{forward,backward}-column をドキュメントに記述する
-
   * menu: preview 機能をつけても良い。preview に表示する中身は候補の種類に応じて色々。
 
     そもそも desc の内容自体その場に表示するのではなくて preview 的な小さな窓の中に
@@ -5595,6 +5540,61 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-06
+
+  * 2021-09-06 menu: fish の様に twocolumn 形式で表示する desc を作っても良いのではないか (motivated by Shahabaz-Bagwan) [#D1686]
+    https://www.youtube.com/watch?v=YS1vxEhd2Pc
+    https://github.com/akinomyoga/ble.sh/issues/132
+
+    或いは任意の column の数に設定できる様にする。或いは、望ましい幅的な物 (最
+    小幅でも良いかもしれない) を設定して column 数を自動で決定する。
+
+    実装してみた。
+
+    x fixed: 再表示の際に truncate した内容が表示されてしまう。今までの実装では
+      候補は truncate されないという前提だったがそれが崩れているという事。
+
+    x done: desc/guess についても実装を更新する必要がある。というよりそもそも
+      guess とは何だったか。
+
+    x fixed: カーソルキーによる navigation を再設計する必要がある。今までは Z
+      型に走査する場合しか考えていなかった。
+
+      a N 型に走査する選択肢と Z 型に走査する選択肢の二種類に場合分けして実装す
+        るか、
+
+      b 或いは一般的なアルゴリズムを考えるか (これは効率の良いアルゴリズムは困
+        難の気がする。)
+
+      c 或いは menu-style 側で振る舞いを変更できる様にするか。
+
+      N型かZ型かに関してはページを構築した時に何処かの変数に補助情報として記録
+      すれば良い。N型だとしても desc の場合には上下左右の操作は自明であるのでN
+      型一般のアルゴリズムを用いるよりも、それ専用の処理を実装した方が良い気が
+      する。
+
+      menu-style 側でカスタムに実装できる様にする事にする。
+
+    x fixed: 座標計算がずれる。_ble_b[TAB] において。
+
+    x fixed: trace が無限ループになっている気がする。 _ble_[TAB] において。
+
+      これは単に各列の行数の計算を間違えて全ての項目を一つのページに含めようと
+      して巨大なページが出来上がっていたのが原因だった。
+
+    * done: desc-raw -> desc に改名する?
+
+      古い設定名は desc に移動する。
+
+      新しく desc-text を用意する。desc-text はもっと良い名前はないか。
+      desc-less, desc-esc, ... info が text, esc と言った名前を使っているのでや
+      はり text で良い気がする。
+
+      取り敢えず今は desc-raw は desc の synonym という事にしておく。ble-update
+      等した時に不整合が起きると問題だし、そもそもそれぐらいなら別に対応してい
+      ても大した問題にはならない。
+
+    * 新しい bleopt の名称を固定する。ドキュメントに記述する
+    * 新しい widget menu/{forward,backward}-column をドキュメントに記述する
 
   * 2021-08-30 complete: alias desc に alias の内容を表示するべきだろうか (motivated by Shahabaz-Bagwan) [#D1685]
     https://www.youtube.com/watch?v=YS1vxEhd2Pc

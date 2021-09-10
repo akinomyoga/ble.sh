@@ -523,9 +523,9 @@
 ## inserts a new line before the candidates that does not fit into the
 ## remaining part of the current line. The value "align" and "align-nowrap"
 ## aligns the candidates. The value "linewise" shows a candidate per line.  The
-## value "desc" and "desc-raw" shows a candidate per line with description for
-## each. "desc-raw" is different from "desc" in the behavior that it interprets
-## ANSI escape sequences in the descriptions.
+## value "desc" and "desc-text" shows a candidate per line with description for
+## each. "desc-text" is different from "desc" in the behavior that it does not
+## interprets ANSI escape sequences in the descriptions.
 
 #bleopt complete_menu_style=align-nowrap
 
@@ -542,11 +542,19 @@
 
 #bleopt complete_menu_maxlines=10
 
+
 ## The following setting specifies the prefix for complete_menu_style=linewise.
 ## For example, the candidate number can be shown by setting the value "%d".
 ## ANSI escape sequences can be used.
 
 #bleopt menu_linewise_prefix=
+
+
+## The following setting specifies the minimum column width for the multicolumn
+## description for `complete_menu_style=desc'.  When the empty value is
+## specified, the multicolumn mode is disabled.
+
+#bleopt menu_desc_multicolumn_width=65
 
 
 ##-----------------------------------------------------------------------------
