@@ -1159,8 +1159,9 @@ function ble/canvas/trace/.implicit-move {
   else
     # 端末による折り返し
     if [[ $type == atomic ]]; then
-      # [Note: 文字が横幅より大きい場合は取り敢えず次の行が
-      # 一杯になると仮定しているが端末による]
+      # [Note: 文字が横幅より大きい場合は取り敢えず次の行が一杯になると仮定して
+      # いるが端末による。端末によっては更に次の行にカーソルが移動するのではな
+      # いかとも思われる。]
       ((y++,x=w<xlimit?w:xlimit))
     else
       ((y+=x/cols,x%=cols,
@@ -1222,16 +1223,18 @@ function ble/canvas/trace/.put-ascii.draw {
 }
 function ble/canvas/trace/.process-overflow {
   [[ :$opts: == *:truncate:* ]] && i=$iN # stop
-  if [[ :$opts: == *:ellipsis:* ]]; then
+  if ((y+1==lines)) && [[ :$opts: == *:ellipsis:* ]]; then
+    local ellipsis=... w=3 wmax=$xlimit
+    ((w>wmax)) && ellipsis=${ellipsis::wmax} w=$wmax
     if ble/util/is-unicode-output; then
-      local ellipsis='…' ret
-      ble/util/s2c "$ellipsis"; ble/util/c2w "$ret"; local w=$ret
-    else
-      local ellipsis=... w=3
+      local symbol='…' ret
+      ble/util/s2c "$symbol"
+      ble/util/c2w "$ret"
+      ((ret<=wmax)) && ellipsis=$symbol w=$ret
     fi
 
     local ox=$x oy=$y
-    ble/canvas/trace/.goto $((xlimit-w)) $((lines-1))
+    ble/canvas/trace/.goto $((wmax-w)) $((lines-1))
     ble/canvas/trace/.put-atomic.draw "$ellipsis" "$w"
     ble/canvas/trace/.goto "$ox" "$oy"
   fi
@@ -1820,8 +1823,9 @@ function ble/canvas/trace/.impl {
 
   # opt_relative の時には右端に接触しない前提。justify の時には、後の再配置の時
   # に xenl について処理するので、フィールド内追跡では xenl は気にしなくて良い。
-  local xlimit=$cols
-  [[ $opt_relative || $trace_flags == *J* ]] && xenl=1 xlimit=$((cols-1))
+  local xenl=$_ble_term_xenl
+  [[ $opt_relative || $trace_flags == *J* ]] && xenl=1
+  local xlimit=$((xenl?cols:cols-1))
 
   local flag_justify=
   if [[ $trace_flags == *J* ]]; then

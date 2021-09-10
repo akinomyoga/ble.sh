@@ -323,7 +323,7 @@ ble/test/end-section
 
 #------------------------------------------------------------------------------
 
-ble/test/start-section 'ble/textmap#update'
+ble/test/start-section 'ble/textmap#update' 5
 
 function ble/test:canvas/textmap {
   local text=$1

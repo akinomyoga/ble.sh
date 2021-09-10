@@ -182,6 +182,7 @@
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
 - decode: fix a bug that the characters input while initialization are delayed `#D1670` 430f449
 - util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 61705bf
+- trace: fix wrong positioning of the ellipses on overflow `#D1684` 0000000
 
 ## Documentation
 
