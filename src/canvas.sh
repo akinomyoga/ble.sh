@@ -575,15 +575,17 @@ function ble/canvas/trace/.goto {
 }
 function ble/canvas/trace/.process-overflow {
   [[ :$opts: == *:truncate:* ]] && i=$iN # stop
-  if [[ :$opts: == *:ellipsis:* ]]; then
+  if ((y+1==lines)) && [[ :$opts: == *:ellipsis:* ]]; then
+    local ellipsis=... w=3 wmax=$xlimit
+    ((w>wmax)) && ellipsis=${ellipsis::wmax} w=$wmax
     if ble/util/is-unicode-output; then
-      local ellipsis='…' ret
-      ble/util/s2c "$ellipsis"; ble/util/c2w "$ret"; local w=$ret
-    else
-      local ellipsis=... w=3
+      local symbol='…' ret
+      ble/util/s2c "$symbol"
+      ble/util/c2w "$ret"
+      ((ret<=wmax)) && ellipsis=$symbol w=$ret
     fi
     local x0=$x y0=$y
-    ble/canvas/trace/.goto $((cols-w)) $((lines-1))
+    ble/canvas/trace/.goto $((wmax-w)) $((lines-1))
     ble/canvas/put.draw "$ellipsis"
     ((x+=w,x>=cols&&!opt_relative&&!xenl)) && ((x=0,y++))
     ble/canvas/trace/.goto "$x0" "$y0"
@@ -840,7 +842,7 @@ function ble/canvas/trace/.impl {
 
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
-  local it=${bleopt_tab_width:-$_ble_term_it} xenl=$_ble_term_xenl
+  local it=${bleopt_tab_width:-$_ble_term_it}
   ble/string#reserve-prototype "$it"
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
@@ -856,6 +858,10 @@ function ble/canvas/trace/.impl {
   local -a trace_scosc=()
 
   [[ $opt_measure ]] && ((x1=x2=x,y1=y2=y))
+
+  local xenl=$_ble_term_xenl
+  [[ $opt_relative ]] && xenl=1
+  local xlimit=$((xenl?cols:cols-1))
 
   local i=0 iN=${#text}
   while ((i<iN)); do
