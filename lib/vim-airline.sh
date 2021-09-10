@@ -245,6 +245,7 @@ function ble/prompt/backslash:lib/vim-airline/mode {
   [[ $ret ]] && ble/prompt/print "$ret"
 }
 function ble/prompt/backslash:lib/vim-airline/gitstatus {
+  local "${_ble_contrib_prompt_git_vars[@]/%/=}" # WA #D1570 checked
   if ble/contrib/prompt-git/initialize; then
     local hash branch
     ble/contrib/prompt-git/get-head-information

@@ -1477,6 +1477,9 @@ function ble/builtin/history {
     return "$?"
   fi
 
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/save-BASH_REMATCH
+
   # -cdanwr
   local flag_processed=
   if [[ $opt_c ]]; then
@@ -1501,7 +1504,11 @@ function ble/builtin/history {
     ble/builtin/history/option:p "$@"
   else
     builtin history "$@"
-  fi
+  fi; local ext=$?
+
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/restore-BASH_REMATCH
+  return "$ext"
 }
 function history { ble/builtin/history "$@"; }
 

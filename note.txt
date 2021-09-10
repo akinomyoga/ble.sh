@@ -1243,7 +1243,7 @@ bash_tips
 
   * [memo] leak variables check [#M0002]
 
-    set | sort | sed -e '/()[[:space:]]*$\|^_\{0,1\}\(BLE\|ble\)/d' -e '/^[[:alnum:]_]\{1,\}=/!d' > a.txt
+    ble/debug/.list-leak-variable を実行する。
 
   * [memo] 解析(ble-syntax/parse)の際の原則 [#M0001]
 
@@ -5017,6 +5017,30 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-09-11
+
+  * global: resolve leak variables [#D1643]
+
+    - fixed: CHARS=([0]="13")
+    - fixed: git_base=/home/murase/.mwg/src/ble.sh
+    - fixed: git_base_dir=/home/murase/.mwg/src/ble.sh/.git
+    - fixed: nhash=$'10:10,10,10,337,10,10,10:justify=\r,\\q{lib/vim-airline}'
+    - fixed: wattr_buff=([0]="5:72057594037930244")
+    - fixed: wattr_g=d
+    - fixed: wattr_pos=101
+    - fixed: _data=([2]="")
+
+    - BASH_REMATCH: これは bleopt 等をユーザーから実行すると書き換わってしまう。
+      然し、local BASH_REMATCH を実行しようにも readonly でエラーになってしまう。
+      書き換わるのは問題ないと諦めるしかない。
+
+      read, bind, history, etc. 等では保存復元した方が良いかもしれない。
+      →read, exit, bind, history, trap で保存復元する様にした。
+
+      他に初期化時にも問題になるかもしれない…が、そもそも soruce xxx としたら
+      中で BASH_REMATCH を使っている可能性は排除できないので、これは気にしなく
+      て良い気がする。
 
 2021-09-08
 

@@ -6426,9 +6426,8 @@ bleopt -I filename_ls_colors
 # ble/syntax/progcolor
 
 _ble_syntax_progcolor_vars=(
-  node TE_i TE_nofs wtype wlen wbeg wend wattr
-
-  # ble/syntax/progcolor/wattr#*
+  node TE_i TE_nofs wtype wlen wbeg wend wattr)
+_ble_syntax_progcolor_wattr_vars=(
   wattr_buff wattr_pos wattr_g)
 
 ## @fn ble/syntax/progcolor/load-word-data i:nofs
@@ -6749,6 +6748,7 @@ function ble/syntax/progcolor/word:default/.is-option-context {
 ##   @var[in] node TE_i TE_nofs
 ##   @var[in] wtype wlen wbeg wend wattr
 function ble/syntax/progcolor/word:default/.impl {
+  local "${_ble_syntax_progcolor_wattr_vars[@]/%/=}" # WA #D1570 checked
   ble/syntax/progcolor/wattr#initialize
 
   if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then

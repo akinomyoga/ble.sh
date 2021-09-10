@@ -55,7 +55,7 @@
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
   - progcomp: fix a bug that command names may stray into completer function names `#D1611` 1f2d45f
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
-  - syntax: recognize escape \" in double-quoted strings `#D1641` 0000000
+  - syntax: recognize escape \" in double-quoted strings `#D1641` 4b71449
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
@@ -156,7 +156,7 @@
 - history: fix the vanishing history entry used for `ble-attach` `#D1629` eb34061
 - global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 44e6ec1
 - complete: fix a task scheduling bug of referencing two different clocks (reported by rashil2000) `#D1636` fea5f5b
-- canvas: update prompt trace on `char_width_mode` change `#D1642` 0000000
+- canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
 
 ## Optimization
 
@@ -219,6 +219,7 @@
 - global: work around `localvar_inherit` for varname-list init `#D1566` 5c2edfc
 - util: fix `ble/util/dense-array#fill-range` a46fdaf
 - util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 5967d6c
+- util: fix leak variables `#D1643` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

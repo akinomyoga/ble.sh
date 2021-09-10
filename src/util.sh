@@ -449,6 +449,14 @@ function ble/debug/.check-leak-variable {
     builtin eval "$1=__t1wJltaP9nmow__"
   fi
 }
+function ble/debug/.list-leak-variable {
+  local exclude_file=${_ble_base_repository:-$_ble_base}/memo/leakvar-exclude.txt
+  if [[ ! -f $exclude_file ]]; then
+    ble/util/print "$exclude_file: not found." >&2
+    return 1
+  fi
+  set | ble/bin/grep -Eo '^[[:alnum:]_]+=' | ble/bin/grep -Evf memo/
+}
 
 function ble/debug/print-variables/.append {
   local q=\' Q="'\''"
@@ -1876,6 +1884,9 @@ function ble/builtin/trap {
     builtin trap -l
   fi
 
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/save-BASH_REMATCH
+
   if [[ $flags == *p* ]]; then
     ble/builtin/trap/.initialize
 
@@ -1923,6 +1934,9 @@ function ble/builtin/trap {
       fi
     done
   fi
+
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/restore-BASH_REMATCH
   return 0
 }
 function trap { ble/builtin/trap "$@"; }
@@ -4669,6 +4683,7 @@ if ((_ble_bash>=40000)); then
     ((${#_ble_util_idle_task[@]}==0)) && return 1
     ble/util/buffer.flush >&2
 
+    local ret
     ble/util/idle.clock/.initialize
     ble/util/idle.clock/.restart
     ble/util/idle.clock

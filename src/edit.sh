@@ -488,7 +488,7 @@ function ble/prompt/unit#update {
   else
     ble/prompt/unit#update/.update-dependencies "$ohashref"
     local ohash=${unit}_data[2]; ohash=${!ohash}
-    builtin eval -- "nhash=\"$ohashref\"" 2>/dev/null
+    builtin eval -- "local nhash=\"$ohashref\"" 2>/dev/null
     [[ $nhash != "$ohash" ]] && prompt_unit_expired=1
   fi
 
@@ -531,6 +531,7 @@ function ble/prompt/unit#update/.update-dependencies {
   fi
 }
 function ble/prompt/unit#clear {
+  local prefix=$1
   builtin eval -- "${prefix}_data[2]="
 }
 
@@ -1140,6 +1141,7 @@ function ble/prompt/.instantiate {
     local trace_opts=$opts:prompt
     [[ $bleopt_internal_suppress_bash_output ]] || trace_opts=$trace_opts:left-char
     x=0 y=0 g=0 lc=32 lg=0
+    local ret
     LINES=$rows COLUMNS=$cols ble/canvas/trace "$expanded" "$trace_opts"; local traced=$ret
     ((lc<0&&(lc=0)))
     esc=$traced
@@ -5159,6 +5161,8 @@ function ble-edit/exec/print-PS0 {
 }
 
 function ble/builtin/exit/.read-arguments {
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/save-BASH_REMATCH
   while (($#)); do
     local arg=$1; shift
     if [[ $arg == --help ]]; then
@@ -5170,6 +5174,8 @@ function ble/builtin/exit/.read-arguments {
       opt_flags=${opt_flags}E
     fi
   done
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/restore-BASH_REMATCH
 }
 function ble/builtin/exit {
   local ext=$?
@@ -8194,7 +8200,9 @@ function ble/builtin/read {
     builtin eval -- "$_ble_builtin_read_hook"
 
   local __ble_command= __ble_args= __ble_input=
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble-edit/exec/save-BASH_REMATCH
   ble/builtin/read/.impl "$@"; local __ble_ext=$?
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble-edit/exec/restore-BASH_REMATCH
   [[ $__ble_command ]] || return "$__ble_ext"
 
   # 局所変数により被覆されないように外側で評価

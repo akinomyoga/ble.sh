@@ -1279,6 +1279,7 @@ function ble-decode-char/.send-modified-key {
     _ble_decode_char2_modkcode=
     _ble_decode_char2_modseq=
     if ((key&mflag)); then
+      local CHARS
       ble/string#split-words CHARS "${mseq//_/ }"
       ble-decode-key "$mcode"
     else
@@ -1287,6 +1288,7 @@ function ble-decode-char/.send-modified-key {
     fi
   fi
 
+  local CHARS
   ble/string#split-words CHARS "${seq//_/ }"
   ble-decode-key "$key"
 }
@@ -1886,13 +1888,13 @@ function ble/widget/__batch_char__.default {
 }
 
 
-## @fn ble-decode-key key
+## @fn ble-decode-key key...
 ##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、
 ##   関連付けられたコマンドを実行します。
 ##   登録されたキーシーケンスの前方部分に一致する場合、即座に処理は行わず
 ##   入力されたキーの列を _ble_decode_key__seq に記録します。
 ##
-##   @var[in] key
+##   @param[in] key
 ##     入力されたキー
 ##
 function ble-decode-key {
@@ -3870,6 +3872,9 @@ function ble/builtin/bind {
     shopt -u nocasematch &&
     nocasematch=1
 
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/save-BASH_REMATCH
+
   ble/decode/initialize
   local flags= ext=0
   ble/builtin/bind/.process "$@"
@@ -3881,6 +3886,9 @@ function ble/builtin/bind {
 
   [[ $nocasematch ]] &&
     shopt -s nocasematch
+
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+    ble-edit/exec/restore-BASH_REMATCH
   return "$ext"
 }
 function bind { ble/builtin/bind "$@"; }
