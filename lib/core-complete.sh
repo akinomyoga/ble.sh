@@ -3859,10 +3859,9 @@ function ble/complete/auto-complete/.search-history-light {
   # !string による一致を試みる
   #   string には [$wordbreaks] は含められない。? はOK
   local wordbreaks="<>();&|:$_ble_term_IFS"
-  local word=
+  local word= expand
   if [[ $text != [-0-9#?!]* ]]; then
     word=${text%%[$wordbreaks]*}
-    local expand
     BASH_COMMAND='!'$word ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
     if [[ $expand == "$text"* ]]; then
       ret=$expand

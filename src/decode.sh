@@ -1324,13 +1324,13 @@ function ble/widget/__batch_char__.default {
 }
 
 
-## 関数 ble-decode-key key
+## @fn ble-decode-key key...
 ##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、
 ##   関連付けられたコマンドを実行します。
 ##   登録されたキーシーケンスの前方部分に一致する場合、即座に処理は行わず
 ##   入力されたキーの列を _ble_decode_key__seq に記録します。
 ##
-##   @var[in] key
+##   @param[in] key
 ##     入力されたキー
 ##
 function ble-decode-key {
