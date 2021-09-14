@@ -630,6 +630,7 @@ function ble-edit/prompt/.instantiate {
   local ret
   ble-edit/prompt/.escape "$processed"; local escaped=$ret
   local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
+  ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   builtin eval "expanded=\"$escaped\""
 
   # 3. 端末への出力を構成する
