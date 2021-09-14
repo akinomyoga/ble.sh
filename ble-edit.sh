@@ -1306,6 +1306,7 @@ function ble-edit/prompt/update {
   # 2 eval 'ps1esc="..."'
   local ps1esc
   ble-edit/draw/sflush -v ps1esc
+  ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   builtin eval "ps1esc=\"$ps1esc\""
   local trace_hash=$LINES,$COLUMNS:$bleopt_char_width_mode:$ps1esc
   if [[ $trace_hash == "${_ble_edit_prompt[7]}" ]]; then
