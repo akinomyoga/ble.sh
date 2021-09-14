@@ -1069,6 +1069,7 @@ function .ble-line-prompt/update {
   # 2 eval 'ps1esc="..."'
   local ps1esc
   ble-edit/draw/sflush -v ps1esc
+  .ble-edit/exec/setexit
   builtin eval "ps1esc=\"$ps1esc\""
   local trace_hash=$LINES,$COLUMNS:$bleopt_char_width_mode:$ps1esc
   if [[ $trace_hash == "${_ble_line_prompt[7]}" ]]; then
