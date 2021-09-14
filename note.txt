@@ -5018,6 +5018,18 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-09-14
+
+  * prompt: $? is not properly set in ${PS1@P} (reported by nihilismus) [#D1644]
+    https://github.com/akinomyoga/ble.sh/issues/136
+
+    setexit をしていなかった。
+
+    他にも何か影響があったりするだろうか。例えば、その他のシェル設定は復元しな
+    くても良いのだろうか。PROMPT_COMMAND の前後では何か調整していた気がする…
+    と思って改めて確認した所 PROMPT_COMMAND は単に PS1 を復元していただけだった。
+    その他の設定は待避した儘になっている。なので気にしなくて良い。
+
 2021-09-11
 
   * global: resolve leak variables [#D1643]

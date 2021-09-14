@@ -175,6 +175,7 @@
   - util (`ble/util/assign`): work around subshell conflicts `#D1578` 6e4bb12
 - history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
+  - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 0000000
 
 ## Compatibility
 
@@ -219,7 +220,7 @@
 - global: work around `localvar_inherit` for varname-list init `#D1566` 5c2edfc
 - util: fix `ble/util/dense-array#fill-range` a46fdaf
 - util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 5967d6c
-- util: fix leak variables `#D1643` 0000000
+- util: fix leak variables `#D1643` fcf634b
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

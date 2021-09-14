@@ -1086,6 +1086,7 @@ function ble/prompt/.instantiate {
   local chars_safe_esc='][0-7aenrdtAT@DhHjlsuvV!$\wW'
   if ((_ble_bash>=40400)) && [[ $ps != *'\'[!"$chars_safe_esc"]* ]]; then
     [[ $ps == *'\'[wW]* ]] && ble/prompt/unit/add-hash '$PWD'
+    ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
     BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
                 builtin eval 'expanded=${ps@P}'
 
