@@ -140,7 +140,7 @@ function bleopt/check:char_width_version {
 }
 
 # wcwdith 例外 (Unicode 特性からは予想できない値を持っている物)
-# この表は memo/D1619.wcwidth compare_eaw の出力より。
+# この表は make/canvas.c2w.wcwidth.exe compare_eaw の出力より。
 _ble_unicode_c2w_custom[173]=1                    # U+00ad       Cf A SHY(soft-hyphen)
 let '_ble_unicode_c2w_custom['{1536..1541}']=1'   # U+0600..0605 Cf 1 アラブの数字?
 _ble_unicode_c2w_custom[1757]=1                   # U+06dd       Cf 1 ARABIC END OF AYAH
@@ -388,7 +388,7 @@ function ble/util/c2w/test-terminal.buff {
 
       # index=1..13 [Unicode version 判定]
       #   判定用の文字コードは "source
-      #   memo/D1645.list-char_width_version-auto-codes.sh" を用いて生
+      #   make/canvas.c2w.list-ucsver-detection-codes.sh" を用いて生
       #   成されたリストから選択した。新しい Unicode version が出たら
       #   再びこれを実行して判定コードを書く事になる。
       0x9FBC 0x9FC4 0x31B8 0xD7B0 0x3099

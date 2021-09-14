@@ -1275,6 +1275,32 @@ bash_tips
     bug-bash, third-party bugs & reviews
 -------------------------------------------------------------------------------
 
+2021-09-22
+
+  * bash-it で気になる事
+
+    * bash-it disable alias を実行すると何も表示されず何も実行されない。
+    * bash-it --help もしくは bash-it で色々表示されるが、明らかに表示されてい
+      ないコマンドが存在している。
+    * bash-it update に外部から登録できる機能?
+    * bash-it に自動でインストールする機能もつける可能性について
+
+  * bash-5.2
+
+    $ i=0; b=$(< "file${a[i++]}"); echo "$i"
+    1
+
+    $ f=; b=$(< "${f:=file}"); echo "$f"
+    file
+
+    $ i=0; b=$(< "file$((i=123))"); echo "$i"
+    123
+
+    $ RANDOM=0; echo "$RANDOM"
+    20814
+    $ RANDOM=0; b=$(< "$RANDOM"); echo "$RANDOM"
+    24386
+
 2021-09-07
 
   * segv: bash-dev -c "declare -A A; unset 'A[\${v[0]}]'"
@@ -1576,9 +1602,68 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-0.6 ErrorMsg
-0.5 ControlPanel/TUI Framework
-0.4 progcolor
+2021-09-20
+
+  * sabbrev を accept-line の時にも展開する可能性について。
+    zsh-abbr の振る舞いについても確認する。
+
+  * decode: [openSUSE] bash-it 側の検証に際して色々問題が生じている (reported by cornfeedhobo)
+    https://github.com/Bash-it/bash-it/pull/1884
+
+    https://web.libera.chat/?channel=#bash-it ここの議論はすぐ消滅する
+    | [8:27:38] → akinomyoga has joined
+    | [8:31:20] <akinomyoga> Hmm, it seems everything I wrote has been lost after I
+    | restarted the web browser. I don't get used to IRC, so I didn't know this
+    | behavior. So there is no log of the channel?
+    | [9:55:21] <akinomyoga> I summarized the current situation at
+    | https://github.com/Bash-it/bash-it/pull/1884#issuecomment-923489130
+    | [12:07:33] ← akinomyoga27 has left (Quit: Client closed)
+    | [12:08:01] → akinomyoga27 has joined
+    | [12:08:07] ← akinomyoga27 has left (Client Quit)
+    | [13:45:22] <cornfeedhobo> akinomyoga: hello again
+    | [13:45:45] <cornfeedhobo> akinomyoga: yeah, irc doesn't keep history. but i
+    | have a record of it
+    | [13:46:02] <akinomyoga> Hello
+    | [13:46:06] <akinomyoga> Ah, OK
+    | [13:47:29] <cornfeedhobo> ah, okay, so maybe i can explain the PROMPT_COMMAND
+    | situation at least
+    | [13:48:30] <akinomyoga> I have summarized my situation in the GitHub issue
+    | page. Maybe you can first take a glance at the comment and just explain the
+    | difference of the setups.
+    | [13:50:28] <akinomyoga> Unfortunately I will have a meeting 10 minutes
+    | later. So I think I cannot respond for one or two hours after that.
+    | [13:50:28] <cornfeedhobo> your comment from an hour ago sums up what I was
+    | assuming was happening
+    | [13:50:47] <cornfeedhobo> okay, no worries. sorry i couldn't reply
+    | sooner. today was filled with meetings.
+    | [13:52:09] <akinomyoga> OK! Nice! Then I will look for a workaround
+    | [13:52:51] <cornfeedhobo> awesome! thanks for working through this. your
+    | attention to detail is impressive.
+    | [13:53:04] <akinomyoga> thank you!
+
+    * done: home/end が効かない。これは結局 find/select を認識する事にした。本
+      当に openSUSE の workaround の為だけの変更である。Ref #D1648
+
+    * done: "preexec が壊れる" という文句について。Ref #D1650
+
+    * done: set-mark 及び history-search-{for,back}ward が nmap で対応されてい
+      ないというエラーメッセージに対する苦情 Ref #D1651
+
+    * done: /etc/inputrc{,.keys} が大量に設定を行っている為に初期化が遅い問題
+      Ref #D1652
+
+    * error messages on openSUSE ... これは openSUSE における既知の問題である。
+      これに関する対応は既に openSUSE の最新版には反映されているので気にしなく
+      て良い。もし今後も openSUSE 15.2, 15.3 のユーザーから報告があるのであれば、
+      ble.sh の側で何らかの workaround を追加する必要があるかもしれない。
+
+      うーん。結局これは openSUSE の問題だし、Tumbleweed では問題は発生しないの
+      だからわざわざ対応しなくて良い気がする。これは無視する。
+
+      うーん。或いは openSUSE 15.2, 15.4 を検出して inputrc を off にしても良い
+      かもしれない。然し、これは他の WA がちゃんと動く事を確認してから対応する
+      方が良い。そうしないと WA がちゃんと動くかどうかの feedback を得られない。
+      これは最後に処理する。
 
 2021-09-15
 
@@ -1590,40 +1675,6 @@ bash_tips
   * solaris: ble-bind を bashrc 内部で呼び出した時点で未だ attach していないの
     に色々と info を表示してしまっている。
     $_ble_base_cache/decode.cmap.gdict.*.dump を削除した時に再現する。
-
-  * ディレクトリ構造の整理
-
-    * make ディレクトリに Unicode 関係のテーブルの生成コードを移動する?
-
-      現在は memo/ 以下にファイルを持っているが何だか違う気がする。他に leakvar
-      の whitelist のファイルなども make 以下に移動した方が良い様な気がする。
-      memo/ChangeLog.md や memo/Relases.md に関してはまた docs/ 等の下にある方
-      が分かりやすい筈である。
-
-    * docs ディレクトリに雑多のファイルを移動する?
-
-      x GitHub のシンボリックリンクの問題
-
-        色々のファイルを docs ディレクトリに押し込めようと思ったが、git clone
-        した時に分かりにくいので LICENSE と README に関してはせめて symbolic
-        link を置こうと思ったが…GitHubのインターフェイスだと symbolic link を
-        開いても中身の文字列が表示されるだけで、その指し示している先にジャンプ
-        する事ができない。これはかなり不便である。検索したが余りそういう要望は
-        ない様である。以下に何やら要望があるが、そもそもこの repository を
-        GitHub が見ているのかどうかも謎である。
-
-        https://github.com/dear-github/dear-github/issues/156
-
-    * keymap の下にある物も何処かのタイミングで lib/* に移動したい。0.5 に変更
-      する時に移動しようとも思っていたが、0.4 がいつ完成するか分からないし、コー
-      ドの移動を一度に実行すると code frequency にまた大きな spike が立ってしま
-      うので、release 等とは関係なく思い立った時に実行した方が良いのかもしれな
-      いとも思う。
-
-    何れにしても既存の物についてのディレクトリ構造の変更は、他の変更が pending
-    になっていない綺麗な状態で実行するべきである気がする。現在は Unicode 関係の
-    テーブル生成についても、中途半端である。少なくとも c2w 関連の実装が一区切り
-    してから考えるべきことである様に思われる。
 
   * grapheme: SpacingMark, Prepend の幅は一体どうなっているのだろうか [#T0007]
 
@@ -5373,6 +5424,142 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-22
+
+  * README: roadmap [#D1660]
+
+    発音の部分が取ってつけた様なので紹介文を書いてみた。
+
+    然し何だかふざけた感じになってしまった。特に日本語に関してはどのような言葉
+    遣いで書いたら良いのか分からない。日本語では説明書にそういう話は書かない気
+    がする。お菓子の説明にはそのお菓子がどのように成立したかなどの説明があった
+    りする気がするのでそんな感じで書くのだろうか。真心込めて作りました的な説明
+    になってしまってそれも何だか変な感じである。とにかく説明書に書くような内容
+    ではない気がする。
+
+    % 縁起: 端緒は二〇一三年三月の末、とある `zsh-syntax-highlighting` の記事に触
+    % 発され `.bashrc` の片隅で始まった実験でありました。数百行の設定で不完全でも
+    % 何か着色ができようという当初の安易な期待は即座に裏切られ、行エディタを全て
+    % 再実装するより他にないことが露見したのであります。一個の独立したスクリプト
+    % として開発することに改め、名を ZLE (Zsh Line Editor) から借り、シェルで書か
+    % れたことを示す `.sh` を付して `ble.sh` としました。二週間の実験は、実用に堪
+    % える完全な行エディタをスクリプトで実装することが可能との結論に終わりました。
+    % 本格的な実装が始まったのは二〇一五年二月のことです。同年十二月には行エディ
+    % タとしての機能は大方出揃い、これを以て最初のバージョンとしました。
+
+    結局、新しく history and roadmap という section を README に加える事にした。
+    発音に関する説明は結局 README の上部にそのまま残っている。
+
+  * README: sabbrev の例で \word を薦めるのが良い気がする [#D1659]
+
+  * README: zsh-abbreviations なる物は存在しない [#D1658]
+
+    https://unix.stackexchange.com/questions/6152/zsh-alias-expansion
+    https://qiita.com/matsu_chara/items/8372616f52934c657214
+    https://github.com/olets/zsh-abbr
+
+  * repo: ディレクトリ構造の整理。docs, make ディレクトリの作成 [#D1657]
+
+    * done: make ディレクトリに Unicode 関係のテーブルの生成コードを移動する?
+
+      現在は memo/ 以下にファイルを持っているが何だか違う気がする。他に leakvar
+      の whitelist のファイルなども make 以下に移動した方が良い様な気がする。
+
+      make ディレクトリという名前で良いだろうか。tool というディレクトリを一時
+      作りかけた。うーん。或いは memo の下にサブディレクトリを作る? うーんやは
+      り make で良い気がする。
+
+    * done: ext/mwg_pp.awk も make に移動してしまって良い気がする。此処で問題になるか
+      もしれないのは GNUmakefile の更新に失敗するかもしれないという事? 然し
+      make の最中に checkout したりする事はないし、mwg_pp.awk が移動していれば
+      既に GNUmakefile の方もそれに応じて書き換わっているし、GNUmakefile の方が
+      書き換わっているのであれば mwg_pp.awk も移動している筈なので問題は起こら
+      ない筈。
+
+    * reject: docs ディレクトリに雑多のファイルを移動する?
+
+      x GitHub のシンボリックリンクの問題
+
+        色々のファイルを docs ディレクトリに押し込めようと思ったが、git clone
+        した時に分かりにくいので LICENSE と README に関してはせめて symbolic
+        link を置こうと思ったが…GitHubのインターフェイスだと symbolic link を
+        開いても中身の文字列が表示されるだけで、その指し示している先にジャンプ
+        する事ができない。これはかなり不便である。検索したが余りそういう要望は
+        ない様である。以下に何やら要望があるが、そもそもこの repository を
+        GitHub が見ているのかどうかも謎である。
+
+        https://github.com/dear-github/dear-github/issues/156
+
+      x GitLab など他のサービスだと docs 以下にファイルを置いても認識してくれな
+        いかもしれない。
+
+      これは一先ずは棄却する。後にもっとファイルが増えた時に気になれば対処する。
+
+    * done: ChangeLog.md, Release.md ぐらいは docs に移動しても良いのかもしれない。
+
+      多くのファイルは現在の場所に取り敢えず残すとしても memo/ChangeLog.md や
+      memo/Relases.md に関してはまた docs/ 等の下にある方が分かりやすい筈である。
+      此処での問題は ChangeLog.md を移動すると rebase がしにくくなるという事。
+      まあ、これは一気にやってしまえば問題はない。
+
+    * keymap の下にある物も何処かのタイミングで lib/* に移動したい。0.5 に変更
+      する時に移動しようとも思っていたが、0.4 がいつ完成するか分からないし、コー
+      ドの移動を一度に実行すると code frequency にまた大きな spike が立ってしま
+      うので、release 等とは関係なく思い立った時に実行した方が良いのかもしれな
+      いとも思う。
+
+    何れにしても既存の物についてのディレクトリ構造の変更は、他の変更が pending
+    になっていない綺麗な状態で実行するべきである気がする。現在は Unicode 関係の
+    テーブル生成についても、中途半端である。少なくとも c2w 関連の実装が一区切り
+    してから考えるべきことである様に思われる。
+
+  * [棄却] util (readfile): bash-5.2 に $(< xxxx) without fork が実装された [#D1656]
+    ble/util/readfile にはこれを使うのが良いのではないか。後で速度についても確認する。
+
+    | bash-5.1
+    |
+    |    201.567 usec/eval: ble/util/readfile var sig.h (x500)
+    |   1070.529 usec/eval: var=$(< sig.h) (x100)
+    |   1078.159 usec/eval: var=$(< sig.h) (x100)
+    |   1067.909 usec/eval: var=$(< sig.h) (x100)
+    |   1078.159 usec/eval: var=$(< sig.h) (x100)
+    |
+    |   process-count ... 200位増えている
+    |   $ echo $(echo $BASHPID)
+    |   29617
+    |   $ ble-measure 'var=$(< sig.h)'
+    |   $ echo $(echo $BASHPID)
+    |   29810
+    |
+    | bash-5.2
+    |
+    |    205.423 usec/eval: ble/util/readfile var sig.h (x500)
+    |    205.131 usec/eval: ble/util/readfile var sig.h (x500)
+    |    204.201 usec/eval: ble/util/readfile var sig.h (x500)
+    |     29.551 usec/eval: var=$(< sig.h) (x5000)
+    |     29.339 usec/eval: var=$(< sig.h) (x5000)
+    |     29.491 usec/eval: var=$(< sig.h) (x5000)
+    |     29.623 usec/eval: var=$(< sig.h) (x5000)
+    |     29.535 usec/eval: var=$(< sig.h) (x5000)
+    |
+    |   $ echo $(echo $BASHPID)
+    |   29985
+    |   $ ble-measure 'var=$(< sig.h)'
+    |   $ echo $(echo $BASHPID)
+    |   30010
+
+    現在の実装よりも圧倒的に高速である。但し、現在の実装と比べて問題があるとす
+    れば改行を保持する事ができないという事である。
+
+    うーん。readfile の仕様として自動的に末尾の連続改行は一つにまとめ、改行がな
+    い時は改行を加えるという事にしても良いのかもしれない。と思ったが、
+    test-util.sh に末尾改行を保持する事を要請するコードが存在している。
+
+    後、互換性を考えると末尾の連続改行については未規定という様にしないと、古い
+    version で逆に末尾改行を除去するのに逆に処理を追加しなければならなくなる。
+
+    色々試してはみた物の速度的にも mapfile と比べてそれほど違うという訳でもない
+    様な気がしてきた。そもそも readfile の時点でそんなに遅い訳でもない。という
+    事を考えると、わざわざ改行が消えてしまう $(<) を使う必要はない様な気がする。
 
   * Makefile: 単なる git clone & make install でちゃんとインストールできる様にしたい [#D1655]
     https://github.com/Bash-it/bash-it/pull/1884#issuecomment-922615431

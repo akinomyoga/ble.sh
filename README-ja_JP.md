@@ -76,7 +76,7 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
   [**メニュー絞り込み**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-menu-filter)
   (Bash 4.0 以上) として自然な形で組み込んでいます。
   他に、[**動的略語展開**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-dabbrev)
-  や、`zsh-abbreviations` のような
+  や、[*zsh abbreviations*](https://unix.stackexchange.com/questions/6152/zsh-alias-expansion)・[`zsh-abbr`](https://github.com/olets/zsh-abbr) のような
   [**静的略語展開**](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A77-%E8%A3%9C%E5%AE%8C#user-content-sec-sabbrev)
   にも対応しています。
 - **Vim編集モード**: `set -o vi` による編集モードを増強します。
@@ -98,6 +98,31 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 > デモ
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
+
+## これまでとこれから
+
+このプロジェクトは初めは `.bashrc` の片隅で行われた小さな実験からスタートしました。
+2013年5月に `zsh-syntax-highlighting` のとある記事に触発されたのがきっかけでした。
+初めは数百行のコードを書けば構文着色が簡単に実現できるのではないかと思って始めた実験ですが、
+すぐに行エディタを根本から書き直さなければ実現できないのではないかということが分かり、
+独立したファイルにコードを移動した後に `ble.sh` という名前を与えました。
+この名前は Zsh の行エディタ (*ZLE* (*Zsh Line Editor*)) を真似て、
+但しシェルで書かれているという事を意識して `.sh` という拡張子にしたように記憶しています。
+`ble.sh` の読み方について屡々訊かれるのですが、最初に書いたように特に定まった読み方はありません。
+最初の実験は2週間程コードを弄って原理的に行エディタを作れるという事を結論づけて終わりました。
+本格的な実装が始まったのは2015年2月の事で12月には公開しました。
+その時点で行エディタとしては普段遣いに堪える程度に完成していました。
+Vimモードの実装は2017年9月に始まり2018年3月に一先ず完成としました。
+続いて補完の拡張は2018年8月に始まり2019年2月には一通り完成しました。
+現在は漫然とメンテナンスしている所でいつになるかは分かりませんが、以下に挙げるような機能も加えたいと何となく考えています。
+
+- 2013-06 v0.0 -- 実験
+- 2015-12 v0.1 -- 構文着色 [[v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14)]
+- 2018-03 v0.2 -- Vim モード [[v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6)]
+- 2019-02 v0.3 -- 拡張補完 [[v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3)]
+- 20xx-xx v0.4 (plan) -- プログラム着色 [`master`]
+- 20xx-xx v0.5 (plan) -- TUI設定画面
+- 20xx-xx v0.6 (plan) -- エラー診断?
 
 # 1 使い方
 
@@ -151,8 +176,8 @@ Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` 
 現在、安定版は開発版に比べてかなり古いので様々な機能が欠けている事にご注意下さい。
 
 - 開発版 [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
-- 安定版 [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) +拡張補完
-- 安定版 [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) +Vim モード
+- 安定版 [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) 拡張補完
+- 安定版 [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) Vim モード
 - 安定版 [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) 構文着色
 
 ## 1.2 `ble.sh` をダウンロードして試す (旧バージョン ble-0.3 201902版)<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
@@ -491,6 +516,13 @@ Bash 4.0 以降では自動補完が有効になり、予測候補が表示さ�
 ```bash
 # blerc
 ble-sabbrev L='| less'
+```
+
+実際に実行したいコマンドに含まれる可能性の低い単語として、`\` で始まる単語を静的略語展開に登録することもお薦めです。
+
+```bash
+# blerc
+ble-sabbrev '\L'='| less'
 ```
 
 # 4 謝辞

@@ -3,9 +3,6 @@
 all:
 .PHONY: all
 
-
-all: D1619.wcwidth.exe
-D1619.wcwidth.exe: D1619.wcwidth.cpp
+all: canvas.c2w.wcwidth.exe
+canvas.c2w.wcwidth.exe: canvas.c2w.wcwidth.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $<
-
-

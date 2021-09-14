@@ -450,12 +450,12 @@ function ble/debug/.check-leak-variable {
   fi
 }
 function ble/debug/.list-leak-variable {
-  local exclude_file=${_ble_base_repository:-$_ble_base}/memo/leakvar-exclude.txt
-  if [[ ! -f $exclude_file ]]; then
-    ble/util/print "$exclude_file: not found." >&2
+  local _ble_local_exclude_file=${_ble_base_repository:-$_ble_base}/make/debug.leakvar.exclude-list.txt
+  if [[ ! -f $_ble_local_exclude_file ]]; then
+    ble/util/print "$_ble_local_exclude_file: not found." >&2
     return 1
   fi
-  set | ble/bin/grep -Eo '^[[:alnum:]_]+=' | ble/bin/grep -Evf memo/
+  set | ble/bin/grep -Eo '^[[:alnum:]_]+=' | ble/bin/grep -Evf "$_ble_local_exclude_file"
 }
 
 function ble/debug/print-variables/.append {
@@ -2046,6 +2046,9 @@ function ble/builtin/trap/install-hook {
 ##   @param[in] filename
 ##     読み取るファイルの場所を指定します。
 ##
+## Note: bash-5.2 以上で $(< file) を使う可能性も考えたが、末尾改行が
+##   消えてしまう事、末尾改行を未定義にしてまで使う程の速度差もない事、
+##   などから採用は見送る事にした。
 if ((_ble_bash>=40000)); then
   function ble/util/readfile { # 155ms for man bash
     local -a _ble_local_buffer=()

@@ -79,7 +79,8 @@ You may also install `ble.sh` through package-management systems (currently only
   integrates automatic filtering of candidates into menu completion (with Bash 4.0+).
   There are other functionalities such as
   [**dabbrev**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-dabbrev) and
-  [**sabbrev**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-sabbrev) like `zsh-abbreviations`.
+  [**sabbrev**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-sabbrev) like
+  [*zsh abbreviations*](https://unix.stackexchange.com/questions/6152/zsh-alias-expansion) or [`zsh-abbr`](https://github.com/olets/zsh-abbr).
 - **Vim editing mode**: Enhance `readline`'s vi editing mode available with `set -o vi`.
   Vim editing mode supports various vim modes such as char/line/block visual/select mode, replace mode,
   command mode, operator pending mode as well as insert mode and normal mode.
@@ -99,6 +100,28 @@ Of course ble.sh can be used in combination with other Bash configurations such 
 > Demo (version 0.2)
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
+
+## History and roadmap
+
+My little experiment has took place in one corner of my `bashrc` in the end of May, 2013 after I enjoyed some article on `zsh-syntax-highlighting`.
+I initially thought something can be achieved by writing a few hundred of codes
+but soon realized that everything needs to be re-implemented for the authentic support of syntax highlighting in Bash.
+I decided to make it as an independent script `ble.sh`.
+The name stemmed from that of Zsh's line editor, *ZLE* (*Zsh Line Editor*), but suffixed with `.sh` for the implication of being written in shell script.
+I'm occasinally asked about the pronunciation of `ble.sh`, but you can actually pronounce it as you like.
+After the two-week experiment, I was satisfied with my conclusion that it is *possible* to implement a full-featured line editor in Bash that satisfies the actual daily uses.
+The real efforts of improving the prototype implementation for the real uses was started in Feburuary, 2015.
+I released the initial version in the next December. Until then, the basic part of the line editor was completed.
+The implementation of vim mode has been started in September, 2017 and completed in the next March.
+I started working on the enhancement of the completion in August, 2018 and released it in the next February.
+
+- 2013-06 v0.0 -- prototype
+- 2015-12 v0.1 -- Syntax highlighting [[v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14)]
+- 2018-03 v0.2 -- Vim mode [[v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6)]
+- 2019-02 v0.3 -- Enhanced completion [[v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3)]
+- 20xx-xx v0.4 (plan) -- programmable highlighting [`master`]
+- 20xx-xx v0.5 (plan) -- TUI configuration
+- 20xx-xx v0.6 (plan) -- error diagnostics?
 
 # 1 Usage
 
@@ -152,10 +175,9 @@ For download, trial and install, see the description at each release page.
 The stable versions are significantly old compared to the devel version, so many features are unavailable.
 
 - Devel [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
-- Stable [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) +Enhanced completions
-- Stable [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) +Vim mode
+- Stable [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) Enhanced completions
+- Stable [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) Vim mode
 - Stable [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) Syntax highlighting
-
 
 ## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
@@ -461,12 +483,20 @@ If you want to accept the suggestion and immediately run the command, you can us
 
 By registering words to `sabbrev`, the words can be expanded to predefined strings.
 When the cursor is just after a registered word, typing <kbd>SP</kbd> causes `sabbrev` expansion.
-For example, with the following settings, when you type <kbd>SP</kbd> after the command line `command L`, the command line will be expanded to `command | less`.
+For example, with the following settings, when you type <kbd>SP</kbd> after the string `command L`, the command line will be expanded to `command | less`.
 
 ```bash
 # blerc
 ble-sabbrev L='| less'
 ```
+
+The sabbrev names that starts from `\` are also recommended since it is unlikely to conflict with the real words that is a part of the executed command.
+
+```bash
+# blerc
+ble-sabbrev '\L'='| less'
+```
+
 
 # 4 Contributors
 

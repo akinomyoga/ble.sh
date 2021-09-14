@@ -3,6 +3,7 @@
 /ble.sh
 /dist
 /wiki
+/ext
 
 # edit files
 /COMMIT
@@ -21,4 +22,4 @@
 /memo/D0857.pipe
 /memo/D0857.stderr
 /memo/*.exe
-/memo/D1619.wcwidth
+/make/*.exe

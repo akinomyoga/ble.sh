@@ -20,7 +20,7 @@ ifeq ($(GAWK),)
   endif
 endif
 
-MWGPP:=$(GAWK) -f ext/mwg_pp.awk
+MWGPP:=$(GAWK) -f make/mwg_pp.awk
 
 #------------------------------------------------------------------------------
 # ble.sh
@@ -99,9 +99,14 @@ $(OUTDIR)/lib/test-canvas.sh: lib/test-canvas.sh lib/test-canvas.GraphemeCluster
 outdirs += $(OUTDIR)/doc
 outfiles-doc += $(OUTDIR)/doc/README.md
 outfiles-doc += $(OUTDIR)/doc/README-ja_JP.md
-outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
 outfiles-doc += $(OUTDIR)/doc/LICENSE.md
+outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
+outfiles-doc += $(OUTDIR)/doc/ChangeLog.md
+outfiles-doc += $(OUTDIR)/doc/Release.md
 $(OUTDIR)/doc/%: % | $(OUTDIR)/doc
+	cp -p $< $@
+
+$(OUTDIR)/doc/%: docs/% | $(OUTDIR)/doc
 	cp -p $< $@
 
 #------------------------------------------------------------------------------
