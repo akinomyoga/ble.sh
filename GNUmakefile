@@ -41,6 +41,11 @@ $(OUTDIR)/ble.sh: ble.pp GNUmakefile | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ FULLVER=$(FULLVER) \
 	  $(MWGPP) $< >/dev/null
 
+src/canvas.c2w.sh:
+	bash make_command.sh generate-c2w-table > $@
+src/canvas.emoji.sh:
+	bash make_command.sh generate-emoji-table > $@
+
 #------------------------------------------------------------------------------
 # keymap
 
@@ -192,3 +197,4 @@ $(eval $(call DeclareMakeCommand,scan,))
 $(eval $(call DeclareMakeCommand,check,build))
 $(eval $(call DeclareMakeCommand,check-all,build))
 $(eval $(call DeclareMakeCommand,list-functions,))
+

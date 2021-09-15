@@ -31,6 +31,12 @@ function ble/arithmetic/sum {
 #   もしこれらの範囲の文字を幅1以外で表示する端末が有ればそれらのコードを実装し
 #   直す必要がある。その様な変な端末があるとは思えないが。
 
+_ble_util_c2w=()
+_ble_util_c2w_cache=()
+function ble/util/c2w/clear-cache {
+  _ble_util_c2w_cache=()
+}
+
 ## @bleopt char_width_mode
 ##   文字の表示幅の計算方法を指定します。
 ##     bleopt_char_width_mode=east
@@ -49,19 +55,27 @@ function bleopt/check:char_width_mode {
     return 1
   fi
 
-  if [[ $_ble_attached && $value == auto ]]; then
-    ble/util/c2w+auto/update.buff first-line
-    ble/util/buffer.flush >&2
-  fi
+  case $value in
+  (auto)
+    _ble_unicode_c2w_ambiguous=1
+    if [[ $_ble_attached ]]; then
+      ble/util/c2w/test-terminal.buff first-line
+      ble/util/buffer.flush >&2
+    fi ;;
+  (west) _ble_unicode_c2w_ambiguous=1 ;;
+  (east) _ble_unicode_c2w_ambiguous=2 ;;
+  esac
+  ble/util/c2w/clear-cache
 }
-
-_ble_util_c2w=()
 
 ## @fn ble/util/c2w ccode
 ##   @var[out] ret
 function ble/util/c2w {
-  ret=${_ble_util_c2w[$1]}
-  [[ $ret ]] || "ble/util/c2w+$bleopt_char_width_mode" "$1"
+  ret=${_ble_util_c2w_cache[$1]:-${_ble_util_c2w[$1]}}
+  if [[ ! $ret ]]; then
+    "ble/util/c2w+$bleopt_char_width_mode" "$1"
+    _ble_util_c2w_cache[$1]=$ret
+  fi
 }
 ## @fn ble/util/c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
@@ -100,41 +114,75 @@ function ble/util/s2w {
 
 # ---- 文字種判定 ----
 
-## @arr _ble_util_c2w_zenkaku_except
-_ble_util_c2w_zenkaku_min=11904 # 0x2E80
-_ble_util_c2w_zenkaku_max=42192 # 0xA4D0
-_ble_util_c2w_zenkaku_except=(
-  # 0x2E80..0xA4D0 の範囲内で飛び地になっている全角とは限らない文字
-  [0x303F]=1 # 半角スペース
-)
-## @fn ble/util/c2w/.determine-unambiguous
-##   @var[out] ret
-function ble/util/c2w/.determine-unambiguous {
-  local code=$1
-  if ((code<0xA0)); then
-    ret=1
+#%< canvas.c2w.sh
+_ble_unicode_c2w_version=14
+_ble_unicode_c2w_ambiguous=1
+_ble_unicode_c2w_invalid=1
+_ble_unicode_c2w_custom=()
+
+bleopt/declare -n char_width_version auto
+function bleopt/check:char_width_version {
+  if [[ $value == auto ]]; then
+    if [[ $_ble_attached ]]; then
+      ble/util/c2w/test-terminal.buff first-line
+      ble/util/buffer.flush >&2
+    fi
+    ble/util/c2w/clear-cache
     return 0
-  fi
-
-  # 取り敢えず曖昧
-  ret=-1
-
-  # 以下は全角に確定している範囲
-  if ((code<0xFB00)); then
-    ((_ble_util_c2w_zenkaku_min<=code&&code<_ble_util_c2w_zenkaku_max&&!_ble_util_c2w_zenkaku_except[code]||
-      0xAC00<=code&&code<0xD7A4||
-      0xF900<=code||
-      0x1100<=code&&code<0x1160||
-      code==0x2329||code==0x232A)) && ret=2
-  elif ((code<0x10000)); then
-    ((0xFF00<=code&&code<0xFF61||
-      0xFE30<=code&&code<0xFE70||
-      0xFFE0<=code&&code<0xFFE7)) && ret=2
+  elif local ret; ble/unicode/c2w/version2index "$value"; then
+    _ble_unicode_c2w_version=$ret
+    ble/util/c2w/clear-cache
+    return 0
   else
-    ((0x20000<=code&&code<0x2FFFE||
-      0x30000<=code&&code<0x3FFFE)) && ret=2
+    ble/util/print "bleopt: char_width_version: invalid value '$value'." >&2
+    return 1
   fi
 }
+
+# wcwdith 例外 (Unicode 特性からは予想できない値を持っている物)
+# この表は memo/D1619.wcwidth compare_eaw の出力より。
+_ble_unicode_c2w_custom[173]=1                    # U+00ad       Cf A SHY(soft-hyphen)
+let '_ble_unicode_c2w_custom['{1536..1541}']=1'   # U+0600..0605 Cf 1 アラブの数字?
+_ble_unicode_c2w_custom[1757]=1                   # U+06dd       Cf 1 ARABIC END OF AYAH
+_ble_unicode_c2w_custom[1807]=1                   # U+070f       Cf 1 SYRIAC ABBREVIATION MARK
+_ble_unicode_c2w_custom[2274]=1                   # U+08e2       Cf 1 ARABIC DISPUTED END OF AYAH
+_ble_unicode_c2w_custom[69821]=1                  # U+110bd      Cf 1 KAITHI NUMBER SIGN
+_ble_unicode_c2w_custom[69837]=1                  # U+110cd      Cf 1 KAITHI NUMBER SIGN ABOVE
+let '_ble_unicode_c2w_custom['{12872..12879}']=2' # U+3248..324f No A 囲み文字10-80 (8字)
+let '_ble_unicode_c2w_custom['{19904..19967}']=2' # U+4dc0..4dff So 1 易経記号 (6字)
+let '_ble_unicode_c2w_custom['{4448..4607}']=0'   # U+1160..11ff Lo 1 HANGUL JAMO (160字)
+let '_ble_unicode_c2w_custom['{55216..55238}']=0' # U+d7b0..d7c6 Lo 1 HANGUL JAMO EXTENDED-B (1) (23字)
+let '_ble_unicode_c2w_custom['{55243..55291}']=0' # U+d7cb..d7fb Lo 1 HANGUL JAMO EXTENDED-B (2) (49字)
+
+function ble/unicode/c2w {
+  local c=$1
+  ret=${_ble_unicode_c2w_custom[c]}
+  [[ $ret ]] && return 0
+
+  ret=${_ble_unicode_c2w[c]}
+  if [[ ! $ret ]]; then
+    ret=${_ble_unicode_c2w_index[c<0x20000?c>>8:((c>>12)-32+512)]}
+    if [[ $ret == *:* ]]; then
+      local l=${ret%:*} u=${ret#*:} m
+      while ((l+1<u)); do
+        ((m=(l+u)/2))
+        if ((_ble_unicode_c2w_ranges[m]<=c)); then
+          l=$m
+        else
+          u=$m
+        fi
+      done
+      ret=${_ble_unicode_c2w[_ble_unicode_c2w_ranges[l]]}
+    fi
+  fi
+  ret=${_ble_unicode_c2w_UnicodeVersionMapping[ret*_ble_unicode_c2w_UnicodeVersionCount+_ble_unicode_c2w_version]}
+  ((ret<_ble_unicode_c2w_invalid)) &&
+    ret=${_ble_unicode_c2w_invalid:-$((-ret))}
+  ((ret==3)) &&
+    ret=${_ble_unicode_c2w_ambiguous:-1}
+  return 0
+}
+
 
 ## @var _ble_unicode_EmojiStatus_xmaybe
 ## @arr _ble_unicode_EmojiStatus_ranges
@@ -144,9 +192,6 @@ function ble/util/c2w/.determine-unambiguous {
 ##
 ##   ファイル src/canvas.emoji.sh は以下のコマンドで生成する。
 ##   $ ./make_command.sh update-emoji-database
-##
-## Note: canvas.emoji.sh は _ble_util_c2w_zenkaku_except を修正するので、
-## _ble_util_c2w_zenkaku_except の初期化よりも後に include する。
 ##
 #%< canvas.emoji.sh
 
@@ -167,10 +212,12 @@ function bleopt/check:emoji_version {
     return 1
   fi
 
+  ble/util/c2w/clear-cache
   ble/idict#copy _ble_unicode_EmojiStatus "$src"
   builtin eval -- "_ble_unicode_EmojiStatus_ranges=(\"\${${src}_ranges[@]}\")"
   return 0
 }
+function bleopt/check:emoji_width { ble/util/c2w/clear-cache; }
 
 _ble_unicode_EmojiStatus_xIsEmoji='ret&&ret!=_ble_unicode_EmojiStatus_Unqualified'
 function bleopt/check:emoji_opts {
@@ -180,6 +227,7 @@ function bleopt/check:emoji_opts {
   local rex=':min=U\+([0-9a-fA-F]+):'
   [[ :$value: =~ $rex ]] &&
     _ble_unicode_EmojiStatus_xIsEmoji=$_ble_unicode_EmojiStatus_xIsEmoji'&&code>=0x'${BASH_REMATCH[1]}
+  ble/util/c2w/clear-cache
   return 0
 }
 
@@ -210,6 +258,22 @@ function ble/util/c2w/is-emoji {
 
 # ---- char_width_mode ----
 
+function ble/util/c2w+west {
+  if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
+    ((ret=bleopt_emoji_width))
+  else
+    ble/unicode/c2w "$1"
+  fi
+}
+
+function ble/util/c2w+east {
+  if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
+    ((ret=bleopt_emoji_width))
+  else
+    ble/unicode/c2w "$1"
+  fi
+}
+
 ## @fn ble/util/c2w+emacs
 ##   emacs-24.2.1 default char-width-table
 ##   @var[out] ret
@@ -222,8 +286,9 @@ _ble_util_c2w_emacs_wranges=(
  1551 1553 1555 1557 1559 1561 1563 1566 1568 1569 1571 1574 1576 1577 1579 1581 1583 1585 1587 1589
  1591 1593 1595 1597 1599 1600 1602 1603 1611 1612 1696 1698 1714 1716 1724 1726 1734 1736 1739 1740
  1742 1744 1775 1776 1797 1799 1856 1857 1858 1859 1898 1899 1901 1902 1903 1904)
+
 function ble/util/c2w+emacs {
-  local code=$1 al=0 ah=0 tIndex=
+  local code=$1
 
   # bash-4.0 bug workaround
   #   中で使用している変数に日本語などの文字列が入っているとエラーになる。
@@ -232,11 +297,19 @@ function ble/util/c2w+emacs {
   ret=1
   ((code<0xA0)) && return 0
 
-  if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
+  if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$code"; then
     ((ret=bleopt_emoji_width))
     return 0
   fi
 
+  # Note: ble/unicode/c2w を使うとずれる。考えてみれば emacs は各端末
+  # で同じテーブルを使って実装しているので ble/unicode/c2w 等外部の物
+  # を参照せずに実装するべきなのであった。
+  #ble/unicode/c2w "$1"
+  #((ret==3)) || return 0
+
+  # 実は EastAsianWidth=A だけ考えれば良いので下の条件式は単純化できる筈
+  local al=0 ah=0 tIndex=
   ((
     0x3100<=code&&code<0xA4D0||0xAC00<=code&&code<0xD7A4?(
       ret=2
@@ -285,112 +358,114 @@ function ble/util/c2w+emacs {
   return 0
 }
 
-## @fn ble/util/c2w+west
-##   @var[out] ret
-function ble/util/c2w+west {
-  ble/util/c2w/.determine-unambiguous "$1"
-  if ((ret<0)); then
-    if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
-      ((ret=bleopt_emoji_width))
-    elif ((_ble_util_c2w_zenkaku_except[$1]==-2)); then
-      ret=2 # (絵文字の可能性があったため曖昧だった) 全角
-    else
-      ret=1
-    fi
-  fi
-}
-
-## @fn ble/util/c2w+east
-##   @var[out] ret
-_ble_util_c2w_east_wranges=(
- 161 162 164 165 167 169 170 171 174 175 176 181 182 187 188 192 198 199 208 209
- 215 217 222 226 230 231 232 235 236 238 240 241 242 244 247 251 252 253 254 255
- 257 258 273 274 275 276 283 284 294 296 299 300 305 308 312 313 319 323 324 325
- 328 332 333 334 338 340 358 360 363 364 462 463 464 465 466 467 468 469 470 471
- 472 473 474 475 476 477 593 594 609 610 708 709 711 712 713 716 717 718 720 721
- 728 732 733 734 735 736 913 930 931 938 945 962 963 970 1025 1026 1040 1104 1105 1106
- 8208 8209 8211 8215 8216 8218 8220 8222 8224 8227 8228 8232 8240 8241 8242 8244 8245 8246 8251 8252
- 8254 8255 8308 8309 8319 8320 8321 8325 8364 8365 8451 8452 8453 8454 8457 8458 8467 8468 8470 8471
- 8481 8483 8486 8487 8491 8492 8531 8533 8539 8543 8544 8556 8560 8570 8592 8602 8632 8634 8658 8659
- 8660 8661 8679 8680 8704 8705 8706 8708 8711 8713 8715 8716 8719 8720 8721 8722 8725 8726 8730 8731
- 8733 8737 8739 8740 8741 8742 8743 8749 8750 8751 8756 8760 8764 8766 8776 8777 8780 8781 8786 8787
- 8800 8802 8804 8808 8810 8812 8814 8816 8834 8836 8838 8840 8853 8854 8857 8858 8869 8870 8895 8896
- 8978 8979 9312 9450 9451 9548 9552 9588 9600 9616 9618 9622 9632 9634 9635 9642 9650 9652 9654 9656
- 9660 9662 9664 9666 9670 9673 9675 9676 9678 9682 9698 9702 9711 9712 9733 9735 9737 9738 9742 9744
- 9748 9750 9756 9757 9758 9759 9792 9793 9794 9795 9824 9826 9827 9830 9831 9835 9836 9838 9839 9840
- 10045 10046 10102 10112 57344 63744 65533 65534 983040 1048574 1048576 1114110)
-function ble/util/c2w+east {
-  ble/util/c2w/.determine-unambiguous "$1"
-  ((ret>=0)) && return 0
-
+_ble_util_c2w_auto_update_x0=0
+_ble_util_c2w_auto_update_result=()
+function ble/util/c2w+auto {
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
-    return 0
-  elif ((_ble_util_c2w_zenkaku_except[$1]==-2)); then
-    ret=2 # (絵文字の可能性があったため曖昧だった) 全角
-    return 0
-  fi
-
-  local code=$1
-  if ((code<_ble_util_c2w_east_wranges[0])); then
-    ret=1
-    return 0
-  fi
-
-  local l=0 u=${#_ble_util_c2w_east_wranges[@]} m
-  while ((l+1<u)); do
-    ((_ble_util_c2w_east_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
-  done
-  ((ret=((l&1)==0)?2:1))
-  return 0
-}
-
-_ble_util_c2w_auto_width=1
-_ble_util_c2w_auto_update_x0=0
-function ble/util/c2w+auto {
-  ble/util/c2w/.determine-unambiguous "$1"
-  ((ret>=0)) && return 0
-
-  if ((_ble_util_c2w_auto_width==1)); then
-    ble/util/c2w+west "$1"
   else
-    ble/util/c2w+east "$1"
-    ((ret==2&&(ret=_ble_util_c2w_auto_width)))
+    ble/unicode/c2w "$1"
   fi
 }
-function ble/util/c2w+auto/update.buff {
+
+function ble/util/c2w/test-terminal.buff {
   local opts=$1
   local -a DRAW_BUFF=()
-  local ret
-  [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
+  local ret saved_pos=
+  [[ $_ble_attached ]] && { ble/canvas/panel/save-position goto-top-dock; saved_pos=$ret; }
   ble/canvas/put.draw "$_ble_term_sc"
   if ble/util/is-unicode-output; then
-    local achar='▽'
+
+    local -a codes=(
+      # index=0 [EastAsianWidth=A 判定]
+      0x25bd
+
+      # index=1..13 [Unicode version 判定]
+      #   判定用の文字コードは "source
+      #   memo/D1645.list-char_width_version-auto-codes.sh" を用いて生
+      #   成されたリストから選択した。新しい Unicode version が出たら
+      #   再びこれを実行して判定コードを書く事になる。
+      0x9FBC 0x9FC4 0x31B8 0xD7B0 0x3099
+      0x9FCD 0x1F93B 0x312E 0x312F 0x16FE2
+      0x32FF 0x31BB 0x9FFD)
+
+    _ble_util_c2w_auto_update_result=()
     if [[ :$opts: == *:first-line:* ]]; then
       # 画面の右上で判定を行います。
       local cols=${COLUMNS:-80}
       local x0=$((cols-4)); ((x0<0)) && x0=0
       _ble_util_c2w_auto_update_x0=$x0
 
-      ble/canvas/put-cup.draw 1 $((x0+1))
-      ble/canvas/put.draw "$achar"
-      ble/term/CPR/request.draw ble/util/c2w+auto/update.hook
+      local code index=0
+      for code in "${codes[@]}"; do
+        ble/canvas/put-cup.draw 1 $((x0+1))
+        ble/canvas/put.draw "$_ble_term_el"
+        ble/util/c2s $((code))
+        ble/canvas/put.draw "$ret"
+        ble/term/CPR/request.draw "ble/util/c2w/test-terminal.hook $((index++))"
+      done
       ble/canvas/put-cup.draw 1 $((x0+1))
       ble/canvas/put.draw "$_ble_term_el"
     else
       _ble_util_c2w_auto_update_x0=0
-      ble/canvas/put.draw "$_ble_term_cr$achar"
-      ble/term/CPR/request.draw ble/util/c2w+auto/update.hook
+      local code index=0
+      for code in "${codes[@]}"; do
+        ble/util/c2s $((code))
+        ble/canvas/put.draw "$_ble_term_cr$_ble_term_el$ret"
+        ble/term/CPR/request.draw "ble/util/c2w/test-terminal.hook $((index++))"
+      done
     fi
   fi
   ble/canvas/put.draw "$_ble_term_rc"
-  [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
+  [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$saved_pos"
   ble/canvas/bflush.draw
 }
-function ble/util/c2w+auto/update.hook {
-  local l=$1 c=$2
+function ble/util/c2w/test-terminal.hook {
+  local index=$1 l=$2 c=$3
   local w=$((c-1-_ble_util_c2w_auto_update_x0))
-  ((_ble_util_c2w_auto_width=w==1?1:2))
+  _ble_util_c2w_auto_update_result[index]=$w
+  if ((index==0)) && [[ $bleopt_char_width_mode == auto ]]; then
+    if ((w==2)); then
+      bleopt char_width_mode=east
+    else
+      bleopt char_width_mode=west
+    fi
+  elif ((index==13)) && [[ $bleopt_char_width_version == auto ]]; then
+    local -a ws=("${_ble_util_c2w_auto_update_result[@]}")
+    if ((ws[12]==2)); then
+      if ((ws[13]==2)); then
+        bleopt char_width_version=14.0
+      else
+        bleopt char_width_version=13.0
+      fi
+    elif ((ws[11]==2)); then
+      bleopt char_width_version=12.1
+    elif ((ws[10]==2)); then
+      bleopt char_width_version=12.0
+    elif ((ws[9]==2)); then
+      bleopt char_width_version=11.0
+    elif ((ws[8]==2)); then
+      bleopt char_width_version=10.0
+    elif ((ws[7]==2)); then
+      bleopt char_width_version=9.0
+    elif ((ws[5]==0)); then
+      if ((ws[6]==2)); then
+        bleopt char_width_version=8.0
+      else
+        bleopt char_width_version=7.0
+      fi
+    elif ((ws[4]==1&&ws[2]==2)); then
+      bleopt char_width_version=6.3 # or 6.2
+    elif ((ws[3]==2)); then
+      bleopt char_width_version=6.1 # or 6.0
+    elif ((ws[2]==2)); then
+      bleopt char_width_version=5.2
+    elif ((ws[1]==2)); then
+      bleopt char_width_version=5.0
+    else
+      bleopt char_width_version=4.1
+    fi
+  fi
 }
 
 bleopt/declare -v grapheme_cluster extended
@@ -643,8 +718,8 @@ function ble/unicode/GraphemeCluster/match {
 # ble/canvas/attach
 
 function ble/canvas/attach {
-  [[ $bleopt_char_width_mode == auto ]] &&
-    ble/util/c2w+auto/update.buff
+  [[ $bleopt_char_width_mode == auto || $bleopt_char_width_version == auto ]] &&
+    ble/util/c2w/test-terminal.buff
 }
 
 #------------------------------------------------------------------------------

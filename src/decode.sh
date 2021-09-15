@@ -1052,7 +1052,7 @@ function ble-decode-char {
   chars=("$@") ichar=0
   while
     if ((iloop++%50==0)); then
-      ((iloop>50)) && builtin eval -- "$_ble_decode_show_progress_hook"
+      ((iloop>=200)) && builtin eval -- "$_ble_decode_show_progress_hook"
       if [[ ! $ble_decode_char_sync ]] && ble/decode/has-input-for-char; then
         ble/array#push _ble_decode_char_buffer "${chars[@]:ichar}"
         return 148

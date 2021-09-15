@@ -86,11 +86,16 @@ function download {
   local url=$1 dst=$2
   if [[ ! -s $dst ]]; then
     [[ $dst == ?*/* ]] && mkd "${dst%/*}"
-    wget "$url" -O "$dst.part" && mv "$dst.part" "$dst"
+    if type wget &>/dev/null; then
+      wget "$url" -O "$dst.part" && mv "$dst.part" "$dst"
+    else
+      echo "make_command: 'wget' not found." >&2
+      exit 2
+    fi
   fi
 }
 
-function sub:update-emoji-database {
+function sub:generate-emoji-table {
   #local unicode_version=$(wget https://unicode.org/Public/emoji/ -O - | grep -Eo 'href="[0-9]+\.[0-9]+/"' | sed 's,^href=",,;s,/"$,,' | tail -n 1)
   local unicode_version=14.0
   local cache=out/data/unicode-emoji-$unicode_version.txt
@@ -130,9 +135,6 @@ function sub:update-emoji-database {
         data_qtype[emoji_version, char_code] = char_qtype;
         if (char_emoji_version == emoji_version) break;
       }
-
-      if (0x2E80 <= char_code && char_code <= 0xA4D0)
-        printf("_ble_util_c2w_zenkaku_except[0x%04X]=-2\n", char_code);
     }
 
     function register_RegionalIndicators(_, code) {
@@ -275,7 +277,7 @@ function sub:update-emoji-database {
     }
 
     END { print_database(); }
-  ' "$cache" | ifold -w 131 --spaces --no-text-justify --indent=.. > src/canvas.emoji.sh
+  ' "$cache" | ifold -w 131 --spaces --no-text-justify --indent=..
 }
 
 function sub:generate-grapheme-cluster-table {
@@ -575,8 +577,10 @@ function sub:update-EastAsianWidth {
         cjkwidth = 1;
       }
 
-      function determine_width(eastAsianWidth, generalCategory) {
-        if (generalCategory ~ /^(M[ne]|Cf)$/)
+      function determine_width(eastAsianWidth, generalCategory, _, eaw) {
+        if (generalCategory ~ /^(C[ncs]|Z[lp])$/)
+          return -1;
+        else if (generalCategory ~ /^(M[ne]|Cf)$/)
           return 0;
         else if (eastAsianWidth == "A")
           return cjkwidth;
@@ -619,7 +623,357 @@ function sub:update-EastAsianWidth {
         register_width(prev_end, 0x110000, 1);
       }
     ' "$data" > "out/data/c2w.eaw-$version.txt"
+
+    gawk '
+      function lower_bound(arr, N, value, _, l, u, m) {
+        l = 0;
+        u = N - 1;
+        while (u > l) {
+          m = int((l + u) / 2);
+          if (arr[m] < value)
+            l = m + 1;
+          else
+            u = m;
+        }
+        return l;
+      }
+      function upper_bound(arr, N, value, _, l, u, m) {
+        l = 0;
+        u = N - 1;
+        while (u > l) {
+          m = int((l + u) / 2);
+          if (arr[m] <= value)
+            l = m + 1;
+          else
+            u = m;
+        }
+        return l;
+      }
+      function arr_range_inf(arr, N, value, _, r) {
+        i = lower_bound(arr, N, value);
+        if (i > 0 && value < arr[i]) i--;
+        return i;
+      }
+      function arr_range_sup(arr, N, value, _, r) {
+        i = upper_bound(arr, N, value);
+        if (i + 1 < N && arr[i] < value) i++;
+        return i;
+      }
+
+      /^[[:space:]]*(#|$)/ {next;}
+
+      BEGIN {
+        cjkwidth = 3;
+        for (code = 0; code < 0x110000; code++) table[code] = -1;
+      }
+
+      function determine_width(eastAsianWidth, generalCategory) {
+        if (generalCategory ~ /^(M[ne]|Cf)$/) return 0;
+
+        if (eastAsianWidth == "A")
+          eaw = cjkwidth;
+        else if (eastAsianWidth == "W" || eastAsianWidth == "F")
+          eaw = 2;
+        else
+          eaw = 1;
+
+        if (generalCategory ~ /^(C[ncs]|Z[lp])$/)
+          return -eaw;
+        else
+          return eaw;
+      }
+
+      $2 == "#" {
+        if (match($1, /^([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+          beg = strtonum("0x" m[1]);
+          end = beg + 1;
+          eaw = m[2];
+        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+          beg = strtonum("0x" m[1]);
+          end = strtonum("0x" m[2]) + 1;
+          eaw = m[3];
+        } else {
+          next;
+        }
+
+        w = determine_width(eaw, $3);
+        for (code = beg; code < end; code++)
+          table[code] = w;
+      }
+
+      function dump_table(filename) {
+        printf "" > filename;
+        out = "";
+        for (c = 0; c < 0x110000; c++) {
+          out = out " " table[c];
+          if ((c + 1) % 32 == 0) {
+            print out >> filename;
+            out = "";
+          }
+        }
+        close(filename);
+      }
+
+      function output_table(_, output_values, output_ranges, code, c0, v0, ranges, irange, p, c1, c2) {
+        ISOLATED_THRESHOLD = 1; # 2 や 3 も試したが 1 が最も compact
+
+        irange = 0;
+        output_values = " ";
+        output_ranges = " ";
+        for (code = 0; code < 0x110000; ) {
+          c0 = code++;
+          v0 = table[c0];
+
+          while (code < 0x110000 && table[code] == v0) code++;
+
+          if (code - c0 <= ISOLATED_THRESHOLD) {
+            for (; c0 < code; c0++)
+              output_values = output_values " [" c0 "]=" v0;
+          } else {
+            ranges[irange++] = c0;
+            output_values = output_values " [" c0 "]=" v0;
+            output_ranges = output_ranges " " c0;
+          }
+        }
+        ranges[irange++] = 0x110000;
+        output_ranges = output_ranges " " 0x110000;
+
+        sub(/^[[:space:]]+/, "", output_values);
+        sub(/^[[:space:]]+/, "", output_ranges);
+        print "_ble_unicode_EastAsianWidth_c2w=(" output_values ")"
+        print "_ble_unicode_EastAsianWidth_c2w_ranges=(" output_ranges ")"
+
+        output_index = " ";
+        for (c1 = 0; c1 < 0x20000; c1 = c2) {
+          c2 = c1 + 256;
+          i1 = arr_range_inf(ranges, irange, c1);
+          i2 = arr_range_sup(ranges, irange, c2);
+
+          # assertion
+          if (!(ranges[i1] <= c1 && c2 <= ranges[i2]))
+            print "Error " ranges[i1] "<=" c1,c2 "<=" ranges[i2] > "/dev/stderr";
+
+          if (i2 - i1 == 1)
+            output_index = output_index " " table[c1];
+          else
+            output_index = output_index " " i1 ":" i2;
+        }
+        for (c1; c1 < 0x110000; c1 = c2) {
+          c2 = c1 + 0x1000;
+          i1 = arr_range_inf(ranges, irange, c1);
+          i2 = arr_range_sup(ranges, irange, c2);
+          if (i2 - i1 == 1)
+            output_index = output_index " " table[c1];
+          else
+            output_index = output_index " " i1 ":" i2;
+        }
+
+        sub(/^[[:space:]]+/, "", output_index);
+        print "_ble_unicode_EastAsianWidth_c2w_index=(" output_index ")";
+      }
+
+      END {
+        output_table();
+        dump_table("out/data/c2w.eaw-'"$version"'.dump");
+      }
+
+    ' "$data" | ifold -w 131 --spaces --no-text-justify --indent=.. > "out/data/c2w.eaw-$version.sh"
   done
+}
+
+function sub:generate-c2w-table {
+  local version
+  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0}.0; do
+    local data=out/data/unicode-EastAsianWidth-$version.txt
+    download http://www.unicode.org/Public/$version/ucd/EastAsianWidth.txt "$data"
+    echo "__unicode_version__ $version"
+    cat "$data"
+  done | gawk '
+    function lower_bound(arr, N, value, _, l, u, m) {
+      l = 0;
+      u = N - 1;
+      while (u > l) {
+        m = int((l + u) / 2);
+        if (arr[m] < value)
+          l = m + 1;
+        else
+          u = m;
+      }
+      return l;
+    }
+    function upper_bound(arr, N, value, _, l, u, m) {
+      l = 0;
+      u = N - 1;
+      while (u > l) {
+        m = int((l + u) / 2);
+        if (arr[m] <= value)
+          l = m + 1;
+        else
+          u = m;
+      }
+      return l;
+    }
+    function arr_range_inf(arr, N, value, _, r) {
+      i = lower_bound(arr, N, value);
+      if (i > 0 && value < arr[i]) i--;
+      return i;
+    }
+    function arr_range_sup(arr, N, value, _, r) {
+      i = upper_bound(arr, N, value);
+      if (i + 1 < N && arr[i] < value) i++;
+      return i;
+    }
+
+    function determine_width(EastAsianWidth, GeneralCategory) {
+      if (GeneralCategory ~ /^(M[ne]|Cf)$/) return 0;
+
+      if (EastAsianWidth == "A")
+        eaw = cjkwidth;
+      else if (EastAsianWidth == "W" || EastAsianWidth == "F")
+        eaw = 2;
+      else
+        eaw = 1;
+
+      if (GeneralCategory ~ /^(C[ncs]|Z[lp])$/)
+        return -eaw;
+      else
+        return eaw;
+    }
+
+    BEGIN {
+      cjkwidth = 3;
+      iucsver = -1;
+    }
+
+    /^[[:space:]]*(#|$)/ {next;}
+
+    $1 == "__unicode_version__" {
+      print "Processing ucsver " $2 > "/dev/stderr";
+      ucsver = $2;
+      iucsver++;
+      for (code = 0; code < 0x110000; code++)
+        table[iucsver, code] = -1;
+
+      if ($2 ~ /^[0-9]+\.[0-9]+\.[0-9]*$/)
+        sub(/\.[0-9]*$/, "", $2)
+      g_version_name[iucsver] = $2;
+      next;
+    }
+
+    $2 == "#" {
+      if (match($1, /^([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        beg = strtonum("0x" m[1]);
+        end = beg + 1;
+        eaw = m[2];
+      } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        beg = strtonum("0x" m[1]);
+        end = strtonum("0x" m[2]) + 1;
+        eaw = m[3];
+      } else {
+        next;
+      }
+
+      w = determine_width(eaw, $3);
+      for (code = beg; code < end; code++) table[iucsver, code] = w;
+    }
+
+    function combine_version(vermap_count, vermap_output, vermap_v2i, c, v, value) {
+      vermap_count = 0;
+      vermap_output = "";
+      for (c = 0; c < 0x110000; c++) {
+        value = table[0, c];
+        for (v = 1; v <= iucsver; v++)
+          value = value " " table[v, c];
+
+        if (vermap_v2i[value] == "") {
+          vermap_v2i[value] = vermap_count++;
+          vermap_output = vermap_output "  " value "\n"
+        }
+        table[c] = vermap_v2i[value];
+      }
+      print "_ble_unicode_c2w_UnicodeVersionCount=" iucsver + 1;
+      print "_ble_unicode_c2w_UnicodeVersionMapping=(";
+      printf("%s", vermap_output);
+      print ")";
+    }
+
+    function output_table(_, output_values, output_ranges, code, c0, v0, ranges, irange, p, c1, c2) {
+      ISOLATED_THRESHOLD = 1; # 2 や 3 も試したが 1 が最も compact
+
+      irange = 0;
+      output_values = " ";
+      output_ranges = " ";
+      for (code = 0; code < 0x110000; ) {
+        c0 = code++;
+        v0 = table[c0];
+
+        while (code < 0x110000 && table[code] == v0) code++;
+
+        if (code - c0 <= ISOLATED_THRESHOLD) {
+          for (; c0 < code; c0++)
+            output_values = output_values " [" c0 "]=" v0;
+        } else {
+          ranges[irange++] = c0;
+          output_values = output_values " [" c0 "]=" v0;
+          output_ranges = output_ranges " " c0;
+        }
+      }
+      ranges[irange++] = 0x110000;
+      output_ranges = output_ranges " " 0x110000;
+
+      sub(/^[[:space:]]+/, "", output_values);
+      sub(/^[[:space:]]+/, "", output_ranges);
+      print "_ble_unicode_c2w=(" output_values ")"
+      print "_ble_unicode_c2w_ranges=(" output_ranges ")"
+
+      output_index = " ";
+      for (c1 = 0; c1 < 0x20000; c1 = c2) {
+        c2 = c1 + 256;
+        i1 = arr_range_inf(ranges, irange, c1);
+        i2 = arr_range_sup(ranges, irange, c2);
+
+        # assertion
+        if (!(ranges[i1] <= c1 && c2 <= ranges[i2]))
+          print "Error " ranges[i1] "<=" c1,c2 "<=" ranges[i2] > "/dev/stderr";
+
+        if (i2 - i1 == 1)
+          output_index = output_index " " table[c1];
+        else
+          output_index = output_index " " i1 ":" i2;
+      }
+      for (c1; c1 < 0x110000; c1 = c2) {
+        c2 = c1 + 0x1000;
+        i1 = arr_range_inf(ranges, irange, c1);
+        i2 = arr_range_sup(ranges, irange, c2);
+        if (i2 - i1 == 1)
+          output_index = output_index " " table[c1];
+        else
+          output_index = output_index " " i1 ":" i2;
+      }
+
+      sub(/^[[:space:]]+/, "", output_index);
+      print "_ble_unicode_c2w_index=(" output_index ")";
+    }
+
+    function generate_version_function() {
+      print "function ble/unicode/c2w/version2index {";
+      print "  case $1 in";
+      for (v = 0; v <= iucsver; v++)
+        print "  (" g_version_name[v] ") ret=" v " ;;";
+      print "  (*) return 1 ;;";
+      print "  esac";
+      print "}"
+      print "_ble_unicode_c2w_version=" iucsver;
+    }
+
+    END {
+      print "Combining Unicode versions..." > "/dev/stderr";
+      combine_version();
+      print "Generating tables..." > "/dev/stderr";
+      output_table();
+      generate_version_function();
+    }
+  ' "$data" | ifold -w 131 --spaces --no-text-justify --indent=..
 }
 
 function sub:update-GeneralCategory {

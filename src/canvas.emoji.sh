@@ -3,10 +3,6 @@ _ble_unicode_EmojiStatus_FullyQualified=1
 _ble_unicode_EmojiStatus_MinimallyQualified=2
 _ble_unicode_EmojiStatus_Unqualified=3
 _ble_unicode_EmojiStatus_Component=4
-_ble_util_c2w_zenkaku_except[0x3030]=-2
-_ble_util_c2w_zenkaku_except[0x303D]=-2
-_ble_util_c2w_zenkaku_except[0x3297]=-2
-_ble_util_c2w_zenkaku_except[0x3299]=-2
 _ble_unicode_EmojiStatus_xmaybe='8596<=code&&code<=11036||127344<=code&&code<=129782'
 _ble_unicode_EmojiStatus_0100_ranges=(8596 8602 8617 8619 8986 8988 9193 9197 9204 9208 9211 9642 9644 9723 9725 9728 9733 9748
   9750 9762 9764 9774 9776 9784 9787 9800 9812 9829 9833 9878 9885 9898 9900 9904 9906 9917 9919 9924 9926 9968 9970 9975 9979

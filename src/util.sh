@@ -5583,7 +5583,7 @@ function ble/term/CPR/request.draw {
 function ble/term/CPR/notify {
   local hook=${_ble_term_CPR_hook[0]}
   ble/array#shift _ble_term_CPR_hook
-  [[ ! $hook ]] || "$hook" "$1" "$2"
+  [[ ! $hook ]] || builtin eval "$hook $1 $2"
 }
 
 #---- SGR(>4): modifyOtherKeys ------------------------------------------------

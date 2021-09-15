@@ -290,6 +290,17 @@
 #bleopt char_width_mode=auto
 
 
+## "char_width_version" specifies the Unicode version that char width
+## determination bases on.  When "auto" is specified, ble.sh
+## automatically tests the behavior of the terminal on startup and try
+## to determine the appropriate version.  Supported versions are
+## "4.1", "5.0", "5.2", "6.0", "6.1", "6.2", "6.3", "7.0", "8.0",
+## "9.0", "10.0", "11.0", "12.0", "12.1", and "13.0".  The default
+## value is "auto".
+
+#bleopt char_width_version=auto
+
+
 ## "emoji_width" specifies the width of emoji characters.  If an empty value is
 ## specified, special treatment of emoji is disabled.
 
