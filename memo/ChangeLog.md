@@ -160,6 +160,7 @@
 - global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 44e6ec1
 - complete: fix a task scheduling bug of referencing two different clocks (reported by rashil2000) `#D1636` fea5f5b
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
+- decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 0000000
 
 ## Optimization
 

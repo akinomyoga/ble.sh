@@ -5374,6 +5374,17 @@ bash_tips
 
 2021-09-16
 
+  * decode: failglob で cmap 初期化時にエラーになる問題 [#D1647]
+
+    Solaris で試している時に気づいた。bashrc の中で ble-bind を実行して、cmap
+    initialization が其処で走ると failglob の時に cmap cache の読み取りに失敗す
+    る。
+
+    原因は _ble_decode_csimap_kitty_u に直接 keyname が格納されていて、中でも
+    '*' が悪さをしているという事だった。cache は declare -p による dump で生成
+    しているので本来は quote されている筈だが、容量を節約する為に quote を外し
+    ていたのが原因だった (kitty_u 以外は整数なので quote の必要はなかった)。
+
   * edit: stdout.off で stderr だけ suppress という案について (motivated by rashil2000) [#D1646]
     https://github.com/akinomyoga/ble.sh/issues/133#issuecomment-910543950
 

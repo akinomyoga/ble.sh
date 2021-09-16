@@ -291,6 +291,29 @@ function ble/init:cmap/initialize {
   ble/init:cmap/bind-single-csi '2 K' S-delete
   ble/init:cmap/bind-single-csi 'P'   delete
 
+  # kitty specific "CSI ... u" sequences
+  _ble_decode_csimap_kitty_u=(
+    [57358]=capslock [57359]=scrolllock [57360]=numlock [57361]=print [57362]=pause [57363]=menu
+
+    [57376]=f13 [57377]=f14 [57378]=f15 [57379]=f16 [57380]=f17 [57381]=f18 [57382]=f19 [57383]=f20
+    [57384]=f21 [57385]=f22 [57386]=f23 [57387]=f24 [57388]=f25 [57389]=f26 [57390]=f27 [57391]=f28
+    [57392]=f29 [57393]=f30 [57394]=f31 [57395]=f32 [57396]=f33 [57397]=f34 [57398]=f35
+
+    [57399]=0 [57400]=1 [57401]=2 [57402]=3 [57403]=4 [57404]=5 [57405]=6 [57406]=7 [57407]=8 [57408]=9
+    [57409]='.' [57410]='/' [57411]='*' [57412]='-' [57413]='+' [57414]=RET [57415]='=' [57416]=','
+    [57417]=left [57418]=right [57419]=up [57420]=down
+    [57421]=prior [57422]=next [57423]=home [57424]=end [57425]=insert [57426]=delete [57427]=begin
+
+    [57428]=media_play [57429]=media_pause [57430]=media_play_pause [57431]=media_reverse
+    [57432]=media_stop [57433]=media_fast_forward [57434]=media_rewind [57435]=media_track_next
+    [57436]=media_track_prev [57437]=media_record [57438]=lower_volume [57439]=raise_volume
+    [57440]=mute_volume
+
+    [57441]=lshift [57442]=lcontrol [57443]=lalter [57444]=lsuper [57445]=lhyper [57446]=lmeta
+    [57447]=rshift [57448]=rcontrol [57449]=ralter [57450]=rsuper [57451]=rhyper [57452]=rmeta
+    [57453]=iso_shift3 [57454]=iso_shift5
+  )
+
   ble/edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
 }
 
