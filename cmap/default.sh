@@ -61,10 +61,26 @@ function ble-bind-function-key+default {
     ble-bind --csi '5~' end
     ble-bind --csi '6~' next
   else
-    ble-bind --csi '1~' home
+    # Note: openSUSE の /etc/inputrc.keys が home/end と find/select
+    #   を別のキーと見做して誰も使わない keybinding を設定しているので、
+    #   home/end が上書きされてしまう。仕方がないので TERM=xterm の時
+    #   のみ find/select を独立したキーとして取り扱う事にする。これで
+    #   動かなくなる設定も存在するかもしれないが、取り敢えず openSUSE
+    #   inputrc を優先させてみる事にする。
+    #
+
+    # 調べると DEC keyboard では home/end の位置に find/select と印字
+    # されている。幾つかの端末で 1~/4~ が home/end になっているのはこ
+    # れが由来だろう。
+    if [[ $kend == $'\e[F' && ( $TERM == xterm || $TERM == xterm-* || $TERM == kvt ) ]]; then
+      ble-bind --csi '1~' find
+      ble-bind --csi '4~' select
+    else
+      ble-bind --csi '1~' home
+      ble-bind --csi '4~' end
+    fi
     ble-bind --csi '2~' insert
     ble-bind --csi '3~' delete
-    ble-bind --csi '4~' end
     ble-bind --csi '5~' prior
     ble-bind --csi '6~' next
   fi
@@ -133,11 +149,36 @@ function ble-bind-function-key+default {
   ble-bind -k 'ESC [ Z' S-tab
 
   # cygwin specific
-  ble-bind -k 'ESC [ [ A' f1
-  ble-bind -k 'ESC [ [ B' f2
-  ble-bind -k 'ESC [ [ C' f3
-  ble-bind -k 'ESC [ [ D' f4
-  ble-bind -k 'ESC [ [ E' f5
+  ble/cmap/default/bind-single-csi '[ A' f1
+  ble/cmap/default/bind-single-csi '[ B' f2
+  ble/cmap/default/bind-single-csi '[ C' f3
+  ble/cmap/default/bind-single-csi '[ D' f4
+  ble/cmap/default/bind-single-csi '[ E' f5
+
+  # sun specific (Solaris)
+  ble/cmap/default/bind-single-csi '2 4 7 z' insert
+  ble/cmap/default/bind-single-csi '2 1 4 z' home
+  ble/cmap/default/bind-single-csi '2 2 0 z' end
+  ble/cmap/default/bind-single-csi '2 2 2 z' prior
+  ble/cmap/default/bind-single-csi '2 1 6 z' next
+  ble/cmap/default/bind-single-csi '2 2 4 z' f1
+  ble/cmap/default/bind-single-csi '2 2 5 z' f2
+  ble/cmap/default/bind-single-csi '2 2 6 z' f3
+  ble/cmap/default/bind-single-csi '2 2 7 z' f4
+  ble/cmap/default/bind-single-csi '2 2 8 z' f5
+  ble/cmap/default/bind-single-csi '2 2 9 z' f6
+  ble/cmap/default/bind-single-csi '2 3 0 z' f7
+  ble/cmap/default/bind-single-csi '2 3 1 z' f8
+  ble/cmap/default/bind-single-csi '2 3 2 z' f9
+  ble/cmap/default/bind-single-csi '2 3 3 z' f10
+  ble/cmap/default/bind-single-csi '2 3 4 z' f11
+  ble/cmap/default/bind-single-csi '2 3 5 z' f12
+  # ble/cmap/default/bind-single-csi '2 z'     insert # terminfo
+  # ble/cmap/default/bind-single-csi '3 z'     delete # terminfo
+  # ble/cmap/default/bind-single-csi '1 9 2 z' f11
+  # ble/cmap/default/bind-single-csi '1 9 3 z' f12
+  ble/cmap/default/bind-single-csi '1 z' find   # from xterm ctlseqs
+  ble/cmap/default/bind-single-csi '4 z' select # from xterm ctlseqs
 
   ble-bind -k "CAN @ S" shift
   ble-bind -k "CAN @ a" alter
