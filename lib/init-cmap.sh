@@ -125,10 +125,26 @@ function ble/init:cmap/initialize {
     ble-bind --csi '5~' end
     ble-bind --csi '6~' next
   else
-    ble-bind --csi '1~' home
+    # Note: openSUSE の /etc/inputrc.keys が home/end と find/select
+    #   を別のキーと見做して誰も使わない keybinding を設定しているので、
+    #   home/end が上書きされてしまう。仕方がないので TERM=xterm の時
+    #   のみ find/select を独立したキーとして取り扱う事にする。これで
+    #   動かなくなる設定も存在するかもしれないが、取り敢えず openSUSE
+    #   inputrc を優先させてみる事にする。
+    #
+
+    # 調べると DEC keyboard では home/end の位置に find/select と印字
+    # されている。幾つかの端末で 1~/4~ が home/end になっているのはこ
+    # れが由来だろう。
+    if [[ $kend == $'\e[F' && ( $TERM == xterm || $TERM == xterm-* || $TERM == kvt ) ]]; then
+      ble-bind --csi '1~' find
+      ble-bind --csi '4~' select
+    else
+      ble-bind --csi '1~' home
+      ble-bind --csi '4~' end
+    fi
     ble-bind --csi '2~' insert
     ble-bind --csi '3~' delete
-    ble-bind --csi '4~' end
     ble-bind --csi '5~' prior
     ble-bind --csi '6~' next
   fi
@@ -264,6 +280,8 @@ function ble/init:cmap/initialize {
   # ble/init:cmap/bind-single-csi '3 z'     delete # terminfo
   # ble/init:cmap/bind-single-csi '1 9 2 z' f11
   # ble/init:cmap/bind-single-csi '1 9 3 z' f12
+  ble/init:cmap/bind-single-csi '1 z' find   # from xterm ctlseqs
+  ble/init:cmap/bind-single-csi '4 z' select # from xterm ctlseqs
 
   # 修飾キー 'CAN @ ?'
   #

@@ -96,7 +96,7 @@
 - keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 11ac106
 - main: show notifications against debug versions of Bash `#D1612` 8f974aa
 - term: update `vte` identification `#D1620` 00e74d8
-- edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` 0000000
+- edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
 
 ## Fixes
 
@@ -160,7 +160,7 @@
 - global: work around readonly `TMOUT` (reported by farmerbobathan) `#D1630` 44e6ec1
 - complete: fix a task scheduling bug of referencing two different clocks (reported by rashil2000) `#D1636` fea5f5b
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
-- decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 0000000
+- decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
 
 ## Optimization
 
@@ -179,7 +179,7 @@
   - util (`ble/util/assign`): work around subshell conflicts `#D1578` 6e4bb12
 - history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
-  - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 0000000
+  - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
 
 ## Compatibility
 
@@ -199,6 +199,7 @@
 - main: work around `set -B` and `set -k` `#D1628` a860769
 - term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 92c7b26
 - cmap: add `st`-specific escape sequences for cursor keys `#D1633` acfb879
+- cmap: distinguish <kbd>find</kbd>/<kbd>select</kbd> from <kbd>home</kbd>/<kbd>end</kbd> for openSUSE `inputrc.keys` (reported by cornfeedhobo) `#D1648` 0000000
 
 ## Internal changes and fixes
 

@@ -5372,6 +5372,33 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-09-21
+
+  * cmap: home/end が openSUSE で効かない (reported by cornfeedhobo) [#D1648]
+    https://web.libera.chat/?channel=#bash-it
+
+    home/end が効かない。これもまた openSUSE の問題の可能性はある。
+    これは /etc/inputrc.keys の以下の行が原因であった。
+
+    https://github.com/openSUSE/aaa_base/blob/master/files/etc/inputrc.keys#L233-L234
+
+    そもそも find/select は terminfo にも存在しないし、terminfo を参照している
+    だけでは判定する事は不可能である。つまり TERM を直接見て判断しないと
+    find/select を検出するのは不可能である。一方で openSUSE inputrc.keys は直接
+    term を参照している。
+
+    また openSUSE に対して問題を報告しようと思ったが、xterm 決め打ちならば 1~,
+    4~ は find/select とする事に明確な問題がある訳でもない様な気がする。問題が
+    発生するとすれば screen の xterm-256color emulation であるが、どうも確認し
+    た感じだと手元の screen.xterm-256color と向こうの screen.xterm-256color で
+    khome, kend の内容が異なる様である。openSUSE の screen は khome, kend は
+    \e[H, \e[F になっているが、手元の screen.xterm-256color だと khome=\e[1~,
+    kend=\e[4~ になっている。
+
+    もう面倒なので find/select に対応する事にする。結局誰も使わないキーの様な気
+    もするが、単にトラブルを避ける為に無視するキーの名前という事になる。
+    →実際に openSUSE で試してみて動作する事を確認した。
+
 2021-09-16
 
   * decode: failglob で cmap 初期化時にエラーになる問題 [#D1647]
