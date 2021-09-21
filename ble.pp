@@ -1413,6 +1413,7 @@ function ble/base/unload {
 blehook EXIT+=ble/base/unload
 
 _ble_base_attach_from_prompt=
+_ble_base_attach_PROMPT_COMMAND=()
 ## @fn ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
 function ble/base/attach-from-PROMPT_COMMAND {
 #%if measure_load_time
@@ -1424,14 +1425,15 @@ function ble/base/attach-from-PROMPT_COMMAND {
       ble/array#replace PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
       blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND
     else
-      local prompt_command=$1 lambda=$2
+      local save_index=$1 lambda=$2
 
       # 待避していた内容を復元・実行
       [[ $PROMPT_COMMAND == "$lambda" ]] || local PROMPT_COMMAND
-      PROMPT_COMMAND=$prompt_command
+      PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
       local ble_base_attach_from_prompt_command=processing
       ble/prompt/update/.eval-prompt_command 2>&3
       ble/util/unlocal ble_base_attach_from_prompt_command
+      _ble_base_attach_PROMPT_COMMAND[save_index]=$PROMPT_COMMAND
       blehook PRECMD-="$lambda" || ((1)) # set -e 対策
 
       # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
@@ -1501,9 +1503,10 @@ ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
         blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
       fi
     else
-      local q=\' Q="'\''" prompt_command=${PROMPT_COMMAND-}
+      local save_index=${#_ble_base_attach_PROMPT_COMMAND[@]}
+      _ble_base_attach_PROMPT_COMMAND[save_index]=${PROMPT_COMMAND-}
       ble/function#lambda PROMPT_COMMAND \
-                          "ble/base/attach-from-PROMPT_COMMAND '${prompt_command//$q/$Q}' \"\$FUNCNAME\""
+                          "ble/base/attach-from-PROMPT_COMMAND $save_index \"\$FUNCNAME\""
       if [[ $_ble_edit_detach_flag == reload ]]; then
         _ble_edit_detach_flag=prompt-attach
         blehook PRECMD+="$PROMPT_COMMAND"

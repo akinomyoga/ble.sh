@@ -5374,6 +5374,42 @@ bash_tips
 
 2021-09-21
 
+  * main: work around self-modifying PROMPT_COMMAND by bash-preexec (reported by cornfeedhobo) [#D1650]
+    https://github.com/Bash-it/bash-it/pull/1884
+
+    % preexec が動かないと言っている。うーん。そもそも PROMPT_COMMAND の内容が向
+    % こうとこちらで異なる。こちらで色々試したが再現しない。ちゃんと
+    % PROMPT_COMMAND には __bp_* が含まれているし、実際に preexec(), precmd() を
+    % 定義すると期待通りに呼び出されている。
+    %
+    % preexec で lambda 経由の呼び出しになる様に無理やり設定した所、どうやら問
+    % 題を発見した。コマンドを実行する度に preexec, precmd の処理がどんどん追加
+    % されていく。調べてみると、bash-preexec は PROMPT_COMMAND に自身が含まれて
+    % いない時、自身を其処に無理やり追加する様である。通常であれば
+    % PROMPT_COMMAND がそれで修正されて問題は起こらなくなるが、ble.sh が
+    % PROMPT_COMMAND を復元してしまう為に毎回処理が追加されるという事になってい
+    % る。
+
+    結局 cornfeedhobo は
+
+      source bash_it.sh
+      source ble.sh
+
+    と bashrc に書いていた様だ。ble.sh の推奨する使い方からは外れているし、また
+    blesh.plugin.bash を使って読み込む場合とも異なる。なかなか再現できなかった
+    理由はこれだった。"minimal setup" としか言わなくて具体的な説明を一切しない
+    のだから駄目である。minimal setup と言っても色々あるだろうに。
+
+    [修正]
+
+    これに関してはどうやら PROMPT_COMMAND の変更がちゃんと反映されればループ
+    が停止する様であるから、PROMPT_COMMAND の変更をちゃんと記録するようにする。
+    現在の実装だと lambda の関数本体に直接 PROMPT_COMMAND を記録しているが、
+    やはり変数に記録する事にする。重複して記録されて上書きされて無限ループに
+    なるのを防ぐ為に、配列にして lambda には配列添字を記録する事にする。
+
+    取り敢えず実装して動作確認もした。
+
   * contra oldbug: どうも新しい c2w が問題を起こしている [#D1649]
 
     一番怪しいのは幅の自動判定である → 取り敢えず char_width_version を別の値
