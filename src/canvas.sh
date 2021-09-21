@@ -360,6 +360,7 @@ function ble/util/c2w+emacs {
 
 _ble_util_c2w_auto_update_x0=0
 _ble_util_c2w_auto_update_result=()
+_ble_util_c2w_auto_update_processing=0
 function ble/util/c2w+auto {
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
@@ -372,6 +373,11 @@ function ble/util/c2w/test-terminal.buff {
   local opts=$1
   local -a DRAW_BUFF=()
   local ret saved_pos=
+
+  # 現在既に処理中の場合 DSR は省略。char_width_@=auto 等で一括して要
+  # 求した時などに一回だけ実行する為。
+  ((_ble_util_c2w_auto_update_processing)) && return 0
+
   [[ $_ble_attached ]] && { ble/canvas/panel/save-position goto-top-dock; saved_pos=$ret; }
   ble/canvas/put.draw "$_ble_term_sc"
   if ble/util/is-unicode-output; then
@@ -389,6 +395,7 @@ function ble/util/c2w/test-terminal.buff {
       0x9FCD 0x1F93B 0x312E 0x312F 0x16FE2
       0x32FF 0x31BB 0x9FFD)
 
+    _ble_util_c2w_auto_update_processing=${#codes[@]}
     _ble_util_c2w_auto_update_result=()
     if [[ :$opts: == *:first-line:* ]]; then
       # 画面の右上で判定を行います。
@@ -407,13 +414,14 @@ function ble/util/c2w/test-terminal.buff {
       ble/canvas/put-cup.draw 1 $((x0+1))
       ble/canvas/put.draw "$_ble_term_el"
     else
-      _ble_util_c2w_auto_update_x0=0
+      _ble_util_c2w_auto_update_x0=2
       local code index=0
       for code in "${codes[@]}"; do
         ble/util/c2s $((code))
-        ble/canvas/put.draw "$_ble_term_cr$_ble_term_el$ret"
+        ble/canvas/put.draw "$_ble_term_cr$_ble_term_el[$ret]"
         ble/term/CPR/request.draw "ble/util/c2w/test-terminal.hook $((index++))"
       done
+      ble/canvas/put.draw "$_ble_term_cr$_ble_term_el"
     fi
   fi
   ble/canvas/put.draw "$_ble_term_rc"
@@ -424,14 +432,18 @@ function ble/util/c2w/test-terminal.hook {
   local index=$1 l=$2 c=$3
   local w=$((c-1-_ble_util_c2w_auto_update_x0))
   _ble_util_c2w_auto_update_result[index]=$w
-  if ((index==0)) && [[ $bleopt_char_width_mode == auto ]]; then
-    if ((w==2)); then
+  ((index==_ble_util_c2w_auto_update_processing-1)) || return 0
+
+  local -a ws=("${_ble_util_c2w_auto_update_result[@]}")
+  if [[ $bleopt_char_width_mode == auto ]]; then
+    if ((ws[0]==2)); then
       bleopt char_width_mode=east
     else
       bleopt char_width_mode=west
     fi
-  elif ((index==13)) && [[ $bleopt_char_width_version == auto ]]; then
-    local -a ws=("${_ble_util_c2w_auto_update_result[@]}")
+  fi
+
+  if [[ $bleopt_char_width_version == auto ]]; then
     if ((ws[12]==2)); then
       if ((ws[13]==2)); then
         bleopt char_width_version=14.0
@@ -466,6 +478,7 @@ function ble/util/c2w/test-terminal.hook {
       bleopt char_width_version=4.1
     fi
   fi
+  return 0
 }
 
 bleopt/declare -v grapheme_cluster extended

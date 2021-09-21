@@ -60,6 +60,8 @@
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - canvas: support grapheme clusters (motivated by huresche) `#D1619` c0d997b
   - canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 9a132b7
+  - canvas (auto c2w): work around combining chars applied to the previous line `#D1649` 0000000
+  - canvas (auto c2w): avoid duplicate requests `#D1649` 0000000
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
