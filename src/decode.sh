@@ -1809,6 +1809,16 @@ function ble/decode/keymap/pop {
   _ble_decode_keymap=${_ble_decode_keymap_stack[last]}
   builtin unset -v '_ble_decode_keymap_stack[last]'
 }
+## @fn ble/decode/keymap/get-parent
+##   @var[out] ret
+function ble/decode/keymap/get-parent {
+  local len=${#_ble_decode_keymap_stack[@]}
+  if ((len)); then
+    ret=${_ble_decode_keymap_stack[len-1]}
+  else
+    ret=
+  fi
+}
 
 ## @var _ble_decode_key__seq
 ##   今迄に入力された未処理のキーの列を保持します

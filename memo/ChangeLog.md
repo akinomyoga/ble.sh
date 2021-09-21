@@ -66,6 +66,7 @@
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
 - complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 925b2cd
+- rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 0000000
  
 ## Changes
 

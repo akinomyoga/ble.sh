@@ -1052,7 +1052,7 @@ function ble/prompt/.get-keymap-for-current-mode {
   ble/prompt/unit/add-hash '$_ble_decode_keymap,${_ble_decode_keymap_stack[*]}'
 
   keymap=$_ble_decode_keymap
-  local index=${#_ble_decode_keymap_stack}
+  local index=${#_ble_decode_keymap_stack[@]}
   while :; do
     case $keymap in (vi_?map|emacs) return ;; esac
     ((--index<0)) && break
@@ -7069,7 +7069,7 @@ function ble/widget/isearch/exit-delete-forward-char {
 ## @fn ble/widget/history-isearch.impl opts
 function ble/widget/history-isearch.impl {
   local opts=$1
-  ble-edit/content/clear-arg
+  ble/keymap:generic/clear-arg
   ble/decode/keymap/push isearch
   ble/util/fiberchain#initialize ble-edit/isearch
 
@@ -7221,12 +7221,21 @@ function ble-edit/nsearch/.goto-match {
   _ble_edit_nsearch_match=$index
   _ble_edit_nsearch_index=$index
   _ble_edit_mark=$beg
+  local is_end_marker=
   case :$opts: in
   (*:point=begin:*)       _ble_edit_ind=0 ;;
-  (*:point=end:*)         _ble_edit_ind=${#_ble_edit_str} ;;
+  (*:point=end:*)         _ble_edit_ind=${#_ble_edit_str} is_end_marker=1 ;;
   (*:point=match-begin:*) _ble_edit_ind=$beg ;;
-  (*:point=match-end:*|*) _ble_edit_ind=$end ;;
+  (*:point=match-end:*|*) _ble_edit_ind=$end is_end_marker=1 ;;
   esac
+
+  # vi_nmap の中にいる時は一致範囲の最後の文字にカーソルを置く
+  if [[ $is_end_marker ]] && ((_ble_edit_ind)); then
+    if local ret; ble/decode/keymap/get-parent; [[ $ret == vi_[noxs]map ]]; then
+      ble-edit/content/bolp || ((_ble_edit_ind--))
+    fi
+  fi
+
   if ((beg!=end)); then
     _ble_edit_mark_active=nsearch
   else
@@ -7388,7 +7397,12 @@ function ble/widget/history-search {
   elif [[ :$opts: == *:again:* ]]; then
     _ble_edit_nsearch_needle=$_ble_edit_nsearch_input
   else
-    _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
+    local len=$_ble_edit_ind
+    if [[ $_ble_decode_keymap == vi_[noxs]map ]]; then
+      # vi_nmap の中にいる時は現在カーソルがある文字も検索文字列に含める
+      ble-edit/content/eolp || ((len++))
+    fi
+    _ble_edit_nsearch_needle=${_ble_edit_str::len}
   fi
 
   # 検索文字列が空の時は別の動作を行う
@@ -7412,7 +7426,7 @@ function ble/widget/history-search {
   fi
   _ble_edit_nsearch_prev=$_ble_edit_nsearch_needle
 
-  ble-edit/content/clear-arg
+  ble/keymap:generic/clear-arg
 
   _ble_edit_nsearch_stack=()
   local index; ble/history/get-index
