@@ -1276,10 +1276,12 @@ function ble-edit/prompt/update {
     return
   fi
 
-  if [[ $PROMPT_COMMAND ]]; then
-    local PS1=$_ble_edit_PS1
-    ble-edit/prompt/update/eval-prompt_command
-    _ble_edit_PS1=$PS1
+  if ((_ble_textarea_panel==0)); then # 補助プロンプトに対しては PROMPT_COMMAND は実行しない
+    if [[ $PROMPT_COMMAND ]]; then
+      local PS1=$_ble_edit_PS1
+      ble-edit/prompt/update/eval-prompt_command
+      _ble_edit_PS1=$PS1
+    fi
   fi
   local ps1=$_ble_edit_PS1
 
