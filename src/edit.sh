@@ -677,10 +677,12 @@ function ble-edit/prompt/update {
   local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # update PS1
-  if [[ $PROMPT_COMMAND ]]; then
-    ble-edit/restore-PS1
-    ble-edit/prompt/update/.eval-prompt_command
-    ble-edit/adjust-PS1
+  if ((_ble_textarea_panel==0)); then # 補助プロンプトに対しては PROMPT_COMMAND は実行しない
+    if [[ $PROMPT_COMMAND ]]; then
+      ble-edit/restore-PS1
+      ble-edit/prompt/update/.eval-prompt_command
+      ble-edit/adjust-PS1
+    fi
   fi
   local trace_hash esc
   ble-edit/prompt/.instantiate "$_ble_edit_PS1" '' "${_ble_edit_prompt[@]:1}" &&
@@ -690,6 +692,8 @@ function ble-edit/prompt/update {
 
   # Note #D1392: mc (midnight commander) の中では補助プロンプトは全て off
   [[ $MC_SID == $$ ]] && return 0
+
+  ((_ble_textarea_panel==0)) || return 0
 
   # update edit_rps1
   if [[ $bleopt_rps1 ]]; then
