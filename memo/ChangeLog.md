@@ -183,6 +183,7 @@
 - history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
+- decode: cache `inputrc` translations `#D1652` 0000000
 
 ## Compatibility
 

@@ -3739,8 +3739,8 @@ function ble/builtin/bind/initialize-inputrc {
 
 # user 設定の読み込み
 _ble_builtin_bind_user_settings_loaded=
-function ble/builtin/bind/.reconstruct-user-settings {
-  local map q=\'
+function ble/builtin/bind/read-user-settings/.collect {
+  local map
   for map in vi-insert vi-command emacs; do
     local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
     if ! [[ -s $cache && $cache -nt $_ble_base/ble.sh ]]; then
@@ -3748,11 +3748,13 @@ function ble/builtin/bind/.reconstruct-user-settings {
         LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' >| $cache.part &&
         ble/bin/mv "$cache.part" "$cache" || continue
     fi
+    local cache_content
+    ble/util/readfile cache_content "$cache"
 
     ble/util/print __CLEAR__
     ble/util/print KEYMAP="$map"
     ble/util/print __BIND0__
-    ble/bin/cat "$cache"
+    ble/util/print "${cache_content%$'\n'}"
     if ((_ble_bash>=40300)); then
       ble/util/print __BINDX__
       builtin bind -m "$map" -X
@@ -3762,7 +3764,12 @@ function ble/builtin/bind/.reconstruct-user-settings {
     ble/util/print __BINDP__
     builtin bind -m "$map" -p
     ble/util/print __PRINT__
-  done | LC_ALL= LC_CTYPE=C ble/bin/awk -v q="$q" -v _ble_bash="$_ble_bash" '
+  done
+}
+function ble/builtin/bind/.reconstruct-user-settings {
+  local collect q=\'
+  ble/util/assign collect ble/builtin/bind/read-user-settings/.collect
+  <<< "$collect" LC_ALL= LC_CTYPE=C ble/bin/awk -v q="$q" -v _ble_bash="$_ble_bash" '
     function keymap_register(key, val, type) {
       if (!haskey[key]) {
         keys[nkey++] = key;
@@ -3847,6 +3854,55 @@ function ble/builtin/bind/.reconstruct-user-settings {
     }
   ' 2>/dev/null # suppress LC_ALL error messages
 }
+
+## @fn ble/builtin/bind/read-user-settings/.cache-enabled
+##   @var[in] delay_prefix
+function ble/builtin/bind/read-user-settings/.cache-enabled {
+  local keymap use_cache=1
+  for keymap in emacs vi_imap vi_nmap; do
+    ble/decode/keymap#registered "$keymap" && return 1
+    [[ -s $delay_prefix.$keymap ]] && return 1
+  done
+  return 0
+}
+## @fn ble/builtin/bind/read-user-settings/.cache-alive
+##   @var[in] settings
+##   @var[in] cache_prefix
+function ble/builtin/bind/read-user-settings/.cache-alive {
+  [[ -e $cache_prefix.settings ]] || return 1
+  [[ $cache_prefix.settings -nt $_ble_base/lib/init-cmap.sh  ]] || return 1
+  local keymap
+  for keymap in emacs vi_imap vi_nmap; do
+    [[ $cache_prefix.settings -nt $_ble_base/core-decode.$cache-rlfunc.txt ]] || return 1
+  done
+  local content
+  ble/util/readfile content "$cache_prefix.settings"
+  [[ ${content%$'\n'} == "$settings" ]]
+}
+## @fn ble/builtin/bind/read-user-settings/.cache-save
+##   @var[in] delay_prefix
+##   @var[in] cache_prefix
+function ble/builtin/bind/read-user-settings/.cache-save {
+  local keymap content
+  for keymap in emacs vi_imap vi_nmap; do
+    if [[ -s $delay_prefix.$keymap ]]; then
+      ble/util/copyfile "$delay_prefix.$keymap" "$cache_prefix.$keymap"
+    else
+      : >| "$cache_prefix.$keymap"
+    fi
+  done
+  ble/util/print "$settings" >| "$cache_prefix.settings"
+}
+## @fn ble/builtin/bind/read-user-settings/.cache-load
+##   @var[in] delay_prefix
+##   @var[in] cache_prefix
+function ble/builtin/bind/read-user-settings/.cache-load {
+  local keymap
+  for keymap in emacs vi_imap vi_nmap; do
+    ble/util/copyfile "$cache_prefix.$keymap" "$delay_prefix.$keymap"
+  done
+}
+
 function ble/builtin/bind/read-user-settings {
   if [[ $_ble_decode_bind_state == none ]]; then
     [[ $_ble_builtin_bind_user_settings_loaded ]] && return 0
@@ -3854,7 +3910,20 @@ function ble/builtin/bind/read-user-settings {
     builtin bind # inputrc を読ませる
     local settings
     ble/util/assign settings ble/builtin/bind/.reconstruct-user-settings
-    builtin eval -- "$settings"
+    [[ $settings ]] || return 0
+
+    local cache_prefix=$_ble_base_cache/decode.inputrc.$_ble_decode_kbd_ver.$TERM
+    local delay_prefix=$_ble_base_run/$$.bind.delay
+    if ble/builtin/bind/read-user-settings/.cache-enabled; then
+      if ble/builtin/bind/read-user-settings/.cache-alive; then
+        ble/builtin/bind/read-user-settings/.cache-load
+      else
+        builtin eval -- "$settings"
+        ble/builtin/bind/read-user-settings/.cache-save
+      fi
+    else
+      builtin eval -- "$settings"
+    fi
   fi
 }
 

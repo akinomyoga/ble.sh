@@ -2048,9 +2048,10 @@ function ble/builtin/trap/install-hook {
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/readfile { # 155ms for man bash
-    local __buffer
-    mapfile __buffer < "$2"
-    IFS= builtin eval "$1=\"\${__buffer[*]-}\""
+    local -a _ble_local_buffer=()
+    mapfile _ble_local_buffer < "$2"; local _ble_local_ext=$?
+    IFS= builtin eval "$1=\"\${_ble_local_buffer[*]-}\""
+    return "$_ble_local_ext"
   }
   function ble/util/mapfile {
     mapfile -t "$1"
@@ -2069,6 +2070,12 @@ else
     builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
   }
 fi
+
+function ble/util/copyfile {
+  local src=$1 dst=$2 content
+  ble/util/readfile content "$1" || return $?
+  ble/util/put "$content" >| "$dst"
+}
 
 ## @fn ble/util/writearray [OPTIONS] arr
 ##   配列の内容を読み出し可能な形式で出力します。
