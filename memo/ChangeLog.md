@@ -101,6 +101,7 @@
 - main: show notifications against debug versions of Bash `#D1612` 8f974aa
 - term: update `vte` identification `#D1620` 00e74d8
 - edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
+- prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 0000000
 
 ## Fixes
 

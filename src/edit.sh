@@ -1437,12 +1437,14 @@ function ble/prompt/update {
 
   # Update PS1 in PROMPT_COMMAND / PRECMD
   local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
-  if [[ $_ble_prompt_hash != "$version" && $opts != *:leave:* ]]; then
-    if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
-      ble-edit/restore-PS1
-      ble/prompt/update/.eval-prompt_command
-      ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
-      ble-edit/adjust-PS1
+  if ((_ble_textarea_panel==0)); then # 補助プロンプトに対しては PROMPT_COMMAND は実行しない
+    if [[ $_ble_prompt_hash != "$version" && $opts != *:leave:* ]]; then
+      if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
+        ble-edit/restore-PS1
+        ble/prompt/update/.eval-prompt_command
+        ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
+        ble-edit/adjust-PS1
+      fi
     fi
   fi
 
@@ -1483,16 +1485,14 @@ function ble/prompt/update {
   ((_ble_textarea_panel==0)) || { [[ $dirty ]]; return $?; }
 
   # bleopt prompt_rps1
-  if ((_ble_textarea_panel==0)); then
-    if [[ :$opts: == *:leave:* && ! $rps1f && $bleopt_prompt_rps1_transient ]]; then
-      # prompt_rps1_transient による消去 (以前の大きさを保持)
-      [[ ${_ble_prompt_rps1_data[10]} ]] && dirty=1 rps1_enabled=erase
+  if [[ :$opts: == *:leave:* && ! $rps1f && $bleopt_prompt_rps1_transient ]]; then
+    # prompt_rps1_transient による消去 (以前の大きさを保持)
+    [[ ${_ble_prompt_rps1_data[10]} ]] && dirty=1 rps1_enabled=erase
 
-    else
-      [[ $prompt_rps1 || ${_ble_prompt_rps1_data[10]} ]] &&
-        ble/prompt/unit#update _ble_prompt_rps1 && dirty=1
-      [[ ${_ble_prompt_rps1_data[10]} ]] && rps1_enabled=1
-    fi
+  else
+    [[ $prompt_rps1 || ${_ble_prompt_rps1_data[10]} ]] &&
+      ble/prompt/unit#update _ble_prompt_rps1 && dirty=1
+    [[ ${_ble_prompt_rps1_data[10]} ]] && rps1_enabled=1
   fi
 
   # bleopt prompt_xterm_title

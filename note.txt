@@ -5374,6 +5374,14 @@ bash_tips
 
 2021-09-22
 
+  * prompt: do not evaluate PROMPT_COMMAND for subprompts [#D1654]
+
+    #D1654 で観察していて気づいたが現在のコードだと subprompt に対しても
+    PROMPT_COMMAND を実行している。それは何だか変なので subprompt に対しては
+    PROMPT_COMMAND は実行しない様に修正する。
+
+    これは後で ble-0.3 にも適用したいので commit を分ける事にする。
+
   * vi: ? や / が動かなくなっている [#D1653]
 
     * 表示が滅茶苦茶になってしまう。
