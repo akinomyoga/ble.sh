@@ -5374,6 +5374,52 @@ bash_tips
 
 2021-09-22
 
+  * vi: ? や / が動かなくなっている [#D1653]
+
+    * 表示が滅茶苦茶になってしまう。
+    * そもそもプロンプトも表示されていない
+
+    一方で nsearch で入力させる機能はちゃんと動いている。両者で何かが違うという
+    事だろうか。→と思ったら nsearch は read -ep を使っていたのだった。
+
+    昔は確かに動いていた筈なので先ずは bisect する所から始めるべきの気がする。
+    手動 bisect の方法について調べながら実行する事にする。
+    手動 bisect の結果以下が問題の commit であると判明した。
+
+    | commit cf8d94930af5a57e7ae9309a16eca7fc3e3479ad (refs/bisect/bad)
+    | Author: Koichi Murase <myoga.murase@gmail.com>
+    | Date:   Mon Jun 7 12:13:56 2021 +0900
+    |
+    |     prompt: track dependencies and detect changes
+
+    プロンプト計算に失敗しているという事だろう。
+
+    うーん。大きな変更すぎて原因はコードを見ても分からない。
+    恐らく補助プロンプト関係で何か不整合が起きているという事。
+    例えば prompt update ではスキップしているのに描画の際には考慮に入っている等。
+
+    うーん。rps1, status を無効にしてみたがそれでも問題が発生する。
+
+    * そもそも ps1 自体表示されていない。
+      _ble_edit_PS1 は値としてはちゃんと ble/prompt/update の中から見えている。
+
+      うーん。_ble_prompt_ps1 の更新は prompt_ps1 を参照している筈。それなのに
+      subprompt の時と prompt の時で解析結果が異なる。subprompt の時には空の結
+      果になってしまっている。何故?
+
+      そもそも ble/prompt/unit:_ble_prompt_ps1/update が呼び出されていない。
+      うーん。ohashref が literal 0 になってしまっている。
+
+    * そもそもプロンプトを一切表示しない場合でも表示が乱れてしまっている。
+      panel の高さ計算でミスしている可能性? 例えば復元した時に不整合が生じている等。
+      というか subprompt に入る段階でも既に何だか変な事になっている。
+
+    分かった。_ble_prompt_ps1_data の形式が変わったのに vi.sh の中での
+    _ble_prompt_ps1_data の初期値をそれに合わせて変更するのを忘れていた。
+    古い _ble_prompt_ps1_data の初期値が更新済みのデータとして解釈されて
+    prompt の再計算が行われないまま誤ったデータとして座標計算などが行われていた。
+    →この初期値の形式を修正するだけで全て動く様になった。
+
   * decode: 巨大 inputrc の翻訳内容をキャッシュする [#D1652]
     https://github.com/Bash-it/bash-it/pull/1884#issuecomment-923489130
 

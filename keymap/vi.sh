@@ -8022,7 +8022,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # edit/prompt
   _ble_edit_PS1=$PS2
-  _ble_prompt_ps1_data=("" 0 0 0 32 0 "" "")
+  _ble_prompt_ps1_data=(0 '' '' 0 0 0 32 0 '' '')
 
   # edit
   #   Note: ble/widget/.newline/clear-content の中で

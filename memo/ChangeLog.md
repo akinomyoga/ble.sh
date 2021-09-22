@@ -43,6 +43,7 @@
   - prompt (`contrib/prompt-git`): support dirty checking `#D1601` b2713d9
   - prompt (`contrib/prompt-git`): do not use `ble/util/idle` in Bash 3 `#D1606` 959cf27
   - util (`bleopt`): add new option `-I` to reinitialize user settings on reload `#D1607` 959cf27
+  - vi (vi_cmap): fix wrong prompt calculations by the outdated initial values `#D1653` 0000000
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
