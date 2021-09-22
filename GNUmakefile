@@ -108,15 +108,10 @@ $(OUTDIR)/doc/%: % | $(OUTDIR)/doc
 # contrib
 
 .PHONY: update-contrib
-update-contrib:
+update-contrib contrib/.git contrib/contrib.mk:
 	git submodule update --init --recursive
-contrib/.git:
-	git submodule update --init --recursive
-outdirs += $(OUTDIR)/contrib $(OUTDIR)/contrib/airline
-contrib-files = $(wildcard contrib/*.bash contrib/airline/*.bash)
-outfiles += $(contrib-files:contrib/%=$(OUTDIR)/contrib/%)
-$(OUTDIR)/contrib/%.bash: contrib/%.bash | contrib/.git $(OUTDIR)/contrib $(OUTDIR)/contrib/airline
-	cp -p $< $@
+
+include contrib/contrib.mk
 
 #------------------------------------------------------------------------------
 # target "all"

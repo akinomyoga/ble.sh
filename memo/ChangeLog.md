@@ -102,6 +102,7 @@
 - term: update `vte` identification `#D1620` 00e74d8
 - edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 0000000
+- Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 0000000
 
 ## Fixes
 

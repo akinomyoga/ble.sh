@@ -5374,6 +5374,22 @@ bash_tips
 
 2021-09-22
 
+  * Makefile: 単なる git clone & make install でちゃんとインストールできる様にしたい [#D1655]
+    https://github.com/Bash-it/bash-it/pull/1884#issuecomment-922615431
+
+    特に --recursive をユーザーが指定しなかった時。
+    現在の実装だと contrib が存在しなかった場合には一回の make だけだと
+    contrib 以下のインストールするべきファイルが認識されずにインストールされない。
+    contrib を checkout した時には改めてそれを読み直す様にさせる必要がある。
+
+    うーん。これは GNUmakefile を contrib/.git に依存させれば良いのでは?
+    という気がする。但し、何か変な事が起こるかもしれないので、
+    何回か手元で実行して確認する必要がある。
+
+    うーん。駄目だ最初からやり直してはくれない。実際に Makefile が書き換えられ
+    る事がないと駄目という事だろうか。contrib の方に .mk を作成してそれを読み込
+    む様にしなければならないのだろうか。取り敢えずその様に実験してみる事にする。
+
   * prompt: do not evaluate PROMPT_COMMAND for subprompts [#D1654]
 
     #D1654 で観察していて気づいたが現在のコードだと subprompt に対しても
