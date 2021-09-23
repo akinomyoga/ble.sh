@@ -6327,6 +6327,8 @@ function ble-decode/keymap:nsearch/define {
   ble-bind -f C-n         nsearch/forward
   ble-bind -f up          nsearch/backward
   ble-bind -f down        nsearch/forward
+  ble-bind -f prior       nsearch/backward
+  ble-bind -f next        nsearch/forward
 }
 
 # 
@@ -6447,6 +6449,8 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line history'
   ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line history'
   ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line history'
+  ble-decode/keymap:safe/.bind 'prior'     'history-search-backward' # bash-5.2
+  ble-decode/keymap:safe/.bind 'next'      'history-search-forward'  # bash-5.2
   ble-decode/keymap:safe/.bind 'C-x C-p'   'history-search-backward'
   ble-decode/keymap:safe/.bind 'C-x up'    'history-search-backward'
   ble-decode/keymap:safe/.bind 'C-x C-n'   'history-search-forward'
