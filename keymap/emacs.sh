@@ -10,6 +10,7 @@ function ble-edit/bind/load-editing-mode:emacs { :; }
 # 2020-04-29 force update (rename ble-decode/keymap/.register)
 # 2021-01-25 force update (change mapping of C-w and M-w)
 # 2021-04-26 force update (rename ble/decode/keymap#.register)
+# 2021-09-23 force update (change to nsearch and bind-history)
 
 # vi functions referenced from core-decode.emacs-rlfunc.txt
 ble/util/autoload "$_ble_base/keymap/vi.sh" \

@@ -27,7 +27,8 @@
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
-  - edit: support `nsearch` opts `empty=emulate-readline` (motivated by jainpratik163) `#D1661` 0000000
+  - edit: support `nsearch` opts `empty=emulate-readline` (motivated by jainpratik163) `#D1661` d68ba61
+  - edit: support bash-5.2 binding of `prior/next` to `history-search-{for,back}ward` `#D1661` 0000000
 - syntax: support the deprecated redirection `>& file` `#D1539` b9b0de4
 - complete: complete file descriptors and heredoc words after redirections `#D1539` b9b0de4
 - main: support `blehook ATTACH DETACH`, `BLE_ONLOAD`, `BLE_ATTACHED` `#D1543` 750ca38
@@ -210,7 +211,7 @@
 - cmap: add `st`-specific escape sequences for cursor keys `#D1633` acfb879
 - cmap: distinguish <kbd>find</kbd>/<kbd>select</kbd> from <kbd>home</kbd>/<kbd>end</kbd> for openSUSE `inputrc.keys` (reported by cornfeedhobo) `#D1648` c4d28f4
 - main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
-- decode: work around openSUSE broken `/etc/inputrc` `#D1662` 0000000
+- decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
 
 ## Internal changes and fixes
 
