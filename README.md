@@ -104,7 +104,7 @@ Of course ble.sh can be used in combination with other Bash configurations such 
 ## History and roadmap
 
 My little experiment has took place in one corner of my `bashrc` in the end of May, 2013 after I enjoyed some article on `zsh-syntax-highlighting`.
-I initially thought something can be achieved by writing a few hundred of codes
+I initially thought something can be achieved by writing a few hundred of lines of codes
 but soon realized that everything needs to be re-implemented for the authentic support of syntax highlighting in Bash.
 I decided to make it as an independent script `ble.sh`.
 The name stemmed from that of Zsh's line editor, *ZLE* (*Zsh Line Editor*), but suffixed with `.sh` for the implication of being written in shell script.

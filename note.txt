@@ -2479,9 +2479,14 @@ bash_tips
 
 2021-05-03
 
+  * rlfunc: fetch-history
+    8f485ff8 - new readline "fetch-history" bindable command
   * rlfunc: C-x s, spell-correct-word
+    6be3a741
   * rlvar: enable-active-region
+    b1965836 new "enable-active-region" readline variable
   * rlbind: prior, next
+    65822e50 - alias expansion fix in case statements
   * vi-undo
 
   * 5.2 新機能: READLINE_ARGUMENT: 調べてみると引数が存在している時にのみ定義さ
@@ -5422,6 +5427,25 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-09-23
+
+  * edit (widget history-search): support empty=emulate-readline (motivated by jainpratik163) [#D1661]
+    https://github.com/akinomyoga/ble.sh/issues/139
+
+    history-search-{for,back}ward は検索なので一致場所にカーソルを置くという仕
+    様に今までしてきた。また、空文字列検索の時には空文字列による検索を継続する
+    為に、敢えてカーソルを先頭に置く様にしていた。しかし、readline の振る舞いを
+    改めて確認した所、空文字列の時には恰も通常の history-prev を使用して移動し
+    たかの様に振る舞っていながら、空文字検索を継続しているのだという事が判明し
+    た。仕方がないので ble.sh でもやはり空文字列検索であっても内部的には
+    nsearch 状態に突入して、但しカーソル位置は末尾にするという具合に変更する事
+    にした。
+
+    改めて思うに Ref #D1517 https://github.com/akinomyoga/ble.sh/issues/101 で
+    要望にあった"2. I would like the cursor to move to the end of line while
+    searching with Up/Down." というのはこの振る舞いに関連しての事だったのではな
+    いかという気がする。まあ、今となっては考えても仕方のない事なのかもしれない。
 
 2021-09-22
 

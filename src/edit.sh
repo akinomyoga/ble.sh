@@ -7222,11 +7222,13 @@ function ble-edit/nsearch/.goto-match {
   _ble_edit_nsearch_index=$index
   _ble_edit_mark=$beg
   local is_end_marker=
-  case :$opts: in
-  (*:point=begin:*)       _ble_edit_ind=0 ;;
-  (*:point=end:*)         _ble_edit_ind=${#_ble_edit_str} is_end_marker=1 ;;
-  (*:point=match-begin:*) _ble_edit_ind=$beg ;;
-  (*:point=match-end:*|*) _ble_edit_ind=$end is_end_marker=1 ;;
+  local rex=':point=([^:]*):'
+  [[ :$opts: =~ $rex ]]
+  case ${BASH_REMATCH[1]} in
+  (begin)       _ble_edit_ind=0 ;;
+  (end)         _ble_edit_ind=${#_ble_edit_str} is_end_marker=1 ;;
+  (match-begin) _ble_edit_ind=$beg ;;
+  (match-end|*) _ble_edit_ind=$end is_end_marker=1 ;;
   esac
 
   # vi_nmap の中にいる時は一致範囲の最後の文字にカーソルを置く
@@ -7364,10 +7366,11 @@ function ble-edit/nsearch/backward.fib {
 ##
 ##     empty=EMPTY
 ##       空文字列で検索を開始した時の動作を指定します。
-##       previous-search 前回の検索文字列を使用して検索します [既定]
-##       empty-search    空文字列で検索します。
-##       hide-status     空文字列検索。nsearch 状態は隠します。
-##       history-move    履歴項目移動。コマンドライン先頭に移動します。
+##       previous-search  前回の検索文字列を使用して検索します [既定]
+##       empty-search     空文字列で検索します。
+##       hide-status      空文字列検索。nsearch 状態は隠します。
+##       history-move     履歴項目移動。コマンドライン先頭に移動します。
+##       emulate-readline Readline の動作を模倣します。hide-status 及び point=end を設定します。
 ##
 ##     action=ACTION
 ##       文字列が見つかった時の動作を指定します。
@@ -7420,6 +7423,8 @@ function ble/widget/history-search {
       return $? ;;
     (hide-status)
       opts=$opts:hide-status ;;
+    (emulate-readline)
+      opts=hide-status:point=end:$opts ;;
     (previous-search)
       _ble_edit_nsearch_needle=$_ble_edit_nsearch_prev ;;
     esac

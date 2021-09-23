@@ -55,8 +55,8 @@ glob-expand-word                  -
 glob-list-expansions              -
 history-and-alias-expand-line     vi_nmap/@edit history-and-alias-expand-line
 history-expand-line               vi_nmap/@edit history-expand-line
-history-search-backward           history-search-backward empty=history-move
-history-search-forward            history-search-forward empty=history-move
+history-search-backward           history-search-backward empty=emulate-readline
+history-search-forward            history-search-forward empty=emulate-readline
 history-substring-search-backward history-substring-search-backward
 history-substring-search-forward  history-substring-search-forward
 insert-comment                    vi-rlfunc/insert-comment

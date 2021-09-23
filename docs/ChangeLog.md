@@ -27,6 +27,7 @@
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
+  - edit: support `nsearch` opts `empty=emulate-readline` (motivated by jainpratik163) `#D1661` 0000000
 - syntax: support the deprecated redirection `>& file` `#D1539` b9b0de4
 - complete: complete file descriptors and heredoc words after redirections `#D1539` b9b0de4
 - main: support `blehook ATTACH DETACH`, `BLE_ONLOAD`, `BLE_ATTACHED` `#D1543` 750ca38

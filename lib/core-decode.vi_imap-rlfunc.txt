@@ -55,8 +55,8 @@ glob-expand-word                  complete context=glob:insert-all
 glob-list-expansions              complete context=glob:show_menu
 history-and-alias-expand-line     history-and-alias-expand-line
 history-expand-line               history-expand-line
-history-search-backward           history-search-backward empty=history-move
-history-search-forward            history-search-forward empty=history-move
+history-search-backward           history-search-backward empty=emulate-readline
+history-search-forward            history-search-forward empty=emulate-readline
 history-substring-search-backward history-substring-search-backward
 history-substring-search-forward  history-substring-search-forward
 insert-comment                    insert-comment
