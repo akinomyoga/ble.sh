@@ -44,7 +44,7 @@
   - prompt (`contrib/prompt-git`): support dirty checking `#D1601` b2713d9
   - prompt (`contrib/prompt-git`): do not use `ble/util/idle` in Bash 3 `#D1606` 959cf27
   - util (`bleopt`): add new option `-I` to reinitialize user settings on reload `#D1607` 959cf27
-  - vi (vi_cmap): fix wrong prompt calculations by the outdated initial values `#D1653` 0000000
+  - vi (vi_cmap): fix wrong prompt calculations by the outdated initial values `#D1653` 2710b23
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
@@ -62,13 +62,13 @@
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - canvas: support grapheme clusters (motivated by huresche) `#D1619` c0d997b
   - canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 9a132b7
-  - canvas (auto c2w): work around combining chars applied to the previous line `#D1649` 0000000
-  - canvas (auto c2w): avoid duplicate requests `#D1649` 0000000
+  - canvas (auto c2w): work around combining chars applied to the previous line `#D1649` 1cbbecb
+  - canvas (auto c2w): avoid duplicate requests `#D1649` 1cbbecb
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
 - complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 925b2cd
-- rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 0000000
+- rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 9a7c8b1
  
 ## Changes
 
@@ -102,8 +102,9 @@
 - main: show notifications against debug versions of Bash `#D1612` 8f974aa
 - term: update `vte` identification `#D1620` 00e74d8
 - edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
-- prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 0000000
-- Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 0000000
+- prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
+- Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
+- repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 
 ## Fixes
 
@@ -187,7 +188,7 @@
 - history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
-- decode: cache `inputrc` translations `#D1652` 0000000
+- decode: cache `inputrc` translations `#D1652` 994e2a5
 
 ## Compatibility
 
@@ -207,8 +208,9 @@
 - main: work around `set -B` and `set -k` `#D1628` a860769
 - term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 92c7b26
 - cmap: add `st`-specific escape sequences for cursor keys `#D1633` acfb879
-- cmap: distinguish <kbd>find</kbd>/<kbd>select</kbd> from <kbd>home</kbd>/<kbd>end</kbd> for openSUSE `inputrc.keys` (reported by cornfeedhobo) `#D1648` 0000000
-- main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 0000000
+- cmap: distinguish <kbd>find</kbd>/<kbd>select</kbd> from <kbd>home</kbd>/<kbd>end</kbd> for openSUSE `inputrc.keys` (reported by cornfeedhobo) `#D1648` c4d28f4
+- main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
+- decode: work around openSUSE broken `/etc/inputrc` `#D1662` 0000000
 
 ## Internal changes and fixes
 

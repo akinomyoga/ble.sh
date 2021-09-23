@@ -3745,7 +3745,7 @@ function ble/builtin/bind/read-user-settings/.collect {
     local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
     if ! [[ -s $cache && $cache -nt $_ble_base/ble.sh ]]; then
       INPUTRC=/dev/null "$BASH" --noprofile --norc -i -c "builtin bind -m $map -p" |
-        LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' >| $cache.part &&
+        LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' >| "$cache.part" &&
         ble/bin/mv "$cache.part" "$cache" || continue
     fi
     local cache_content
@@ -3766,7 +3766,7 @@ function ble/builtin/bind/read-user-settings/.collect {
     ble/util/print __PRINT__
   done
 }
-function ble/builtin/bind/.reconstruct-user-settings {
+function ble/builtin/bind/read-user-settings/.reconstruct {
   local collect q=\'
   ble/util/assign collect ble/builtin/bind/read-user-settings/.collect
   <<< "$collect" LC_ALL= LC_CTYPE=C ble/bin/awk -v q="$q" -v _ble_bash="$_ble_bash" '
@@ -3909,7 +3909,7 @@ function ble/builtin/bind/read-user-settings {
     _ble_builtin_bind_user_settings_loaded=1
     builtin bind # inputrc を読ませる
     local settings
-    ble/util/assign settings ble/builtin/bind/.reconstruct-user-settings
+    ble/util/assign settings ble/builtin/bind/read-user-settings/.reconstruct
     [[ $settings ]] || return 0
 
     local cache_prefix=$_ble_base_cache/decode.inputrc.$_ble_decode_kbd_ver.$TERM
@@ -3958,12 +3958,28 @@ function bind { ble/builtin/bind "$@"; }
 #------------------------------------------------------------------------------
 # ble/decode/initialize, attach, detach                          @decode.attach
 
+function ble/decode/initialize/.has-broken-suse-inputrc {
+  ((_ble_bash<50000)) || return 1 # Bash 5.0+ are not suffered
+  [[ -s /etc/inputrc.keys ]] || return 1
+  local content
+  ble/util/readfile content /etc/inputrc.keys
+  [[ $content == *'"\M-[2~":'* ]]
+}
+
 _ble_decode_initialized=
 function ble/decode/initialize {
   [[ $_ble_decode_initialized ]] && return 0
   _ble_decode_initialized=1
   ble/decode/cmap/initialize
-  ble/builtin/bind/read-user-settings
+
+  if ble/decode/initialize/.has-broken-suse-inputrc; then
+    # Note: #D1662 WA openSUSE (aaa_base < 202102) has broken /etc/inputrc
+    [[ ${INPUTRC-} == /etc/inputrc || ${INPUTRC-} == /etc/inputrc.keys ]] &&
+      local INPUTRC=~/.inputrc
+    ble/builtin/bind/initialize-inputrc
+  else
+    ble/builtin/bind/read-user-settings
+  fi
 }
 
 function ble/decode/reset-default-keymap {

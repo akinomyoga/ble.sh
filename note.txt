@@ -1602,68 +1602,33 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2021-09-22
+
+  * git clone 用の判定
+
+    $ grep -q '^github\.com' ~/.ssh/known_hosts
+    $ grep -qEi '[[:space:]]*HostName[[:space:]]+([^[:space:]]+[[:space:]]+)*github\.com' ~/.ssh/config
+
+  * 実は local rex=... [[ a =~ $rex ]] は関数に纏めたら良いのでは。
+
+    速度的にはどうだろうと思って比較してみると4倍位遅くなる。もしくは 0.014ms
+    だけ遅くなる。70回の評価で1ms, 1400回の評価で20ms, 7000回の評価で100msの差
+    が出る。
+
+    $ ble-measure "local rex=':point=([^:]*):'; [[ alpha:beta:point=end:b = \$rex ]]"
+         3.618 usec/eval
+    $ function ble/regex#match { [[ $1 =~ $2 ]]; }
+    $ ble-measure "ble/regex#match alpha:beta:point=end:b ':point=([^:]*):'"
+        17.402 usec/eval
+
+    うーん。一般的には気にする速度低下ではないが、構文解析などの中心部では控え
+    た方が良いかもしれないというぐらいである。通常の場所ではどんどん使って問題
+    ないのではないか。
+
 2021-09-20
 
   * sabbrev を accept-line の時にも展開する可能性について。
     zsh-abbr の振る舞いについても確認する。
-
-  * decode: [openSUSE] bash-it 側の検証に際して色々問題が生じている (reported by cornfeedhobo)
-    https://github.com/Bash-it/bash-it/pull/1884
-
-    https://web.libera.chat/?channel=#bash-it ここの議論はすぐ消滅する
-    | [8:27:38] → akinomyoga has joined
-    | [8:31:20] <akinomyoga> Hmm, it seems everything I wrote has been lost after I
-    | restarted the web browser. I don't get used to IRC, so I didn't know this
-    | behavior. So there is no log of the channel?
-    | [9:55:21] <akinomyoga> I summarized the current situation at
-    | https://github.com/Bash-it/bash-it/pull/1884#issuecomment-923489130
-    | [12:07:33] ← akinomyoga27 has left (Quit: Client closed)
-    | [12:08:01] → akinomyoga27 has joined
-    | [12:08:07] ← akinomyoga27 has left (Client Quit)
-    | [13:45:22] <cornfeedhobo> akinomyoga: hello again
-    | [13:45:45] <cornfeedhobo> akinomyoga: yeah, irc doesn't keep history. but i
-    | have a record of it
-    | [13:46:02] <akinomyoga> Hello
-    | [13:46:06] <akinomyoga> Ah, OK
-    | [13:47:29] <cornfeedhobo> ah, okay, so maybe i can explain the PROMPT_COMMAND
-    | situation at least
-    | [13:48:30] <akinomyoga> I have summarized my situation in the GitHub issue
-    | page. Maybe you can first take a glance at the comment and just explain the
-    | difference of the setups.
-    | [13:50:28] <akinomyoga> Unfortunately I will have a meeting 10 minutes
-    | later. So I think I cannot respond for one or two hours after that.
-    | [13:50:28] <cornfeedhobo> your comment from an hour ago sums up what I was
-    | assuming was happening
-    | [13:50:47] <cornfeedhobo> okay, no worries. sorry i couldn't reply
-    | sooner. today was filled with meetings.
-    | [13:52:09] <akinomyoga> OK! Nice! Then I will look for a workaround
-    | [13:52:51] <cornfeedhobo> awesome! thanks for working through this. your
-    | attention to detail is impressive.
-    | [13:53:04] <akinomyoga> thank you!
-
-    * done: home/end が効かない。これは結局 find/select を認識する事にした。本
-      当に openSUSE の workaround の為だけの変更である。Ref #D1648
-
-    * done: "preexec が壊れる" という文句について。Ref #D1650
-
-    * done: set-mark 及び history-search-{for,back}ward が nmap で対応されてい
-      ないというエラーメッセージに対する苦情 Ref #D1651
-
-    * done: /etc/inputrc{,.keys} が大量に設定を行っている為に初期化が遅い問題
-      Ref #D1652
-
-    * error messages on openSUSE ... これは openSUSE における既知の問題である。
-      これに関する対応は既に openSUSE の最新版には反映されているので気にしなく
-      て良い。もし今後も openSUSE 15.2, 15.3 のユーザーから報告があるのであれば、
-      ble.sh の側で何らかの workaround を追加する必要があるかもしれない。
-
-      うーん。結局これは openSUSE の問題だし、Tumbleweed では問題は発生しないの
-      だからわざわざ対応しなくて良い気がする。これは無視する。
-
-      うーん。或いは openSUSE 15.2, 15.4 を検出して inputrc を off にしても良い
-      かもしれない。然し、これは他の WA がちゃんと動く事を確認してから対応する
-      方が良い。そうしないと WA がちゃんと動くかどうかの feedback を得られない。
-      これは最後に処理する。
 
 2021-09-15
 
@@ -5429,6 +5394,68 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-23
+
+  * decode: [openSUSE] bash-it 側の検証に際して色々問題が生じている (reported by cornfeedhobo) [#D1662]
+    https://github.com/Bash-it/bash-it/pull/1884
+
+    https://web.libera.chat/?channel=#bash-it ここの議論はすぐ消滅する
+    | [8:27:38] → akinomyoga has joined
+    | [8:31:20] <akinomyoga> Hmm, it seems everything I wrote has been lost after I
+    | restarted the web browser. I don't get used to IRC, so I didn't know this
+    | behavior. So there is no log of the channel?
+    | [9:55:21] <akinomyoga> I summarized the current situation at
+    | https://github.com/Bash-it/bash-it/pull/1884#issuecomment-923489130
+    | [12:07:33] ← akinomyoga27 has left (Quit: Client closed)
+    | [12:08:01] → akinomyoga27 has joined
+    | [12:08:07] ← akinomyoga27 has left (Client Quit)
+    | [13:45:22] <cornfeedhobo> akinomyoga: hello again
+    | [13:45:45] <cornfeedhobo> akinomyoga: yeah, irc doesn't keep history. but i
+    | have a record of it
+    | [13:46:02] <akinomyoga> Hello
+    | [13:46:06] <akinomyoga> Ah, OK
+    | [13:47:29] <cornfeedhobo> ah, okay, so maybe i can explain the PROMPT_COMMAND
+    | situation at least
+    | [13:48:30] <akinomyoga> I have summarized my situation in the GitHub issue
+    | page. Maybe you can first take a glance at the comment and just explain the
+    | difference of the setups.
+    | [13:50:28] <akinomyoga> Unfortunately I will have a meeting 10 minutes
+    | later. So I think I cannot respond for one or two hours after that.
+    | [13:50:28] <cornfeedhobo> your comment from an hour ago sums up what I was
+    | assuming was happening
+    | [13:50:47] <cornfeedhobo> okay, no worries. sorry i couldn't reply
+    | sooner. today was filled with meetings.
+    | [13:52:09] <akinomyoga> OK! Nice! Then I will look for a workaround
+    | [13:52:51] <cornfeedhobo> awesome! thanks for working through this. your
+    | attention to detail is impressive.
+    | [13:53:04] <akinomyoga> thank you!
+
+    * done: home/end が効かない。これは結局 find/select を認識する事にした。本
+      当に openSUSE の workaround の為だけの変更である。Ref #D1648
+
+    * done: "preexec が壊れる" という文句について。Ref #D1650
+
+    * done: set-mark 及び history-search-{for,back}ward が nmap で対応されてい
+      ないというエラーメッセージに対する苦情 Ref #D1651
+
+    * done: /etc/inputrc{,.keys} が大量に設定を行っている為に初期化が遅い問題
+      Ref #D1652
+
+    * done: error messages on openSUSE ... これは openSUSE における既
+      知の問題である。これに関する対応は既に openSUSE の最新版には反映
+      されているので気にしなくて良い。もし今後も openSUSE 15.2, 15.3
+      のユーザーから報告があるのであれば、ble.sh の側で何らかの
+      workaround を追加する必要があるかもしれない。
+
+      うーん。結局これは openSUSE の問題だし、Tumbleweed では問題は発生しないの
+      だからわざわざ対応しなくて良い気がする。これは無視する。
+
+      うーん。或いは openSUSE 15.2, 15.4 を検出して inputrc を off にしても良い
+      かもしれない。然し、これは他の WA がちゃんと動く事を確認してから対応する
+      方が良い。そうしないと WA がちゃんと動くかどうかの feedback を得られない。
+      これは最後に処理する。
+
+    最終的に openSUSE /etc/inputrc.keys が存在して変な keyseq を含んでいる場合
+    には bind の出力は参照せずに .inputrc を解析する様に変更した。
 
   * edit (widget history-search): support empty=emulate-readline (motivated by jainpratik163) [#D1661]
     https://github.com/akinomyoga/ble.sh/issues/139
