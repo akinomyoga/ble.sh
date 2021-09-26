@@ -5387,6 +5387,7 @@ function ble-edit/exec:gexec/.end {
   ble-edit/bind/.check-detach && return 0
   ble/term/enter
   ble-edit/exec:gexec/TERM/enter || return 0 # rebind に失敗した時 .tail せずに抜ける
+  ble/util/c2w:auto/check
   [[ $1 == restore ]] && return 0 # Note: 前回の呼出で .end に失敗した時 #D1170
   ble-edit/bind/.tail # flush will be called here
 }

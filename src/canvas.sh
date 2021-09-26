@@ -47,21 +47,18 @@ function ble/util/c2w/clear-cache {
 ##       east または west を自動判定します。
 ##     bleopt_char_width_mode=emacs
 ##       emacs で用いられている既定の文字幅の設定です
-##     定義 ble/util/c2w+$bleopt_char_width_mode
+##     定義 ble/util/c2w:$bleopt_char_width_mode
 bleopt/declare -n char_width_mode auto
 function bleopt/check:char_width_mode {
-  if ! ble/is-function "ble/util/c2w+$value"; then
-    ble/util/print "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2
+  if ! ble/is-function "ble/util/c2w:$value"; then
+    ble/util/print "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w:$value' is not defined." >&2
     return 1
   fi
 
   case $value in
   (auto)
     _ble_unicode_c2w_ambiguous=1
-    if [[ $_ble_attached ]]; then
-      ble/util/c2w/test-terminal.buff first-line
-      ble/util/buffer.flush >&2
-    fi ;;
+    ble && ble/util/c2w:auto/test.buff first-line ;;
   (west) _ble_unicode_c2w_ambiguous=1 ;;
   (east) _ble_unicode_c2w_ambiguous=2 ;;
   esac
@@ -73,7 +70,7 @@ function bleopt/check:char_width_mode {
 function ble/util/c2w {
   ret=${_ble_util_c2w_cache[$1]:-${_ble_util_c2w[$1]}}
   if [[ ! $ret ]]; then
-    "ble/util/c2w+$bleopt_char_width_mode" "$1"
+    "ble/util/c2w:$bleopt_char_width_mode" "$1"
     _ble_util_c2w_cache[$1]=$ret
   fi
 }
@@ -123,10 +120,7 @@ _ble_unicode_c2w_custom=()
 bleopt/declare -n char_width_version auto
 function bleopt/check:char_width_version {
   if [[ $value == auto ]]; then
-    if [[ $_ble_attached ]]; then
-      ble/util/c2w/test-terminal.buff first-line
-      ble/util/buffer.flush >&2
-    fi
+    ble && ble/util/c2w:auto/test.buff first-line
     ble/util/c2w/clear-cache
     return 0
   elif local ret; ble/unicode/c2w/version2index "$value"; then
@@ -258,7 +252,7 @@ function ble/util/c2w/is-emoji {
 
 # ---- char_width_mode ----
 
-function ble/util/c2w+west {
+function ble/util/c2w:west {
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
   else
@@ -266,7 +260,7 @@ function ble/util/c2w+west {
   fi
 }
 
-function ble/util/c2w+east {
+function ble/util/c2w:east {
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
   else
@@ -274,7 +268,7 @@ function ble/util/c2w+east {
   fi
 }
 
-## @fn ble/util/c2w+emacs
+## @fn ble/util/c2w:emacs
 ##   emacs-24.2.1 default char-width-table
 ##   @var[out] ret
 _ble_util_c2w_emacs_wranges=(
@@ -287,7 +281,7 @@ _ble_util_c2w_emacs_wranges=(
  1591 1593 1595 1597 1599 1600 1602 1603 1611 1612 1696 1698 1714 1716 1724 1726 1734 1736 1739 1740
  1742 1744 1775 1776 1797 1799 1856 1857 1858 1859 1898 1899 1901 1902 1903 1904)
 
-function ble/util/c2w+emacs {
+function ble/util/c2w:emacs {
   local code=$1
 
   # bash-4.0 bug workaround
@@ -361,7 +355,7 @@ function ble/util/c2w+emacs {
 _ble_util_c2w_auto_update_x0=0
 _ble_util_c2w_auto_update_result=()
 _ble_util_c2w_auto_update_processing=0
-function ble/util/c2w+auto {
+function ble/util/c2w:auto {
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
   else
@@ -369,7 +363,13 @@ function ble/util/c2w+auto {
   fi
 }
 
-function ble/util/c2w/test-terminal.buff {
+function ble/util/c2w:auto/check {
+  [[ $bleopt_char_width_mode == auto || $bleopt_char_width_version == auto ]] &&
+    ble/util/c2w:auto/test.buff
+  return 0
+}
+
+function ble/util/c2w:auto/test.buff {
   local opts=$1
   local -a DRAW_BUFF=()
   local ret saved_pos=
@@ -409,7 +409,7 @@ function ble/util/c2w/test-terminal.buff {
         ble/canvas/put.draw "$_ble_term_el"
         ble/util/c2s $((code))
         ble/canvas/put.draw "$ret"
-        ble/term/CPR/request.draw "ble/util/c2w/test-terminal.hook $((index++))"
+        ble/term/CPR/request.draw "ble/util/c2w/test.hook $((index++))"
       done
       ble/canvas/put-cup.draw 1 $((x0+1))
       ble/canvas/put.draw "$_ble_term_el"
@@ -419,7 +419,7 @@ function ble/util/c2w/test-terminal.buff {
       for code in "${codes[@]}"; do
         ble/util/c2s $((code))
         ble/canvas/put.draw "$_ble_term_cr$_ble_term_el[$ret]"
-        ble/term/CPR/request.draw "ble/util/c2w/test-terminal.hook $((index++))"
+        ble/term/CPR/request.draw "ble/util/c2w/test.hook $((index++))"
       done
       ble/canvas/put.draw "$_ble_term_cr$_ble_term_el"
     fi
@@ -428,11 +428,12 @@ function ble/util/c2w/test-terminal.buff {
   [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$saved_pos"
   ble/canvas/bflush.draw
 }
-function ble/util/c2w/test-terminal.hook {
+function ble/util/c2w/test.hook {
   local index=$1 l=$2 c=$3
   local w=$((c-1-_ble_util_c2w_auto_update_x0))
   _ble_util_c2w_auto_update_result[index]=$w
   ((index==_ble_util_c2w_auto_update_processing-1)) || return 0
+  _ble_util_c2w_auto_update_processing=0
 
   local -a ws=("${_ble_util_c2w_auto_update_result[@]}")
   if [[ $bleopt_char_width_mode == auto ]]; then
@@ -731,8 +732,7 @@ function ble/unicode/GraphemeCluster/match {
 # ble/canvas/attach
 
 function ble/canvas/attach {
-  [[ $bleopt_char_width_mode == auto || $bleopt_char_width_version == auto ]] &&
-    ble/util/c2w/test-terminal.buff
+  ble/util/c2w:auto/check
 }
 
 #------------------------------------------------------------------------------

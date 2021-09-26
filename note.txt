@@ -5395,6 +5395,24 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-09-27
+
+  * canvas: 文字幅判定の為の CPR は internal 状態で実行したい [#D1664]
+
+    CPR が画面に出力されてしまうのは stty echo の時に DSR(6) が出力されるから。
+    ちゃんと internal state の時に CPR が出力される様にすれば防げるのではないか。
+    後で何処から出力されているかを確認する。
+
+    と思ったが、CPR の遅延があるのでそれによって表示されているだけかもしれない。
+    その場合には対策できないかもしれないができるだけ早い段階で DSR を送信してお
+    く事はできる。
+
+    うーん。或いは、コマンド実行が終了した時点で char_width_mode=auto もしくは
+    char_width_version=auto になっている時に初めて要求を出すというのは一つの手
+    である。
+
+    * done: refactor: 関数名を変更する c2w+ -> c2w:
+
 2021-09-26
 
   * edit (command-help): use ble/util/assign/.mktmp to determine the temporary filename [#D1663]
@@ -5971,6 +5989,11 @@ bash_tips
       るか確認する。OK. urxvt, st は version=13.0 で gnome-terminal は
       version=14.0 になった。Fedora の上で実行した urxvt は 11.0 になった。ちゃ
       んと区別できている様だ。
+
+    x 2021-09-26 と思ったら auto が1度処理されると二度と処理されない。
+
+      そもそも request が送信されていない気がする。
+      →これは簡単なミスだった。修正した。
 
   * cmap: home/end が openSUSE で効かない (reported by cornfeedhobo) [#D1648]
     https://web.libera.chat/?channel=#bash-it
