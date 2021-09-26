@@ -5395,6 +5395,13 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-09-26
+
+  * edit (command-help): use ble/util/assign/.mktmp to determine the temporary filename [#D1663]
+
+    これは ble/util/readfile の用例を確認している時に気づいた事。
+    修正した。ちゃんと動いている様な気がする。
+
 2021-09-23
 
   * decode: [openSUSE] bash-it 側の検証に際して色々問題が生じている (reported by cornfeedhobo) [#D1662]

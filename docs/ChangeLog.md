@@ -238,6 +238,7 @@
 - util: fix `ble/util/dense-array#fill-range` a46fdaf
 - util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 5967d6c
 - util: fix leak variables `#D1643` fcf634b
+- edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663`
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
