@@ -6876,9 +6876,10 @@ function read { ble/builtin/read "$@"; }
 ## 関数 ble/widget/command-help/.read-man
 ##   @var[out] man_content
 function ble/widget/command-help/.read-man {
-  local pager="sh -c 'cat >| \"\$BLETMPFILE\"'" tmp=$_ble_util_assign_base
-  BLETMPFILE=$tmp MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
-  ble/util/readfile man_content "$tmp" # 80ms
+  local -x _ble_local_tmpfile; ble/util/assign/.mktmp
+  local pager="sh -c 'cat >| \"\$_ble_local_tmpfile\"'"
+  MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
+  ble/util/readfile man_content "$_ble_local_tmpfile" # 80ms
   return "$ext"
 }
 
