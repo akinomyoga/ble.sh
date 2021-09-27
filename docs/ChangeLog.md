@@ -111,6 +111,7 @@
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - blerc: add all the missing options `#D1667` 0000000
+- util: time out <kbd>CPR</kbd> requests `#D1669` 00000000
 
 ## Fixes
 

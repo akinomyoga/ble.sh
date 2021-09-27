@@ -5579,13 +5579,19 @@ function ble/term/test-DECSTBM {
 #---- DSR(6) ------------------------------------------------------------------
 # CPR (CURSOR POSITION REPORT)
 
+_ble_term_CPR_timeout=60
+_ble_term_CPR_last_seconds=$SECONDS
 _ble_term_CPR_hook=()
 function ble/term/CPR/request.buff {
+  ((SECONDS>_ble_term_CPR_last_seconds+_ble_term_CPR_timeout)) &&
+    _ble_term_CPR_hook=()
   ble/array#push _ble_term_CPR_hook "$1"
   ble/util/buffer $'\e[6n'
   return 147
 }
 function ble/term/CPR/request.draw {
+  ((SECONDS>_ble_term_CPR_last_seconds+_ble_term_CPR_timeout)) &&
+    _ble_term_CPR_hook=()
   ble/array#push _ble_term_CPR_hook "$1"
   ble/canvas/put.draw $'\e[6n'
   return 147
