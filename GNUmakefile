@@ -43,6 +43,9 @@ $(OUTDIR)/ble.sh: ble.pp GNUmakefile | $(OUTDIR)
 
 src/canvas.c2w.sh:
 	bash make_command.sh generate-c2w-table > $@
+src/canvas.c2w.musl.sh: make/canvas.c2w.wcwidth-musl.c
+	+make -C make canvas.c2w.wcwidth-musl.exe
+	make/canvas.c2w.wcwidth-musl.exe | bash make_command.sh convert-custom-c2w-table _ble_util_c2w_musl > $@
 src/canvas.emoji.sh:
 	bash make_command.sh generate-emoji-table > $@
 

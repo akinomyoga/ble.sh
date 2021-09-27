@@ -48,7 +48,7 @@ namespace impl1_dump_wcwidth {
     // }
 
 
-    FILE* file = fopen("c2w.wcwidth.txt", "w");
+    FILE* file = fopen("canvas.c2w.wcwidth.txt", "w");
     int prev_w = 999;
     for (int32_t i = 0;i <= 0x10FFFF; i++) {
       int w = wcwidth(i);

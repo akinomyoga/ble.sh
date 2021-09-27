@@ -23,15 +23,23 @@ function list-range-code-for-version-detection {
     for code in "${!_ble_unicode_c2w[@]}"; do
       ble/unicode/EmojiStatus "$code"
       ((ret)) && continue
-      _ble_unicode_c2w_version=$((ver-1)) ble/unicode/c2w "$code"; local oldw=$ret
+      local -a _ble_unicode_c2w_custom=()
+      _ble_unicode_c2w_version=$prev_ver ble/unicode/c2w "$code"; local oldw=$ret
       _ble_unicode_c2w_version=$ver ble/unicode/c2w "$code"; local neww=$ret
+      ble/util/unlocal _ble_unicode_c2w_custom
       ((oldw==neww||oldw==3&&neww>0||neww==3&&oldw>0)) && continue
 
       ble/util/c2s "$code"; local ch=$ret
 
-      printf 'ver%s U+%04X(%d) %s %d->%d (%s)\n' \
+      local note=
+      if [[ ${_ble_unicode_c2w_custom[code]} ]]; then
+        note="${note:+$note, }overwritten by wcwidth-custom"
+      fi
+
+      printf 'ver%s U+%04X(%d) %s %d->%d (%s)%s\n' \
              "$ver" "$code" "$code" "$ch" \
-             "$oldw" "$neww" "${_ble_unicode_c2w_UnicodeVersionMapping[*]:_ble_unicode_c2w[code]*nversion:nversion}"
+             "$oldw" "$neww" "${_ble_unicode_c2w_UnicodeVersionMapping[*]:_ble_unicode_c2w[code]*nversion:nversion}" \
+             "${note:+ # $note}"
     done
   done
 

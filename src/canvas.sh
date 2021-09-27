@@ -170,8 +170,7 @@ function ble/unicode/c2w {
     fi
   fi
   ret=${_ble_unicode_c2w_UnicodeVersionMapping[ret*_ble_unicode_c2w_UnicodeVersionCount+_ble_unicode_c2w_version]}
-  ((ret<_ble_unicode_c2w_invalid)) &&
-    ret=${_ble_unicode_c2w_invalid:-$((-ret))}
+  ((ret<0)) && ret=${_ble_unicode_c2w_invalid:-$((-ret))}
   ((ret==3)) &&
     ret=${_ble_unicode_c2w_ambiguous:-1}
   return 0
@@ -352,6 +351,26 @@ function ble/util/c2w:emacs {
   return 0
 }
 
+#%< canvas.c2w.musl.sh
+
+function ble/util/c2w:musl {
+  local code=$1
+
+  ret=1
+  ((code&&code<0x300)) && return 0
+
+  if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$code"; then
+    ((ret=bleopt_emoji_width))
+    return 0
+  fi
+
+  local l=0 u=${#_ble_util_c2w_musl_ranges[@]} m
+  while ((l+1<u)); do
+    ((_ble_util_c2w_musl_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+  done
+  ret=${_ble_util_c2w_musl[_ble_util_c2w_musl_ranges[l]]}
+}
+
 _ble_util_c2w_auto_update_x0=0
 _ble_util_c2w_auto_update_result=()
 _ble_util_c2w_auto_update_processing=0
@@ -384,9 +403,9 @@ function ble/util/c2w:auto/test.buff {
 
     local -a codes=(
       # index=0 [EastAsianWidth=A 判定]
-      0x25bd
+      0x25bd 0x25b6
 
-      # index=1..13 [Unicode version 判定]
+      # index=1..15 [Unicode version 判定] #D1645 #D1668
       #   判定用の文字コードは "source
       #   make/canvas.c2w.list-ucsver-detection-codes.sh" を用いて生
       #   成されたリストから選択した。新しい Unicode version が出たら
@@ -435,45 +454,48 @@ function ble/util/c2w/test.hook {
   ((index==_ble_util_c2w_auto_update_processing-1)) || return 0
   _ble_util_c2w_auto_update_processing=0
 
-  local -a ws=("${_ble_util_c2w_auto_update_result[@]}")
+  local ws
   if [[ $bleopt_char_width_mode == auto ]]; then
-    if ((ws[0]==2)); then
-      bleopt char_width_mode=east
-    else
-      bleopt char_width_mode=west
-    fi
+    IFS=: builtin eval 'ws="${_ble_util_c2w_auto_update_result[*]::2}:${_ble_util_c2w_auto_update_result[*]:5:2}"'
+    case $ws in
+    (2:2:*:*) bleopt char_width_mode=east ;;
+    (2:1:*:*) bleopt char_width_mode=emacs ;;
+    (1:1:2:0) bleopt char_width_mode=musl ;;
+    (*)       bleopt char_width_mode=west ;;
+    esac
   fi
 
   if [[ $bleopt_char_width_version == auto ]]; then
-    if ((ws[12]==2)); then
-      if ((ws[13]==2)); then
+    ws=("${_ble_util_c2w_auto_update_result[@]:2}")
+    if ((ws[11]==2)); then
+      if ((ws[12]==2)); then
         bleopt char_width_version=14.0
       else
         bleopt char_width_version=13.0
       fi
-    elif ((ws[11]==2)); then
-      bleopt char_width_version=12.1
     elif ((ws[10]==2)); then
-      bleopt char_width_version=12.0
+      bleopt char_width_version=12.1
     elif ((ws[9]==2)); then
-      bleopt char_width_version=11.0
+      bleopt char_width_version=12.0
     elif ((ws[8]==2)); then
-      bleopt char_width_version=10.0
+      bleopt char_width_version=11.0
     elif ((ws[7]==2)); then
+      bleopt char_width_version=10.0
+    elif ((ws[6]==2)); then
       bleopt char_width_version=9.0
-    elif ((ws[5]==0)); then
-      if ((ws[6]==2)); then
+    elif ((ws[4]==0)); then
+      if ((ws[5]==2)); then
         bleopt char_width_version=8.0
       else
         bleopt char_width_version=7.0
       fi
-    elif ((ws[4]==1&&ws[2]==2)); then
+    elif ((ws[3]==1&&ws[1]==2)); then
       bleopt char_width_version=6.3 # or 6.2
-    elif ((ws[3]==2)); then
-      bleopt char_width_version=6.1 # or 6.0
     elif ((ws[2]==2)); then
-      bleopt char_width_version=5.2
+      bleopt char_width_version=6.1 # or 6.0
     elif ((ws[1]==2)); then
+      bleopt char_width_version=5.2
+    elif ((ws[0]==2)); then
       bleopt char_width_version=5.0
     else
       bleopt char_width_version=4.1

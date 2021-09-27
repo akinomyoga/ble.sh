@@ -6,6 +6,19 @@ function mkd {
   [[ -d $1 ]] || mkdir -p "$1"
 }
 
+function download {
+  local url=$1 dst=$2
+  if [[ ! -s $dst ]]; then
+    [[ $dst == ?*/* ]] && mkd "${dst%/*}"
+    if type wget &>/dev/null; then
+      wget "$url" -O "$dst.part" && mv "$dst.part" "$dst"
+    else
+      echo "make_command: 'wget' not found." >&2
+      exit 2
+    fi
+  fi
+}
+
 function ble/array#push {
   while (($#>=2)); do
     builtin eval "$1[\${#$1[@]}]=\$2"
@@ -80,19 +93,6 @@ function sub:ignoreeof-messages {
       echo $(printf "$line" exit) # $() は末端の改行を削除するため
     done
   ) >| lib/core-edit.ignoreeof-messages.new
-}
-
-function download {
-  local url=$1 dst=$2
-  if [[ ! -s $dst ]]; then
-    [[ $dst == ?*/* ]] && mkd "${dst%/*}"
-    if type wget &>/dev/null; then
-      wget "$url" -O "$dst.part" && mv "$dst.part" "$dst"
-    else
-      echo "make_command: 'wget' not found." >&2
-      exit 2
-    fi
-  fi
 }
 
 function sub:generate-emoji-table {
@@ -974,6 +974,24 @@ function sub:generate-c2w-table {
       generate_version_function();
     }
   ' "$data" | ifold -w 131 --spaces --no-text-justify --indent=..
+}
+
+function sub:convert-custom-c2w-table {
+  local -x name=$1
+  gawk '
+    match($0, /^[[:space:]]*U\+([[:xdigit:]]+)[[:space:]]+([0-9]+)/, m) {
+      code = strtonum("0x" m[1]);
+      w = m[2];
+
+      g_output_values = g_output_values " [" code "]=" w;
+      g_output_ranges = g_output_ranges " " code;
+    }
+    END {
+      name = ENVIRON["name"];
+      print name "=(" substr(g_output_values, 2) ")";
+      print name "_ranges=(" substr(g_output_ranges, 2) ")";
+    }
+  ' | ifold -w 131 --spaces --no-text-justify --indent=..
 }
 
 function sub:update-GeneralCategory {

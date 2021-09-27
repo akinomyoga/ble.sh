@@ -66,6 +66,8 @@
   - canvas (c2w:auto): work around combining chars applied to the previous line `#D1649` 1cbbecb
   - canvas (c2w:auto): avoid duplicate requests `#D1649` 1cbbecb 0000000
   - canvas (c2w:auto): send <kbd>DSR(6)</kbd> in the internal state `#D1664` 0000000
+  - canvas (c2w): support `bleopt char_width_mode=musl` `#D1668` 0000000
+  - canvas (c2w:auto): detect `emacs` and `musl` `#D1668` 0000000
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
