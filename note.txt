@@ -1878,10 +1878,6 @@ bash_tips
 
 2021-08-31
 
-  * wiki: import_path
-
-    bleopt import_path の記述が抜けている。blerc にもない。
-
   * complete: -E (_EmptycmD_) に対応していない
 
     一方でこれは一体どの様に振る舞うものとして実装すれば良いのか分からない側面
@@ -5387,6 +5383,35 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-27
+
+  * 2021-08-31 wiki, blerc: import_path [#D1667]
+
+    done: bleopt import_path の記述が抜けている。blerc にもない。
+
+    他にも抜けている物がないか確認するべきなのでは。
+
+    done: grapheme_cluster
+    done: emoji_opts
+    ok: menu_desc_multicolumn_width これは現在対応中で後で載せる。
+
+    取り敢えず一つずつ説明を追加していくのが良い。
+
+    * 一方で blerc で抜けている物はもっと沢山ある。
+
+      done: keymap_vi_imap_undo
+      done: keymap_vi_keymodel
+      done: keymap_vi_operatorfunc
+      done: keymap_vi_search_match_current
+      done: term_vi_smap
+      done: decode_macro_limit
+      done: idle_interval
+      done: syntax_debug
+
+      これらについては wiki から説明を拾ってくれば良い。
+
+    * done: vim_airline_* は全く説明書にない
+
+      vim_airline_theme だけは blerc にある。
 
   * edit: powerlevel10k の prompt_add_newline を実装する (motivated by Barbarossa93) [#D1666]
     https://github.com/akinomyoga/ble.sh/issues/135#issuecomment-927284636

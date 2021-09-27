@@ -325,6 +325,7 @@
 
 #bleopt emoji_version=13.1
 
+
 ## "emoji_opts" is a colon-separated list that represents the terminal
 ## capability for emojis.  When "tpvs" and "epvs" are specified, TPVS and EPVS
 ## (text/emoji presentation variation selectors), respectively, can be used to
@@ -334,12 +335,18 @@
 ## specified, unqualified emojis are treated as emojis as well as the qualified
 ## emojis.
 
-#bleopt emoji_opts=tpvs:epvs:ri
+#bleopt emoji_opts=ri
 
+
+## This option specifies the type of the supported grapheme cluster of the
+## terminal.  The empty string indicates that the terminal does not support the
+## grapheme clusters.  The values "extended" and "legacy" indicate that the
+## terminal supports the extended and legacy grapheme clusters, respectively.
+
+#bleopt grapheme_cluster=extended
 
 ##-----------------------------------------------------------------------------
 ## User input settings
-
 
 ## The following setting sets the default keymap. The value "emacs" specifies
 ## that the emacs keymap should be used. The value "vi" specifies that the vi
@@ -384,6 +391,11 @@
 #bleopt decode_error_kseq_vbell=1
 #bleopt decode_error_kseq_discard=1
 
+
+## This variable sets the limit to the count of recursive calls of keyboard
+## macros.
+
+#bleopt decode_macro_limit=1024
 
 ##-----------------------------------------------------------------------------
 ## Settings for completion
@@ -473,7 +485,7 @@
 ## the timeout duration in milliseconds.  When the value is empty, the
 ## timeout is disabled.
 
-# bleopt complete_timeout_auto=5000
+#bleopt complete_timeout_auto=5000
 
 
 ## The following setting controls the timeout for the pathname expansions to
@@ -483,7 +495,7 @@
 ## COMP_LINE.  The value specifies ## the timeout duration in milliseconds.
 ## When the value is empty, the timeout is disabled.
 
-# bleopt complete_timeout_compvar=200
+#bleopt complete_timeout_compvar=200
 
 
 ## The following setting specifies the style of the menu to show completion
@@ -528,7 +540,7 @@
 ## scale).  The value 0 means that the terminal does not support extra colors
 ## other than basic colors.
 
-# bleopt term_index_colors=256
+#bleopt term_index_colors=256
 
 
 ## The setting "term_true_colors" specifies the format of 24-bit color escape
@@ -539,13 +551,13 @@
 ## indexed color sequences or basic color sequences with properly reduced
 ## colors.
 
-# bleopt term_true_colors=semicolon
+#bleopt term_true_colors=semicolon
 
 
 ## The setting "filename_ls_colors" can be used to import the filename coloring
 ## scheme by the environment variable LS_COLORS.
 
-# bleopt filename_ls_colors="$LS_COLORS"
+#bleopt filename_ls_colors="$LS_COLORS"
 
 
 ## The following settings enable or disable the syntax highlighting.  When the
@@ -557,9 +569,9 @@
 ## variable type is enabled.  All of these settings have non-empty values by
 ## default.
 
-# bleopt highlight_syntax=
-# bleopt highlight_filename=
-# bleopt highlight_variable=
+#bleopt highlight_syntax=
+#bleopt highlight_filename=
+#bleopt highlight_variable=
 
 
 ## The following settings control the timeout and user-input cancellation of
@@ -576,77 +588,77 @@
 ## "syntax_eval_polling_interval" specifies the maximal interval between the
 ## user-input checking.
 
-# bleopt highlight_timeout_sync=500
-# bleopt highlight_timeout_async=5000
-# bleopt syntax_eval_polling_interval=50
+#bleopt highlight_timeout_sync=500
+#bleopt highlight_timeout_async=5000
+#bleopt syntax_eval_polling_interval=50
 
 
 ## The following settings specify graphic styles of each faces.
 
-# ble-face -s region                    fg=white,bg=60
-# ble-face -s region_insert             fg=blue,bg=252
-# ble-face -s region_match              fg=white,bg=55
-# ble-face -s region_target             fg=black,bg=153
-# ble-face -s disabled                  fg=242
-# ble-face -s overwrite_mode            fg=black,bg=51
-# ble-face -s auto_complete             fg=238,bg=254
-# ble-face -s menu_filter_fixed         bold
-# ble-face -s menu_filter_input         fg=16,bg=229
-# ble-face -s vbell                     reverse
-# ble-face -s vbell_erase               bg=252
-# ble-face -s vbell_flash               fg=green,reverse
-# ble-face -s prompt_status_line        fg=231,bg=240
+#ble-face -s region                    fg=white,bg=60
+#ble-face -s region_insert             fg=blue,bg=252
+#ble-face -s region_match              fg=white,bg=55
+#ble-face -s region_target             fg=black,bg=153
+#ble-face -s disabled                  fg=242
+#ble-face -s overwrite_mode            fg=black,bg=51
+#ble-face -s auto_complete             fg=238,bg=254
+#ble-face -s menu_filter_fixed         bold
+#ble-face -s menu_filter_input         fg=16,bg=229
+#ble-face -s vbell                     reverse
+#ble-face -s vbell_erase               bg=252
+#ble-face -s vbell_flash               fg=green,reverse
+#ble-face -s prompt_status_line        fg=231,bg=240
 
-# ble-face -s syntax_default            none
-# ble-face -s syntax_command            fg=brown
-# ble-face -s syntax_quoted             fg=green
-# ble-face -s syntax_quotation          fg=green,bold
-# ble-face -s syntax_escape             fg=magenta
-# ble-face -s syntax_expr               fg=navy
-# ble-face -s syntax_error              bg=203,fg=231
-# ble-face -s syntax_varname            fg=202
-# ble-face -s syntax_delimiter          bold
-# ble-face -s syntax_param_expansion    fg=purple
-# ble-face -s syntax_history_expansion  bg=94,fg=231
-# ble-face -s syntax_function_name      fg=92,bold
-# ble-face -s syntax_comment            fg=gray
-# ble-face -s syntax_glob               fg=198,bold
-# ble-face -s syntax_brace              fg=37,bold
-# ble-face -s syntax_tilde              fg=navy,bold
-# ble-face -s syntax_document           fg=94
-# ble-face -s syntax_document_begin     fg=94,bold
-# ble-face -s command_builtin_dot       fg=red,bold
-# ble-face -s command_builtin           fg=red
-# ble-face -s command_alias             fg=teal
-# ble-face -s command_function          fg=92 # fg=purple
-# ble-face -s command_file              fg=green
-# ble-face -s command_keyword           fg=blue
-# ble-face -s command_jobs              fg=red,bold
-# ble-face -s command_directory         fg=navy,underline
-# ble-face -s filename_directory        underline,fg=26
-# ble-face -s filename_directory_sticky underline,fg=white,bg=26
-# ble-face -s filename_link             underline,fg=teal
-# ble-face -s filename_orphan           underline,fg=teal,bg=224
-# ble-face -s filename_setuid           underline,fg=black,bg=220
-# ble-face -s filename_setgid           underline,fg=black,bg=191
-# ble-face -s filename_executable       underline,fg=green
-# ble-face -s filename_other            underline
-# ble-face -s filename_socket           underline,fg=cyan,bg=black
-# ble-face -s filename_pipe             underline,fg=lime,bg=black
-# ble-face -s filename_character        underline,fg=white,bg=black
-# ble-face -s filename_block            underline,fg=yellow,bg=black
-# ble-face -s filename_warning          underline,fg=red
-# ble-face -s filename_url              underline,fg=blue
-# ble-face -s filename_ls_colors        underline
-# ble-face -s varname_array             fg=orange,bold
-# ble-face -s varname_empty             fg=31
-# ble-face -s varname_export            fg=200,bold
-# ble-face -s varname_expr              fg=92,bold
-# ble-face -s varname_hash              fg=70,bold
-# ble-face -s varname_number            fg=64
-# ble-face -s varname_readonly          fg=200
-# ble-face -s varname_transform         fg=29,bold
-# ble-face -s varname_unset             fg=124
+#ble-face -s syntax_default            none
+#ble-face -s syntax_command            fg=brown
+#ble-face -s syntax_quoted             fg=green
+#ble-face -s syntax_quotation          fg=green,bold
+#ble-face -s syntax_escape             fg=magenta
+#ble-face -s syntax_expr               fg=navy
+#ble-face -s syntax_error              bg=203,fg=231
+#ble-face -s syntax_varname            fg=202
+#ble-face -s syntax_delimiter          bold
+#ble-face -s syntax_param_expansion    fg=purple
+#ble-face -s syntax_history_expansion  bg=94,fg=231
+#ble-face -s syntax_function_name      fg=92,bold
+#ble-face -s syntax_comment            fg=gray
+#ble-face -s syntax_glob               fg=198,bold
+#ble-face -s syntax_brace              fg=37,bold
+#ble-face -s syntax_tilde              fg=navy,bold
+#ble-face -s syntax_document           fg=94
+#ble-face -s syntax_document_begin     fg=94,bold
+#ble-face -s command_builtin_dot       fg=red,bold
+#ble-face -s command_builtin           fg=red
+#ble-face -s command_alias             fg=teal
+#ble-face -s command_function          fg=92 # fg=purple
+#ble-face -s command_file              fg=green
+#ble-face -s command_keyword           fg=blue
+#ble-face -s command_jobs              fg=red,bold
+#ble-face -s command_directory         fg=navy,underline
+#ble-face -s filename_directory        underline,fg=26
+#ble-face -s filename_directory_sticky underline,fg=white,bg=26
+#ble-face -s filename_link             underline,fg=teal
+#ble-face -s filename_orphan           underline,fg=teal,bg=224
+#ble-face -s filename_setuid           underline,fg=black,bg=220
+#ble-face -s filename_setgid           underline,fg=black,bg=191
+#ble-face -s filename_executable       underline,fg=green
+#ble-face -s filename_other            underline
+#ble-face -s filename_socket           underline,fg=cyan,bg=black
+#ble-face -s filename_pipe             underline,fg=lime,bg=black
+#ble-face -s filename_character        underline,fg=white,bg=black
+#ble-face -s filename_block            underline,fg=yellow,bg=black
+#ble-face -s filename_warning          underline,fg=red
+#ble-face -s filename_url              underline,fg=blue
+#ble-face -s filename_ls_colors        underline
+#ble-face -s varname_array             fg=orange,bold
+#ble-face -s varname_empty             fg=31
+#ble-face -s varname_export            fg=200,bold
+#ble-face -s varname_expr              fg=92,bold
+#ble-face -s varname_hash              fg=70,bold
+#ble-face -s varname_number            fg=64
+#ble-face -s varname_readonly          fg=200
+#ble-face -s varname_transform         fg=29,bold
+#ble-face -s varname_unset             fg=124
 
 
 ##-----------------------------------------------------------------------------
@@ -687,21 +699,46 @@
 function blerc/vim-load-hook {
   ((_ble_bash>=40300)) && builtin bind 'set keyseq-timeout 1'
 
-  # bleopt keymap_vi_macro_depth=64
-  # bleopt keymap_vi_mode_string_nmap:=$'\e[1m~\e[m'
+  #----------------------------------------------------------------------------
+  # Settings for the mode name
+
+  ## The option "keymap_vi_mode_show" controls if the mode line is shown.  When
+  ## this option has a non-empty value, the mode line is shown.
+
+  #bleopt keymap_vi_mode_show=1
+
+
+  ## The following settings specify the name of modes in the mode line.
+
+  #bleopt keymap_vi_mode_name_insert=INSERT
+  #bleopt keymap_vi_mode_name_replace=REPLACE
+  #bleopt keymap_vi_mode_name_vreplace=VREPLACE
+  #bleopt keymap_vi_mode_name_visual=VISUAL
+  #bleopt keymap_vi_mode_name_select=SELECT
+  #bleopt keymap_vi_mode_name_linewise=LINE
+  #bleopt keymap_vi_mode_name_blockwise=BLOCK
+
+
+  ## This option specifies the string shown below the edited line in normal
+  ## mode.  For example, if you want to show an explicit name of the mode like
+  ## in other modes, please use the following setting:
+
+  #bleopt keymap_vi_mode_string_nmap:=$'\e[1m~\e[m'
 
 
   ## The setting "keymap_vi_mode_update_prompt" specifies that the prompt
   ## should be recalculated on the mode change.  When this option has a
   ## non-empty value, the prompt will be recalculated.
 
-  # bleopt keymap_vi_mode_update_prompt=
+  #bleopt keymap_vi_mode_update_prompt=
+
+  #----------------------------------------------------------------------------
+  # Keybindings
 
 
-  ## The option "keymap_vi_mode_show" controls if the mode line is shown.  When
-  ## this option has a non-empty value, the mode line is shown.
+  ## The following setting sets up the keymap settings with Meta modifiers
 
-  # bleopt keymap_vi_mode_show=1
+  #ble-decode/keymap:vi_imap/define-meta-bindings
 
 
   ## The default mapping of C-o is vi_imap/single-command-mode.  If you want to
@@ -716,29 +753,17 @@ function blerc/vim-load-hook {
 
   #ble-bind -m vi_imap -f 'C-k' 'vi_imap/insert-digraph'
 
-
-  ## The following settings specify the name of modes in the mode line.
-
-  # bleopt keymap_vi_mode_name_insert=INSERT
-  # bleopt keymap_vi_mode_name_replace=REPLACE
-  # bleopt keymap_vi_mode_name_vreplace=VREPLACE
-  # bleopt keymap_vi_mode_name_visual=VISUAL
-  # bleopt keymap_vi_mode_name_select=SELECT
-  # bleopt keymap_vi_mode_name_linewise=LINE
-  # bleopt keymap_vi_mode_name_blockwise=BLOCK
-
-
-  ## The following setting sets up the keymap settings with Meta modifiers
-
-  # ble-decode/keymap:vi_imap/define-meta-bindings
+  #----------------------------------------------------------------------------
+  # Cursor shapes and other terminal settings
 
   ## Cursor settings
 
-  # ble-bind -m vi_nmap --cursor 2
-  # ble-bind -m vi_imap --cursor 5
-  # ble-bind -m vi_omap --cursor 4
-  # ble-bind -m vi_xmap --cursor 2
-  # ble-bind -m vi_cmap --cursor 0
+  #ble-bind -m vi_nmap --cursor 2
+  #ble-bind -m vi_imap --cursor 5
+  #ble-bind -m vi_omap --cursor 4
+  #ble-bind -m vi_xmap --cursor 2
+  #ble-bind -m vi_smap --cursor 2
+  #ble-bind -m vi_cmap --cursor 0
 
   ## DECSCUSR setting
   ##
@@ -748,33 +773,151 @@ function blerc/vim-load-hook {
   #_ble_term_Ss=$'\e[@1 q'
 
   ## Control sequences that will be output on entering each mode
-  # bleopt term_vi_nmap=
-  # bleopt term_vi_imap=
-  # bleopt term_vi_omap=
-  # bleopt term_vi_xmap=
-  # bleopt term_vi_cmap=
+  #bleopt term_vi_nmap=
+  #bleopt term_vi_imap=
+  #bleopt term_vi_omap=
+  #bleopt term_vi_xmap=
+  #bleopt term_vi_smap=
+  #bleopt term_vi_cmap=
+
+  #----------------------------------------------------------------------------
+  # Miscellaneous settings
+
+  ## This option controls the frequency of recording "undo".  When the value
+  ## "more" is specified, "undo" will be recorded for various operations in
+  ## "vi_imap".
+
+  #bleopt keymap_vi_imap_undo=
+
+
+  ## This option controls the behavior of motion in select mode.  The value is
+  ## a list of words separated by commas.  When the word "stopsel" is contained
+  ## in this option, ble.sh exits the select mode with a motion in select mode.
+
+  #bleopt keymap_vi_keymodel=
+
+
+  ## This option sets the upper limit of the maximal depth of recurrence of
+
+  ## replaying keyboard macros.
+  #bleopt keymap_vi_macro_depth=64
+
+
+  ## This option specifies the operator name when the user input "g@" in normal
+  ## mode.  The function "ble/keymap:vi/operator:$value", where "$value" is the
+  ## value of this setting, is used as the implementation of the operator.
+
+  #bleopt keymap_vi_operatorfunc=
+
+
+  ## When this option has a non-empty value, "/", "?", "n", "N" search the word
+  ## on the current position.  When this option has the empty value, these keys
+  ## follows the behavior of `vim`.
+
+  #bleopt keymap_vi_search_match_current=
+
+  #----------------------------------------------------------------------------
+  # plugins
 
   ## vim-surround
+
   #ble-import vim-surround
   #bleopt vim_surround_45:=$'$( \r )'
   #bleopt vim_surround_61:=$'$(( \r ))'
 
   ## vim-arpeggio
+
   #ble-import vim-arpeggio
   #bleopt vim_arpeggio_timeoutlen=10
   #ble/lib/vim-arpeggio.sh/bind -s jk 'hello'
 
   ## vim-airline
+
   #ble-import vim-airline
   #bleopt vim_airline_theme=light
+  #bleopt vim_airline_section_a='\e[1m\q{lib/vim-airline/mode}'
+  #bleopt vim_airline_section_b='\q{lib/vim-airline/gitstatus}'
+  #bleopt vim_airline_section_c='\w'
+  #bleopt vim_airline_section_x='bash'
+  #bleopt vim_airline_section_y='$_ble_util_locale_encoding[unix]'
+  #bleopt vim_airline_section_z=' \q{history-percentile} \e[1m!\q{history-index}/\!\e[22m \q{position}'
+  #bleopt vim_airline_left_sep=$'\uE0B0'
+  #bleopt vim_airline_left_alt_sep=$'\uE0B1'
+  #bleopt vim_airline_right_sep=$'\uE0B2'
+  #bleopt vim_airline_right_alt_sep=$'\uE0B3'
+  #bleopt vim_airline_symbol_branch=$'\uE0A0'
+  #bleopt vim_airline_symbol_dirty=$'\u26A1'
 }
 blehook/eval-after-load keymap_vi blerc/vim-load-hook
 
 ##-----------------------------------------------------------------------------
 ## Internal settings
 
-#bleopt internal_stackdump_enabled=0
-#bleopt openat_base=30
+## This option sets the interval of checking new user inputs.  The value is
+## evaluated as an arithmetic expression.  On the evaluation, a shell variable
+## "ble_util_idle_elapsed" is provided for the time since the last user input
+## in millisecond.  This option is used for the polling for the background
+## execution when there is no user inputs.
+
+#bleopt idle_interval='ble_util_idle_elapsed>600000?500:(ble_util_idle_elapsed>60000?200:(ble_util_idle_elapsed>5000?100:20))'
+
+
+## This option specifies a colon-separated list of custom search paths of "ble-import".
+
+#bleopt import_path="${XDG_DATA_HOME:-$HOME/.local/share}/blesh/local"
+
+
+## When a non-empty value is specified to this option, displays the internal
+## syntax analysis information and the syntax tree.  This is only effective in
+## devel versions.
+
+#bleopt_syntax_debug=
+
+
+## [The setting "openat_base" needs to be set before ble.sh is loaded or
+## specified in the source options.  Therefore the value should be assigned
+## directly to the shell variable "bleopt_openat_base" instead of using
+## "bleopt" command.]
+##
+## This setting "openat_base" specifies the starting number of the file
+## descriptors which ble.sh internally uses in Bash 4.0 or lower.  The value of
+## this setting is used as the number for the first file descriptor of internal
+## use, and the next value is used for the second file descriptor, and so on.
+## When you want to use the default value 30 and succeeding number 31, 32,
+## etc. for other purposes, please set to this settings another value which
+## does not conflict with file descriptors of other purposes.
+
+# echo "usage: e.g. source out/ble.sh -o openat_base=30"
+
+
+## It specifies the context of the command execution.  The value "gexec"
+## specifies that the user command is evaluated in global contexts.  The value
+## "exec" (ble-0.3 and before) specified that the user command is evaluated in
+## a function, but the support is removed in ble-0.4 because this is only
+## remained for a debugging purpose and not tested well.
+
 #bleopt internal_exec_type=gexec
-#bleopt internal_suppress_bash_output=1
+
+
+## This option sets the message that Bash outputs when "C-d" is input by user.
+## This value is used to detect that the user inputs "C-d" in Bash 3.
+
 #bleopt internal_ignoreeof_trap='Use "exit" to leave the shell.'
+
+
+## This option controls the output of stack dump when assertion is failed in
+## ble.sh.  When the value is evaluated to be non-zero, the stack dump is
+## printed for assertion failures.
+
+#bleopt internal_stackdump_enabled=0
+
+
+## When a non-empty value is specified to this option, the standard output and
+## standard error from Bash is not output to the terminal.  When the value is
+## empty, ble.sh tries to realize the line editing allowing Bash to output its
+## own standard output and error.  This setting has a flickering problem and
+## only left for debugging purpose, so it is not tested.  Normally a non-empty
+## value should be specified so as to suppress the standard output and error
+## from Bash.
+
+#bleopt internal_suppress_bash_output=1

@@ -190,7 +190,7 @@ function ble/unicode/c2w {
 #%< canvas.emoji.sh
 
 bleopt/declare -v emoji_width 2
-bleopt/declare -v emoji_opts ri:tpvs:epvs
+bleopt/declare -v emoji_opts ri
 
 function bleopt/check:emoji_version {
   local rex='^0*([0-9]+)\.0*([0-9]+)$'

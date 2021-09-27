@@ -108,6 +108,7 @@
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
+- blerc: add all the missing options `#D1667` 0000000
 
 ## Fixes
 
