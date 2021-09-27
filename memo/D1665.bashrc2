@@ -1,0 +1,176 @@
+# -*- mode: sh-bash -*-
+
+type=fix3b
+
+if [[ $type == rep-c2w-auto-fail ]]; then
+  source out/ble.sh --norc
+
+  getCPos() {
+    local v=() t=$(stty -g)
+    stty -echo
+    printf "\033[6n"
+    IFS='[;' read -ra v -d R
+    stty $t
+    CPos=(${v[@]:1})
+  }
+
+  custom_prompt() {
+    getCPos
+    if [ $CPos -eq 1 ]; then
+      PS1=""
+    else
+      PS1="\n"
+    fi
+  }
+  PROMPT_COMMAND=custom_prompt
+
+  ble-attach
+fi
+
+#------------------------------------------------------------------------------
+
+if [[ $type == rep-c2w-auto-fail-min ]]; then
+  source out/ble.sh --norc
+  getCPos() {
+    local v=() t=$(stty -g)
+    stty -echo
+    printf "\033[6n"
+    IFS='[;' read -ra v -d R
+    stty $t
+    CPos=(${v[@]:1})
+  }
+  PROMPT_COMMAND=getCPos
+fi
+
+#------------------------------------------------------------------------------
+
+if [[ $type == fix-exclude-blesh ]]; then
+  custom_prompt() {
+    cmd_cde=$?
+    window_title
+    if ! ble 2>/dev/null; then
+      getCPos
+      if [ $CPos -eq 1 ]; then
+        PS1=""
+      else
+        PS1="\n"
+      fi
+    fi
+    PS1+="\[$(tput setaf 1)\]┏━"
+  }
+
+  source out/ble.sh --norc
+  getCPos() {
+    if [[ ! ${_ble_attached-} ]]; then
+      #if ! ble 2>/dev/null; then
+      local v=() t=$(stty -g)
+      stty -echo
+      printf "\033[6n"
+      IFS='[;' read -ra v -d R
+      stty $t
+      CPos=(${v[@]:1})
+    fi
+  }
+  PROMPT_COMMAND=getCPos
+fi
+
+#------------------------------------------------------------------------------
+# 修正案2
+
+if [[ $type == fix2 ]]; then
+  source out/ble.sh --norc
+  custom_prompt() {
+    printf -v PS1 $'\[ \b\e[%dC %s\r\]' $((COLUMNS-2)) "$(tput xenl && echo ' ')"
+    PS1+='hello\$ '
+  }
+  PROMPT_COMMAND=custom_prompt
+fi
+
+if [[ $type == fix3 ]]; then
+  source out/ble.sh --norc
+
+  getCPos() {
+    local v=() t=$(stty -g)
+    stty -echo
+    printf "\033[6n"
+    IFS='[;' read -ra v -d R
+    stty $t
+    CPos=(${v[@]:1})
+  }
+
+  if [[ ${BLE_VERSION-} ]]; then
+    ble/function#advice after ble/widget/clear-screen '_ble_edit_lineno=0'
+    _check_clear_command() {
+      local rex_eval_prefix='((eval|command|env|sudo)[[:space:]]+)?'
+      local rex_clear_command='(tput[[:space:]]+)?(clear|reset)'
+      local rex=$'(^|[\n;&|(])[[:space:]]*'$rex_eval_prefix$rex_clear_command'([ \t\n;&|)]|$)'
+      [[ $BASH_COMMAND =~ $rex ]] && _ble_edit_lineno=0
+    }
+    blehook POSTEXEC+=_check_clear_command
+  fi
+
+  custom_prompt() {
+    if
+      if [[ $_ble_attached ]]; then
+        ((_ble_edit_lineno==0))
+      else
+        getCPos; [ $CPos -eq 1 ]
+      fi
+    then
+      PS1=""
+    else
+      PS1="\n"
+    fi
+    PS1+='hello\$ '
+  }
+  PROMPT_COMMAND=custom_prompt
+fi
+
+if [[ $type == fix3b ]]; then
+  source out/ble.sh --norc
+
+  getCPos() {
+    local v=() t=$(stty -g)
+    stty -echo
+    printf "\033[6n"
+    IFS='[;' read -ra v -d R
+    stty $t
+    CPos=(${v[@]:1})
+  }
+
+  if [[ ${BLE_VERSION-} ]]; then
+    CPos=(1 1)
+    blehook POSTEXEC+=getCPos
+  fi
+
+  custom_prompt() {
+    if [[ ! ${_ble_attached-} ]]; then
+      getCPos
+    fi
+    if [ $CPos -eq 1 ]; then
+      PS1=""
+    else
+      PS1="\n"
+    fi
+    PS1+='hello\$ '
+  }
+  PROMPT_COMMAND=custom_prompt
+fi
+
+#------------------------------------------------------------------------------
+# minimal reproducer for absorbed characters
+
+if [[ $type == rep-absorb-chars ]]; then
+  getCPos() {
+    local v=() t=$(stty -g)
+    stty -echo
+    printf "\033[6n"
+    IFS='[;' read -ra v -d R
+    stty $t
+    CPos=(${v[@]:1})
+  }
+  #PROMPT_COMMAND=getCPos
+
+  something_slow() { sleep 2; }
+  something_slow
+fi

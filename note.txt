@@ -1827,15 +1827,6 @@ bash_tips
     そもそも desc の内容自体その場に表示するのではなくて preview 的な小さな窓の中に
     選択した時にだけ表示するという形式でも良いのではないかという気がする。
 
-  * canvas: Void Linux で文字幅計算がずれる (reported by Barbarossa93)
-    https://github.com/akinomyoga/ble.sh/issues/135
-
-    と思ったがそもそもキャッシュしていない様に見える。という事は何を意味するの
-    か。うーん。prompt 計算のキャッシュが残っているという事だろうか。そんな気が
-    する。試してみる事にする。→プロンプトの trace_hash に char_width_mode も入
-    れて置く事にした。char_width_mode=west にしても前の設定が残っている問題は解
-    決した。
-
 2021-09-02
 
   * 改めて確認した所また Windows Terminal で動かなくなっている
@@ -5396,6 +5387,149 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-09-27
+
+  * edit: powerlevel10k の prompt_add_newline を実装する (motivated by Barbarossa93) [#D1666]
+    https://github.com/akinomyoga/ble.sh/issues/135#issuecomment-927284636
+
+      prompt_ruler='empty-line'
+      prompt_ruler='-'
+      prompt_ruler=$'\e[38;5;242m-'
+      prompt_ruler='---='
+
+    等に対応する。これは実はそんなに難しくないかもしれない。対応した。
+
+    対応する powerlevel10k に於ける設定名は以下の通り
+
+      POWERLEVEL9K_PROMPT_ADD_NEWLINE=true/false
+      POWERLEVEL9K_SHOW_RULER=true/false
+      POWERLEVEL9K_RULER_CHAR=-
+      POWERLEVEL9K_RULER_FOREGROUND=242
+
+    ble.sh では prompt_ruler に ANSI seq を指定できる様にしたので色も一つの変数
+    で済む。
+
+  * [外部 bashrc] Void Linux で文字幅計算がずれる (reported by Barbarossa93) [#D1665]
+    https://github.com/akinomyoga/ble.sh/issues/135
+
+    と思ったがそもそもキャッシュしていない様に見える。という事は何を意味するの
+    か。うーん。prompt 計算のキャッシュが残っているという事だろうか。そんな気が
+    する。試してみる事にする。→プロンプトの trace_hash に char_width_mode も入
+    れて置く事にした。char_width_mode=west にしても前の設定が残っている問題は解
+    決した。
+
+    * 2021-09-26 これは結局 Barbarossa93 の設定に含まれる getCPos で printf
+      DSR(6) & read CPR していたのが原因だった。この為に ble.sh の遅延処理して
+      いる CPR の処理と getCPos の CPR の処理が入れ替わって双方で誤った結果を生
+      み出しているというのが原因であった。
+
+      更に、もう一つの報告された問題である入力した文字列が失われるという問題に
+      ついても、この getCPos が CPR 待ちで読み取っているが為に起こっている問題
+      であった。この問題は ble.sh をロードしなくても、単に bashrc で時間がかか
+      るだけで再現するという事が分かった。
+
+    * 2021-09-26 PROMPT_COMMAND の中でこの様な事をしても大丈夫な様に対策する?
+
+      そもそも技術的に可能なのか分からない。
+
+      a PROMPT_COMMAND の呼び出し前の段階でユーザー入力があるかどうかを確認して、
+        もしユーザー入力があるのであれば一旦その時点で抜けるという事が必要にな
+        る気がする。然し、現時点で既にその様な実装になっている様な気もする。こ
+        れは全然対策になっていない。
+
+        つまり、textarea#render に入る直前までに返答が返ってくれば処理もできる
+        が、そうでなければ PROMPT_COMMAND の中で stdin を読み取ろうとした時に、
+        返答が来るまで待って其処で CPR が読み取られてしまうという事になる。
+
+      うーん。やはりこれに対する対策は原理的に困難である様な気がする。
+
+      b 或いは、terminal-test.buff を sync (timeout 付き) で処理する可能性もある。
+
+        然し、端末が CPR に対応していない時に固まってしまう。
+
+        timeout を入れたとしてもその分遅延が生じる事になる。ble.sh では初期化の
+        遅延を可能な限り減らそうとしているので 50ms でも待つ等という事はしたく
+        ない。それに timeout した時に、それよりもずっと後になって返答が返って来
+        た時にまた問題が生じるかもしれないので、timeout はもっと長く設定しなけ
+        ればならない気がする。もしくは、timeout してしまったら何らかのエラーと
+        して処理を中断するというのが普通のシェルプログラムの動作として望ましい
+        が、対話セッションの時にはセッションを抜けるという訳にも行かない。
+
+        もし本当に位置を特定したいのであれば、やはり ble.sh の様に非同期で処理
+        する事が必要で、その為には line editor の event loop に登録するしかない。
+        ble.sh ではその為の枠組を用意しているので、本当にそういった処理を実施し
+        たいのであれば、ble.sh の枠組みを経由でカーソル位置を取得してもらうしか
+        ない。readline に至っては robust な方法はない様な気がする。一応、
+        readline の動作は高速なので変な遅延が生じる可能性は少ないし、そもそも
+        readline が返答を必要とする様な要求を出さないので問題が起こる事は余りな
+        いのだろう。
+
+      結局技術的に考えても困難であるし、これの対策はしない事にする。
+
+      対策しないとするとどれだけの範囲で問題が生じるか調べておく必要がある。
+
+        https://github.com/search?q=filename%3Abashrc+getcpos
+        https://github.com/Barbarossa93/Muspelheim/blob/c9ea8ffd83ab5c85da47b5c36f39b3ec97b96230/.config/bash/bashrc
+
+      検索すると以上の様に報告者の bashrc しか見つからないので、この getCPos を
+      bashrc の中で使うという手法は報告者独自のものであると推察される。なので、
+      そんなに多くの設定で使われている物という訳でもないのだろうという気がする。
+      うーん。以下で検索すると PROOMPT_COMMAND で CPR を取得するのは実は沢山存
+      在している様だ。
+
+        https://github.com/search?q=filename%3Abashrc+PROMPT_COMMAND+%22%5B6n%22
+        https://github.com/ScoreUnder/scripts-and-dotfiles/blob/f69f2f11739342a7c46fb38a9be2f5a5c803a438/dotfiles/.bashrc.m4
+        https://github.com/safocl/safocl_profiles/blob/31ce40e9ff4619d1099c4f95c1f717e8a9b389fb/.bashrc
+
+    * [再現不可] urxvt: C-l をした直後に何故か反応が遅くなる
+
+      C-l の直後以外では問題はない様に見える。うーん。もしかすると C-l の直後以外
+      ではプロンプトの更新がされていない? 単にプロンプトの計算に時間がかかってい
+      るという事?
+
+      以下の PS1 で再現する
+
+      PS1=$'\[\e[38;5;1m\]┏━[\e[38;5;7m\]\w\[\e[38;5;1m\]]\n\[\e[38;5;1m\]┗━━ \[\e[38;5;8m\]■ \[\e[38;5;7m\]'
+
+      というか更に以下の PS1 でも再現する
+
+      PS1=$'\e[31mA '
+
+      うーん。これは結局再現する事はできなかった。改めて urxvt で提供された
+      bashrc を実行してみたがそれでも駄目だった。何か urxvt か或いは別の設定が
+      壊れていたのかもしれない。
+
+    * 2021-09-26 workaround を提示したら思っている動作と異なるとの報告が来た。
+      改めて見てみると、元のコードでしたのは「一番左にいなかったら改行を追加す
+      る」ではなくて「一番上にいなかったら改行を追加する」という物だった。
+
+      少し考えてみたがよく分からない。困難の気がする。powerlevel10k にその機能
+      があるというので p10k を 6n で検索してみたが、特にその様な文字列は含まれ
+      ていない様だ。或いは、powerlevel10k はまた異なる手法を用いているのかもし
+      れない。どうやら
+
+        POWERLEVEL9K_PROMPT_ADD_NEWLINE
+
+      というのが該当する設定の様である。うーん。これを使っている所を調べると
+
+        [[ $P9K_TTY == old ]] && { unset _p9k__empty_line_i; _p9k__display_v[2]=print }
+
+      というのを設定している。P9K_TTY は preexec で old に設定されている。
+
+        if [[ $_p9k__preexec_cmd == [[:space:]]#(clear([[:space:]]##-(|x)(|T[a-zA-Z0-9-_\'\"]#))#|reset)[[:space:]]# &&
+              $_p9k__status == 0 ]]; then
+          P9K_TTY=new
+        elif [[ $P9K_TTY == new && $_p9k__fully_initialized == 1 ]] && ! zle; then
+          P9K_TTY=old
+        fi
+
+        if [[ $1 == (clear-screen|z4h-clear-screen-*-top) ]]; then
+          P9K_TTY=new
+          _p9k__expanded=0
+          _p9k_reset_prompt
+        fi
+
+      うーん。これを見ると powerlevel10k は単に直前のコマンドを見ている様だ。具
+      体的に座標を抽出している訳ではない様だ。これなら実装できなくもないが…。
 
   * canvas: 文字幅判定の為の CPR は internal 状態で実行したい [#D1664]
 

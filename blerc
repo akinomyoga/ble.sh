@@ -179,6 +179,19 @@
 #bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m'
 
 
+## "prompt_ruler" specifies the ruler between the previous command and the
+## prompt (like powerlevel10k
+## "POWERLEVEL9K_PROMPT_{ADD_NEWLINE,SHOW_RULER,RULER_*}").  When the empty
+## value is specified, the ruler is disabled.  This is the default.  When the
+## value "empty-line" is specified, an empty line is inserted between the
+## command and the prompt.  When the other values are specified, the value is
+## interpreted as an ANSI sequences, and the result is repeated to fill a line.
+
+#bleopt prompt_ruler=            # no ruler (default)
+#bleopt prompt_ruler=empty-line  # empty line
+#bleopt prompt_ruler=$'\e[94m-'  # blue line
+
+
 ## "exec_errexit_mark" specifies the format of the mark to show the exit status
 ## of the command when it is non-zero.  If this setting is an empty string the
 ## exit status will not be shown.  The value can contain ANSI escape sequences.

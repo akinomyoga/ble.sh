@@ -155,8 +155,8 @@ bleopt/declare -v prompt_term_status  ''
 bleopt/declare -o rps1 prompt_rps1
 bleopt/declare -o rps1_transient prompt_rps1_transient
 
-## @bleopt prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
+bleopt/declare -v prompt_ruler ''
 
 bleopt/declare -v prompt_status_line  ''
 bleopt/declare -n prompt_status_align $'justify=\r'
@@ -1525,6 +1525,54 @@ function ble/prompt/update {
 function ble/prompt/clear {
   _ble_prompt_hash=
   ble/textarea#invalidate
+}
+
+#----------------------------------------------------------
+# Postexec prompts
+
+_ble_prompt_ruler=('' '' 0)
+
+function ble/prompt/print-ruler.draw {
+  [[ $bleopt_prompt_ruler ]] || return 0
+
+  local command=$1 opts=$2 cols=$COLUMNS
+  local rex_eval_prefix='(([!{]|time|if|then|elif|while|until|do|exec|eval|command|env|nice|nohup|xargs|sudo)[[:space:]]+)?'
+  local rex_clear_command='(tput[[:space:]]+)?(clear|reset)'
+  local rex=$'(^|[\n;&|(])[[:space:]]*'$rex_eval_prefix$rex_clear_command'([ \t\n;&|)]|$)'
+  [[ $command =~ $rex ]] && return 0
+
+  if [[ :$opts: == *:keep-info:* ]]; then
+    ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" 1
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+    ((_ble_canvas_panel_height[_ble_textarea_panel]--))
+  fi
+
+  if [[ $bleopt_prompt_ruler == empty-line ]]; then
+    ble/canvas/put.draw $'\n'
+  else
+    if [[ $bleopt_prompt_ruler != "${_ble_prompt_ruler[0]}" ]]; then
+      if [[ $bleopt_prompt_ruler ]]; then
+        local ret= x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
+        LINES=1 COLUMNS=$cols ble/canvas/trace "$bleopt_prompt_ruler" truncate:measure-bbox
+        _ble_prompt_ruler=("$bleopt_prompt_ruler" "$ret" "$x2")
+      else
+        _ble_prompt_ruler=('' '' 0)
+      fi
+    fi
+
+    local w=${_ble_prompt_ruler[2]}
+    local repeat=$((cols/w))
+    ble/string#repeat "$bleopt_prompt_ruler" "$repeat"
+    ble/canvas/put.draw "$ret"
+    ble/string#repeat ' ' $((cols-repeat*w))
+    ble/canvas/put.draw "$ret"
+    ((_ble_term_xenl)) && ble/canvas/put.draw $'\n'
+  fi
+}
+function ble/prompt/print-ruler.buff {
+  local -a DRAW_BUFF=()
+  ble/prompt/print-ruler.draw "$@"
+  ble/canvas/bflush.draw
 }
 
 # 
@@ -4995,27 +5043,27 @@ function ble-edit/exec/.setexit {
 }
 ## @fn ble-edit/exec/.adjust-eol
 ##   文末調整を行います。
-_ble_edit_exec_eol_mark=('' '' 0)
+_ble_prompt_eol_mark=('' '' 0)
 function ble-edit/exec/.adjust-eol {
-  # update cache
-  if [[ $bleopt_prompt_eol_mark != "${_ble_edit_exec_eol_mark[0]}" ]]; then
-    if [[ $bleopt_prompt_eol_mark ]]; then
-      local ret= x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
-      LINES=1 COLUMNS=80 ble/canvas/trace "$bleopt_prompt_eol_mark" truncate:measure-bbox
-      _ble_edit_exec_eol_mark=("$bleopt_prompt_eol_mark" "$ret" "$x2")
-    else
-      _ble_edit_exec_eol_mark=('' '' 0)
-    fi
-  fi
-
+  # bleopt prompt_eol_mark
   local cols=${COLUMNS:-80}
   local -a DRAW_BUFF=()
-  local eol_mark=${_ble_edit_exec_eol_mark[1]}
-  if [[ $eol_mark ]]; then
+  if [[ $bleopt_prompt_eol_mark ]]; then
+    if [[ $bleopt_prompt_eol_mark != "${_ble_prompt_eol_mark[0]}" ]]; then
+      if [[ $bleopt_prompt_eol_mark ]]; then
+        local ret= x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
+        LINES=1 COLUMNS=80 ble/canvas/trace "$bleopt_prompt_eol_mark" truncate:measure-bbox
+        _ble_prompt_eol_mark=("$bleopt_prompt_eol_mark" "$ret" "$x2")
+      else
+        _ble_prompt_eol_mark=('' '' 0)
+      fi
+    fi
+
+    local eol_mark=${_ble_prompt_eol_mark[1]}
     # Note #D1458: コマンドを実行前に panel/render で panel 0 に移動している筈。
     #   従って bottom-dock には居らず SC/RC を使って OK の筈。
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_sc"
-    local width=${_ble_edit_exec_eol_mark[2]} limit=$cols
+    local width=${_ble_prompt_eol_mark[2]} limit=$cols
     [[ $_ble_term_rc ]] || ((limit--))
     if ((width>limit)); then
       local x=0 y=0 g=0
@@ -5028,6 +5076,7 @@ function ble-edit/exec/.adjust-eol {
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
   fi
 
+  # EOL adjustment
   local advance=$((_ble_term_xenl?cols-2:cols-3))
   if [[ $_ble_term_TERM == cygwin ]]; then
     # Note (#D1144): Cygwin console では何故か行き先が
@@ -5042,6 +5091,10 @@ function ble-edit/exec/.adjust-eol {
     ble/canvas/put-cuf.draw "$advance"
   fi
   ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
+
+  # bleopt prompt_ruler
+  ble/prompt/print-ruler.draw "$_ble_edit_exec_BASH_COMMAND"
+
   ble/canvas/bflush.draw
 }
 
@@ -5680,6 +5733,7 @@ function ble/widget/default/accept-line {
     [[ $bleopt_history_share ]] &&
       ble/builtin/history/option:n
     ble/widget/.newline keep-info
+    ble/prompt/print-ruler.buff '' keep-info
     ble/textarea#render
     ble/util/buffer.flush >&2
     return 0
