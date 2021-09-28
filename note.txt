@@ -5384,6 +5384,71 @@ bash_tips
 
 2021-09-27
 
+  * 2021-09-24 decode: 起動中に入力した文字が遅延する問題 [#D1670]
+    https://github.com/akinomyoga/ble.sh/issues/135#issuecomment-919088879
+
+    起動後に最初に文字が入力された時に初めて処理される。
+
+    | 但し、これはちゃんと対策できるのかどうか怪しい。うーん。何れにしても現在ど
+    | の様にしてこの遅延が発生しているのかを調べる必要はある。
+    |
+    | * 先ずは単純な bashrc で再現するのだろうか。という事。単純な bashrc だとちゃ
+    |   んと bashrc が終わった段階でバイトを受信する事ができている。
+    |
+    |   # bashrc
+    |   sleep 1
+    |   bind -x '"A":echo A'
+    |
+    | * 次の実験は ble/.hook は受信できているのかという事。実際に次の内容を受信し
+    |   ている:
+    |
+    |   [recv: 101] [recv: 99] [recv: 104] [recv: 111] # echo
+    |
+    |   [recv: 192] [recv: 155] [recv: 91] [recv: 50] [recv: 59] [recv: 49]
+    |   [recv: 82] # \e[2;1R
+    |
+    |   [recv: 192] [recv: 155] [recv: 91] [recv: 62] [recv: 56]
+    |   [recv: 51] [recv: 59] [recv: 52] [recv: 57] [recv: 57] [recv: 48] [recv:
+    |   48] [recv: 59] [recv: 48] [recv: 99] # \e[>83;49900;0c
+    |
+    |   うーん。
+    |
+    | * ble-decode-char: うーん。同じものをちゃんと受信できている。
+    |
+    |   [char: 101] [char: 99] [char: 104] [char: 111]
+    |
+    |   [char: 27] [char: 91] [char: 50] [char: 59] [char: 49] [char: 82]
+    |
+    |   [char: 27] [char: 91] [char: 62] [char: 56] [char: 51] [char: 59] [char:
+    |   52] [char: 57] [char: 57] [char: 48] [char: 48] [char: 59] [char: 48]
+    |   [char: 99]
+    |
+    | * ble-decode-key: 到達している。
+    |
+    |   [key: 101] [key: 99] [key: 104] [key: 111]
+    |
+    | * call-keyseq: 何も到達しない。
+    |
+    |   何が起こっているか分かった…。ble-decode-key に "echo" が届いた時点では、後
+    |   に CPR や DA2R が控えている為にその場では処理されない。然し、CPR や DA2R は
+    |   ble-decode-key を呼び出さないので、そのまま処理が止まったままになる…。と思っ
+    |   たが何だか変だ。改めて調べる。
+    |
+    |   うーん。やはり既に _ble_edit_str はちゃんと echo という文字列を含んでいる
+    |   様に見える。という事は call-keyseq とは別の経路でちゃんと文字列が挿入され
+    |   ているという事か。
+
+    うーん。分かった。ble-decode-key/.invoke-partial-match の中で文字入力がある
+    時に _ble_decode_key_batch に文字入力をキャッシュしている。なので次に何らか
+    の widget が呼び出される迄、キャッシュされたままになってしまう。
+
+    なので、何処かでユーザー入力がないと確かめられたら
+    ble-decode-key/batch/flush を呼び出す必要がある。ble-decode/.hook で呼び出
+    すのが最も確実だろう。
+
+    →直った。syntax highlighting の遅延もちゃんと見える様になった。というより
+    今迄見えていなかったのはやはりこれによる問題だったのだろう。
+
   * util: CPR に timeout を入れる可能性 [#D1669]
 
     偶々何らかの都合で端末が返答を無視した時などの為に、SECONDS 等を参照して古

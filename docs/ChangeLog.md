@@ -176,6 +176,7 @@
 - complete: fix a task scheduling bug of referencing two different clocks (reported by rashil2000) `#D1636` fea5f5b
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
+- decode: fix a bug that the characters input while initialization are delayed `#D1670` 0000000
 
 ## Optimization
 

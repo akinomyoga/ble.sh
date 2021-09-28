@@ -719,6 +719,8 @@ function ble-decode/.hook {
     done
   fi
 
+  ble/decode/has-input || ble-decode-key/batch/flush
+
   builtin eval -- "$_ble_decode_erase_progress_hook"
   ble-decode/EPILOGUE
 }
@@ -1836,8 +1838,10 @@ function ble-decode-key/is-intermediate { [[ $_ble_decode_key__seq ]]; }
 ## @arr _ble_decode_key_batch
 _ble_decode_key_batch=()
 
+## @fn ble-decode-key/batch/flush
 function ble-decode-key/batch/flush {
   ((${#_ble_decode_key_batch[@]})) || return 1
+  local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
   builtin eval "local command=\${${dicthead}[_ble_decode_KCODE_BATCH_CHAR]-}"
   command=${command:2}
   if [[ $command ]]; then
