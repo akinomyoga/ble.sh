@@ -87,6 +87,8 @@ function ble-bind-function-key+default {
   ble-decode-kbd/.gen-keycode delete
   ble-decode-kbd/.gen-keycode end
   ble-decode-kbd/.gen-keycode next
+  ble-decode-kbd/.gen-keycode find
+  ble-decode-kbd/.gen-keycode select
 
   local kend; ble/util/assign kend 'tput @7 2>/dev/null || tput kend 2>/dev/null'
   if [[ $kend == $'\e[5~' ]]; then
