@@ -52,6 +52,17 @@ function ble-bind-function-key+default {
   # ble-bind --csi '5~' end
   # ble-bind --csi '6~' next
 
+  # 順番を固定
+  local ret
+  .ble-decode-kbd.gen-keycode insert
+  .ble-decode-kbd.gen-keycode home
+  .ble-decode-kbd.gen-keycode prior
+  .ble-decode-kbd.gen-keycode delete
+  .ble-decode-kbd.gen-keycode end
+  .ble-decode-kbd.gen-keycode next
+  .ble-decode-kbd.gen-keycode find
+  .ble-decode-kbd.gen-keycode select
+
   if [[ $(tput kend) == $'\e[5~' ]]; then
     # vt100
     ble-bind --csi '1~' insert
