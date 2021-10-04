@@ -5393,6 +5393,15 @@ bash_tips
 
 2021-10-04
 
+  * cmap: find/select が TERM によって定義されていたりいなかったりする [#D1674]
+
+    今思ったのだが TERM によって find/select が存在したりしなかったりする事によって、
+    keymap.emacs や keymap.vi のキャッシュに不整合が生じるのではないか。うーん。
+
+    これによって keycode が不整合を起こすのではないか。
+    $_ble_base_cache/keymap.{emacs,vi} は特に TERM に依存せずに共通の物を用いて
+    いるので問題が発生する筈である。
+
   * prompt: prompt_ruler で空文字列に展開される文字列を指定すると無限ループになる? [#D1673]
 
     これは直ぐに直った。

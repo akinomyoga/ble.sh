@@ -114,6 +114,8 @@ function ble/init:cmap/initialize {
   ble-decode-kbd/generate-keycode delete
   ble-decode-kbd/generate-keycode end
   ble-decode-kbd/generate-keycode next
+  ble-decode-kbd/generate-keycode find
+  ble-decode-kbd/generate-keycode select
 
   local kend; ble/util/assign kend 'tput @7 2>/dev/null || tput kend 2>/dev/null'
   if [[ $kend == $'\e[5~' ]]; then
@@ -331,6 +333,10 @@ function ble/init:cmap/initialize {
     [57447]=rshift [57448]=rcontrol [57449]=ralter [57450]=rsuper [57451]=rhyper [57452]=rmeta
     [57453]=iso_shift3 [57454]=iso_shift5
   )
+  local keyname
+  for keyname in "${_ble_decode_csimap_kitty_u[@]}"; do
+    ble-decode-kbd/generate-keycode "$keyname"
+  done
 
   ble/edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
 }
