@@ -1605,11 +1605,68 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2021-09-28
+
+  * fast-syntax-highlighting
+
+    https://www.reddit.com/r/zsh/comments/oyege0/is_completionaware_syntax_highlighting_possible/
+    https://github.com/zdharma/fast-syntax-highlighting/tree/master/%E2%86%92chroma
+    https://github.com/Valodim/zsh-capture-completion
+
+    どうやら programmable highlighting に相当する機能は
+    fast-syntax-highlighting で既に実装されていて "chroma" と呼ばれているらしい。
+    然し実のところそれ程沢山の実装がある訳でもない。
+
+    他に zsh-capture-completion というモジュールに含まれる関数で capture.zsh
+    'command' を実行すると 'command[TAB]' とした時の補完結果を取得できるらしい。
+    これは ble.sh の上で作成する事も可能である。補完機能のテストで使うのに便利
+    な気がする。
+
+    bash-completion のテストをコピーできたら良い気がする…。でも全て python で
+    定義されているうというのは難点である。うーん。結局、その場で補完を実行する
+    機能を実装したとしても使う機会がないからテストされずに残って意味のない機能
+    になりそうな気がする。
+
+  * https://www.reddit.com/r/commandline/comments/pv1fm8/what_are_the_main_advantages_of_the_various_shells/
+
+    fish の便利な機能について紹介している。
+
+    * M-{right,left} でディレクトリ移動。これについては異なる keybinding で提供しても良い気がする。
+
+      iswitchb の如く C-x C-b 等で探索するのもありではないか?
+      その際には menu の機能を有効活用できる気がする。
+
+    * fish の Abbreviations の振る舞いが気になる。
+      zsh の zsh-abbr も気になる。
+
+    然し、実際に ble.sh をロードさせてテストするというのは有効の気がする。
+
+  * menu: C-x C-d で今迄に訪れたディレクトリの一覧。
+
+    iswitchb と同様に絞り込みをしたいが入力した文字列は何処に表示するのが良いのか。
+    panel に表示するのが良いだろうか。或いは、そもそも表示しなくても良いのかもしれない。
+    何れにせよ太字で表示されるのであるから。
+
+    太字ではなくてより強調した形にしても良いのかもしれない。これは face 経由で
+    設定できる様にするのが良い様な気がする。現在は太字固定になっているが。
+
+  * menu: C-x C-j で job 制御用の TUI メニューを表示しても良いのかもしれないとも思う。
+
+2021-09-26
+
+  * bash-5.2: array が sparse でない ./configure option が追加された。
+
+    もしかすると sparse arrays に declare -gA を指定する必要があるかもしれない。
+    sparse かつ ordered な配列については簡単な workaround は存在しない。唯、そ
+    の様な配列を実際に使っているかは分からない。なければ気にしなくて良い。
+
 2021-09-22
 
   * edit: 複数行モードの時は prior/next でページ移動?
 
-  * git clone 用の判定
+  * plug: git clone 用の判定:
+
+    これは
 
     $ grep -q '^github\.com' ~/.ssh/known_hosts
     $ grep -qEi '[[:space:]]*HostName[[:space:]]+([^[:space:]]+[[:space:]]+)*github\.com' ~/.ssh/config
@@ -5392,6 +5449,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-10-04
+
+  * blerc: 含まれていない face が存在する (reported by Prikalel) [#D1675]
+    https://github.com/akinomyoga/ble.sh/issues/140
+
+    blerc も wiki も共に以下の2つが抜けている。
+
+      argument_option
+      cmdinfo_cd_cdpath
+
+    * core-complete-def.sh で ble-color-defface を使っている。
+      →直した。他に ble-color-defface を使っている箇所はない。
 
   * cmap: find/select が TERM によって定義されていたりいなかったりする [#D1674]
 

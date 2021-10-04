@@ -74,7 +74,7 @@
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
 - complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 925b2cd
 - rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 9a7c8b1
-- prompt: support `bleopt prompt_ruler` `#D1666` 05cf638
+- prompt: support `bleopt prompt_ruler` (motivated by Barbarossa93) `#D1666` 05cf638
   - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 0000000
  
 ## Changes
@@ -112,7 +112,6 @@
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
-- blerc: add all the missing options `#D1667` 0228d76
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
 
 ## Fixes
@@ -179,6 +178,11 @@
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
 - decode: fix a bug that the characters input while initialization are delayed `#D1670` 430f449
+
+## Documentation
+
+- blerc: add all the missing options `#D1667` 0228d76
+- blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 0000000
 
 ## Optimization
 

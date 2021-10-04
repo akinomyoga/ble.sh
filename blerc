@@ -637,6 +637,7 @@
 #ble-face -s command_keyword           fg=blue
 #ble-face -s command_jobs              fg=red,bold
 #ble-face -s command_directory         fg=navy,underline
+#ble-face -s argument_option           fg=teal
 #ble-face -s filename_directory        underline,fg=26
 #ble-face -s filename_directory_sticky underline,fg=white,bg=26
 #ble-face -s filename_link             underline,fg=teal
@@ -662,6 +663,7 @@
 #ble-face -s varname_transform         fg=29,bold
 #ble-face -s varname_unset             fg=124
 
+#ble-face -s cmdinfo_cd_cdpath         fg=26,bg=155
 
 ##-----------------------------------------------------------------------------
 ## Keybindings

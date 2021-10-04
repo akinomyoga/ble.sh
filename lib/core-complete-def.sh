@@ -96,5 +96,5 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
 #------------------------------------------------------------------------------
 # 描画設定
 
-ble-color-defface auto_complete bg=254,fg=238
-ble-color-defface cmdinfo_cd_cdpath fg=26,bg=155
+ble/color/defface auto_complete bg=254,fg=238
+ble/color/defface cmdinfo_cd_cdpath fg=26,bg=155
