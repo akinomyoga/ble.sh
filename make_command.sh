@@ -96,25 +96,19 @@ function sub:ignoreeof-messages {
 }
 
 function sub:generate-emoji-table {
-  #local unicode_version=$(wget https://unicode.org/Public/emoji/ -O - | grep -Eo 'href="[0-9]+\.[0-9]+/"' | sed 's,^href=",,;s,/"$,,' | tail -n 1)
+  local -x name=${1:-_ble_unicode_EmojiStatus}
+
   local unicode_version=14.0
   local cache=out/data/unicode-emoji-$unicode_version.txt
   download "https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt" "$cache"
 
-  local q=\'
+  local -x q=\'
   local versions=$(gawk 'match($0, / E([0-9]+\.[0-9]+)/, m) > 0 { print m[1]; }' "$cache" | sort -Vu | tr '\n' ' ')
   gawk -v versions="$versions" '
-    function join(arr, sep, _, r, i, n) {
-      r = "";
-      n = length(arr);
-      for (i = 1; i <= n; i++) {
-        if (i > 1) r = r sep;
-        r = r arr[i];
-      }
-      return r;
-    }
-
     BEGIN {
+      NAME = ENVIRON["name"];
+      q = ENVIRON["q"];
+
       EmojiStatus_None               = 0;
       EmojiStatus_FullyQualified     = 1;
       EmojiStatus_MinimallyQualified = 2;
@@ -127,14 +121,16 @@ function sub:generate-emoji-table {
       print "_ble_unicode_EmojiStatus_Component="          EmojiStatus_Component;
     }
 
-    function register_codepoint(char_code, char_emoji_version, char_qtype, _, i) {
-      for (i = nvers; i >= 1; i--) {
-        emoji_version = vers[i];
-        data[emoji_version, char_code]++;
-        data[emoji_version, char_code + 1]++;
-        data_qtype[emoji_version, char_code] = char_qtype;
-        if (char_emoji_version == emoji_version) break;
+    function register_codepoint(char_code, char_emoji_version, char_qtype, _, iver) {
+      iver = ver2iver[char_emoji_version];
+      if (iver == "") {
+        print "unknown version \"" char_emoji_version "\"" > "/dev/stderr";
+        return;
       }
+
+      g_code2qtype[char_code] = iver == 0 ? char_qtype : q "V>=" iver "?" char_qtype ":0" q;
+      if (g_code2qtype[char_code + 1] == "")
+        g_code2qtype[char_code + 1] = "0";
     }
 
     function register_RegionalIndicators(_, code) {
@@ -145,15 +141,14 @@ function sub:generate-emoji-table {
     BEGIN {
       split(versions, vers);
       nvers = length(vers);
+      for (iver = 0; iver < nvers; iver++) {
+        ver2iver[vers[iver + 1]] = iver;
+        iver2ver[iver] = vers[iver + 1];
+      }
       register_RegionalIndicators();
     }
 
     # 単一絵文字 (sequence でない) のみを登録する。
-    #
-    # 2021-06-18 やはり unqualified は絵文字に含めない。多くの場合は既定では通
-    # 常文字で EPVS によって絵文字として表示する様である。component は肌の色
-    # (Extend) と髪 (Pictographic) の2種類がある。取り敢えず幅2で計算する。
-    #
     match($0, / E([0-9]+\.[0-9]+)/, m) > 0 {
       if ($3 == "fully-qualified") {
         register_codepoint(strtonum("0x" $1), m[1], EmojiStatus_FullyQualified);
@@ -164,119 +159,87 @@ function sub:generate-emoji-table {
       }
     }
 
-    function get_database_name(version, _, m) {
-      if (match(version, /^0*([0-9]+)\.0*([0-9]+)$/, m) > 0)
-        return sprintf("_ble_unicode_EmojiStatus_%04d", m[1] * 100 + m[2]);
-      else
-        return "";
-    }
+    function print_database(_, codes, qtypes, len, i, n, keys, code, qtype, prev_qtype) {
 
-
-    function etable_start(version) {
-      g_emoji_version = version;
-      g_prev_qtype = EmojiStatus_None;
-      delete etable;
-      return 1;
-    }
-
-    function etable_register_boundary(code, qtype) {
-      etable[code] = qtype;
-    }
-
-    function etable_end(_, database_name, i, n, code, qtype, prev_code, prev_qtype, codes, bcodes, nbcodes, ranges, iranges, qtypes, iqtypes) {
-      if (g_emoji_version == "") return;
-
-      if ((database_name = get_database_name(g_emoji_version))) {
-
-        # @arr bcodes: determine boundary codes
-        nbcodes = 0;
-        n = asorti(etable, codes, "@ind_num_asc");
-        prev_qtype = EmojiStatus_None;
-        for (i = 1; i <= n; i++) {
-          code = codes[i];
-          qtype = etable[code];
-          if (qtype == prev_qtype) continue;
-          prev_qtype = qtype;
-          bcodes[++nbcodes] = code;
-        }
-
-        # @arr ranges, qtypes
-        iranges = 0;
-        iqtypes = 0;
-        prev_code = 0;
-        prev_qtype = EmojiStatus_None;
-        for (i = 1; i <= nbcodes; i++) {
-          code = bcodes[i];
-          qtype = etable[code];
-          if (i + 1 < nbcodes && (n = bcodes[i + 1]) - code <= 1) {
-            for (; code < n; code++)
-              qtypes[++iqtypes] = "[" code "]=" qtype;
-          } else if (qtype != prev_qtype) {
-            ranges[++iranges] = code;
-            qtypes[++iqtypes] = "[" code "]=" qtype;
-
-            # 非孤立領域の範囲
-            p = int(code);
-            if (qtype == EmojiStatus_None) p--;
-            if (p < 0x10000) {
-              if (bmp_min == "" || p < bmp_min) bmp_min = p;
-              if (bmp_max == "" || p > bmp_max) bmp_max = p;
-            } else {
-              if (smp_min == "" || p < smp_min) smp_min = p;
-              if (smp_max == "" || p > smp_max) smp_max = p;
-            }
-            if (prev_qtype != EmojiStatus_None && prev_code < 0x10000 && 0x10000 < code)
-              print "\x1b[31mEmojiStatus_xmaybe: a BMP-SMP crossing range unexpected.\x1b[m" > "/dev/stderr";
-            prev_code = code;
-            prev_qtype = qtype;
-          }
-        }
-
-        g_def_ranges[g_emoji_version] = database_name "_ranges=(" join(ranges, " ") ")";
-        g_def_status[g_emoji_version] = database_name "=(" join(qtypes, " ") ")"
-      }
-
-      g_emoji_version = "";
-    }
-
-    function print_database(_, i, n, pairs, pair, version, code, qtype, emoji_version, latest_version) {
-      # Scan "version SUBSEP code" pairs
-      n = asorti(data, pairs);
-      g_emoji_version = "";
+      # uniq g_code2qtype
+      len = 0;
+      prev_qtype = EmojiStatus_None;
+      n = asorti(g_code2qtype, keys, "@ind_num_asc");
       for (i = 1; i <= n; i++) {
-        split(pairs[i], pair, SUBSEP);
-        version = pair[1];
-        if (version != g_emoji_version) {
-          if (g_emoji_version != "") etable_end();
-          etable_start(version);
-        }
-        code = pair[2];
-        qtype = data_qtype[pairs[i]];
+        code = int(keys[i]);
+        qtype = g_code2qtype[code];
         if (qtype == "") qtype = EmojiStatus_None;
-        etable_register_boundary(code, qtype);
+        if (qtype != prev_qtype) {
+          codes[len] = code;
+          qtypes[len] = qtype;
+          len++;
+        }
+        prev_qtype = qtype;
       }
-      if (g_emoji_version != "") etable_end();
 
-      printf("_ble_unicode_EmojiStatus_xmaybe='$q'%d<=code&&code<=%d||%d<=code&&code<=%d'$q'\n", bmp_min, bmp_max, smp_min, smp_max);
+      output_values = "";
+      output_ranges = "";
+      prev_code = 0;
+      prev_qtype = EmojiStatus_None;
+      for (i = 0; i < len; i++) {
+        code = codes[i];
+        qtype = qtypes[i];
+
+        if (i + 1 < len && (n = codes[i + 1]) - code <= 1) {
+          # 孤立コード
+          for (; code < n; code++)
+            output_values = output_values " [" code "]=" qtype;
+
+        } else if (qtype != prev_qtype) {
+          output_values = output_values " [" code "]=" qtype;
+          output_ranges = output_ranges " " code
+
+          # 非孤立領域の範囲
+          p = int(code);
+          if (qtype == EmojiStatus_None) p--;
+          if (p < 0x10000) {
+            if (bmp_min == "" || p < bmp_min) bmp_min = p;
+            if (bmp_max == "" || p > bmp_max) bmp_max = p;
+          } else {
+            if (smp_min == "" || p < smp_min) smp_min = p;
+            if (smp_max == "" || p > smp_max) smp_max = p;
+          }
+
+          # 非孤立領域が BMP/SMP を跨がない事の確認
+          if (prev_qtype != EmojiStatus_None && prev_code < 0x10000 && 0x10000 < code)
+            print "\x1b[31mEmojiStatus_xmaybe: a BMP-SMP crossing range unexpected.\x1b[m" > "/dev/stderr";
+          prev_code = code;
+          prev_qtype = qtype;
+        }
+      }
+
       # printf("_ble_unicode_EmojiStatus_bmp_min=%-6d # U+%04X\n", bmp_min, bmp_min);
       # printf("_ble_unicode_EmojiStatus_bmp_max=%-6d # U+%04X\n", bmp_max, bmp_max);
       # printf("_ble_unicode_EmojiStatus_smp_min=%-6d # U+%04X\n", smp_min, smp_min);
       # printf("_ble_unicode_EmojiStatus_smp_max=%-6d # U+%04X\n", smp_max, smp_max);
 
-      for (i = 1; i <= nvers; i++) {
-        emoji_version = vers[i];
-        if (emoji_version >= 1.0) {
-          print g_def_ranges[emoji_version];
-          print g_def_status[emoji_version];
-        }
-      }
-      latest_version = vers[nvers];
-      print "bleopt/declare -n emoji_version " latest_version;
-      print "_ble_unicode_EmojiStatus_ranges=(\"${" get_database_name(latest_version) "_ranges[@]}\")";
-      print "ble/idict#copy _ble_unicode_EmojiStatus " get_database_name(latest_version);
+      printf("_ble_unicode_EmojiStatus_xmaybe='$q'%d<=code&&code<=%d||%d<=code&&code<=%d'$q'\n", bmp_min, bmp_max, smp_min, smp_max);
+      print NAME "=(" substr(output_values, 2) ")"
+      print NAME "_ranges=(" substr(output_ranges, 2) ")";
+
     }
 
-    END { print_database(); }
+    function print_functions(_, iver) {
+      print "function ble/unicode/EmojiStatus/version2index {";
+      print "  case $1 in";
+      for (iver = 0; iver < nvers; iver++)
+        print "  (" iver2ver[iver] ") ret=" iver " ;;";
+      print "  (*) return 1 ;;";
+      print "  esac";
+      print "}"
+      print "_ble_unicode_EmojiStatus_version=" nvers - 1;
+      print "bleopt/declare -n emoji_version " iver2ver[nvers - 1];
+    }
+
+    END {
+      print_database();
+      print_functions();
+    }
   ' "$cache" | ifold -w 131 --spaces --no-text-justify --indent=..
 }
 
@@ -989,7 +952,8 @@ function sub:convert-custom-c2w-table {
     END {
       name = ENVIRON["name"];
       print name "=(" substr(g_output_values, 2) ")";
-      print name "_ranges=(" substr(g_output_ranges, 2) ")";
+      # print name "_ranges=(" substr(g_output_ranges, 2) ")";
+      print name "_ranges=(\"${!" name "[@]}\")"
     }
   ' | ifold -w 131 --spaces --no-text-justify --indent=..
 }

@@ -177,10 +177,12 @@ function ble/unicode/c2w {
 }
 
 
+## @const _ble_unicode_EmojiStatus_*
+##
 ## @var _ble_unicode_EmojiStatus_xmaybe
+## @arr _ble_unicode_EmojiStatus
 ## @arr _ble_unicode_EmojiStatus_ranges
-## @arr _ble_unicode_EmojiStatus_????
-## @arr _ble_unicode_EmojiStatus_????_ranges
+## @var _ble_unicode_EmojiStatus_version
 ## @bleopt emoji_version
 ##
 ##   ファイル src/canvas.emoji.sh は以下のコマンドで生成する。
@@ -192,26 +194,27 @@ bleopt/declare -v emoji_width 2
 bleopt/declare -v emoji_opts ri
 
 function bleopt/check:emoji_version {
-  local rex='^0*([0-9]+)\.0*([0-9]+)$'
-  if ! [[ $value =~ $rex ]]; then
-    ble/util/print "bleopt: Invalid value for emoji_version: '$value'." >&2
-    return 1
+  local ret
+  if ! ble/unicode/EmojiStatus/version2index "$value"; then
+    local rex='^0*([0-9]+)\.0*([0-9]+)$'
+    if ! [[ $value =~ $rex ]]; then
+      ble/util/print "bleopt: Invalid format for emoji_version: '$value'." >&2
+      return 1
+    else
+      ble/util/print "bleopt: Unsupported emoji_version: '$value'." >&2
+      return 1
+    fi
   fi
 
-  local src
-  ble/util/sprintf src _ble_unicode_EmojiStatus_%04d $((BASH_REMATCH[1]*100+BASH_REMATCH[2]))
-  if ! ble/is-array "$src"; then
-    ble/util/print "bleopt: Unsupported emoji_version '$value'." >&2
-    return 1
-  fi
-
+  _ble_unicode_EmojiStatus_version=$ret
   ble/util/c2w/clear-cache
-  ble/idict#copy _ble_unicode_EmojiStatus "$src"
-  builtin eval -- "_ble_unicode_EmojiStatus_ranges=(\"\${${src}_ranges[@]}\")"
   return 0
 }
 function bleopt/check:emoji_width { ble/util/c2w/clear-cache; }
 
+# 2021-06-18 unqualified は絵文字に含めない。多くの場合は既定では通常文字で
+# EPVS によって絵文字として表示する様である。component は肌の色(Extend) と髪
+# (Pictographic) の2種類がある。取り敢えず幅2で計算する。
 _ble_unicode_EmojiStatus_xIsEmoji='ret&&ret!=_ble_unicode_EmojiStatus_Unqualified'
 function bleopt/check:emoji_opts {
   _ble_unicode_EmojiStatus_xIsEmoji='ret'
@@ -225,19 +228,20 @@ function bleopt/check:emoji_opts {
 }
 
 function ble/unicode/EmojiStatus {
-  local code=$1
+  local code=$1 V=$_ble_unicode_EmojiStatus_version
   ret=${_ble_unicode_EmojiStatus[code]}
-  [[ $ret ]] && return 0
-  ret=$_ble_unicode_EmojiStatus_None
-  if ((_ble_unicode_EmojiStatus_xmaybe)); then
-    local l=0 u=${#_ble_unicode_EmojiStatus_ranges[@]} m
-    while ((l+1<u)); do
-      ((_ble_unicode_EmojiStatus_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
-    done
-    ret=${_ble_unicode_EmojiStatus[_ble_unicode_EmojiStatus_ranges[l]]:-0}
+  if [[ ! $ret ]]; then
+    ret=$_ble_unicode_EmojiStatus_None
+    if ((_ble_unicode_EmojiStatus_xmaybe)); then
+      local l=0 u=${#_ble_unicode_EmojiStatus_ranges[@]} m
+      while ((l+1<u)); do
+        ((_ble_unicode_EmojiStatus_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+      done
+      ret=${_ble_unicode_EmojiStatus[_ble_unicode_EmojiStatus_ranges[l]]:-0}
+    fi
+    _ble_unicode_EmojiStatus[code]=$ret
   fi
-
-  _ble_unicode_EmojiStatus[code]=$ret
+  ((ret=ret))
   return 0
 }
 

@@ -2,7 +2,60 @@
 
 function mkd { [[ -d $1 ]] || mkdir -p "$1"; }
 
-function sub:compare {
+## @fn make/canvas.emoji/get-emoji-data [emoji_version]
+##   @var[out] emoji_data
+##   @var[out] emoji_cache_file
+function make/canvas.emoji/get-emoji-data {
+  #local unicode_version=$(wget https://unicode.org/Public/emoji/ -O - | grep -Eo 'href="[0-9]+\.[0-9]+/"' | sed 's,^href=",,;s,/"$,,' | tail -n 1)
+  local unicode_version=${1:-14.0}
+  emoji_cache_file=out/data/unicode-emoji-$unicode_version.txt
+  if [[ ! -s $emoji_cache_file ]]; then
+    mkd out/data
+    wget "https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt" -O "$emoji_cache_file.part" &&
+      mv "$emoji_cache_file.part" "$emoji_cache_file"
+  fi
+
+  local gawk_script='
+      /^[[:space:]]*#/ { next; }
+      sub(/;.*$/, "") { print $0; }'
+  ble/util/assign-array emoji_data 'gawk "$gawk_script" "$emoji_cache_file"'
+}
+
+function make/canvas.emoji/sub:help {
+  ble/util/print "usage: source ${BASH_SOURCE##*/}${BASH_SOURCE:-canvas.emoji.sh} SUBCOMMAND ARGS..."
+  ble/util/print
+  ble/util/print "SUBCOMMAND"
+  declare -F | sed -n 's/^declare -f make\/canvas.emoji\/sub:\([^[:space:]]*\)/  \1/p'
+  ble/util/print
+}
+
+function make/canvas.emoji/sub:save-emoji-type {
+  local emoji_data emoji_cache_file
+  make/canvas.emoji/get-emoji-data
+  gawk '
+    /^[[:space:]]*#/ { next; }
+    {
+      if (/unqualified/) {
+        type = "UQ";
+      } else if (/fully-qualified/) {
+        type = "FQ";
+      } else if (/minimally-qualified/) {
+        type = "MQ";
+      } else {
+        type = "XX";
+      }
+    }
+    sub(/;.*$/, "") {
+      s = "";
+      for (i = 1; i <= NF; i++) {
+        s = s sprintf("\\U%05X", strtonum("0x" $i));
+      }
+      print s ": " type;
+    }
+  ' "$emoji_cache_file" | sort -u > out/data/emoji.TYPE.txt
+}
+
+function make/canvas.emoji/sub:compare {
   grep '^\\' out/data/emoji.TYPE.txt |
     join - <(awk '/^\\/ { sub(/^w=/, "blesh=", $2); print; }' out/data/emoji.blesh.txt) |
     join - <(awk '/^\\/ { sub(/^w=/, "kitty=", $2); print; }' out/data/emoji.kitty.txt)
@@ -10,6 +63,7 @@ function sub:compare {
 }
 
 #------------------------------------------------------------------------------
+# measure-emoji.impl1
 
 _tool_emoji_width_code=()
 _tool_emoji_width_gcb=()
@@ -26,7 +80,7 @@ function inspect1/proc {
     ble/util/c2s "$c"
     ble/canvas/put.draw "$ret"
   done
-  
+
   ble/array#push _tool_emoji_width_code "${code[*]}"
   ble/array#push _tool_emoji_width_gcb "${gcb[*]}"
   ble/term/CPR/request.draw inspect1/callback
@@ -48,7 +102,20 @@ function inspect1/callback-final {
   done | sort -u
 } >> emoji.txt
 
+function make/canvas.emoji/sub:measure-emoji.impl1 {
+  local emoji_data emoji_cache_file
+  make/canvas.emoji/get-emoji-data
+  ble/util/buffer.flush >&2
+  local line
+  for line in "${emoji_data[@]}"; do
+    eval "inspect1/proc $line"
+  done
+  ble/term/CPR/request.buff inspect1/callback-final
+  ble/util/buffer.flush >&2
+}
+
 #------------------------------------------------------------------------------
+# measure-emoji
 
 _term_emojiw_index_req=0
 _term_emojiw_index_rcv=0
@@ -61,7 +128,7 @@ _term_emojiw_output=emoji.txt
 function inspect2/start {
   _term_emojiw_index_req=0
   _term_emojiw_index_rcv=0
-  _term_emojiw_data=("${data[@]}")
+  _term_emojiw_data=("${emoji_data[@]}")
   _term_emojiw_output=emoji.txt
   : > "$_term_emojiw_output"
   inspect2/next
@@ -124,14 +191,21 @@ function inspect2/final {
   echo Done
 }
 
+function make/canvas.emoji/sub:measure-emoji {
+  local emoji_data emoji_cache_file
+  make/canvas.emoji/get-emoji-data 14.0
+  inspect2/start
+}
+
 #------------------------------------------------------------------------------
+# measure-emoji-sequences
 
 ## @fn ble/unicode/measure-emoji-sequences
-##   @var[in] data
+##   @var[in] emoji_data
 function ble/unicode/measure-emoji-sequences {
   local line words ret count=0
   local -a codes=() gcbs=() widths=()
-  for line in "${data[@]}"; do
+  for line in "${emoji_data[@]}"; do
     ble/string#split-words words "$line"
 
     local s= word c
@@ -163,9 +237,11 @@ function ble/unicode/test-emoji-sequence-width {
   diff -bwu <(grep '^\\U' out/data/emoji."blesh-$scheme".txt) <(grep '^\\U' out/data/emoji."$term".txt)
 }
 
-## @fn main/sub:measure-blesh term [scheme]
-##   @var[in] data cache
-function main/sub:measure-blesh {
+## @fn make/canvas.emoji/sub:measure-blesh term [scheme]
+function make/canvas.emoji/sub:measure-blesh {
+  local emoji_data emoji_cache_file
+  make/canvas.emoji/get-emoji-data 14.0
+
   local term=$1 scheme=${2:-$1}
   case $scheme in
   (blesh)
@@ -396,78 +472,25 @@ function main/sub:measure-blesh {
 }
 
 #------------------------------------------------------------------------------
-  
-function main {
-  local type=$1
 
-  #local unicode_version=$(wget https://unicode.org/Public/emoji/ -O - | grep -Eo 'href="[0-9]+\.[0-9]+/"' | sed 's,^href=",,;s,/"$,,' | tail -n 1)
-  local unicode_version=14.0
-  local cache=out/data/unicode-emoji-$unicode_version.txt
-  if [[ ! -s $cache ]]; then
-    mkd out/data
-    wget "https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt" -O "$cache.part" &&
-      mv "$cache.part" "$cache"
-  fi
+function make/canvas.emoji/sub:dump-EmojiStatus {
+  local emoji_data emoji_cache_file
+  make/canvas.emoji/get-emoji-data
 
-  local gawk_script='
-      /^[[:space:]]*#/ { next; }
-      sub(/;.*$/, "") { print $0; }'
-  local data
-  ble/util/assign-array data 'gawk "$gawk_script" "$cache"'
-  
-  case $type in
-  (measure-at-once)
-    ble/util/buffer.flush >&2
-    local line
-    for line in "${data[@]}"; do
-      eval "inspect1/proc $line"
-    done
-    ble/term/CPR/request.buff inspect1/callback-final
-    ble/util/buffer.flush >&2 ;;
-  (measure-emoji-by-emoji)
-    inspect2/start ;;
-  (measure-blesh)
-    main/sub:measure-blesh "$2" "$3" ;;
-  (save-emoji-type)
-    gawk '
-      /^[[:space:]]*#/ { next; }
-      {
-        if (/unqualified/) {
-          type = "UQ";
-        } else if (/fully-qualified/) {
-          type = "FQ";
-        } else if (/minimally-qualified/) {
-          type = "MQ";
-        } else {
-          type = "XX";
-        }
-      }
-      sub(/;.*$/, "") {
-        s = "";
-        for (i = 1; i <= NF; i++) {
-          s = s sprintf("\\U%05X", strtonum("0x" $i));
-        }
-        print s ": " type;
-      }
-    ' "$cache" | sort -u > out/data/emoji.TYPE.txt ;;
-  esac
+  local line words code
+  for line in "${emoji_data[@]}"; do
+    ble/string#split-words words "$line"
+
+    ((${#words[@]}==1)) || continue
+    ((code=16#${words[0]}))
+    ble/unicode/EmojiStatus "$code"
+    printf 'U+%05X %d\n' "$code" "$ret"
+  done
 }
 
-function sub:measure-emoji-impl1 {
-  main measure-at-once
-}
-function sub:measure-emoji {
-  main measure-emoji-by-emoji
-}
-function sub:measure-blesh {
-  main measure-blesh "$@"
-}
-function sub:save-emoji-type {
-  main save-emoji-type
-}
 
-if declare -F "sub:$1" &>/dev/null; then
-  "sub:$@"
+if declare -F "make/canvas.emoji/sub:$1" &>/dev/null; then
+  "make/canvas.emoji/sub:$@"
 else
-  sub:measure-emoji
+  make/canvas.emoji/sub:help
 fi

@@ -13,6 +13,7 @@
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
+  - emoji: unify emoji tables of different versions `#D1671` 0000000
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
   - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 01cfb10
@@ -28,7 +29,7 @@
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
   - edit: support `nsearch` opts `empty=emulate-readline` (motivated by jainpratik163) `#D1661` d68ba61
-  - edit: support bash-5.2 binding of `prior/next` to `history-search-{for,back}ward` `#D1661` 0000000
+  - edit: support bash-5.2 binding of `prior/next` to `history-search-{for,back}ward` `#D1661` d26a6e1
 - syntax: support the deprecated redirection `>& file` `#D1539` b9b0de4
 - complete: complete file descriptors and heredoc words after redirections `#D1539` b9b0de4
 - main: support `blehook ATTACH DETACH`, `BLE_ONLOAD`, `BLE_ATTACHED` `#D1543` 750ca38
@@ -64,16 +65,16 @@
 - canvas: support grapheme clusters (motivated by huresche) `#D1619` c0d997b
   - canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 9a132b7
   - canvas (c2w:auto): work around combining chars applied to the previous line `#D1649` 1cbbecb
-  - canvas (c2w:auto): avoid duplicate requests `#D1649` 1cbbecb 0000000
-  - canvas (c2w:auto): send <kbd>DSR(6)</kbd> in the internal state `#D1664` 0000000
-  - canvas (c2w): support `bleopt char_width_mode=musl` `#D1668` 0000000
-  - canvas (c2w:auto): detect `emacs` and `musl` `#D1668` 0000000
+  - canvas (c2w:auto): avoid duplicate requests `#D1649` 1cbbecb a3047f56
+  - canvas (c2w:auto): send <kbd>DSR(6)</kbd> in the internal state `#D1664` a3047f5
+  - canvas (c2w): support `bleopt char_width_mode=musl` `#D1668` 05b258f `#D1672` 0000000
+  - canvas (c2w:auto): detect `emacs` and `musl` `#D1668` 05b258f
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
 - edit: support bash-5.2 `READLINE_ARGUMENT` `#D1638` d347fb3
 - complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 925b2cd
 - rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 9a7c8b1
-- prompt: support `bleopt prompt_ruler` `#D1666` 0000000
+- prompt: support `bleopt prompt_ruler` `#D1666` 05cf638
  
 ## Changes
 
@@ -110,8 +111,8 @@
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
-- blerc: add all the missing options `#D1667` 0000000
-- util: time out <kbd>CPR</kbd> requests `#D1669` 00000000
+- blerc: add all the missing options `#D1667` 0228d76
+- util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
 
 ## Fixes
 
@@ -176,7 +177,7 @@
 - complete: fix a task scheduling bug of referencing two different clocks (reported by rashil2000) `#D1636` fea5f5b
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
-- decode: fix a bug that the characters input while initialization are delayed `#D1670` 0000000
+- decode: fix a bug that the characters input while initialization are delayed `#D1670` 430f449
 
 ## Optimization
 
@@ -245,7 +246,7 @@
 - util: fix `ble/util/dense-array#fill-range` a46fdaf
 - util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 5967d6c
 - util: fix leak variables `#D1643` fcf634b
-- edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663`
+- edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663` 1af0800
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
