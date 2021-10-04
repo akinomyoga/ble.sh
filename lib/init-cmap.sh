@@ -99,6 +99,8 @@ function ble/init:cmap/initialize {
   ble-decode-kbd/generate-keycode delete
   ble-decode-kbd/generate-keycode end
   ble-decode-kbd/generate-keycode next
+  ble-decode-kbd/generate-keycode find
+  ble-decode-kbd/generate-keycode select
 
   local kend; ble/util/assign kend 'tput @7 2>/dev/null || tput kend 2>/dev/null'
   if [[ $kend == $'\e[5~' ]]; then
