@@ -1555,6 +1555,10 @@ function ble/prompt/print-ruler.draw {
         local ret= x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
         LINES=1 COLUMNS=$cols ble/canvas/trace "$bleopt_prompt_ruler" truncate:measure-bbox
         _ble_prompt_ruler=("$bleopt_prompt_ruler" "$ret" "$x2")
+        if ((!_ble_prompt_ruler[2])); then
+          _ble_prompt_ruler[1]=${_ble_prompt_ruler[1]}' '
+          ((_ble_prompt_ruler[2]++))
+        fi
       else
         _ble_prompt_ruler=('' '' 0)
       fi
@@ -1562,7 +1566,7 @@ function ble/prompt/print-ruler.draw {
 
     local w=${_ble_prompt_ruler[2]}
     local repeat=$((cols/w))
-    ble/string#repeat "$bleopt_prompt_ruler" "$repeat"
+    ble/string#repeat "${_ble_prompt_ruler[1]}" "$repeat"
     ble/canvas/put.draw "$ret"
     ble/string#repeat ' ' $((cols-repeat*w))
     ble/canvas/put.draw "$ret"

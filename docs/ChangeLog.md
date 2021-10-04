@@ -75,6 +75,7 @@
 - complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 925b2cd
 - rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 9a7c8b1
 - prompt: support `bleopt prompt_ruler` `#D1666` 05cf638
+  - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 0000000
  
 ## Changes
 
