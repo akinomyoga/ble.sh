@@ -44,6 +44,12 @@ case ${BASH_VERSINFO[4]} in
     "  We recommend using ble.sh with a release version of Bash." >&2 ;;
 esac
 
+if [[ $- != *i* ]]; then
+  { ((${#BASH_SOURCE[@]})) && case ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} in (*bashrc|*bash_profile) ;; (*) false ;; esac } ||
+    echo "ble.sh: This is not an interactive session." >&2
+  return 1 2>/dev/null || exit 1
+fi
+
 if ((BASH_SUBSHELL)); then
   unset -v _ble_bash
   builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&2
