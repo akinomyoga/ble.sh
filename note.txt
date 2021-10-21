@@ -5448,6 +5448,14 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-10-21
+
+  * main: "ble.sh: This is not an interactive session." (reported by andreclerigo) [#D1676]
+
+    恐らく non-interactive session に於いて bash_profile から bashrc が読み込まれている。
+    bash_profile なので bashrc であると検出できなくてメッセージが表示されている。
+    何れにしても non-interactive session で読み込もうとしているのがいけないといえば行けない。
+
 2021-10-04
 
   * blerc: 含まれていない face が存在する (reported by Prikalel) [#D1675]

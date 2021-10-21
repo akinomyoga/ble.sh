@@ -113,6 +113,7 @@
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
+- main: suppress non-interactive session warnings also for `.bash_profile` (motivated by andreclerigo) `#D1676` 0000000
 
 ## Fixes
 
