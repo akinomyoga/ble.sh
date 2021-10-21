@@ -49,11 +49,6 @@ if [ -z "$BASH_VERSION" ]; then
   return 1 2>/dev/null || exit 1
 fi
 
-if [ -n "${-##*i*}" ]; then
-  echo "ble.sh: This is not an interactive session." >&2
-  return 1 2>/dev/null || exit 1
-fi
-
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 if [ "$_ble_bash" -lt 30000 ]; then
@@ -70,6 +65,12 @@ case ${BASH_VERSINFO[4]} in
     "  (version '$BASH_VERSION', release status: '${BASH_VERSINFO[4]}')." \
     "  We recommend using ble.sh with a release version of Bash." >&2 ;;
 esac
+
+if [[ $- != *i* ]]; then
+  { ((${#BASH_SOURCE[@]})) && case ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} in (*bashrc|*bash_profile) ;; (*) false ;; esac } ||
+    echo "ble.sh: This is not an interactive session." >&2
+  return 1 2>/dev/null || exit 1
+fi
 
 if ((BASH_SUBSHELL)); then
   builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&2
