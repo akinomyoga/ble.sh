@@ -5456,6 +5456,43 @@ bash_tips
     bash_profile なので bashrc であると検出できなくてメッセージが表示されている。
     何れにしても non-interactive session で読み込もうとしているのがいけないといえば行けない。
 
+    →推測で修正してみたが直っていないそうだ。画面を見ると原因が分かった。GDM
+    が Xsession を source して、 Xsession が /etc/profile 経由で .bashrc を呼び
+    出しているという事の様だ。つまり、non-interactive script が source .bashrc
+    をしている可能性を考慮に入れなければならない。この場合には、どう対処するべ
+    きか。
+
+    a warning を表示するというのは違う気がする。ユーザーは [[ $- == *i* ]] を考
+      慮に入れて bashrc を記述する事を要求されているのである。なので、ble.sh を
+      source する時にユーザー側で [[ $- == *i* ]] をチェックするか、或いは
+      ble.sh 自身でも *i* をチェックして silent に return するというのは妥当で
+      ある。
+
+    b 或いは warning は全く表示しないという可能性? しかし、直接 bash ble.sh を
+      実行された場合や、まるでライブラリであるかの様にプログラムから直接 source
+      ble.sh を実行した場合などは、明らかに使い方を間違えているのだから warning
+      を表示しても良い気がする。
+
+    c profile, bashrc など経由で ble.sh が source した時には、それが
+      non-interactive であっても警告は表示しない様にする。何しろ、profile,
+      bashrc は interactive でも non-interactive でも source され得るのだから、
+      non-interactive であったとしても使い方を間違えているとまでは言い難い。
+
+      Bash が source する可能性があるのは以下である。
+
+      - /etc/profile
+      - ~/.bashrc
+      - ~/.bash_profile
+      - ~/.profile
+
+      /etc/bashrc などはその他のファイルから呼び出されるので、これらはチェック
+      しなくても良い? と思ったが、もしかすると何らかのスクリプトが直接 source
+      /etc/bashrc みたいな事をしている可能性も考えられる。という事を考えると
+      bashrc も除外リストに入れて置いた方が良いのではないかという気もする。うー
+      ん。やはり除外リストに入れる事にする。
+
+      - /etc/bashrc
+
 2021-10-04
 
   * blerc: 含まれていない face が存在する (reported by Prikalel) [#D1675]

@@ -13,7 +13,7 @@
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
-  - emoji: unify emoji tables of different versions `#D1671` 0000000
+  - emoji: unify emoji tables of different versions `#D1671` af82662
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
   - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 01cfb10
@@ -67,7 +67,7 @@
   - canvas (c2w:auto): work around combining chars applied to the previous line `#D1649` 1cbbecb
   - canvas (c2w:auto): avoid duplicate requests `#D1649` 1cbbecb a3047f56
   - canvas (c2w:auto): send <kbd>DSR(6)</kbd> in the internal state `#D1664` a3047f5
-  - canvas (c2w): support `bleopt char_width_mode=musl` `#D1668` 05b258f `#D1672` 0000000
+  - canvas (c2w): support `bleopt char_width_mode=musl` `#D1668` 05b258f `#D1672` af82662
   - canvas (c2w:auto): detect `emacs` and `musl` `#D1668` 05b258f
 - rlfunc: support vi word operations in `emacs` keymap (requested by SolarAquarion) `#D1624` 21d636a
 - edit: support `TMOUT` for the session timeout `#D1631` 0e16dbd
@@ -75,7 +75,7 @@
 - complete: support `complete [-DI]` in old versions of Bash through `_DefaultCmD_` and `_InitialWorD_` `#D1639` 925b2cd
 - rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 9a7c8b1
 - prompt: support `bleopt prompt_ruler` (motivated by Barbarossa93) `#D1666` 05cf638
-  - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 0000000
+  - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 9033f29
  
 ## Changes
 
@@ -113,7 +113,7 @@
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
-- main: suppress non-interactive session warnings also for `.bash_profile` (motivated by andreclerigo) `#D1676` 0000000
+- main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 0000000
 
 ## Fixes
 
@@ -183,7 +183,7 @@
 ## Documentation
 
 - blerc: add all the missing options `#D1667` 0228d76
-- blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 0000000
+- blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 26aaf87
 
 ## Optimization
 
@@ -224,7 +224,7 @@
 - term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 92c7b26
 - cmap: add `st`-specific escape sequences for cursor keys `#D1633` acfb879
 - cmap: distinguish <kbd>find</kbd>/<kbd>select</kbd> from <kbd>home</kbd>/<kbd>end</kbd> for openSUSE `inputrc.keys` (reported by cornfeedhobo) `#D1648` c4d28f4
-  - cmap: freeze the internal codes of <kbd>find</kbd>/<kbd>select</kbd> and kitty special keys `#D1674` 0000000
+  - cmap: freeze the internal codes of <kbd>find</kbd>/<kbd>select</kbd> and kitty special keys `#D1674` fdfe62a
 - main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
 - decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
 
