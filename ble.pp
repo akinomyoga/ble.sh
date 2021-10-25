@@ -45,8 +45,10 @@ case ${BASH_VERSINFO[4]} in
 esac
 
 if [[ $- != *i* ]]; then
-  { ((${#BASH_SOURCE[@]})) && case ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} in (*bashrc|*bash_profile) ;; (*) false ;; esac } ||
-    echo "ble.sh: This is not an interactive session." >&2
+  case " ${BASH_SOURCE[*]##*/} " in
+  (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
+  esac  &&
+    builtin echo "ble.sh: This is not an interactive session." >&2 || ((1))
   return 1 2>/dev/null || exit 1
 fi
 
