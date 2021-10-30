@@ -1005,7 +1005,10 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/util/readfile { # 465ms for man bash
-    TMOUT= IFS= builtin read -r -d '' "$1" < "$2"
+    [[ -r $2 && ! -d $2 ]] || return 1
+    local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "$1" < "$2"
+    return 0
   }
   function ble/util/mapfile {
     local IFS= TMOUT=
