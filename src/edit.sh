@@ -247,6 +247,7 @@ bleopt/declare -v line_limit_type none
 # **** Application ****
 
 _ble_app_render_mode=panel
+_ble_app_winsize=()
 function ble/application/.set-up-render-mode {
   [[ $1 == "$_ble_app_render_mode" ]] && return 0
   case $1 in
@@ -281,6 +282,7 @@ function ble/application/render {
   (forms:*)
     ble/forms/render "${render#*:}" ;;
   esac
+  _ble_app_winsize=("$COLUMNS" "$LINES")
   ble/util/buffer.flush >&2
 }
 
@@ -2305,6 +2307,8 @@ function ble-edit/eval-IGNOREEOF {
   fi
 }
 
+bleopt/declare -n canvas_winch_action redraw-here
+
 function ble-edit/attach/TRAPWINCH {
   local FUNCNEST=
   local IFS=$_ble_term_IFS
@@ -2326,8 +2330,27 @@ function ble-edit/attach/TRAPWINCH {
         ble/util/joblist.check ignore-volatile-jobs
         local size=$LINES:$COLUMNS
         [[ $size == "$old_size" ]] && break
-
         old_size=$size
+
+        case $bleopt_canvas_winch_action in
+        (clear)
+          # 全消去して一番上から再描画
+          ble/util/buffer "$_ble_term_clear" ;;
+        (redraw-here)
+          # 現在位置から再描画 (幅が減った時は前のコマンドの出力結果を破壊しな
+          # いので戻る)
+          if ((COLUMNS<_ble_app_winsize[0])); then
+            local -a DRAW_BUFF=()
+            ble/canvas/panel#goto.draw 0 0 0
+            ble/canvas/bflush.draw
+          fi ;;
+        (redraw-prev)
+          # 前回の開始相対位置が変化していないと仮定して戻って再描画
+          local -a DRAW_BUFF=()
+          ble/canvas/panel#goto.draw 0 0 0
+          ble/canvas/bflush.draw ;;
+        esac
+
         ble/canvas/panel/invalidate height # 高さの再確保も含めて。
         ble/application/render
       done
