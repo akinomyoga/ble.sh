@@ -113,7 +113,7 @@
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
-- main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 0000000
+- main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 88e2df5
 
 ## Fixes
 
@@ -179,6 +179,7 @@
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
 - decode: fix a bug that the characters input while initialization are delayed `#D1670` 430f449
+- util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` `#D1678` 0000000
 
 ## Documentation
 

@@ -5448,6 +5448,111 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-10-30
+
+  * edit: inputrc キャッシュの読み出しでエラーが発生する (reported by laoshaw) [#D1678]
+
+    .bashrc から単純に source ble.sh を実行すると以下のエラーが出るという事。
+
+    -bash: /Users/user1/.cache/blesh/0.4/decode.inputrc.adict.xterm-256color.emacs: No such file or directory
+    -bash: /Users/user1/.cache/blesh/0.4/decode.inputrc.adict.xterm-256color.vi_imap: No such file or directory
+    -bash: /Users/user1/.cache/blesh/0.4/decode.inputrc.adict.xterm-256color.vi_nmap: No such file or directory
+
+    直接 source ble.sh を実行した時に問題になっていて、1.3 の方法で設定した時に
+    問題が発生していなかったのは、source ble.sh を実行した瞬間に既にユーザー設
+    定がされていたかされていなかったかの違いだろう。なので、この問題は
+    attach=prompt に特有の問題ではない。
+
+    不思議なのは $cache_prefix.settings が存在して中身が一致している事まで確認
+    しているのにも関わらず $cache_prefix.$keymap が存在しないという事態になって
+    いるという事。不思議な事である。
+
+    うーん。変だそんな事起こらない筈なのに。
+
+    * done: 調べてみると copyfile でファイルを読み出すのに失敗すると、ファイル
+      が正しくコピーされていないのにも関わらず settings が作成される様である。
+      取り敢えず、copyfile に失敗したら settings は作成しない事にする。
+
+    * done: どうやら bash-3.? の時には readfile が実際に読み取れていたとしても
+      失敗する様になってしまっている。read -d '' で読み取っているので、ファイル
+      に NUL が含まれない限りは終了ステータスが 1 になってしまうのである。これ
+      はちゃんと対策をした。読み取れるか読み取れないかの判定は事前にしておく。
+
+    | 然し依然として何故報告された事が起こったのかは不明である。
+    |
+    | * 或いは書き込み時に問題が発生した可能性もある? 然し、どうやってそれが起こ
+    |   るのか。settings はちゃんと書き込まれている (と思われる) 事から考えると、
+    |   ディレクトリが存在しないだとか書き込み権限が存在しないだとかそういう話で
+    |   はない気がする。copyfile の中でも clobber しているので上書き拒否されたと
+    |   いう訳でもないだろう (というか上書き拒否されたのだとしたら既存のファイル
+    |   が存在した筈なので上記の様なエラーは発生しない筈である。)
+    |
+    |   また、上記の read の問題かとも思ったがこれは bash-3.? での実装である。エ
+    |   ラーメッセージを見ると 0.4 になっている。と思ったが分かった。0.4 はそもそ
+    |   も bash の version じゃなくて ble.sh の version である。つまり、報告者は
+    |   bash-3.2 を使っている。
+
+    報告者は bash-3.2 を使っている為に問題が発生している。
+
+    更に suggestion が出ないという問題についてもこれで説明がつく。
+
+  * make: macOS make-3.81 で contrib/contrib.mk の依存関係が正しく解決されない (reported by laoshaw) [#D1677]
+    https://github.com/akinomyoga/ble.sh/issues/145
+
+    当初はどういうエラーかと思ったが 3.81 から 4.3 に update したら直ったという
+    のでやはり make が悪いのだろう。実際に手元に 3.81 をインストールして試して
+    みた所問題を再現できた。色々試して workaround できる事が分かったのでその様
+    に対処する事にする。
+
+    [make インストールログ]
+
+    * make-3.81
+
+      そのままだと古い version の make はコンパイルできない。
+
+      | /usr/bin/ld: glob/libglob.a(glob.o): in function `glob_in_dir':
+      | /home/murase/.opt/build/make/make-3.81/glob/glob.c:1361: undefined reference to `__alloca'
+      | /usr/bin/ld: /home/murase/.opt/build/make/make-3.81/glob/glob.c:1336: undefined reference to `__alloca'
+      | /usr/bin/ld: /home/murase/.opt/build/make/make-3.81/glob/glob.c:1250: undefined reference to `__alloca'
+      | /usr/bin/ld: /home/murase/.opt/build/make/make-3.81/glob/glob.c:1277: undefined reference to `__alloca'
+      | /usr/bin/ld: glob/libglob.a(glob.o): in function `glob':
+      | /home/murase/.opt/build/make/make-3.81/glob/glob.c:575: undefined reference to `__alloca'
+      | /usr/bin/ld: glob/libglob.a(glob.o):/home/murase/.opt/build/make/make-3.81/glob/glob.c:726: more undefined references to `__alloca' follow
+
+      以下のページによると glob.c の #ifdef を書き換えたら良い。
+
+      https://stackoverflow.com/questions/51675200/install-older-version-of-gnu-make-in-ubuntu-18-04
+
+    * make-3.82
+
+      ble.sh に対して make-3.82 しようとすると segfault する。3.81 で問題になっ
+      ていた物を削除しても問題は解決しない。検索してみると上記のコンパイルエラー
+      と同じく glob 関係のバグの様である。
+
+      https://stackoverflow.com/questions/52618055/gnu-make-3-82-on-ubuntu-18-04-segfault-in-glob-call
+      https://lists.fedoraproject.org/archives/list/devel@lists.fedoraproject.org/thread/XCYUF5BQLICUAAI3OM7EORCNOKEYP2MF/
+
+      3.82 は 3.81 で行った修正をしてもしなくてもコンパイルできるが、どちらでコ
+      ンパイルしたとしても segfault する。make-4.0 でやった様に
+      GLOB_INTERFACE_VERSION を 2 に書き換えても、やはりコンパイルはできるが
+      segfault する。
+
+      https://git.savannah.gnu.org/cgit/make.git/commit/?id=193f1e81edd6b1b56b0eb0ff8aa4b41c7b4257b4
+
+      で紹介されている修正を適用したらちゃんと動く様になった。ble.sh の
+      contrib.mk はちゃんと動作する事が確認できた。
+
+    * make-4.0
+
+      4.0 についても同じ箇所でコンパイルエラーになる。== を >= に書き換えるとい
+      う作戦は通用しなかった。GLOB_INTERFACE_VERSION を 2 に書き換えてみたらコ
+      ンパイルできた。ble.sh の contrib.mk もちゃんと動く。
+
+    * make-3.80 も 3.81 と同じ様にしてコンパイルできた。然し、make-3.80 は
+      $(.FEATURES) を持たないので ble.sh GNUmakefile はもっと新しい version を
+      使ってくれと文句を出力する様になっている。3.80 は 2002 の version で 19年
+      も前の version なので切っても仕方がないだろう。
+
 2021-10-21
 
   * main: "ble.sh: This is not an interactive session." (reported by andreclerigo) [#D1676]

@@ -3878,6 +3878,7 @@ function ble/builtin/bind/read-user-settings/.cache-alive {
   local keymap
   for keymap in emacs vi_imap vi_nmap; do
     [[ $cache_prefix.settings -nt $_ble_base/core-decode.$cache-rlfunc.txt ]] || return 1
+    [[ -e $cache_prefix.$keymap ]] || return 1
   done
   local content
   ble/util/readfile content "$cache_prefix.settings"
@@ -3887,14 +3888,15 @@ function ble/builtin/bind/read-user-settings/.cache-alive {
 ##   @var[in] delay_prefix
 ##   @var[in] cache_prefix
 function ble/builtin/bind/read-user-settings/.cache-save {
-  local keymap content
+  local keymap content fail=
   for keymap in emacs vi_imap vi_nmap; do
     if [[ -s $delay_prefix.$keymap ]]; then
       ble/util/copyfile "$delay_prefix.$keymap" "$cache_prefix.$keymap"
     else
       : >| "$cache_prefix.$keymap"
-    fi
+    fi || fail=1
   done
+  [[ $fail ]] && return 1
   ble/util/print "$settings" >| "$cache_prefix.settings"
 }
 ## @fn ble/builtin/bind/read-user-settings/.cache-load

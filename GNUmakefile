@@ -5,7 +5,7 @@ all:
 
 # check GNU Make
 ifeq ($(.FEATURES),)
-  $(error Sorry, please use a newer version of gmake (GNU Make).)
+  $(error Sorry, please use a newer version (3.81 or later) of gmake (GNU Make).)
 endif
 
 # check gawk
