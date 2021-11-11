@@ -4601,7 +4601,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
 
   unset -f builtin unset
   builtin unset -f builtin unset
-  builtin unset -f return break continue declare typeset local : eval echo
+  builtin unset -f return break continue declare typeset local : readonly eval exec echo set
 
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
