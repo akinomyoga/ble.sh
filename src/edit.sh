@@ -3508,7 +3508,7 @@ function ble-edit/exec/.reset-builtins-1 {
   #   unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
   local POSIXLY_CORRECT=y
   local -a builtins1; builtins1=(builtin unset enable unalias)
-  local -a builtins2; builtins2=(return break continue declare typeset local eval echo)
+  local -a builtins2; builtins2=(return break continue declare typeset local readonly eval exec echo set)
   local -a keywords1; keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
   builtin unset -f "${builtins1[@]}"
   builtin unset -f "${builtins2[@]}"
