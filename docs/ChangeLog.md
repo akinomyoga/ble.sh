@@ -76,7 +76,7 @@
 - rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 9a7c8b1
 - prompt: support `bleopt prompt_ruler` (motivated by Barbarossa93) `#D1666` 05cf638
   - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 9033f29
-- edit: support `bleopt canvas_winch_action` `#D1679` 0000000
+- edit: support `bleopt canvas_winch_action` (requested by Johann-Goncalves-Pereira, guptapriyanshu7) `#D1679` 0000000
  
 ## Changes
 
@@ -180,7 +180,7 @@
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
 - decode: fix a bug that the characters input while initialization are delayed `#D1670` 430f449
-- util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` `#D1678` 0000000
+- util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 0000000
 
 ## Documentation
 
@@ -229,6 +229,7 @@
   - cmap: freeze the internal codes of <kbd>find</kbd>/<kbd>select</kbd> and kitty special keys `#D1674` fdfe62a
 - main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
 - decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
+- decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680`
 
 ## Internal changes and fixes
 

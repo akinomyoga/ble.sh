@@ -5448,6 +5448,11 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-11-12
+
+  * main: "alias set=export" としている人がいる (reported by eadmaster) [#D1680]
+    これは単に退避リストに set を追加するだけで良い。
+
 2021-10-30
 
   * edit: WINCH の際の再描画 (reported by Johann-Goncalves-Pereira, guptapriyanshu7) [#D1679]

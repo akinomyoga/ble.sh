@@ -246,7 +246,7 @@ function ble/base/adjust-builtin-wrappers-1 {
   #   ので builtin は unset -f builtin してしまう。
   unset -f builtin
   builtin local POSIXLY_CORRECT=y builtins1 keywords1
-  builtins1=(builtin unset enable unalias return break continue declare local typeset readonly eval exec)
+  builtins1=(builtin unset enable unalias return break continue declare local typeset readonly eval exec set)
   keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
   if [[ ! $_ble_bash_builtins_adjusted ]]; then
     _ble_bash_builtins_adjusted=1
