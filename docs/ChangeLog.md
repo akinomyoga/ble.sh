@@ -76,7 +76,7 @@
 - rlfunc: support nsearch widgets in `vi_nmap` keymap (requested by cornfeedhobo) `#D1651` 9a7c8b1
 - prompt: support `bleopt prompt_ruler` (motivated by Barbarossa93) `#D1666` 05cf638
   - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 9033f29
-- edit: support `bleopt canvas_winch_action` (requested by Johann-Goncalves-Pereira, guptapriyanshu7) `#D1679` 0000000
+- edit: support `bleopt canvas_winch_action` (requested by Johann-Goncalves-Pereira, guptapriyanshu7) `#D1679` 2243e91
  
 ## Changes
 
@@ -180,7 +180,7 @@
 - canvas: update prompt trace on `char_width_mode` change (reported by Barbarossa93) `#D1642` 68ee111
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
 - decode: fix a bug that the characters input while initialization are delayed `#D1670` 430f449
-- util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 0000000
+- util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 61705bf
 
 ## Documentation
 
@@ -218,7 +218,7 @@
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
 - util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
   - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
-  - util (`modifyOtherKeys`): use the kitty protocol for kitty 0.23+ which removes the support of `modifyOtherKeys` `#D1681` 0000000
+  - util (`modifyOtherKeys`): use the kitty protocol for kitty 0.23+ which removes the support of `modifyOtherKeys` (reported by kovidgoyal) `#D1681` ec91574
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
@@ -230,7 +230,8 @@
   - cmap: freeze the internal codes of <kbd>find</kbd>/<kbd>select</kbd> and kitty special keys `#D1674` fdfe62a
 - main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
 - decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
-- decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680`
+- decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680` a6b4e2c
+- complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` 0000000
 
 ## Internal changes and fixes
 

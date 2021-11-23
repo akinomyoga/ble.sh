@@ -5450,7 +5450,17 @@ bash_tips
 
 2021-11-23
 
-  * util (modifyOtherKeys): kitty は modifyOtherKeys を廃止する (reported by kovid) [#D1681]
+  * progcomp: libvirt virsh completion に対する防御 (reported by telometto) [#D1682]
+    https://github.com/akinomyoga/ble.sh/issues/147
+
+    virsh completion を実行した直後にエラーメッセージが出るという事。これは
+    virsh の補完が IFS=$'\n' と書き換えを行ってそのまま放置するのが原因である。
+
+    libvirt に対して patch を送った。accept された。然しこれが実際に
+    distributions に反映されるのには時間がかかるだろう。workaround として IFS
+    及び word を tmpenv にする事にした。
+
+  * util (modifyOtherKeys): kitty は modifyOtherKeys を廃止する (reported by kovidgoyal) [#D1681]
     https://github.com/akinomyoga/ble.sh/issues/110#issuecomment-975732850
 
     * ok: kitty のインストーラのリンクからダウンロードできない。証明書がおかし
