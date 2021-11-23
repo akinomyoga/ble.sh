@@ -378,7 +378,10 @@ function ble-complete/source/argument/.compgen {
 
   local rex_compv
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
-  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
+  # WA #D1682: libvirt の virsh 用の補完が勝手に変数 IFS 及び word を書き換えて
+  # そのまま放置して抜けてしまう。仕方がないので tmpenv で変数の内容を復元する
+  # 事にする。
+  IFS=$IFS word= ble/util/assign compgen 'builtin compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
   ble/util/assign compgen 'sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | sort -u'
   IFS=$'\n' builtin eval 'arr=($compgen)'
   # * 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
