@@ -5448,6 +5448,40 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-11-23
+
+  * util (modifyOtherKeys): kitty は modifyOtherKeys を廃止する (reported by kovid) [#D1681]
+    https://github.com/akinomyoga/ble.sh/issues/110#issuecomment-975732850
+
+    * ok: kitty のインストーラのリンクからダウンロードできない。証明書がおかし
+      い。と思ったら単に vm の時刻がずれていただけだった。
+
+    * Ubuntu 20 の VM に残っていた kitty 0.20.3 では既に CSI > 1 u には対応して
+      いる様子である。DA2R は 1;4000;20 である。然し何だか C-S-? に対する振る舞
+      いが分からなかったので kitty 0.23.1 に上げてしまった。DA2R は 1;4000;23
+      である。
+
+    * 然し、ctrl+shift+a などが全く効かない。と思って気づいたのだが、どうやら
+      kitty がそれを解釈している様である。C-S-up, C-S-down はスクロールで C-S-h
+      は clear-screen か何かだろうか。C-S-a は無反応で C-S-g はちゃんと制御シー
+      ケンスが送られる。つまり、kitty に割り当てられていない C-S-? に関してはちゃ
+      んと送信する事ができる。然し、試した感じだと殆どの C-S-? は kitty によっ
+      て上書きされている様である。
+
+    * kitty の ctrl+shift+a を無効にする方法はないのだろうか? うーん。結局一つ
+      ずつ解除していくしかない様だ。取り敢えず全部解除したらそれっぽい感じになっ
+      た。
+
+    * どの version から CSI > u と CSI < u が存在するのだろうか。というかそもそ
+      も現在の version でも CSI >4;2m は効くという事なのだろうか。
+
+    https://github.com/kovidgoyal/kitty/issues/4075
+    https://github.com/kovidgoyal/kitty/commit/d6a43a7729d50b6f452ccdb93c746b0e115ebd38
+
+    どうやら kitty から modifyOtherKeys が完全に削除される運びとなった様だ。発
+    端は vim から kitty の modifyOtherKeys の振る舞いが変だという指摘を受けて、
+    逆上して全削除という事に相成った様だ。
+
 2021-11-12
 
   * main: "alias set=export" としている人がいる (reported by eadmaster) [#D1680]

@@ -5624,12 +5624,33 @@ function ble/term/modifyOtherKeys/.update {
     (2) ble/util/buffer $'\e[>5;1m\e[>5;2m' ;;
     esac ;;
   (kitty)
-    # Note #D1549: 1 では無効にならない。変な振る舞い。
-    # Note #D1626: 更に最近の kitty では \e[>4;0m でも駄目で \e[>4m としなければならない様だ。
-    case $1 in
-    (0|1) ble/util/buffer $'\e[>4;0m\e[>4m' ;;
-    (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
-    esac
+    local da2r
+    ble/string#split da2r ';' "$_ble_term_DA2R"
+    if ((da2r[2]>=23)); then
+      # Note: Kovid removed the support for modifyOtherKeys in kitty 0.24 after
+      #   vim has pointed out the quirk of kitty.  The kitty keboard mode only
+      #   has push/pop operations so that they need to be balanced.
+      case $1 in
+      (0|1) # pop keyboard mode
+        # When this is empty, ble.sh has nto yet pushed any keyboard modes, so
+        # we just ignore the keyboard mode change.
+        [[ $_ble_term_modifyOtherKeys_current ]] || return 0
+
+        ((_ble_term_modifyOtherKeys_current>=2)) &&
+          ble/util/buffer $'\e[<u' ;;
+      (2) # push keyboard mode
+        ((_ble_term_modifyOtherKeys_current>=2)) &&
+          ble/util/buffer $'\e[>1u' ;;
+      esac
+    else
+      # Note #D1549: 1 では無効にならない。変な振る舞い。
+      # Note #D1626: 更に最近の kitty では \e[>4;0m でも駄目で \e[>4m としなければならない様だ。
+      case $1 in
+      (0|1) ble/util/buffer $'\e[>4;0m\e[>4m' ;;
+      (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
+      esac
+    fi
+    _ble_term_modifyOtherKeys_current=$1
     return 0 ;;
   esac
 

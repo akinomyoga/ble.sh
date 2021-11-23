@@ -217,11 +217,12 @@
 - complete: work around `bash-completion` bugs (reported by oc1024) `#D1533` 9d4ad56
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
 - util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
+  - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
+  - util (`modifyOtherKeys`): use the kitty protocol for kitty 0.23+ which removes the support of `modifyOtherKeys` `#D1681` 0000000
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
 - decode: work around kitty keypad keys in modifyOtherKeys (reported by Nudin) `#D1626` 27c80f9
-- util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
 - main: work around `set -B` and `set -k` `#D1628` a860769
 - term: disable `modifyOtherKeys` and do not send `DA2` for `st` (requested by Shahabaz-Bagwan) `#D1632` 92c7b26
 - cmap: add `st`-specific escape sequences for cursor keys `#D1633` acfb879
