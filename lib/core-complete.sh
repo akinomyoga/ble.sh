@@ -408,7 +408,7 @@ function ble/complete/menu-style:desc/construct-page {
   #   white list で右端に接する事を許可する。
   local available_width=$cols
   case $_ble_term_TERM in
-  (screen|tmux|kitty|contra) ;;
+  (screen:*|tmux:*|kitty:*|contra:*) ;;
   (*) ((available_width--)) ;;
   esac
 

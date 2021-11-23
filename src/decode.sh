@@ -797,7 +797,7 @@ function ble-decode-char/csi/.modify-key {
     #   文字自体もそれに応じて変化させ、更に修飾フラグも設定する。
     # Note: RLogin は修飾がある場合は常に英大文字に統一する。
     if ((33<=key&&key<_ble_decode_FunctionKeyBase)); then
-      if (((mod&0x01)&&0x31<=key&&key<=0x39)) && [[ $_ble_term_TERM == RLogin ]]; then
+      if (((mod&0x01)&&0x31<=key&&key<=0x39)) && [[ $_ble_term_TERM == RLogin:* ]]; then
         # RLogin は数字に対する S- 修飾の解決はしてくれない。
         ((key-=16,mod&=~0x01))
       elif ((mod==0x01)); then
@@ -849,7 +849,7 @@ function ble-decode-char/csi/.decode {
       local rematch1=${BASH_REMATCH[1]}
       if [[ $rematch1 != 1 ]]; then
         local key=$((10#0$rematch1)) mods=$((10#0${BASH_REMATCH:${#rematch1}+1}))
-        [[ $_ble_term_TERM == kitty ]] && ble-decode/char/csi/.translate-kitty-csi-u
+        [[ $_ble_term_TERM == kitty:* ]] && ble-decode/char/csi/.translate-kitty-csi-u
         ble-decode-char/csi/.modify-key "$mods"
         csistat=$key
       fi
@@ -4033,11 +4033,11 @@ function ble/decode/attach {
   (linux)
     # Note #D1213: linux コンソール (kernel 5.0.0) は "\e[>"
     #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
-    _ble_term_TERM=linux ;;
+    _ble_term_TERM=linux:- ;;
   (st|st-*)
     # st の unknown csi sequence メッセージに対して文句を言う人がいた。
     # st は TERM で判定できるので DA2 はスキップできる。
-    _ble_term_TERM=st ;;
+    _ble_term_TERM=st:- ;;
   (*)
     ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
   esac

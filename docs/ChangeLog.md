@@ -82,6 +82,7 @@
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
   - menu (menu-style:desc): fix not working `bleopt menu_desc_multicolumn_width=` `#D1727` 2140d1e
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
+  - util: refactor `_ble_term_TERM` `#D1746` 0000000
 - complete: requote for more compact representations on full completions `#D1700` a1859b6
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
   - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` e12bae4

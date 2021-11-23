@@ -1727,9 +1727,7 @@ bash_tips
 
 2022-01-23
 
-  * mintty で _ble_term_TERM が空になっている。何故か unknown が設定されるので
-    はないか。ちゃんと DA2R は受信できている。そして passthrough seq がちゃんと
-    動いていない in screen. これは修正する必要がある。
+  * 元々存在した DEBUG trap を保持する
 
   * bash-preexec に API 安定化のお願いをする。
 
@@ -5895,6 +5893,13 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-01-23
+
+  * util: _ble_term_TERM が空になっている問題 [#D1746]
+
+    mintty で _ble_term_TERM が空になっている。何故か。unknown が設定されるので
+    はないか。ちゃんと DA2R は受信できている。そして passthrough seq がちゃんと
+    動いていない in screen. これは修正する必要がある→確認したら物凄く単純なミ
+    スをしていた。これは恐らく置換か何かをした時の残りであろう。
 
   * 折返しがある時に実際に端末に改行が挿入される (reported by banoris) [#D1745]
     https://github.com/akinomyoga/ble.sh/issues/170

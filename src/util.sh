@@ -5272,13 +5272,13 @@ function ble/term:cygwin/initialize.hook {
 function ble/term/DA2R.hook {
   blehook DA2R-=ble/term/DA2R.hook
   case $_ble_term_TERM in
-  (contra)
+  (contra:*)
     _ble_term_cuu=$'\e[%dk'
     _ble_term_cud=$'\e[%de'
     _ble_term_cuf=$'\e[%da'
     _ble_term_cub=$'\e[%dj'
     _ble_term_cup=$'\e[%l;%cf' ;;
-  (cygwin)
+  (cygwin:*)
     ble/term:cygwin/initialize.hook ;;
   esac
 }
@@ -5678,6 +5678,12 @@ function ble/term/cursor-state/.update {
   local state=$(($1))
   [[ $_ble_term_cursor_current == "$state" ]] && return 0
 
+  if [[ ! $_ble_term_Ss ]]; then
+    case $_ble_term_TERM in
+    (mintty:*|xterm:*|RLogin:*|kitty:*|screen:*|tmux:*|contra:*|cygwin:*)
+      local _ble_term_Ss=$'\e[@1 q' ;;
+    esac
+  fi
   local ret=${_ble_term_Ss//@1/"$state"}
 
   # Note: 既に pass-through seq が含まれている時はスキップする。
@@ -5750,37 +5756,39 @@ function ble/term/DA2/initialize-term {
 
   case $DA2R in
   ('1;0'?????';0')
-    _ble_term_TERM[depth]=foot ;;
+    _ble_term_TERM[depth]=foot:${DA2R:3:5} ;;
   ('1;'*)
-    if ((4000<=da2r[1]&&da2r[1]<4100&&3<=da2r[2])); then
-      _ble_term_TERM[depth]=kitty
+    if ((4000<=da2r[1]&&da2r[1]<=4009&&3<=da2r[2])); then
+      _ble_term_TERM[depth]=kitty:$((da2r[1]-4000))
     elif ((2000<=da2r[1]&&da2r[1]<5400&&da2r[2]==0)); then
-      _ble_term_TERM[depth]=vte
+      _ble_term_TERM[depth]=vte:$((da2r[1]))
     fi ;;
   ('99;'*)
-    _ble_term_TERM[depth]=contra ;;
+    _ble_term_TERM[depth]=contra:$((da2r[1])) ;;
   ('65;'*)
     if ((5300<=da2r[1]&&da2r[2]==1)); then
-      _ble_term_TERM[depth]=vte
+      _ble_term_TERM[depth]=vte:$((da2r[1]))
     elif ((da2r[1]>=100)); then
-      _ble_term_TERM[depth]=RLogin
+      _ble_term_TERM[depth]=RLogin:$((da2r[1]))
     fi ;;
   ('67;'*)
     local rex='^67;[0-9]{3,};0$'
     if [[ $TERM == cygwin && $DA2R =~ $rex ]]; then
-      _ble_term_TERM[depth]=cygwin
+      _ble_term_TERM[depth]=cygwin:$((da2r[1]))
     fi ;;
+  ('77;'*';0')
+    _ble_term_TERM[depth]=mintty:$((da2r[1])) ;;
   ('83;'*)
     local rex='^83;[0-9]+;0$'
-    [[ $DA2R =~ $rex ]] && _ble_term_TERM[depth]=screen ;;
+    [[ $DA2R =~ $rex ]] && _ble_term_TERM[depth]=screen:$((da2r[1])) ;;
   ('84;0;0')
-    _ble_term_TERM[depth]=tmux ;;
+    _ble_term_TERM[depth]=tmux:0 ;;
   esac
-  [[ $_ble_term_TERM[depth] ]] && return 0
+  [[ ${_ble_term_TERM[depth]} ]] && return 0
 
   # xterm
   if rex='^xterm(-|$)'; [[ $TERM =~ $rex ]]; then
-    local version=${da2r[1]}
+    local version=$((da2r[1]))
     if rex='^1;[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
       # Note: vte (2000以上), kitty (4000以上) は処理済み
       true
@@ -5795,7 +5803,7 @@ function ble/term/DA2/initialize-term {
     fi && { _ble_term_TERM[depth]=xterm:$version; return; }
   fi
 
-  _ble_term_TERM[depth]=unknown
+  _ble_term_TERM[depth]=unknown:-
   return 0
 }
 
@@ -5805,17 +5813,17 @@ function ble/term/DA2/notify {
   # 事がある。2回目以降に受信した内容は ble.sh の内部では使用しない事
   # にする。
   local depth=${#_ble_term_DA2R[@]}
-  if ((depth==0)) || ble/string#match "${_ble_term_TERM[depth-1]}" '^(screen|tmux)$'; then
+  if ((depth==0)) || ble/string#match "${_ble_term_TERM[depth-1]}" '^(screen|tmux):'; then
     _ble_term_DA2R[depth]=$1
     ble/term/DA2/initialize-term "$depth"
     case ${_ble_term_TERM[depth]} in
-    (screen|tmux)
+    (screen:*|tmux:*)
       # 外側の端末にも DA2 要求を出す。[ Note: 最初の DA2 要求は
       # ble/decode/attach (decode.sh) から送信されている。 ]
       local ret
       ble/term/quote-passthrough $'\e[>c' $((depth+1))
       ble/util/buffer "$ret" ;;
-    (contra)
+    (contra:*)
       : "${_ble_term_Ss:=$'\e[@1 q'}" ;;
     esac
 
@@ -5855,7 +5863,7 @@ function ble/term/quote-passthrough {
   [[ $seq ]] || return 0
   local i
   for ((i=level;--i>=0;)); do
-    if [[ ${_ble_term_TERM[i]} == tmux ]]; then
+    if [[ ${_ble_term_TERM[i]} == tmux:* ]]; then
       # Note: tmux では pass-through seq の中に含まれる \e は \e\e の様に
       # escape する。
       ret=$'\ePtmux;'${ret//$'\e'/$'\e\e'}$'\e\\'${all:+$seq}
@@ -5923,22 +5931,22 @@ function ble/term/modifyOtherKeys/.update {
   #   また、RLogin は modifyStringKeys にすると S-数字 を
   #   記号に翻訳してくれないので注意。
   case $_ble_term_TERM in
-  (RLogin)
+  (RLogin:*)
     case $1 in
     (0) ble/util/buffer $'\e[>5;0m' ;;
     (1) ble/util/buffer $'\e[>5;1m' ;;
     (2) ble/util/buffer $'\e[>5;1m\e[>5;2m' ;;
     esac ;;
-  (kitty)
+  (kitty:*)
     local da2r
     ble/string#split da2r ';' "$_ble_term_DA2R"
     if ((da2r[2]>=23)); then
       # Note: Kovid removed the support for modifyOtherKeys in kitty 0.24 after
-      #   vim has pointed out the quirk of kitty.  The kitty keboard mode only
-      #   has push/pop operations so that they need to be balanced.
+      #   vim has pointed out the quirk of kitty.  The kitty keyboard mode only
+      #   has push/pop operations so that their numbers need to be balanced.
       case $1 in
       (0|1) # pop keyboard mode
-        # When this is empty, ble.sh has nto yet pushed any keyboard modes, so
+        # When this is empty, ble.sh has not yet pushed any keyboard modes, so
         # we just ignore the keyboard mode change.
         [[ $_ble_term_modifyOtherKeys_current ]] || return 0
 
@@ -5974,7 +5982,7 @@ function ble/term/modifyOtherKeys/.update {
 }
 function ble/term/modifyOtherKeys/.supported {
   # libvte は SGR(>4) を直接画面に表示してしまう。
-  [[ $_ble_term_TERM == vte ]] && return 1
+  [[ $_ble_term_TERM == vte:* ]] && return 1
 
   # 改造版 Poderosa は通知でウィンドウサイズを毎回変更するので表示が乱れてしまう
   [[ $MWG_LOGINTERM == rosaterm ]] && return 1

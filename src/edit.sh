@@ -1497,16 +1497,16 @@ function ble/prompt/update {
   fi
 
   # bleopt prompt_xterm_title
-  case ${_ble_term_TERM:-$TERM} in
-  (sun*|minix) ;; # black list
+  case ${_ble_term_TERM:-$TERM:-} in
+  (sun*|minix*) ;; # black list
   (*)
     [[ $bleopt_prompt_xterm_title || ${_ble_prompt_xterm_title_data[10]} ]] &&
       ble/prompt/unit#update _ble_prompt_xterm_title && dirty=1 ;;
   esac
 
   # bleopt prompt_screen_title
-  case ${_ble_term_TERM:-$TERM} in
-  (screen|tmux|contra|screen.*|screen-*)
+  case ${_ble_term_TERM:-$TERM:-} in
+  (screen:*|tmux:*|contra:*|screen.*|screen-*)
     [[ $bleopt_prompt_screen_title || ${_ble_prompt_screen_title_data[10]} ]] &&
       ble/prompt/unit#update _ble_prompt_screen_title && dirty=1 ;;
   esac
@@ -2559,6 +2559,8 @@ function ble/textarea#slice-text-buffer {
     IFS= builtin eval "ret=\"\$ret\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
 
     if [[ $_ble_textarea_bufferName == _ble_textarea_buffer ]]; then
+      # Note #D1745: 自動折返し改行は \r で符号化されている。末尾及び \n 直前の
+      # 自動折返し (\r) は \n に変換し、それ以外の \r は削除する。
       local out= rex_nl='^(\[[ -?]*[@-~]|[ -/]+[@-~]|[])*'$_ble_term_nl
       while [[ $ret == *"$_ble_term_cr"* ]]; do
         out=$out${ret%%"$_ble_term_cr"*}
@@ -5155,7 +5157,7 @@ function ble-edit/exec/.adjust-eol {
 
   # EOL adjustment
   local advance=$((_ble_term_xenl?cols-2:cols-3))
-  if [[ $_ble_term_TERM == cygwin ]]; then
+  if [[ $_ble_term_TERM == cygwin:* ]]; then
     # Note (#D1144): Cygwin console では何故か行き先が
     #   丁度 cols+1 列目になる様な CUF は一文字も動かない。
     #   cols列目またはcols+2列目以降は大丈夫である。
