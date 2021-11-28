@@ -55939,7 +55939,7 @@
       やはり C-v は stty に食われて bash にシグナルとして伝達する。
       問題が生じなければ stty lnext undef で放置という事で良い気がする。
 
-      然し C-z に bind 擦る為に結局 stty susp undef をして、
+      然し C-z に bind する為に結局 stty susp undef をして、
       コマンド実行直前に復元して、コマンド実行後にまた undef するという事をしたくなりそうだから、
       その際には lnext も復元させる事にすればよい。
 

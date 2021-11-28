@@ -233,6 +233,7 @@
 - decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
 - decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680` a6b4e2c
 - complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` 0000000
+- stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 0000000
 
 ## Internal changes and fixes
 
