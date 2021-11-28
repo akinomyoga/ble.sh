@@ -1245,18 +1245,29 @@ function ble-bind {
 _ble_stty_stat=
 _ble_term_stty_flags_enter=()
 _ble_term_stty_flags_leave=()
-ble/util/array-push _ble_term_stty_flags_enter kill undef erase undef intr undef quit undef susp undef
-ble/util/array-push _ble_term_stty_flags_leave kill '' erase '' intr '' quit '' susp ''
+ble/util/array-push _ble_term_stty_flags_enter intr undef quit undef susp undef
+ble/util/array-push _ble_term_stty_flags_leave intr '' quit '' susp ''
 function ble/term/stty/.initialize-flags {
-  local stty; ble/util/assign stty 'stty -a'
-  # lnext, werase は POSIX にはないのでチェックする
-  if [[ $stty == *' lnext '* ]]; then
-    ble/util/array-push _ble_term_stty_flags_enter lnext undef
-    ble/util/array-push _ble_term_stty_flags_leave lnext ''
-  fi
-  if [[ $stty == *' werase '* ]]; then
-    ble/util/array-push _ble_term_stty_flags_enter werase undef
-    ble/util/array-push _ble_term_stty_flags_leave werase ''
+  # local stty; ble/util/assign stty 'stty -a'
+  # # lnext, werase は POSIX にはないのでチェックする
+  # if [[ $stty == *' lnext '* ]]; then
+  #   ble/util/array-push _ble_term_stty_flags_enter lnext undef
+  #   ble/util/array-push _ble_term_stty_flags_leave lnext ''
+  # fi
+  # if [[ $stty == *' werase '* ]]; then
+  #   ble/util/array-push _ble_term_stty_flags_enter werase undef
+  #   ble/util/array-push _ble_term_stty_flags_leave werase ''
+  # fi
+
+  if [[ $TERM == minix ]]; then
+    local stty; ble/util/assign stty 'stty -a'
+    if [[ $stty == *' rprnt '* ]]; then
+      ble/util/array-push _ble_term_stty_flags_enter rprnt undef
+      ble/util/array-push _ble_term_stty_flags_leave rprnt '^R'
+    elif [[ $stty == *' reprint '* ]]; then
+      ble/util/array-push _ble_term_stty_flags_enter reprint undef
+      ble/util/array-push _ble_term_stty_flags_leave reprint '^R'
+    fi
   fi
 }
 ble/term/stty/.initialize-flags
