@@ -77,6 +77,7 @@
 - prompt: support `bleopt prompt_ruler` (motivated by Barbarossa93) `#D1666` 05cf638
   - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 9033f29
 - edit: support `bleopt canvas_winch_action` (requested by Johann-Goncalves-Pereira, guptapriyanshu7) `#D1679` 2243e91
+  - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) 0000000
  
 ## Changes
 

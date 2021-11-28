@@ -362,7 +362,7 @@
 ## previous terminal contents including the command outputs will be
 ## lost.
 
-#bleopt grapheme_cluster=redraw-here
+#bleopt canvas_winch_action=redraw-here
 
 ##-----------------------------------------------------------------------------
 ## User input settings
