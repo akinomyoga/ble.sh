@@ -1668,18 +1668,36 @@ function ble/term/visible-bell/cancel-erasure {
 _ble_term_stty_state=
 _ble_term_stty_flags_enter=()
 _ble_term_stty_flags_leave=()
-ble/array#push _ble_term_stty_flags_enter kill undef erase undef intr undef quit undef susp undef
-ble/array#push _ble_term_stty_flags_leave kill '' erase '' intr '' quit '' susp ''
+ble/array#push _ble_term_stty_flags_enter intr undef quit undef susp undef
+ble/array#push _ble_term_stty_flags_leave intr '' quit '' susp ''
 function ble/term/stty/.initialize-flags {
+  # # ^U, ^V, ^W, ^?
+  # # Note: lnext, werase は POSIX にはないので stty の項目に存在する
+  # #   かチェックする。
+  # # Note (#D1683): ble/decode/bind/adjust-uvw が正しい対策。以下の対
+  # #   策の効果は不明。寧ろ vim :term 内部で ^? が効かなくなるなど問
+  # #   題を起こす様なので取り敢えず無効化する。
+  # ble/array#push _ble_term_stty_flags_enter kill undef erase undef
+  # ble/array#push _ble_term_stty_flags_leave kill '' erase ''
+  # local stty; ble/util/assign stty 'stty -a'
+  # if [[ $stty == *' lnext '* ]]; then
+  #   ble/array#push _ble_term_stty_flags_enter lnext undef
+  #   ble/array#push _ble_term_stty_flags_leave lnext ''
+  # fi
+  # if [[ $stty == *' werase '* ]]; then
+  #   ble/array#push _ble_term_stty_flags_enter werase undef
+  #   ble/array#push _ble_term_stty_flags_leave werase ''
+  # fi
+
+  if [[ $TERM == minix ]]; then
   local stty; ble/util/assign stty 'stty -a'
-  # lnext, werase は POSIX にはないのでチェックする
-  if [[ $stty == *' lnext '* ]]; then
-    ble/array#push _ble_term_stty_flags_enter lnext undef
-    ble/array#push _ble_term_stty_flags_leave lnext ''
-  fi
-  if [[ $stty == *' werase '* ]]; then
-    ble/array#push _ble_term_stty_flags_enter werase undef
-    ble/array#push _ble_term_stty_flags_leave werase ''
+    if [[ $stty == *' rprnt '* ]]; then
+      ble/array#push _ble_term_stty_flags_enter rprnt undef
+      ble/array#push _ble_term_stty_flags_leave rprnt ''
+    elif [[ $stty == *' reprint '* ]]; then
+      ble/array#push _ble_term_stty_flags_enter reprint undef
+      ble/array#push _ble_term_stty_flags_leave reprint ''
+    fi
   fi
 }
 ble/term/stty/.initialize-flags
