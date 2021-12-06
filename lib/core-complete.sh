@@ -1399,13 +1399,18 @@ function ble/complete/action:command/init-menu-item {
   if [[ -d $CAND ]]; then
     local ret; ble/color/face2g filename_directory; g=$ret
   else
-    # Note: ble/syntax/highlight/cmdtype はキャッシュ機能がついているが、
-    #   キーワードに対して呼び出さない前提なのでキーワードを渡すと
-    #   _ble_attr_ERR を返してしまう。
-    local type; ble/util/type type "$CAND"
-    ble/syntax/highlight/cmdtype1 "$type" "$CAND"
-    if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
-      type=_ble_attr_CMD_FUNCTION
+    local type
+    if [[ $CAND != "$INSERT" ]]; then
+      ble/syntax/highlight/cmdtype "$CAND" "$INSERT"
+    else
+      # Note: ble/syntax/highlight/cmdtype はキャッシュ機能がついているが、
+      #   キーワードに対して呼び出さない前提なのでキーワードを渡すと
+      #   _ble_attr_ERR を返してしまう。
+      local type; ble/util/type type "$CAND"
+      ble/syntax/highlight/cmdtype1 "$type" "$CAND"
+      if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
+        type=_ble_attr_CMD_FUNCTION
+      fi
     fi
     ble/syntax/attr2g "$type"
   fi
@@ -1913,12 +1918,23 @@ function ble/complete/source:command {
 
   ble/complete/source/test-limit ${#arr[@]} || return 1
 
+  # keyword 判定用
+  local rex_keyword=
+  [[ $COMPS != $COMPV ]] &&
+    local rex_keyword='^(if|then|else|elif|fi|case|esac|for|select|while|until|do|done|function|time|[{}]|\[\[|coproc)$'
+
   for cand in "${arr[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
 
     # workaround: 何故か compgen -c -- "$compv_quoted" で
     #   厳密一致のディレクトリ名が混入するので削除する。
     [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
+
+    # #D1691 keyword は quote されている場合には無効
+    if [[ $rex_keyword && $cand =~ $rex_keyword ]]; then
+      local type; ble/util/type type "$cand"
+      ((${#type[@]}==1)) && continue
+    fi
 
     ble/complete/cand/yield command "$cand"
   done
