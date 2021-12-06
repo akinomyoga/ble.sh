@@ -1604,10 +1604,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2021-12-06
-
-  * mandb: 空文字列の時にも mandb に基づくオプション生成を実行するべき
-
 2021-11-23
 
   * kitty shell-integration (requested by kovidgoyal)
@@ -2079,19 +2075,6 @@ bash_tips
     の表示には両方を表示するという手がある。その場合にはメニューの内部で
     section を分けると良いだろうか。ページング等をちゃんと考慮に入れる必要があ
     る。
-
-  * complete: オプションの説明と progcomp の integration を考える。
-    https://www.youtube.com/watch?v=YS1vxEhd2Pc
-    https://github.com/akinomyoga/ble.sh/issues/132#issuecomment-908266634
-    https://github.com/akinomyoga/ble.sh/issues/152
-
-    complete: 折角 option の説明を抽出する機能を実装しても
-    bash-completion を使っていると説明が表示されない。
-    だからと言って bash-completion を無効にするのも惜しい。
-
-    やはり bash-completion のオプション生成に介入するべきだろうか。
-    或いは bash-completion に限らず progcomp を使っている場合には、
-    最後にオプション名の抽出を試みるというのも手である。
 
 2021-08-29
 
@@ -5543,6 +5526,22 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-06
+
+  * mandb: 空文字列の時にも mandb に基づくオプション生成を実行するべき [#D1689]
+
+  * 2021-08-30 complete: オプションの説明と progcomp の integration を考える (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) [#D1688]
+    https://www.youtube.com/watch?v=YS1vxEhd2Pc
+    https://github.com/akinomyoga/ble.sh/issues/132#issuecomment-908266634
+    https://github.com/akinomyoga/ble.sh/issues/152
+    https://github.com/akinomyoga/ble.sh/issues/155#issuecomment-984596470
+
+    complete: 折角 option の説明を抽出する機能を実装しても
+    bash-completion を使っていると説明が表示されない。
+    だからと言って bash-completion を無効にするのも惜しい。
+
+    やはり bash-completion のオプション生成に介入するべきだろうか。
+    或いは bash-completion に限らず progcomp を使っている場合には、
+    最後にオプション名の抽出を試みるというのも手である。
 
   * mandb: awk, sed の man ページからの抽出に失敗している (reported by bbyfacekiller) [#D1687]
     https://github.com/akinomyoga/ble.sh/issues/152

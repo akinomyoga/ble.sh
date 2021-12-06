@@ -2706,6 +2706,89 @@ function ble/complete/progcomp/.parse-complete {
   done
 }
 
+## @fn ble/complete/progcomp/.filter-and-split-compgen arr
+##   filter/sort/uniq candidates
+##
+##   @var[out] $arr, flag_mandb
+##   @var[in] compgen
+##   @var[in] COMPV compcmd comp_words
+##   @var[in] comp_opts use_workaround_for_git
+function ble/complete/progcomp/.filter-and-split-compgen {
+  flag_mandb=
+
+  # 1. sed (sort 前処理)
+  local sed_script=
+  {
+    # $comp_opts == *:filter_by_prefix:*
+    #
+    # Note: "$COMPV" で始まる単語だけを sed /^$rex_compv/ でフィルタする。
+    #   それで候補が一つもなくなる場合にはフィルタ無しで単語を列挙する。
+    #
+    #   2019-02-03 実は、現在の実装ではわざわざフィルタする必要はないかもしれない。
+    #   以前 compgen に -- "$COMPV" を渡してもフィルタしてくれなかったのは、
+    #   #D0245 cdd38598 で ble/complete/progcomp/.compgen-helper-func に於いて、
+    #   "$comp_func" に引数を渡し忘れていたのが原因と思われる。
+    #   これは 1929132b に於いて修正されたが念のためにフィルタを残していた気がする。
+    if [[ $comp_opts == *:filter_by_prefix:* ]]; then
+      local ret; ble/string#escape-for-sed-regex "$COMPV"; local rex_compv=$ret
+      sed_script='!/^'$rex_compv'/d'
+    fi
+
+    [[ $use_workaround_for_git ]] &&
+      sed_script=${sed_script:+$sed_script;}'s/[[:space:]]\{1,\}$//'
+  }
+  local out=
+  [[ $sed_script ]] && ble/util/assign out 'ble/bin/sed "$sed_script;/^\$/d" <<< "$compgen"'
+  [[ $out ]] || out=$compgen
+
+  # 2. sort
+  local require_awk=
+  if [[ $comp_opts != *:nosort:* ]]; then
+    ble/util/assign out 'ble/bin/sort -u <<< "$out"'
+  else
+    require_awk=1 # for uniq
+  fi
+
+  # 3. awk (sort 後処理)
+  local -a args_mandb=()
+  if [[ $compcmd == "${comp_words[0]}" && $COMPV != [!-]* ]]; then
+    if local ret; ble/complete/mandb/generate-cache "$compcmd"; then
+      require_awk=1
+      args_mandb=(mode=mandb "$ret")
+    fi
+  fi
+  if [[ $require_awk ]]; then
+    local awk_script='
+      BEGIN { mandb_count = 0; }
+      mode == "mandb" {
+        name = $0
+        sub(/'"$_ble_term_FS"'.*/, "", name);
+        if (!mandb[name]) mandb[name] = $0;
+        next;
+      }
+
+      !hash[$0]++ {
+        if (/^$/) next;
+
+        name = $0
+        sub(/=$/, "", name);
+        if (mandb[name]) {
+          mandb_count++;
+          print mandb[name];
+        } else
+          print $0;
+      }
+
+      END { if (mandb_count) exit 10; }
+    '
+    ble/util/assign-array "$1" 'ble/bin/awk "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'
+    (($?==10)) && flag_mandb=1
+  else
+    ble/string#split-lines "$1" "$out"
+  fi
+  return 0
+} 2>/dev/null
+
 ## @fn ble/complete/progcomp/.compgen opts
 ##
 ##   @param[in] opts
@@ -2848,36 +2931,8 @@ function ble/complete/progcomp/.compgen {
     comp_opts=${comp_opts//:nospace:/:}
   fi
 
-  # filter/sort/uniq candidates
-  #
-  #   Note: "$COMPV" で始まる単語だけを sed /^$rex_compv/ でフィルタする。
-  #     それで候補が一つもない場合にはフィルタ無しで単語を列挙する。
-  #
-  #     2019-02-03 実は、現在の実装ではわざわざフィルタする必要はないかもしれない。
-  #     以前 compgen に -- "$COMPV" を渡してもフィルタしてくれなかったのは、
-  #     #D0245 cdd38598 で ble/complete/progcomp/.compgen-helper-func に於いて、
-  #     "$comp_func" に引数を渡し忘れていたのが原因と思われる。
-  #     これは 1929132b に於いて修正されたが念のためにフィルタを残していた気がする。
-  #
-  local arr
-  {
-    local compgen2=
-    if [[ $comp_opts == *:filter_by_prefix:* ]]; then
-      local ret; ble/string#escape-for-sed-regex "$COMPV"; local rex_compv=$ret
-      ble/util/assign compgen2 'ble/bin/sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen"'
-    fi
-    [[ $compgen2 ]] || ble/util/assign compgen2 'ble/bin/sed "/^\$/d" <<< "$compgen"'
-
-    local compgen3=$compgen2
-    [[ $use_workaround_for_git ]] &&
-      ble/util/assign compgen3 'ble/bin/sed "s/[[:space:]]\{1,\}\$//" <<< "$compgen2"'
-
-    if [[ $comp_opts == *:nosort:* ]]; then
-      ble/util/assign-array arr 'ble/bin/awk "!a[\$0]++" <<< "$compgen3"'
-    else
-      ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen3"'
-    fi
-  } 2>/dev/null
+  local arr flag_mandb=
+  ble/complete/progcomp/.filter-and-split-compgen arr # compgen (comp_opts, etc) -> arr, flag_mandb
 
   ble/complete/source/test-limit ${#arr[@]} || return 1
 
@@ -2885,11 +2940,26 @@ function ble/complete/progcomp/.compgen {
   [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
 
   local old_cand_count=$cand_count
-  local cand
-  for cand in "${arr[@]}"; do
-    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
-    ble/complete/cand/yield "$action" "$progcomp_prefix$cand" "$comp_opts"
-  done
+  if [[ $flag_mandb ]]; then
+    local entry fs=$_ble_term_FS mandb_count=0
+    for entry in "${arr[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      if [[ $entry == -*"$fs"*"$fs"*"$fs"* ]]; then
+        local cand=${entry%%"$fs"*}
+        ble/complete/cand/yield mandb "$cand" "$entry"
+        ((mandb_count++))
+      else
+        ble/complete/cand/yield "$action" "$progcomp_prefix$entry" "$comp_opts"
+      fi
+    done
+    ((mandb_count)) && bleopt complete_menu_style=desc
+  else
+    local entry
+    for entry in "${arr[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      ble/complete/cand/yield "$action" "$progcomp_prefix$entry" "$comp_opts"
+    done
+  fi
 
   # plusdirs の時はディレクトリ名も候補として列挙
   # Note: 重複候補や順序については考えていない
@@ -3542,7 +3612,7 @@ function ble/complete/mandb/.generate-cache {
     END { flush_pair(); }
   ' | ble/bin/sort -k 1
 }
-function ble/complete/mandb/load-cache {
+function ble/complete/mandb/generate-cache {
   local command=${1##*/}
   local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
   local fcache=$_ble_base_cache/complete.mandb/$lc_messages/$command
@@ -3552,7 +3622,13 @@ function ble/complete/mandb/load-cache {
       [[ -s $fcache ]] ||
         return 1
   fi
-  ble/util/mapfile ret < "$fcache"
+  ret=$fcache
+  [[ -s $fcache ]]
+}
+function ble/complete/mandb/load-cache {
+  ret=()
+  ble/complete/mandb/generate-cache "$@" &&
+    ble/util/mapfile ret < "$ret"
 }
 
 #------------------------------------------------------------------------------
@@ -3701,9 +3777,9 @@ function ble/complete/source:argument {
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
 
   # "-option" の時は complete options based on mandb
-  if local rex='^-[-_a-zA-Z0-9]*$'; [[ $COMPV =~ $rex ]]; then
+  if local rex='^-[-_a-zA-Z0-9]*$'; [[ ! $COMPV || $COMPV =~ $rex ]]; then
     ble/complete/source:argument/.generate-from-mandb; local ext=$?
-    ((ext==148||cand_count>old_cand_count)) && return "$ext"
+    ((ext==148||cand_count>old_cand_count&&${#COMPV})) && return "$ext"
   fi
 
   # 候補が見付からない場合 (または曖昧補完で COMPV に / が含まれる場合)

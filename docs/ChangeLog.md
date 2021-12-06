@@ -118,6 +118,7 @@
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
 - main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 88e2df5
+- mandb: integrate `mandb` with `bash-completion` (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) `#D1688` 0000000
 
 ## Fixes
 
@@ -132,6 +133,7 @@
   - mandb: work around old groff in macOS (reported by killermoehre) `#D1551` d4f816b
   - mandb: use `manpath` and `man -w`, and read `/etc/man_db.conf` and `~/.manpath` `#D1637` 2365e09
   - mandb: support the formats of the man pages of `awk` and `sed` (reported by bbyfacekiller) `#D1687` 0000000
+  - mandb: generate completions of options also for the empty word `#D1689` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
