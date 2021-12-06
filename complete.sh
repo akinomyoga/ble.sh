@@ -210,8 +210,21 @@ function ble-complete/source/command {
 
     local cand arr i=0
     IFS=$'\n' builtin eval 'arr=($(ble-complete/source/command/gen))'
+
+    # keyword 判定用
+    local rex_keyword=
+    [[ $COMPS != $COMPV ]] &&
+      local rex_keyword='^(if|then|else|elif|fi|case|esac|for|select|while|until|do|done|function|time|[{}]|\[\[|coproc)$'
+
     for cand in "${arr[@]}"; do
       ((i%100==0)) && ble/util/is-stdin-ready && return 27
+
+      # #D1691 keyword は quote されている場合には無効
+      if [[ $rex_keyword && $cand =~ $rex_keyword ]]; then
+        local type; ble/util/type type "$cand"
+        ((${#type[@]}==1)) && continue
+      fi
+
       ble-complete/yield-candidate "$cand" ble-complete/action/command
     done
   fi
