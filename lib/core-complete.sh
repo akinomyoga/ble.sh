@@ -234,13 +234,25 @@ function ble-complete/source/command {
   local compgen
   ble/util/assign compgen ble-complete/source/command/gen
   [[ $compgen ]] || return 1
-  ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
+  ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
+
+  # keyword 判定用
+  local rex_keyword=
+  [[ $COMPS != $COMPV ]] &&
+    local rex_keyword='^(if|then|else|elif|fi|case|esac|for|select|while|until|do|done|function|time|[{}]|\[\[|coproc)$'
+
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
 
     # workaround: 何故か compgen -c -- "$COMPV" で
     #   厳密一致のディレクトリ名が混入するので削除する。
     [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
+
+    # #D1691 keyword は quote されている場合には無効
+    if [[ $rex_keyword && $cand =~ $rex_keyword ]]; then
+      local type; ble/util/type type "$cand"
+      ((${#type[@]}==1)) && continue
+    fi
 
     ble-complete/yield-candidate "$cand" ble-complete/action/command
   done

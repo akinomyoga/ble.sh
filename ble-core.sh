@@ -613,8 +613,7 @@ else
 fi
 
 function ble/util/type {
-  _cmd=$2 ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
-  builtin eval "$1=\"\${$1%$_ble_term_nl}\""
+  ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"
 }
 
 if ((_ble_bash>=30200)); then
