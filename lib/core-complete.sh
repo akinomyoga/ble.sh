@@ -3379,13 +3379,55 @@ function ble/complete/mandb/.generate-cache {
       g_desc = "";
     }
 
-    mode == "key1" {
-      register_key($0);
-      mode = "desc";
+    # Comment: [.ig \n comments \n ..]
+    /^\.ig/ { mode = "ignore"; next; }
+    mode == "ignore" {
+      if (/^\.\.[[:space:]]*/) mode = "none";
       next;
     }
 
-    mode == "keyc" {
+    /^\.(S[Ss]|S[Hh]|P[Pp])([^_[:alnum:]]|$)/ { flush_topic(); next; }
+
+    #--------------------------------------------------------------------------
+    # Format #3: [.HP \n keys \n .IP \n desc]
+    # GNU sed seems to use this format.
+    /^\.HP[[:space:]]*$/ {
+      if (g_keys_count && g_desc != "") flush_topic();
+      mode = "fmt3_key";
+    }
+    mode == "fmt3_key" {
+      if (/^\.TP[[:space:]]*/) { flush_topic(); mode = "none"; next; }
+      if (/^\.PD([^_[:alnum:]]|$)/) next;
+
+      if (/^\.IP/) { mode = "fmt3_desc"; next; }
+      register_key($0);
+      next;
+    }
+    mode == "fmt3_desc" {
+      if (/^\.TP[[:space:]]*/) { flush_topic(); mode = "none"; next; }
+      if (/^\.PD([^_[:alnum:]]|$)/) next;
+
+      if (g_desc != "") g_desc = g_desc "\n";
+      g_desc = g_desc $0;
+      next;
+    }
+    #--------------------------------------------------------------------------
+    # Format #2: [.It Fl key \n desc] or [.It Fl Xo \n key \n .Xc desc]
+    # This form was found in both "mdoc" and "man"
+    /^\.It Fl([^_[:alnum:]]|$)/ {
+      if (g_keys_count && g_desc != "") flush_topic();
+      sub(/^\.It Fl/, ".Fl");
+      if ($0 ~ / Xo$/) {
+        g_current_key = $0;
+        mode = "fmt2_keyc"
+      } else {
+        register_key($0);
+        mode = "desc";
+      }
+      next;
+    }
+    mode == "fmt2_keyc" {
+      if (/^\.PD[[:space:]]*([0-9]+[[:space:]]*)?$/) next;
       g_current_key = g_current_key "\n" $0;
       if (/^\.Xc/) {
         register_key(g_current_key);
@@ -3393,34 +3435,27 @@ function ble/complete/mandb/.generate-cache {
       }
       next;
     }
-
+    #--------------------------------------------------------------------------
+    # Format #1: [.TP \n key \n desc]
+    # This is the typical format in "man".
     type == "man" && /^\.TP([^_[:alnum:]]|$)/ {
       if (g_keys_count && g_desc != "") flush_topic();
       mode = "key1";
       next;
     }
-
-#%  # mdoc でも man でもあった
-    /^\.It Fl([^_[:alnum:]]|$)/ {
-      if (g_keys_count && g_desc != "") flush_topic();
-      sub(/^\.It Fl/, ".Fl");
-      if ($0 ~ / Xo$/) {
-        g_current_key = $0;
-        mode = "keyc"
-      } else {
-        register_key($0);
-        mode = "desc";
-      }
+    mode == "key1" {
+      if (/^\.PD[[:space:]]*([0-9]+[[:space:]]*)?$/) next;
+      register_key($0);
+      mode = "desc";
       next;
     }
-
-    /^\.(S[Ss]|S[Hh]|P[Pp])([^_[:alnum:]]|$)/ { flush_topic(); next; }
-    /^\.PD([^_[:alnum:]]|$)/ { next; }
-
     mode == "desc" {
+      if (/^\.PD([^_[:alnum:]]|$)/) next;
+
       if (g_desc != "") g_desc = g_desc "\n";
       g_desc = g_desc $0;
     }
+    #--------------------------------------------------------------------------
 
     END { flush_topic(); }
   ' | ble/complete/mandb/convert-mandoc 2>/dev/null | ble/bin/awk '

@@ -1599,11 +1599,14 @@ bash_tips
   * return without arguments in trap handlers. これは結局強い理由がないと変更さ
     れない雰囲気になっている。
 
-
 @todo
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
+
+2021-12-06
+
+  * mandb: 空文字列の時にも mandb に基づくオプション生成を実行するべき
 
 2021-11-23
 
@@ -5540,6 +5543,16 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-06
+
+  * mandb: awk, sed の man ページからの抽出に失敗している (reported by bbyfacekiller) [#D1687]
+    https://github.com/akinomyoga/ble.sh/issues/152
+
+    当初は bash-completion との integration の問題かとも思ったが、それ以前に
+    mandb での抽出に於いて awk, sed でそれぞれ異なる形で失敗していた。両方につ
+    いて対応した。
+
+    更に、awk の man page の中にある ".ig ... .." はコメントセクションの様だ。
+    古いオプションや文章が含まれているらしい。
 
   * 2021-09-06 menu: fish の様に twocolumn 形式で表示する desc を作っても良いのではないか (motivated by Shahabaz-Bagwan) [#D1686]
     https://www.youtube.com/watch?v=YS1vxEhd2Pc

@@ -131,6 +131,7 @@
   - mandb: fix an infinite loop by a leak variable (reported by rlanore, riblo) `#D1550` 0efcb65
   - mandb: work around old groff in macOS (reported by killermoehre) `#D1551` d4f816b
   - mandb: use `manpath` and `man -w`, and read `/etc/man_db.conf` and `~/.manpath` `#D1637` 2365e09
+  - mandb: support the formats of the man pages of `awk` and `sed` (reported by bbyfacekiller) `#D1687` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
