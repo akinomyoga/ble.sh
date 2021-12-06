@@ -119,6 +119,7 @@
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
 - main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 88e2df5
 - mandb: integrate `mandb` with `bash-completion` (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) `#D1688` 0000000
+- syntax: do not start argument completions immediately after previous word (reported by EmilySeville7cfg) `#D1690` 0000000
 
 ## Fixes
 

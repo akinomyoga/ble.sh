@@ -5527,6 +5527,22 @@ bash_tips
 
 2021-12-06
 
+  * ble.sh: complete check-here を制限 (reported by EmilySeville7cfg) [#D1690]
+    https://github.com/akinomyoga/ble.sh/issues/156
+
+    check-here を完全に消すと恐らくコマンド名を生成できない。
+
+    実装を確認した。ARGX 系統は直前に必ず空白の類が存在して check-prefix で生成
+    される。なので、ARGX 系統に関しては check-here から削除してしまって問題がな
+    い様に思われる。
+
+    元々、check-here に残していたのは、候補が全く生成できない時にその場で前の単
+    語に続けて生成したい事があるかもしれないという事だったが、よく考えてみれば
+    その様な使い方が有用な場合は意図的にその様に設計された限られた状況だし、そ
+    の様な状況の場合には、前の単語の補完の一部としてその様な候補を生成するべき
+    である。従って、check-here による ARGX 系統の補完文脈は寧ろ削除するべきであ
+    る。
+
   * mandb: 空文字列の時にも mandb に基づくオプション生成を実行するべき [#D1689]
 
   * 2021-08-30 complete: オプションの説明と progcomp の integration を考える (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) [#D1688]
