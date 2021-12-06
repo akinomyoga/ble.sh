@@ -2114,6 +2114,10 @@ function ble/syntax:bash/check-glob {
   if ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR||ctx==CTX_RDRS)); then
     force_attr=$ctx
     ntype="glob_attr=$force_attr"
+  elif ((ctx==CTX_FARGX1||ctx==CTX_FARGI1)); then
+    # for [xxx] / for a[xxx] の場合
+    force_attr=$ATTR_ERR
+    ntype="glob_attr=$force_attr"
   elif ((ctx==CTX_PWORD||ctx==CTX_PWORDE||ctx==CTX_PWORDR)); then
     ntype="glob_ctx=$ctx"
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
@@ -3422,7 +3426,7 @@ _ble_syntax_bash_command_EndWtype[CTX_CMDXE]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXD]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXD0]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXV]=$CTX_CMDI
-_ble_syntax_bash_command_EndWtype[CTX_FARGX1]=$CTX_ARGI
+_ble_syntax_bash_command_EndWtype[CTX_FARGX1]=$CTX_FARGI1 # 変数名
 _ble_syntax_bash_command_EndWtype[CTX_SARGX1]=$CTX_ARGI
 _ble_syntax_bash_command_EndWtype[CTX_FARGX2]=$CTX_FARGI2 # in
 _ble_syntax_bash_command_EndWtype[CTX_FARGX3]=$CTX_ARGI # in
@@ -3907,16 +3911,7 @@ function ble/syntax:bash/ctx-command {
   elif local rex='^([^'${_ble_syntax_bash_chars[CTX_ARGI]}']+|\\.)'; [[ $tail =~ $rex ]]; then
     local rematch=$BASH_REMATCH
     local attr=$ctx
-    if ((attr==CTX_FARGI1)); then
-      # for var in ... の var の部分は変数名をチェックして着色
-      if rex='^[a-zA-Z_][a-zA-Z_0-9]*'; ((i==wbegin)) && [[ $rematch =~ $rex ]]; then
-        local ret; ble/syntax/highlight/vartype "$BASH_REMATCH"; attr=$ret
-      else
-        attr=$ATTR_ERR
-      fi
-    elif [[ $BASH_REMATCH == '\'? ]]; then
-      attr=$ATTR_QESC
-    fi
+    [[ $BASH_REMATCH == '\'? ]] && attr=$ATTR_QESC
     ((_ble_syntax_attr[i]=attr,i+=${#rematch}))
     flagConsume=1
   elif ble/syntax:bash/check-process-subst; then
@@ -3939,6 +3934,16 @@ function ble/syntax:bash/ctx-command {
 
   if ((flagConsume)); then
     ble/util/assert '((wtype0>=0))'
+
+    if ((ctx==CTX_FARGI1)); then
+      # for var in ... の var の部分は変数名をチェックして着色
+      local rex='^[a-zA-Z_][a-zA-Z_0-9]*$' attr=$ATTR_ERR
+      if ((i0==wbegin)) && [[ ${text:i0:i-i0} =~ $rex ]]; then
+        local ret; ble/syntax/highlight/vartype "$BASH_REMATCH"; attr=$ret
+      fi
+      ((_ble_syntax_attr[i0]=attr))
+    fi
+
     [[ ${_ble_syntax_bash_command_Expect[wtype0]} ]] &&
       ((_ble_syntax_attr[i0]=ATTR_ERR))
     if ((unexpectedWbegin>=0)); then
