@@ -3436,25 +3436,32 @@ function ble/complete/mandb/.generate-cache {
         topic_start = ".TP";
       }
       mode = "begin";
+
+      fmt3_state = "";
+      fmt5_state = "";
     }
     function flush_topic(_, i) {
-      if (g_keys_count == 0) return;
-      for (i = 0; i < g_keys_count; i++) {
-        print "";
-        print "__ble_key__";
-        if (topic_start != "") print topic_start;
-        print g_keys[i];
-        print "";
-        print "__ble_desc__";
-        print "";
-        print g_desc;
+      if (g_keys_count != 0) {
+        for (i = 0; i < g_keys_count; i++) {
+          print "";
+          print "__ble_key__";
+          if (topic_start != "") print topic_start;
+          print g_keys[i];
+          print "";
+          print "__ble_desc__";
+          print "";
+          print g_desc;
+        }
       }
       g_keys_count = 0;
       g_desc = "";
+
+      fmt3_flush();
+      fmt5_state = "";
     }
 
-#%  # .Dd マクロ読み込み命令?
-#%  # .Nm (mdoc) 記述対象の名前
+    # ".Dd" seems to be the include directive for macros?
+    # ".Nm" (in mdoc) specifies the name of the target the man page describes
     mode == "begin" && /^\.(Dd|Nm)[[:space:]]/ {
       if (type == "man" && /^\.Dd[[:space:]]+\$Mdoc/) topic_start = "";
       print $0;
@@ -3472,31 +3479,120 @@ function ble/complete/mandb/.generate-cache {
       next;
     }
 
-    /^\.(S[Ss]|S[Hh]|P[Pp])([^_[:alnum:]]|$)/ { flush_topic(); next; }
+    {
+      sub(/[[:space:]]+$/, "");
+      REQ = match($0, /^\.[_[:alnum:]]+/) ? substr($0, 2, RLENGTH) : "";
+    }
+
+    REQ ~ /^(S[Ss]|S[Hh]|Pp)$/ { flush_topic(); next; }
+
+    #--------------------------------------------------------------------------
+    # Format #5: [.PP \n key \n .RS \n desc \n .RE]
+    # used by "ping".
+
+    REQ == "PP" {
+      flush_topic();
+      fmt5_state = "key";
+      fmt5_key = "";
+      fmt5_desc = "";
+      next;
+    }
+
+    fmt5_state {
+      if (fmt5_state == "key") {
+        if (/^\.RS([^_[:alnum:]]|$)/)
+          fmt5_state = "desc";
+        else if (/^\.RE([^_[:alnum:]]|$)/)
+          fmt5_state = "none";
+        else
+          fmt5_key = (fmt5_key ? "\n" : "") $0;
+      } else if (fmt5_state == "desc") {
+        if (/^\.RE([^_[:alnum:]]|$)/) {
+          register_key(fmt5_key);
+          g_desc = fmt5_desc;
+          flush_topic();
+          fmt5_state = "";
+        } else
+          fmt5_desc = (fmt5_desc ? "\n" : "") $0;
+      }
+    }
 
     #--------------------------------------------------------------------------
     # Format #3: [.HP \n keys \n .IP \n desc]
     # GNU sed seems to use this format.
-    /^\.HP[[:space:]]*$/ {
-      if (g_keys_count && g_desc != "") flush_topic();
-      mode = "fmt3_key";
-    }
-    mode == "fmt3_key" {
-      if (/^\.TP[[:space:]]*/) { flush_topic(); mode = "none"; next; }
-      if (/^\.PD([^_[:alnum:]]|$)/) next;
+    # GNU coreutils mv seems to contain [.HP \n key      desc ] (for option "-b")
 
-      if (/^\.IP/) { mode = "fmt3_desc"; next; }
-      register_key($0);
+    REQ == "HP" {
+      flush_topic();
+      fmt3_state = "key";
+      fmt3_key_count = 0;
+      fmt3_desc = "";
       next;
     }
-    mode == "fmt3_desc" {
-      if (/^\.TP[[:space:]]*/) { flush_topic(); mode = "none"; next; }
-      if (/^\.PD([^_[:alnum:]]|$)/) next;
+
+    function fmt3_process(_, key) {
+      if (REQ == "TP") { fmt3_flush(); return; }
+      if (REQ == "PD") return;
+
+      if (fmt3_state == "key") {
+        if (REQ == "IP") { fmt3_state = "desc"; return; }
+        if (match($0, /(	|    )[[:space:]]*/)) {
+          fmt3_keys[fmt3_key_count++] = substr($0, 1, RSTART - 1);
+          fmt3_desc = substr($0, RSTART + RLENGTH);
+          fmt3_state = "desc";
+        } else {
+          fmt3_keys[fmt3_key_count++] = $0;
+        }
+      } else if (fmt3_state == "desc") {
+        if (fmt3_desc != "") fmt3_desc = fmt3_desc "\n";
+        fmt3_desc = fmt3_desc $0;
+      }
+    }
+    function fmt3_flush(_, i) {
+      if (fmt3_state == "desc" && fmt3_key_count > 0) {
+        for (i = 0; i < fmt3_key_count; i++)
+          register_key(fmt3_keys[i]);
+        g_desc = fmt3_desc;
+      }
+      fmt3_state = "";
+      fmt3_key_count = 0;
+      fmt3_desc = "";
+    }
+
+    fmt3_state { fmt3_process(); }
+
+    #--------------------------------------------------------------------------
+    # Format #4: [[.IP "key" 4 \n .IX Item "..."]+ \n .PD \n desc]
+    # This format is used by "wget".
+    /^\.IP[[:space:]]+".*"([[:space:]]+[0-9]+)?$/ && fmt3_state != "key" {
+      if (!(g_keys_count && g_desc == "")) flush_topic();
+      gsub(/^\.IP[[:space:]]+"|"([[:space:]]+[0-9]+)?$/, "");
+      register_key($0);
+      mode = "fmt4_desc";
+      next;
+    }
+    mode == "fmt4_desc" {
+      if ($0 == "") { flush_topic(); mode = "none"; next; }
+
+      # fish has a special format of [.IP "\(bu" 2 \n keys desc]
+      if (g_keys_count == 1 && g_keys[0] == "\\(bu" && match($0, /^\\fC[^\\]+\\fP( or \\fC[^\\]+\\fP)?/) > 0) {
+        _key = substr($0, 1, RLENGTH);
+        _desc = substr($0, RLENGTH + 1);
+        if (match(_key, / or \\fC[^\\]+\\fP/) > 0)
+          _key = substr(_key, 1, RSTART - 1) ", " substr(_key, RSTART + 4);
+        g_keys[0] = _key;
+        g_desc = _desc;
+        next;
+      }
+
+      if (REQ == "PD") next;
+      if (/^\.IX[[:space:]]+Item[[:space:]]+/) next;
 
       if (g_desc != "") g_desc = g_desc "\n";
       g_desc = g_desc $0;
       next;
     }
+
     #--------------------------------------------------------------------------
     # Format #2: [.It Fl key \n desc] or [.It Fl Xo \n key \n .Xc desc]
     # This form was found in both "mdoc" and "man"
@@ -3515,7 +3611,7 @@ function ble/complete/mandb/.generate-cache {
     mode == "fmt2_keyc" {
       if (/^\.PD[[:space:]]*([0-9]+[[:space:]]*)?$/) next;
       g_current_key = g_current_key "\n" $0;
-      if (/^\.Xc/) {
+      if (REQ == "Xc") {
         register_key(g_current_key);
         mode = "desc";
       }
@@ -3524,7 +3620,7 @@ function ble/complete/mandb/.generate-cache {
     #--------------------------------------------------------------------------
     # Format #1: [.TP \n key \n desc]
     # This is the typical format in "man".
-    type == "man" && /^\.TP([^_[:alnum:]]|$)/ {
+    type == "man" && REQ == "TP" {
       if (g_keys_count && g_desc != "") flush_topic();
       mode = "key1";
       next;
@@ -3536,7 +3632,7 @@ function ble/complete/mandb/.generate-cache {
       next;
     }
     mode == "desc" {
-      if (/^\.PD([^_[:alnum:]]|$)/) next;
+      if (REQ == "PD") next;
 
       if (g_desc != "") g_desc = g_desc "\n";
       g_desc = g_desc $0;

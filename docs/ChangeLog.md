@@ -77,9 +77,9 @@
 - prompt: support `bleopt prompt_ruler` (motivated by Barbarossa93) `#D1666` 05cf638
   - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 9033f29
 - edit: support `bleopt canvas_winch_action` (requested by Johann-Goncalves-Pereira, guptapriyanshu7) `#D1679` 2243e91
-  - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) 0000000
-- menu (menu-style:desc): improve descriptions (motivated by Shahabaz-Bagwan) `#D1685` 0000000
-- menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 0000000
+  - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) b1be640
+- menu (menu-style:desc): improve descriptions (motivated by Shahabaz-Bagwan) `#D1685` 4de1b45
+- menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
  
 ## Changes
 
@@ -118,9 +118,9 @@
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
 - main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 88e2df5
-- mandb: integrate `mandb` with `bash-completion` (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) `#D1688` 0000000
-- syntax: do not start argument completions immediately after previous word (reported by EmilySeville7cfg) `#D1690` 0000000
-- syntax: strictly check variable names of `for`-statements `#D1692` 0000000
+- mandb: integrate `mandb` with `bash-completion` (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) `#D1688` c1cd666
+- syntax: do not start argument completions immediately after previous word (reported by EmilySeville7cfg) `#D1690` 371a5a4
+- syntax: strictly check variable names of `for`-statements `#D1692` d056547
 
 ## Fixes
 
@@ -134,8 +134,9 @@
   - mandb: fix an infinite loop by a leak variable (reported by rlanore, riblo) `#D1550` 0efcb65
   - mandb: work around old groff in macOS (reported by killermoehre) `#D1551` d4f816b
   - mandb: use `manpath` and `man -w`, and read `/etc/man_db.conf` and `~/.manpath` `#D1637` 2365e09
-  - mandb: support the formats of the man pages of `awk` and `sed` (reported by bbyfacekiller) `#D1687` 0000000
-  - mandb: generate completions of options also for the empty word `#D1689` 0000000
+  - mandb: support the formats of the man pages of `awk` and `sed` (reported by bbyfacekiller) `#D1687` 6932018
+  - mandb: generate completions of options also for the empty word `#D1689` b90ac78
+  - mandb: support the man-page formats of `wget`, `fish`, and `ping` (reported by bbyfacekiller) `#D1687` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -189,8 +190,8 @@
 - decode (`cmap/initialize`): fix unquoted special chars in the cmap cache `#D1647` 7434d2d
 - decode: fix a bug that the characters input while initialization are delayed `#D1670` 430f449
 - util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 61705bf
-- trace: fix wrong positioning of the ellipses on overflow `#D1684` 0000000
-- complete: do not generate keywords for quoted command names `#D1691` 0000000
+- trace: fix wrong positioning of the ellipses on overflow `#D1684` b90ac78
+- complete: do not generate keywords for quoted command names `#D1691` 60d244f
 
 ## Documentation
 
@@ -241,8 +242,8 @@
 - main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
 - decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
 - decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680` a6b4e2c
-- complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` 0000000
-- stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 0000000
+- complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` f985b9a
+- stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 82f74f0
 
 ## Internal changes and fixes
 
