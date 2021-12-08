@@ -3949,6 +3949,8 @@ function ble/builtin/bind {
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin bind "$@"; ext=$?
   elif [[ $flags == *[eh]* ]]; then
+    [[ $flags == *e* ]] &&
+      builtin bind --usage 2>&1 1>/dev/null | ble/bin/grep ^bind >&2
     ext=2
   fi
 

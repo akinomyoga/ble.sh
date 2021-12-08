@@ -5517,6 +5517,18 @@ bash_tips
 
 2021-12-08
 
+  * complete: bind -[TAB] で bash-completion がオプションを生成してくれない [#D1694]
+    ble.sh の外側ではちゃんと生成してくれている。
+
+    これは分かった。上書きしている builtin が --usage オプションに対応していな
+    いのが原因。というか unrecognized option と表示する時に、エラーメッセージと
+    して usage を出力していて、それに従って usage が出力されているのであった。
+
+    うーん。これに対してはどの様に対処するべきだろうか。つまり、bash-completion
+    は敢えて誤った用法でコマンドを呼び出してその結果を解析している。上書きする
+    builtin は誤った用法に対するエラー時の振る舞いに対しても同様に振る舞う必要
+    があるのだろうか?
+
   * mandb: --help から読み出し? [#D1693]
     https://github.com/akinomyoga/ble.sh/issues/158
 

@@ -8255,8 +8255,11 @@ function ble/builtin/read/.impl {
 
   ble/builtin/read/.read-arguments "$@"
   if [[ $opt_flags == *[HE]* ]]; then
-    [[ $opt_flags == *H* ]] &&
+    if [[ $opt_flags == *H* ]]; then
       builtin read --help
+    elif [[ $opt_flags == *E* ]]; then
+      builtin read --usage 2>&1 1>/dev/null | ble/bin/grep ^read >&2
+    fi
     return 2
   fi
 

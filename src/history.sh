@@ -1470,7 +1470,10 @@ function ble/builtin/history {
       esac
     done
   done
-  [[ $flag_error ]] && return 2
+  if [[ $flag_error ]]; then
+    builtin history --usage 2>&1 1>/dev/null | ble/bin/grep ^history >&2
+    return 2
+  fi
 
   if [[ $flags == *h* ]]; then
     builtin history --help

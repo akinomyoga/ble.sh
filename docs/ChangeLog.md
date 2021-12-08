@@ -244,6 +244,7 @@
 - decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680` a6b4e2c
 - complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` f985b9a
 - stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 82f74f0
+- builtin: print usages of emulated builtins on option errors `#D1694` 0000000
 
 ## Internal changes and fixes
 

@@ -1892,6 +1892,7 @@ function ble/builtin/trap {
     builtin trap --help
     return 2
   elif [[ $flags == *E* ]]; then
+    builtin trap --usage 2>&1 1>/dev/null | ble/bin/grep ^trap >&2
     return 2
   elif [[ $flags == *l* ]]; then
     builtin trap -l
