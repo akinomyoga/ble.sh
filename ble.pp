@@ -720,6 +720,15 @@ function ble/bin/awk {
 # Do not overwrite by .freeze-utility-path
 function ble/bin/.frozen:awk { :; }
 
+function ble/util/mkd {
+  local dir
+  for dir; do
+    [[ -d $dir ]] && continue
+    [[ -e $dir || -L $dir ]] && ble/bin/rm -f "$dir"
+    ble/bin/mkdir -p "$dir"
+  done
+}
+
 _ble_bin_awk_supports_null_RS=
 function ble/bin/awk.supports-null-record-separator {
   if [[ ! $_ble_bin_awk_supports_null_RS ]]; then

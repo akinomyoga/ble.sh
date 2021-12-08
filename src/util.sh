@@ -6058,6 +6058,11 @@ function ble/util/s2chars {
   done
   ret=("${chars[@]}")
 }
+function ble/util/s2bytes {
+  local LC_ALL= LC_CTYPE=C
+  ble/util/s2chars "$1"
+}
+ble/function#suppress-stderr ble/util/s2bytes
 
 # bind で使用される keyseq の形式
 
