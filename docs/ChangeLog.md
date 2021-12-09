@@ -137,6 +137,7 @@
   - mandb: support the formats of the man pages of `awk` and `sed` (reported by bbyfacekiller) `#D1687` 6932018
   - mandb: generate completions of options also for the empty word `#D1689` b90ac78
   - mandb: support the man-page formats of `wget`, `fish`, and `ping` (reported by bbyfacekiller) `#D1687` 0000000
+  - mandb: carry optarg for e.g. `-a, --accept=LIST` `#D1687` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595

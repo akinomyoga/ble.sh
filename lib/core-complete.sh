@@ -3642,43 +3642,20 @@ function ble/complete/mandb/.generate-cache-from-man {
     #--------------------------------------------------------------------------
 
     END { flush_topic(); }
-  ' | ble/complete/mandb/convert-mandoc 2>/dev/null | ble/bin/awk '
-    function process_pair(name, desc, _, sep, n, i, insert_suffix, menu_suffix, m) {
-#%    # FS (\034) は特殊文字として使用するので除外する。
-      sep = "\034";
-      if (g_name ~ /\034/) return;
-      gsub(/\034/, "\x1b[7m^\\\x1b[27m", desc);
+  ' | ble/complete/mandb/convert-mandoc 2>/dev/null | ble/bin/awk -F "$_ble_term_FS" '
+    function flush_pair(_, i) {
+      if (g_option_count) {
+        gsub(/\034/, "\x1b[7m^\\\x1b[27m", g_desc);
+        sub(/(\.  |; ).*/, ".", g_desc); # Long descriptions are truncated.
 
-      n = split(name, names, /,[[:space:]]*/);
-      sub(/(\.  |; ).*/, ".", desc);
-      for (i = 1; i <= n; i++) {
-        name = names[i];
-        if (g_hash[name]++ > 0) continue; # uniq
-
-        insert_suffix = " ";
-        menu_suffix = "";
-        if (match(name, /[[ =]/)) {
-          m = substr(name, RSTART, 1);
-          if (m == "=") {
-            insert_suffix = "=";
-          } else if (m == "[") {
-            insert_suffix = "";
-          }
-          menu_suffix = substr(name, RSTART);
-          name = substr(name, 1, RSTART - 1);
-        }
-        printf("%s" sep "%s" sep "%s" sep "%s\n", name, menu_suffix, insert_suffix, desc);
+        for (i = 0; i < g_option_count; i++)
+          print g_options[i] FS g_desc;
       }
-    }
-
-    function flush_pair() {
-      if (g_name == "") return;
-      process_pair(g_name, g_desc);
-      g_name = "";
+      g_option_count = 0;
       g_desc = "";
     }
 
-    function process_key(line) {
+    function process_key(line, _, n, specs, i, spec, option, optarg, suffix) {
       gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
       gsub(/\x1b[ -\/]*[0-~]/, "", line); # ESC seq
       gsub(/.\x08/, "", line); # CHAR BS
@@ -3686,10 +3663,60 @@ function ble/complete/mandb/.generate-cache-from-man {
       gsub(/\x0F/, "", line); # SI
       gsub(/[\x00-\x1F]/, "", line); # Give up all the other control chars
       gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
-      #gsub(/[[:space:]]+/, " ", line);
+      gsub(/[[:space:]]+/, " ", line);
       if (line !~ /^-./) return;
-      if (g_name != "") g_name = g_name " ";
-      g_name = g_name line;
+
+      n = split(line, specs, /,[[:space:]]+/);
+      prev_optarg = "";
+      for (i = n; i > 0; i--) {
+        spec = specs[i];
+        sub(/,[[:space:]]*$/, "", spec);
+
+        # Exclude non-options.
+        # Exclude FS (\034) because it is used for separators in the cache format.
+        if (spec !~ /^-/ || spec ~ /\034/) { specs[i] = ""; continue; }
+
+        if (match(spec, /\[[:=]?|[:=[:space:]]/)) {
+          option = substr(spec, 1, RSTART - 1);
+          optarg = substr(spec, RSTART);
+          suffix = substr(spec, RSTART + RLENGTH - 1, 1);
+          if (suffix == "[") suffix = "";
+          prev_optarg = optarg;
+        } else {
+          option = spec;
+          optarg = "";
+          suffix = " ";
+
+          # Carry previous optarg
+          if (prev_optarg ~ /[A-Z]|<.+>/) {
+            optarg = prev_optarg;
+            if (option ~ /^-.$/) {
+              sub(/^\[=/, "[", optarg);
+              sub(/^=/, "", optarg);
+              sub(/^[^[:space:][]/, " &", optarg);
+            } else {
+              if (optarg ~ /^\[[^:=]/)
+                sub(/^\[/, "[=", optarg);
+              else if (optarg ~ /^[^:=[:space:][]/)
+                optarg = " " optarg;
+            }
+
+            if (match(optarg, /^\[[:=]?|^[:=[:space:]]/)) {
+              suffix = substr(optarg, RSTART + RLENGTH - 1, 1);
+              if (suffix == "[") suffix = "";
+            }
+          }
+        }
+
+        specs[i] = option FS optarg FS suffix;
+      }
+
+      for (i = 1; i <= n; i++) {
+        if (specs[i] == "") continue;
+        option = substr(specs[i], 1, index(specs[i], FS) - 1);
+        if (!g_hash[option]++)
+          g_options[g_option_count++] = specs[i];
+      }
     }
 
     function process_desc(line) {
@@ -3963,7 +3990,7 @@ function ble/complete/mandb:_parse_help/generate-cache {
   local command=$1; [[ $1 == ble*/* ]] || command=${1##*/}
   local ret; ble/string#hash-pjw "${*:2}" 64; local hash=$ret
   local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
-  local mandb_cache_dir=$_ble_base_cache/complete.mandb/$lc_messages
+  local mandb_cache_dir=$_ble_base_cache/complete.mandb/${lc_messages//'/'/%}
   local subcache; ble/util/sprintf subcache '%s.%014x' "$mandb_cache_dir/_parse_help.d/$command" "$hash"
 
   [[ -s $subcache && $subcache -nt $_ble_base/lib/core-complete.sh ]] && return 0
@@ -4000,7 +4027,7 @@ function ble/complete/mandb/get-opts {
 function ble/complete/mandb/generate-cache {
   local command=${1##*/}
   local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
-  local mandb_cache_dir=$_ble_base_cache/complete.mandb/$lc_messages
+  local mandb_cache_dir=$_ble_base_cache/complete.mandb/${lc_messages//'/'/%}
   local fcache=$mandb_cache_dir/$command
 
   local mandb_opts; ble/complete/mandb/get-opts "$command"
