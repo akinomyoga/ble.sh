@@ -1624,13 +1624,6 @@ bash_tips
   * 一つのキーで複数の widget を呼び出す方法?
     https://github.com/michaelmob/portable-config/commit/49f9566afd8b62d47a090328104ad803962e6d3f
 
-  * tmux や screen の中では pass through シーケンスを用いる?
-    https://github.com/cmplstofB/dotfiles/blob/3e41ac47f47cc7788215409a5c3f26635f02d6a0/_dffiles/.config/blesh/blerc#L193
-
-    tmux: \ePtmux;%s\e\\ (中に含まれる \e は二重にする)
-      また tmux; の部分は存在しなくても良い様である (https://gist.github.com/saitoha/4723390)
-    screen: \eP%s\e\\
-
   * bind: "" で囲まれていない keyseq \C-l を解釈できない
     https://github.com/cmplstofB/dotfiles/blob/master/_dffiles/.config/bash/bashrc#L170-L172
 
@@ -2001,6 +1994,8 @@ bash_tips
     し、そもそも其処までして置き換える必要があるのかという疑問もある。現状で動
     いているのであればそれで良いのではないか。一応他のシェルに移植する時に一括
     で動作を変更するのが楽という可能性はなくはない。
+
+    2021-12-11 ble/string#match という関数名で追加した。
 
 2021-09-20
 
@@ -5640,6 +5635,33 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-11
+
+  * util (cursor-state): tmux や screen の中では pass through シーケンスを用いる? (motivated by cmplstofB) [#D1697]
+    https://github.com/cmplstofB/dotfiles/blob/3e41ac47f47cc7788215409a5c3f26635f02d6a0/_dffiles/.config/blesh/blerc#L193
+
+    tmux: \ePtmux;%s\e\\ (中に含まれる \e は二重にする)
+      また tmux; の部分は存在しなくても良い様である (https://gist.github.com/saitoha/4723390)
+    screen: \eP%s\e\\
+
+    対応した。
+
+    * done: 本来は外側の端末の対応状況に応じて _ble_term_Ss を送るべきの気がする。
+
+      | 然しそうするとユーザー設定または terminfo の _ble_term_Ss とどちらを優
+      | 先するべきなのかという問題が生じる。うーん。実質的に _ble_term_Ss は対
+      | 応しているとしたら一意なので、有限文字列かそうでないかだけが問題である。
+      | だとすれば、ble.sh の側で外側の端末が Ss に対応していると判定したならば、
+      | それに対応するシーケンスを送りつけてしまって問題ない気がする。
+
+      _ble_term_Ss が空で端末multiplexerの外側の端末が対応していると判断できる時、
+      独自の判断で外側の端末の対応する DECSCUSR を pass through で送信して良い。
+
+      Note: _ble_term_Ss が空でない時には既に外側に pass through で送りつける様に
+      なっている。但し、_ble_term_Ss に設定された値を尊重する。ユーザーが好みで設
+      定しているかもしれないので。
+
+      →外側の端末情報の取得も実装した。任意の階層だけ入れ子になった端末マルチ
+      プレクサでもちゃんとカーソル形状の変更が伝播する様になった。
 
   * edit: self-insert の振る舞い [#D1696]
 

@@ -1272,6 +1272,8 @@ function ble/string#quote-word {
   fi
 }
 
+function ble/string#match { [[ $1 =~ $2 ]]; }
+
 ## @fn ble/string#create-unicode-progress-bar/.block value
 ##   @var[out] ret
 function ble/string#create-unicode-progress-bar/.block {
@@ -5455,7 +5457,13 @@ function ble/term/cursor-state/.update {
   local state=$(($1))
   [[ $_ble_term_cursor_current == "$state" ]] && return 0
 
-  ble/util/buffer "${_ble_term_Ss//@1/$state}"
+  local ret=${_ble_term_Ss//@1/$state}
+
+  # Note: 既に pass-through seq が含まれている時はスキップする。
+  [[ $ret && $ret != $'\eP'*$'\e\\' ]] &&
+    ble/term/quote-passthrough "$ret" '' all
+
+  ble/util/buffer "$ret"
 
   _ble_term_cursor_current=$state
 }
@@ -5505,75 +5513,139 @@ fi
 
 #---- DA2 ---------------------------------------------------------------------
 
-_ble_term_TERM=
+_ble_term_TERM=()
+_ble_term_DA1R=()
+_ble_term_DA2R=()
+
+## @fn ble/term/DA2/initialize-term [depth]
+##   @var[out] _ble_term_TERM
 function ble/term/DA2/initialize-term {
-  local rex='^[0-9]*(;[0-9]*)*$'; [[ $_ble_term_DA2R =~ $rex ]] || return
+  local depth=$1
+  local DA2R=${_ble_term_DA2R[depth]}
+  local rex='^[0-9]*(;[0-9]*)*$'; [[ $DA2R =~ $rex ]] || return
   local da2r
-  ble/string#split da2r ';' "$_ble_term_DA2R"
+  ble/string#split da2r ';' "$DA2R"
   da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈 (#D1570 is-array OK)
 
-  case $_ble_term_DA2R in
+  case $DA2R in
   ('1;0'?????';0')
-    _ble_term_TERM=foot ;;
+    _ble_term_TERM[depth]=foot ;;
   ('1;'*)
     if ((4000<=da2r[1]&&da2r[1]<4100&&3<=da2r[2])); then
-      _ble_term_TERM=kitty
+      _ble_term_TERM[depth]=kitty
     elif ((2000<=da2r[1]&&da2r[1]<5400&&da2r[2]==0)); then
-      _ble_term_TERM=vte
+      _ble_term_TERM[depth]=vte
     fi ;;
   ('99;'*)
-    _ble_term_TERM=contra ;;
+    _ble_term_TERM[depth]=contra ;;
   ('65;'*)
     if ((5300<=da2r[1]&&da2r[2]==1)); then
-      _ble_term_TERM=vte
+      _ble_term_TERM[depth]=vte
     elif ((da2r[1]>=100)); then
-      _ble_term_TERM=RLogin
+      _ble_term_TERM[depth]=RLogin
     fi ;;
   ('67;'*)
     local rex='^67;[0-9]{3,};0$'
-    if [[ $TERM == cygwin && $_ble_term_DA2R =~ $rex ]]; then
-      _ble_term_TERM=cygwin
+    if [[ $TERM == cygwin && $DA2R =~ $rex ]]; then
+      _ble_term_TERM[depth]=cygwin
     fi ;;
   ('83;'*)
     local rex='^83;[0-9]+;0$'
-    [[ $_ble_term_DA2R =~ $rex ]] && _ble_term_TERM=screen ;;
+    [[ $DA2R =~ $rex ]] && _ble_term_TERM[depth]=screen ;;
   ('84;0;0')
-    _ble_term_TERM=tmux ;;
+    _ble_term_TERM[depth]=tmux ;;
   esac
-  [[ $_ble_term_TERM ]] && return 0
+  [[ $_ble_term_TERM[depth] ]] && return 0
 
   # xterm
   if rex='^xterm(-|$)'; [[ $TERM =~ $rex ]]; then
     local version=${da2r[1]}
-    if rex='^1;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+    if rex='^1;[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
       # Note: vte (2000以上), kitty (4000以上) は処理済み
       true
-    elif rex='^0;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+    elif rex='^0;[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
       ((95<=version))
-    elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+    elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
       ((280<=version))
-    elif rex='^32;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+    elif rex='^32;[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
       ((354<=version&&version<2000))
     else
       false
-    fi && { _ble_term_TERM=xterm:$version; return; }
+    fi && { _ble_term_TERM[depth]=xterm:$version; return; }
   fi
 
+  _ble_term_TERM[depth]=unknown
   return 0
 }
 
-_ble_term_DA1R=
-_ble_term_DA2R=
 function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke DA1R; }
 function ble/term/DA2/notify {
   # Note #D1485: screen で attach した時に外側の端末の DA2R が混入する
   # 事がある。2回目以降に受信した内容は ble.sh の内部では使用しない事
   # にする。
-  if [[ ! $_ble_term_DA2R ]]; then
-    _ble_term_DA2R=$1
-    ble/term/DA2/initialize-term
+  local depth=${#_ble_term_DA2R[@]}
+  if ((depth==0)) || ble/string#match "${_ble_term_TERM[depth-1]}" '^(screen|tmux)$'; then
+    _ble_term_DA2R[depth]=$1
+    ble/term/DA2/initialize-term "$depth"
+    case ${_ble_term_TERM[depth]} in
+    (screen|tmux)
+      # 外側の端末にも DA2 要求を出す。[ Note: 最初の DA2 要求は
+      # ble/decode/attach (decode.sh) から送信されている。 ]
+      local ret
+      ble/term/quote-passthrough $'\e[>c' $((depth+1))
+      ble/util/buffer "$ret" ;;
+    (contra)
+      : "${_ble_term_Ss:=$'\e[@1 q'}" ;;
+    esac
+
+    # 外側の端末情報は以降では処理しない
+    ((depth)) && return 0
   fi
+
   blehook/invoke DA2R
+}
+
+## @fn ble/term/quote-passthrough seq [level] [opts]
+##   指定したシーケンスを、端末マルチプレクサを通過する様に加工します。
+##
+##   @param[in] seq
+##     送信するシーケンスを指定します。
+##
+##   @param[in,opt] level
+##     シーケンスを届ける階層。0 が一番内側の Bash が動作している端末マルチプレ
+##     クサ。省略した場合は一番外側の端末にシーケンスを届ける。
+##
+##   @param[in,opt] opts
+##     コロン区切りの設定。
+##
+##     all
+##       指定した階層以下の全ての端末・端末マルチプレクサに同じシーケンスを送信
+##       する。[ Note: terminal multiplexer 自体が処理して外側に作用するかもし
+##       れないので、先に pass-through で外側に送った後に terminal multiplexer
+##       自体にも送る。 ]
+##
+##   @var[out] ret
+##     加工されたシーケンスを格納します。
+##
+function ble/term/quote-passthrough {
+  local seq=$1 level=${2:-$((${#_ble_term_DA2R[@]}-1))} opts=$3
+  local all=; [[ :$opts: == *:all:* ]] && all=1
+  ret=$seq
+  [[ $seq ]] || return 0
+  local i
+  for ((i=level;--i>=0;)); do
+    if [[ ${_ble_term_TERM[i]} == tmux ]]; then
+      # Note: tmux では pass-through seq の中に含まれる \e は \e\e の様に
+      # escape する。
+      ret=$'\ePtmux;'${ret//$'\e'/$'\e\e'}$'\e\\'${all:+$seq}
+    else
+      # Note: screen は、最初に現れる \e\\ で pass-through sequence が終わって
+      # しまうので単純に pass-through sequence を入れ子にはできない。なので、例
+      # えば "\ePXXX\e\\YYY" を pass-through する時には、\e と \\ の間で
+      # [\ePXXX\e][\\YYY] の様に分割して、それぞれ pass-through する。
+      ret=$'\eP'${ret//$'\e\\'/$'\e\e\\\eP\\'}$'\e\\'${all:+$seq}
+    fi
+  done
 }
 
 _ble_term_DECSTBM=
