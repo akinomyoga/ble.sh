@@ -5260,12 +5260,12 @@ _ble_syntax_bash_complete_check_prefix[CTX_CARGQ1]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CPATI]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CPATQ]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_COARGI]='inside-argument variable command'
-_ble_syntax_bash_complete_check_prefix[CTX_VALI]='inside-argument file'
-_ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument file'
-_ble_syntax_bash_complete_check_prefix[CTX_CONDI]='inside-argument file'
-_ble_syntax_bash_complete_check_prefix[CTX_CONDQ]='inside-argument file'
-_ble_syntax_bash_complete_check_prefix[CTX_ARGVI]='inside-argument variable:='
-_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument variable:= command:D file'
+_ble_syntax_bash_complete_check_prefix[CTX_VALI]='inside-argument sabbrev file'
+_ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument sabbrev file'
+_ble_syntax_bash_complete_check_prefix[CTX_CONDI]='inside-argument sabbrev file option'
+_ble_syntax_bash_complete_check_prefix[CTX_CONDQ]='inside-argument sabbrev file'
+_ble_syntax_bash_complete_check_prefix[CTX_ARGVI]='inside-argument sabbrev variable:='
+_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument command:D variable:= file'
 function ble/syntax/completion-context/.check-prefix/ctx:inside-argument {
   if ((wlen>=0)); then
     local source
@@ -5363,13 +5363,15 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
     # Note: variable:w でも variable:= でもなく variable にしているのは、
     #   coproc の後は変数名が来ても "変数代入 " か "coproc 配列名"
     #   か分からないので、取り敢えず何も挿入しない様にする為。
-    source=(variable command)
+    source=(command variable)
   elif ((ctx==CTX_ARGVX)); then
-    source=(variable:=)
+    source=(sabbrev variable:= option)
   elif ((ctx==CTX_ARGEX)); then
-    source=(variable:= command:D file)
+    source=(command:D variable:= file)
+  elif ((ctx==CTX_CONDX)); then
+    source=(sabbrev file option)
   else
-    source=(file)
+    source=(sabbrev file)
   fi
 
   local word=${text:istat:index-istat}
@@ -5378,14 +5380,14 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
     local src
     for src in "${source[@]}"; do
       ble/syntax/completion-context/.add "$src" "$istat"
-      if [[ $src != argument ]]; then
-        local rex="^([^'\"\$\\]|\\.)*="
-        if [[ $word =~ $rex ]]; then
-          word=${word:${#BASH_REMATCH}}
-          ble/syntax/completion-context/.add "$src" $((index-${#word}))
-        fi
-      fi
     done
+
+    # 引数の途中に unquoted '=' がある場合
+    local rex="^([^'\"\$\\]|\\.)*="
+    if [[ $word =~ $rex ]]; then
+      word=${word:${#BASH_REMATCH}}
+      ble/syntax/completion-context/.add rhs $((index-${#word}))
+    fi
   elif ble/syntax/completion-context/.check-prefix/.test-redirection "$word"; then
     true
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
@@ -5723,21 +5725,41 @@ function ble/syntax/completion-context/.check-here {
     elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
       ble/syntax/completion-context/.add variable:w "$index"
       ble/syntax/completion-context/.add sabbrev "$index"
+    elif ((ctx==CTX_ARGVX)); then
+      # declare @
+      ble/syntax/completion-context/.add variable:= "$index"
+      ble/syntax/completion-context/.add option "$index"
+      ble/syntax/completion-context/.add sabbrev "$index"
+    elif ((ctx==CTX_ARGEX)); then
+      # eval @, eval echo @
+      ble/syntax/completion-context/.add variable:= "$index"
+      ble/syntax/completion-context/.add command:D "$index"
+      ble/syntax/completion-context/.add file "$index"
     elif ((ctx==CTX_CARGX2)); then
+      # case a @
       ble/syntax/completion-context/.add wordlist:-rs:'in' "$index"
     elif ((ctx==CTX_FARGX2)); then
+      # for a @
       ble/syntax/completion-context/.add wordlist:-rs:'in:do' "$index"
     elif ((ctx==CTX_TARGX1)); then
+      # time @
       local words='-p'
       ((_ble_bash>=50100)) && words='-p':'--'
       ble/syntax/completion-context/.add command "$index"
       ble/syntax/completion-context/.add wordlist:--:"$words" "$index"
     elif ((ctx==CTX_TARGX2)); then
+      # time -p @
       ble/syntax/completion-context/.add command "$index"
       ble/syntax/completion-context/.add wordlist:--:'--' "$index"
     elif ((ctx==CTX_COARGX)); then
+      # coproc @
       ble/syntax/completion-context/.add variable:w "$index"
       ble/syntax/completion-context/.add command "$index"
+    elif ((ctx==CTX_CONDX)); then
+      # [[ @
+      ble/syntax/completion-context/.add sabbrev "$index"
+      ble/syntax/completion-context/.add option "$index"
+      ble/syntax/completion-context/.add file "$index"
     elif ((ctx==CTX_CPATI||ctx==CTX_RDRF||ctx==CTX_RDRS)); then
       ble/syntax/completion-context/.add file "$index"
     elif ((ctx==CTX_RDRD)); then

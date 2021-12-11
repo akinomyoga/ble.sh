@@ -1393,6 +1393,38 @@ function ble/path#contains {
   builtin eval "[[ :\${$1}: == *:\"\$2\":* ]]"
 }
 
+## @fn ble/opts#extract-first-optarg key opts
+function ble/opts#extract-first-optarg {
+  ret=()
+  local rex=':'$1'(=[^:]*)?:'
+  [[ :$2: =~ $rex ]] || return 1
+  [[ ${BASH_REMATCH[1]} ]] && ret=${BASH_REMATCH[1]:1}
+  return 0
+}
+## @fn ble/opts#extract-last-optarg key opts
+function ble/opts#extract-last-optarg {
+  ret=()
+  local rex='.*:'$1'(=[^:]*)?:'
+  [[ :$2: =~ $rex ]] || return 1
+  [[ ${BASH_REMATCH[1]} ]] && ret=${BASH_REMATCH[1]:1}
+  return 0
+}
+## @fn ble/opts#extract-all-optargs key opts [default_value]
+function ble/opts#extract-all-optargs {
+  ret=()
+  local value=:$2: rex=':'$1'(=[^:]*)?(:.*)$' count=0
+  while [[ $value =~ $rex ]]; do
+    ((count++))
+    if [[ ${BASH_REMATCH[1]} ]]; then
+      ble/array#push ret "${BASH_REMATCH[1]:1}"
+    elif [[ ${3+set} ]]; then
+      ble/array#push ret "$3"
+    fi
+    value=${BASH_REMATCH[2]}
+  done
+  ((count))
+}
+
 if ((_ble_bash>=40000)); then
   _ble_util_set_declare=(declare -A NAME)
   function ble/set#add { builtin eval -- "$1[x\$2]=1"; }

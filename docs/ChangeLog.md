@@ -82,6 +82,7 @@
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` 0000000
 - complete: requote for more compact representations on full completions `#D1700` 0000000
+- complete: improve support for `declare` and `[[ ... ]]` `#D1701` 0000000
  
 ## Changes
 

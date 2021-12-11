@@ -3197,6 +3197,11 @@ function ble/complete/progcomp {
 #------------------------------------------------------------------------------
 # mandb
 
+# オプション名に現れる事を許す文字の集合 (- と + を除く)
+# Exclude non-ASCII or symbols /[][()<>{}="'\''`]/
+# Note: awk の正規表現内部で使っても大丈夫な様に \ と / をエスケープしている。
+_ble_complete_option_chars='_!#$%&:;.,^~|\\?\/*a-zA-Z0-9'
+
 # action:mandb
 #
 #   DATA ... cmd FS menu_suffix FS insert_suffix FS desc
@@ -3703,7 +3708,7 @@ function ble/complete/mandb/.generate-cache-from-man {
       gsub(/[\x00-\x1F]/, "", line); # Give up all the other control chars
       gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
       gsub(/[[:space:]]+/, " ", line);
-      if (line !~ /^-./) return;
+      if (line !~ /^[-+]./) return;
 
       n = split(line, specs, /,[[:space:]]+/);
       prev_optarg = "";
@@ -3713,7 +3718,7 @@ function ble/complete/mandb/.generate-cache-from-man {
 
         # Exclude non-options.
         # Exclude FS (\034) because it is used for separators in the cache format.
-        if (spec !~ /^-/ || spec ~ /\034/) { specs[i] = ""; continue; }
+        if (spec !~ /^[-+]/ || spec ~ /\034/) { specs[i] = ""; continue; }
 
         if (match(spec, /\[[:=]?|[:=[:space:]]/)) {
           option = substr(spec, 1, RSTART - 1);
@@ -3729,7 +3734,7 @@ function ble/complete/mandb/.generate-cache-from-man {
           # Carry previous optarg
           if (prev_optarg ~ /[A-Z]|<.+>/) {
             optarg = prev_optarg;
-            if (option ~ /^-.$/) {
+            if (option ~ /^[-+].$/) {
               sub(/^\[=/, "[", optarg);
               sub(/^=/, "", optarg);
               sub(/^[^[:space:][]/, " &", optarg);
@@ -3796,12 +3801,14 @@ function ble/complete/mandb/.generate-cache-from-man {
 ## @fn ble/complete/mandb:help/generate-cache [opts]
 function ble/complete/mandb:help/generate-cache {
   local opts=$1
-  local -x cfg_usage= cfg_help=1
+  local -x cfg_usage= cfg_help=1 cfg_plus= cfg_plus_generate=
   [[ :$opts: == *:help-usage:* ]] && cfg_usage=1
   [[ :$opts: == *:usage:* ]] && cfg_usage=1 cfg_help=
+  ble/string#match ":$opts:" ':plus-option(=[^:]+)?:' &&
+    cfg_plus=1 cfg_plus_generate=${BASH_REMATCH[1]:1}
 
   local rex_argsep='(\[?[:=]|  ?|\[)'
-  local rex_option='-(,|[^]:=[:space:],[]+)('$rex_argsep'[^-[:space:]][^[:space:]]*)?'
+  local rex_option='[-+](,|[^]:=[:space:],[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|[^-[:space:]])[^[:space:]]*)?'
   ble/bin/awk -F "$_ble_term_FS" '
     BEGIN {
       cfg_help = ENVIRON["cfg_help"];
@@ -3811,6 +3818,9 @@ function ble/complete/mandb:help/generate-cache {
 
       cfg_usage = ENVIRON["cfg_usage"];
       g_usage_count = 0;
+
+      cfg_plus_generate = ENVIRON["cfg_plus_generate"];
+      cfg_plus = ENVIRON["cfg_plus"] cfg_plus_generate;
     }
 
     function split_option_optarg_suffix(optspec, _, key, suffix, optarg) {
@@ -3828,14 +3838,15 @@ function ble/complete/mandb:help/generate-cache {
         suffix = " ";
       }
 
-      # Note: Exclude option names containing non-ASCII or symbols [][()<>{}="'\''`]
-      if (key ~ /[^-_!#$%&:;.,^~|\\?\/+*a-zA-Z0-9]/) return "";
+      # Note: Exclude option names containing non-option characters
+      if (key ~ /[^-+'"$_ble_complete_option_chars"']/) return "";
 
       return key FS optarg FS suffix;
     }
     function print_entry(entry, _, name) {
       name = entry;
       sub(/'"$_ble_term_FS"'.*$/, "", name);
+      if (name ~ /^\+/ && !cfg_plus) return;
       if (!g_hash[name]++) # uniq
         print entry;
     }
@@ -3847,9 +3858,19 @@ function ble/complete/mandb:help/generate-cache {
     }
 
     #--------------------------------------------------------------------------
+    # Generate + options without descriptions
+
+    function generate_plus(_, i, n) {
+      if (!cfg_plus_generate) return;
+      n = length(cfg_plus_generate);
+      for (i = 1; i <= n; i++)
+        print_entry("+" substr(cfg_plus_generate, i, 1) FS FS FS);
+    }
+
+    #--------------------------------------------------------------------------
     # Extract usage [-DEI] [-f[helo] | --prefix=PATH]
 
-    function parse_usage(line, _, optspec, optspec1, option, optarg, n, i) {
+    function parse_usage(line, _, optspec, optspec1, option, optarg, n, i, o) {
       while (match(line, /\[[[:space:]]*([^][]|\[[^][]*\])+[[:space:]]*\]/)) {
         optspec = substr(line, RSTART + 1, RLENGTH - 2);
         line = substr(line, RSTART + RLENGTH);
@@ -3861,7 +3882,7 @@ function ble/complete/mandb:help/generate-cache {
           gsub(/^[[:space:]]+|[[:space:]]+$/, "", optspec1);
 
           # optspec1: "--option optarg", "-f[optarg]", "-xzvf", etc.
-          if (match(optspec1, /^-[^]:=[:space:][]+/)) {
+          if (match(optspec1, /^[-+][^]:=[:space:][]+/)) {
             option = substr(optspec1, RSTART, RLENGTH);
             optarg = substr(optspec1, RSTART + RLENGTH);
             n = RLENGTH;
@@ -3869,8 +3890,9 @@ function ble/complete/mandb:help/generate-cache {
               if ((keyinfo = split_option_optarg_suffix(optspec1)) != "")
                 g_usage[g_usage_count++] = keyinfo;
             } else {
+              o = substr(option, 1, 1);
               for (i = 2; i <= n; i++)
-                if ((keyinfo = split_option_optarg_suffix("-" substr(option, i, 1) optarg)) != "")
+                if ((keyinfo = split_option_optarg_suffix(o substr(option, i, 1) optarg)) != "")
                   g_usage[g_usage_count++] = keyinfo;
             }
           }
@@ -3940,7 +3962,7 @@ function ble/complete/mandb:help/generate-cache {
             sub(/^[[:space:]]+/, "", optarg);
             if (optarg !~ /[A-Z]|<.+>/) optarg = "";
           } else if (optarg != ""){
-            if (keys[i] ~ /^-.$/) {
+            if (keys[i] ~ /^[-+].$/) {
               optarg2 = optarg;
               sub(/^\[=/, "[", optarg2);
               sub(/^=/, "", optarg2);
@@ -3993,6 +4015,7 @@ function ble/complete/mandb:help/generate-cache {
     END {
       flush_data();
       print_usage();
+      generate_plus();
     }
   ' | ble/bin/sort -t "$_ble_term_FS" -k 1
 }
@@ -4046,18 +4069,49 @@ function ble/complete/mandb:_parse_help/generate-cache {
 }
 
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_complete_mandb_opts}"
-ble/gdict#set _ble_complete_mandb_opts printf help
-ble/gdict#set _ble_complete_mandb_opts bind help
-ble/gdict#set _ble_complete_mandb_opts complete help:help-usage
-ble/gdict#set _ble_complete_mandb_opts '[' 'help=%help test'
-ble/gdict#set _ble_complete_mandb_opts 'test' 'help=%help test'
+function ble/complete/mandb/opt {
+  local spec=$1 command; shift
+  for command; do
+    ble/gdict#set _ble_complete_mandb_opts "$command" "$spec"
+  done
+}
+function ble/complete/mandb/initialize-mandb-opts {
+  ble/complete/mandb/opt help                    printf
+  ble/complete/mandb/opt no-man:help             bind
+  ble/complete/mandb/opt no-man:help:help-usage  complete
+
+  local conditional_operators='
+    -eq (NUM1 -eq NUM2)      Arithmetic comparison ==.
+    -ne (NUM1 -ne NUM2)      Arithmetic comparison !=.
+    -lt (NUM1 -lt NUM2)      Arithmetic comparison < .
+    -le (NUM1 -le NUM2)      Arithmetic comparison <=.
+    -gt (NUM1 -gt NUM2)      Arithmetic comparison > .
+    -ge (NUM1 -ge NUM2)      Arithmetic comparison >=.
+    -nt (FILE1 -nt FILE2)    True if file1 is newer than file2 (according to modification date).
+    -ot (FILE1 -ot FILE2)    True if file1 is older than file2.
+    -ef (FILE1 -ef FILE2)    True if file1 is a hard link to file2.
+  '
+  ble/complete/mandb/opt help=%'help test':help=@"$conditional_operators" '[['
+  local test_operators=$conditional_operators'
+    -a (EXPR1 -a EXPR2)      True if both expr1 AND expr2 are true.
+    -a (EXPR1 -o EXPR2)      True if either expr1 OR expr2 is true.
+  '
+  ble/complete/mandb/opt help=%'help test':help=@"$test_operators"        'test' '['
+
+  ble/complete/mandb/opt no-man:help:stop-after-argument:plus-option=aAilnrtux declare typeset local
+  ble/complete/mandb/opt no-man:help:stop-after-argument local export readonly
+}
+ble/complete/mandb/initialize-mandb-opts
 
 ## @fn ble/complete/mandb/get-opts command
-##   @var[out]
+##   @var[out] mandb_opts
 function ble/complete/mandb/get-opts {
-  local ret
-  ble/gdict#get _ble_complete_mandb_opts "$1"
-  mandb_opts=:$ret:
+  local ret=
+  if ble/gdict#get _ble_complete_mandb_opts "$1" ||
+      { [[ $1 == */*[!/] ]] && ble/gdict#get _ble_complete_mandb_opts "${1##*/}"; }
+  then
+    mandb_opts=:$ret:
+  fi
 }
 
 ## @fn ble/complete/mandb/generate-cache cmdname
@@ -4072,19 +4126,22 @@ function ble/complete/mandb/generate-cache {
   local mandb_opts; ble/complete/mandb/get-opts "$command"
 
   # fcache_help
-  if local rex=':help(=([^:]*))?:'; [[ :$mandb_opts: =~ $rex ]]; then
+  if ble/opts#extract-all-optargs help "$mandb_opts" --help; then
+    local -a helpspecs; helpspecs=("${ret[@]}")
     local subcache=$mandb_cache_dir/help.d/$command
     if ! [[ -s $subcache && $subcache -nt $_ble_base/lib/core-complete.sh ]]; then
       ble/util/mkd "${subcache%/*}"
-      local options=${BASH_REMATCH[2]:---help}
-      if [[ $options == %* ]]; then
-        builtin eval -- "${options:1}"
-      elif [[ $options == @* ]]; then
-        ble/util/print "${options:1}"
-      else
-        ble/string#split-words options "${options#+}"
-        "$command" "${options[@]}" 2>&1
-      fi | ble/complete/mandb:help/generate-cache "$mandb_opts" >| "$subcache"
+      local helpspec
+      for helpspec in "${helpspecs[@]}"; do
+        if [[ $helpspec == %* ]]; then
+          builtin eval -- "${helpspec:1}"
+        elif [[ $helpspec == @* ]]; then
+          ble/util/print "${helpspec:1}"
+        else
+          ble/string#split-words helpspec "${helpspec#+}"
+          "$command" "${helpspec[@]}" 2>&1
+        fi
+      done | ble/complete/mandb:help/generate-cache "$mandb_opts" >| "$subcache"
     fi
   fi
 
@@ -4109,24 +4166,61 @@ function ble/complete/mandb/generate-cache {
   done
 
   if [[ $update ]]; then
-    if ((${#subcaches[@]}==1)); then
-      ble/bin/cp -f "${subcaches[0]}" "$fcache"
-    else
-      ble/bin/awk -F "$_ble_term_FS" '
-        $4 == "" {
-          nodesc_entry[nodesc_count] = $0;
+    local fs=$_ble_term_FS
+    ble/bin/awk -F "$_ble_term_FS" '
+      $4 == "" {
+        if ($1 ~ /^\+/) {
+          plus_name[plus_count] = $1;
+          plus_entry[plus_count] = $0;
+          plus_count++;
+        } else {
           nodesc_name[nodesc_count] = $1;
+          nodesc_entry[nodesc_count] = $0;
           nodesc_count++;
-          next;
         }
-        !hash[$1]++ { print; }
-        END {
-          for (i = 0; i < nodesc_count; i++)
-            if (!hash[nodesc_name[i]]++)
-              print nodesc_entry[i];
+        next;
+      }
+      !hash[$1] { hash[$1] = $0; print; }
+
+      END {
+        # minus options
+        for (i = 0; i < nodesc_count; i++) {
+          if (!hash[nodesc_name[i]]) {
+            hash[nodesc_name[i]] = nodesc_entry[i];
+            print nodesc_entry[i];
+          }
         }
-      ' "${subcaches[@]}" >| "$fcache"
-    fi
+
+        # plus options
+        for (i = 0; i < plus_count; i++) {
+          name = plus_name[i];
+          if (hash[name]) continue;
+
+          split(plus_entry[i], record, FS);
+          optarg = record[2];
+          suffix = record[3];
+          desc = "";
+
+          mname = name;
+          sub(/^\+/, "-", mname);
+          if (hash[mname]) {
+            if (!optarg) {
+              split(hash[mname], record, FS);
+              optarg = record[2];
+              suffix = record[3];
+            }
+
+            desc = hash[mname];
+            sub(/^[^'$fs']*'$fs'[^'$fs']*'$fs'[^'$fs']*'$fs'/, "", desc);
+            if (desc) desc = "\033[1mReverse[\033[m " desc " \033[;1m]\033[m";
+          }
+
+          if (!desc) desc = "reverse of \033[4m" mname "\033[m";
+          hash[name] = name FS optarg FS suffix FS desc;
+          print hash[name];
+        }
+      }
+    ' "${subcaches[@]}" >| "$fcache"
   fi
 
   ret=$fcache
@@ -4136,6 +4230,92 @@ function ble/complete/mandb/load-cache {
   ret=()
   ble/complete/mandb/generate-cache "$@" &&
     ble/util/mapfile ret < "$ret"
+}
+
+## @fn ble/complete/source:option/.stops-option args...
+##   args... に "--" などのオプション解釈を停止する様な引数が含まれて
+##   いないか判定します。
+##
+##   @param[in] args...
+##   @var[in] mandb_opts
+##
+function ble/complete/source:option/.stops-option {
+  (($#)) || return 1
+
+  local reject= rex_req=
+  [[ :$mandb_opts: != *:ignore-double-hyphen:* ]] && reject=--
+  if [[ :$mandb_opts: == *:stop-after-argument:* ]]; then
+    rex_req='^-.+'
+    if ble/string#match ":$mandb_opts:" ':plus-option(=[^:]+)?:'; then
+      if [[ ${BASH_REMATCH[1]} ]]; then
+        [[ ${BASH_REMATCH[1]:1} ]] &&
+          rex_req='^-.+|^\+['${BASH_REMATCH[1]:1}']'
+      else
+        rex_req='^[-+].+'
+      fi
+    fi
+  fi
+  [[ $reject$rex_req ]] || return 1
+
+  local word ret
+  for word; do
+    ble/syntax:bash/simple-word/is-simple "$word" &&
+      ble/syntax:bash/simple-word/eval "$word" noglob &&
+      [[ $reject && $ret == $reject || $rex_req && ! ( $ret =~ $rex_req ) ]] &&
+      return 0
+  done
+  return 1
+}
+
+function ble/complete/source:option {
+  # 空文字列もしくは /^[-+].*/ の時にだけ候補生成 (曖昧補完で最初の /^[-+]/ は補わない)
+  local rex='^-[-+'$_ble_complete_option_chars']*$|^\+[_'$_ble_complete_option_chars']*$'
+  [[ ! $COMPV || $COMPV =~ $rex ]] || return 0
+
+  local COMPS=$COMPS COMPV=$COMPV
+  ble/complete/source/reduce-compv-for-ambiguous-match
+  [[ :$comp_type: == *:[maA]:* ]] && local COMP2=$COMP1
+
+  local comp_words comp_line comp_point comp_cword
+  ble/syntax:bash/extract-command "$COMP2" || return 1
+
+  local -a prev_args=()
+  ((comp_cword>=1)) && prev_args=("${comp_words[@]:1:comp_cword-1}")
+
+  local cmd=${comp_words[0]}
+  local alias_checked=' '
+  while local ret; ! ble/complete/mandb/load-cache "$cmd"; do
+    alias_checked=$alias_checked$cmd' '
+    ble/util/expand-alias "$cmd"
+    local words; ble/string#split-words ret "$ret"; words=("${ret[@]}")
+
+    # 変数代入は読み飛ばし
+    local iword=0 rex='^[_a-zA-Z][_a-zA-Z0-9]*\+?='
+    while [[ ${words[iword]} =~ $rex ]]; do ((iword++)); done
+    [[ ${words[iword]} && $alias_checked != *" ${words[iword]} "* ]] || return 1
+    prev_args=("${words[@]:iword+1}" "${prev_args[@]}")
+    cmd=${words[iret]}
+  done
+  local -a entries; entries=("${ret[@]}")
+
+  local ret mandb_opts=
+  ble/syntax:bash/simple-word/is-simple "$cmd" &&
+    ble/syntax:bash/simple-word/eval "$cmd" noglob &&
+    ble/complete/mandb/get-opts "$ret"
+  # "--" や非オプション引数など、オプション無効化条件をチェック
+  ble/complete/source:option/.stops-option "${prev_args[@]}" && return 1
+
+  local entry fs=$_ble_term_FS has_desc=
+  for entry in "${entries[@]}"; do
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
+      ble/complete/check-cancel && return 148
+    local CAND=${entry%%$_ble_term_FS*}
+    [[ $CAND == "$COMPV"* ]] || continue
+    ble/complete/cand/yield mandb "$CAND" "$entry"
+    [[ $entry == *"$fs"*"$fs"*"$fs"?* ]] && has_desc=1
+  done
+
+  [[ $has_desc ]] && bleopt complete_menu_style=desc
 }
 
 #------------------------------------------------------------------------------
@@ -4209,60 +4389,6 @@ function ble/complete/source:argument/.generate-user-defined-completion {
   fi
 }
 
-function ble/complete/source:argument/.contains-literal-option {
-  local word ret
-  for word; do
-    ble/syntax:bash/simple-word/is-simple "$word" &&
-      ble/syntax:bash/simple-word/eval "$word" noglob &&
-      [[ $ret == -- ]] &&
-      return 0
-  done
-  return 1
-}
-
-function ble/complete/source:argument/.generate-from-mandb {
-  local COMPS=$COMPS COMPV=$COMPV
-  ble/complete/source/reduce-compv-for-ambiguous-match
-  [[ :$comp_type: == *:[maA]:* ]] && local COMP2=$COMP1
-
-  local comp_words comp_line comp_point comp_cword
-  ble/syntax:bash/extract-command "$COMP2" || return 1
-
-  # 現在の単語よりも前に -- がある場合にはオプションを候補として生成しない。
-  ((comp_cword>=1)) &&
-    ble/complete/source:argument/.contains-literal-option "${comp_words[@]:1:comp_cword-1}" &&
-    return 1
-
-  local old_cand_count=$cand_count
-
-  local cmd=${comp_words[0]}
-  local alias_checked=' '
-  while local ret; ! ble/complete/mandb/load-cache "$cmd"; do
-    alias_checked=$alias_checked$cmd' '
-    ble/util/expand-alias "$cmd"
-    local words; ble/string#split-words ret "$ret"; words=("${ret[@]}")
-
-    # 変数代入は読み飛ばし
-    local iword=0 rex='^[_a-zA-Z][_a-zA-Z0-9]*\+?='
-    while [[ ${words[iword]} =~ $rex ]]; do ((iword++)); done
-    [[ ${words[iword]} && $alias_checked != *" ${words[iword]} "* ]] || return 1
-    ble/complete/source:argument/.contains-literal-option "${words[@]:iword+1}" && return 1
-    cmd=${words[iret]}
-  done
-
-  local entry fs=$_ble_term_FS has_desc=
-  for entry in "${ret[@]}"; do
-    ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
-      ble/complete/check-cancel && return 148
-    local CAND=${entry%%$_ble_term_FS*}
-    [[ $CAND == "$COMPV"* ]] || continue
-    ble/complete/cand/yield mandb "$CAND" "$entry"
-    [[ $entry == *"$fs"*"$fs"*"$fs"?* ]] && has_desc=1
-  done
-
-  [[ $has_desc ]] && bleopt complete_menu_style=desc
-}
-
 function ble/complete/source:argument {
   local comp_opts=:
 
@@ -4284,10 +4410,8 @@ function ble/complete/source:argument {
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
 
   # "-option" の時は complete options based on mandb
-  if local rex='^-[-_a-zA-Z0-9]*$'; [[ ! $COMPV || $COMPV =~ $rex ]]; then
-    ble/complete/source:argument/.generate-from-mandb; local ext=$?
-    ((ext==148||cand_count>old_cand_count&&${#COMPV})) && return "$ext"
-  fi
+  ble/complete/source:option; local ext=$?
+  ((ext==148||cand_count>old_cand_count&&${#COMPV})) && return "$ext"
 
   # 候補が見付からない場合 (または曖昧補完で COMPV に / が含まれる場合)
   if [[ $comp_opts == *:dirnames:* ]]; then
