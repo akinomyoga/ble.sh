@@ -1624,9 +1624,6 @@ bash_tips
   * 一つのキーで複数の widget を呼び出す方法?
     https://github.com/michaelmob/portable-config/commit/49f9566afd8b62d47a090328104ad803962e6d3f
 
-  * bind: "" で囲まれていない keyseq \C-l を解釈できない
-    https://github.com/cmplstofB/dotfiles/blob/master/_dffiles/.config/bash/bashrc#L170-L172
-
 2021-12-06
 
   * complete: 沢山 quote が発生する場合には '' で囲むべきなのではないか。
@@ -5635,6 +5632,40 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-11
+
+  * bind: "" で囲まれていない keyseq \C-l を解釈できない (motivated by cmplstofB) [#D1698]
+    https://github.com/cmplstofB/dotfiles/blob/master/_dffiles/.config/bash/bashrc#L170-L172
+
+    うーん。bash の振る舞いを色々調べてみた所、"" で囲まれていない時にはやはり
+    完全には解釈しないが、\C-x 等の形の時は解釈できる様だ。
+
+    * \C-x\C-y の時には \C-y と解釈される。
+    * xyz の時には x と解釈される。
+    * \a も \ と解釈される。
+    * \C-nop は \C-n となる。
+    * \C-xC-y は C-y となる。
+    * \C-axC-b は C-b となる。
+    * helloC-b も C-b となる。
+    * helloC-x,TAB も C-x となる。
+    * C-xTAB も C-x となる。
+    * TABC-x も C-x となる。
+    * BC- は C-@ となる。
+
+    つまり…最後の "C-文字" が採用される?
+
+    * C-M-a および M-C-a は \201 となる。
+    * C-aalpha-beta は C-b となる。
+    * \C-a\M-c は \203 である。
+    * panic-trim-c は \204 である。
+
+    つまり、最初に - で split してそれから評価している。
+
+    * C-- は C-@ になる。
+    * C--x は C-x になる。
+    * - は抑々指定できない (bind に対するオプションと解釈されてしまう)。
+      inputrc に入れたら恐らく C-@ になるのだろうという気がする。
+
+    取り敢えず bash と同様の振る舞いになる事を確認した。
 
   * util (cursor-state): tmux や screen の中では pass through シーケンスを用いる? (motivated by cmplstofB) [#D1697]
     https://github.com/cmplstofB/dotfiles/blob/3e41ac47f47cc7788215409a5c3f26635f02d6a0/_dffiles/.config/blesh/blerc#L193
