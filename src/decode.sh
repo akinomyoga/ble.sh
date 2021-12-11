@@ -2494,15 +2494,21 @@ ble/function#suppress-stderr ble/builtin/bind/.decompose-pair
 ## 関数 ble/builtin/bind/.parse-keyname keyname
 ##   @var[out] chars
 function ble/builtin/bind/.parse-keyname {
-  local value=$1
-  local ret rex='^(control-|c-|ctrl-|meta|m-)-*' mflags=
-  while ble/string#tolower "$value"; [[ $ret =~ $rex ]]; do
-    value=${value:${#BASH_REMATCH}}
-    mflags=${BASH_REMATCH::1}$mflags
-  done
+  local ret mflags=
+  if [[ $1 == *-* ]]; then
+    ble/string#tolower "$1"
+    ble/string#split ret - "$ret"
+    local mod
+    for mod in "${ret[@]::${#ret[@]}-1}"; do
+      case $mod in
+      (*m|*meta) mflags=m$mflags ;;
+      (*c|*ctrl|*control) mflags=c$mflags ;;
+      esac
+    done
+  fi
 
-  local ch=
-  case $ret in
+  local value=${1##*-} ch=
+  case $value in
   (rubout|del) ch=$'\177' ;;
   (escape|esc) ch=$'\033' ;;
   (newline|lfd) ch=$'\n' ;;
