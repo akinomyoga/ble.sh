@@ -1244,11 +1244,30 @@ function ble/complete/action/inherit-from {
 }
 
 # action:plain
-
 function ble/complete/action:plain/initialize {
   ble/complete/action/util/quote-insert
 }
 function ble/complete/action:plain/complete { :; }
+
+# action:literal-substr
+function ble/complete/action:literal-substr/initialize { :; }
+function ble/complete/action:literal-substr/complete { :; }
+
+# action:substr (equivalent to plain)
+function ble/complete/action:substr/initialize {
+  ble/complete/action/util/quote-insert
+}
+function ble/complete/action:substr/complete { :; }
+
+# action:literal-word
+function ble/complete/action:literal-word/initialize { :; }
+function ble/complete/action:literal-word/complete {
+  if [[ $comps_flags == *x* ]]; then
+    ble/complete/action/util/complete.addtail ','
+  else
+    ble/complete/action/util/complete.addtail ' '
+  fi
+}
 
 # action:word
 #
@@ -1259,25 +1278,11 @@ function ble/complete/action:word/initialize {
 }
 function ble/complete/action:word/complete {
   ble/complete/action/util/complete.close-quotation
-  if [[ $comps_flags == *x* ]]; then
-    ble/complete/action/util/complete.addtail ','
-  else
-    ble/complete/action/util/complete.addtail ' '
-  fi
+  ble/complete/action:literal-word/complete
 }
 function ble/complete/action:word/get-desc {
   [[ $DATA ]] && desc=$DATA
 }
-
-# action:literal-substr
-# action:literal-word
-# action:substr
-function ble/complete/action:literal-substr/initialize { :; }
-function ble/complete/action:literal-substr/complete { :; }
-function ble/complete/action:literal-word/initialize { :; }
-function ble/complete/action:literal-word/complete { ble/complete/action:word/complete; }
-function ble/complete/action:substr/initialize { ble/complete/action:word/initialize; }
-function ble/complete/action:substr/complete { :; }
 
 # action:file
 # action:file_rhs (source:argument 内部使用)
@@ -1689,6 +1694,9 @@ function ble/complete/cand/unpack {
 ##
 ##   @var[in,out] cand_count cand_cand cand_word cand_pack
 ##   @var[in,out] cand_limit_reached
+
+# source:none
+function ble/complete/source:none { return 0; }
 
 # source:wordlist
 #
