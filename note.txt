@@ -1621,9 +1621,6 @@ bash_tips
   * PROMPT_COMMAND / trap DEBUG で問題が起こる? (found by rashad-moves)
     https://github.com/rashad-moves/HomeConfigurationFiles/commit/efbac4153fd5021f1bc00d42c618fd9d6f4090b9
 
-  * 一つのキーで複数の widget を呼び出す方法?
-    https://github.com/michaelmob/portable-config/commit/49f9566afd8b62d47a090328104ad803962e6d3f
-
 2021-12-06
 
   * complete: 沢山 quote が発生する場合には '' で囲むべきなのではないか。
@@ -5632,6 +5629,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-11
+
+  * README: 一つのキーで複数の widget を呼び出す方法? (motivated by michaelmob) [#D1699]
+    https://github.com/michaelmob/portable-config/commit/49f9566afd8b62d47a090328104ad803962e6d3f
+
+    説明を書いた。設定例の動作確認もした。
 
   * bind: "" で囲まれていない keyseq \C-l を解釈できない (motivated by cmplstofB) [#D1698]
     https://github.com/cmplstofB/dotfiles/blob/master/_dffiles/.config/bash/bashrc#L170-L172

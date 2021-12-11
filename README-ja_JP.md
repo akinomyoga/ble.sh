@@ -483,6 +483,22 @@ $ ble-bind -P
 $ ble-bind -L
 ```
 
+一つのキーで複数の編集関数を呼び出したい場合は、以下の例の様に、
+`ble/widget/編集関数の名前` という名前のシェル関数を通して新しい編集関数を定義できます。
+既存の標準の編集関数と名前が重複しない様に、
+編集関数の名前は `ユーザー名/`, `my/`, `blerc/`, `dotfiles/` などで始める事が強く推奨されます。
+
+```bash
+# C-t で複数の操作を行う例
+function ble/widget/my/example1 {
+  ble/widget/beginning-of-logical-line
+  ble/widget/insert-string 'echo $('
+  ble/widget/end-of-logical-line
+  ble/widget/insert-string ')'
+}
+ble-bind -f C-t my/example1
+```
+
 # 3 ヒント
 
 ## 3.1 複数行モード

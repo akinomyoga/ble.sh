@@ -453,6 +453,22 @@ The list of widgets is shown by the following command:
 $ ble-bind -L
 ```
 
+If you want to run multiple widgets with a key, you can define your own widget by creating a function of the name `ble/widget/YOUR_WIDGET_NAME`
+as illustrated in the following example.
+It is highly recommended to prefix the widget name with `YOUR_NAME/`, `my/`, `blerc/`, `dotfiles/`, etc.
+in order not to conflict with the names of the existing standard widgets.
+
+```bash
+# Example of calling multiple widgets with the key C-t
+function ble/widget/my/example1 {
+  ble/widget/beginning-of-logical-line
+  ble/widget/insert-string 'echo $('
+  ble/widget/end-of-logical-line
+  ble/widget/insert-string ')'
+}
+ble-bind -f C-t my/example1
+```
+
 # 3 Tips
 
 ## 3.1 Use multiline mode
