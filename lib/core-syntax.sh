@@ -1064,8 +1064,9 @@ _ble_syntax_bash_simple_rex_param=
 _ble_syntax_bash_simple_rex_bquot=
 _ble_syntax_bash_simple_rex_squot=
 _ble_syntax_bash_simple_rex_dquot=
-_ble_syntax_bash_simple_rex_word=
+_ble_syntax_bash_simple_rex_literal=
 _ble_syntax_bash_simple_rex_element=
+_ble_syntax_bash_simple_rex_word=
 _ble_syntax_bash_simple_rex_open_word=
 _ble_syntax_bash_simple_rex_open_dquot=
 _ble_syntax_bash_simple_rex_open_squot=
@@ -1093,6 +1094,7 @@ function ble/syntax:bash/simple-word/update {
 
   # @var _ble_syntax_bash_simple_rex_element
   # @var _ble_syntax_bash_simple_rex_word
+  _ble_syntax_bash_simple_rex_literal='^('$letter')+$'
   _ble_syntax_bash_simple_rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter')'
   _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
 
@@ -1117,6 +1119,9 @@ function ble/syntax:bash/simple-word/update {
 }
 ble/syntax:bash/simple-word/update
 
+function ble/syntax:bash/simple-word/is-literal {
+  [[ $1 =~ $_ble_syntax_bash_simple_rex_literal ]]
+}
 function ble/syntax:bash/simple-word/is-simple {
   [[ $1 =~ $_ble_syntax_bash_simple_rex_word ]]
 }

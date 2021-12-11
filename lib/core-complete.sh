@@ -1232,6 +1232,30 @@ function ble/complete/action/util/quote-insert {
     INSERT=$comps_fixed_part$ins
   fi
 }
+function ble/complete/action/util/requote-final-insert {
+  if [[ $insert == "$COMPS"* ]]; then
+    [[ $comps_flags == *[SEDI]* ]] && return 0
+    local comps_prefix=$COMPS
+  else
+    # 遡って書き換える場合 (中途半端な quote 状態ではないと仮定)
+    local comps_prefix=
+    [[ $comps_fixed ]] &&
+      comps_prefix=${COMPS::${comps_fixed%%:*}}
+  fi
+
+  if [[ $insert == "$comps_prefix"* && $comps_prefix != *[!':/={,'] ]]; then
+    local ret ins=${insert:${#comps_prefix}}
+    if ! ble/syntax:bash/simple-word/is-literal "$ins" &&
+        ble/syntax:bash/simple-word/is-simple "$ins" &&
+        ble/syntax:bash/simple-word/eval "$ins" &&
+        ((${#ret[@]}==1))
+    then
+      ble/string#quote-word "$ret" quote-empty
+      ((${#ret}<=${#ins})) && insert=$comps_prefix$ret
+    fi
+  fi
+  return 0
+}
 
 function ble/complete/action/inherit-from {
   local dst=$1 src=$2
@@ -1247,7 +1271,9 @@ function ble/complete/action/inherit-from {
 function ble/complete/action:plain/initialize {
   ble/complete/action/util/quote-insert
 }
-function ble/complete/action:plain/complete { :; }
+function ble/complete/action:plain/complete {
+  ble/complete/action/util/requote-final-insert
+}
 
 # action:literal-substr
 function ble/complete/action:literal-substr/initialize { :; }
@@ -1257,7 +1283,9 @@ function ble/complete/action:literal-substr/complete { :; }
 function ble/complete/action:substr/initialize {
   ble/complete/action/util/quote-insert
 }
-function ble/complete/action:substr/complete { :; }
+function ble/complete/action:substr/complete {
+  ble/complete/action/util/requote-final-insert
+}
 
 # action:literal-word
 function ble/complete/action:literal-word/initialize { :; }
@@ -1277,6 +1305,7 @@ function ble/complete/action:word/initialize {
   ble/complete/action/util/quote-insert
 }
 function ble/complete/action:word/complete {
+  ble/complete/action/util/requote-final-insert
   ble/complete/action/util/complete.close-quotation
   ble/complete/action:literal-word/complete
 }
@@ -1290,6 +1319,7 @@ function ble/complete/action:file/initialize {
   ble/complete/action/util/quote-insert
 }
 function ble/complete/action:file/complete {
+  ble/complete/action/util/requote-final-insert
   if [[ -e $CAND || -h $CAND ]]; then
     if [[ -d $CAND ]]; then
       ble/complete/action/util/complete.mark-directory
@@ -1313,7 +1343,7 @@ function ble/complete/action:file/init-menu-item {
   fi
 }
 function ble/complete/action:file_rhs/initialize {
-  ble/complete/action/util/quote-insert
+  ble/complete/action:file/initialize
 }
 function ble/complete/action:file_rhs/complete {
   CAND=${CAND:${#DATA}} ble/complete/action:file/complete
@@ -1358,6 +1388,7 @@ function ble/complete/action:progcomp/complete {
     ble/complete/action:file/complete
   else
     if [[ $DATA != *:no-mark-directories:* && -d $CAND ]]; then
+      ble/complete/action/util/requote-final-insert
       ble/complete/action/util/complete.mark-directory
     else
       ble/complete/action:word/complete
@@ -2070,7 +2101,7 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
       done
     fi
   done
-  [[ $pattern ]] || pattern="*"
+  [[ $pattern == *'*' ]] || pattern=$pattern*
   ret=$pattern
 }
 ## @fn ble/complete/source:file/.construct-pathname-pattern path
@@ -2106,7 +2137,7 @@ function ble/complete/source:file/.impl {
   local -a candidates=()
   local ret
   ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-  [[ :$opts: == *:directory:* ]] && ret=${ret%/}/
+  [[ :$opts: == *:directory:* ]] && ret=$ret/
   ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
   ble/complete/source/test-limit ${#ret[@]} || return 1
 
@@ -7633,7 +7664,7 @@ function ble-decode/keymap:dabbrev/define {
 
 function ble/complete/action:cdpath/initialize {
   DATA=$cdpath_basedir
-  ble/complete/action/util/quote-insert
+  ble/complete/action:file/initialize
 }
 function ble/complete/action:cdpath/complete {
   CAND=$DATA$CAND ble/complete/action:file/complete
