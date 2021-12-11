@@ -4545,6 +4545,11 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-identifier {
   local source=$1
   if [[ ${text:istat:index-istat} =~ $rex_param ]]; then
     ble/syntax/completion-context/.add "$source" "$istat"
+  elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
+    # 単語が未だ開始していない時は現在位置から補完開始
+    ble/syntax/completion-context/.add "$source" "$index"
+  else
+    ble/syntax/completion-context/.add none "$istat"
   fi
 }
 ## 関数 ble/syntax/completion-context/.check-prefix/ctx:time-argument {
@@ -4772,20 +4777,18 @@ function ble/syntax/completion-context/.check-here {
   local -a stat
   ble/string#split-words stat "${_ble_syntax_stat[index]}"
   if [[ ${stat[0]} ]]; then
-    # ここで CTX_CMDI や CTX_ARGI は処理しない。
-    # 既に check-prefix で引っかかっている筈だから。
+    # Note: ここで CTX_CMDI や CTX_ARGI は処理しない。既に check-prefix で引っ
+    #   かかっている筈だから。
+    #
+    # Note (#D1690): 文句が出たので 当初引数類の補完はその場で開始しない事にし
+    #   たが、すると空文字列から補完を開始できなくなってしまった。やはり、ここ
+    #   で引数の補完を開始しなければならない。
+    #
+    #   そもそも .check-prefix で補完文脈を生成できる時は、入力済みの内容に拘ら
+    #   ず補完文脈を生成するべきである。それにより、.check-here に到達するのは
+    #   補完文脈が他に生成しようがない状況に限定される。この時、実は
+    #   .check-here の側は修正は必要なかった。
     local ctx=${stat[0]}
-
-    # #D1690: 引数類の補完はその場で開始はしない事にする。以下は削除した。
-    #   CTX_ARGX0, CTX_CPATX0, CTX_ARGX, CTX_FARGX{1..3}, CTX_SARGX1,
-    #   CTX_CARGX{1,2}, CTX_TARGX{1,2}, CTX_COARGX
-    #
-    # 引数の類は開始点の前に必ず空白類が存在する筈なので、ここで補完が開始され
-    # た場合前の単語とくっついて予期せぬ結果になる。もし本当に一つの単語の中で
-    # 新しく補完候補を生成する必要があるのであれば、それはその単語に対する補完
-    # の一環として行われるべきであって、"新しい単語" としての補完である必要はな
-    # い。
-    #
     if ((ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDX1||ctx==CTX_CMDXT)); then
       if ! shopt -q no_empty_cmd_completion; then
         ble/syntax/completion-context/.add command "$index"
@@ -4799,6 +4802,20 @@ function ble/syntax/completion-context/.check-here {
       ble/syntax/completion-context/.add wordlist:-r:';:{:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
       ble/syntax/completion-context/.add wordlist:-r:'{:do' "$index"
+    elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
+      ble/syntax/completion-context/.add argument "$index"
+    elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
+      ble/syntax/completion-context/.add variable:w "$index"
+    elif ((ctx==CTX_CARGX2)); then
+      ble/syntax/completion-context/.add wordlist:-r:'in' "$index"
+    elif ((ctx==CTX_FARGX2)); then
+      ble/syntax/completion-context/.add wordlist:-r:'in:do' "$index"
+    elif ((ctx==CTX_TARGX1)); then
+      ble/syntax/completion-context/.add command "$index"
+      ble/syntax/completion-context/.add wordlist:--:'-p' "$index"
+    elif ((ctx==CTX_TARGX2)); then
+      ble/syntax/completion-context/.add command "$index"
+      ble/syntax/completion-context/.add wordlist:--:'--' "$index"
     elif ((ctx==CTX_RDRF||ctx==CTX_RDRS)); then
       ble/syntax/completion-context/.add file "$index"
     elif ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR)); then
