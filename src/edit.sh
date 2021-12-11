@@ -2116,7 +2116,8 @@ function ble/keymap:generic/clear-arg {
 }
 
 function ble/widget/append-arg-or {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  local n=${#KEYS[@]}; ((n&&n--))
+  local code=$((KEYS[n]&_ble_decode_MaskChar))
   ((code==0)) && return 1
   local ret; ble/util/c2s "$code"; local ch=$ret
   if
@@ -2127,7 +2128,7 @@ function ble/widget/append-arg-or {
     elif [[ $_ble_edit_arg ]]; then
       [[ $ch == [0-9] ]]
     else
-      ((KEYS[0]&_ble_decode_MaskFlag))
+      ((KEYS[n]&_ble_decode_MaskFlag))
     fi
   then
     ble/decode/widget/skip-lastwidget
@@ -3250,7 +3251,9 @@ function ble/widget/.update-textmap {
   COLUMNS=$cols ble/textmap#update "$_ble_edit_str"
 }
 function ble/widget/do-lowercase-version {
-  local flag=$((KEYS[0]&_ble_decode_MaskFlag)) char=$((KEYS[0]&_ble_decode_MaskChar))
+  local n=${#KEYS[@]}; ((n&&n--))
+  local flag=$((KEYS[n]&_ble_decode_MaskFlag))
+  local char=$((KEYS[n]&_ble_decode_MaskChar))
   if ((65<=char&&char<=90)); then
     ble/decode/widget/skip-lastwidget
     ble/decode/widget/redispatch-by-keys $((flag|char+32)) "${KEYS[@]:1}"
@@ -3794,8 +3797,33 @@ function ble-decode/keymap:lastarg/define {
 ##     行の長さが足りない場合は操作をキャンセルする。
 ##     vi.sh の r, gr による挿入を想定する。
 ##
+
+function ble/widget/self-insert/.get-code {
+  if ((${#KEYS[@]})); then
+    code=${KEYS[${#KEYS[@]}-1]}
+    local flag=$((code&_ble_decode_MaskFlag))
+    local char=$((code&_ble_decode_MaskChar))
+    if ((flag==0&&char<_ble_decode_FunctionKeyBase)); then
+      code=$char
+      return 0
+    elif ((flag==_ble_decode_Ctrl&&(char==63||91<=char&&char<=122)&&(char&0x1F)!=0)); then
+      ((char=char==63?127:char&0x1F))
+      code=$char
+      return 0
+    fi
+  fi
+
+  if ((${#CHARS[@]})); then
+    code=${CHARS[${#CHARS[@]}-1]}
+    return 0
+  fi
+
+  code=0
+  return 1
+}
+
 function ble/widget/self-insert {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  local code; ble/widget/self-insert/.get-code
   ((code==0)) && return 0
 
   # Note: Bash 3.0 では ^? (DEL) の処理に問題があるので、
@@ -7056,7 +7084,8 @@ function ble/widget/isearch/backward {
   ble-edit/isearch/process
 }
 function ble/widget/isearch/self-insert {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  local code; ble/widget/self-insert/.get-code
+  ((code==0)) && return 0
   ble/util/fiberchain#push "self-insert $code"
   ble-edit/isearch/process
 }
@@ -7069,7 +7098,8 @@ function ble/widget/isearch/history-backward {
   ble-edit/isearch/process
 }
 function ble/widget/isearch/history-self-insert {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  local code; ble/widget/self-insert/.get-code
+  ((code==0)) && return 0
   ble/util/fiberchain#push "history-self-insert $code"
   ble-edit/isearch/process
 }

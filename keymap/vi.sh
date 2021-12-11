@@ -1028,7 +1028,8 @@ function ble/widget/vi-command:registers { ble/keymap:vi/register#dump; }
 function ble/widget/vi-command/append-arg {
   local ret ch=$1
   if [[ ! $ch ]]; then
-    local code=$((KEYS[0]&_ble_decode_MaskChar))
+    local n=${#KEYS[@]}
+    local code=$((KEYS[n?n-1:0]&_ble_decode_MaskChar))
     ((code==0)) && return 1
     ble/util/c2s "$code"; ch=$ret
   fi
@@ -5016,9 +5017,10 @@ function ble/keymap:vi/text-object.hook {
 }
 
 function ble/keymap:vi/.check-text-object {
-  ble-decode-key/ischar "${KEYS[0]}" || return 1
+  local n=${#KEYS[@]}; ((n&&n--))
+  ble-decode-key/ischar "${KEYS[n]}" || return 1
 
-  local ret; ble/util/c2s "${KEYS[0]}"; local c=$ret
+  local ret; ble/util/c2s "${KEYS[n]}"; local c=$ret
   [[ $c == [ia] ]] || return 1
 
   [[ $_ble_keymap_vi_opfunc || $_ble_decode_keymap == vi_[xs]map ]] || return 1
@@ -5048,9 +5050,9 @@ _ble_keymap_vi_commandline_history_index=0
 ## @arr _ble_keymap_vi_cmap_is_cancel_key
 ##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
 _ble_keymap_vi_cmap_is_cancel_key[63|_ble_decode_Ctrl]=1  # C-?
-_ble_keymap_vi_cmap_is_cancel_key[127]=1                 # DEL
+_ble_keymap_vi_cmap_is_cancel_key[127]=1                  # DEL
 _ble_keymap_vi_cmap_is_cancel_key[104|_ble_decode_Ctrl]=1 # C-h
-_ble_keymap_vi_cmap_is_cancel_key[8]=1                   # BS
+_ble_keymap_vi_cmap_is_cancel_key[8]=1                    # BS
 function ble/keymap:vi/commandline/before-command.hook {
   if [[ ! $_ble_edit_str ]] && ((_ble_keymap_vi_cmap_is_cancel_key[KEYS[0]])); then
     ble/widget/vi_cmap/cancel
@@ -5970,10 +5972,15 @@ function ble-decode/keymap:vi_nmap/define {
 
 # lib/core-decode.vi_nmap-rlfunc.txt 用
 
+function ble/widget/vi-rlfunc/.is-uppercase {
+  local n=${#KEYS[@]}
+  local code=$((KEYS[n?n-1:0]&_ble_decode_MaskChar))
+  ((0x41<=code&&code<=0x5a))
+}
+
 # d or D
 function ble/widget/vi-rlfunc/delete-to {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi_nmap/kill-forward-line
   else
     ble/widget/vi-command/operator d
@@ -5981,8 +5988,7 @@ function ble/widget/vi-rlfunc/delete-to {
 }
 # c or C
 function ble/widget/vi-rlfunc/change-to {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi_nmap/kill-forward-line-and-insert
   else
     ble/widget/vi-command/operator c
@@ -5990,15 +5996,15 @@ function ble/widget/vi-rlfunc/change-to {
 }
 # y or Y
 function ble/widget/vi-rlfunc/yank-to {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi_nmap/copy-current-line
   else
     ble/widget/vi-command/operator y
   fi
 }
 function ble/widget/vi-rlfunc/char-search {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  local n=${#KEYS[@]}
+  local code=$((KEYS[n?n-1:0]&_ble_decode_MaskChar))
   ((code==0)) && return 1
   ble/util/c2s "$code"
   case $ret in
@@ -6013,8 +6019,7 @@ function ble/widget/vi-rlfunc/char-search {
 }
 # w or W
 function ble/widget/vi-rlfunc/next-word {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi-command/forward-uword
   else
     ble/widget/vi-command/forward-vword
@@ -6022,8 +6027,7 @@ function ble/widget/vi-rlfunc/next-word {
 }
 # b or B
 function ble/widget/vi-rlfunc/prev-word {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi-command/backward-uword
   else
     ble/widget/vi-command/backward-vword
@@ -6031,8 +6035,7 @@ function ble/widget/vi-rlfunc/prev-word {
 }
 # e or E
 function ble/widget/vi-rlfunc/end-word {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi-command/forward-uword-end
   else
     ble/widget/vi-command/forward-vword-end
@@ -6040,8 +6043,7 @@ function ble/widget/vi-rlfunc/end-word {
 }
 # p or P
 function ble/widget/vi-rlfunc/put {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi_nmap/paste-before
   else
     ble/widget/vi_nmap/paste-after
@@ -6049,7 +6051,8 @@ function ble/widget/vi-rlfunc/put {
 }
 # / or ?
 function ble/widget/vi-rlfunc/search {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  local n=${#KEYS[@]}
+  local code=$((KEYS[n?n-1:0]&_ble_decode_MaskChar))
   if ((code==63)); then
     ble/widget/vi-command/search-backward
   else
@@ -6058,8 +6061,7 @@ function ble/widget/vi-rlfunc/search {
 }
 # n or N
 function ble/widget/vi-rlfunc/search-again {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi-command/search-reverse-repeat
   else
     ble/widget/vi-command/search-repeat
@@ -6067,8 +6069,7 @@ function ble/widget/vi-rlfunc/search-again {
 }
 # s or S
 function ble/widget/vi-rlfunc/subst {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  if ((0x41<=code&&code<=0x5a)); then
+  if ble/widget/vi-rlfunc/.is-uppercase; then
     ble/widget/vi_nmap/kill-current-line-and-insert
   else
     ble/widget/vi_nmap/kill-forward-char-and-insert

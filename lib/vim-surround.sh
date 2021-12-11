@@ -781,8 +781,8 @@ function ble/widget/vim-surround.sh/nmap/csurround.hook3 {
 #------------------------------------------------------------------------------
 
 function ble/widget/vim-surround.sh/omap {
-  local ret
-  if ! ble/keymap:vi/k2c "${KEYS[0]}"; then
+  local ret n=${#KEYS[@]}
+  if ! ble/keymap:vi/k2c "${KEYS[n?n-1:0]}"; then
     ble/widget/.bell
     return 1
   fi

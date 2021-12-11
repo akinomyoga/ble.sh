@@ -6936,7 +6936,7 @@ function ble/widget/auto_complete/cancel-default {
   ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 function ble/widget/auto_complete/self-insert {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  local code; ble/widget/self-insert/.get-code
   ((code==0)) && return 0
 
   local ret

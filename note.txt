@@ -1275,6 +1275,18 @@ bash_tips
     bug-bash, third-party bugs & reviews
 -------------------------------------------------------------------------------
 
+2021-12-08
+
+  * space
+
+    https://space.sh/
+    https://github.com/space-sh/space (7k LoC)
+    https://github.com/space-sh/space/blob/master/completion/init_autocompletion.sh
+
+  * bashible というフレームワークでは関数名は ble_ で始まる様だ。
+
+  * bash-dev: "help test" の -n の引数に STRING が二回登場している。
+
 2021-09-22
 
   * bash-it で気になる事
@@ -1603,6 +1615,118 @@ bash_tips
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
+
+2021-12-11
+
+  * PROMPT_COMMAND / trap DEBUG で問題が起こる? (found by rashad-moves)
+    https://github.com/rashad-moves/HomeConfigurationFiles/commit/efbac4153fd5021f1bc00d42c618fd9d6f4090b9
+
+  * 一つのキーで複数の widget を呼び出す方法?
+    https://github.com/michaelmob/portable-config/commit/49f9566afd8b62d47a090328104ad803962e6d3f
+
+  * tmux や screen の中では pass through シーケンスを用いる?
+    https://github.com/cmplstofB/dotfiles/blob/3e41ac47f47cc7788215409a5c3f26635f02d6a0/_dffiles/.config/blesh/blerc#L193
+
+    tmux: \ePtmux;%s\e\\ (中に含まれる \e は二重にする)
+      また tmux; の部分は存在しなくても良い様である (https://gist.github.com/saitoha/4723390)
+    screen: \eP%s\e\\
+
+  * bind: "" で囲まれていない keyseq \C-l を解釈できない
+    https://github.com/cmplstofB/dotfiles/blob/master/_dffiles/.config/bash/bashrc#L170-L172
+
+2021-12-06
+
+  * complete: 沢山 quote が発生する場合には '' で囲むべきなのではないか。
+
+  * mandb: コマンドの名称を抽出して保持して置けば binary の呼び出し時に使える。
+    dnf や apt 等に問い合わせても良いのかもしれない。或いは、含まれているパッケー
+    ジを見るという手もある。
+
+    然し各コマンドについて man 等を呼び出すのは高価である。
+
+    rpm, dnf でファイルの所属する package と含まれるファイルを抽出するには。
+    https://linux-audit.com/determine-file-and-related-package/
+
+    $ dnf -C repoquery --installed -f /usr/bin/git-lfs --qf '%{summary}'
+
+    等の様にすれば良い。
+
+    * resolved: しかしこれを呼び出すと package 一覧のダウンロード等を実行し始め
+      るので問題がある気がする。或いは、更新を無効化した状態で呼び出す事ができ
+      るだろうか →どうやら dnf -C とオプションを指定する事で cache から情報を
+      取得できる様だ。
+
+    * background で生成するにしても時間がかかるので、複数の bash session で同時
+      に更新が実行されない様に注意が必要である。*.part.$$ に書き込んで、その後
+      でそれを mv するという形にすると良い。更に、他の session が既に生成を試み
+      ている場合には、background 生成を止める事にする。
+
+    うーん。以下の結果を加工すれば一挙に全てのコマンドについて情報を抜き出せるのでは。
+       $ dnf -C repoquery --installed --whatprovides /usr/bin/\* --nvr
+       $ LANG=C dnf -C provides -q /usr/bin/\*
+
+  * highlight: declare のオプション名…変数名よりも後にあるのはエラー着色にするべき。
+
+  * complete: 文字列引数の中にファイル名を含めたい事もあるのでは。つまり "add
+    a.sh" の様な。特に complete -m '...' の編集で欲しくなる。
+
+  * bash-completion: printf -v ...
+    https://github.com/akinomyoga/ble.sh/issues/155#issuecomment-984619516
+
+    これは bash-completion 側で対応するべき事の気がする。
+
+    取り敢えず --help 対応が終われば、変数名の補完はできないにしても、オプショ
+    ンの表示ぐらいはできる様になる。printf の場合には最初の引数には '' を指定す
+    るのが良い気がする。
+
+  * bash-completion: better support for test, [
+    https://github.com/akinomyoga/ble.sh/issues/158
+
+    これも bash-completion の側で対応するべき事の気がする。
+    但しオプションの説明についてはちゃんと生成しなければならない。
+    progcomp の枠組みで説明も一緒に生成できる仕組みがあっても良いのではないか。
+
+    うーん。生成し切れていない物は別枠で指定する? うーん。getoptions 的仕様を確
+    定する必要がある気がする。
+
+  * bash-completion: awk - で long option だけが生成される。調べてみると
+    complete -F _longopt が割り当てられているコマンドについては全てこのパターン
+    の様である。
+
+  * bash-completion: 空文字列に対して最初からオプションも生成して欲しい。
+    そうしないと絞り込みの際に都合が悪い。
+
+    うーん。bash-completion や他の補完の事を考えると一文字目に - が入力された時
+    点で候補を再生成するべきの気がする。或いは - から始まる候補も追加する? 追加
+    する場合には以前にあった物と重複する候補を削除しなければならない事に注意する。
+
+  * complete: [[ 及び declare の user-customization を許可?
+    https://github.com/akinomyoga/ble.sh/issues/155
+    https://github.com/akinomyoga/ble.sh/issues/157
+
+    或いは自前で実装しても良い
+
+    うーん。declare に関しては a=(....) 等が含まれる場合の取り扱いが謎だし、
+    自前で実装する方が良いのではないかという気もする。
+
+    一方で [[ についてはユーザーが指定できる様にする? と思ったが、それでも今度
+    は [[ (a == b && c== d)||x == y ]] 等の様な入れ子構造があった時に、ユーザー
+    に渡すコマンドラインを構築するのが大変である (実は現状の実装だとそんなに難
+    しくないかもしれないが、此処は将来的に改修する予定なので現段階で下手にユー
+    ザーインターフェイスを提供すると、将来弄る時に面倒な事になる)。また'[[' '('
+    'a' '==' 'b' '&&' ... という具合に分割するのが自然だと思われるが、一方で勝
+    手に空白を挿入しても良いのかだとか色々よく分からない (まあこれは実装を詳し
+    く観察して調整すれば済む話ではある)。
+
+    うーん。結局、どちらも自前で実装した方が良い様に思われる。これは仕方がない
+    ので、取り敢えず自前の実装を提供する事にして customization については諦めて
+    貰う事にする。
+
+  * syntax: for $(echo hello) に対しては着色しない。もしくはエラーとする。
+
+    これは heredoc 単語と同様の問題である。因みに heredoc の単語に $() を含めた
+    場合には、終端位置判定が正しくできなくなっている。普通に入力すると終端位置
+    を逃す。終端を書いてから heredoc の中身を編集すると位置を正しく特定できる。
 
 2021-11-23
 
@@ -5514,6 +5638,26 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-12-11
+
+  * edit: self-insert の振る舞い [#D1696]
+
+    * 一番最後のキーを挿入するべき。現在は一番最初のキーを挿入している。
+    * C-l 等、対応する制御文字が存在する物については単に ctrl を外すのではなくて、その元々の文字に復元するべきである。
+
+    或いは CHARS を直接挿入するべき? → CHARS を確認したが此処には escape
+    sequence の文字列が入っているという事の気がする。うーん。何れにしても
+    fallback なので気にしなくて良い様な気がする。
+
+    * 類似の物が実は幾つかある。isearch や auto_complete で読み出す部分。
+      他にも _ble_decode_MaskChar や KEYS[0] を参照している箇所は確認するべきである。
+
+    o bind '"\C-t\C-l":self-insert'
+    o ble-bind -f 'C-t right' self-insert
+
+  * wiki: C-BS に対する binding について記述した (found by banoris) [#D1695]
+    https://github.com/banoris/dotfiles/commit/f36b396c8de18159e9b5cf23974f789e3766d8ba
 
 2021-12-08
 
