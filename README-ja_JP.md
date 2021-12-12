@@ -441,6 +441,8 @@ ble-face -s varname_number            fg=64
 ble-face -s varname_readonly          fg=200
 ble-face -s varname_transform         fg=29,bold
 ble-face -s varname_unset             fg=124
+ble-face -s argument_option           fg=teal
+ble-face -s argument_error            fg=black,bg=225
 ```
 
 現在の描画設定の一覧は以下のコマンドでも確認できます (`ble-face` を無引数で呼び出す)。

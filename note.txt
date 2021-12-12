@@ -1275,6 +1275,12 @@ bash_tips
     bug-bash, third-party bugs & reviews
 -------------------------------------------------------------------------------
 
+2021-12-11
+
+  * bash-completion: curl --http0, --http1, --proxy1 等存在しないオプションが生成されている
+  * bash-completion: printf -v varname
+  * bash-completion: test, [ の引数の文法に従った補完
+
 2021-12-08
 
   * space
@@ -1618,17 +1624,65 @@ bash_tips
 
 2021-12-11
 
+  * declare の引数チェックをもっと真面目に実装する。chroma のインターフェイス
+    設計の足がかりにする。
+
+    * refactor: mandb_opts をキャッシュする様にする。progcolor_optctx と同様に。
+      これは declare のより詳細な実装で mandb_opts を参照したいから。
+
+    * wattr=- (未着色) の時にのみ着色しているが、実際には一つでも未着色があった
+     らそれ以降の引数に対して与える影響を考慮に入れなければならない。但し、これ
+     を実行すると毎回ファイル名着色が全て計算されるなどの様な形になりとても遅く
+     なると思われるので、未だ実装しない。
+
+      これは一般の問題なので別項目で議論するべき気がする。mandb_opts 等を用いて
+      指定する可能性。
+
+    * declare: -f, -F が含まれる場合には関数名として任意の名前を含む事ができる。
+      というかオプション名も含む事ができる? (declare -F -f とした時の解釈はどちら
+      になるのだろうか?)
+
+  * refactor: mandb_opts はコマンド一般用に転化しても良いのではないか。その時
+    には cmdspec に移動して、更にそれを core-complete から読み込む様にすれば
+    良い。と思ったが help, help-usage 等は名前的には mandb_opts 専用の物である。
+    名前を変更する必要があるかもしれない。
+
+    或いは、help:help-usage 等 mandb 専用のオプションはそれ専用の配列に格納する?
+
+    取り敢えず現在使われているオプションについて整理する。また、将来的に使い
+    そうなオプションについても考える。
+
+      no-man
+      help
+      help-usage
+      ignore-double-hyphen
+      stop-after-argument
+      plus-option=aAilnrtux
+
+    うーん。これは別項目で対応するべき事の気がする。
+
+  * refactor: highlight-variable というインターフェイスを作る。
+
+    と、思ったが quote 等も考えるとそういった関数を提供する事に意味があるのか
+    分からなくなってくる。先に quote 除去した時の対応関係について解決する枠組
+    みが必要になるのではないかという気もする。
+
+  * cmdspec: cd 関連の cmdinfo は core-cmdspec ではなくて contrib/cmdspec/* 辺
+    りに移動する?
+
+  * [BUG} mandb: declare で空の completion が生成されている。
+
+  * [BUG] wget の man page 抽出で short option の desc が空になっている。
+
   * PROMPT_COMMAND / trap DEBUG で問題が起こる? (found by rashad-moves)
     https://github.com/rashad-moves/HomeConfigurationFiles/commit/efbac4153fd5021f1bc00d42c618fd9d6f4090b9
-
-  * bash-completion: curl --http0, --http1, --proxy1 等存在しないオプションが生成されている
 
   * complete (source:rhs): 変数名依存の補完に対応しても良いのでは。
 
   * complete: ARGEX (eval 文脈) の補完
 
     現在は "variable:=, command:D, file" で生成しているが、本来は一番先頭の引数
-    を元にして argument (including progcomp, etc.) を呼び出すべきである。
+    を元にして argument (including progcomp, etc.) を呼び出すべきなのではないか。
 
   * complete: [[ の中の文法も考慮した補完。これは [[ の中の文法にちゃんと対応し
     た後で考える事の気がする。
@@ -1662,29 +1716,10 @@ bash_tips
        $ dnf -C repoquery --installed --whatprovides /usr/bin/\* --nvr
        $ LANG=C dnf -C provides -q /usr/bin/\*
 
-  * highlight: declare のオプション名…変数名よりも後にあるのはエラー着色にするべき。
+    というか man -s 1:5:... -f command... を呼び出せばよいらしい。
 
   * complete: 文字列引数の中にファイル名を含めたい事もあるのでは。つまり "add
     a.sh" の様な。特に complete -m '...' の編集で欲しくなる。
-
-  * bash-completion: printf -v ...
-    https://github.com/akinomyoga/ble.sh/issues/155#issuecomment-984619516
-
-    これは bash-completion 側で対応するべき事の気がする。
-
-    取り敢えず --help 対応が終われば、変数名の補完はできないにしても、オプショ
-    ンの表示ぐらいはできる様になる。printf の場合には最初の引数には '' を指定す
-    るのが良い気がする → 取り敢えずオプションは表示される様になった。
-
-  * bash-completion: better support for test, [
-    https://github.com/akinomyoga/ble.sh/issues/158
-
-    これも bash-completion の側で対応するべき事の気がする。
-    但しオプションの説明についてはちゃんと生成しなければならない。
-    progcomp の枠組みで説明も一緒に生成できる仕組みがあっても良いのではないか。
-
-    うーん。生成し切れていない物は別枠で指定する? うーん。getoptions 的仕様を確
-    定する必要がある気がする。
 
   * bash-completion: awk - で long option だけが生成される。調べてみると
     complete -F _longopt が割り当てられているコマンドについては全てこのパターン
@@ -5616,7 +5651,250 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-12-12
+
+  * highlight: declare のオプション名…変数名よりも後にあるのはエラー着色にするべき [#D1705]
+    これは #D1704 で一緒に対応した。
+
+  * complete: declare a -[TAB] でも候補が生成されてしまっている [#D1704]
+
+    →調べてみた所、これは declare の引数 (変数形式) が extract-commands で抽出
+    されていないのが原因であった。引数の種類を調べると ATTR_VAR である。然し色々
+    と振る舞いを調べると ATTR_VAR はコマンドの前につく a=b の形の変数代入に使わ
+    れている単語の種類である。
+
+    もっと調べると declare a=b の場合には a=b の単語の種類はちゃんと ARGI になっ
+    ている。また、a=b declare hello の時にも hello の単語の種類はちゃんと ARGI
+    になっている。つまり、特定の条件で declare hello の変数名が変数代入であるか
+    の様に単語登録されてしまっているのが原因である。
+
+    wtype の決定経緯を調べる。ctx-command/check-word-end に入った時点で既に
+    wtype == ATTR_VAR になっている。従って、word-begin の段階で ATTR_VAR になっ
+    ているのが問題である気がする。然し、check-word-begin の段階では wtype =
+    CTX_ARGVX の様である。つまり、何処かで wtype が書き換わってしまっているのが
+    原因という事になるのだろうか。
+
+    うーん。分かった。ble/syntax:bash/check-variable-assignment の中で ARGVI 及
+    び ARGEI の時には = の有無に関係なく ATTR_VAR にしてしまっている。これは何
+    故だったろうか。経緯を調べる必要がある。
+
+    | 2f2f0eb6
+    | @@ -2401,7 +2406,7 @@ function ble-syntax:bash/check-variable-assignment {
+    |    # パターン一致 (var= var+= arr[ のどれか)
+    |    local suffix='=|\+=?'
+    |    ((_ble_bash<30100)) && suffix='='
+    | -  if ((ctx==CTX_ARGVI)); then
+    | +  if ((ctx==CTX_ARGVI||ctx==CTX_ARGEI)); then
+    |      suffix="$suffix|\[?"
+    |    else
+    |      suffix="$suffix|\["
+    |----------------------------------------------------------------------
+    | commit 1823c540cfe25c952fc96d8e50ae7dab712aacaf
+    | Author: Koichi Murase <myoga.murase@gmail.com>
+    | Date:   Mon Nov 27 23:46:09 2017 +0900
+    |
+    |     syntax (tilde expansion): support ordinary words with variable assignment form
+    |
+    | @@ -2054,6 +2112,109 @@ function ble-syntax:bash/check-tilde-expansion {
+    |      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+    |    fi
+    | [中略]
+    | +
+    | +## 関数 ble-syntax:bash/check-variable-assignment
+    | +## @var[in] tail
+    | +function ble-syntax:bash/check-variable-assignment {
+    | +  ((wbegin==i)) || return 1
+    | +
+    | [中略]
+    | +
+    | +  # パターン一致 (var= var+= arr[ のどれか)
+    | +  local suffix='=|\+=?'
+    | +  ((_ble_bash<30100)) && suffix='='
+    | +  if ((ctx==CTX_ARGVI)); then
+    | +    suffix="$suffix|\[?"
+    | +  else
+    | +    suffix="$suffix|\["
+    | +  fi
+    | @@ -2577,51 +2760,6 @@ function ble-syntax:bash/ctx-command/.check-word-begin {
+    |    return 0
+    |  }
+    |
+    | -## 関数 ble-syntax:bash/ctx-command/.check-assign
+    | -## @var[in] tail
+    | -function ble-syntax:bash/ctx-command/.check-assign {
+    | -  ((wbegin==i)) || return 1
+    | -  ((ctx==CTX_CMDI||ctx==CTX_ARGVI)) || return 1
+    | -
+    | -  # パターン一致 (var= var+= arr[ のどれか)
+    | -  local suffix='=|\+=?'
+    | -  ((_ble_bash<30100)) && suffix='='
+    | -  if ((ctx==CTX_CMDI)); then
+    | -    suffix="$suffix|\["
+    | -  elif ((ctx==CTX_ARGVI)); then
+    | -    suffix="$suffix|"
+    | -  fi
+    |----------------------------------------------------------------------
+    | 7d862418 (Koichi Murase 2017-03-01 06:29:55 +0900 2580) ## 関数 ble-syntax:bash/ctx-command/.check-assign
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2581) ## @var[in] tail
+    | 7d862418 (Koichi Murase 2017-03-01 06:29:55 +0900 2582) function ble-syntax:bash/ctx-command/.check-assign {
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2583)   ((wbegin==i)) || return 1
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2584)   ((ctx==CTX_CMDI||ctx==CTX_ARGVI)) || return 1
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2585)
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2586)   # パターン一致 (var= var+= arr[ のどれか)
+    | 69bac74a (Koichi Murase 2015-12-24 21:47:15 +0900 2587)   local suffix='=|\+=?'
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2588)   ((_ble_bash<30100)) && suffix='='
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2589)   if ((ctx==CTX_CMDI)); then
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2590)     suffix="$suffix|\["
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2591)   elif ((ctx==CTX_ARGVI)); then
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2592)     suffix="$suffix|"
+    | be5c4616 (Koichi Murase 2015-12-23 22:09:39 +0900 2593)   fi
+    |
+    | commit be5c461693ddacd2acf581011c3decd1390641d5
+    | Author: Koichi Murase <myoga.murase@gmail.com>
+    | Date:   Wed Dec 23 22:09:39 2015 +0900
+    |
+    |     (ble-syntax:bash): special treatment of arguments of `declare'.
+    |
+    |     * (ble-syntax:bash): declare, typeset, local, export, alias コマンドの引数を文法的に特別に扱う。特に配列構文 =() を許容する。
+    |       その為に新しい文脈値 CTX_ARGVX, CTX_ARGVI を追加する。
+    |     * (ble-syntax:bash): CTX_ARGVI に対する補完候補は変数名。等号 '=' 以降の部分についてはファイル名の補完候補を列挙する。
+    |     * (ble-syntax:bash): 通常の代入構文における配列構文の動作を変更。
+    |     [以下略]
+    |
+    | +2015-12-23
+    | +
+    | +  * ble-syntax:bash declare 配列初期化構文対応
+    | +
+    | +    > * [2015-02-16] ble-syntax.sh: local a=(arr) a+=
+    | +    >   これは declare や local typeset readonly 等を文法的に特別扱いしなければ対応できない
+    | +
+    | +    色々試してみた所、以下のコマンドの引数で =() を特別扱いする様である。
+    | +      declare readonly typeset local export alias
+    | +    alias に関しては他のコマンドと全然性質が違う様な気がするし、
+    | +    export に関しては配列の初めの要素しか export されない気がするが、
+    | +    文法的には両者とも =() の形式を許容する様である。
+    | +    或いは、他にも同様の形式の引数を許容する組コマンドが存在するかもしれない。
+    | +
+    | +    (少なくとも echo などの組み込みコマンドや、外部コマンドに関しては
+    | +    引数に =() 等という物が含まれていると失敗する。)
+
+    これを見る限りは特別扱いは ARGVX, ARGVI を導入した最初の瞬間からあった様で
+    ある。特に後付で ARGVI に対して特別扱いを実装したという訳ではなく、最初から。
+    実装の経緯を観察する限りはどうも補完で変数名を生成させる為に特別な単語の種
+    類を割り当てている様な気がする。一方で現在の実装に於いては、補完は特に
+    wtype を参照している訳ではないのでこの様に特別に取り扱う理由もない気がする。
+
+    * ARGVI, ARGEI の際の変数代入で = を要求しない振る舞いは修正する方向で考え
+      る。
+
+      x 然し、そうしたら単語着色が消えてしまった。うーん。ARGVI 及び ARGEI の時に
+        は単語着色はするべきだろうか。
+
+        先ず文法レベルで。それから引数レベルで。
+
+        | うーん。先ず初めに、文法レベルでの着色については ARGVI だけで良い。
+        | ARGEI の時には = 無しで単語が現れたとしたらそれは単語ではないので着色し
+        | なくて良い。
+        |
+        | そもそも文法レベルの着色をするべきなのかという疑問も実は存在する。bash
+        | の文法的には実は declare hello= は変数代入になっているが、declare hello
+        | は変数代入になっていないと思われる。という事を考えると文法レベルの着色
+        | はするべきでない。
+
+        引数レベルの着色については declare 系列専用の着色を定義する必要がある。
+
+        うーん。ble/cmdinfo/color: という名前も何だか微妙な気がするが、これは後
+        でいくらでも変更できるので取り敢えずは実装する。既存の実装は存在してい
+        ない様だ。ble/cmdinfo/chroma: に変更する。
+
+        うーん。ファイルを分離しようと思ったが名前はどうしたら良いだろうか
+        ... やはり cmdinfo は何だか名前として不自然な気がする。core-cmdinfo,
+
+        | * core-help, core-man, core-mandb, core-info, core-whatis, core-which,
+        |   これらは既存のマニュアル系のコマンドの名称を取ってきた物。
+        |
+        | * core-catalogue, core-manual, core-dictionary, core-book,
+        |   corer-guidebook, core-map, core-cmdmap, core-reference,
+        |   core-commandreference, core-cmdref (reference 系は別の意味になるので
+        |   駄目), core-library, core-cmdlib, core-spelllib (library 系も別の意味),
+        |   core-spellbook ... 或いはより現実的な物に例えてみる等の方針。
+        |
+        | * core-getopt これは、実際に cmdinfo を定義する主要な形態として getopt
+        |   的な方法を考えている事から。然し、これだけが唯一の定義方法という訳で
+        |   もないし、getopt は更にその上の階層の枠組みに名付けたい気がする。実際
+        |   には、cmdinfo の中に定義する形になるのではないかと考えている。
+        |
+        | * core-cmddb, core-database (一般的過ぎる), core-commanddatabase,
+        |   core-cmdspec, core-commandspec, core-cmdspec
+
+        うーん。cmdspec の方が幾らかましの気がするので取り敢えず cmdspec という
+        事にする。
+
+        然し本当に cmdspec に定義するべきなのだろうかという疑問も残る。実は
+        bash-completion でやっている様に contrib/cmdspec/* の下に個別のファイル
+        として定義した方が良いのではないかという疑惑。うーん。然しそうだとして
+        も取り敢えずの実験的な実装として cmdspec の中に色々記述して API が落ち
+        着いてからファイルに分割するというので良い気がする。そう。それがしたかっ
+        た事の気がする。
+
+      o ちゃんと引数レベルでの着色で変数名着色ができている。
+
+      o declare の通常引数の後のオプションをエラー着色する機能もOK
+
+    * done: コマンドレベルで declare, etc. + alias の着色を行う。
+      うーん。alias については今回は対応しなくて良い。
+
+    * done: 変数代入も extract-command で列挙する。但し、extract command に影響
+      がない様にしなければならない。
+
+    x fixed: もう一つの謎は a=b declare a= の形式の時には変数代入が検出されない
+      という事。そもそも、変数名着色だって無効化されている。これは一体どういう
+      事だろう
+
+      調べてみると "a=b declare@ " の時には @ の位置に stat ARGX が置かれている
+      様である。一方で、 "declare@ " の場合には @ の位置には stat は置かれてい
+      なくて、代わりにその次の位置に ARGVX が置かれている。この振る舞いは他の通
+      常コマンド (echo など) でも同様であった。CMDXV の特別な振る舞いという事な
+      のだろうか。
+
+      →うーん。正にそれを実行するコードが check-word-end にある。これはどうい
+      う事だろうか。→分かった。どうもこれは変数代入の直後にはキーワードは来な
+      いという事を養成する為のコードの様だ。昔は単に ctx=ARGX を設定して抜けれ
+      ば良かったが、その後の複雑化で只単に ARGX を設定すれば良いという訳ではな
+      くなった。各文脈に応じた複雑な処理を CMDXV の時にも実行する必要がある。
+
+    o ok: declare a -[TAB] での候補生成の抑制は動いている。
+
+    幾つか残っているのを修正する必要がある。
+
+    * ok: global -- が着色されていない。これは今確認したらちゃんと動いている。
+      勘違いだったか或いは別の物を修正した時に一緒に直ったか。
+
+    * done: blerc, wiki, 移動: argument_error
+
+    * done: ble/syntax/progcolor は最早 ble/progcolor で良いのではないか。そも
+      そも純粋な文法解釈から離れてきていて、bash 特有の実装になっている。
+
 2021-12-11
+
+  * [External] bash-completion: printf -v ... [#D1703]
+    https://github.com/akinomyoga/ble.sh/issues/155#issuecomment-984619516
+
+    これは bash-completion 側で対応するべき事の気がする。
+
+    取り敢えず --help 対応が終われば、変数名の補完はできないにしても、オプショ
+    ンの表示ぐらいはできる様になる。printf の場合には最初の引数には '' を指定す
+    るのが良い気がする → 取り敢えずオプションは表示される様になった。
+
+  * [External] bash-completion: better support for "test", "[" [#D1702]
+    https://github.com/akinomyoga/ble.sh/issues/158
+
+    これも bash-completion の側で対応するべき事の気がする。
+    但しオプションの説明についてはちゃんと生成しなければならない。
+    progcomp の枠組みで説明も一緒に生成できる仕組みがあっても良いのではないか。
+
+    うーん。生成し切れていない物は別枠で指定する? うーん。getoptions 的仕様を確
+    定する必要がある気がする。
 
   * complete: [[ 及び declare の補完 (requested by EmilySeville7cfg) [#D1701]
     https://github.com/akinomyoga/ble.sh/issues/155

@@ -411,6 +411,9 @@ ble-face -s varname_number            fg=64
 ble-face -s varname_readonly          fg=200
 ble-face -s varname_transform         fg=29,bold
 ble-face -s varname_unset             fg=124
+ble-face -s argument_option           fg=teal
+ble-face -s argument_error            fg=black,bg=225
+
 ```
 
 The current list of faces can be obtained by the following command (`ble-face` without arguments):

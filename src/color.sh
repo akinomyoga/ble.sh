@@ -516,7 +516,7 @@ function ble/color/.name2color {
     (teal)    ret=6 ;;
     (silver)  ret=7 ;;
 
-    (gray)    ret=8 ;;
+    (gr[ae]y) ret=8 ;;
     (red)     ret=9 ;;
     (lime)    ret=10 ;;
     (yellow)  ret=11 ;;

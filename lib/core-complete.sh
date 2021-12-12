@@ -4089,23 +4089,24 @@ function ble/complete/mandb/initialize-mandb-opts {
     -ge (NUM1 -ge NUM2)      Arithmetic comparison >=.
     -nt (FILE1 -nt FILE2)    True if file1 is newer than file2 (according to modification date).
     -ot (FILE1 -ot FILE2)    True if file1 is older than file2.
-    -ef (FILE1 -ef FILE2)    True if file1 is a hard link to file2.
-  '
-  ble/complete/mandb/opt help=%'help test':help=@"$conditional_operators" '[['
+    -ef (FILE1 -ef FILE2)    True if file1 is a hard link to file2.'
+  ble/complete/mandb/opt ignore-double-hyphen:help=%'help test':help=@"$conditional_operators" '[['
+
   local test_operators=$conditional_operators'
     -a (EXPR1 -a EXPR2)      True if both expr1 AND expr2 are true.
-    -a (EXPR1 -o EXPR2)      True if either expr1 OR expr2 is true.
-  '
-  ble/complete/mandb/opt help=%'help test':help=@"$test_operators"        'test' '['
+    -a (EXPR1 -o EXPR2)      True if either expr1 OR expr2 is true.'
+  ble/complete/mandb/opt ignore-double-hyphen:help=%'help test':help=@"$test_operators"        'test' '['
 
   ble/complete/mandb/opt no-man:help:stop-after-argument:plus-option=aAilnrtux declare typeset local
   ble/complete/mandb/opt no-man:help:stop-after-argument local export readonly
+  ble/complete/mandb/opt no-man:help:stop-after-argument alias
 }
 ble/complete/mandb/initialize-mandb-opts
 
-## @fn ble/complete/mandb/get-opts command
+## @fn ble/complete/mandb/get-opts command [default_value]
 ##   @var[out] mandb_opts
 function ble/complete/mandb/get-opts {
+  mandb_opts=$2
   local ret=
   if ble/gdict#get _ble_complete_mandb_opts "$1" ||
       { [[ $1 == */*[!/] ]] && ble/gdict#get _ble_complete_mandb_opts "${1##*/}"; }
@@ -4242,26 +4243,21 @@ function ble/complete/mandb/load-cache {
 function ble/complete/source:option/.stops-option {
   (($#)) || return 1
 
-  local reject= rex_req=
+  local reject= rexreq=
   [[ :$mandb_opts: != *:ignore-double-hyphen:* ]] && reject=--
   if [[ :$mandb_opts: == *:stop-after-argument:* ]]; then
-    rex_req='^-.+'
-    if ble/string#match ":$mandb_opts:" ':plus-option(=[^:]+)?:'; then
-      if [[ ${BASH_REMATCH[1]} ]]; then
-        [[ ${BASH_REMATCH[1]:1} ]] &&
-          rex_req='^-.+|^\+['${BASH_REMATCH[1]:1}']'
-      else
-        rex_req='^[-+].+'
-      fi
+    rexreq='^-.+'
+    if ble/string#match ":$mandb_opts:" ':plus-option(=[^:]*)?:'; then
+      rexreq='^[-+].+'
     fi
   fi
-  [[ $reject$rex_req ]] || return 1
+  [[ $reject$rexreq ]] || return 1
 
   local word ret
   for word; do
     ble/syntax:bash/simple-word/is-simple "$word" &&
       ble/syntax:bash/simple-word/eval "$word" noglob &&
-      [[ $reject && $ret == $reject || $rex_req && ! ( $ret =~ $rex_req ) ]] &&
+      [[ $reject && $ret == $reject || $rexreq && ! ( $ret =~ $rexreq ) ]] &&
       return 0
   done
   return 1
@@ -4286,7 +4282,7 @@ function ble/complete/source:option {
   local alias_checked=' '
   while local ret; ! ble/complete/mandb/load-cache "$cmd"; do
     alias_checked=$alias_checked$cmd' '
-    ble/util/expand-alias "$cmd"
+    ble/util/expand-alias "$cmd" || return 1
     local words; ble/string#split-words ret "$ret"; words=("${ret[@]}")
 
     # 変数代入は読み飛ばし
@@ -4549,6 +4545,7 @@ function ble/complete/context/overwrite-sources {
 function ble/complete/context:syntax/generate-sources {
   ble/syntax/import
   ble-edit/content/update-syntax
+  ble/cmdspec/initialize # load user configruation
   ble/syntax/completion-context/generate "$comp_text" "$comp_index"
   ((${#sources[@]}))
 }

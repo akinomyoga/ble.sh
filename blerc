@@ -663,6 +663,7 @@
 #ble-face -s command_jobs              fg=red,bold
 #ble-face -s command_directory         fg=navy,underline
 #ble-face -s argument_option           fg=teal
+#ble-face -s argument_option           fg=black,bg=225
 #ble-face -s filename_directory        underline,fg=26
 #ble-face -s filename_directory_sticky underline,fg=white,bg=26
 #ble-face -s filename_link             underline,fg=teal

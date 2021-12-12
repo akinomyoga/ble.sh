@@ -177,5 +177,6 @@ function ble/syntax/defface.onload {
   ble/color/defface varname_transform fg=29,bold
   ble/color/defface varname_export    fg=200,bold
   ble/color/defface argument_option   fg=teal
+  ble/color/defface argument_error    fg=black,bg=225
 }
 blehook/eval-after-load color_defface ble/syntax/defface.onload

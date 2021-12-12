@@ -83,6 +83,7 @@
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` 0000000
 - complete: requote for more compact representations on full completions `#D1700` 0000000
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` 0000000
+  - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` 0000000
  
 ## Changes
 

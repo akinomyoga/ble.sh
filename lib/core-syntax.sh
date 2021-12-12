@@ -3139,13 +3139,8 @@ function ble/syntax:bash/check-variable-assignment {
   [[ ${_ble_syntax_bash_command_CtxAssign[ctx]} ]] || return 1
 
   # パターン一致 (var= var+= arr[ のどれか)
-  local suffix='=|\+=?'
-  ((_ble_bash<30100)) && suffix='='
-  if ((ctx==CTX_ARGVI||ctx==CTX_ARGEI)); then
-    suffix="$suffix|\[?"
-  else
-    suffix="$suffix|\["
-  fi
+  local suffix='[=[]'
+  ((_ble_bash>=30100)) && suffix=$suffix'|\+=?'
   local rex_assign="^([a-zA-Z_][a-zA-Z_0-9]*)($suffix)"
   [[ $tail =~ $rex_assign ]] || return 1
   local rematch=$BASH_REMATCH
@@ -3492,102 +3487,100 @@ function ble/syntax:bash/ctx-command/check-word-end {
   ble/syntax/parse/word-pop
 
   if ((ctx==CTX_CMDI)); then
-    if ((wt==CTX_CMDXV)); then
-      ((ctx=CTX_ARGX))
-      return 0
-    fi
-
     local ret
     ble/util/expand-alias "$word"; local word_expanded=$ret
 
-    local processed=
-    case "$word_expanded" in
-    ('[[')
-      # 条件コマンド開始
-      ble/syntax/parse/touch-updated-attr "$wbeg"
-      ((_ble_syntax_attr[wbeg]=ATTR_DEL,
-        ctx=CTX_ARGX0))
+    # キーワードの処理
+    if ((wt!=CTX_CMDXV)); then # Note: 変数代入の直後はキーワードは処理しない
+      local processed=
+      case "$word_expanded" in
+      ('[[')
+        # 条件コマンド開始
+        ble/syntax/parse/touch-updated-attr "$wbeg"
+        ((_ble_syntax_attr[wbeg]=ATTR_DEL,
+          ctx=CTX_ARGX0))
 
-      ble/syntax/parse/word-cancel # 単語 "[[" (とその内部のノード全て) を削除
-      if [[ $word == '[[' ]]; then
-        # "[[" は一度角括弧式として読み取られるので、その情報を削除する。
-        _ble_syntax_attr[wbeg+1]= # 角括弧式として着色されているのを消去
-      fi
-
-      i=$wbeg ble/syntax/parse/nest-push "$CTX_CONDX"
-
-      # workaround: word "[[" を nest 内部に設置し直す
-      i=$wbeg ble/syntax/parse/word-push "$CTX_CMDI" "$wbeg"
-      ble/syntax/parse/word-pop
-      return 0 ;;
-    ('time')               ((ctx=CTX_TARGX1)); processed=keyword ;;
-    ('!')                  ((ctx=CTX_CMDXT)) ; processed=keyword ;;
-    ('if'|'while'|'until') ((ctx=CTX_CMDX1)) ; processed=begin ;;
-    ('for')                ((ctx=CTX_FARGX1)); processed=begin ;;
-    ('select')             ((ctx=CTX_SARGX1)); processed=begin ;;
-    ('case')               ((ctx=CTX_CARGX1)); processed=begin ;;
-    ('{')
-      ((ctx=CTX_CMDX1))
-      if ((wt==CTX_CMDXD||wt==CTX_CMDXD0)); then
-        processed=middle # "for ...; {" などの時
-      else
-        processed=begin
-      fi ;;
-    ('then'|'elif'|'else'|'do') ((ctx=CTX_CMDX1)) ; processed=middle ;;
-    ('}'|'done'|'fi'|'esac')    ((ctx=CTX_CMDXE)) ; processed=end ;;
-    ('coproc')
-      if ((_ble_bash>=40000)); then
-        if ble/syntax:bash/ctx-coproc/.is-next-compound; then
-          ((ctx=CTX_CMDXC))
-        else
-          ((ctx=CTX_COARGX))
+        ble/syntax/parse/word-cancel # 単語 "[[" (とその内部のノード全て) を削除
+        if [[ $word == '[[' ]]; then
+          # "[[" は一度角括弧式として読み取られるので、その情報を削除する。
+          _ble_syntax_attr[wbeg+1]= # 角括弧式として着色されているのを消去
         fi
-        processed=keyword
-      fi ;;
-    ('function')
-      ((ctx=CTX_ARGX))
-      local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
-      if rex="^$rex_space+" && [[ ${text:i} =~ $rex ]]; then
-        ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#BASH_REMATCH},ctx=CTX_ARGX))
-        if rex="^([^#$isfuncsymx][^$isfuncsymx]*)($rex_space*)(\(\(|\($rex_space*\)?)?" && [[ ${text:i} =~ $rex ]]; then
-          local rematch1=${BASH_REMATCH[1]}
-          local rematch2=${BASH_REMATCH[2]}
-          local rematch3=${BASH_REMATCH[3]}
-          ((_ble_syntax_attr[i]=ATTR_FUNCDEF,i+=${#rematch1},
-            ${#rematch2}&&(_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch2})))
 
-          if [[ $rematch3 == '('*')' ]]; then
-            ((_ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch3},ctx=CTX_CMDXC))
-          elif ((_ble_bash>=40200)) && [[ $rematch3 == '((' ]]; then
-            ble/syntax/parse/set-lookahead 2
+        i=$wbeg ble/syntax/parse/nest-push "$CTX_CONDX"
+
+        # workaround: word "[[" を nest 内部に設置し直す
+        i=$wbeg ble/syntax/parse/word-push "$CTX_CMDI" "$wbeg"
+        ble/syntax/parse/word-pop
+        return 0 ;;
+      ('time')               ((ctx=CTX_TARGX1)); processed=keyword ;;
+      ('!')                  ((ctx=CTX_CMDXT)) ; processed=keyword ;;
+      ('if'|'while'|'until') ((ctx=CTX_CMDX1)) ; processed=begin ;;
+      ('for')                ((ctx=CTX_FARGX1)); processed=begin ;;
+      ('select')             ((ctx=CTX_SARGX1)); processed=begin ;;
+      ('case')               ((ctx=CTX_CARGX1)); processed=begin ;;
+      ('{')
+        ((ctx=CTX_CMDX1))
+        if ((wt==CTX_CMDXD||wt==CTX_CMDXD0)); then
+          processed=middle # "for ...; {" などの時
+        else
+          processed=begin
+        fi ;;
+      ('then'|'elif'|'else'|'do') ((ctx=CTX_CMDX1)) ; processed=middle ;;
+      ('}'|'done'|'fi'|'esac')    ((ctx=CTX_CMDXE)) ; processed=end ;;
+      ('coproc')
+        if ((_ble_bash>=40000)); then
+          if ble/syntax:bash/ctx-coproc/.is-next-compound; then
             ((ctx=CTX_CMDXC))
-          elif [[ $rematch3 == '('* ]]; then
-            ((_ble_syntax_attr[i]=ATTR_ERR,ctx=CTX_ARGX0))
-            ble/syntax/parse/nest-push "$CTX_CMDX1" '('
-            ((${#rematch3}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),i+=${#rematch3}))
           else
-            ((ctx=CTX_CMDXC))
+            ((ctx=CTX_COARGX))
           fi
           processed=keyword
+        fi ;;
+      ('function')
+        ((ctx=CTX_ARGX))
+        local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
+        if rex="^$rex_space+" && [[ ${text:i} =~ $rex ]]; then
+          ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#BASH_REMATCH},ctx=CTX_ARGX))
+          if rex="^([^#$isfuncsymx][^$isfuncsymx]*)($rex_space*)(\(\(|\($rex_space*\)?)?" && [[ ${text:i} =~ $rex ]]; then
+            local rematch1=${BASH_REMATCH[1]}
+            local rematch2=${BASH_REMATCH[2]}
+            local rematch3=${BASH_REMATCH[3]}
+            ((_ble_syntax_attr[i]=ATTR_FUNCDEF,i+=${#rematch1},
+              ${#rematch2}&&(_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch2})))
+
+            if [[ $rematch3 == '('*')' ]]; then
+              ((_ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch3},ctx=CTX_CMDXC))
+            elif ((_ble_bash>=40200)) && [[ $rematch3 == '((' ]]; then
+              ble/syntax/parse/set-lookahead 2
+              ((ctx=CTX_CMDXC))
+            elif [[ $rematch3 == '('* ]]; then
+              ((_ble_syntax_attr[i]=ATTR_ERR,ctx=CTX_ARGX0))
+              ble/syntax/parse/nest-push "$CTX_CMDX1" '('
+              ((${#rematch3}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),i+=${#rematch3}))
+            else
+              ((ctx=CTX_CMDXC))
+            fi
+            processed=keyword
+          fi
         fi
-      fi
-      [[ $processed ]] || ((_ble_syntax_attr[i-1]=ATTR_ERR)) ;;
-    esac
-
-    if [[ $processed ]]; then
-      local attr=
-      case $processed in
-      (keyword) attr=$ATTR_KEYWORD ;;
-      (begin)   attr=$ATTR_KEYWORD_BEGIN ;;
-      (end)     attr=$ATTR_KEYWORD_END ;;
-      (middle)  attr=$ATTR_KEYWORD_MID ;;
+        [[ $processed ]] || ((_ble_syntax_attr[i-1]=ATTR_ERR)) ;;
       esac
-      if [[ $attr ]]; then
-        ble/syntax/parse/touch-updated-attr "$wbeg"
-        ((_ble_syntax_attr[wbeg]=attr))
-      fi
 
-      return 0
+      if [[ $processed ]]; then
+        local attr=
+        case $processed in
+        (keyword) attr=$ATTR_KEYWORD ;;
+        (begin)   attr=$ATTR_KEYWORD_BEGIN ;;
+        (end)     attr=$ATTR_KEYWORD_END ;;
+        (middle)  attr=$ATTR_KEYWORD_MID ;;
+        esac
+        if [[ $attr ]]; then
+          ble/syntax/parse/touch-updated-attr "$wbeg"
+          ((_ble_syntax_attr[wbeg]=attr))
+        fi
+
+        return 0
+      fi
     fi
 
     # 関数定義である可能性を考え stat を置かず読み取る
@@ -5825,7 +5818,7 @@ function ble/syntax:bash/extract-command/.construct-proc {
         EC_found=1
         return 0
       fi
-    elif ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
+    elif ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI||wtype==ATTR_VAR)); then
       ble/syntax:bash/extract-command/.register-word
       comp_line=" $comp_line"
     fi
@@ -5995,11 +5988,13 @@ function ble/syntax:bash/extract-command-by-noderef {
   comp_cword=0
   comp_point=0
 
+  local ExprIsArgument='wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI||wtype==ATTR_VAR'
+
   # 自ノードの追加
   local ret node wtype wlen wbeg wend wattr
   ble/string#split-words node "${_ble_syntax_tree[i-1]}"
   wtype=${node[nofs]} wlen=${node[nofs+1]}
-  [[ ! ${wtype//[0-9]} ]] && ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)) || return 1
+  [[ ! ${wtype//[0-9]} ]] && ((wtype==CTX_CMDI||ExprIsArgument)) || return 1
   ble/array#push comp_words "${_ble_syntax_text:i-wlen:wlen}"
   [[ $opts == *:treeinfo:* ]] &&
     ble/array#push tree_words "$i:$nofs"
@@ -6011,7 +6006,7 @@ function ble/syntax:bash/extract-command-by-noderef {
       ble/syntax/tree#previous-sibling "$ret" wvars
   do
     [[ ! ${wtype//[0-9]} ]] || continue
-    if ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
+    if ((wtype==CTX_CMDI||ExprIsArgument)); then
       ble/array#push comp_words "${_ble_syntax_text:wbeg:wlen}"
       [[ $opts == *:treeinfo:* ]] &&
         ble/array#push tree_words "$ret"
@@ -6029,7 +6024,7 @@ function ble/syntax:bash/extract-command-by-noderef {
   while ble/syntax/tree#next-sibling "$ret" wvars; do
     [[ ! ${wtype//[0-9]} ]] || continue
     ((wtype==CTX_CMDI)) && break
-    if ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
+    if ((ExprIsArgument)); then
       ble/array#push comp_words "${_ble_syntax_text:wbeg:wlen}"
       [[ $opts == *:treeinfo:* ]] &&
         ble/array#push tree_words "$ret"
@@ -6470,17 +6465,17 @@ function bleopt/check:filename_ls_colors {
 bleopt -I filename_ls_colors
 
 #------------------------------------------------------------------------------
-# ble/syntax/progcolor
+# ble/progcolor
 
 _ble_syntax_progcolor_vars=(
   node TE_i TE_nofs wtype wlen wbeg wend wattr)
 _ble_syntax_progcolor_wattr_vars=(
   wattr_buff wattr_pos wattr_g)
 
-## @fn ble/syntax/progcolor/load-word-data i:nofs
+## @fn ble/progcolor/load-word-data i:nofs
 ##   @var[out] TE_i TE_nofs node
 ##   @var[out] wtype wlen wbeg wend wattr
-function ble/syntax/progcolor/load-word-data {
+function ble/progcolor/load-word-data {
   # TE_i TE_nofs
   TE_i=${1%%:*} TE_nofs=${1#*:}
   [[ $1 != *:* ]] && TE_nofs=0
@@ -6496,9 +6491,9 @@ function ble/syntax/progcolor/load-word-data {
   wend=$TE_i
 }
 
-## @fn ble/syntax/progcolor/set-wattr value
+## @fn ble/progcolor/set-wattr value
 ##   @var[in] TE_i TE_nofs node
-function ble/syntax/progcolor/set-wattr {
+function ble/progcolor/set-wattr {
   ble/syntax/urange#update color_ "$wbeg" "$wend"
   ble/syntax/wrange#update _ble_syntax_word_ "$TE_i"
   node[TE_nofs+4]=$1
@@ -6506,7 +6501,7 @@ function ble/syntax/progcolor/set-wattr {
   _ble_syntax_tree[TE_i-1]="${node[*]}"
 }
 
-## @fn ble/syntax/progcolor/eval-word [iword] [opts]
+## @fn ble/progcolor/eval-word [iword] [opts]
 ##   現在のコマンドの iword 番目の単語を評価した値を返します。
 ##   iword を省略した場合には現在着色中の単語が使われます。
 ##   単語が評価できない場合にはコマンドは失敗します。
@@ -6523,7 +6518,7 @@ function ble/syntax/progcolor/set-wattr {
 ##     単語の評価値のキャッシュです。
 ##   @var[out] ret
 ##
-function ble/syntax/progcolor/eval-word {
+function ble/progcolor/eval-word {
   local iword=${1:-progcolor_iword} opts=$2
   if [[ ${progcolor_stats[iword]+set} ]]; then
     ret=${progcolor_wvals[iword]}
@@ -6555,38 +6550,82 @@ function ble/syntax/progcolor/eval-word {
   return 0
 }
 
-## @fn ble/syntax/progcolor/wattr#initialize
+function ble/progcolor/is-option-context {
+  # 既にオプション停止位置が計算済みの場合
+  if [[ ${progcolor_optctx[1]} ]]; then
+    # Note: 等号は停止を引き起こした引数 -- 自体の時 (オプションとして有効)
+    ((progcolor_iword<=progcolor_optctx[1]))
+    return $?
+  fi
+
+  local reject rexreq
+  if [[ ! ${progcolor_optctx[0]} ]]; then
+    progcolor_optctx[0]=1
+
+    reject=-- rexreq=
+    if ble/is-function ble/complete/mandb/get-opts; then
+      # copied from ble/complete/source:option/.stops-option
+      local mandb_opts; ble/complete/mandb/get-opts "${comp_words[0]}"
+      [[ :$mandb_opts: != *:ignore-double-hyphen:* ]] && reject=--
+      if [[ :$mandb_opts: == *:stop-after-argument:* ]]; then
+        rexreq='^-.+'
+        if ble/string#match ":$mandb_opts:" ':plus-option(=[^:]*)?:'; then
+          rexreq='^[-+].+'
+        fi
+      fi
+    fi
+    progcolor_optctx[2]=$reject
+    progcolor_optctx[3]=$rexreq
+  else
+    reject=${progcolor_optctx[2]}
+    rexreq=${progcolor_optctx[3]}
+  fi
+  [[ $reject$rexreq ]] || return 0
+
+  local iword
+  for ((iword=progcolor_optctx[0];iword<progcolor_iword;iword++)); do
+    ble/progcolor/eval-word "$iword" "$highlight_eval_opts"
+    if [[ $reject && $ret == $reject || $rexreq && ! ( $ret =~ $rexreq ) ]] ; then
+      progcolor_optctx[1]=$iword
+      return 1
+    fi
+  done
+  progcolor_optctx[0]=$iword
+  return 0
+}
+
+## @fn ble/progcolor/wattr#initialize
 ##   @var[out] wattr_buff
 ##   @var[out] wattr_pos
 ##   @var[out] wattr_g
-function ble/syntax/progcolor/wattr#initialize {
+function ble/progcolor/wattr#initialize {
   wattr_buff=()
   wattr_pos=$wbeg
   wattr_g=d
 }
-## @fn ble/syntax/progcolor/wattr#setg pos g
+## @fn ble/progcolor/wattr#setg pos g
 ##   @param[in] pos
 ##   @param[in] g
 ##   @var[in,out] wattr_buff
 ##   @var[in,out] wattr_pos
 ##   @var[in,out] wattr_g
-function ble/syntax/progcolor/wattr#setg {
+function ble/progcolor/wattr#setg {
   local pos=$1 g=$2
   local len=$((pos-wattr_pos))
   ((len>0)) && ble/array#push wattr_buff "$len:$wattr_g"
   wattr_pos=$pos
   wattr_g=$g
 }
-function ble/syntax/progcolor/wattr#setattr {
+function ble/progcolor/wattr#setattr {
   local pos=$1 attr=$2 g
   ble/syntax/attr2g "$attr"
-  ble/syntax/progcolor/wattr#setg "$pos" "$g"
+  ble/progcolor/wattr#setg "$pos" "$g"
 }
-## @fn ble/syntax/progcolor/wattr#finalize
+## @fn ble/progcolor/wattr#finalize
 ##   @var[in,out] wattr_buff
 ##   @var[in,out] wattr_pos
 ##   @var[in,out] wattr_g
-function ble/syntax/progcolor/wattr#finalize {
+function ble/progcolor/wattr#finalize {
   local wattr
   if ((${#wattr_buff[@]})); then
     local len=$((wend-wattr_pos))
@@ -6597,17 +6636,17 @@ function ble/syntax/progcolor/wattr#finalize {
   else
     wattr=$wattr_g
   fi
-  ble/syntax/progcolor/set-wattr "$wattr"
+  ble/progcolor/set-wattr "$wattr"
 }
 
 
-## @fn ble/syntax/progcolor/word:default/.detect-separated-path word
+## @fn ble/progcolor/highlight-filename/.detect-separated-path word
 ##   @param[in] word
 ##   @var[in] wtype p0
 ##   @var[in] _ble_syntax_attr
 ##   @var[out] ret
 ##     有効な区切り文字の集合を返します。
-function ble/syntax/progcolor/word:default/.detect-separated-path {
+function ble/progcolor/highlight-filename/.detect-separated-path {
   local word=$1
   ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)) || return 1
 
@@ -6617,12 +6656,12 @@ function ble/syntax/progcolor/word:default/.detect-separated-path {
   ble/syntax:bash/simple-word/detect-separated-path "$word" :, "$detect_opts"
 }
 
-## @fn ble/syntax/progcolor/word:default/.highlight-pathspec g [opts]
+## @fn ble/progcolor/highlight-filename/.pathspec.wattr g [opts]
 ##   @param[in] g
 ##   @param[in,opt] opts
 ##   @var[in] wtype p0 p1
 ##   @var[in] path spec
-function ble/syntax/progcolor/word:default/.highlight-pathspec {
+function ble/progcolor/highlight-filename/.pathspec.wattr {
   local p=$p0 opts=$2
 
   if [[ :$opts: != *:no-path-color:* ]]; then
@@ -6643,31 +6682,31 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec {
       # コマンド名の時は下線は引かない様にする
       ((wtype==CTX_CMDI&&(g&=~_ble_color_gflags_Underline)))
 
-      ble/syntax/progcolor/wattr#setg "$p" "$g"
+      ble/progcolor/wattr#setg "$p" "$g"
       ((p=p0+${#espec}))
     done
   fi
 
-  ble/syntax/progcolor/wattr#setg "$p" "$1"
+  ble/progcolor/wattr#setg "$p" "$1"
   [[ $1 != d ]] &&
-    ble/syntax/progcolor/wattr#setg "$p1" d
+    ble/progcolor/wattr#setg "$p1" d
   return 0
 }
 
-## @fn ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr attr
+## @fn ble/progcolor/highlight-filename/.pathspec-with-attr.wattr attr
 ##   @param[in] attr
 ##   @var[in] wtype p0 p1
 ##   @var[in] path spec
-function ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr {
+function ble/progcolor/highlight-filename/.pathspec-with-attr.wattr {
   local g; ble/syntax/attr2g "$1"
-  ble/syntax/progcolor/word:default/.highlight-pathspec "$g"
+  ble/progcolor/highlight-filename/.pathspec.wattr "$g"
   return 0
 }
-## @fn ble/syntax/progcolor/word:default/.highlight-pathspec-by-name value
+## @fn ble/progcolor/highlight-filename/.pathspec-by-name.wattr value
 ##   @param[in] value
 ##   @var[in] wtype p0 p1
 ##   @var[in] path spec
-function ble/syntax/progcolor/word:default/.highlight-pathspec-by-name {
+function ble/progcolor/highlight-filename/.pathspec-by-name.wattr {
   local value=$1
 
   local highlight_opts=
@@ -6721,15 +6760,15 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec-by-name {
   fi
   [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
 
-  ble/syntax/progcolor/word:default/.highlight-pathspec "${g:-d}" "$highlight_opts"
+  ble/progcolor/highlight-filename/.pathspec.wattr "${g:-d}" "$highlight_opts"
   return 0
 }
 
-## @fn ble/syntax/progcolor/word:default/.highlight-filename p0:p1
+## @fn ble/progcolor/highlight-filename/.single.wattr p0:p1
 ##   @param[in] p0 p1
 ##     ファイル名の (コマンドライン内部における) 範囲を指定します。
 ##   @param[in] wtype
-function ble/syntax/progcolor/word:default/.highlight-filename {
+function ble/progcolor/highlight-filename/.single.wattr {
   local p0=${1%%:*} p1=${1#*:}
   local wtxt=${text:p0:p1-p0}
 
@@ -6744,65 +6783,98 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
   if ((ext==142)); then
     if [[ $ble_textarea_render_defer_running ]]; then
       # background で timeout した時はこのファイル名の着色は諦める
-      ble/syntax/progcolor/wattr#setg "$p0" d
+      ble/progcolor/wattr#setg "$p0" d
     else
       # foreground で timeout した時は後で background で着色する為に取り敢えず抜ける
       return 148
     fi
   elif ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_RDRD||wtype==CTX_RDRD2||wtype==CTX_VALI))); then
     # failglob 等の理由で展開に失敗した場合
-    ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr "$ATTR_ERR"
+    ble/progcolor/highlight-filename/.pathspec-with-attr.wattr "$ATTR_ERR"
   elif (((wtype==CTX_RDRF||wtype==CTX_RDRD||wtype==CTX_RDRD2)&&count>=2)); then
     # 複数語に展開されたら駄目
-    ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
+    ble/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
   elif ((wtype==CTX_CMDI)); then
     local attr=${_ble_syntax_attr[wbeg]}
     if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
       local type=; ble/syntax/highlight/cmdtype "$value" "$wtxt"
       if ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)); then
-        ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr "$type"
+        ble/progcolor/highlight-filename/.pathspec-with-attr.wattr "$type"
       elif [[ $type ]]; then
-        ble/syntax/progcolor/wattr#setattr "$p0" "$type"
+        ble/progcolor/wattr#setattr "$p0" "$type"
       fi
     fi
   elif ((wtype==CTX_RDRD||wtype==CTX_RDRD2)); then
     if local rex='^[0-9]+-?$|^-$'; [[ $value =~ $rex ]]; then
-      ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_DEL"
+      ble/progcolor/wattr#setattr "$p0" "$ATTR_DEL"
     elif ((wtype==CTX_RDRD2)); then
-      ble/syntax/progcolor/word:default/.highlight-pathspec-by-name "$value"
+      ble/progcolor/highlight-filename/.pathspec-by-name.wattr "$value"
     else
-      ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
+      ble/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
     fi
   elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS||wtype==CTX_RDRF)); then
-    ble/syntax/progcolor/word:default/.highlight-pathspec-by-name "$value"
+    ble/progcolor/highlight-filename/.pathspec-by-name.wattr "$value"
   fi
 }
 
-## @fn ble/syntax/progcolor/word:default/.is-option-context
-##   @var[in] wtype
-function ble/syntax/progcolor/word:default/.is-option-context {
-  ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_ARGVI)) || return 1
-
-  local iword ret
-  for ((iword=1;iword<progcolor_iword;iword++)); do
-    ble/syntax/progcolor/eval-word "$iword" "$highlight_eval_opts"
-    [[ $ret == -- ]] && return 1
-  done
-  return 0
+function ble/progcolor/highlight-filename.wattr {
+  local p0=$1 p1=$2
+  if ((p0<p1)) && [[ $bleopt_highlight_filename ]]; then
+    local wtxt=${text:p0:p1-p0}
+    local ret; ble/progcolor/highlight-filename/.detect-separated-path "$wtxt"; local ext=$?
+    ((ext==148)) && return 148
+    if ((ext==0)); then
+      local sep=$ret ranges i
+      ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" "url:$highlight_eval_opts"
+      (($?==148)) && return 148; ranges=("${ret[@]}")
+      for ((i=0;i<${#ranges[@]};i+=2)); do
+        ble/progcolor/highlight-filename/.single.wattr $((p0+ranges[i])):$((p0+ranges[i+1]))
+        (($?==148)) && return 148
+      done
+    elif ble/syntax:bash/simple-word/is-simple "$wtxt"; then
+      ble/progcolor/highlight-filename/.single.wattr "$p0":"$p1"
+      (($?==148)) && return 148
+    fi
+  fi
 }
 
-## @fn ble/syntax/progcolor/word:default
+function ble/progcolor/@wattr {
+  [[ $wtype =~ ^[0-9]+$ ]] || return 1
+  [[ $wattr == - ]] || return 1
+  local "${_ble_syntax_progcolor_wattr_vars[@]/%/=}" # WA #D1570 checked
+  ble/progcolor/wattr#initialize
+
+  "$@"; local ext=$?
+
+  if ((ext==148)); then
+    _ble_textarea_render_defer=1
+    ble/syntax/wrange#update _ble_syntax_word_defer_ "$wend"
+  else
+    ble/progcolor/wattr#finalize
+  fi
+  return "$ext"
+}
+
+## @fn ble/progcolor/word:default/.is-option wtxt
+##   @var[in] wtype
+##   @var[in] progcolor_*
+function ble/progcolor/word:default/.is-option {
+  ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_ARGVI)) &&
+    ble/string#match "$1" '^(-[-_a-zA-Z0-9]*)=?' && # 高速な判定を先に済ませる
+    ble/progcolor/is-option-context &&
+    ble/string#match "$1" '^(-[-_a-zA-Z0-9]*)=?' # 再実行 for BASH_REMATCH
+}
+
+## @fn ble/progcolor/word:default
 ##   @var[in] node TE_i TE_nofs
 ##   @var[in] wtype wlen wbeg wend wattr
-function ble/syntax/progcolor/word:default/.impl {
-  local "${_ble_syntax_progcolor_wattr_vars[@]/%/=}" # WA #D1570 checked
-  ble/syntax/progcolor/wattr#initialize
-
+##   @var[in] ${_ble_syntax_progcolor_wattr_vars[@]}
+function ble/progcolor/word:default/impl.wattr {
   if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
     # ヒアドキュメントのキーワード指定部分は、
     # 展開・コマンド置換などに従った解析が行われるが、
     # 実行は一切起こらないので一色で塗りつぶす。
-    ble/syntax/progcolor/wattr#setattr "$p0" "$wtype"
+    ble/progcolor/wattr#setattr "$wbeg" "$wtype"
 
   else
     # @var p0 p1
@@ -6821,66 +6893,44 @@ function ble/syntax/progcolor/word:default/.impl {
     elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI)) && { local rex='^[_a-zA-Z][_a-zA-Z0-9]*='; [[ $wtxt =~ $rex ]]; }; then
       # 変数代入形式の通常引数
       ((p0+=${#BASH_REMATCH}))
-    elif ble/syntax/progcolor/word:default/.is-option-context && { local rex='^(-[-_a-zA-Z0-9]*)=?'; [[ $wtxt =~ $rex ]]; }; then
+    elif ble/progcolor/word:default/.is-option "$wtxt"; then
       # --prefix= 等のオプション引数
-      local rematch1=${BASH_REMATCH[1]}
+      local rematch=$BASH_REMATCH rematch1=${BASH_REMATCH[1]}
       local ret; ble/color/face2g argument_option
-      ble/syntax/progcolor/wattr#setg "$p0" "$ret"
-      ble/syntax/progcolor/wattr#setg $((p0+${#rematch1})) d
-      ((p0+=${#BASH_REMATCH}))
+      ble/progcolor/wattr#setg "$p0" "$ret"
+      ble/progcolor/wattr#setg $((p0+${#rematch1})) d
+      ((p0+=${#rematch}))
     fi
 
-    if ((p0<p1)) && [[ $bleopt_highlight_filename ]]; then
-      local wtxt=${text:p0:p1-p0}
-      local ret; ble/syntax/progcolor/word:default/.detect-separated-path "$wtxt"; local ext=$?
-      ((ext==148)) && return 148
-      if ((ext==0)); then
-        local sep=$ret ranges i
-        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" "url:$highlight_eval_opts"
-        (($?==148)) && return 148; ranges=("${ret[@]}")
-        for ((i=0;i<${#ranges[@]};i+=2)); do
-          ble/syntax/progcolor/word:default/.highlight-filename $((p0+ranges[i])):$((p0+ranges[i+1]))
-          (($?==148)) && return 148
-        done
-      elif ble/syntax:bash/simple-word/is-simple "$wtxt"; then
-        ble/syntax/progcolor/word:default/.highlight-filename "$p0":"$p1"
-        (($?==148)) && return 148
-      fi
-    fi
+    ble/progcolor/highlight-filename.wattr "$p0" "$p1"
+    (($?==148)) && return 148
   fi
 
-  ble/syntax/progcolor/wattr#finalize
   return 0
 }
-function ble/syntax/progcolor/word:default {
-  [[ $wtype =~ ^[0-9]+$ ]] || return 1
-  [[ $wattr == - ]] || return 1
-  ble/syntax/progcolor/word:default/.impl; local ext=$?
-  if ((ext==148)); then
-    _ble_textarea_render_defer=1
-    ble/syntax/wrange#update _ble_syntax_word_defer_ "$wend"
-  fi
-  return "$ext"
+
+function ble/progcolor/word:default {
+  ble/progcolor/@wattr ble/progcolor/word:default/impl.wattr
 }
 
-## @fn ble/syntax/progcolor/default
+## @fn ble/progcolor/default
 ##   @var[in] comp_words comp_cword comp_line comp_point
 ##   @var[in] tree_words
 ##   @var[in,out] color_umin color_umax
-function ble/syntax/progcolor/default {
+function ble/progcolor/default {
   local i "${_ble_syntax_progcolor_vars[@]/%/=}" # WA #D1570 checked
   for ((i=1;i<${#comp_words[@]};i++)); do
     local ref=${tree_words[i]}
     [[ $ref ]] || continue
     local progcolor_iword=$i
-    ble/syntax/progcolor/load-word-data "$ref"
-    ble/syntax/progcolor/word:default
+    ble/progcolor/load-word-data "$ref"
+    ble/progcolor/word:default
   done
 }
 
-## @fn ble/syntax/progcolor/.compline-rewrite-command command [args...]
+## @fn ble/progcolor/.compline-rewrite-command command [args...]
 ##   @var[in,out] comp_words comp_cword comp_line comp_point
-function ble/syntax/progcolor/.compline-rewrite-command {
+function ble/progcolor/.compline-rewrite-command {
   local ocmd=${comp_words[0]}
   [[ $1 != "$ocmd" ]] || (($#>=2)) || return 1
   local IFS=$_ble_term_IFS
@@ -6894,27 +6944,31 @@ function ble/syntax/progcolor/.compline-rewrite-command {
   ble/array#reserve-prototype $#
   tree_words=("${tree_words[0]}" "${_ble_array_prototype[@]::$#-1}" "${tree_words[@]:1}")
 }
-## @fn ble/syntax/progcolor cmd opts
+## @fn ble/progcolor cmd opts
 ##   @var[in] comp_words comp_cword comp_line comp_point
 ##   @var[in] tree_words
 ##   @var[in,out] color_umin color_umax
-function ble/syntax/progcolor {
+function ble/progcolor {
   local cmd=$1 opts=$2
 
+  # cache used by "eval-word"
   local -a progcolor_stats=()
   local -a progcolor_wvals=()
+
+  # cache used by "is-option-context"
+  local -a progcolor_optctx=()
 
   local -a alias_args=()
   local checked=" " processed=
   while :; do
-    if ble/is-function "ble/cmdinfo/color:$cmd"; then
-      ble/syntax/progcolor/.compline-rewrite-command "$cmd" "${alias_args[@]}"
-      "ble/cmdinfo/color:$cmd" "$opts"
+    if ble/is-function ble/cmdinfo/cmd:"$cmd"/chroma; then
+      ble/progcolor/.compline-rewrite-command "$cmd" "${alias_args[@]}"
+      ble/cmdinfo/cmd:"$cmd"/chroma "$opts"
       processed=1
       break
-    elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/color:${cmd##*/}"; then
-      ble/syntax/progcolor/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
-      "ble/cmdinfo/color:${cmd##*/}" "$opts"
+    elif [[ $cmd == */?* ]] && ble/is-function ble/cmdinfo/cmd:"${cmd##*/}"/chroma; then
+      ble/progcolor/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+      ble/cmdinfo/cmd:"${cmd##*/}"/chroma "$opts"
       processed=1
       break
     fi
@@ -6929,13 +6983,13 @@ function ble/syntax/progcolor {
       alias_args=("${ret[@]:1}" "${alias_args[@]}")
   done
   [[ $processed ]] ||
-    ble/syntax/progcolor/default
+    ble/progcolor/default
 
   # コマンド名に対しては既定の着色を実行
   if [[ ${tree_words[0]} ]]; then
     local "${_ble_syntax_progcolor_vars[@]/%/=}" # WA #D1570 checked
-    ble/syntax/progcolor/load-word-data "${tree_words[0]}"
-    [[ $wattr == - ]] && ble/syntax/progcolor/word:default
+    ble/progcolor/load-word-data "${tree_words[0]}"
+    [[ $wattr == - ]] && ble/progcolor/word:default
   fi
 }
 
@@ -6997,13 +7051,13 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
     local comp_line comp_point comp_words comp_cword tree_words
     if ble/syntax:bash/extract-command-by-noderef "$TE_i:$TE_nofs" treeinfo; then
       local cmd=${comp_words[0]}
-      ble/syntax/progcolor "$cmd"
+      ble/progcolor "$cmd"
       return 0
     fi
   fi
 
   # コマンドラインを復元できなければ単一単語の着色
-  ble/syntax/progcolor/word:default
+  ble/progcolor/word:default
 }
 
 ## @fn ble/highlight/layer:syntax/word/.update-attributes
@@ -7220,6 +7274,7 @@ function ble/highlight/layer:syntax/update {
   fi
 #%end
 
+  ble/cmdspec/initialize # load chroma
   ble/highlight/layer:syntax/update-attribute-table
   ble/highlight/layer:syntax/update-word-table
   ble/highlight/layer:syntax/update-error-table

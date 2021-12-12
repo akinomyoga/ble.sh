@@ -1393,23 +1393,39 @@ function ble/path#contains {
   builtin eval "[[ :\${$1}: == *:\"\$2\":* ]]"
 }
 
-## @fn ble/opts#extract-first-optarg key opts
+## @fn ble/opts#extract-first-optarg key opts [default_value]
 function ble/opts#extract-first-optarg {
   ret=()
   local rex=':'$1'(=[^:]*)?:'
   [[ :$2: =~ $rex ]] || return 1
-  [[ ${BASH_REMATCH[1]} ]] && ret=${BASH_REMATCH[1]:1}
+  if [[ ${BASH_REMATCH[1]} ]]; then
+    ret=${BASH_REMATCH[1]:1}
+  elif [[ ${3+set} ]]; then
+    ret=$3
+  fi
   return 0
 }
-## @fn ble/opts#extract-last-optarg key opts
+## @fn ble/opts#extract-last-optarg key opts [default_value]
 function ble/opts#extract-last-optarg {
   ret=()
   local rex='.*:'$1'(=[^:]*)?:'
   [[ :$2: =~ $rex ]] || return 1
-  [[ ${BASH_REMATCH[1]} ]] && ret=${BASH_REMATCH[1]:1}
+  if [[ ${BASH_REMATCH[1]} ]]; then
+    ret=${BASH_REMATCH[1]:1}
+  elif [[ ${3+set} ]]; then
+    ret=$3
+  fi
   return 0
 }
 ## @fn ble/opts#extract-all-optargs key opts [default_value]
+##   extract all values from the string OPTS of the form
+##   "...:key=value1:...:key=value2:...:key:...".
+##
+##   @param[in] key
+##     This should not include any special characters of regular
+##     expressions---preferably composed of [-_[:alnum:]].
+##
+##   @arr[out] ret
 function ble/opts#extract-all-optargs {
   ret=()
   local value=:$2: rex=':'$1'(=[^:]*)?(:.*)$' count=0
@@ -2882,13 +2898,14 @@ function ble/util/type {
 }
 ## @fn ble/util/expand-alias word
 ##   @var[out] ret
+##   @exit
+##     エイリアス展開が実際に行われた時に成功します。
 function ble/util/expand-alias {
   ret=$1
   local type; ble/util/type type "$ret"
-  if [[ $type == alias ]]; then
-    local data; ble/util/assign data 'LC_ALL=C alias "$ret"' &>/dev/null
-    [[ $data == 'alias '*=* ]] && builtin eval "ret=${data#alias *=}"
-  fi
+  [[ $type != alias ]] && return 1
+  local data; ble/util/assign data 'LC_ALL=C alias "$ret"' &>/dev/null
+  [[ $data == 'alias '*=* ]] && builtin eval "ret=${data#alias *=}"
 }
 
 if ((_ble_bash>=40000)); then
