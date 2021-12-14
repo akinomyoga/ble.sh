@@ -3802,9 +3802,9 @@ function ble/complete/mandb/.generate-cache-from-man {
 function ble/complete/mandb:help/generate-cache {
   local opts=$1
   local -x cfg_usage= cfg_help=1 cfg_plus= cfg_plus_generate=
-  [[ :$opts: == *:help-usage:* ]] && cfg_usage=1
-  [[ :$opts: == *:usage:* ]] && cfg_usage=1 cfg_help=
-  ble/string#match ":$opts:" ':plus-option(=[^:]+)?:' &&
+  [[ :$opts: == *:mandb-help-usage:* ]] && cfg_usage=1
+  [[ :$opts: == *:mandb-usage:* ]] && cfg_usage=1 cfg_help=
+  ble/string#match ":$opts:" ':plus-options(=[^:]+)?:' &&
     cfg_plus=1 cfg_plus_generate=${BASH_REMATCH[1]:1}
 
   local rex_argsep='(\[?[:=]|  ?|\[)'
@@ -4068,53 +4068,6 @@ function ble/complete/mandb:_parse_help/generate-cache {
   fi >| "$subcache"
 }
 
-builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_complete_mandb_opts}"
-function ble/complete/mandb/opt {
-  local spec=$1 command; shift
-  for command; do
-    ble/gdict#set _ble_complete_mandb_opts "$command" "$spec"
-  done
-}
-function ble/complete/mandb/initialize-mandb-opts {
-  ble/complete/mandb/opt help                    printf
-  ble/complete/mandb/opt no-man:help             bind
-  ble/complete/mandb/opt no-man:help:help-usage  complete
-
-  local conditional_operators='
-    -eq (NUM1 -eq NUM2)      Arithmetic comparison ==.
-    -ne (NUM1 -ne NUM2)      Arithmetic comparison !=.
-    -lt (NUM1 -lt NUM2)      Arithmetic comparison < .
-    -le (NUM1 -le NUM2)      Arithmetic comparison <=.
-    -gt (NUM1 -gt NUM2)      Arithmetic comparison > .
-    -ge (NUM1 -ge NUM2)      Arithmetic comparison >=.
-    -nt (FILE1 -nt FILE2)    True if file1 is newer than file2 (according to modification date).
-    -ot (FILE1 -ot FILE2)    True if file1 is older than file2.
-    -ef (FILE1 -ef FILE2)    True if file1 is a hard link to file2.'
-  ble/complete/mandb/opt ignore-double-hyphen:help=%'help test':help=@"$conditional_operators" '[['
-
-  local test_operators=$conditional_operators'
-    -a (EXPR1 -a EXPR2)      True if both expr1 AND expr2 are true.
-    -a (EXPR1 -o EXPR2)      True if either expr1 OR expr2 is true.'
-  ble/complete/mandb/opt ignore-double-hyphen:help=%'help test':help=@"$test_operators"        'test' '['
-
-  ble/complete/mandb/opt no-man:help:stop-after-argument:plus-option=aAilnrtux declare typeset local
-  ble/complete/mandb/opt no-man:help:stop-after-argument local export readonly
-  ble/complete/mandb/opt no-man:help:stop-after-argument alias
-}
-ble/complete/mandb/initialize-mandb-opts
-
-## @fn ble/complete/mandb/get-opts command [default_value]
-##   @var[out] mandb_opts
-function ble/complete/mandb/get-opts {
-  mandb_opts=$2
-  local ret=
-  if ble/gdict#get _ble_complete_mandb_opts "$1" ||
-      { [[ $1 == */*[!/] ]] && ble/gdict#get _ble_complete_mandb_opts "${1##*/}"; }
-  then
-    mandb_opts=:$ret:
-  fi
-}
-
 ## @fn ble/complete/mandb/generate-cache cmdname
 ##   @var[out] ret
 ##     キャッシュファイル名を返します。
@@ -4124,10 +4077,11 @@ function ble/complete/mandb/generate-cache {
   local mandb_cache_dir=$_ble_base_cache/complete.mandb/${lc_messages//'/'/%}
   local fcache=$mandb_cache_dir/$command
 
-  local mandb_opts; ble/complete/mandb/get-opts "$command"
+  local cmdspec_opts; ble/cmdspec/opts#load "$command"
+  [[ :$cmdspec_opts: == *:no-options:* ]] && return 1
 
   # fcache_help
-  if ble/opts#extract-all-optargs help "$mandb_opts" --help; then
+  if ble/opts#extract-all-optargs "$cmdspec_opts" mandb-help --help; then
     local -a helpspecs; helpspecs=("${ret[@]}")
     local subcache=$mandb_cache_dir/help.d/$command
     if ! [[ -s $subcache && $subcache -nt $_ble_base/lib/core-complete.sh ]]; then
@@ -4142,12 +4096,12 @@ function ble/complete/mandb/generate-cache {
           ble/string#split-words helpspec "${helpspec#+}"
           "$command" "${helpspec[@]}" 2>&1
         fi
-      done | ble/complete/mandb:help/generate-cache "$mandb_opts" >| "$subcache"
+      done | ble/complete/mandb:help/generate-cache "$cmdspec_opts" >| "$subcache"
     fi
   fi
 
   # fcache_man
-  if [[ :$mandb_opts: != *:no-man:* ]] && ble/bin#has "$1"; then
+  if [[ :$cmdspec_opts: != *:mandb-disable-man:* ]] && ble/bin#has "$1"; then
     local subcache=$mandb_cache_dir/man.d/$command
     if ! [[ -s $subcache && $subcache -nt $_ble_base/lib/core-complete.sh ]]; then
       ble/util/mkd "${subcache%/*}"
@@ -4233,34 +4187,32 @@ function ble/complete/mandb/load-cache {
     ble/util/mapfile ret < "$ret"
 }
 
-## @fn ble/complete/source:option/.stops-option args...
+## @fn ble/complete/source:option/.is-option-context args...
 ##   args... に "--" などのオプション解釈を停止する様な引数が含まれて
 ##   いないか判定します。
 ##
 ##   @param[in] args...
-##   @var[in] mandb_opts
+##   @var[in] cmdspec_opts
 ##
-function ble/complete/source:option/.stops-option {
-  (($#)) || return 1
+function ble/complete/source:option/.is-option-context {
+  #(($#)) || return 0
 
-  local reject= rexreq=
-  [[ :$mandb_opts: != *:ignore-double-hyphen:* ]] && reject=--
-  if [[ :$mandb_opts: == *:stop-after-argument:* ]]; then
-    rexreq='^-.+'
-    if ble/string#match ":$mandb_opts:" ':plus-option(=[^:]*)?:'; then
-      rexreq='^[-+].+'
-    fi
+  local rexrej rexreq stopat
+  ble/progcolor/stop-option#init "$cmdspec_opts"
+  if [[ $stopat ]] && ((stopat<=$#)); then
+    return 1
+  elif [[ ! $rexrej$rexreq ]]; then
+    return 0
   fi
-  [[ $reject$rexreq ]] || return 1
 
   local word ret
   for word; do
     ble/syntax:bash/simple-word/is-simple "$word" &&
       ble/syntax:bash/simple-word/eval "$word" noglob &&
-      [[ $reject && $ret == $reject || $rexreq && ! ( $ret =~ $rexreq ) ]] &&
-      return 0
+      ble/progcolor/stop-option#test "$ret" &&
+      return 1
   done
-  return 1
+  return 0
 }
 
 function ble/complete/source:option {
@@ -4294,12 +4246,12 @@ function ble/complete/source:option {
   done
   local -a entries; entries=("${ret[@]}")
 
-  local ret mandb_opts=
+  local ret cmdspec_opts=
   ble/syntax:bash/simple-word/is-simple "$cmd" &&
     ble/syntax:bash/simple-word/eval "$cmd" noglob &&
-    ble/complete/mandb/get-opts "$ret"
+    ble/cmdspec/opts#load "$ret"
   # "--" や非オプション引数など、オプション無効化条件をチェック
-  ble/complete/source:option/.stops-option "${prev_args[@]}" && return 1
+  ble/complete/source:option/.is-option-context "${prev_args[@]}" || return 1
 
   local entry fs=$_ble_term_FS has_desc=
   for entry in "${entries[@]}"; do

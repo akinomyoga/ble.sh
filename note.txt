@@ -1293,6 +1293,9 @@ bash_tips
 
   * bash-dev: "help test" の -n の引数に STRING が二回登場している。
 
+    →と思ったが、これは分かった。 [[ -n STRING ]] と [[ STRING ]] の二種類の指定の仕方を
+    両方載せているというだけの話である。
+
 2021-09-22
 
   * bash-it で気になる事
@@ -1622,13 +1625,37 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2021-12-14
+
+  * compat: RLogin で ble-detach した後に modifyOtherKeys の状態がおかしい。
+    bash --norc してもおかしい。RLogin である事は検出できている。
+
+  * compat: terminator で statusline で表示が崩れる
+
+  * compat: mlterm 起動時に表示が乱れる with statusline
+
+  * C-backspace の問題
+
+    https://github.com/akinomyoga/ble.sh/issues/94
+    https://github.com/akinomyoga/ble.sh/issues/104
+    https://github.com/msys2/MSYS2-packages/pull/2490
+    https://github.com/microsoft/terminal/issues/755
+
+    以前に色々の端末の動作を調べたと思ったが記録が全く残っていない。辛うじて上
+    記の MSYS2 にどのようなパターンがあったかが記されているが、それぞれどの端末
+    がどう振る舞っていたかの情報はない。改めて調べる。→ wiki にまとめた。
+
+    うーん。^? と ^H が異なる形に bind されているという事は。。。どうしようもな
+    い。既定では両方とも backspace だと思って置くしかない。ユーザーが自分で設定
+    をする時にちゃんと判定するのが良い。
+
+    もしくは端末を自動的に判定して C-h, C-_, etc を C-BS に置き換える設定を行う
+    という事も考えられる。
+
 2021-12-11
 
   * declare の引数チェックをもっと真面目に実装する。chroma のインターフェイス
     設計の足がかりにする。
-
-    * refactor: mandb_opts をキャッシュする様にする。progcolor_optctx と同様に。
-      これは declare のより詳細な実装で mandb_opts を参照したいから。
 
     * wattr=- (未着色) の時にのみ着色しているが、実際には一つでも未着色があった
      らそれ以降の引数に対して与える影響を考慮に入れなければならない。但し、これ
@@ -1641,25 +1668,6 @@ bash_tips
     * declare: -f, -F が含まれる場合には関数名として任意の名前を含む事ができる。
       というかオプション名も含む事ができる? (declare -F -f とした時の解釈はどちら
       になるのだろうか?)
-
-  * refactor: mandb_opts はコマンド一般用に転化しても良いのではないか。その時
-    には cmdspec に移動して、更にそれを core-complete から読み込む様にすれば
-    良い。と思ったが help, help-usage 等は名前的には mandb_opts 専用の物である。
-    名前を変更する必要があるかもしれない。
-
-    或いは、help:help-usage 等 mandb 専用のオプションはそれ専用の配列に格納する?
-
-    取り敢えず現在使われているオプションについて整理する。また、将来的に使い
-    そうなオプションについても考える。
-
-      no-man
-      help
-      help-usage
-      ignore-double-hyphen
-      stop-after-argument
-      plus-option=aAilnrtux
-
-    うーん。これは別項目で対応するべき事の気がする。
 
   * refactor: highlight-variable というインターフェイスを作る。
 
@@ -1676,6 +1684,9 @@ bash_tips
 
   * PROMPT_COMMAND / trap DEBUG で問題が起こる? (found by rashad-moves)
     https://github.com/rashad-moves/HomeConfigurationFiles/commit/efbac4153fd5021f1bc00d42c618fd9d6f4090b9
+
+  * NixOS で皆が readlink 周りに修正を入れている
+    https://github.com/peterzky/peterzky-overlay/commit/7b98f05e9b8f84f2d43d84db6b2d76c8e93a38df#diff-34e5f3d20be258f6630e6113d3e1409be74cae463b58eb52b5ebe493e9ee2309R20
 
   * complete (source:rhs): 変数名依存の補完に対応しても良いのでは。
 
@@ -5650,6 +5661,44 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-12-15
+
+  * progcolor: mandb_opts をキャッシュする様にする [#D1707]
+
+    progcolor_optctx と同様に。これは declare のより詳細な実装で mandb_opts を
+    参照したいから。
+
+  * refactor: mandb_opts はコマンド一般用に転化しても良いのではないか [#D1706]
+
+    その時には cmdspec に移動して、更にそれを core-complete から読み込む様にす
+    れば良い。と思ったが help, help-usage 等は名前的には mandb_opts 専用の物で
+    ある。名前を変更する必要があるかもしれない。
+
+    或いは、help:help-usage 等 mandb 専用のオプションはそれ専用の配列に格納する?
+
+    取り敢えず現在使われているオプションについて整理する。また、将来的に使い
+    そうなオプションについても考える。
+
+      mandb-disable-man
+      mandb-help
+      mandb-help-usage
+      mandb-usage
+
+      plus-options=xxxxx
+      no-options
+      stop-options-at=IWORD
+      stop-options-on=REX_STOP
+      stop-options-unless=REX_CONT
+      stop-options-postarg
+      disable-double-hyphen
+
+      加えて no-options も追加するべきかも
+
+    →cmdspec に移動して cmdspec_opts に名前を変更した。mandb 特有の項目には
+    mandb- の接頭辞を付ける事にした。
+
+    * done: 説明を書く
 
 2021-12-12
 

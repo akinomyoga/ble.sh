@@ -6550,42 +6550,106 @@ function ble/progcolor/eval-word {
   return 0
 }
 
+## @fn ble/progcolor/load-cmdspec-opts
+##   @var[out] cmdspec_opts
+function ble/progcolor/load-cmdspec-opts {
+  if [[ $progcolor_cmdspec_opts ]]; then
+    cmdspec_opts=$progcolor_cmdspec_opts
+  else
+    ble/cmdspec/opts#load "${comp_words[0]}"
+    progcolor_cmdspec_opts=${cmdspec_opts:-:}
+  fi
+}
+
+## @fn ble/progcolor/stop-option#init cmdspec_opts
+##   @var[out] rexrej rexreq stopat
+function ble/progcolor/stop-option#init {
+  rexrej='^--$' rexreq= stopat=
+  local cmdspec_opts=$1
+  if [[ $cmdspec_opts ]]; then
+    # copied from ble/complete/source:option/.stops-option
+    if [[ :$cmdspec_opts: == *:no-options:* ]]; then
+      stopat=0
+      return 1
+    elif ble/opts#extract-first-optarg "$cmdspec_opts" stop-options-at && [[ $ret ]]; then
+      ((stopat=ret))
+      return 1
+    fi
+
+    local ret
+    if ble/opts#extract-first-optarg "$cmdspec_opts" stop-options-on && [[ $ret ]]; then
+      rexrej=$ret
+    elif [[ :$cmdspec_opts: == *:disable-double-hyphen:* ]]; then
+      rexrej=
+    fi
+    if ble/opts#extract-first-optarg "$cmdspec_opts" stop-options-unless && [[ $ret ]]; then
+      rexreq=$ret
+    elif [[ :$cmdspec_opts: == *:stop-options-postarg:* ]]; then
+      rexreq='^-.+'
+      ble/opts#has "$cmdspec_opts" plus-options && rexreq='^[-+].+'
+    fi
+  fi
+}
+## @fn ble/progcolor/stop-option#test value
+##   @var[in] rexrej rexreq
+function ble/progcolor/stop-option#test {
+  [[ $rexrej && $1 =~ $rexrej || $rexreq && ! ( $1 =~ $rexreq ) ]]
+}
+
+## @fn ble/progcolor/is-option-context
+##   現在の単語位置がオプションが解釈される文脈かどうかを判定します。
+##
+##   @var progcolor_iword
+##     現在の単語の位置。
+##
+##   @var progcolor_optctx[0]
+##     空の時には未だオプションを初期化していない事を示します。
+##     現在のコマンドについて何処までオプション停止条件を検査済みかを記録します。
+##
+##   @var progcolor_optctx[1]
+##     負の時は常にオプションが有効である事を示す。
+##     0の時は常にオプションが無効である事を示す。
+##     正の時はその位置以前の引数でオプションが有効である事を示す。
+##
+##   @var progcolor_optctx[2]
+##   @var progcolor_optctx[3]
+##   @var progcolor_optctx[4]
+##     それぞれ抽出済みの rexrej rexreq stopat の値を記録します。
+##     ble/progcolor/stop-option#init によって初期化された値のキャッシュです。
+##
 function ble/progcolor/is-option-context {
   # 既にオプション停止位置が計算済みの場合
   if [[ ${progcolor_optctx[1]} ]]; then
     # Note: 等号は停止を引き起こした引数 -- 自体の時 (オプションとして有効)
-    ((progcolor_iword<=progcolor_optctx[1]))
+    ((progcolor_optctx[1]<0?1:(progcolor_iword<=progcolor_optctx[1])))
     return $?
   fi
 
-  local reject rexreq
+  local rexrej rexreq stopat
   if [[ ! ${progcolor_optctx[0]} ]]; then
     progcolor_optctx[0]=1
-
-    reject=-- rexreq=
-    if ble/is-function ble/complete/mandb/get-opts; then
-      # copied from ble/complete/source:option/.stops-option
-      local mandb_opts; ble/complete/mandb/get-opts "${comp_words[0]}"
-      [[ :$mandb_opts: != *:ignore-double-hyphen:* ]] && reject=--
-      if [[ :$mandb_opts: == *:stop-after-argument:* ]]; then
-        rexreq='^-.+'
-        if ble/string#match ":$mandb_opts:" ':plus-option(=[^:]*)?:'; then
-          rexreq='^[-+].+'
-        fi
-      fi
+    local cmdspec_opts
+    ble/progcolor/load-cmdspec-opts
+    ble/progcolor/stop-option#init "$cmdspec_opts"
+    if [[ ! $rexrej$rexreq ]]; then
+      progcolor_optctx[1]=${stopat:--1}
+      ((progcolor_optctx[1]<0?1:(progcolor_iword<=progcolor_optctx[1])))
+      return $?
     fi
-    progcolor_optctx[2]=$reject
+    progcolor_optctx[2]=$rexrej
     progcolor_optctx[3]=$rexreq
+    progcolor_optctx[4]=$stopat
   else
-    reject=${progcolor_optctx[2]}
+    rexrej=${progcolor_optctx[2]}
     rexreq=${progcolor_optctx[3]}
+    stopat=${progcolor_optctx[4]}
   fi
-  [[ $reject$rexreq ]] || return 0
+  [[ $stopat ]] && ((progcolor_iword>stopat)) && return 1
 
   local iword
   for ((iword=progcolor_optctx[0];iword<progcolor_iword;iword++)); do
     ble/progcolor/eval-word "$iword" "$highlight_eval_opts"
-    if [[ $reject && $ret == $reject || $rexreq && ! ( $ret =~ $rexreq ) ]] ; then
+    if ble/progcolor/stop-option#test "$ret"; then
       progcolor_optctx[1]=$iword
       return 1
     fi
@@ -6954,6 +7018,9 @@ function ble/progcolor {
   # cache used by "eval-word"
   local -a progcolor_stats=()
   local -a progcolor_wvals=()
+
+  # cache used by "load-cmdspec-opts"
+  local progcolor_cmdspec_opts=
 
   # cache used by "is-option-context"
   local -a progcolor_optctx=()

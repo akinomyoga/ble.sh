@@ -1393,11 +1393,17 @@ function ble/path#contains {
   builtin eval "[[ :\${$1}: == *:\"\$2\":* ]]"
 }
 
-## @fn ble/opts#extract-first-optarg key opts [default_value]
+## @fn ble/opts#has opts key
+function ble/opts#has {
+  local rex=':'$2'[=[]'
+  [[ :$1: =~ $rex ]]
+}
+
+## @fn ble/opts#extract-first-optarg opts key [default_value]
 function ble/opts#extract-first-optarg {
   ret=()
-  local rex=':'$1'(=[^:]*)?:'
-  [[ :$2: =~ $rex ]] || return 1
+  local rex=':'$2'(=[^:]*)?:'
+  [[ :$1: =~ $rex ]] || return 1
   if [[ ${BASH_REMATCH[1]} ]]; then
     ret=${BASH_REMATCH[1]:1}
   elif [[ ${3+set} ]]; then
@@ -1405,11 +1411,11 @@ function ble/opts#extract-first-optarg {
   fi
   return 0
 }
-## @fn ble/opts#extract-last-optarg key opts [default_value]
+## @fn ble/opts#extract-last-optarg opts key [default_value]
 function ble/opts#extract-last-optarg {
   ret=()
-  local rex='.*:'$1'(=[^:]*)?:'
-  [[ :$2: =~ $rex ]] || return 1
+  local rex='.*:'$2'(=[^:]*)?:'
+  [[ :$1: =~ $rex ]] || return 1
   if [[ ${BASH_REMATCH[1]} ]]; then
     ret=${BASH_REMATCH[1]:1}
   elif [[ ${3+set} ]]; then
@@ -1417,7 +1423,7 @@ function ble/opts#extract-last-optarg {
   fi
   return 0
 }
-## @fn ble/opts#extract-all-optargs key opts [default_value]
+## @fn ble/opts#extract-all-optargs opts key [default_value]
 ##   extract all values from the string OPTS of the form
 ##   "...:key=value1:...:key=value2:...:key:...".
 ##
@@ -1428,7 +1434,7 @@ function ble/opts#extract-last-optarg {
 ##   @arr[out] ret
 function ble/opts#extract-all-optargs {
   ret=()
-  local value=:$2: rex=':'$1'(=[^:]*)?(:.*)$' count=0
+  local value=:$1: rex=':'$2'(=[^:]*)?(:.*)$' count=0
   while [[ $value =~ $rex ]]; do
     ((count++))
     if [[ ${BASH_REMATCH[1]} ]]; then
