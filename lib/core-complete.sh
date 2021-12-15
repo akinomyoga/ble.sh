@@ -3527,7 +3527,7 @@ function ble/complete/mandb/.generate-cache-from-man {
 
     {
       sub(/[[:space:]]+$/, "");
-      REQ = match($0, /^\.[_[:alnum:]]+/) ? substr($0, 2, RLENGTH) : "";
+      REQ = match($0, /^\.[_[:alnum:]]+/) ? substr($0, 2, RLENGTH - 1) : "";
     }
 
     REQ ~ /^(S[Ss]|S[Hh]|Pp)$/ { flush_topic(); next; }
@@ -3611,7 +3611,9 @@ function ble/complete/mandb/.generate-cache-from-man {
     # Format #4: [[.IP "key" 4 \n .IX Item "..."]+ \n .PD \n desc]
     # This format is used by "wget".
     /^\.IP[[:space:]]+".*"([[:space:]]+[0-9]+)?$/ && fmt3_state != "key" {
-      if (!(g_keys_count && g_desc == "")) flush_topic();
+      if (mode != "fmt4_desc")
+        if (!(g_keys_count && g_desc == "")) flush_topic();
+
       gsub(/^\.IP[[:space:]]+"|"([[:space:]]+[0-9]+)?$/, "");
       register_key($0);
       mode = "fmt4_desc";
@@ -3714,7 +3716,7 @@ function ble/complete/mandb/.generate-cache-from-man {
       prev_optarg = "";
       for (i = n; i > 0; i--) {
         spec = specs[i];
-        sub(/,[[:space:]]*$/, "", spec);
+        sub(/,[[:space:]]+$/, "", spec);
 
         # Exclude non-options.
         # Exclude FS (\034) because it is used for separators in the cache format.
@@ -4123,6 +4125,7 @@ function ble/complete/mandb/generate-cache {
   if [[ $update ]]; then
     local fs=$_ble_term_FS
     ble/bin/awk -F "$_ble_term_FS" '
+      BEGIN { plus_count = 0; nodesc_count = 0; }
       $4 == "" {
         if ($1 ~ /^\+/) {
           plus_name[plus_count] = $1;

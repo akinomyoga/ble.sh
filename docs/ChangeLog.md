@@ -80,9 +80,9 @@
   - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) b1be640
 - menu (menu-style:desc): improve descriptions (motivated by Shahabaz-Bagwan) `#D1685` 4de1b45
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
-- term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` 0000000
-- complete: requote for more compact representations on full completions `#D1700` 0000000
-- complete: improve support for `declare` and `[[ ... ]]` `#D1701` 0000000
+- term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
+- complete: requote for more compact representations on full completions `#D1700` a1859b6
+- complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
   - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` 0000000
   - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0000000
  
@@ -125,9 +125,9 @@
 - main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 88e2df5
 - mandb: integrate `mandb` with `bash-completion` (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) `#D1688` c1cd666
 - syntax: do not start argument completions immediately after previous word (reported by EmilySeville7cfg) `#D1690` 371a5a4
-  - syntax: revert 371a5a4 and generate empty completion source on syntax error `#D1609` 0000000
+  - syntax: revert 371a5a4 and generate empty completion source on syntax error `#D1609` e09fcab
 - syntax: strictly check variable names of `for`-statements `#D1692` d056547
-- widget `self-insert`: untranslate control chars and insert the last character `#D1696` 0000000
+- widget `self-insert`: untranslate control chars and insert the last character `#D1696` 5ff3021
 
 ## Fixes
 
@@ -143,8 +143,10 @@
   - mandb: use `manpath` and `man -w`, and read `/etc/man_db.conf` and `~/.manpath` `#D1637` 2365e09
   - mandb: support the formats of the man pages of `awk` and `sed` (reported by bbyfacekiller) `#D1687` 6932018
   - mandb: generate completions of options also for the empty word `#D1689` b90ac78
-  - mandb: support the man-page formats of `wget`, `fish`, and `ping` (reported by bbyfacekiller) `#D1687` 0000000
-  - mandb: carry optarg for e.g. `-a, --accept=LIST` `#D1687` 0000000
+  - mandb: support the man-page formats of `wget`, `fish`, and `ping` (reported by bbyfacekiller) `#D1687` a79280e
+  - mandb: carry optarg for e.g. `-a, --accept=LIST` `#D1687` 23d5657
+  - mandb: parse `--help` for specified commands `#D1693` e1ad2f1
+  - mandb: fix small issues of man-page analysis `#D1708` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -205,7 +207,7 @@
 
 - blerc: add all the missing options `#D1667` 0228d76
 - blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 26aaf87
-- README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 0000000
+- README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 6123551
 
 ## Optimization
 
@@ -253,8 +255,8 @@
 - decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680` a6b4e2c
 - complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` f985b9a
 - stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 82f74f0
-- builtin: print usages of emulated builtins on option errors `#D1694` 0000000
-- decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` 0000000
+- builtin: print usages of emulated builtins on option errors `#D1694` 6f74021
+- decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
 
 ## Internal changes and fixes
 

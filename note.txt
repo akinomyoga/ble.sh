@@ -1678,10 +1678,6 @@ bash_tips
   * cmdspec: cd 関連の cmdinfo は core-cmdspec ではなくて contrib/cmdspec/* 辺
     りに移動する?
 
-  * [BUG} mandb: declare で空の completion が生成されている。
-
-  * [BUG] wget の man page 抽出で short option の desc が空になっている。
-
   * PROMPT_COMMAND / trap DEBUG で問題が起こる? (found by rashad-moves)
     https://github.com/rashad-moves/HomeConfigurationFiles/commit/efbac4153fd5021f1bc00d42c618fd9d6f4090b9
 
@@ -5663,6 +5659,31 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-15
+
+  * mandb: オプション候補生成で変な動作が幾つかある [#D1708]
+
+    * ...] という謎の項目が生成されている at man.d/man
+
+      どうやら以下の項目から生成されている様子だ。
+
+      | -m system[,...], --systems=system[,...]
+      |
+      |        man を含めます。このオプションは $SYSTEM 環境変数を上書きします。
+
+      うーん。オプションを分割する時に /,\s*/ ではなくて /,\s+/ で分割する事に
+      した。スペース無しで記述するという事は考えにくいだろう。或いは
+      --arg=(hello, world) みたいになっている可能性もなくはないが面倒なので考え
+      ない。OK
+
+    * fixed: declare で空の completion が生成されている。
+
+      空の候補については集約の際に混入している様だ → これは修正した。
+      nodesc のオプションを集める時に name[count++] としていたのを name[count];
+      count++に分けた所、count を初期化していなかったので空文字列の添字に格納さ
+      れる様になってしまっていたのが原因だった。
+
+    * fixed: wget の man page 抽出で short option の desc が空になっている。
+      これは man.d/man 由来である → 修正した。
 
   * progcolor: mandb_opts をキャッシュする様にする [#D1707]
 
