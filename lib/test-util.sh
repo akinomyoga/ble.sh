@@ -1403,7 +1403,7 @@ ble/test ble/util/is-running-in-subshell exit=1
   ble/util/getpid
   ble/test '[[ $BASHPID != $$ ]]'
   getpid
-  ble/test '[[ $BASHPID == $ppid ]]'
+  ble/test code:'ret=$BASHPID' ret="$ppid"
   pid1=$BASHPID
   (
     dummy=modification_to_environment.2

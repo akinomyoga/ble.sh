@@ -1910,7 +1910,7 @@ function ble/complete/source:command/gen {
       if local rex='^\[([0-9]+)\]'; [[ ${joblist[i]} =~ $rex ]]; then
         joblist[i]=%${BASH_REMATCH[1]}
       else
-        unset -v 'joblist[i]'
+        builtin unset -v 'joblist[i]'
       fi
     done
     joblist=("${joblist[@]}")
@@ -3251,7 +3251,7 @@ function ble/complete/mandb/initialize-manpath {
   ble/string#split manpath : "$manpath"
   if ((${#manpath[@]}==0)); then
     local -a manpath_mandatory=()
-    builtin eval "${_ble_util_dict_declare//NAME/manpath_map}"
+    builtin eval -- "${_ble_util_dict_declare//NAME/manpath_map}"
     ble/complete/mandb/load-mandb-conf /etc/man_db.conf
     ble/complete/mandb/load-mandb-conf ~/.manpath
 
@@ -3267,7 +3267,7 @@ function ble/complete/mandb/initialize-manpath {
       done
     fi
 
-    builtin eval "${_ble_util_dict_declare//NAME/mark}"
+    builtin eval -- "${_ble_util_dict_declare//NAME/mark}"
 
     local paths path ret
     ble/string#split paths : "$PATH"

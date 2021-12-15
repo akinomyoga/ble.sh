@@ -1095,7 +1095,7 @@ function sub:scan/list-command {
 function sub:scan/builtin {
   echo "--- $FUNCNAME $1 ---"
   local command=$1 esc='(\[[ -?]*[@-~])*'
-  sub:scan/list-command --exclude-this --exclude={generate-release-note.sh,lib/test-*.sh} "$command" "${@:2}" |
+  sub:scan/list-command --exclude-this --exclude={generate-release-note.sh,lib/test-*.sh,make,ext} "$command" "${@:2}" |
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
@@ -1227,6 +1227,7 @@ function sub:scan {
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\bstty[[:space:]]+echoZd
       \Zecho \$PPIDZd
+      \Zmandb-help=%'\''help echo'\''Zd
       g'
   #sub:scan/builtin '(compopt|type|printf)'
   sub:scan/builtin 'bind' |
@@ -1235,6 +1236,7 @@ function sub:scan {
       \Zline = "bind"Zd
       \Z'\''  bindZd
       \Z\(bind\)    ble-bindZd
+      \Zble/cmdspec/opts .* bind$Zd
       g'
   sub:scan/builtin 'read' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -1256,6 +1258,7 @@ function sub:scan {
       \Ztext = "eval -- \$'\''Zd
       \Zcmd '\''eval -- %q'\''Zd
       \Z\$\(eval \$\(call .*\)\)Zd
+      \Z^[[:space:]]*local rex_[a-zA-Z0-9_]+='\''[^'\'']*'\''[[:space:]]*$Zd
       g'
   sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//

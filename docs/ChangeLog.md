@@ -284,6 +284,7 @@
 - util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 5967d6c
 - util: fix leak variables `#D1643` fcf634b
 - edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663` 1af0800
+- make: update lint check `#D1709` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
