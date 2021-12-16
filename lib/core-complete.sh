@@ -2694,7 +2694,7 @@ function ble/complete/progcomp/.parse-complete {
   flag_noquote=
   local compdef=${1#'complete '}
 
-  local arg optarg rex='^([^][*?;&|[:space:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:space:]]+'
+  local arg optarg rex='^([^][*?;&|[:space:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:space:]]+' # #D1709 safe (WA gawk 4.0.2)
   while ble/complete/progcomp/.parse-complete/next; do
     case $arg in
     (-*)
@@ -3809,8 +3809,9 @@ function ble/complete/mandb:help/generate-cache {
   ble/string#match ":$opts:" ':plus-options(=[^:]+)?:' &&
     cfg_plus=1 cfg_plus_generate=${BASH_REMATCH[1]:1}
 
+  local space=$' \t' # for #D1709 (WA gawk 4.0.2)
   local rex_argsep='(\[?[:=]|  ?|\[)'
-  local rex_option='[-+](,|[^]:=[:space:],[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|[^-[:space:]])[^[:space:]]*)?'
+  local rex_option='[-+](,|[^]:='$space',[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|[^-[:space:]])[^[:space:]]*)?'
   ble/bin/awk -F "$_ble_term_FS" '
     BEGIN {
       cfg_help = ENVIRON["cfg_help"];
@@ -3884,7 +3885,7 @@ function ble/complete/mandb:help/generate-cache {
           gsub(/^[[:space:]]+|[[:space:]]+$/, "", optspec1);
 
           # optspec1: "--option optarg", "-f[optarg]", "-xzvf", etc.
-          if (match(optspec1, /^[-+][^]:=[:space:][]+/)) {
+          if (match(optspec1, /^[-+][^]:='"$space"'[]+/)) {
             option = substr(optspec1, RSTART, RLENGTH);
             optarg = substr(optspec1, RSTART + RLENGTH);
             n = RLENGTH;

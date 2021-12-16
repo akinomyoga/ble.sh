@@ -257,6 +257,7 @@
 - stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 82f74f0
 - builtin: print usages of emulated builtins on option errors `#D1694` 6f74021
 - decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
+- complete: work around a false warning messages of gawk-4.0.2 `#D1709` 0000000
 
 ## Internal changes and fixes
 

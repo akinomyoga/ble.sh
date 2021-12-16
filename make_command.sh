@@ -1135,6 +1135,11 @@ function sub:scan/bash301bug-array-element-length {
   grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} | grep -Ev '^([^#]*[[:space:]])?#'
 }
 
+function sub:scan/gawk402bug-regex-check {
+  echo "--- $FUNCNAME ---"
+  grc --color '\[\^?\][^]]*\[:[^]]*:\].[^]]*\]' --exclude={test,ext,\*.md} | grep -Ev '#D1709 safe'
+}
+
 function sub:scan/assign {
   echo "--- $FUNCNAME ---"
   local command="$1"
@@ -1284,6 +1289,7 @@ function sub:scan {
   sub:scan/check-todo-mark
   sub:scan/bash300bug
   sub:scan/bash301bug-array-element-length
+  sub:scan/gawk402bug-regex-check
   sub:scan/array-count-in-arithmetic-expression
   sub:scan/unset-variable |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
