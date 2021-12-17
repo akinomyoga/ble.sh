@@ -4660,6 +4660,7 @@ function ble/complete/.fignore/filter {
   for pat in "${_fignore[@]}"; do
     [[ $1 == *"$pat" ]] && return 1
   done
+  return 0
 }
 
 ## @fn ble/complete/candidates/.pick-nearest-sources

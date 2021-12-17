@@ -202,6 +202,8 @@
 - util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 61705bf
 - trace: fix wrong positioning of the ellipses on overflow `#D1684` b90ac78
 - complete: do not generate keywords for quoted command names `#D1691` 60d244f
+- complete: fix empty completions with `FIGNORE` (reported by seanfarley) `#D1711` 0000000
+
 
 ## Documentation
 

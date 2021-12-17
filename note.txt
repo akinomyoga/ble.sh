@@ -5666,6 +5666,14 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-12-18
+
+  * complete: FIGNORE で全てが棄却されるバグ (reported by seanfarley) [#D1711]
+    https://github.com/akinomyoga/ble.sh/issues/162
+
+    これは極めて単純なバグだった。そもそも実は FIGNORE は今まで全く動いていなかっ
+    たと思われる。
+
 2021-12-16
 
   * menu-complete で 30s かかるという話 (1/2) construct-page のバグ (reported by banoris) [#D1710]
