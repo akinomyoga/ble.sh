@@ -2656,7 +2656,7 @@ function ble/complete/menu/style:align/construct/.measure-candidates-in-page {
       # Note: nowrap が起こるのはすでに wcell == max_wcell の時なので、
       # 改行処理が終わった後に wcell が変化するという事はない。
       local x1=$((ncell%line_ncell*wcell))
-      local ncell_eol=$(((ncell+line_ncell-1)/line_ncell*line_ncell))
+      local ncell_eol=$(((ncell/line_ncell+1)*line_ncell))
       if ((x1>0&&x1+w>=cols)); then
         # 行送り
         ((ncell=ncell_eol+cand_ncell))
