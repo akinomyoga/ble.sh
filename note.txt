@@ -5668,6 +5668,130 @@ bash_tips
 
 2021-12-16
 
+  * menu-complete で 30s かかるという話 (1/2) construct-page のバグ (reported by banoris) [#D1710]
+    https://github.com/banoris/dotfiles/issues/11
+
+    確かに ble.sh は bash で書かれているし遅いが其処まで遅いかっただろうか。自
+    分の手許でやってみた所、確かに bash-completion を有効にしていると 10k files
+    に対して 15s かかっている。調べてみると良いだろうという気がする。
+
+    ble/complete/progcomp/.filter-and-split-compgen は 0.1s
+
+    うーん。_minimal 自体の呼び出しが 4 秒かかっている。ble.sh の外では 0.2s な
+    のでこの違いは大きい。一体何処から違いが出てくるのだろうか。
+
+    % →実際に _minimal の時間を計測しようとしたら _minimal 自体はそんなに遅く
+    % なかった。実は、それよりは ble/util/assign の読み取りが遅いのではないかと
+    % いう疑惑。と思ったらそうでもなかった。_filedir が実際に遅くなっている。
+
+    * 何やら _filedir が勝手に置き換わっていると思っていたら
+      /etc/bash_completion/redefine_filedir とかいう変なファイルによって実装が
+      置き換わっていた。うーん。おかしな事をする物である。
+
+      古い実装では while read -r line; do done で一つずつ行を読み出しているので
+      遅かった。これを置き換えたら _minimal の呼び出しにかかる時間はほぼ 0 になっ
+      た。然しそれでもやはり 13s ぐらいは待たされる様である。
+
+    * その他の bottleneck は、2) yield ループが遅い、3) 一時ページに沢山表示し
+      ようとしている為に menu 配置の計算が遅いという事がある。
+
+      yield ループに関してはどうしようもない。絞り込みをする為には結局事前に実
+      行しなければならないので、スキップする事はできない。とすると、awk 等を使っ
+      て加速するという事も考えられるが、処理を重複して実装するのも面倒である。
+      それでも場合によってはそれを考えても良いのかもしれないとは思う。
+
+    * menu 配置で初期化遅延が効いていなかったバグ
+
+      | menu 配置に関してもなかなか難しい所がある。C言語で書ければそれで終わりな
+      | のかもしれないがそれも難しい。或いはより高速な Bash スクリプトのインター
+      | プリタについても考えてみるが、そもそも制限された Bash の機能を使って実装
+      | しているので不自然な実装になっている。劇的に早くなるとは思えないのが現状
+      | である。
+      |
+      | 実際に測定する。
+      |
+      | [1639646039.075008]compgen:1
+      | [1639646039.076485]compgen-helper:2 <_minimal echo  echo>
+      | [1639646039.101227]compgen-helper:3
+      | [1639646039.111599]compgen:2
+      | [1639646039.111884]compgen:3
+      | [1639646039.139718]compgen:4
+      | [1639646039.139801]compgen:5
+      | [1639646041.294533]compgen:6
+      | [1639646041.464829]menu#construct:1
+      | [1639646049.977139]menu#construct:2
+      |
+      | 1. compgen 呼び出しは現在は 0.04s
+      | 2. filter-and-split は 0.028s
+      | 3. yield に 2.15s かかっている
+      | 4. construct-page には 8.5s かかっている。
+      |
+      | やはり一番重いのは construct-page である。
+      |
+      | complete_menu_style や complete_menu_maxlines を設定して1ページに表示する
+      | 項目の数を制限するしかない気がする。念の為、1ページに表示する項目の数を制
+      | 限した時に改善するかどうか確認はしておく
+      |
+      | →うーん。全然改善していない。8.3s である。もしかすると全項目スキャンして
+      | いる可能性がある?
+      |
+      | 調べてみた所、何と全項目を処理している。しかも
+      | .measure-candidates-in-page の時点で全て処理していて、これが最も時間を消
+      | 費している。
+
+      結局 menu 配置に関して頁毎に必要なだけ trace を実行しているつもりだったのが、
+      実は毎回全項目に対して配置計算を実行していたという事が判明した (しかしそう
+      だとしても、耐えられる速度の範囲だったというのは驚きではある)。
+
+      以下の ncell_eol の式を間違えている。
+
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  119)     if [[ $menu_style == align-nowrap ]]; then
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  120)       # Note: nowrap が起こるのはすでに wcell == max_wcell の時なので、
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  121)       # 改行処理が終わった後に wcell が変化するという事はない。
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  122)       local x1=$((ncell%line_ncell*wcell))
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  123)       local ncell_eol=$(((ncell+line_ncell-1)/line_ncell*line_ncell))
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  124)       if ((x1>0&&x1+w>=cols)); then
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  125)         # 行送り
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  126)         ((ncell=ncell_eol+cand_ncell))
+      | 43bb0749 lib/core-complete.sh (Koichi Murase 2019-03-23 21:41:19 +0900  127)       elif ((x1+w<cols)); then
+
+      元を辿ると以下の様に一番最初に頁を実装した時から間違っていたという事の様だ。
+
+      | commit a488e0193927b78ea2066c5d3118ff5a38c6872c
+      | Author: Koichi Murase <myoga.murase@gmail.com>
+      | Date:   Thu Mar 7 18:29:51 2019 +0900
+      |
+      |     complete: support pages of menu/style:{align,dense}
+      |
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2117)     if [[ $menu_style == align-nowrap ]]; then
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2118)       # Note: nowrap が起こるのはすでに wcell == max_wcell の時なので、
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2119)       # 改行処理が終わった後に wcell が変化するという事はない。
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2120)       local x1=$((ncell%line_ncell*wcell))
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2121)       local ncell_eol=$(((ncell+line_ncell-1)/line_ncell*line_ncell))
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2122)       if ((x1>0&&x1+w>=cols)); then
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2123)         # 行送り
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2124)         ((ncell=ncell_eol+cand_ncell))
+      | a488e019 lib/core-complete.sh (Koichi Murase 2019-03-07 18:29:51 +0900 2125)       elif ((x1+w<cols)); then
+
+      取り敢えずこれについては修正した。
+
+    * complete_menu_maxlines を設定したらもっと高速になるか?
+      →恐らく高速になる。
+
+      * 4.0s _filedir       -> 0.04s
+      * 2.2s yield          -> -----
+      * 8.5s construct-page → 2.50s (これは maxlines を設定する事でもっと減らせる)
+
+      うーん。_filedir は外部の問題である。また construct-page は修正したが、全
+      画面表示にしている場合には効果は限定される。yield に関してはまあ、仕方が
+      ないのかもしれない。何れにしても construct-page の修正だけでも適用しても
+      らって、それで様子見する。それでも改善しなかったら yield の高速化について
+      も真面目に考える事にする。
+
+      complete_menu_align
+      complete_menu_maxlines
+      complete_limit
+
   * complete: gawk-4.0.2 workaround (reported by Knusper) [#D1709]
     https://github.com/akinomyoga/ble.sh/issues/161
 
