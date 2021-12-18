@@ -202,6 +202,7 @@
 - util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 61705bf
 - trace: fix wrong positioning of the ellipses on overflow `#D1684` b90ac78
 - complete: do not generate keywords for quoted command names `#D1691` 60d244f
+- menu (menu-style:align): fix the failure of delaying `ble/canvas/trace` on items (motivated by banoris) `#D1710` acc9661
 - complete: fix empty completions with `FIGNORE` (reported by seanfarley) `#D1711` 144ea5d
 - main: fix the message of owner errors of cache directories (reported by zim0369) `#D1712` b547a41
 - util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 0000000
@@ -231,6 +232,7 @@
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
 - decode: cache `inputrc` translations `#D1652` 994e2a5
+- complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` 0000000
 
 ## Compatibility
 

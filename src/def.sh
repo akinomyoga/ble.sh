@@ -73,6 +73,8 @@ blehook/declare syntax_load
 blehook/declare complete_load
 blehook/declare complete_insert
 
+#------------------------------------------------------------------------------
+
 # for compatibility:
 function blehook/.compatibility-ble-0.3 {
   blehook keymap_load+='ble/util/invoke-hook _ble_keymap_default_load_hook'
@@ -109,4 +111,9 @@ function blehook/.compatibility-ble-0.3/check {
 #
 EOF
   fi
+}
+
+# Deprecated names
+function ble/complete/action/inherit-from {
+  ble/complete/action#inherit-from "$@"
 }

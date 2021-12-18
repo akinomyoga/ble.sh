@@ -684,30 +684,35 @@ if ! ble/.check-environment; then
 fi
 
 # src/util で awk を使う
+_ble_bin_awk_type=
 function ble/bin/awk/.instantiate {
   local path q=\' Q="'\''"
   if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
     # Solaris の既定の awk は全然駄目なので /usr/xpg4 以下の awk を使う。
+    _ble_bin_awk_type=xpg4
     function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; }
   elif ble/util/assign path "builtin type -P -- nawk 2>/dev/null" && [[ $path ]]; then
+    _ble_bin_awk_type=nawk
     builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }"
   elif ble/util/assign path "builtin type -P -- mawk 2>/dev/null" && [[ $path ]]; then
+    _ble_bin_awk_type=mawk
     builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
   elif ble/util/assign path "builtin type -P -- gawk 2>/dev/null" && [[ $path ]]; then
+    _ble_bin_awk_type=gawk
     builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
   elif ble/util/assign path "builtin type -P -- awk 2>/dev/null" && [[ $path ]]; then
-    local version type
+    local version
     ble/util/assign version '"$path" --version 2>&1'
     if [[ $version == *'GNU Awk'* ]]; then
-      type=gawk
+      _ble_bin_awk_type=gawk
     elif [[ $version == *mawk* ]]; then
-      type=mawk
+      _ble_bin_awk_type=mawk
     elif [[ $version == 'awk version '[12][0-9][0-9][0-9][01][0-9][0-3][0-9] ]]; then
-      type=nawk
+      _ble_bin_awk_type=nawk
     else
-      type=unknown
+      _ble_bin_awk_type=unknown
     fi
-    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=$type \"\$@\"; }"
+    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
   else
     return 1
   fi

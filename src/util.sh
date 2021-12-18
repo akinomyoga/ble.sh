@@ -469,10 +469,10 @@ function ble/debug/print-variables/.append-array {
 function ble/debug/print-variables {
   (($#)) || return 0
 
-  local flags= tag=
+  local flags= tag= arg
   local -a _ble_local_vars=()
   while (($#)); do
-    local arg=$1; shift
+    arg=$1; shift
     case $arg in
     (-t) tag=$1; shift ;;
     (-*) ble/util/print "print-variables: unknown option '$arg'" >&2
@@ -2211,6 +2211,10 @@ function ble/util/writearray {
       REP_SL = "\\";
       if (IS_XPG4) REP_SL = "\\\\";
 
+      REP_DBL_SL = "\\\\";
+      sub(/.*/, REP_DBL_SL, tmp);
+      if (tmp == "\\") REP_DBL_SL = "\\\\\\\\";
+
       s2i_initialize();
       c2s_initialize();
       es_initialize();
@@ -2218,6 +2222,10 @@ function ble/util/writearray {
       decl = "";
     }
 
+    # Note: "str" must not contain "&" or "\\\\".  When "&" is
+    # present, the escaping rule for "\\" changes in some awk.
+    # Now there is no problem because only DELIM (one character) is
+    # currently passed.
     function str2rep(str) {
       if (IS_XPG4) sub(/\\/, "\\\\\\\\", str);
       return str;
@@ -2305,9 +2313,9 @@ function ble/util/writearray {
           head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
           s = substr(s, RLENGTH + 1);
         } else if (match(s, /^c[ -~]/)) {
-#%        # \\c[ -~] (非ASCIIは未対応)
+          # \\c[ -~] (non-ascii characters are unsupported)
           c = es_s2c[substr(s, 2, 1)];
-          head = head c2s(_ble_bash >= 40400 &&c == 63 ? 127 : c % 32);
+          head = head c2s(_ble_bash >= 40400 && c == 63 ? 127 : c % 32);
           s = substr(s, 3);
         } else {
           head = head "\\";
@@ -2403,7 +2411,7 @@ function ble/util/writearray {
 
         if (FLAG_NLFIX) {
           if (line ~ /\n/) {
-            gsub(/\\/, REP_SL REP_SL, line);
+            gsub(/\\/, REP_DBL_SL, line);
             gsub(/'\''/, REP_SL "'\''", line);
             gsub(/\a/, REP_SL "a", line);
             gsub(/\b/, REP_SL "b", line);

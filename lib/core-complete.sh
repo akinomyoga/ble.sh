@@ -1157,82 +1157,358 @@ function ble/complete/string#escape-for-completion-context {
   esac
 }
 
-function ble/complete/action/util/complete.addtail {
+function ble/complete/action/complete.addtail {
   suffix=$suffix$1
 }
-function ble/complete/action/util/complete.mark-directory {
+function ble/complete/action/complete.mark-directory {
   [[ :$comp_type: == *:markdir:* && $CAND != */ ]] &&
     [[ :$comp_type: == *:marksymdir:* || ! -h $CAND ]] &&
-    ble/complete/action/util/complete.addtail /
+    ble/complete/action/complete.addtail /
 }
-function ble/complete/action/util/complete.close-quotation {
+function ble/complete/action/complete.close-quotation {
   case $comps_flags in
-  (*[SE]*) ble/complete/action/util/complete.addtail \' ;;
-  (*[DI]*) ble/complete/action/util/complete.addtail \" ;;
+  (*[SE]*) ble/complete/action/complete.addtail \' ;;
+  (*[DI]*) ble/complete/action/complete.addtail \" ;;
   esac
 }
 
-## @fn ble/complete/action/util/quote-insert type
-function ble/complete/action/util/quote-insert {
-  local escape_flags=c
-  if [[ $1 == command ]]; then
-    escape_flags=
-  elif [[ $1 == progcomp ]]; then
+## @fn ble/complete/action/quote-insert.initialize action
+##   @var[out] ${_ble_complete_quote_insert_varnames[@]}
+##
+## @fn ble/complete/action/quote-insert action
+##   @var[ref] INSERT
+##   @var[in] ${_ble_complete_quote_insert_varnames[@]}
+##
+## Note: quote-insert を呼び出す前に予め quote-insert.initialize を呼び出して
+## quote_... 変数を初期化しておく必要があります。
+##
+## Example:
+##
+##   local "${_ble_complete_quote_insert_varnames[@]/%/=}" # WA #D1570 safe
+##   ble/complete/action/quote-insert.initialize "$action"
+##   for INSERT; do
+##     ble/complete/action/quote-insert "$action"
+##     : do something with INSERT
+##   done
+##
+
+_ble_complete_quote_insert_varnames=(
+  quote_action
+  quote_escape_flags
+  quote_cont_cutbackslash
+  quote_paramx_comps
+  quote_trav_prefix
+  quote_fixed_comps
+  quote_fixed_compv
+  quote_fixed_comps_len
+  quote_fixed_compv_len)
+
+function ble/complete/action/quote-insert.initialize {
+  quote_action=$1
+
+  quote_escape_flags=c
+  if [[ $quote_action == command ]]; then
+    quote_escape_flags=
+  elif [[ $quote_action == progcomp ]]; then
     # #D1362 Bash は "compopt -o filenames" が指定されている時、
     # '~' で始まる補完候補と同名のファイルがある時にのみチルダをクォートする。
-    [[ $INSERT == '~'* && ! ( $DATA == *:filenames:* && -e $INSERT ) ]] &&
-      escape_flags=T$escape_flags
+    # [[ $CAND == '~'* && ! ( $comp_opts == *:filenames:* && -e $CAND ) ]] &&
+    #   quote_escape_flags=T$quote_escape_flags
     # #D1434 = 及び : は filenames がついていない限りは quote しない事にする。
     #    bash-complete が unquoted =, : を生成する可能性があるので。
-    [[ $DATA != *:filenames:* ]] &&
-      escape_flags=${escape_flags//c}
+    [[ $comp_opts != *:filenames:* ]] &&
+      quote_escape_flags=${quote_escape_flags//c}
+  fi
+  [[ $comps_fixed ]] && quote_escape_flags=b$quote_escape_flags
+
+  # 孤立 backslash が前置している時は二重クォートを防ぐ為に削除
+  quote_cont_cutbackslash=
+  [[ $comps_flags == *B* && $COMPS == *'\' ]] &&
+    quote_cont_cutbackslash=1
+
+  # 直前にパラメータ展開があればエスケープ
+  quote_paramx_comps=$COMPS
+  if [[ $comps_flags == *p* ]]; then
+    # Note: 安全策 (本来 comps_flags に p がある時点で '\' では終わらない筈)
+    [[ $comps_flags == *B* && $quote_paramx_comps == *'\' ]] &&
+      quote_paramx_comps=${quote_paramx_comps%'\'}
+
+    case $comps_flags in
+    (*[DI]*)
+      if [[ $COMPS =~ $rex_raw_paramx ]]; then
+        local rematch1=${BASH_REMATCH[1]}
+        quote_paramx_comps=$rematch1'${'${COMPS:${#rematch1}+1}'}'
+      else
+        # Note: 安全策 (本来上で一致する筈)
+        quote_paramx_comps=$quote_paramx_comps'""'
+      fi ;;
+    (*)
+      quote_paramx_comps=$quote_paramx_comps'\' ;;
+    esac
+  fi
+
+  # 遡って書き換えた時に文脈を復元
+  quote_trav_prefix=
+  case $comps_flags in
+  (*S*) quote_trav_prefix=\' ;;
+  (*E*) quote_trav_prefix=\$\' ;;
+  (*D*) quote_trav_prefix=\" ;;
+  (*I*) quote_trav_prefix=\$\" ;;
+  esac
+
+  # 遡って書き換える時に comps_fixed には注意する。
+  quote_fixed_comps=
+  quote_fixed_compv=
+  quote_fixed_comps_len=
+  quote_fixed_compv_len=
+  if [[ $comps_fixed ]]; then
+    quote_fixed_compv=${comps_fixed#*:}
+    quote_fixed_compv_len=${#quote_fixed_compv}
+    quote_fixed_comps_len=${comps_fixed%%:*}
+    quote_fixed_comps=${COMPS::quote_fixed_comps_len}
+  fi
+}
+
+function ble/complete/action/quote-insert {
+  if [[ ! $quote_action ]]; then
+    local "${_ble_complete_quote_insert_varnames[@]/%/=}" # WA #D1570 safe
+    ble/complete/action/quote-insert.initialize "${1:-plain}"
+  fi
+
+  local escape_flags=$quote_escape_flags
+  if [[ $quote_action == progcomp ]]; then
+    [[ $comp_opts == *:noquote:* ]] && return 0
+
+    # bash-completion には compopt -o nospace として、
+    # 自分でスペースを付加する補完関数がある。この時クォートすると問題。
+    [[ $comp_opts == *:nospace:* && $CAND == *' ' && ! -f $CAND ]] && return 0
+
+    # #D1362 Bash は "compopt -o filenames" が指定されていてかつ
+    # '~' で始まる補完候補と同名のファイルがある時にのみチルダをクォートする。
+    [[ $CAND == '~'* && ! ( $comp_opts == *:filenames:* && -e $CAND ) ]] &&
+      escape_flags=T$escape_flags
   fi
 
   if [[ $comps_flags == *v* && $CAND == "$COMPV"* ]]; then
-    local ins=${CAND:${#COMPV}} ret
-
-    # 単語内の文脈に応じたエスケープ
-    ble/complete/string#escape-for-completion-context "$ins" "$escape_flags"; ins=$ret
-
-    # 直前にパラメータ展開があればエスケープ
-    if [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]]; then
-      case $comps_flags in
-      (*[DI]*)
-        if [[ $COMPS =~ $rex_raw_paramx ]]; then
-          local rematch1=${BASH_REMATCH[1]}
-          INSERT=$rematch1'${'${COMPS:${#rematch1}+1}'}'$ins
-          return 0
-        else
-          ins='""'$ins
-        fi ;;
-      (*) ins='\'$ins ;;
-      esac
+    local ins ret
+    ble/complete/string#escape-for-completion-context "${CAND:${#COMPV}}" "$escape_flags"; ins=$ret
+    if [[ $comps_flags == *p* && $ins == [_a-zA-Z0-9]* ]]; then
+      INSERT=$quote_paramx_comps$ins
+    else
+      [[ $quote_cont_cutbackslash ]] && ins=${ins#'\'}
+      INSERT=$COMPS$ins;
     fi
-
-    # backslash が前置している時は二重クォートを防ぐ為に削除
-    [[ $comps_flags == *B* && $COMPS == *'\' && $ins == '\'* ]] && ins=${ins:1}
-
-    INSERT=$COMPS$ins
+  elif [[ $quote_fixed_comps && $CAND == "$quote_fixed_compv"* ]]; then
+    local ret; ble/complete/string#escape-for-completion-context "${CAND:quote_fixed_compv_len}" "$escape_flags"
+    INSERT=$quote_fixed_comps$quote_trav_prefix$ret
   else
-    local ins=$CAND comps_fixed_part= compv_fixed_part=
-    if [[ $comps_fixed && $CAND == "${comps_fixed#*:}"* ]]; then
-      comps_fixed_part=${COMPS::${comps_fixed%%:*}}
-      compv_fixed_part=${comps_fixed#*:}
-      ins=${CAND:${#compv_fixed_part}}
-    fi
-
-    local ret; ble/complete/string#escape-for-completion-context "$ins" "$escape_flags"; ins=$ret
-    case $comps_flags in
-    (*S*) ins=\'$ins ;;
-    (*E*) ins=\$\'$ins ;;
-    (*D*) ins=\"$ins ;;
-    (*I*) ins=\$\"$ins ;;
-    esac
-
-    INSERT=$comps_fixed_part$ins
+    local ret; ble/complete/string#escape-for-completion-context "$CAND" "$escape_flags"
+    INSERT=$quote_trav_prefix$ret
   fi
 }
-function ble/complete/action/util/requote-final-insert {
+
+function ble/complete/action/quote-insert.batch/awk {
+  local q=\'
+  local -x comp_opts=$comp_opts
+  local -x comps=$COMPS
+  local -x compv=$COMPV
+  local -x comps_flags=$comps_flags
+  local -x quote_action=$quote_action
+  local -x quote_escape_flags=$quote_escape_flags
+  local -x quote_paramx_comps=$quote_paramx_comps
+  local -x quote_cont_cutbackslash=$quote_cont_cutbackslash
+  local -x quote_trav_prefix=$quote_trav_prefix
+  local -x quote_fixed_comps=$quote_fixed_comps
+  local -x quote_fixed_compv=$quote_fixed_compv
+  "$quote_batch_awk" -v quote_batch_nulsep="$quote_batch_nulsep" -v q="$q" '
+    function exists(filename) { return substr($0, 1, 1) == "1"; }
+    function is_file(filename) { return substr($0, 2, 1) == "1"; }
+
+    function initialize(_, flags, comp_opts, tmp) {
+      IS_XPG4 = AWKTYPE == "xpg4";
+      REP_SL = "\\";
+      if (IS_XPG4) REP_SL = "\\\\";
+
+      REP_DBL_SL = "\\\\"; # gawk, nawk
+      sub(/.*/, REP_DBL_SL, tmp);
+      if (tmp == "\\") REP_DBL_SL = "\\\\\\\\"; # mawk, xpg4
+
+      Q = q "\\" q q;
+
+      DELIM = 10;
+      if (quote_batch_nulsep != "") {
+        RS = "\0";
+        DELIM = 0;
+      }
+
+      quote_action = ENVIRON["quote_action"];
+
+      comps = ENVIRON["comps"];
+      compv = ENVIRON["compv"];
+      compv_len = length(compv);
+
+      comps_flags = ENVIRON["comps_flags"];
+      escape_type = 0;
+      if (comps_flags ~ /S/)
+        escape_type = 1;
+      else if (comps_flags ~ /E/)
+        escape_type = 2;
+      else if (comps_flags ~ /[DI]/)
+        escape_type = 3;
+      else
+        escape_type = 4;
+      comps_v = (comps_flags ~ /v/);
+      comps_p = (comps_flags ~ /p/);
+
+      comp_opts = ENVIRON["comp_opts"];
+      is_noquote = comp_opts ~ /:noquote:/;
+      is_nospace = comp_opts ~ /:nospace:/;
+
+      flags = ENVIRON["quote_escape_flags"];
+      escape_c = (flags ~ /c/);
+      escape_b = (flags ~ /b/);
+      escape_tilde_always = 1;
+      escape_tilde_exists = 0;
+      if (quote_action == "progcomp") {
+        escape_tilde_always = 0;
+        escape_tilde_exists = (comp_opts ~ /:filenames:/);
+      }
+
+      quote_cont_cutbackslash   = ENVIRON["quote_cont_cutbackslash"] != "";
+      quote_paramx_comps        = ENVIRON["quote_paramx_comps"];
+      quote_trav_prefix     = ENVIRON["quote_trav_prefix"];
+      quote_fixed_comps     = ENVIRON["quote_fixed_comps"];
+      quote_fixed_compv     = ENVIRON["quote_fixed_compv"];
+      quote_fixed_comps_len = length(quote_fixed_comps);
+      quote_fixed_compv_len = length(quote_fixed_compv);
+    }
+    BEGIN { initialize(); }
+
+    function escape_for_completion_context(text) {
+      if (escape_type == 1) {
+        # single quote
+        gsub(/'$q'/, Q, text);
+      } else if (escape_type == 2) {
+        # escape string
+        if (text ~ /[\\'$q'\a\b\t\n\v\f\r\033]/) {
+          gsub(/\\/  , REP_DBL_SL, text);
+          gsub(/'$q'/, REP_SL q  , text);
+          gsub(/\007/, REP_SL "a", text);
+          gsub(/\010/, REP_SL "b", text);
+          gsub(/\011/, REP_SL "t", text);
+          gsub(/\012/, REP_SL "n", text);
+          gsub(/\013/, REP_SL "v", text);
+          gsub(/\014/, REP_SL "f", text);
+          gsub(/\015/, REP_SL "r", text);
+          gsub(/\033/, REP_SL "e", text);
+        }
+      } else if (escape_type == 3) {
+        # double quote
+        gsub(/[\\"$`]/, "\\\\&", text); # Note: All awks behaves the same for "\\\\&"
+      } else if (escape_type == 4) {
+        # bash specialchars
+        gsub(/[]\ "'$q'`$|&;<>()!^*?[]/, "\\\\&", text);
+        if (escape_c) gsub(/[=:]/, "\\\\&", text);
+        if (escape_b) gsub(/[{,}]/, "\\\\&", text);
+        if (ret ~ /^~/ && (escape_tilde_always || escape_tilde_exists && exists(cand)))
+          text = "\\" text;
+        gsub(/\n/, "$" q REP_SL "n" q, text);
+        gsub(/\t/, "$" q REP_SL "t" q, text);
+      }
+      return text;
+    }
+
+    function quote_insert(cand) {
+      # progcomp 特有
+      if (quote_action == "progcomp") {
+        if (is_noquote) return cand;
+        if (is_nospace && cand ~ / $/ && !is_file(cand)) return cand;
+      }
+
+      if (comps_v && substr(cand, 1, compv_len) == compv) {
+        ins = escape_for_completion_context(substr(cand, compv_len + 1));
+        if (comps_p && ins ~ /^[_a-zA-Z0-9]/) {
+          return quote_paramx_comps ins;
+        } else {
+          if (quote_cont_cutbackslash) sub(/^\\/, "", ins);
+          return comps ins;
+        }
+      } else if (quote_fixed_comps_len && substr(cand, 1, quote_fixed_compv_len) == quote_fixed_compv) {
+        ins = substr(cand, quote_fixed_compv_len + 1);
+        return quote_fixed_comps quote_trav_prefix escape_for_completion_context(ins);
+      } else {
+        return quote_trav_prefix escape_for_completion_context(cand);
+      }
+    }
+
+    {
+      cand = substr($0, 3);
+      insert = quote_insert(cand);
+      printf("%s%c", insert, DELIM);
+    }
+  '
+}
+function ble/complete/action/quote-insert.batch/proc {
+  local _ble_local_tmpfile; ble/util/assign/.mktmp
+
+  local delim='\n'
+  [[ $quote_batch_nulsep ]] && delim='\0'
+  if [[ $quote_action == progcomp ]]; then
+    local cand file exist
+    for cand in "${cands[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      f=0 e=0
+      [[ -e $cand ]] && e=1
+      [[ -f $cand ]] && f=1
+      printf "$e$f%s$delim" "$cand"
+    done
+  else
+    printf "00%s$delim" "${cands[@]}"
+  fi >| "$_ble_local_tmpfile"
+
+  local fname_cands=$_ble_local_tmpfile
+  ble/util/conditional-sync \
+    'ble/complete/action/quote-insert.batch/awk < "$fname_cands"' \
+    '! ble/complete/check-cancel < /dev/tty' '' progressive-weight
+  local ext=$?
+
+  ble/util/assign/.rmtmp
+  return "$ext"
+}
+## @fn ble/complete/action/quote-insert.batch
+##   @arr[in] cands
+##   @arr[out] inserts
+function ble/complete/action/quote-insert.batch {
+  local opts=$1
+
+  local quote_batch_nulsep=
+  local quote_batch_awk=ble/bin/awk
+  if [[ :$opts: != *:newline:* ]]; then
+    if ((_ble_bash>=40400)); then
+      if [[ $_ble_bin_awk_type == [mg]awk ]]; then
+        quote_batch_nulsep=1
+      elif ble/bin#has mawk; then
+        quote_batch_nulsep=1
+        quote_batch_awk=mawk
+      elif ble/bin#has gawk; then
+        quote_batch_nulsep=1
+        quote_batch_awk=gawk
+      fi
+    fi
+    [[ ! $quote_batch_nulsep ]] &&
+      [[ "${cands[*]}" == *$'\n'* ]] &&
+      return 1
+  fi
+
+  if [[ $quote_batch_nulsep ]]; then
+    ble/util/assign-array0 inserts ble/complete/action/quote-insert.batch/proc
+  else
+    ble/util/assign-array inserts ble/complete/action/quote-insert.batch/proc
+  fi
+  return $?
+}
+
+function ble/complete/action/requote-final-insert {
   if [[ $insert == "$COMPS"* ]]; then
     [[ $comps_flags == *[SEDI]* ]] && return 0
     local comps_prefix=$COMPS
@@ -1257,10 +1533,10 @@ function ble/complete/action/util/requote-final-insert {
   return 0
 }
 
-function ble/complete/action/inherit-from {
+function ble/complete/action#inherit-from {
   local dst=$1 src=$2
   local member srcfunc dstfunc
-  for member in initialize complete getg get-desc; do
+  for member in initialize{,.batch} complete getg get-desc; do
     srcfunc=ble/complete/action:$src/$member
     dstfunc=ble/complete/action:$dst/$member
     ble/is-function "$srcfunc" && builtin eval "function $dstfunc { $srcfunc; }"
@@ -1269,31 +1545,39 @@ function ble/complete/action/inherit-from {
 
 # action:plain
 function ble/complete/action:plain/initialize {
-  ble/complete/action/util/quote-insert
+  ble/complete/action/quote-insert
+}
+function ble/complete/action:plain/initialize.batch {
+  ble/complete/action/quote-insert.batch
 }
 function ble/complete/action:plain/complete {
-  ble/complete/action/util/requote-final-insert
+  ble/complete/action/requote-final-insert
 }
 
 # action:literal-substr
 function ble/complete/action:literal-substr/initialize { :; }
+function ble/complete/action:literal-substr/initialize.batch { inserts=("${cands[@]}"); }
 function ble/complete/action:literal-substr/complete { :; }
 
 # action:substr (equivalent to plain)
 function ble/complete/action:substr/initialize {
-  ble/complete/action/util/quote-insert
+  ble/complete/action/quote-insert
+}
+function ble/complete/action:substr/initialize.batch {
+  ble/complete/action/quote-insert.batch
 }
 function ble/complete/action:substr/complete {
-  ble/complete/action/util/requote-final-insert
+  ble/complete/action/requote-final-insert
 }
 
 # action:literal-word
 function ble/complete/action:literal-word/initialize { :; }
+function ble/complete/action:literal-word/initialize.batch { inserts=("${cands[@]}"); }
 function ble/complete/action:literal-word/complete {
   if [[ $comps_flags == *x* ]]; then
-    ble/complete/action/util/complete.addtail ','
+    ble/complete/action/complete.addtail ','
   else
-    ble/complete/action/util/complete.addtail ' '
+    ble/complete/action/complete.addtail ' '
   fi
 }
 
@@ -1302,11 +1586,14 @@ function ble/complete/action:literal-word/complete {
 #   DATA ... 候補の説明として使用する文字列を指定します
 #
 function ble/complete/action:word/initialize {
-  ble/complete/action/util/quote-insert
+  ble/complete/action/quote-insert
+}
+function ble/complete/action:word/initialize.batch {
+  ble/complete/action/quote-insert.batch
 }
 function ble/complete/action:word/complete {
-  ble/complete/action/util/requote-final-insert
-  ble/complete/action/util/complete.close-quotation
+  ble/complete/action/requote-final-insert
+  ble/complete/action/complete.close-quotation
   ble/complete/action:literal-word/complete
 }
 function ble/complete/action:word/get-desc {
@@ -1316,13 +1603,16 @@ function ble/complete/action:word/get-desc {
 # action:file
 # action:file_rhs (source:argument 内部使用)
 function ble/complete/action:file/initialize {
-  ble/complete/action/util/quote-insert
+  ble/complete/action/quote-insert
+}
+function ble/complete/action:file/initialize.batch {
+  ble/complete/action/quote-insert.batch
 }
 function ble/complete/action:file/complete {
-  ble/complete/action/util/requote-final-insert
+  ble/complete/action/requote-final-insert
   if [[ -e $CAND || -h $CAND ]]; then
     if [[ -d $CAND ]]; then
-      ble/complete/action/util/complete.mark-directory
+      ble/complete/action/complete.mark-directory
     else
       ble/complete/action:word/complete
     fi
@@ -1344,6 +1634,9 @@ function ble/complete/action:file/init-menu-item {
 }
 function ble/complete/action:file_rhs/initialize {
   ble/complete/action:file/initialize
+}
+function ble/complete/action:file_rhs/initialize.batch {
+  ble/complete/action:file/initialize.batch
 }
 function ble/complete/action:file_rhs/complete {
   CAND=${CAND:${#DATA}} ble/complete/action:file/complete
@@ -1375,21 +1668,19 @@ function ble/complete/action:file/get-desc {
 #   DATA ... compopt 互換のオプションをコロン区切りで指定します
 #
 function ble/complete/action:progcomp/initialize {
-  [[ $DATA == *:noquote:* ]] && return 0
-
-  # bash-completion には compopt -o nospace として、
-  # 自分でスペースを付加する補完関数がある。この時クォートすると問題。
-  [[ $DATA == *:nospace:* && $CAND == *' ' && ! -f $CAND ]] && return 0
-
-  ble/complete/action/util/quote-insert progcomp
+  ble/complete/action/quote-insert progcomp
 }
+function ble/complete/action:progcomp/initialize.batch {
+  ble/complete/action/quote-insert.batch newline
+}
+
 function ble/complete/action:progcomp/complete {
   if [[ $DATA == *:filenames:* ]]; then
     ble/complete/action:file/complete
   else
     if [[ $DATA != *:no-mark-directories:* && -d $CAND ]]; then
-      ble/complete/action/util/requote-final-insert
-      ble/complete/action/util/complete.mark-directory
+      ble/complete/action/requote-final-insert
+      ble/complete/action/complete.mark-directory
     else
       ble/complete/action:word/complete
     fi
@@ -1411,11 +1702,14 @@ function ble/complete/action:progcomp/get-desc {
 # action:command
 
 function ble/complete/action:command/initialize {
-  ble/complete/action/util/quote-insert command
+  ble/complete/action/quote-insert command
+}
+function ble/complete/action:command/initialize.batch {
+  ble/complete/action/quote-insert.batch newline
 }
 function ble/complete/action:command/complete {
   if [[ -d $CAND ]]; then
-    ble/complete/action/util/complete.mark-directory
+    ble/complete/action/complete.mark-directory
   elif ! type "$CAND" &>/dev/null; then
     # 関数名について縮約されたもので一意確定した時。
     #
@@ -1444,9 +1738,9 @@ function ble/complete/action:command/init-menu-item {
       #   _ble_attr_ERR を返してしまう。
       local type; ble/util/type type "$CAND"
       ble/syntax/highlight/cmdtype1 "$type" "$CAND"
-      if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
-        type=_ble_attr_CMD_FUNCTION
-      fi
+    fi
+    if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
+      type=_ble_attr_CMD_FUNCTION
     fi
     ble/syntax/attr2g "$type"
   fi
@@ -1505,15 +1799,16 @@ function ble/complete/action:command/get-desc {
 #   DATA ... 変数名の文脈を指定します。
 #     assignment braced word arithmetic の何れかです。
 #
-function ble/complete/action:variable/initialize { ble/complete/action/util/quote-insert; }
+function ble/complete/action:variable/initialize { ble/complete/action/quote-insert; }
+function ble/complete/action:variable/initialize.batch { ble/complete/action/quote-insert.batch newline; }
 function ble/complete/action:variable/complete {
   case $DATA in
   (assignment)
     # var= 等に於いて = を挿入
-    ble/complete/action/util/complete.addtail '=' ;;
+    ble/complete/action/complete.addtail '=' ;;
   (braced)
     # ${var 等に於いて } を挿入
-    ble/complete/action/util/complete.addtail '}' ;;
+    ble/complete/action/complete.addtail '}' ;;
   (word)       ble/complete/action:word/complete ;;
   (arithmetic|nosuffix) ;; # do nothing
   esac
@@ -1643,6 +1938,14 @@ function ble/complete/source/reduce-compv-for-ambiguous-match {
   COMPS=$comps_prefix$comps
 }
 
+
+_ble_complete_yield_varnames=("${_ble_complete_quote_insert_varnames[@]}")
+
+## @fn ble/complete/cand/yield.initialize action
+function ble/complete/cand/yield.initialize {
+  ble/complete/action/quote-insert.initialize "$1"
+}
+
 ## @fn ble/complete/cand/yield ACTION CAND DATA
 ##   @param[in] ACTION
 ##   @param[in] CAND
@@ -1653,9 +1956,7 @@ function ble/complete/source/reduce-compv-for-ambiguous-match {
 function ble/complete/cand/yield {
   local ACTION=$1 CAND=$2 DATA=$3
   [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && return 0
-
-  [[ $flag_source_filter ]] ||
-    ble/complete/candidates/filter#test "$CAND" || return 0
+  [[ $flag_source_filter ]] || ble/complete/candidates/filter#test "$CAND" || return 0
 
   local PREFIX_LEN=0
   [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
@@ -1670,6 +1971,40 @@ function ble/complete/cand/yield {
   cand_pack[icand]=$ACTION:${#CAND},${#INSERT},$PREFIX_LEN:$CAND$INSERT$DATA
 }
 
+## @fn ble/complete/cand/yield.batch action data
+##   @arr[in] cands
+function ble/complete/cand/yield.batch {
+  local ACTION=$1 DATA=$2
+
+  local inserts threshold=500
+  [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]] && threshold=2000
+  if ((${#cands[@]}>=threshold)) && ble/function#try ble/complete/action:"$ACTION"/initialize.batch; then
+    local i n=${#cands[@]}
+    for ((i=0;i<n;i++)); do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      local CAND=${cands[i]} INSERT=${inserts[i]}
+
+      [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && continue
+      [[ $flag_source_filter ]] || ble/complete/candidates/filter#test "$CAND" || continue 0
+
+      local PREFIX_LEN=0
+      [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
+
+      local icand
+      ((icand=cand_count++))
+      cand_cand[icand]=$CAND
+      cand_word[icand]=$INSERT
+      cand_pack[icand]=$ACTION:${#CAND},${#INSERT},$PREFIX_LEN:$CAND$INSERT$DATA
+    done
+  else
+    local cand
+    for cand in "${cands[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      ble/complete/cand/yield "$ACTION" "$cand" "$DATA"
+    done
+  fi
+}
+
 function ble/complete/cand/yield-filenames {
   local action=$1; shift
 
@@ -1677,13 +2012,18 @@ function ble/complete/cand/yield-filenames {
   [[ :$comp_type: != *:match-hidden:* ]] &&
     rex_hidden=${COMPV:+'.{'${#COMPV}'}'}'(^|/)\.[^/]*$'
 
-  local cand
+  local -a cands=()
+  local cand icand=0
   for cand; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     [[ $rex_hidden && $cand =~ $rex_hidden ]] && continue
-    [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
-    ble/complete/cand/yield "$action" "$cand"
+    cands[icand++]=$cand
   done
+
+  [[ $FIGNORE ]] && local flag_force_fignore=1
+  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
+  ble/complete/cand/yield.batch "$action"
 }
 
 _ble_complete_cand_varnames=(ACTION CAND INSERT DATA PREFIX_LEN)
@@ -1768,7 +2108,8 @@ function ble/complete/source:wordlist {
   [[ $opt_noword ]] && action=substr
   [[ $opt_raw ]] && action=literal-$action
 
-  local cand
+  local cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
   for cand; do
     [[ $cand == "$COMPV"* ]] && ble/complete/cand/yield "$action" "$cand"
   done
@@ -1949,7 +2290,7 @@ function ble/complete/source:command {
 
   ble/complete/source:sabbrev
 
-  local cand arr
+  local arr
   local compgen
   ble/util/assign compgen 'ble/complete/source:command/gen "$arg"'
   [[ $compgen ]] || return 1
@@ -1962,6 +2303,7 @@ function ble/complete/source:command {
   [[ $COMPS != $COMPV ]] &&
     local rex_keyword='^(if|then|else|elif|fi|case|esac|for|select|while|until|do|done|function|time|[{}]|\[\[|coproc)$'
 
+  local cand icand=0 cands
   for cand in "${arr[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
 
@@ -1974,9 +2316,13 @@ function ble/complete/source:command {
       local type; ble/util/type type "$cand"
       ((${#type[@]}==1)) && continue
     fi
-
-    ble/complete/cand/yield command "$cand"
+    cands[icand++]=$cand
   done
+  ((icand)) || return 1
+
+  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize command
+  ble/complete/cand/yield.batch command
 }
 
 # source:file, source:dir
@@ -2169,14 +2515,14 @@ function ble/complete/source:rhs { ble/complete/source:file; }
 
 function ble/complete/action:tilde/initialize {
   # チルダは quote しない
-  CAND=${CAND#\~} ble/complete/action/util/quote-insert
+  CAND=${CAND#\~} ble/complete/action/quote-insert
   INSERT=\~$INSERT
 
   # Note: Windows 等でチルダ展開の無効なユーザー名があるのでチェック
   local rex='^~[^/'\''"$`\!:]*$'; [[ $INSERT =~ $rex ]]
 }
 function ble/complete/action:tilde/complete {
-  ble/complete/action/util/complete.mark-directory
+  ble/complete/action/complete.mark-directory
 }
 function ble/complete/action:tilde/init-menu-item {
   local ret
@@ -2245,7 +2591,9 @@ function ble/complete/source:fd {
     local comp_filter_type=head
 
   local old_cand_count=$cand_count
-  ble/complete/cand/yield word -
+  local action=word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
+  ble/complete/cand/yield "$action" -
   if [[ -d /proc/self/fd ]]; then
     local ret
     ble/complete/util/eval-pathname-expansion '/proc/self/fd/*'
@@ -2255,15 +2603,15 @@ function ble/complete/source:fd {
       fd=${fd#/proc/self/fd/}
       [[ ${fd//[0-9]} ]] && continue
       [[ $fdlist == *:"$fd":* ]] && continue
-      ble/complete/cand/yield word "$fd"
-      ble/complete/cand/yield word "$fd-"
+      ble/complete/cand/yield "$action" "$fd"
+      ble/complete/cand/yield "$action" "$fd-"
     done
   else
     local fd
     for ((fd=0;fd<10;fd++)); do
       ble/fd#is-open "$fd" || continue
-      ble/complete/cand/yield word "$fd"
-      ble/complete/cand/yield word "$fd-"
+      ble/complete/cand/yield "$action" "$fd"
+      ble/complete/cand/yield "$action" "$fd-"
     done
   fi
 
@@ -2988,35 +3336,36 @@ function ble/complete/progcomp/.compgen {
     comp_opts=${comp_opts//:nospace:/:}
   fi
 
-  local arr flag_mandb=
-  ble/complete/progcomp/.filter-and-split-compgen arr # compgen (comp_opts, etc) -> arr, flag_mandb
+  local cands flag_mandb=
+  ble/complete/progcomp/.filter-and-split-compgen cands # compgen (comp_opts, etc) -> cands, flag_mandb
 
-  ble/complete/source/test-limit ${#arr[@]} || return 1
+  ble/complete/source/test-limit ${#cands[@]} || return 1
 
-  local action=progcomp
   [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
 
   local old_cand_count=$cand_count
+
+  local action=progcomp "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
   if [[ $flag_mandb ]]; then
-    local entry fs=$_ble_term_FS has_desc=
-    for entry in "${arr[@]}"; do
+    local -a entries; entries=("${cands[@]}")
+    cands=()
+    local fs=$_ble_term_FS has_desc= icand=0 entry
+    for entry in "${entries[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
       if [[ $entry == -*"$fs"*"$fs"*"$fs"* ]]; then
         local cand=${entry%%"$fs"*}
         ble/complete/cand/yield mandb "$cand" "$entry"
         [[ $entry == *"$fs"*"$fs"*"$fs"?* ]] && has_desc=1
       else
-        ble/complete/cand/yield "$action" "$progcomp_prefix$entry" "$comp_opts"
+        cands[icand++]=$progcomp_prefix$entry
       fi
     done
     [[ $has_desc ]] && bleopt complete_menu_style=desc
   else
-    local entry
-    for entry in "${arr[@]}"; do
-      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
-      ble/complete/cand/yield "$action" "$progcomp_prefix$entry" "$comp_opts"
-    done
+    [[ $progcomp_prefix ]] && cands=("${cands[@]/#/$progcomp_prefix}") # WA #D1570 safe
   fi
+  ble/complete/cand/yield.batch "$action" "$comp_opts"
 
   # plusdirs の時はディレクトリ名も候補として列挙
   # Note: 重複候補や順序については考えていない
@@ -3207,13 +3556,16 @@ _ble_complete_option_chars='_!#$%&:;.,^~|\\?\/*a-zA-Z0-9'
 #   DATA ... cmd FS menu_suffix FS insert_suffix FS desc
 #
 function ble/complete/action:mandb/initialize {
-  ble/complete/action/util/quote-insert
+  ble/complete/action/quote-insert
+}
+function ble/complete/action:mandb/initialize.batch {
+  ble/complete/action/quote-insert.batch newline
 }
 function ble/complete/action:mandb/complete {
-  ble/complete/action/util/complete.close-quotation
+  ble/complete/action/complete.close-quotation
   local fields
   ble/string#split fields "$_ble_term_FS" "$DATA"
-  ble/complete/action/util/complete.addtail "${fields[2]}"
+  ble/complete/action/complete.addtail "${fields[2]}"
 }
 function ble/complete/action:mandb/init-menu-item {
   local ret; ble/color/face2g argument_option; g=$ret
@@ -4257,6 +4609,8 @@ function ble/complete/source:option {
   # "--" や非オプション引数など、オプション無効化条件をチェック
   ble/complete/source:option/.is-option-context "${prev_args[@]}" || return 1
 
+  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize mandb
   local entry fs=$_ble_term_FS has_desc=
   for entry in "${entries[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
@@ -4381,10 +4735,11 @@ function ble/complete/source:argument {
     [[ :$comp_type: != *:[maA]:* && $value =~ ^.+/ ]] &&
       COMP_PREFIX=$prefix${BASH_REMATCH[0]}
 
-    local ret cand
+    local ret cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
     ble/complete/source:file/.construct-pathname-pattern "$value"
     ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
     ble/complete/source/test-limit ${#ret[@]} || return 1
+    ble/complete/cand/yield.initialize file_rhs
     for cand in "${ret[@]}"; do
       [[ -e $cand || -h $cand ]] || continue
       [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
@@ -4416,7 +4771,8 @@ function ble/complete/source/compgen {
   # 既に完全一致している場合は、より前の起点から補完させるために省略
   [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return 0
 
-  local cand
+  local cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
   for cand in "${arr[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     ble/complete/cand/yield "$action" "$cand" "$data"
@@ -4541,7 +4897,8 @@ function ble/complete/source:glob {
     ble/complete/source/eval-simple-word "$pattern*"; (($?==148)) && return 148
   fi
 
-  local cand action=file
+  local cand action=file "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
   for cand in "${ret[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     ble/complete/cand/yield "$action" "$cand"
@@ -4566,7 +4923,8 @@ function ble/complete/source:dynamic-history {
   local rex_wordbreaks='['$wordbreaks']'
   ble/util/assign-array ret 'HISTTIMEFORMAT= builtin history | ble/bin/grep -Eo "$rex_needle" | ble/bin/sed "s/^$rex_wordbreaks//" | ble/bin/sort -u'
 
-  local cand action=literal-word
+  local cand action=literal-word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
   for cand in "${ret[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     ble/complete/cand/yield "$action" "$cand"
@@ -6237,9 +6595,9 @@ function ble/complete/insert-braces {
   local beg=$COMP1 end=$COMP2 insert=$fixed$tail suffix=
 
   if [[ $comps_flags == *x* ]]; then
-    ble/complete/action/util/complete.addtail ','
+    ble/complete/action/complete.addtail ','
   else
-    ble/complete/action/util/complete.addtail ' '
+    ble/complete/action/complete.addtail ' '
   fi
 
   ble/complete/insert "$beg" "$end" "$insert" "$suffix"
@@ -7393,7 +7751,7 @@ function ble/complete/sabbrev/expand {
     # construct cand_pack
     local cand_count cand_cand cand_word cand_pack
     ble/complete/candidates/clear
-    local cand COMP_PREFIX=
+    local COMP_PREFIX=
 
     # local settings
     local bleopt_sabbrev_menu_style=$bleopt_complete_menu_style
@@ -7404,8 +7762,11 @@ function ble/complete/sabbrev/expand {
     #   或いは手動で ble/complete/cand/yield 等を呼び出してもらう。
     local -a COMPREPLY=()
     builtin eval -- "$value"
+
+    local cand action=word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+    ble/complete/cand/yield.initialize "$action"
     for cand in "${COMPREPLY[@]}"; do
-      ble/complete/cand/yield word "$cand" ""
+      ble/complete/cand/yield "$action" "$cand" ""
     done
 
     if ((cand_count==0)); then
@@ -7450,7 +7811,6 @@ function ble/complete/action:sabbrev/get-desc {
 }
 function ble/complete/source:sabbrev {
   local keys; ble/complete/sabbrev/get-keys
-  local key cand
 
   local filter_type=$comp_filter_type
   [[ $filter_type == none ]] && filter_type=head
@@ -7460,6 +7820,8 @@ function ble/complete/source:sabbrev {
   local comp_filter_type
   local comp_filter_pattern
   ble/complete/candidates/filter#init "$filter_type" "$COMPS"
+  local cand action=sabbrev "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
   for cand in "${keys[@]}"; do
     ble/complete/candidates/filter#test "$cand" || continue
 
@@ -7470,7 +7832,7 @@ function ble/complete/source:sabbrev {
 
     local value=$ret # referenced in "ble/complete/action:sabbrev/initialize"
     local flag_source_filter=1
-    ble/complete/cand/yield sabbrev "$cand"
+    ble/complete/cand/yield "$action" "$cand"
   done
 }
 
@@ -7785,11 +8147,15 @@ function ble/cmdinfo/complete:cd/.impl {
     case $type in
     (pushd)
       if [[ $COMPV == - || $COMPV == -n ]]; then
+        local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+        ble/complete/cand/yield.initialize "$action"
         ble/complete/cand/yield "$action" -n
       fi ;;
     (*)
       COMP_PREFIX=$COMPV
       local -a list=()
+      local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+      ble/complete/cand/yield.initialize "$action"
       [[ $COMPV == -* ]] && ble/complete/cand/yield "$action" "${COMPV}"
       [[ $COMPV != *L* ]] && ble/complete/cand/yield "$action" "${COMPV}L"
       [[ $COMPV != *P* ]] && ble/complete/cand/yield "$action" "${COMPV}P"
