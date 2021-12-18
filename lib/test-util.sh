@@ -748,6 +748,8 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
            ret='\[hello\]\ \(world\)\ \{this\,is\}\ \<test\>'
   ble/test 'ble/string#escape-for-bash-specialchars "a=b:c:d" c' \
            ret='a\=b\:c\:d'
+  ble/test $'ble/string#escape-for-bash-specialchars "a\tb\tc"' \
+           ret=$'a\\\tb\\\tc'
 )
 
 # ble/string#quote-command, ble/util/print-quoted-command

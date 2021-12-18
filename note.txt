@@ -1633,6 +1633,25 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2021-12-18
+
+  * complete: FIGNORE と -o filenames
+
+    どうやら元の bash では -o filenames が指定された時にのみ FIGNORE が使われる
+    様である。一方で、現在の ble.sh では FIGNORE が設定されている時には強制的に
+    fignore が実行される様になっている気がする。と思ったらこれは shopt -s
+    force_fignore の設定を参照しての事だった。よく分からないのは bash は
+    force_fignore が設定されていても、-o filenames が指定されていなければ
+    FIGNORE が有効にならない様だという事。
+
+    * FIGNORE で全て候補が消えた場合には FIGNORE を無効化して全て採択するべきで
+      は? と思ったが元の bash ではその様な取り扱いはしていない。
+
+    * Note: bash FIGNORE は glob は解釈しない。bash FIGNORE はそれが実際には存
+      在しないファイル名だったとしても、FIGNORE に一致すれば候補削除する。bash
+      FIGNORE は候補が FIGNORE で全滅してもそのまま。bash FIGNORE は単一候補だっ
+      た時にも FIGNORE を適用して候補を消す。
+
 2021-12-14
 
   * compat: RLogin で ble-detach した後に modifyOtherKeys の状態がおかしい。
@@ -5668,7 +5687,22 @@ bash_tips
 
 2021-12-18
 
-  * main: root ユーザーで入ると the owner of '' is not correct と表示される [#D1712]
+  * ble/string#escape-for-bash-specialchars で HT を SP HT に置換しているのは何故? [#D1713]
+    manu-complete 最適化中に気づいた事。
+
+    e344a156 ble-core.sh (Koichi Murase     2018-08-06 13:43:50 +0900 1135)     a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
+    9629b9dd lib/core-complete.sh (Koichi Murase 2018-08-05 15:28:25 +0900   75)     a=$'\t' b="\\$a"   ret=${ret//"$a"/$b}
+
+    うーん。これを見ると e344a156 のリファクタリング時のミスの様な気がする。該
+    当する項目は #D0719 であるが、たった一行で済ませているという事を考えるとこ
+    れは本当にミスであると判定して良い。というかそもそも元々の実装自体が間違っ
+    ている。
+
+    改行と同様に $'\t' に置き換えるという手と、恐らく現在・以前の実装で意図して
+    いたと思われる \[TAB] という形に置き換えるという二つの方針が考えられる。本
+    来意図していた筈の後者にする事にする。
+
+  * main: root ユーザーで入ると the owner of '' is not correct と表示される (reported by zim0369) [#D1712]
     https://github.com/akinomyoga/ble.sh/issues/163
 
     _ble_base_run か _ble_base_cache のどちらかの初期化の途中で、ディレクトリ所

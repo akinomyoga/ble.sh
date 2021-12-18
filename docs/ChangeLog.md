@@ -83,8 +83,8 @@
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
 - complete: requote for more compact representations on full completions `#D1700` a1859b6
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
-  - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` 0000000
-  - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0000000
+  - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` e12bae4
+  - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0786e92
  
 ## Changes
 
@@ -146,7 +146,7 @@
   - mandb: support the man-page formats of `wget`, `fish`, and `ping` (reported by bbyfacekiller) `#D1687` a79280e
   - mandb: carry optarg for e.g. `-a, --accept=LIST` `#D1687` 23d5657
   - mandb: parse `--help` for specified commands `#D1693` e1ad2f1
-  - mandb: fix small issues of man-page analysis `#D1708` 0000000
+  - mandb: fix small issues of man-page analysis `#D1708` caa77bc
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -202,8 +202,9 @@
 - util (`ble/util/readfile`): fix a bug of always exiting with 1 in `bash <= 3.2` (reported by laoshaw) `#D1678` 61705bf
 - trace: fix wrong positioning of the ellipses on overflow `#D1684` b90ac78
 - complete: do not generate keywords for quoted command names `#D1691` 60d244f
-- complete: fix empty completions with `FIGNORE` (reported by seanfarley) `#D1711` 0000000
-
+- complete: fix empty completions with `FIGNORE` (reported by seanfarley) `#D1711` 144ea5d
+- main: fix the message of owner errors of cache directories (reported by zim0369) `#D1712` b547a41
+- util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 0000000
 
 ## Documentation
 
@@ -259,7 +260,7 @@
 - stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 82f74f0
 - builtin: print usages of emulated builtins on option errors `#D1694` 6f74021
 - decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
-- complete: work around a false warning messages of gawk-4.0.2 `#D1709` 0000000
+- complete: work around a false warning messages of gawk-4.0.2 `#D1709` 9771693
 
 ## Internal changes and fixes
 
@@ -287,7 +288,7 @@
 - util: fix leak variables `buff`, `trap`, `{x,y}{1,2}` `#D1572` 5967d6c
 - util: fix leak variables `#D1643` fcf634b
 - edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663` 1af0800
-- make: update lint check `#D1709` 0000000
+- make: update lint check `#D1709` 7e26dcd
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
