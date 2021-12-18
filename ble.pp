@@ -410,7 +410,10 @@ function ble/base/.create-user-directory {
       return 1
     fi
   elif ! [[ -r $dir && -w $dir && -x $dir ]]; then
-    echo "ble.sh: permision of '$tmpdir' is not correct." >&2
+    ble/util/print "ble.sh: permission of '$dir' is not correct." >&2
+    return 1
+  elif [[ ! -O $dir ]]; then
+    ble/util/print "ble.sh: owner of '$dir' is not correct." >&2
     return 1
   fi
   eval "$var=\$dir"
