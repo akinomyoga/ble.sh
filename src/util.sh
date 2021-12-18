@@ -737,7 +737,7 @@ function ble/string#escape-for-bash-specialchars {
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/$b}
     a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
-    a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
+    a=$'\t' b=$'\\\t'  ret=${ret//"$a"/$b}
   fi
 
   # 上の処理で extglob の ( も quote されてしまうので G の時には戻す。
