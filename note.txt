@@ -5668,6 +5668,29 @@ bash_tips
 
 2021-12-18
 
+  * main: root ユーザーで入ると the owner of '' is not correct と表示される [#D1712]
+    https://github.com/akinomyoga/ble.sh/issues/163
+
+    _ble_base_run か _ble_base_cache のどちらかの初期化の途中で、ディレクトリ所
+    有権の問題が起こっている。それからエラーメッセージにも問題がある。うーん。
+
+    * 再現の試み
+
+      取り敢えず手元で再現できないかどうかは試してからより詳細を求める事にする。
+
+      うーん。root と user の両方にインストールしたとしているがどのように入れた
+      のだろうか。取り敢えず root の home ディレクトリをチェックするべきなのだ
+      ろうか。うーん。色々やってみたが特に問題は生じていない様だ。
+
+      或いはインストールの方法に問題があるのかもしれない。ユーザーから root の
+      .local/share/blesh にインストールした等。と思ったが、これだとインストール
+      できない筈である。一方で、root からユーザーのディレクトリにインストールし
+      た可能性? 然しそれだと root user に switch した時にエラーメッセージが出る
+      という現象にはならない。
+
+    分からないので取り敢えずエラーメッセージを修正して何が表示されるか問い合わ
+    せる事にする。
+
   * complete: FIGNORE で全てが棄却されるバグ (reported by seanfarley) [#D1711]
     https://github.com/akinomyoga/ble.sh/issues/162
 
