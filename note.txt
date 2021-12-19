@@ -5698,6 +5698,35 @@ bash_tips
 
 2021-12-18
 
+  * complete: コマンド名に一致しない globchar が含まれるとエラーメッセージ [#D1716]
+
+    '*' を含む alias を定義すると failglob のメッセージが編集中に現れる。という
+    か、これは alias に関係なく今迄にも発生していた問題だった様だ。これは別項目
+    で処理するべき問題の様に思われる。
+
+    | bash-completion が有効になっている時に起きる問題の様である。然し、一方で、
+    | ble.sh が有効でない時には特に問題は生じない。という事は bash が
+    | bash-completion を呼び出す時にはその問題を自然に回避しているという事だろう
+    | か。調べる。
+    |
+    | ? 何処からエラーが生じているのか?
+    |
+    |   うーん。そもそも bash-completion が呼び出されているのか怪しい気がしてき
+    |   た。__load_completion を調べてみる事にする。
+    |
+    |   ble/complete/progcomp/.compgen の stderr を潰したら問題が発生しなくなった
+    |   ので、bash-completion が悪かった訳ではなかった。
+    |
+    | ? bash から呼び出された時との違いは何か?
+
+    これは分かった。progcomp/.compgen は最初の単語 (コマンド名) が quote 済みで
+    ある事を想定していた。bash-completion などの関数を通して補完が実行される時
+    には確かに compline-rewrite-command によって quote された単語に置き換えられ
+    ていたが、何も補完設定が見つからなかった時の規定の progcomp/.compgen 呼び出
+    しに対しては、qcmds への書き換えが実行されていなかった。その書き換えを実行
+    する様に修正した (既定の補完は alias 展開する前の物に対してなので、初回の
+    qcmds を別に保存しておく事にした)。
+
   * complete (source:command): quote していても alias が候補として生成されている [#D1715]
     その為に、menu の中でエラー着色されている。
 

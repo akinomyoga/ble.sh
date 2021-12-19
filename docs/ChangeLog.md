@@ -209,6 +209,7 @@
 - complete: fix empty completions with `FIGNORE` (reported by seanfarley) `#D1711` 144ea5d
 - main: fix the message of owner errors of cache directories (reported by zim0369) `#D1712` b547a41
 - util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 0000000
+- complete: fix failglob messages while progcomp for commands containing globchars `#D1716` 0000000
 
 ## Documentation
 

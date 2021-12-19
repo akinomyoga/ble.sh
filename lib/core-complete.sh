@@ -3490,10 +3490,11 @@ function ble/complete/progcomp {
   local cmd=$1 opts=$2
 
   # copy compline variables
-  local -a tmp; tmp=("${comp_words[@]}")
+  local -a orig_comp_words; orig_comp_words=("${comp_words[@]}")
   local comp_words comp_line=$comp_line comp_point=$comp_point comp_cword=$comp_cword
-  comp_words=("${tmp[@]}")
+  comp_words=("${orig_comp_words[@]}")
 
+  local -a orig_qcmds=()
   local -a alias_args=()
   [[ :$opts: == *:__recursive__:* ]] ||
     local alias_checked=' '
@@ -3506,7 +3507,7 @@ function ble/complete/progcomp {
     ucmd=$cmd qcmds=("$cmd")
     if ble/syntax:bash/simple-word/is-simple "$cmd" &&
         ble/syntax:bash/simple-word/eval "$cmd" noglob &&
-        [[ $ret != "$cmd" || ${#ret} -ne 1 ]]; then
+        [[ $ret != "$cmd" || ${#ret[@]} -ne 1 ]]; then
 
       ucmd=${ret[0]} qcmds=()
       local word
@@ -3514,6 +3515,9 @@ function ble/complete/progcomp {
         ble/string#quote-word "$word" quote-empty
         ble/array#push qcmds "$ret"
       done
+
+      [[ $cmd == "${orig_comp_words[0]}" ]] &&
+        orig_qcmds=("${qcmds[@]}")
     fi
 
     if ble/is-function "ble/cmdinfo/complete:$ucmd"; then
@@ -3572,6 +3576,8 @@ function ble/complete/progcomp {
       alias_args=("${ret[@]:1}" "${alias_args[@]}")
   done
 
+  [[ ${#orig_qcmds[@]} ]] &&
+    ble/complete/progcomp/.compline-rewrite-command "${orig_qcmds[@]}"
   ble/complete/progcomp/.compgen "default:$opts"
 }
 
