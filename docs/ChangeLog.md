@@ -268,6 +268,7 @@
 - builtin: print usages of emulated builtins on option errors `#D1694` 6f74021
 - decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
 - complete: work around a false warning messages of gawk-4.0.2 `#D1709` 9771693
+- main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 0000000
 
 ## Internal changes and fixes
 

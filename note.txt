@@ -5934,6 +5934,9 @@ bash_tips
     分からないので取り敢えずエラーメッセージを修正して何が表示されるか問い合わ
     せる事にする。
 
+    2021-12-19 分かった。'/run/user/1000/blesh' である。つまり、XDG_RUNTIME_DIR
+    が su する前のユーザーのディレクトリのままになっているのが問題である。
+
   * complete: FIGNORE で全てが棄却されるバグ (reported by seanfarley) [#D1711]
     https://github.com/akinomyoga/ble.sh/issues/162
 

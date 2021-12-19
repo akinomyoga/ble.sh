@@ -877,14 +877,28 @@ fi
 ##   3. $_ble_base/tmp/$UID を使う。
 ##
 function ble/base/initialize-runtime-directory/.xdg {
-  local runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$UID}
-  if [[ ! -d $runtime_dir ]]; then
-    [[ $XDG_RUNTIME_DIR ]] &&
+  local runtime_dir=
+  if [[ $XDG_RUNTIME_DIR ]]; then
+    if [[ ! -d $XDG_RUNTIME_DIR ]]; then
       ble/util/print "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' is not a directory." >&2
-    return 1
+      return 1
+    elif [[ -O $XDG_RUNTIME_DIR ]]; then
+      runtime_dir=$XDG_RUNTIME_DIR
+    else
+      # When XDG_RUNTIME_DIR is not owned by the current user, maybe "su" is
+      # used to enter this session keeping the environment variables of the
+      # original user.  We just ignore XDG_RUNTIME_DIR (without issueing
+      # warnings) for such a case.
+      false
+    fi
   fi
+  if [[ ! $runtime_dir ]]; then
+    runtime_dir=/run/user/$UID
+    [[ -d $runtime_dir && -O $runtime_dir ]] || return 1
+  fi
+
   if ! [[ -r $runtime_dir && -w $runtime_dir && -x $runtime_dir ]]; then
-    [[ $XDG_RUNTIME_DIR ]] &&
+    [[ $runtime_dir == "$XDG_RUNTIME_DIR" ]] &&
       ble/util/print "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' doesn't have a proper permission." >&2
     return 1
   fi
