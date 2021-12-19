@@ -141,8 +141,8 @@ function ble/complete/menu#render-item {
 ##
 ##   @var[in] lines cols menu_iloop
 function ble/complete/menu-style:align/construct/.measure-candidates-in-page {
-  local max_wcell=$bleopt_complete_menu_align; ((max_wcell>cols&&(max_wcell=cols)))
-  wcell=2
+  local max_wcell=$bleopt_menu_align_max; ((max_wcell>cols&&(max_wcell=cols)))
+  ((wcell=bleopt_menu_align_min,wcell<2&&(wcell=2)))
   local ncell=0 index=$begin
   local item ret esc1 w
   for item in "${menu_items[@]:begin}"; do

@@ -1635,8 +1635,10 @@ bash_tips
 
 2021-12-18
 
-  * bleopt menu_align_{min,max}
-    これは別項目で議論する。
+  * ble/util/import でファイル名に関数名として許されない文字が入っていた時の対
+    策が必要では。
+
+  * complete (action:mandb): brace の後は space ではなくて , にするべき。
 
   * deprecated functions の枠組みを整える。
 
@@ -1668,12 +1670,11 @@ bash_tips
   * compat: RLogin で ble-detach した後に modifyOtherKeys の状態がおかしい。
     bash --norc してもおかしい。RLogin である事は検出できている。
 
-  * compat: terminator で statusline で表示が崩れる
+  * compat: terminator で status_line で表示が崩れる
 
   * compat: mlterm 起動時に表示が乱れる with statusline
 
-  * C-backspace の問題
-
+  * C-backspace の問題 (端末自動判定?)
     https://github.com/akinomyoga/ble.sh/issues/94
     https://github.com/akinomyoga/ble.sh/issues/104
     https://github.com/msys2/MSYS2-packages/pull/2490
@@ -5695,6 +5696,27 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-12-19
+
+  * menu (align): bleopt menu_align_{min,max} (motivated by banoris) [#D1717]
+
+    これは別項目で議論する。というか幅に上限を作っても良いのかもしれないとも思
+    う。
+
+    - done: complete_menu_align -> menu_align_max : 並べる時の align の max
+    - done: menu_align_min : 並べる時の align の min
+
+    - reject: menu_align_item_maxwidth : 項目の幅の最大 → 対応しようかと思った
+      が、現在の実装では項目の幅の計算には trace-text を使っていて、この
+      trace-text は高速な代わりに truncate 等の機能がない。trace-text に
+      truncate を実装するのも trace-text が高速である意義がなくなるし、或いは、
+      trace にすると遅くなってしまうし、色々と面倒である。この項目についてはそ
+      れ程積極的に実装する意義がある訳でもない気がするので取り敢えずは実装しな
+      い事にする。
+
+    * done: wiki
+    * done: blerc
 
 2021-12-18
 

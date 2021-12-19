@@ -85,6 +85,7 @@
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
   - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` e12bae4
   - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0786e92
+- complete (menu-style:align): refactor `complete_menu_align => menu_align_{min,max}` (motivated by banoris) `#D1717` 0000000
  
 ## Changes
 

@@ -103,7 +103,7 @@ function bleopt/.read-arguments {
           done
 
           # 表示目的で obsolete しかない時は obsolete でも表示
-          [[ ! $op && ${#var[@]} == 0 ]] && var=("${ret[@]}")
+          [[ ${#var[@]} == 0 ]] && var=("${ret[@]}")
 
           # 適した物が見つからない場合は失敗
           if ((${#var[@]}==0)); then
@@ -244,8 +244,17 @@ function bleopt {
 
 function bleopt/declare/.check-renamed-option {
   var=bleopt_$2
-  local locate=$'\e[32m'${BASH_SOURCE[3]}:${BASH_LINENO[2]}$'\e[m'
-  ble/util/print "$locate (bleopt): The option '$1' has been renamed. Please use '$2' instead." >&2
+
+  local sgr0= sgr1= sgr2= sgr3=
+  if [[ -t 2 ]]; then
+    sgr0=$_ble_term_sgr0
+    sgr1=${_ble_term_setaf[2]}
+    sgr2=${_ble_term_setaf[1]}$_ble_term_bold
+    sgr3=${_ble_term_setaf[4]}$_ble_term_bold
+  fi
+
+  local locate=$sgr1${BASH_SOURCE[3]-'(stdin)'}:${BASH_LINENO[2]}$sgr0
+  ble/util/print "$locate (bleopt): The option '$sgr2$1$sgr0' has been renamed. Please use '$sgr3$2$sgr0' instead." >&2
   if ble/is-function bleopt/check:"$2"; then
     bleopt/check:"$2"
     return "$?"

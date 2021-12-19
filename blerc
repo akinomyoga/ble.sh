@@ -530,10 +530,11 @@
 #bleopt complete_menu_style=align-nowrap
 
 
-## The following setting specifies the maximal align width for
+## The following settings specify the maximal and minimal align widths for
 ## complete_menu_style="align" and "align-nowrap".
 
-#bleopt complete_menu_align=20
+#bleopt menu_align_min=4
+#bleopt menu_align_max=20
 
 
 ## The following setting specifies the maximal height of the menu.  When this
