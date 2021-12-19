@@ -3488,7 +3488,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
 
   if ((ctx==CTX_CMDI)); then
     local ret
-    ble/util/expand-alias "$word"; local word_expanded=$ret
+    ble/alias#expand "$word"; local word_expanded=$ret
 
     # キーワードの処理
     if ((wt!=CTX_CMDXV)); then # Note: 変数代入の直後はキーワードは処理しない
@@ -6836,6 +6836,14 @@ function ble/progcolor/highlight-filename/.single.wattr {
   local p0=${1%%:*} p1=${1#*:}
   local wtxt=${text:p0:p1-p0}
 
+  # alias はシェル展開等を行う前に判定するべき
+  if ((wtype==CTX_CMDI)) && ble/alias#active "$wtxt"; then
+    # Note: [*?] 等の文字が含まれている alias 名の場合 failglob するかもしれ
+    # ないが、実際は展開されるので問題ない。
+    ble/progcolor/wattr#setattr "$p0" "$ATTR_CMD_ALIAS"
+    return 0
+  fi
+
   local path_opts=after-sep:$highlight_eval_opts
   # チルダ展開の文脈でない時には抑制
   [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
@@ -7042,7 +7050,7 @@ function ble/progcolor {
     checked="$checked$cmd "
 
     local ret
-    ble/util/expand-alias "$cmd"
+    ble/alias#expand "$cmd"
     ble/string#split-words ret "$ret"
     [[ $checked == *" $ret "* ]] && break
     cmd=$ret

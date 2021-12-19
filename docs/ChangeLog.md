@@ -128,6 +128,9 @@
   - syntax: revert 371a5a4 and generate empty completion source on syntax error `#D1609` e09fcab
 - syntax: strictly check variable names of `for`-statements `#D1692` d056547
 - widget `self-insert`: untranslate control chars and insert the last character `#D1696` 5ff3021
+- complete (`source:command`): exclude inactive aliases `#D1715` 0000000
+- complete (`source:command`): not quote aliases and keywords `#D1715` 0000000
+- highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` 0000000
 
 ## Fixes
 

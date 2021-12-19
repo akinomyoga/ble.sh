@@ -2910,17 +2910,53 @@ function ble/util/type {
   ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"; local ext=$?
   return "$ext"
 }
-## @fn ble/util/expand-alias word
-##   @var[out] ret
-##   @exit
-##     エイリアス展開が実際に行われた時に成功します。
-function ble/util/expand-alias {
-  ret=$1
-  local type; ble/util/type type "$ret"
-  [[ $type != alias ]] && return 1
-  local data; ble/util/assign data 'LC_ALL=C alias "$ret"' &>/dev/null
-  [[ $data == 'alias '*=* ]] && builtin eval "ret=${data#alias *=}"
-}
+
+if ((_ble_bash>=40000)); then
+  function ble/is-alias {
+    [[ ${BASH_ALIASES[$1]+set} ]]
+  }
+  function ble/alias#active {
+    shopt -q expand_aliases &&
+      [[ ${BASH_ALIASES[$1]+set} ]]
+  }
+  ## @fn ble/alias#expand word
+  ##   @var[out] ret
+  ##   @exit
+  ##     エイリアス展開が実際に行われた時に成功します。
+  function ble/alias#expand {
+    ret=$1
+    shopt -q expand_aliases &&
+      ret=${BASH_ALIASES[$ret]-$ret}
+  }
+  function ble/alias/list {
+    ret=("${!BASH_ALIASES[@]}")
+  }
+else
+  function ble/is-alias {
+    [[ $1 != *=* ]] && alias "$1" >/dev/null
+  }
+  function ble/alias#active {
+    shopt -q expand_aliases &&
+      [[ $1 != *=* ]] && alias "$1" >/dev/null
+  }
+  function ble/alias#expand {
+    ret=$1
+    local type; ble/util/type type "$ret"
+    [[ $type != alias ]] && return 1
+    local data; ble/util/assign data 'LC_ALL=C alias "$ret"' &>/dev/null
+    [[ $data == 'alias '*=* ]] && builtin eval "ret=${data#alias *=}"
+  }
+  function ble/alias/list {
+    ret=()
+    local data iret=0
+    ble/util/assign-array data 'alias -p'
+    for data in "${data[@]}"; do
+      [[ $data == 'alias '*=* ]] &&
+        data=${data%%=*} &&
+        builtin eval "ret[iret++]=${data#alias }"
+    done
+  }
+fi
 
 if ((_ble_bash>=40000)); then
   # #D1341 対策 変数代入形式だと組み込みコマンドにロケールが適用されない。

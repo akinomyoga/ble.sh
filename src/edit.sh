@@ -5994,7 +5994,7 @@ function ble/widget/alias-expand-line.proc {
       ble/widget/alias-expand-line.proc
   elif [[ $wtype && ! ${wtype//[0-9]} ]] && ((wtype==_ble_ctx_CMDI)); then
     local word=${_ble_edit_str:wbegin:wlen}
-    local ret; ble/util/expand-alias "$word"
+    local ret; ble/alias#expand "$word"
     [[ $word == "$ret" ]] && return 0
     changed=1
     ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$ret"
@@ -6061,7 +6061,7 @@ function ble/widget/shell-expand-line.expand-word {
 
   # エイリアス展開
   if ((wtype==_ble_ctx_CMDI)); then
-    ble/util/expand-alias "$word"
+    ble/alias#expand "$word"
     [[ $word != $ret ]] && return 0
   fi
 

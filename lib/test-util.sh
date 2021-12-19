@@ -1353,25 +1353,25 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'ble/util/type ret ble/fun1#meth' ret=
 )
 
-# ble/util/expand-alias
+# ble/alias#expand
 (
   shopt -s expand_aliases
 
   # Note: 複数段階の展開は実行しない
   alias aaa1='aaa2 world'
-  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+  ble/test 'ble/alias#expand aaa1' ret='aaa2 world'
   alias aaa2='aaa3 hello'
-  ble/test 'ble/util/expand-alias aaa2' ret='aaa3 hello'
-  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+  ble/test 'ble/alias#expand aaa2' ret='aaa3 hello'
+  ble/test 'ble/alias#expand aaa1' ret='aaa2 world'
   alias aaa3='aaa4'
-  ble/test 'ble/util/expand-alias aaa3' ret='aaa4'
-  ble/test 'ble/util/expand-alias aaa2' ret='aaa3 hello'
-  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+  ble/test 'ble/alias#expand aaa3' ret='aaa4'
+  ble/test 'ble/alias#expand aaa2' ret='aaa3 hello'
+  ble/test 'ble/alias#expand aaa1' ret='aaa2 world'
   alias aaa4='echo'
-  ble/test 'ble/util/expand-alias aaa4' ret='echo'
-  ble/test 'ble/util/expand-alias aaa3' ret='aaa4'
-  ble/test 'ble/util/expand-alias aaa2' ret='aaa3 hello'
-  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+  ble/test 'ble/alias#expand aaa4' ret='echo'
+  ble/test 'ble/alias#expand aaa3' ret='aaa4'
+  ble/test 'ble/alias#expand aaa2' ret='aaa3 hello'
+  ble/test 'ble/alias#expand aaa1' ret='aaa2 world'
 )
 
 # ble/util/is-stdin-ready

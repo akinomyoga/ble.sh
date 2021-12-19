@@ -1635,10 +1635,16 @@ bash_tips
 
 2021-12-18
 
-  * complete (source:command): quote していても alais が候補として生成されている
-
   * bleopt menu_align_{min,max}
     これは別項目で議論する。
+
+  * deprecated functions の枠組みを整える。
+
+    散発的に deprecate して行くと毎回設定を変更しなければならず面倒なので、
+    version を指定して特定の version 以降になった時に限り初回だけ警告を表示する
+    様にするのが良い。
+
+    ((_ble_version>=500)) && ..... と言った具合。
 
   * complete: FIGNORE と -o filenames
 
@@ -5691,6 +5697,31 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-18
+
+  * complete (source:command): quote していても alias が候補として生成されている [#D1715]
+    その為に、menu の中でエラー着色されている。
+
+    うーん。特に自分で alias を生成している訳ではなくて compgen -c -- s 等の時
+    点で alias が生成される様だ。一方で、 compgen -c -- "'s'" 等とすると、何も
+    生成されなくなってしまうので alias を除外した生成にする事は難しそうである。
+
+    更に compgen -c は expand_aliases が off になっていても alias を列挙する様だ。
+
+    一方で、for 等の keyword はどの様に判定しているのだったか。うーん。
+    source:command で filter している様だ。同じ箇所で alias のチェックもする事
+    にした。
+
+    x fixed: 実装してみたら全て赤くなっている→ これは今回の編集ではなくて前回
+      の commit の時点で既に駄目になっている。#D1714 で修正した。
+
+    x fixed: alias は noquote を付加する必要があるのでは? → 修正した。その他に
+      も ! や [[ 等は quote しない様にする必要がある。
+
+    x fixed: alias が *? 等の文字を含んでいる場合コマンド着色でエラーになってし
+      まう。修正した。
+
+      と思ったが、考えてみれば、そもそも alias 名に一致している場合には展開を試
+      みる前に alias に確定させるべきなのではないか。
 
   * menu-complete で 30s かかるという話 (2/2) yield quote-insert 高速化の試み [#D1714]
     https://github.com/banoris/dotfiles/issues/11

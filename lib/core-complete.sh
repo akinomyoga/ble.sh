@@ -1276,7 +1276,9 @@ function ble/complete/action/quote-insert {
   fi
 
   local escape_flags=$quote_escape_flags
-  if [[ $quote_action == progcomp ]]; then
+  if [[ $quote_action == command ]]; then
+    [[ $DATA == *:noquote:* || $COMPS == "$COMPV" && ( $CAND == '[[' || $CAND == '!' ) ]] && return 0
+  elif [[ $quote_action == progcomp ]]; then
     [[ $comp_opts == *:noquote:* ]] && return 0
 
     # bash-completion には compopt -o nospace として、
@@ -1420,7 +1422,9 @@ function ble/complete/action/quote-insert.batch/awk {
 
     function quote_insert(cand) {
       # progcomp 特有
-      if (quote_action == "progcomp") {
+      if (quote_action == "command") {
+        if (comps == compv && cand ~ /^(\[\[|]]|!)$/) return cand;
+      } else if (quote_action == "progcomp") {
         if (is_noquote) return cand;
         if (is_nospace && cand ~ / $/ && !is_file(cand)) return cand;
       }
@@ -1766,7 +1770,7 @@ function ble/complete/action:command/get-desc {
     case $type in
     ($_ble_attr_CMD_ALIAS)
       local ret
-      ble/util/expand-alias "$CAND"
+      ble/alias#expand "$CAND"
       title=alias value=$ret ;;
     ($_ble_attr_CMD_FILE)
       local path; ble/util/assign path 'type -p -- "$CAND"'
@@ -2298,10 +2302,15 @@ function ble/complete/source:command {
 
   ble/complete/source/test-limit ${#arr[@]} || return 1
 
-  # keyword 判定用
-  local rex_keyword=
-  [[ $COMPS != $COMPV ]] &&
-    local rex_keyword='^(if|then|else|elif|fi|case|esac|for|select|while|until|do|done|function|time|[{}]|\[\[|coproc)$'
+  local action=command "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  ble/complete/cand/yield.initialize "$action"
+
+  # 無効 keyword, alias 判定用
+  local is_quoted=
+  [[ $COMPS != "$COMPV" ]] && is_quoted=1
+  local rex_keyword='^(if|then|else|elif|fi|case|esac|for|select|while|until|do|done|function|time|[!{}]|\[\[|coproc|\]\]|in)$'
+  local expand_aliases=
+  shopt -q expand_aliases && expand_aliases=1
 
   local cand icand=0 cands
   for cand in "${arr[@]}"; do
@@ -2311,18 +2320,41 @@ function ble/complete/source:command {
     #   厳密一致のディレクトリ名が混入するので削除する。
     [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
 
-    # #D1691 keyword は quote されている場合には無効
-    if [[ $rex_keyword && $cand =~ $rex_keyword ]]; then
-      local type; ble/util/type type "$cand"
-      ((${#type[@]}==1)) && continue
+    if [[ $is_quoted ]]; then
+      local disable_count=
+      # #D1691 keyword は quote されている場合には無効
+      [[ $cand =~ $rex_keyword ]] && ((disable_count++))
+      # #D1715 alias も quote されている場合には無効
+      [[ $expand_aliases ]] && ble/is-alias "$cand" && ((disable_count++))
+      if [[ $disable_count ]]; then
+        local type; ble/util/type type "$cand"
+        ((${#type[@]}>disable_count)) || continue
+      fi
+    else
+      # 'in' と ']]' は alias でない限り常にエラー
+      [[ $cand == ']]' || $cand == in ]] &&
+        ! { [[ $expand_aliases ]] && ble/is-alias "$cand"; } &&
+        continue
+
+      if [[ ! $expand_aliases ]]; then
+        # #D1715 expand_aliases が無効でも compgen -c は alias を列挙してしまうので、
+        # ここで alias は除外 (type は expand_aliases をちゃんと考慮してくれる)。
+        ble/is-alias "$cand" && ! type "$cand" &>/dev/null && continue
+      fi
+
+      # alias は quote されては困るので、quote される可能性のある文字を含んでい
+      # る場合は個別に :noquote: 指定で yield する [ Note: alias 内で許される特
+      # 殊文字は !#%-~^[]{}+*:@,.?_ である。更にその中で escape/quote の対象と
+      # なり得る文字は、[*?]{,}!^~#: だけである。_.@+%- は quote されない ]。
+      if ble/string#match "$cand" '[][*?{,}!^~#]' && ble/is-alias "$cand"; then
+        ble/complete/cand/yield "$action" "$cand" :noquote:
+        continue
+      fi
     fi
+
     cands[icand++]=$cand
   done
-  ((icand)) || return 1
-
-  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
-  ble/complete/cand/yield.initialize command
-  ble/complete/cand/yield.batch command
+  ble/complete/cand/yield.batch "$action"
 }
 
 # source:file, source:dir
@@ -3518,7 +3550,7 @@ function ble/complete/progcomp {
     ((_ble_bash<50000)) || shopt -q progcomp_alias || break
 
     local ret
-    ble/util/expand-alias "$cmd"
+    ble/alias#expand "$cmd"
     [[ $ret == "$cmd" ]] && break
     ble/complete/progcomp/.split-alias-words "$ret"
     if ((${#ret[@]}==0)); then
@@ -4590,7 +4622,7 @@ function ble/complete/source:option {
   local alias_checked=' '
   while local ret; ! ble/complete/mandb/load-cache "$cmd"; do
     alias_checked=$alias_checked$cmd' '
-    ble/util/expand-alias "$cmd" || return 1
+    ble/alias#expand "$cmd" || return 1
     local words; ble/string#split-words ret "$ret"; words=("${ret[@]}")
 
     # 変数代入は読み飛ばし
