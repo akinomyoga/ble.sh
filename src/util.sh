@@ -1410,7 +1410,7 @@ function ble/opts#has {
 
 ## @fn ble/opts#extract-first-optarg opts key [default_value]
 function ble/opts#extract-first-optarg {
-  ret=()
+  ret=
   local rex=':'$2'(=[^:]*)?:'
   [[ :$1: =~ $rex ]] || return 1
   if [[ ${BASH_REMATCH[1]} ]]; then
@@ -1422,7 +1422,7 @@ function ble/opts#extract-first-optarg {
 }
 ## @fn ble/opts#extract-last-optarg opts key [default_value]
 function ble/opts#extract-last-optarg {
-  ret=()
+  ret=
   local rex='.*:'$2'(=[^:]*)?:'
   [[ :$1: =~ $rex ]] || return 1
   if [[ ${BASH_REMATCH[1]} ]]; then
@@ -2889,13 +2889,15 @@ function ble/function#suppress-stderr {
 # miscallaneous utils
 #
 
+# Note: "printf -v" for an array element is only allowed in bash-4.1
+# or later.
 if ((_ble_bash>=40100)); then
   function ble/util/set {
     builtin printf -v "$1" %s "$2"
   }
 else
   function ble/util/set {
-    builtin eval "$1=\"\$2\""
+    builtin eval -- "$1=\"\$2\""
   }
 fi
 

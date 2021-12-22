@@ -85,7 +85,7 @@
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
   - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` e12bae4
   - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0786e92
-- complete (menu-style:align): refactor `complete_menu_align => menu_align_{min,max}` (motivated by banoris) `#D1717` 0000000
+- complete (menu-style:align): refactor `complete_menu_align => menu_align_{min,max}` (motivated by banoris) `#D1717` 22a2449
  
 ## Changes
 
@@ -129,9 +129,9 @@
   - syntax: revert 371a5a4 and generate empty completion source on syntax error `#D1609` e09fcab
 - syntax: strictly check variable names of `for`-statements `#D1692` d056547
 - widget `self-insert`: untranslate control chars and insert the last character `#D1696` 5ff3021
-- complete (`source:command`): exclude inactive aliases `#D1715` 0000000
-- complete (`source:command`): not quote aliases and keywords `#D1715` 0000000
-- highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` 0000000
+- complete (`source:command`): exclude inactive aliases `#D1715` d6242a7
+- complete (`source:command`): not quote aliases and keywords `#D1715` d6242a7
+- highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
 
 ## Fixes
 
@@ -151,6 +151,7 @@
   - mandb: carry optarg for e.g. `-a, --accept=LIST` `#D1687` 23d5657
   - mandb: parse `--help` for specified commands `#D1693` e1ad2f1
   - mandb: fix small issues of man-page analysis `#D1708` caa77bc
+  - mandb: insert a comma in brace expansions instead of a space `#D1719` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -209,8 +210,8 @@
 - menu (menu-style:align): fix the failure of delaying `ble/canvas/trace` on items (motivated by banoris) `#D1710` acc9661
 - complete: fix empty completions with `FIGNORE` (reported by seanfarley) `#D1711` 144ea5d
 - main: fix the message of owner errors of cache directories (reported by zim0369) `#D1712` b547a41
-- util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 0000000
-- complete: fix failglob messages while progcomp for commands containing globchars `#D1716` 0000000
+- util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 7db3d2b
+- complete: fix failglob messages while progcomp for commands containing globchars `#D1716` e26a3a8
 
 ## Documentation
 
@@ -237,7 +238,7 @@
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
 - decode: cache `inputrc` translations `#D1652` 994e2a5
-- complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` 0000000
+- complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2
 
 ## Compatibility
 
@@ -268,7 +269,7 @@
 - builtin: print usages of emulated builtins on option errors `#D1694` 6f74021
 - decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
 - complete: work around a false warning messages of gawk-4.0.2 `#D1709` 9771693
-- main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 0000000
+- main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 8d37048
 
 ## Internal changes and fixes
 

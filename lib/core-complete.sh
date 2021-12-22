@@ -3603,7 +3603,9 @@ function ble/complete/action:mandb/complete {
   ble/complete/action/complete.close-quotation
   local fields
   ble/string#split fields "$_ble_term_FS" "$DATA"
-  ble/complete/action/complete.addtail "${fields[2]}"
+  local tail=${fields[2]}
+  [[ $tail == ' ' && $comps_flags == *x* ]] && tail=','
+  ble/complete/action/complete.addtail "$tail"
 }
 function ble/complete/action:mandb/init-menu-item {
   local ret; ble/color/face2g argument_option; g=$ret
