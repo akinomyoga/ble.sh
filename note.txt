@@ -5973,6 +5973,8 @@ bash_tips
       A & で起動したコマンドは、どうも外側でリダイレクトした fd から読み出せていない様だ。
       A の内部でリダイレクトする様に変更したら動く様になった。
 
+    2021-12-22 追加修正。"continue 0" という文が混入していた。
+
   * ble/string#escape-for-bash-specialchars で HT を SP HT に置換しているのは何故? [#D1713]
     manu-complete 最適化中に気づいた事。
 

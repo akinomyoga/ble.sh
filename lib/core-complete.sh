@@ -1989,7 +1989,7 @@ function ble/complete/cand/yield.batch {
       local CAND=${cands[i]} INSERT=${inserts[i]}
 
       [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && continue
-      [[ $flag_source_filter ]] || ble/complete/candidates/filter#test "$CAND" || continue 0
+      [[ $flag_source_filter ]] || ble/complete/candidates/filter#test "$CAND" || continue
 
       local PREFIX_LEN=0
       [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
