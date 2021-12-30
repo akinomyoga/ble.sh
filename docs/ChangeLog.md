@@ -212,6 +212,7 @@
 - main: fix the message of owner errors of cache directories (reported by zim0369) `#D1712` b547a41
 - util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 7db3d2b
 - complete: fix failglob messages while progcomp for commands containing globchars `#D1716` e26a3a8
+  - complete: fix a bug that the default progcomp does not work properly `#D1722` 0000000
 - highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` 0000000
 
 ## Documentation

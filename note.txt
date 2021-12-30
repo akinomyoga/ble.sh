@@ -1652,6 +1652,10 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2021-12-30
+
+  * 外部コマンドを実行する前に vbell 消去はキャンセルするべきでは
+
 2021-12-22
 
   * ディレクトリ固有の local commands & aliases を可能にする?
@@ -5753,6 +5757,94 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-12-30
+
+  * complete: echo $abc 迄入力すると progcomp から complete -p の内容が出力される [#D1722]
+
+    調べると complete -p -- コマンド名 によって補完設定を読み込む時にコマンド名
+    が空になっている。comp_words=('$abc') になっている。
+
+    | ? そもそも何故 comp_words=('$abc') によって補完が呼び出されているのだろうか。
+    |   コマンド抽出に失敗している気がする。
+    |
+    |   →これは ble/complete/progcomp/.compline-rewrite-command の問題であって
+    |   extract-command の問題ではなかった。なので個別に気にする必要はない。
+    |
+    | ? 次に '$abc' が何故空の文字列に置き換わってしまうのだろうかという事。
+    |
+    |   →これは分かった。展開自体は complete -p -- $abc によって行われているが
+    |   quote されていない所為で単語無しで設定が読み込まれているという事なのだろ
+    |   う。コメントによると呼び出し元によって quote されている筈という事になって
+    |   いるが何故 quote されていないのだろうか。
+    |
+    |   stackdump:
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:1 (ble/complete/progcomp/.compgen)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:50 (ble/complete/progcomp/.compgen)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:93 (ble/complete/progcomp)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:55 (ble/complete/source:argument/.generate-user-defined-completion)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:18 (ble/complete/source:argument)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:21 (ble/complete/candidates/generate-with-filter)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:18 (ble/complete/candidates/generate)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:15 (ble/complete/auto-complete/.check-context)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:23 (ble/complete/auto-complete.impl)
+    |     @ /home/murase/.mwg/src/ble.sh/out/lib/core-complete.sh:20 (ble/complete/auto-complete.idle)
+    |     @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble/util/idle.do/.call-task)
+    |     @ /home/murase/.mwg/src/ble.sh/out/ble.sh:38 (ble/util/idle.do)
+    |     @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble-edit/bind/.tail)
+    |     @ /home/murase/.mwg/src/ble.sh/out/ble.sh:22 (ble-decode/EPILOGUE)
+    |     @ /home/murase/.mwg/src/ble.sh/out/ble.sh:81 (ble-decode/.hook)
+    |
+    |   うーん。行番号が全然当てにならない。
+    |
+    |   どうやら complete -p -D で呼び出されてその後に再実行によって変な状態になっ
+    |   ている様だ。comp_words の状態は直前の呼び出しでは以下の様な形になっている。
+    |
+    |     orig_comp_words=('echo' '$abc') comp_words=('$abc') ucmd='echo' qcmds=('echo')
+    |
+    |   結局.compgen が参照するのは comp_words だけであるからこの際 ucmd や qcmds
+    |   は関係ない。
+
+    [原因]
+
+    うーん。分かった。ble/complete/progcomp に於いて、
+
+    1 最初のコマンド名の単語評価の際に複数単語に展開されたかまたは単語が変化し
+      た時に、orig_qcmds にコマンド名の展開結果を再クォートした物を格納する。そ
+      れ以外の時には orig_qcmds は空である。
+
+    2 さて、最後に既定の補完 (complete -D) を実行する為に comp_words を書き換え
+      る際に orig_qcmds に何か値が設定されていれば、コマンド名が変化していたと
+      判定して、.complien-rewrite-command を用いて orig_qcmds を適用する様になっ
+      ている。所が、その判定部分を間違えていて orig_qcmds が空の時であっても
+      .compline-rewrite-command が呼び出されて、結果としてコマンド名が削除され
+      るという状態になっていた。
+
+    判定を修正したら echo $abc に対しては問題は発生しなくなった。
+
+    然し此処で改めて疑問が生まれる。最初の単語の展開結果が空になる時には何が起
+    こるのだろうか。例えば "$abc [TAB]" に対して何が起こるのか。orig_qcmds は空
+    なので書き換えは起こらない。すると、$abc がそのまま補完対象になるのではある
+    まいか。
+
+    x fixed: コマンド名の展開結果が空の時には何が起こるのだろうか → 特に変な事
+      は起こらない様子である。
+
+      試してみると一見して問題は起こらない様に見えたが、それは空文字列に対して
+      は complete -F _minimal '' という設定が存在している為に、そちらが呼び出さ
+      れて complete -D が試行されないからだった。実際に complete -r -- '' をし
+      て見たら問題が再現した。
+
+    x fixed: うーん。改めて観察する。complete -D の時以外でも quote されずに
+      complete -p に渡ってしまうケースが存在する様な気がする。.compgen は
+      is-simple の時には必ず quote されている事を要求する。現在の実装だと
+      is-simple であっても eval に失敗する等した時にはコマンド名が quote されず
+      に.compgen に渡されてしまう。結果として .compgen 側で展開されて変な事が起
+      こる可能性は否定できない (そもそも eval に失敗したりした時点で .compgen
+      の中でも同様に失敗する様な気もするが)。
+
+      →is-simple であれば必ず quote は最終的に実行する様に書き換える事にした。
+      結果として orig_qcmds は is-simple の時には必ず設定される様になった筈なの
+      で、complete -D の .compgen に際しては orig_qcmds が設定されているかどう
+      かを確認するだけで良い筈。
 
   * 2021-12-22 highlight: 0 番目の要素の入っていない配列名の着色 [#D1721]
 

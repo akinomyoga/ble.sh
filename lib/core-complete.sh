@@ -3487,13 +3487,14 @@ function ble/complete/progcomp/.split-alias-words {
 ##   補完指定を検索して対応する補完関数を呼び出します。
 ##   @var[in] comp_line comp_words comp_point comp_cword
 function ble/complete/progcomp {
-  local cmd=$1 opts=$2
+  local cmd=${1-${comp_words[0]}} opts=$2
 
   # copy compline variables
   local -a orig_comp_words; orig_comp_words=("${comp_words[@]}")
   local comp_words comp_line=$comp_line comp_point=$comp_point comp_cword=$comp_cword
-  comp_words=("${orig_comp_words[@]}")
+  comp_words=("$cmd" "${orig_comp_words[@]:1}")
 
+  local orig_qcmds_set=
   local -a orig_qcmds=()
   local -a alias_args=()
   [[ :$opts: == *:__recursive__:* ]] ||
@@ -3505,19 +3506,23 @@ function ble/complete/progcomp {
     # @var qcmds ... simple-word/eval x quote-word したコマンド
     local ret ucmd qcmds
     ucmd=$cmd qcmds=("$cmd")
-    if ble/syntax:bash/simple-word/is-simple "$cmd" &&
-        ble/syntax:bash/simple-word/eval "$cmd" noglob &&
-        [[ $ret != "$cmd" || ${#ret[@]} -ne 1 ]]; then
+    if ble/syntax:bash/simple-word/is-simple "$cmd"; then
+      if ble/syntax:bash/simple-word/eval "$cmd" noglob &&
+          [[ $ret != "$cmd" || ${#ret[@]} -ne 1 ]]; then
 
-      ucmd=${ret[0]} qcmds=()
-      local word
-      for word in "${ret[@]}"; do
-        ble/string#quote-word "$word" quote-empty
-        ble/array#push qcmds "$ret"
-      done
+        ucmd=${ret[0]} qcmds=()
+        local word
+        for word in "${ret[@]}"; do
+          ble/string#quote-word "$word" quote-empty
+          ble/array#push qcmds "$ret"
+        done
+      else
+        ble/string#quote-word "$cmd" quote-empty
+        qcmds=("$ret")
+      fi
 
       [[ $cmd == "${orig_comp_words[0]}" ]] &&
-        orig_qcmds=("${qcmds[@]}")
+        orig_qcmds_set=1 orig_qcmds=("${qcmds[@]}")
     fi
 
     if ble/is-function "ble/cmdinfo/complete:$ucmd"; then
@@ -3529,11 +3534,11 @@ function ble/complete/progcomp {
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       "ble/cmdinfo/complete:${ucmd##*/}" "$opts"
       return "$?"
-    elif builtin complete -p "$ucmd" &>/dev/null; then
+    elif builtin complete -p -- "$ucmd" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
-    elif [[ $ucmd == */?* ]] && builtin complete -p "${ucmd##*/}" &>/dev/null; then
+    elif [[ $ucmd == */?* ]] && builtin complete -p -- "${ucmd##*/}" &>/dev/null; then
       ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
@@ -3541,7 +3546,7 @@ function ble/complete/progcomp {
     elif
       # bash-completion の loader を呼び出して遅延補完設定をチェックする。
       ble/function#try __load_completion "${ucmd##*/}" &>/dev/null &&
-        builtin complete -p "${ucmd##*/}" &>/dev/null
+        builtin complete -p -- "${ucmd##*/}" &>/dev/null
     then
       ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
@@ -3576,7 +3581,9 @@ function ble/complete/progcomp {
       alias_args=("${ret[@]:1}" "${alias_args[@]}")
   done
 
-  [[ ${#orig_qcmds[@]} ]] &&
+  # comp_words の再構築
+  comp_words=("${orig_comp_words[@]}")
+  [[ $orig_qcmds_set ]] &&
     ble/complete/progcomp/.compline-rewrite-command "${orig_qcmds[@]}"
   ble/complete/progcomp/.compgen "default:$opts"
 }
