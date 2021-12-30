@@ -1727,9 +1727,6 @@ bash_tips
   * PROMPT_COMMAND / trap DEBUG で問題が起こる? (found by rashad-moves)
     https://github.com/rashad-moves/HomeConfigurationFiles/commit/efbac4153fd5021f1bc00d42c618fd9d6f4090b9
 
-  * NixOS で皆が readlink 周りに修正を入れている
-    https://github.com/peterzky/peterzky-overlay/commit/7b98f05e9b8f84f2d43d84db6b2d76c8e93a38df#diff-34e5f3d20be258f6630e6113d3e1409be74cae463b58eb52b5ebe493e9ee2309R20
-
   * complete (source:rhs): 変数名依存の補完に対応しても良いのでは。
 
   * complete: ARGEX (eval 文脈) の補完
@@ -5725,6 +5722,37 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2021-12-30
+
+  * readlink 対策: NixOS で皆が readlink 周りに修正を入れている [#D1720]
+    https://github.com/peterzky/peterzky-overlay/commit/7b98f05e9b8f84f2d43d84db6b2d76c8e93a38df#diff-34e5f3d20be258f6630e6113d3e1409be74cae463b58eb52b5ebe493e9ee2309R20
+
+    今迄は /usr/bin:/bin にある readlink しか信用しない事にしていたが、取り敢え
+    ず readlink が存在さえしていれば単一のパスの読み取りには使えると想定する事
+    にする。-f が使えるかどうかの判定に /usr/bin/readlink または/bin/readlink
+    を使う事にする。
+
+    readlink が存在しない場合にどうするかについて。
+
+    https://qiita.com/ko1nksm/items/873cfb9c6ceb6ef32ec9
+
+    このページを見ると ls -l を用いて link を読み取り、cd -P を用いてパスの解決
+    を行っている。うーん。cd -P を実行した時にディレクトリが戻らなくなるのが心
+    配だが、まあその様な事は基本的に起こらないと想定して良いだろうか。
+
+    元々の実装では別に途中のディレクトリ名の解決はしなくても良いという態度だっ
+    たが使い方によっては問題になるかもしれないと心配になって来たので、やはり cd
+    -P を用いて解決する事にした。
+
+    * readlink -f を使わない実装について簡単なテストを書いてみたが取り敢えずは
+      動いている様子である。
+
+      というか寧ろ readlink -f を用いて失敗した時にどう振る舞うのかというのが心
+      配な気もする。
+
+    x done: 解決対象のファイル名が - で始まる時に変な事が起こるのではないか? →
+      これについては修正した。
 
 2021-12-21
 

@@ -2815,15 +2815,13 @@ function ble/function#push {
   if [[ $proc ]]; then
     local q=\' Q="'\''"
     builtin eval "function $name { builtin eval -- '${proc//$q/$Q}'; }"
+  else
+    builtin unset -f "$name"
   fi
   return 0
 }
 function ble/function#pop {
   local name=$1 proc=$2
-  if ! ble/is-function "$name"; then
-    ble/util/print "ble/function#push: $name is not a function." >&2
-    return 1
-  fi
 
   local index=-1
   while ble/is-function "ble/function#push/$((index+1)):$name"; do
@@ -2831,13 +2829,19 @@ function ble/function#pop {
   done
 
   if ((index<0)); then
-    builtin unset -f "$name"
+    if ble/is-function "$name"; then
+      builtin unset -f "$name"
+      return 0
+    else
+      ble/util/print "ble/function#push: $name is not a function." >&2
+      return 1
+    fi
   else
     local def; ble/function#getdef "ble/function#push/$index:$name"
     builtin eval -- "${def#*:}"
     builtin unset -f "ble/function#push/$index:$name"
+    return 0
   fi
-  return 0
 }
 function ble/function#push/call-top {
   local func=${FUNCNAME[1]}

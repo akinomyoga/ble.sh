@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'main' 16
+ble/test/start-section 'main' 19
 
 # ble/util/{put,print}
 (
@@ -30,6 +30,18 @@ ble/test/start-section 'main' 16
 
 # ble/util/readlink
 (
+  ble/bin/.freeze-utility-path readlink ls
+  function ble/test:readlink.impl1 {
+    ret=$1
+    ble/util/readlink/.resolve-loop
+  }
+  function ble/test:readlink.impl2 {
+    ret=$1
+    ble/function#push ble/bin/readlink
+    ble/util/readlink/.resolve-loop
+    ble/function#pop ble/bin/readlink
+  }
+
   ble/test/chdir
 
   mkdir -p ab/cd/ef
@@ -41,6 +53,27 @@ ble/test/start-section 'main' 16
     ble/util/readlink f.txt
     [[ $ret != /* ]] && ret=${PWD%/}/$ret' \
     ret="${PWD%/}/ab/cd/ef/file.txt"
+
+  # loop symbolic links
+  ln -s loop1.sh loop0.sh
+  ln -s loop2.sh loop1.sh
+  ln -s loop3.sh loop2.sh
+  ln -s loop1.sh loop3.sh
+  for impl in impl1 impl2; do
+    ble/test "ble/test:readlink.$impl loop0.sh" ret='loop1.sh'
+  done
+
+  # resolve physical directory
+  mkdir -p phys.dir
+  touch phys.dir/1.txt
+  ln -s ../../../phys.dir ab/cd/ef/phys.link
+  ln -s ab/cd/ef/phys.link phys.link
+  local pwd=$PWD xpath=
+  ble/test code:'
+    path=phys.link/1.txt
+    ble/util/readlink/.resolve-physical-directory
+    declare -p path PWD >&2
+    [[ $path == */phys.dir/1.txt && $PWD == "$pwd" ]]'
 
   ble/test/rmdir
 )
