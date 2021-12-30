@@ -1482,10 +1482,48 @@ function ble/util/is-cygwin-slow-glob {
 ## 関数 ble/util/eval-pathname-expansion pattern
 ##   @var[out] ret
 function ble/util/eval-pathname-expansion {
+  ret=()
+  if ble/util/is-cygwin-slow-glob; then # Note: #D1168
+    if shopt -q failglob &>/dev/null; then
+      return 1
+    elif shopt -q nullglob &>/dev/null; then
+      return 0
+    else
+      set -f
+      ble/util/eval-pathname-expansion "$1"; local ext=$1
+      set +f
+      return "$ext"
+    fi
+  fi
+
+  # adjust glob settings
+  local canon=
+  if [[ :$2: == *:canonical:* ]]; then
+    canon=1
+    local set=$- shopt=$BASHOPTS gignore=$GLOBIGNORE
+    shopt -u failglob
+    shopt -s nullglob
+    shopt -s extglob
+    set +f
+    GLOBIGNORE=
+  fi
+
   # Note: eval で囲んでおかないと failglob 失敗時に続きが実行されない
   # Note: failglob で失敗した時のエラーメッセージは殺す
-  ret=()
-  eval "ret=($1)" 2>/dev/null
+  builtin eval "ret=($1)" 2>/dev/null; local ext=$?
+
+  # restore glob settings
+  if [[ $canon ]]; then
+    # Note: dotglob is changed by GLOBIGNORE
+    GLOBIGNORE=$gignore
+    if [[ :$shopt: == *:dotglob:* ]]; then shopt -s dotglob; else shopt -u dotglob; fi
+    [[ $set == *f* ]] && set -f
+    [[ :$shopt: != *:extglob:* ]] && shopt -u extglob
+    [[ :$shopt: != *:nullglob:* ]] && shopt -u nullglob
+    [[ :$shopt: == *:failglob:* ]] && shopt -s failglob
+  fi
+
+  return "$ext"
 }
 
 
@@ -2998,8 +3036,9 @@ function ble/term/visible-bell/.clear {
   >| "$_ble_term_visible_bell_ftime"
 } >&2
 function ble/term/visible-bell/.erase-previous-visible-bell {
-  local -a workers=()
-  eval 'workers=("$_ble_base_run/$$.visible-bell."*)' &>/dev/null # failglob 対策
+  local ret workers
+  ble/util/eval-pathname-expansion '"$_ble_base_run/$$.visible-bell."*' canonical
+  workers=("${ret[@]}")
 
   local workerfile
   for workerfile in "${workers[@]}"; do
@@ -3083,6 +3122,14 @@ function ble/term/visible-bell {
 }
 function ble/term/visible-bell/cancel-erasure {
   >| "$_ble_term_visible_bell_ftime"
+}
+function ble/term/visible-bell/erase {
+  local sgr0=$_ble_term_sgr0
+  if ble/is-function ble/color/face2sgr; then
+    local ret
+    ble/color/face2sgr vbell_erase; sgr0=$ret
+  fi
+  ble/term/visible-bell/.erase-previous-visible-bell
 }
 
 #---- stty --------------------------------------------------------------------
@@ -3384,6 +3431,7 @@ function ble/term/enter-for-widget {
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
 }
 function ble/term/leave-for-widget {
+  ble/term/visible-bell/erase
   ble/term/bracketed-paste-mode/leave
   ble/term/modifyOtherKeys/leave
   ble/term/cursor-state/.update "$bleopt_term_cursor_external"
