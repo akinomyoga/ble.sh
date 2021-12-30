@@ -23,6 +23,7 @@ function ble/util/assign {
   builtin eval "${@:2}" > "$_ble_util_read_stdout_tmp"
   local _ret="$?"
   TMOUT= IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
+  builtin eval "$1=\${$1%$_ble_term_nl}"
   return "$_ret"
 }
 

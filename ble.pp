@@ -76,16 +76,38 @@ function ble/init/restore-IFS {
   builtin unset -v _ble_init_original_IFS
 }
 
+#------------------------------------------------------------------------------
 # check environment
 
 function ble/util/print { builtin printf '%s\n' "$1"; }
 
+# will be overwritten by src/util.sh
+function ble/util/assign { builtin eval "$1=\$(builtin eval -- \"\${@:2}\")"; }
+
+## 関数 ble/bin/.freeze-utility-path commands...
+##   PATH が破壊された後でも ble が動作を続けられる様に、
+##   現在の PATH で基本コマンドのパスを固定して ble/bin/* から使える様にする。
+##
+##   実装に ble/util/assign を使用しているので ble-core 初期化後に実行する必要がある。
+##
+function ble/bin/.freeze-utility-path {
+  local cmd path q=\' Q="'\''" fail=
+  for cmd; do
+    if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
+      eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
+    else
+      fail=1
+    fi
+  done
+  ((!fail))
+}
+
 if ((_ble_bash>=40000)); then
-  function ble/bin#has { type "$@" &>/dev/null; }
+  function ble/bin#has { type -t "$@" &>/dev/null; }
 else
   function ble/bin#has {
     local cmd
-    for cmd; do type "$cmd" || return 1; done &>/dev/null
+    for cmd; do type -t "$cmd" || return 1; done &>/dev/null
     return 0
   }
 fi
@@ -122,33 +144,112 @@ if ! ble/.check-environment; then
 fi
 
 #------------------------------------------------------------------------------
+# readlink -f (Originally taken from akinomyoga/mshex.git)
 
-# readlink -f (taken from akinomyoga/mshex.git)
-function ble/util/readlink {
-  local path=$1
-  case "$OSTYPE" in
-  (cygwin|msys|linux-gnu)
-    # 少なくとも cygwin, GNU/Linux では readlink -f が使える
-    PATH=/bin:/usr/bin readlink -f "$path" ;;
-  (darwin*|*)
-    # Mac OSX には readlink -f がない。
-    local PWD=$PWD OLDPWD=$OLDPWD
-    while [[ -h $path ]]; do
-      local link=$(PATH=/bin:/usr/bin readlink "$path" 2>/dev/null || true)
-      [[ $link ]] || break
+## @fn ble/util/readlink path
+##   @var[out] ret
 
-      if [[ $link = /* || $path != */* ]]; then
-        # * $link ~ 絶対パス の時
-        # * $link ~ 相対パス かつ ( $path が現在のディレクトリにある ) の時
-        path=$link
-      else
-        local dir=${path%/*}
-        path=${dir%/}/$link
-      fi
+if ((_ble_bash>=40000)); then
+  _ble_util_readlink_visited_init='local -A visited=()'
+  function ble/util/readlink/.visited {
+    [[ ${visited[$1]+set} ]] && return 0
+    visited[$1]=1
+    return 1
+  }
+else
+  _ble_util_readlink_visited_init="local -a visited=()"
+  function ble/util/readlink/.visited {
+    local key
+    for key in "${visited[@]}"; do
+      [[ $1 == "$key" ]] && return 0
     done
-    echo -n "$path" ;;
-  esac
+    visited=("$1" "${visited[@]}")
+    return 1
+  }
+fi
+
+## @fn ble/util/readlink/.readlink path
+##   @var[out] link
+function ble/util/readlink/.readlink {
+  local path=$1
+  if ble/bin#has ble/bin/readlink; then
+    ble/util/assign link 'ble/bin/readlink -- "$path"'
+    [[ $link ]]
+  elif ble/bin#has ble/bin/ls; then
+    ble/util/assign link 'ble/bin/ls -ld -- "$path"' &&
+      [[ $link == *" $path -> "?* ]] &&
+      link=${link#*" $path -> "}
+  else
+    false
+  fi
+} 2>/dev/null
+## @fn  ble/util/readlink/.resolve-physical-directory
+##   @var[in,out] path
+function ble/util/readlink/.resolve-physical-directory {
+  [[ $path == */?* ]] || return 0
+  local PWD=$PWD OLDPWD=$OLDPWD CDPATH=
+  builtin cd -L . &&
+    local pwd=$PWD &&
+    builtin cd -P "${path%/*}/" &&
+    path=${PWD%/}/${path##*/}
+  builtin cd -L "$pwd"
+  return 0
 }
+function ble/util/readlink/.resolve-loop {
+  local path=$ret
+  builtin eval -- "$_ble_util_readlink_visited_init"
+  while [[ -h $path ]]; do
+    local link
+    ble/util/readlink/.visited "$path" && break
+    ble/util/readlink/.readlink "$path" || break
+    if [[ $link == /* || $path != */* ]]; then
+      path=$link
+    else
+      # 相対パス ../ は物理ディレクトリ構造に従って遡る。
+      ble/util/readlink/.resolve-physical-directory
+      path=${path%/}/$link
+    fi
+    while [[ $path == ?*/ ]]; do path=${path%/}; done
+  done
+  ret=$path
+}
+function ble/util/readlink/.resolve {
+  # 初回呼び出し時に実装を選択
+  _ble_util_readlink_type=
+
+  # より効率的な実装が可能な場合は ble/util/readlink/.resolve を独自定義。
+  case $OSTYPE in
+  (cygwin | msys | linux-gnu)
+    # これらのシステムの標準 readlink では readlink -f が使える。
+    #
+    # Note: 例えば NixOS では標準の readlink を使おうとすると問題が起こるらしい
+    #   ので、見えている readlink を使う。見えている readlink が非標準の時は -f
+    #   が使えるか分からないので readlink -f による実装は有効化しない。
+    #
+    local readlink
+    ble/util/assign readlink 'type -P readlink'
+    case $readlink in
+    (/bin/readlink | /usr/bin/readlink)
+      _ble_util_readlink_type=readlink-f
+      builtin eval "function ble/util/readlink/.resolve { ble/util/assign ret '$readlink -f -- \"\$ret\"'; }" ;;
+    esac ;;
+  esac
+
+  if [[ ! $_ble_util_readlink_type ]]; then
+    _ble_util_readlink_type=loop
+    ble/bin/.freeze-utility-path readlink ls
+    function ble/util/readlink/.resolve { ble/util/readlink/.resolve-loop; }
+  fi
+
+  ble/util/readlink/.resolve
+}
+function ble/util/readlink {
+  ret=$1
+  if [[ -h $ret ]]; then ble/util/readlink/.resolve; fi
+}
+
+#---------------------------------------
+
 function _ble_base.initialize {
   local src=$1
   local defaultDir=$2
