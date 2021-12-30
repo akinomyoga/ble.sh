@@ -212,8 +212,9 @@
 - main: fix the message of owner errors of cache directories (reported by zim0369) `#D1712` b547a41
 - util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 7db3d2b
 - complete: fix failglob messages while progcomp for commands containing globchars `#D1716` e26a3a8
-  - complete: fix a bug that the default progcomp does not work properly `#D1722` 0000000
-- highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` 0000000
+  - complete: fix a bug that the default progcomp does not work properly `#D1722` 01643fa
+- highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` b0a0b6f
+- util (visible-bell): erase visible-bell before running external commands `#D1723` 0000000
 
 ## Documentation
 
@@ -272,7 +273,7 @@
 - decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
 - complete: work around a false warning messages of gawk-4.0.2 `#D1709` 9771693
 - main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 8d37048
-- main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` 0000000
+- main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` a41279e
 
 ## Internal changes and fixes
 
