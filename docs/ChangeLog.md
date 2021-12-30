@@ -151,7 +151,7 @@
   - mandb: carry optarg for e.g. `-a, --accept=LIST` `#D1687` 23d5657
   - mandb: parse `--help` for specified commands `#D1693` e1ad2f1
   - mandb: fix small issues of man-page analysis `#D1708` caa77bc
-  - mandb: insert a comma in brace expansions instead of a space `#D1719` 0000000
+  - mandb: insert a comma in brace expansions instead of a space `#D1719` 0ac7f03
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -212,6 +212,7 @@
 - main: fix the message of owner errors of cache directories (reported by zim0369) `#D1712` b547a41
 - util (`ble/string#escape-for-bash-specialchars`): fix escaping of TAB `#D1713` 7db3d2b
 - complete: fix failglob messages while progcomp for commands containing globchars `#D1716` e26a3a8
+- highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` 0000000
 
 ## Documentation
 
@@ -238,7 +239,7 @@
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
 - decode: cache `inputrc` translations `#D1652` 994e2a5
-- complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 0000000
+- complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
 
 ## Compatibility
 

@@ -1850,11 +1850,12 @@ function ble/syntax/highlight/vartype {
   fi
 
   local name=$1 opts=$2 tail=$3 rex='^-?[0-9]+(#[0-9a-zA-Z@_]*)?$'
-  if [[ ${!name+set} ]]; then
-    local attr; ble/variable#get-attr "$name"
-    if [[ ${!name} && :$opts: == *:expr:* && ! ( ${!name} =~ $rex ) ]]; then
+  local attr; ble/variable#get-attr "$name"
+  if [[ ${!name+set} || $attr == *[aA]* ]]; then
+    if [[ ${!name-} && :$opts: == *:expr:* && ! ( ${!name} =~ $rex ) ]]; then
       ret=$ATTR_VAR_EXPR
-    elif [[ $attr == *x* ]]; then
+    elif [[ ${!name+set} && $attr == *x* ]]; then
+      # Note: 配列の場合には第0要素が設定されている時のみ。
       ret=$ATTR_VAR_EXPORT
     elif [[ $attr == *a* ]]; then
       ret=$ATTR_VAR_ARRAY
