@@ -95,7 +95,7 @@ You may also install `ble.sh` through package-management systems (currently only
 
 Note: ble.sh does not provide specific settings of the prompt, aliases, functions, etc.
 ble.sh provides a more fundamental infrastructure so that users can set up their own prompt, aliases, functions, etc.
-Of course ble.sh can be used in combination with other Bash configurations such as `bash-it` and `oh-my-bash`.
+Of course ble.sh can be used in combination with other Bash configurations such as [`bash-it`](https://github.com/Bash-it/bash-it) and [`oh-my-bash`](https://github.com/ohmybash/oh-my-bash).
 
 > Demo (version 0.2)
 >

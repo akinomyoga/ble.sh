@@ -221,6 +221,7 @@
 - blerc: add all the missing options `#D1667` 0228d76
 - blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 26aaf87
 - README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 6123551
+- README: add links to `bash-it` and `oh-my-bash` `#D1724` 0000000
 
 ## Optimization
 

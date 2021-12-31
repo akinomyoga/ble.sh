@@ -93,7 +93,7 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 注意: `ble.sh` は、(プロンプト (`PS1`)、エイリアス、関数などを提供する) 典型的な Bash 設定集と異なります。
 `ble.sh` はより低層の基盤を提供するもので、ユーザは自分でプロンプトやエイリアスを設定する必要があります。
-勿論 `bash-it` や `oh-my-bash` の様な他の Bash 設定と一緒に使っていただくことも可能です。
+勿論 [`bash-it`](https://github.com/Bash-it/bash-it) や [`oh-my-bash`](https://github.com/ohmybash/oh-my-bash) の様な他の Bash 設定と一緒に使っていただくことも可能です。
 
 > デモ
 >
