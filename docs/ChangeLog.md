@@ -215,6 +215,7 @@
   - complete: fix a bug that the default progcomp does not work properly `#D1722` 01643fa
 - highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` b0a0b6f
 - util (visible-bell): erase visible-bell before running external commands `#D1723` 0000000
+- util (`ble/function`): work around `shopt -u extglob` `#D1725` 0000000
 
 ## Documentation
 

@@ -2694,6 +2694,20 @@ else
   }
 fi
 
+## @fn ble/function#evaldef def
+##   関数を定義します。基本的に eval に等価ですが評価時に extglob を保
+##   証します。
+function ble/function#evaldef {
+  local reset_extglob=
+  if ! shopt -q extglob; then
+    reset_extglob=1
+    shopt -s extglob
+  fi
+  builtin eval -- "$1"; local ext=$?
+  [[ $reset_extglob ]] && shopt -u extglob
+  return "$ext"
+}
+
 ## @fn ble/function#try function args...
 ##   関数 function が存在している時に限り関数を呼び出します。
 ##
@@ -2775,7 +2789,7 @@ function ble/function#advice {
         if [[ $def == *ZBe85Oe28nBdg* ]]; then
           builtin unset -f "$name"
         else
-          builtin eval -- "${def#*:}"
+          ble/function#evaldef "${def#*:}"
         fi
       fi
     fi
@@ -2783,7 +2797,7 @@ function ble/function#advice {
     return 0 ;;
   (before|after|around)
     if [[ $def != *'ble/function#advice/.proc'* ]]; then
-      builtin eval "ble/function#advice/original:$def"
+      ble/function#evaldef "ble/function#advice/original:$def"
       builtin eval "function $name { ble/function#advice/.proc \"\${FUNCNAME#*:}\" \"\$@\"; }"
     fi
 
@@ -2809,7 +2823,7 @@ function ble/function#push {
     done
 
     local def; ble/function#getdef "$name"
-    builtin eval "ble/function#push/$index:$def"
+    ble/function#evaldef "ble/function#push/$index:$def"
   fi
 
   if [[ $proc ]]; then
@@ -2838,7 +2852,7 @@ function ble/function#pop {
     fi
   else
     local def; ble/function#getdef "ble/function#push/$index:$name"
-    builtin eval -- "${def#*:}"
+    ble/function#evaldef "${def#*:}"
     builtin unset -f "ble/function#push/$index:$name"
     return 0
   fi
@@ -2882,7 +2896,7 @@ function ble/function#suppress-stderr {
   local lambda=ble/function#suppress-stderr:$name
   if ! ble/is-function "$lambda"; then
     local def; ble/function#getdef "$name"
-    builtin eval "ble/function#suppress-stderr:$def"
+    ble/function#evaldef "ble/function#suppress-stderr:$def"
   fi
 
   builtin eval "function $name { $lambda \"\$@\" 2>/dev/null; }"
