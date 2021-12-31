@@ -1141,25 +1141,51 @@ else
   }
 fi
 
+## @fn ble/function#evaldef def
+##   関数を定義します。基本的に eval に等価ですが評価時に extglob を保
+##   証します。
+function ble/function#evaldef {
+  local reset_extglob=
+  if ! shopt -q extglob; then
+    reset_extglob=1
+    shopt -s extglob
+  fi
+  builtin eval -- "$1"; local ext=$?
+  [[ $reset_extglob ]] && shopt -u extglob
+  return "$ext"
+}
+
+## @fn ble/function#try function args...
+##   関数 function が存在している時に限り関数を呼び出します。
+##
+##   @param[in] function
+##     存在を検査して実行する関数の名前を指定します。
+##   @param[in] args
+##     関数に渡す引数を指定します。
+##   @exit 関数が呼び出された場合はその終了ステータスを返します。
+##     関数が存在しなかった場合は 127 を返します。
+##
 function ble/function#try {
   ble/is-function "$1" || return 127
   "$@"
 }
 
-## 関数 ble/function#suppress-stderr function_name
+## @fn ble/function#suppress-stderr function_name
 ##   @param[in] function_name
 function ble/function#suppress-stderr {
   local name=$1
   if ! ble/is-function "$name"; then
-    echo "$FUNCNAME: '$name' is not a function name" >&2
+    ble/util/print "$FUNCNAME: '$name' is not a function name" >&2
     return 2
   fi
 
-  local def; ble/function#getdef "$name"
-  builtin eval "ble/function#suppress-stderr:$def"
+  # 重複して suppress-stderr した時の為、未定義の時のみ実装を待避
   local lambda=ble/function#suppress-stderr:$name
+  if ! ble/is-function "$lambda"; then
+    local def; ble/function#getdef "$name"
+    ble/function#evaldef "ble/function#suppress-stderr:$def"
+  fi
 
-  local q=\' Q="'\''"
   builtin eval "function $name { $lambda \"\$@\" 2>/dev/null; }"
   return 0
 }
