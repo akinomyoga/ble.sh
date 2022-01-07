@@ -2495,9 +2495,9 @@ ble/function#suppress-stderr ble/builtin/bind/.decompose-pair
 ##   @var[out] chars
 function ble/builtin/bind/.parse-keyname {
   local ret mflags=
-  ble/string#tolower "$1"; local value=$ret
-  if [[ $value == *-* ]]; then
-    ble/string#split ret - "$value"
+  ble/string#tolower "$1"; local lower=$ret
+  if [[ $1 == *-* ]]; then
+    ble/string#split ret - "$lower"
     local mod
     for mod in "${ret[@]::${#ret[@]}-1}"; do
       case $mod in
@@ -2507,7 +2507,7 @@ function ble/builtin/bind/.parse-keyname {
     done
   fi
 
-  local name=${value##*-} ch=
+  local name=${lower##*-} ch=
   case $name in
   (rubout|del) ch=$'\177' ;;
   (escape|esc) ch=$'\033' ;;
@@ -2515,7 +2515,7 @@ function ble/builtin/bind/.parse-keyname {
   (return|ret) ch=$'\r' ;;
   (space|spc) ch=' ' ;;
   (tab) ch=$'\t' ;;
-  (*) ble/util/substr "$name" 0 1; ch=$ret ;;
+  (*) ble/util/substr "${1##*-}" 0 1; ch=$ret ;;
   esac
   ble/util/s2c "$ch"; local key=$ret
 
