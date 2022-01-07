@@ -1655,7 +1655,7 @@ function ble/base/sub:test {
     echo "BLE_VERSION: $BLE_VERSION"
   fi
   echo "BASH_VERSION: $BASH_VERSION"
-  (($#)) || set -- main util canvas
+  (($#)) || set -- main util canvas decode
   local section
   for section; do
     local file=$_ble_base/lib/test-$section.sh

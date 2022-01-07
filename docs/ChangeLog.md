@@ -273,6 +273,7 @@
 - stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 82f74f0
 - builtin: print usages of emulated builtins on option errors `#D1694` 6f74021
 - decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
+  - decode (`ble/builtin/bind`): fix a bug that only lowercase is accepted for deprecated form `bind key:rlfunc` (reported by returntrip) `#D1726` 0000000
 - complete: work around a false warning messages of gawk-4.0.2 `#D1709` 9771693
 - main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 8d37048
 - main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` a41279e

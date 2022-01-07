@@ -82,6 +82,7 @@ outfiles += $(OUTDIR)/lib/vim-airline.sh
 outfiles += $(OUTDIR)/lib/test-main.sh
 outfiles += $(OUTDIR)/lib/test-util.sh
 outfiles += $(OUTDIR)/lib/test-canvas.sh
+outfiles += $(OUTDIR)/lib/test-decode.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
 $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
