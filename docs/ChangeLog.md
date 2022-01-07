@@ -214,15 +214,15 @@
 - complete: fix failglob messages while progcomp for commands containing globchars `#D1716` e26a3a8
   - complete: fix a bug that the default progcomp does not work properly `#D1722` 01643fa
 - highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` b0a0b6f
-- util (visible-bell): erase visible-bell before running external commands `#D1723` 0000000
-- util (`ble/function`): work around `shopt -u extglob` `#D1725` 0000000
+- util (visible-bell): erase visible-bell before running external commands `#D1723` 0da0c1c
+- util (`ble/function`): work around `shopt -u extglob` `#D1725` 952c388
 
 ## Documentation
 
 - blerc: add all the missing options `#D1667` 0228d76
 - blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 26aaf87
 - README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 6123551
-- README: add links to `bash-it` and `oh-my-bash` `#D1724` 0000000
+- README: add links to `bash-it` and `oh-my-bash` `#D1724` 4a2575f
 
 ## Optimization
 
@@ -273,7 +273,7 @@
 - stty: do not remove keydefs for <kbd>C-u</kbd>, <kbd>C-v</kbd>, <kbd>C-w</kbd>, and <kbd>C-?</kbd> (reported by laoshaw) `#D1683` 82f74f0
 - builtin: print usages of emulated builtins on option errors `#D1694` 6f74021
 - decode (`ble/builtin/bind`): improve compatibility of the deprecated form `bind key:rlfunc` (motivated by cmplstofB) `#D1698` b6fc4f0
-  - decode (`ble/builtin/bind`): fix a bug that only lowercase is accepted for deprecated form `bind key:rlfunc` (reported by returntrip) `#D1726` 0000000
+  - decode (`ble/builtin/bind`): fix a bug that only lowercase is accepted for deprecated form `bind key:rlfunc` (reported by returntrip) `#D1726` a67458e 0000000
 - complete: work around a false warning messages of gawk-4.0.2 `#D1709` 9771693
 - main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 8d37048
 - main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` a41279e

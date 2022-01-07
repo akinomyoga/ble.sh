@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/decode' 31
+ble/test/start-section 'ble/decode' 32
 
 # ble/builtin/bind/.parse-keyname
 (
@@ -20,6 +20,8 @@ ble/test/start-section 'ble/decode' 31
   ble/test 'ble/builtin/bind/.parse-keyname Escape ; ret=${chars[0]}' ret=27
   ble/test 'ble/builtin/bind/.parse-keyname ESC    ; ret=${chars[0]}' ret=27
   ble/test 'ble/builtin/bind/.parse-keyname C-Space; ret=${chars[0]}' ret=0
+  ble/test 'ble/builtin/bind/.parse-keyname s      ; ret=${chars[0]}' ret=115
+  ble/test 'ble/builtin/bind/.parse-keyname S      ; ret=${chars[0]}' ret=83
 
   # invalid cases
   ble/test "ble/builtin/bind/.parse-keyname '\C-x\C-y'     ; ret=\${chars[0]}" ret=25  # C-y
