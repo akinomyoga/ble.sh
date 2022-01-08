@@ -402,7 +402,17 @@ function ble/complete/menu-style:desc/construct-page {
   local ncolumn_max=$(((nrest_item+nline-1)/nline))
   ((ncolumn>ncolumn_max&&(ncolumn=ncolumn_max)))
 
-  local wcolumn=$(((cols-${#colsep}*(ncolumn-1))/ncolumn))
+  # Note #D1727: 相対移動の時は、右端に接すると端末による振る舞いの違
+  #   いが問題になるので、右端に接しない様に col-1 にする。一部の端末
+  #   については右端に接しても相対移動が壊れないと分かっているので、
+  #   white list で右端に接する事を許可する。
+  local available_width=$cols
+  case $_ble_term_TERM in
+  (screen|tmux|kitty|contra) ;;
+  (*) ((available_width--)) ;;
+  esac
+
+  local wcolumn=$(((available_width-${#colsep}*(ncolumn-1))/ncolumn))
   local wcand_limit=$(((wcolumn+1)*2/3))
   ((wcand_limit<10&&(wcand_limit=wcolumn)))
 
