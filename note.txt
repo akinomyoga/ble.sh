@@ -1675,6 +1675,11 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2022-01-08
+
+  * mandb: echo のオプションの抽出 (help echo) がおかしい at fc35 vm
+    chatoyancy では問題は発生していない
+
 2021-12-22
 
   * ディレクトリ固有の local commands & aliases を可能にする?
@@ -5791,6 +5796,12 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-01-08
+
+  * complete (menu-style:desc): fix not working "bleopt menu_desc_multicolumn_width=" [#D1727]
+
+    menu_desc_multicolumn_width= として multicolumn を無効化しようとするとゼロ
+    除算のエラーになる。定義していない変数を誤って参照して ncolumn=0 になってい
+    た。修正した。
 
   * decode: bind の古い形式が使えなくなっている (reported by returntrip) [#D1726]
     https://github.com/akinomyoga/ble.sh/issues/165

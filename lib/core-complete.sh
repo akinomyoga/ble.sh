@@ -388,9 +388,9 @@ function ble/complete/menu-style:desc/construct-page {
   ble/color/face2sgr-ansi syntax_delimiter; local desc_sgrt=$ret
 
   local ncolumn=1 nline=$lines
+  local nrest_item=$((${#menu_items[@]}-begin))
   if [[ $bleopt_menu_desc_multicolumn_width ]]; then
     ncolumn=$((cols/bleopt_menu_desc_multicolumn_width))
-    local nrest_item=$((${#menu_items[@]}-begin))
     if ((ncolumn<1)); then
       ncolumn=1
     elif ((ncolumn>nrest_item)); then

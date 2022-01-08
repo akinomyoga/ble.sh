@@ -80,6 +80,7 @@
   - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) b1be640
 - menu (menu-style:desc): improve descriptions (motivated by Shahabaz-Bagwan) `#D1685` 4de1b45
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
+  - menu (menu-style:desc): fix not working `bleopt menu_desc_multicolumn_width=` `#D1727` 0000000
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
 - complete: requote for more compact representations on full completions `#D1700` a1859b6
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
