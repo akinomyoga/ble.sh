@@ -52,6 +52,19 @@ ble-autoload "$_ble_base/lib/core-syntax.sh" \
              ble-syntax:bash/simple-word/is-simple
 
 #------------------------------------------------------------------------------
+# グローバル変数の定義 (関数内からではできないのでここで先に定義)
+
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  builtin unset -v _ble_syntax_highlight_filetype
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_syntax_highlight_filetype
+    _ble_syntax_highlight_filetype=()
+  else
+    declare -A _ble_syntax_highlight_filetype=()
+  fi
+fi
+
+#------------------------------------------------------------------------------
 # 遅延読み込みの設定
 
 # lib/core-syntax.sh の変数または ble-syntax/parse を使用する必要がある場合は、
@@ -64,17 +77,4 @@ if ble/util/isfunction ble/util/idle.push; then
   ble/util/idle.push ble-syntax/import
 else
   ble-syntax/import
-fi
-
-#------------------------------------------------------------------------------
-# グローバル変数の定義 (関数内からではできないのでここで先に定義)
-
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  builtin unset -v _ble_syntax_highlight_filetype
-  if ((_ble_bash>=40200)); then
-    declare -gA _ble_syntax_highlight_filetype
-    _ble_syntax_highlight_filetype=()
-  else
-    declare -A _ble_syntax_highlight_filetype=()
-  fi
 fi
