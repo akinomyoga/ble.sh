@@ -5797,6 +5797,9 @@ bash_tips
 
 2022-01-09
 
+  * bash-3.2 で alias 云々のエラーメッセージが出る様になっている [#D1730]
+    これは単純に alias チェックの際に 2>/dev/null を忘れているのが原因。
+
   * complete: gawk regex warning (reported by telometto) [#D1729]
     https://github.com/akinomyoga/ble.sh/issues/167
 

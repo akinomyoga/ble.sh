@@ -133,6 +133,7 @@
 - complete (`source:command`): exclude inactive aliases `#D1715` d6242a7
 - complete (`source:command`): not quote aliases and keywords `#D1715` d6242a7
 - highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
+  - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 0000000
 
 ## Fixes
 
@@ -245,7 +246,7 @@
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
 - decode: cache `inputrc` translations `#D1652` 994e2a5
 - complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
-  - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 0000000
+  - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 8039b77
 
 ## Compatibility
 

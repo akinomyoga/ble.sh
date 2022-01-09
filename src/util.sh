@@ -2962,11 +2962,11 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/is-alias {
-    [[ $1 != *=* ]] && alias "$1" >/dev/null
+    [[ $1 != *=* ]] && alias "$1" &>/dev/null
   }
   function ble/alias#active {
     shopt -q expand_aliases &&
-      [[ $1 != *=* ]] && alias "$1" >/dev/null
+      [[ $1 != *=* ]] && alias "$1" &>/dev/null
   }
   function ble/alias#expand {
     ret=$1
