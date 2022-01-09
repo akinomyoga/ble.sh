@@ -218,6 +218,7 @@
 - highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` b0a0b6f
 - util (visible-bell): erase visible-bell before running external commands `#D1723` 0da0c1c
 - util (`ble/function`): work around `shopt -u extglob` `#D1725` 952c388
+- syntax: fix uninitialized syntax-highlighting in bash-3.2 `#D1731` 0000000
 
 ## Documentation
 
@@ -309,6 +310,11 @@
 - util: fix leak variables `#D1643` fcf634b
 - edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663` 1af0800
 - make: update lint check `#D1709` 7e26dcd
+
+## Contrib
+
+- prompt-git: detect staged changes `#D1718` 2b48e31
+- prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

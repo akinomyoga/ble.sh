@@ -5797,7 +5797,96 @@ bash_tips
 
 2022-01-09
 
-  * bash-3.2 で alias 云々のエラーメッセージが出る様になっている [#D1730]
+  * prompt-git: source .bashrc で reload すると git-prompt のチェックが起動しなくなる [#D1732]
+
+    何故だろうか。
+
+    ble/contrib/prompt-defer/submit は実行しているが、
+    ble/contrib/prompt-defer:_ble_contrib_prompt_git_dirty/worker が呼び出され
+    ていない様だ。うーん。分かった。行番号や時計がクリアされてしまう為に、情報
+    再取得の条件が満たされなくなってしまっている。
+
+    また、ディレクトリのチェック自体は git にいる時にしか実行されないので、単に
+    他のディレクトリに行くだけでは駄目で別の git repository に入ってから戻って
+    こないと再計算が発生しない。
+
+  * syntax: bash-3.2 で syntax-highlighting の初期化が起こらない [#D1731]
+
+    [初期化されない問題]
+
+    bash-3.2 で syntax-highlighting のロードが起こらなくなっている。元々どの様
+    にロードしていたのだったか。ble-0.3 で確認するのが良い。
+
+    ble-0.3 では core-syntax-def.sh に以下の様に記述されている。
+
+    ble/function#try ble/util/idle.push ble/syntax/import ||
+      ble/syntax/import
+
+    それが現在は以下の様になってしまっている。
+
+      ble/is-function ble/util/idle.push &&
+        ble-import -d "$_ble_base/lib/core-syntax.sh"
+
+    問題の変更は 321371fa #D1593 で行われている。その時の議論を再確認したが特に
+    bash-3.2 について意識はしていない様に見える。というかこのコミットの変更は以
+    下の様な物になっている。ble-import -d は idle.push が存在しなければその場で
+    読み込む。恐らく余り意識せずに書き換えてしまったという事の気がする。
+
+    -ble-import -d lib/core-syntax
+    +ble/is-function ble/util/idle.push && ble-import -d "$_ble_base/lib/core-syntax.sh"
+
+    →これは前の様に直すべき様に思われる。
+
+    [初期化順序の問題]
+
+    或いは bash-3.2 ではその場で ble-import lib/core-syntax を実行してしまうと
+    問題が生じるのだろうか? 分からないので取り敢えずその場で import するとどう
+    なるか確認する。うーん。bash-5.1 では特に問題は生じていないみたいだ。然し
+    bash-3.2 で実行してみると着色が全くされなくなってしまった。後で ble-import
+    を実行しても解決しない。文法エラーの着色は有効である。syntax_debug を入れて
+    みると属性に依る着色が全くされていない様である。
+
+    →これは独立した問題であるという事が判明した。
+
+    ? ble/syntax/attr2iface/color_defface.onload が実行されていないという事なの
+      だろうか → うーん。これを実行したらちゃんと動く様になった。
+
+      つまり color_defface_load が発火されていないか、或いは eval-after-load の
+      バグだろうか。うーん。実は上記の core-syntax.sh のードは関係なくて、単に
+      eval-after-load の問題の気もしてきた。うーん。eval-after-load を見るとちゃ
+      んと登録はされている。然し一方で発火されていない状態の様である。然し、
+      blehook を改めて確認すると登録した hook は消去されている。何故?
+
+      hook の呼び出し元で確認した所ちゃんと登録されている。どうも確認してみたら
+      ble/syntax/attr2iface/color_defface.onload はちゃんと呼び出されている様だ。
+
+      % 一方で ble/color/defface.onload が二回呼び出されている。特に
+      % color_defface.onload の後に呼び出されている。もしかしてこれによって設定
+      % がクリアされてしまっている可能性?
+      %
+      % と思ったら違った。 ble/{color,syntax}/defface.onload で二種類あるのだった。
+
+    * 何れにしても初期化の順序による問題の様である。
+
+      % と思って ble/syntax/attr2iface/color_defface.onload の実装を見ていて気づ
+      % いたが、どうやらその瞬間の face の値を読み取っている? これだと駄目の筈。
+      % 起動した後に着色を変えられない事になる。
+      %
+      % コマンド名はちゃんと変更される。然しこれはよく考えたら後付で取得している
+      % から? 然し、それも変だ。結局属性から face に変換している筈 → よく考えた
+      % らこれは iface に対する初期化なのだから、その場で整数値に解決してしまう事
+      % 自体に問題はない。
+
+      何れにしても問題は attr2iface/color_defface.onload は attr -> iface の対
+      応付を記録しているが、iface が未だ初期化されていない為に全て iface=0 になっ
+      てしまっているという事の様に思われる。
+
+      結局 ble/syntax/defface.onload よりも後に attr2iface/color_defface.onload
+      を実行しなければならないのにそれが逆転してしまっているのが原因だった。
+      syntax-color-def.sh において ble/syntax/defface.onload の登録よりも後に
+      ble-import -d lib/core-syntax を呼び出すべきだったのである。
+
+  * util: bash-3.2 で alias 云々のエラーメッセージが出る様になっている [#D1730]
     これは単純に alias チェックの際に 2>/dev/null を忘れているのが原因。
 
   * complete: gawk regex warning (reported by telometto) [#D1729]
@@ -11209,7 +11298,7 @@ bash_tips
       話。これに関しては initialize-faces を idle で実行すれば良い。
 
       idle の登録順序はどうなっているだろうか。ロードした直後の idle の順序を確
-      認する。complet を絶対パスでロードするように変更して、また syntax より後
+      認する。complete を絶対パスでロードするように変更して、また syntax より後
       にロードする様に変更した。変更後の様子は以下の通り。
 
       [0]="R\\ble/history:bash/resolve-multiline async"

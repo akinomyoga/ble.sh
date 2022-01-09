@@ -78,16 +78,6 @@ ble/util/autoload "$_ble_base/lib/core-syntax.sh" \
              ble/syntax:bash/simple-word/reconstruct-incomplete-word
 
 #------------------------------------------------------------------------------
-# 遅延読み込みの設定
-
-# lib/core-syntax.sh の変数または ble/syntax/parse を使用する必要がある場合は、
-# 以下の関数を用いて lib/core-syntax.sh を必ずロードする様にする。
-function ble/syntax/import {
-  ble/util/import "$_ble_base/lib/core-syntax.sh"
-}
-ble/is-function ble/util/idle.push && ble-import -d "$_ble_base/lib/core-syntax.sh"
-
-#------------------------------------------------------------------------------
 # グローバル変数の定義 (関数内からではできないのでここで先に定義)
 
 bleopt/declare -v syntax_debug ''
@@ -180,3 +170,17 @@ function ble/syntax/defface.onload {
   ble/color/defface argument_error    fg=black,bg=225
 }
 blehook/eval-after-load color_defface ble/syntax/defface.onload
+
+#------------------------------------------------------------------------------
+# 遅延読み込みの設定
+
+# lib/core-syntax.sh の変数または ble/syntax/parse を使用する必要がある場合は、
+# 以下の関数を用いて lib/core-syntax.sh を必ずロードする様にする。
+function ble/syntax/import {
+  ble/util/import "$_ble_base/lib/core-syntax.sh"
+}
+
+# Note: 初期化順序の都合で一番最後に実行する。lib/core-syntax 内で登録
+# している ble/syntax/attr2iface/color_defface.onload は、上記で登録し
+# ている ble/syntax/defface.onload よりも後に実行する必要がある為。
+ble-import -d lib/core-syntax
