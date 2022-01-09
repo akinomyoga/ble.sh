@@ -1,4 +1,8 @@
--x md:bash --exclude=./out --exclude=./dist --exclude=./a.sh --exclude=./test/install --exclude=./ble.sh
+-x md:bash
+--exclude=./{out,dist,tmp}
+--exclude=./?.sh
+--exclude=./test/install
+--exclude=./ble.sh
 GNUmakefile
 ble.pp
 blerc

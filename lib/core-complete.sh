@@ -1419,7 +1419,7 @@ function ble/complete/action/quote-insert.batch/awk {
         gsub(/[\\"$`]/, "\\\\&", text); # Note: All awks behaves the same for "\\\\&"
       } else if (escape_type == 4) {
         # bash specialchars
-        gsub(/[]\ "'$q'`$|&;<>()!^*?[]/, "\\\\&", text);
+        gsub(/[]\\ "'$q'`$|&;<>()!^*?[]/, "\\\\&", text);
         if (escape_c) gsub(/[=:]/, "\\\\&", text);
         if (escape_b) gsub(/[{,}]/, "\\\\&", text);
         if (ret ~ /^~/ && (escape_tilde_always || escape_tilde_exists && exists(cand)))

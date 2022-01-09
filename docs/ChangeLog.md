@@ -80,7 +80,7 @@
   - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) b1be640
 - menu (menu-style:desc): improve descriptions (motivated by Shahabaz-Bagwan) `#D1685` 4de1b45
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
-  - menu (menu-style:desc): fix not working `bleopt menu_desc_multicolumn_width=` `#D1727` 0000000
+  - menu (menu-style:desc): fix not working `bleopt menu_desc_multicolumn_width=` `#D1727` 2140d1e
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
 - complete: requote for more compact representations on full completions `#D1700` a1859b6
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
@@ -245,6 +245,7 @@
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
 - decode: cache `inputrc` translations `#D1652` 994e2a5
 - complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
+  - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 0000000
 
 ## Compatibility
 
@@ -278,7 +279,7 @@
 - complete: work around a false warning messages of gawk-4.0.2 `#D1709` 9771693
 - main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 8d37048
 - main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` a41279e
-- menu (`menu-style:desc`): work around xenl quirks for relative cursor movements `#D1728` 0000000
+- menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
 
 ## Internal changes and fixes
 
