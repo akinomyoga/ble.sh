@@ -1310,6 +1310,19 @@ bash_tips
 
   * bash-completion
 
+    2022-01-11
+
+    * bash-completion: curl　の抽出オプションが極端に少ないのは何故か→これは
+      curl --help は最低限のオプションしか表示しないから。そして --help all を
+      呼び出せば全部表示される。確認すると --help all は指定されているが、quote
+      されていない。
+
+      類似の問題が過去にあったがその時に一緒に直されなかったのかと思ったが、こ
+      れが正にその時の問題であって、test などが用意されていなかった為に未だマー
+      ジされていないのだった。
+
+      https://github.com/scop/bash-completion/pull/560
+
     2021-12-22
 
     * fixed: man の中で _expand を呼び出しているが意味ないのでは? info も同様。
@@ -1679,6 +1692,8 @@ bash_tips
 
   * mandb: echo のオプションの抽出 (help echo) がおかしい at fc35 vm
     chatoyancy では問題は発生していない
+
+  * term: prompt_staus_line でずれが生じる端末がやはり存在している。何故だろうか。
 
 2021-12-22
 
@@ -5796,6 +5811,21 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-01-09
+
+  * mandb: rsync の抽出 正しく抽出できていない [#D1733]
+
+    % と思ったが今試したらちゃんと動いている?
+    % →と思ったらやっぱり動いていない。
+
+    ? うーん。gawk regex #D1729 の問題によって失敗していたというだけの事なのか
+      もしれない。と思って今 gawk で試してみたら問題が再現した。うーん。gawk と
+      nawk の振る舞いの違いという事か。と思って色々試したが nawk や mawk でも結
+      局再現した。結局の所 gawk は多分関係ない。
+
+    * done: " or " によるオプションの行内列挙
+    * done: rsync の man の形式の解析 (.IP "--OPTION" \n desc .IP etc)
+    * done: "--no-OPTION" の説明の自動生成 (for progcomp)
+    * done: _parse_help における解析
 
   * prompt-git: source .bashrc で reload すると git-prompt のチェックが起動しなくなる [#D1732]
 

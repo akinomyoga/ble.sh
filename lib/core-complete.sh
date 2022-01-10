@@ -3220,13 +3220,37 @@ function ble/complete/progcomp/.filter-and-split-compgen {
         if (mandb[name]) {
           mandb_count++;
           print mandb[name];
-        } else
-          print $0;
+          next;
+        } else if (sub(/^--no-/, "--", name)) {
+
+          # Synthesize description of "--no-OPTION"
+          if ((entry = mandb[name]) || (entry = mandb[substr(name, 2)])) {
+            split(entry, record, FS);
+            if ((desc = record[4])) {
+              desc = "\033[1mReverse[\033[m " desc " \033[;1m]\033[m";
+              if (match($0, /[[:space:]]*[:=[]/)) {
+                option = substr($0, 1, RSTART - 1);
+                optarg = substr($0, RSTART);
+                suffix = substr($0, RSTART, 1);
+                if (suffix == "[") suffix = "";
+              } else {
+                option = $0;
+                optarg = "";
+                suffix = " ";
+              }
+              print option FS optarg FS suffix FS desc;
+            }
+            next;
+          }
+
+        }
+
+        print $0;
       }
 
       END { if (mandb_count) exit 10; }
     '
-    ble/util/assign-array "$1" 'ble/bin/awk "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'
+    ble/util/assign-array "$1" 'ble/bin/awk -F "$_ble_term_FS" "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'
     (($?==10)) && flag_mandb=1
   else
     ble/string#split-lines "$1" "$out"
@@ -3894,25 +3918,29 @@ function ble/complete/mandb/.generate-cache-from-man {
 
       fmt3_state = "";
       fmt5_state = "";
+      fmt6_state = "";
+    }
+    function output_pair(key, desc) {
+      print "";
+      print "__ble_key__";
+      if (topic_start != "") print topic_start;
+      print key;
+      print "";
+      print "__ble_desc__";
+      print "";
+      print desc;
     }
     function flush_topic(_, i) {
       if (g_keys_count != 0) {
-        for (i = 0; i < g_keys_count; i++) {
-          print "";
-          print "__ble_key__";
-          if (topic_start != "") print topic_start;
-          print g_keys[i];
-          print "";
-          print "__ble_desc__";
-          print "";
-          print g_desc;
-        }
+        for (i = 0; i < g_keys_count; i++)
+          output_pair(g_keys[i], g_desc);
       }
       g_keys_count = 0;
       g_desc = "";
 
       fmt3_flush();
       fmt5_state = "";
+      fmt6_flush();
     }
 
     # ".Dd" seems to be the include directive for macros?
@@ -4019,14 +4047,20 @@ function ble/complete/mandb/.generate-cache-from-man {
     #--------------------------------------------------------------------------
     # Format #4: [[.IP "key" 4 \n .IX Item "..."]+ \n .PD \n desc]
     # This format is used by "wget".
+
     /^\.IP[[:space:]]+".*"([[:space:]]+[0-9]+)?$/ && fmt3_state != "key" {
+      fmt6_init();
+      fmt4_init();
+      next;
+    }
+
+    function fmt4_init() {
       if (mode != "fmt4_desc")
         if (!(g_keys_count && g_desc == "")) flush_topic();
 
       gsub(/^\.IP[[:space:]]+"|"([[:space:]]+[0-9]+)?$/, "");
       register_key($0);
       mode = "fmt4_desc";
-      next;
     }
     mode == "fmt4_desc" {
       if ($0 == "") { flush_topic(); mode = "none"; next; }
@@ -4047,7 +4081,33 @@ function ble/complete/mandb/.generate-cache-from-man {
 
       if (g_desc != "") g_desc = g_desc "\n";
       g_desc = g_desc $0;
-      next;
+    }
+
+    #--------------------------------------------------------------------------
+    # Format #6: [[.IP "key" \n desc .IP]
+    # This format is used by "rsync".
+
+    function fmt6_init() {
+      fmt6_flush();
+      fmt6_state = "desc"
+      fmt6_key = $0;
+      fmt6_desc = "";
+    }
+    fmt6_state {
+      if (REQ == "IX") {
+        # Exclude fmt4 case
+        fmt6_state = "";
+      } else if (REQ == "IP") {
+        fmt6_flush();
+      } else {
+        fmt6_desc = fmt6_desc $0 "\n";
+      }
+    }
+    function fmt6_flush() {
+      if (!fmt6_state) return;
+      fmt6_state = "";
+      if (fmt6_desc)
+        output_pair(fmt6_key, fmt6_desc);
     }
 
     #--------------------------------------------------------------------------
@@ -4121,7 +4181,7 @@ function ble/complete/mandb/.generate-cache-from-man {
       gsub(/[[:space:]]+/, " ", line);
       if (line !~ /^[-+]./) return;
 
-      n = split(line, specs, /,[[:space:]]+/);
+      n = split(line, specs, /,([[:space:]]+|$)| or /);
       prev_optarg = "";
       for (i = n; i > 0; i--) {
         spec = specs[i];

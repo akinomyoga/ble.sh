@@ -154,6 +154,7 @@
   - mandb: parse `--help` for specified commands `#D1693` e1ad2f1
   - mandb: fix small issues of man-page analysis `#D1708` caa77bc
   - mandb: insert a comma in brace expansions instead of a space `#D1719` 0ac7f03
+  - mandb: supprot man-page format of `rsync` `#D1733` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595

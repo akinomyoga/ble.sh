@@ -30,6 +30,8 @@ function ble/complete/opts/initialize {
   ble/cmdspec/opts mandb-disable-man:mandb-help:stop-options-postarg:plus-options=aAilnrtux declare typeset local
   ble/cmdspec/opts mandb-disable-man:mandb-help:stop-options-postarg local export readonly
   ble/cmdspec/opts mandb-disable-man:mandb-help:stop-options-postarg alias
+
+  ble/cmdspec/opts mandb-help rsync
 }
 ble/complete/opts/initialize
 
