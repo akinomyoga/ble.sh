@@ -338,8 +338,8 @@ function .ble-decode-char/csi/decode {
   if ((char==126)); then
     if rex='^>?27;([0-9]+);?([0-9]+)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm "CSI 2 7 ; <mod> ; <char> ~" sequences
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param2=$((10#${BASH_REMATCH[2]}))
+      local param1=$((10#0${BASH_REMATCH[1]}))
+      local param2=$((10#0${BASH_REMATCH[2]}))
       local kcode=$((param2&ble_decode_MaskChar))
       .ble-decode-char/csi/modify-kcode "$param1"
       csistat=$kcode
@@ -348,8 +348,8 @@ function .ble-decode-char/csi/decode {
 
     if rex='^([1-9][0-9]*)(;([1-9][0-9]*))?$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # "CSI <kcode> ; <mod> ~" sequences
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param3=$((10#${BASH_REMATCH[3]}))
+      local param1=$((10#0${BASH_REMATCH[1]}))
+      local param3=$((10#0${BASH_REMATCH[3]}))
       kcode=${_ble_decode_csimap_tilde[param1]}
       if [[ $kcode ]]; then
         .ble-decode-char/csi/modify-kcode "$param3"
@@ -360,8 +360,8 @@ function .ble-decode-char/csi/decode {
   elif ((char==94||char==64)); then
     if rex='^[1-9][0-9]*$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # rxvt "CSI <kcode> ^", "CSI <kcode> @" sequences
-      local param1=$((10#${BASH_REMATCH[1]}))
-      local param3=$((10#${BASH_REMATCH[3]}))
+      local param1=$((10#0${BASH_REMATCH[1]}))
+      local param3=$((10#0${BASH_REMATCH[3]}))
       kcode=${_ble_decode_csimap_tilde[param1]}
       if [[ $kcode ]]; then
         ((kcode|=ble_decode_Ctrl,
@@ -377,7 +377,7 @@ function .ble-decode-char/csi/decode {
   kcode="${_ble_decode_csimap_alpha[char]}"
   if [[ $kcode ]]; then
     if rex='^(1?|1;([1-9][0-9]*))$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
-      local param2=$((10#${BASH_REMATCH[2]}))
+      local param2=$((10#0${BASH_REMATCH[2]}))
       .ble-decode-char/csi/modify-kcode "$param2"
       csistat=$kcode
       return

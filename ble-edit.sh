@@ -464,7 +464,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       return ;;
     ([ABCDEFGIZ\`ade])
       local arg=0
-      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#$param))
+      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#0$param))
       ((arg==0&&(arg=1)))
 
       local x0="$x" y0="$y"
@@ -531,7 +531,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       # HVP "CSI f"
       local -a params
       ble/string#split params $' \t\n' "${param//[^0-9]/ }"
-      params=("${params[@]/#/10#}")
+      params=("${params[@]/#/10#0}")
       ((x=params[1]-1))
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),

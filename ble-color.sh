@@ -146,8 +146,8 @@ function .ble-color.name2color {
   fi
 
   local colorName="$1" _ret
-  if [[ $colorName == $((colorName)) ]]; then
-    ((_ret=colorName<0?-1:colorName))
+  if [[ ! ${colorName//[0-9]} ]]; then
+    ((_ret=10#0$colorName&255))
   else
     case "$colorName" in
     (black)   _ret=0 ;;
