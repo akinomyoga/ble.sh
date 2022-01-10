@@ -665,7 +665,7 @@ function ble/keymap:vi/get-arg {
   if [[ ! $_ble_edit_arg && ! $_ble_keymap_vi_oparg ]]; then
     ARG=$default_value
   else
-    ARG=$((10#${_ble_edit_arg:-1}*10#${_ble_keymap_vi_oparg:-1}))
+    ARG=$((10#0${_ble_edit_arg:-1}*10#0${_ble_keymap_vi_oparg:-1}))
   fi
   ble/keymap:vi/clear-arg
 }
@@ -5648,9 +5648,9 @@ function ble/widget/vi_nmap/increment.impl {
   local abs=${number#-}
   if [[ $abs == 0?* ]]; then
     if [[ $number == -* ]]; then
-      number=-$((10#$abs))
+      number=-$((10#0$abs))
     else
-      number=$((10#$abs))
+      number=$((10#0$abs))
     fi
   fi
 
@@ -7152,7 +7152,7 @@ function ble/widget/vi_xmap/increment.impl {
     local rematch1=${BASH_REMATCH[1]}
     local rematch2=${BASH_REMATCH[2]}
     local offset=${#rematch1} length=${#rematch2}
-    local number=$((10#$rematch2))
+    local number=$((10#0$rematch2))
     [[ $rematch1 == *- ]] && ((number=-number,offset--,length++))
 
     # 新しい数

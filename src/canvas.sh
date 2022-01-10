@@ -657,7 +657,7 @@ function ble/canvas/trace/.process-csi-sequence {
       return ;;
     ([ABCDEFGIZ\`ade])
       local arg=0
-      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#$param))
+      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#0$param))
       ((arg==0&&(arg=1)))
 
       local x0=$x y0=$y

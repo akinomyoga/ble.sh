@@ -1608,7 +1608,7 @@ function ble/util/msleep/.check-sleep-decimal-support {
 _ble_util_msleep_delay=2000 # [usec]
 function ble/util/msleep/.core {
   local sec=${1%%.*}
-  ((10#${1##*.}&&sec++)) # 小数部分は切り上げ
+  ((10#0${1##*.}&&sec++)) # 小数部分は切り上げ
   ble/bin/sleep "$sec"
 }
 function ble/util/msleep {
@@ -1721,7 +1721,7 @@ function ble/util/sleep {
   local msec=$((${1%%.*}*1000))
   if [[ $1 == *.* ]]; then
     frac=${1##*.}000
-    ((msec+=10#${frac::3}))
+    ((msec+=10#0${frac::3}))
   fi
   ble/util/msleep "$msec"
 }
@@ -2440,15 +2440,15 @@ function ble/util/clock/.initialize {
   local LC_ALL= LC_NUMERIC=C
   if ((_ble_bash>=50000)) && [[ $EPOCHREALTIME == *.???* ]]; then
     # implementation with EPOCHREALTIME
-    _ble_util_clock_base=$((10#${EPOCHREALTIME%.*}))
+    _ble_util_clock_base=$((10#0${EPOCHREALTIME%.*}))
     _ble_util_clock_reso=1
     _ble_util_clock_type=EPOCHREALTIME
     function ble/util/clock {
       local LC_ALL= LC_NUMERIC=C
       local now=$EPOCHREALTIME
-      local integral=$((10#${now%%.*}-_ble_util_clock_base))
+      local integral=$((10#0${now%%.*}-_ble_util_clock_base))
       local mantissa=${now#*.}000; mantissa=${mantissa::3}
-      ((ret=integral*1000+10#$mantissa))
+      ((ret=integral*1000+10#0$mantissa))
     }
     ble/function#suppress-stderr ble/util/clock # locale
   elif [[ -r /proc/uptime ]] && {
@@ -2457,16 +2457,16 @@ function ble/util/clock/.initialize {
          ble/string#split-words uptime "$uptime"
          [[ $uptime == *.* ]]; }; then
     # implementation with /proc/uptime
-    _ble_util_clock_base=$((10#${uptime%.*}))
+    _ble_util_clock_base=$((10#0${uptime%.*}))
     _ble_util_clock_reso=10
     _ble_util_clock_type=uptime
     function ble/util/clock {
       local now
       ble/util/readfile now /proc/uptime
       ble/string#split-words now "$now"
-      local integral=$((10#${now%%.*}-_ble_util_clock_base))
+      local integral=$((10#0${now%%.*}-_ble_util_clock_base))
       local fraction=${now#*.}000; fraction=${fraction::3}
-      ((ret=integral*1000+10#$fraction))
+      ((ret=integral*1000+10#0$fraction))
     }
   elif ((_ble_bash>=40200)); then
     printf -v _ble_util_clock_base '%(%s)T'

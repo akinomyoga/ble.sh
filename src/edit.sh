@@ -1110,11 +1110,11 @@ function ble-edit/content/get-arg {
     if [[ $_ble_edit_arg == - ]]; then
       arg=-1
     else
-      arg=$((-10#${_ble_edit_arg#-}))
+      arg=$((-10#0${_ble_edit_arg#-}))
     fi
   else
     if [[ $_ble_edit_arg ]]; then
-      arg=$((10#$_ble_edit_arg))
+      arg=$((10#0$_ble_edit_arg))
     else
       arg=$default_value
     fi
@@ -1211,7 +1211,7 @@ function ble-edit/eval-IGNOREEOF {
 
   if [[ $value && ! ${value//[0-9]} ]]; then
     # 正の整数は十進数で解釈
-    ret=$((10#$value))
+    ret=$((10#0$value))
   else
     # 負の整数、空文字列、その他
     ret=10
@@ -5278,7 +5278,7 @@ function ble-edit/isearch/.shift-backward-references {
     local buff=
     while [[ $needle =~ $rex ]]; do
       local mlen=${#BASH_REMATCH}
-      buff=$buff${BASH_REMATCH::mlen-1}$((10#${BASH_REMATCH:mlen-1}+1))
+      buff=$buff${BASH_REMATCH::mlen-1}$((10#0${BASH_REMATCH:mlen-1}+1))
       needle=${needle:mlen}
     done
     needle=$buff$needle
@@ -6702,7 +6702,7 @@ function ble/builtin/read/.loop {
     if [[ $opt_timeout == *.* ]]; then
       local mantissa=${opt_timeout%%.*}
       local fraction=${opt_timeout##*.}000
-      ((timeout=mantissa*1000+10#${fraction::3}))
+      ((timeout=mantissa*1000+10#0${fraction::3}))
     else
       ((timeout=opt_timeout*1000))
     fi
