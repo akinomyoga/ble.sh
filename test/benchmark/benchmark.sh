@@ -23,7 +23,7 @@ if [[ $ZSH_VERSION ]]; then
       fi
       m="${m:-0}" ms="${ms}000"; ms="${ms:0:3}"
      
-      ((utot=((10#$m*60+10#$s)*1000+10#$ms)*1000,
+      ((utot=((10#0$m*60+10#0$s)*1000+10#0$ms)*1000,
         usec=utot/n))
       return 0
     else
@@ -50,7 +50,7 @@ else
     [[ $result =~  $rex ]] || return 1
     local s=${BASH_REMATCH[1]}
     local ms=${BASH_REMATCH[3]}000; ms=${ms::3}
-    ((utot=(10#$s*1000+10#$ms)*1000,usec=utot1/n))
+    ((utot=(10#0$s*1000+10#0$ms)*1000,usec=utot1/n))
     return 0
   }
 fi

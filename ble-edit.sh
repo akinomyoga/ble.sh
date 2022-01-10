@@ -656,7 +656,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       return ;;
     ([ABCDEFGIZ\`ade])
       local arg=0
-      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#$param))
+      [[ $param =~ ^[0-9]+$ ]] && ((arg=10#0$param))
       ((arg==0&&(arg=1)))
 
       local x0=$x y0=$y
@@ -2192,11 +2192,11 @@ function ble-edit/content/get-arg {
     if [[ $_ble_edit_arg == - ]]; then
       arg=-1
     else
-      arg=$((-10#${_ble_edit_arg#-}))
+      arg=$((-10#0${_ble_edit_arg#-}))
     fi
   else
     if [[ $_ble_edit_arg ]]; then
-      arg=$((10#$_ble_edit_arg))
+      arg=$((10#0$_ble_edit_arg))
     else
       arg=$default_value
     fi
@@ -5902,7 +5902,7 @@ function ble-edit/isearch/.shift-backward-references {
     local buff=
     while [[ $needle =~ $rex ]]; do
       local mlen=${#BASH_REMATCH}
-      buff=$buff${BASH_REMATCH::mlen-1}$((10#${BASH_REMATCH:mlen-1}+1))
+      buff=$buff${BASH_REMATCH::mlen-1}$((10#0${BASH_REMATCH:mlen-1}+1))
       needle=${needle:mlen}
     done
     needle=$buff$needle

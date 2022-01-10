@@ -914,7 +914,7 @@ function ble/util/sleep/.check-builtin-sleep {
 _ble_util_msleep_delay=2000 # [usec]
 function ble/util/msleep/.core {
   local sec=${1%%.*}
-  ((10#${1##*.}&&sec++)) # 小数部分は切り上げ
+  ((10#0${1##*.}&&sec++)) # 小数部分は切り上げ
   ble/bin/sleep "$sec"
 }
 function ble/util/msleep {

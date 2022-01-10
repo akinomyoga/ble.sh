@@ -132,7 +132,7 @@ function ble-color/.name2color {
 
   local colorName="$1"
   if [[ ! ${colorName//[0-9]} ]]; then
-    ((ret=10#$colorName&255))
+    ((ret=10#0$colorName&255))
   else
     case "$colorName" in
     (black)   ret=0 ;;
