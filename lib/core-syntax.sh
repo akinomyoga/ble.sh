@@ -2918,8 +2918,8 @@ function ble/syntax:bash/check-brace-expansion {
         # リダイレクトで複数語に展開される時はエラー
         local lhs=${rematch1::len2} rhs=${rematch1:len2+2}
         if [[ $rematch2 ]]; then
-          local lhs1=$((10#${lhs#[-+]})); [[ $lhs == -* ]] && ((lhs1=-lhs1))
-          local rhs1=$((10#${rhs#[-+]})); [[ $rhs == -* ]] && ((rhs1=-rhs1))
+          local lhs1=$((10#0${lhs#[-+]})); [[ $lhs == -* ]] && ((lhs1=-lhs1))
+          local rhs1=$((10#0${rhs#[-+]})); [[ $rhs == -* ]] && ((rhs1=-rhs1))
           lhs=$lhs1 rhs=$rhs1
         fi
         [[ $lhs != "$rhs" ]] && ((attr=ATTR_ERR))

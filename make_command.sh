@@ -1135,6 +1135,13 @@ function sub:scan/bash301bug-array-element-length {
   grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} | grep -Ev '^([^#]*[[:space:]])?#'
 }
 
+function sub:scan/bash501-arith-base {
+  echo "--- $FUNCNAME ---"
+  # bash-3.1 で ${#arr[index]} を用いると、
+  # 日本語の文字数が変になる。
+  grc '\b10#\$' --exclude={test,ChangeLog.md}
+}
+
 function sub:scan/gawk402bug-regex-check {
   echo "--- $FUNCNAME ---"
   grc --color '\[\^?\][^]]*\[:[^]]*:\].[^]]*\]' --exclude={test,ext,\*.md} | grep -Ev '#D1709 safe'
@@ -1289,6 +1296,7 @@ function sub:scan {
   sub:scan/check-todo-mark
   sub:scan/bash300bug
   sub:scan/bash301bug-array-element-length
+  sub:scan/bash501-arith-base
   sub:scan/gawk402bug-regex-check
   sub:scan/array-count-in-arithmetic-expression
   sub:scan/unset-variable |

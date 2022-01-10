@@ -416,18 +416,18 @@ function ble/color/gspec2sgr {
 function ble/color/.name2color/.clamp {
   local text=$1 max=$2
   if [[ $text == *% ]]; then
-    ((ret=10#${text%'%'}*max/100))
+    ((ret=10#0${text%'%'}*max/100))
   else
-    ((ret=10#$text))
+    ((ret=10#0$text))
   fi
   ((ret>max)) && ret=max
 }
 function ble/color/.name2color/.wrap {
   local text=$1 max=$2
   if [[ $text == *% ]]; then
-    ((ret=10#${text%'%'}*max/100))
+    ((ret=10#0${text%'%'}*max/100))
   else
-    ((ret=10#$text))
+    ((ret=10#0$text))
   fi
   ((ret%=max))
 }
@@ -464,7 +464,7 @@ function ble/color/.hsb2color {
 function ble/color/.name2color {
   local colorName=$1
   if [[ ! ${colorName//[0-9]} ]]; then
-    ((ret=10#$colorName&255))
+    ((ret=10#0$colorName&255))
   elif [[ $colorName == '#'* ]]; then
     if local rex='^#[0-9a-fA-F]{3}$'; [[ $colorName =~ $rex ]]; then
       let "ret=1<<24|16#${colorName:1:1}*0x11<<16|16#${colorName:2:1}*0x11<<8|16#${colorName:3:1}*0x11"
@@ -537,7 +537,7 @@ function ble/color/.color2name {
     return 0
   fi
 
-  ((ret=(10#$1&255)))
+  ((ret=(10#0$1&255)))
   case $ret in
   (0)  ret=black   ;;
   (1)  ret=brown   ;;
@@ -757,10 +757,10 @@ function ble/color/read-sgrspec/.arg-next {
   fi
 
   if ((j<${#fields[*]})); then
-    ((_ret=10#${fields[j++]}))
+    ((_ret=10#0${fields[j++]}))
   else
     ((i++))
-    ((_ret=10#${specs[i]%%:*}))
+    ((_ret=10#0${specs[i]%%:*}))
   fi
 
   (($_var=_ret))
@@ -775,7 +775,7 @@ function ble/color/read-sgrspec {
   for ((i=0,iN=${#specs[@]};i<iN;i++)); do
     local spec=${specs[i]} fields
     ble/string#split fields : "$spec"
-    local arg=$((10#${fields[0]}))
+    local arg=$((10#0${fields[0]}))
     if ((arg==0)); then
       g=0
       continue

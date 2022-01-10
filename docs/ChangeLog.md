@@ -283,6 +283,7 @@
 - main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 8d37048
 - main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` a41279e
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
+- global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 0000000
 
 ## Internal changes and fixes
 
