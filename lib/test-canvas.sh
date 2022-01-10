@@ -457,9 +457,11 @@ ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.t
       fi
     done
   }
-  for spec in "${tests_cases[@]}"; do
-    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary "$spec"
-  done
+  if ((_ble_bash>=40200)); then
+    for spec in "${tests_cases[@]}"; do
+      ble/test:canvas/GraphemeClusterBreak/find-previous-boundary "$spec"
+    done
+  fi
 )
 
 ble/test/end-section

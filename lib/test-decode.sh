@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/decode' 32
+ble/test/start-section 'ble/decode' 33
 
 # ble/builtin/bind/.parse-keyname
 (

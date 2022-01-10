@@ -83,6 +83,9 @@ outfiles += $(OUTDIR)/lib/test-main.sh
 outfiles += $(OUTDIR)/lib/test-util.sh
 outfiles += $(OUTDIR)/lib/test-canvas.sh
 outfiles += $(OUTDIR)/lib/test-decode.sh
+outfiles += $(OUTDIR)/lib/test-edit.sh
+outfiles += $(OUTDIR)/lib/test-syntax.sh
+outfiles += $(OUTDIR)/lib/test-complete.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
 $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib

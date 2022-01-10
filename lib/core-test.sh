@@ -1,5 +1,8 @@
 # -*- mode: sh; mode: sh-bash -*-
 
+#------------------------------------------------------------------------------
+# test directory management
+
 function ble/test/getdir {
   dir=$_ble_base_run/$$.test
   [[ -d $dir ]] || ble/bin/mkdir -p "$dir"
@@ -21,6 +24,33 @@ function ble/test/rmdir {
   return 0
 }
 
+#------------------------------------------------------------------------------
+# logging / diff
+
+_ble_test_logfile_fd=
+function ble/test/log {
+  if [[ $_ble_test_logfile_fd ]]; then
+    ble/util/print "$1" >&$_ble_test_logfile_fd
+  fi
+  ble/util/print "$1"
+}
+function ble/test/log#open {
+  local file=$1
+  if ble/fd#alloc _ble_test_logfile_fd '>>$file'; then
+    local h10=----------
+    [[ -s $file ]] &&
+      ble/util/print "$h10$h10$h10$h10$h10$h10$h10" >&$_ble_test_logfile_fd
+    ble/util/print "[$(date +'%F %T %Z')] test: start logging" >&$_ble_test_logfile_fd
+  fi
+}
+function ble/test/log#close {
+  if [[ $_ble_test_logfile_fd ]]; then
+    ble/util/print "[$(date +'%F %T %Z')] test: end logging" >&$_ble_test_logfile_fd
+    ble/fd#close _ble_test_logfile_fd
+    _ble_test_logfile_fd=
+  fi
+}
+
 if ble/bin/.freeze-utility-path colored; then
   function ble/test/diff.impl {
     ble/bin/colored diff -u "$@"
@@ -40,10 +70,13 @@ function ble/test/diff {
     cd "$dir"
     ble/util/print "$2" >| "$f1"
     ble/util/print "$3" >| "$f2"
-    ble/test/diff.impl "$f1" "$f2"
+    ble/util/assign ret 'ble/test/diff.impl "$f1" "$f2"'
+    ble/test/log "$ret"
     >| "$f1" >| "$f2"
   )
 }
+
+#------------------------------------------------------------------------------
 
 _ble_test_section_fd=
 _ble_test_section_file=
@@ -81,7 +114,13 @@ function ble/test/end-section {
 
   local ncrash=$((ntest-nfail-npass))
   local nskip=$((count-ntest))
-  ble/util/print "[section] $_ble_test_section_title: $sgr$npass/$ntest$sgr0 ($nfail fail, $ncrash crash, $nskip skip)"
+  if ((ntest)); then
+    local percentage=$((npass*1000/ntest)) # Note: 切り捨て
+    ble/util/sprintf percentage '%6s' "$((percentage/10)).$((percentage%10))%" # "XXX.X%"
+  else
+    local percentage=---.-%
+  fi
+  ble/test/log "$sgr$percentage$sgr0 [section] $_ble_test_section_title: $sgr$npass/$ntest$sgr0 ($nfail fail, $ncrash crash, $nskip skip)"
   ((npass==ntest))
 }
 function ble/test/section#incr {
@@ -171,18 +210,18 @@ function ble/test {
 
     if [[ ! $flag_error ]]; then
       flag_error=1
-      ble/util/print $'\e[1m'"$title"$'\e[m: \e[91m'"${display_code:-$code}"$'\e[m'
+      ble/test/log $'\e[1m'"$title"$'\e[m: \e[91m'"${display_code:-$code}"$'\e[m'
     fi
 
     ble/test/diff "${item_name[i]}" "${item_expect[i]}" "${item_result[i]}"
   done
   if [[ $flag_error ]]; then
     if [[ ! ${item_expect[1]+set} && $stderr ]]; then
-      ble/util/print "<STDERR>"
-      ble/util/print "$stderr"
-      ble/util/print "</STDERR>"
+      ble/test/log "<STDERR>"
+      ble/test/log "$stderr"
+      ble/test/log "</STDERR>"
     fi
-    ble/util/print
+    ble/test/log
   fi
 
   [[ ! $flag_error ]]

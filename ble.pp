@@ -1649,23 +1649,37 @@ function ble/base/initialize/.clean-up {
 }
 
 function ble/base/sub:test {
-  local error=
-  if ((!_ble_make_command_check_count)); then
-    echo "MACHTYPE: $MACHTYPE"
-    echo "BLE_VERSION: $BLE_VERSION"
+  local error= logfile=
+
+  ble-import lib/core-test
+
+  if (($#==0)); then
+    set -- main util canvas decode edit syntax complete
+    logfile=$_ble_base_cache/test.$(date +'%Y%m%d.%H%M%S').log
+    : >| "$logfile"
+    ble/test/log#open "$logfile"
   fi
-  echo "BASH_VERSION: $BASH_VERSION"
-  (($#)) || set -- main util canvas decode
+
+  if ((!_ble_make_command_check_count)); then
+    ble/test/log "MACHTYPE: $MACHTYPE"
+    ble/test/log "BLE_VERSION: $BLE_VERSION"
+  fi
+  ble/test/log "BASH_VERSION: $BASH_VERSION"
   local section
   for section; do
     local file=$_ble_base/lib/test-$section.sh
     if [[ -f $file ]]; then
       source "$file" || error=1
     else
-      ble/util/print "ERROR: Test '$section' is not defined."
+      ble/test/log "ERROR: Test '$section' is not defined."
       error=1
     fi
   done
+
+  if [[ $logfile ]]; then
+    ble/test/log#close
+    ble/util/print "ble: The test log was saved to '${_ble_term_setaf[4]}$logfile$_ble_term_sgr0'."
+  fi
   [[ ! $error ]]
 }
 function ble/base/sub:update { ble-update; }
