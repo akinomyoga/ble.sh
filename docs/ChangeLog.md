@@ -220,6 +220,7 @@
 - util (visible-bell): erase visible-bell before running external commands `#D1723` 0da0c1c
 - util (`ble/function`): work around `shopt -u extglob` `#D1725` 952c388
 - syntax: fix uninitialized syntax-highlighting in bash-3.2 `#D1731` 0000000
+- make: fix a bug that config update messages are removed on install `#D1736` 0000000
 
 ## Documentation
 

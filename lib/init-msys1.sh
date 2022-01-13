@@ -37,9 +37,8 @@ function ble-edit/io:msys1/compile-helper {
   [[ -x $helper && -s $helper && $helper -nt $_ble_base/lib/init-msys1.sh ]] && return 0
 
   # /mingw/bin/gcc
-  local include='#include' # '#' で始まる行はインストール時に消される
   gcc -O2 -s -o "$helper" -xc - << EOF || return 1
-#%$ sed 's/^#include/$include/' lib/init-msys1-helper.c
+#%include init-msys1-helper.c
 EOF
 
   [[ -x $helper ]]
