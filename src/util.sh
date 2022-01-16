@@ -2010,7 +2010,7 @@ function ble/builtin/trap {
       if [[ ${_ble_builtin_trap_handlers[index]+set} ]]; then
         local h=${_ble_builtin_trap_handlers[index]}
         local n=${_ble_builtin_trap_signames[index]}
-        ble/util/print "trap -- '${h//$Q/$q}' $n"
+        ble/util/print "trap -- '${h//$q/$Q}' $n"
       fi
     done
   else
@@ -3277,7 +3277,7 @@ function ble/util/print-global-definitions/.save-decl {
     fi
   else
     __ble_decl=${!__ble_name}
-    __ble_decl="declare $__ble_name='${__ble_decl//$__ble_q//$__ble_Q}'"
+    __ble_decl="declare $__ble_name='${__ble_decl//$__ble_q/$__ble_Q}'"
   fi
 }
 ## @fn ble/util/print-global-definitions varnames...

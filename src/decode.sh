@@ -2592,8 +2592,8 @@ function ble/decode/cmap/.generate-binder-template {
 }
 
 function ble/decode/cmap/.emit-bindx {
-  local ap="'" eap="'\\''"
-  ble/util/print "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval -- \"\$_ble_decode_bind_hook\"'"
+  local q="'" Q="'\''"
+  ble/util/print "builtin bind -x '\"${1//$q/$Q}\":ble-decode/.hook $2; builtin eval -- \"\$_ble_decode_bind_hook\"'"
 }
 function ble/decode/cmap/.emit-bindr {
   ble/util/print "builtin bind -r \"$1\""

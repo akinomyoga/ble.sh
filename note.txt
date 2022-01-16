@@ -5825,6 +5825,15 @@ bash_tips
 
 2022-01-20
 
+  * bash-5.2 shopt patsub_replacement 対策 [#D1739]
+
+    これは #D1738 の一環として発見されたバグであるが bash-0.3 も修正しなければ
+    ならないので、独立した項目にする事にする。
+
+    - util (ble/builtin/trap): $Q から $q へ逆方向で変換されていた。
+    - util (ble/util/print-global-definitions): ${v//$q//$Q} の様になっていた為
+      に置換後に余分な / が混入していた。
+
   * 2022-01-13 bash-5.2 shopt patsub_replacement 対策 [#D1738]
 
     % 取り敢えず危なそうな箇所を抽出しておく。うーん。やはり可也面倒である。

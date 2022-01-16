@@ -273,7 +273,7 @@ function sub:generate-grapheme-cluster-table {
     BEGIN {
       #ITEMS_PER_LINE = 6;
       MAX_COLUMNS = 160;
-      apos = "'\''";
+      Q = "'\''";
       out = "   ";
       out_length = 3;
       out_count = 0;
@@ -306,7 +306,7 @@ function sub:generate-grapheme-cluster-table {
       } else
         print "GraphemeBreakTest.txt: Unexpected line (" $0 ")" >"/dev/stderr";
 
-      ent = ans ":" apos str apos;
+      ent = ans ":" Q str Q;
       entlen = length(ent) + 1
 
       if (out_length + entlen >= MAX_COLUMNS) out_flush();
@@ -1310,7 +1310,7 @@ function sub:scan {
   #sub:scan/assign
   sub:scan/builtin trap |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zble/util/print "trap -- '\''\$\{h//\$Q/\$q}'\'' \$nZd
+      \Zble/util/print "trap -- '\''\$\{h//\$q/\$Q}'\'' \$nZd
       \Zline = "bind"Zd
       \Zlocal trap_command="trap -- Zd
       \Zlocal trap$Zd

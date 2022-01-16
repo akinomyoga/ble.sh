@@ -1505,6 +1505,9 @@ ble/test ble/util/is-running-in-subshell exit=1
     ble/test 'status v2' stdout='1:(3)'
   }
   f1
+
+  value="hello 'world'"
+  ble/test 'ble/util/print-global-definitions value' stdout="declare value='hello '\''world'\'''"
 )
 
 # ble/util/has-glob-pattern

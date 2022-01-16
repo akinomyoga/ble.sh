@@ -5582,7 +5582,7 @@ function ble-edit/exec:gexec/.setup {
   ((${#_ble_edit_exec_lines[@]}==0)) && return 1
   ble/util/buffer.flush >&2
 
-  local apos=\' APOS="'\\''"
+  local q=\' Q="'\\''"
   local cmd
   local -a buff=()
   local count=0
@@ -5590,9 +5590,9 @@ function ble-edit/exec:gexec/.setup {
   for cmd in "${_ble_edit_exec_lines[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
       # Note: $_ble_edit_exec_lastarg は $_ を設定するためのものである。
-      local prologue="ble-edit/exec:gexec/.prologue '${cmd//$apos/$APOS}' \"\$_ble_edit_exec_lastarg\""
-      buff[${#buff[@]}]="builtin eval -- '${prologue//$apos/$APOS}"
-      buff[${#buff[@]}]="${cmd//$apos/$APOS}"
+      local prologue="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}' \"\$_ble_edit_exec_lastarg\""
+      buff[${#buff[@]}]="builtin eval -- '${prologue//$q/$Q}"
+      buff[${#buff[@]}]="${cmd//$q/$Q}"
       buff[${#buff[@]}]="{ ble-edit/exec:gexec/.save-last-arg; } &>/dev/null'" # Note: &>/dev/null は set -x 対策 #D0930
       buff[${#buff[@]}]="{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null"
       ((count++))
