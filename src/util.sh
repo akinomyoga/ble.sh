@@ -403,7 +403,7 @@ function ble/dense-array#fill-range {
   ble/array#reserve-prototype $(($3-$2))
   local _ble_script='
     local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 checked
+    ARR=("${ARR[@]::$2}" "${sARR[@]/#/"$4"}" "${ARR[@]:$3}")' # WA #D1570 checked
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
@@ -422,7 +422,7 @@ function ble/string#reserve-prototype {
 function ble/string#repeat {
   ble/string#reserve-prototype "$2"
   ret=${_ble_string_prototype::$2}
-  ret="${ret// /$1}"
+  ret="${ret// /"$1"}"
 }
 
 ## 関数 ble/string#common-prefix a b
@@ -668,16 +668,38 @@ function ble/string#rtrim {
 ##   @param[in]     chars1
 ##   @param[in,opt] chars2
 ##   @var[out] ret
-function ble/string#escape-characters {
-  ret=$1
-  if [[ $ret == *["$2"]* ]]; then
-    local chars1=$2 chars2=${3:-$2}
-    local i n=${#chars1} a b
-    for ((i=0;i<n;i++)); do
-      a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/$b}
-    done
-  fi
-}
+if ((_ble_bash>=50200)); then
+  function ble/string#escape-characters {
+    ret=$1
+    if [[ $ret == *["$2"]* ]]; then
+      if [[ ! $3 ]]; then
+        local patsub_replacement=
+        shopt -q patsub_replacement && patsub_replacement=1
+        shopt -s patsub_replacement
+        ret=${ret//["$2"]/\\&} # #D1738 patsub_replacement
+        [[ $patsub_replacement ]] || shopt -u patsub_replacement
+      else
+        local chars1=$2 chars2=${3:-$2}
+        local i n=${#chars1} a b
+        for ((i=0;i<n;i++)); do
+          a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/"$b"}
+        done
+      fi
+    fi
+  }
+else
+  function ble/string#escape-characters {
+    ret=$1
+    if [[ $ret == *["$2"]* ]]; then
+      local chars1=$2 chars2=${3:-$2}
+      local i n=${#chars1} a b
+      for ((i=0;i<n;i++)); do
+        a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/"$b"}
+      done
+    fi
+  }
+fi
+
 
 ## 関数 ble/string#escape-for-sed-regex text
 ## 関数 ble/string#escape-for-awk-regex text
@@ -704,12 +726,12 @@ function ble/string#escape-for-bash-glob {
 }
 function ble/string#escape-for-bash-single-quote {
   local q="'" Q="'\''"
-  ret=${1//"$q"/$Q}
+  ret=${1//$q/$Q}
 }
 function ble/string#escape-for-bash-double-quote {
   ble/string#escape-characters "$1" '\"$`'
   local a b
-  a='!' b='"\!"' ret=${ret//"$a"/$b}
+  a='!' b='"\!"' ret=${ret//"$a"/"$b"}
 }
 function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$1" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
@@ -735,18 +757,18 @@ function ble/string#escape-for-bash-specialchars {
   [[ $2 != *H* && $ret == '#'* ]] && ret=\\$ret
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
-    a=']'   b=\\$a     ret=${ret//"$a"/$b}
-    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
-    a=$'\t' b=$'\\\t'  ret=${ret//"$a"/$b}
+    a=']'   b=\\$a     ret=${ret//"$a"/"$b"}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"}
+    a=$'\t' b=$'\\\t'  ret=${ret//"$a"/"$b"}
   fi
 
   # 上の処理で extglob の ( も quote されてしまうので G の時には戻す。
   if [[ $2 == *G* ]] && shopt -q extglob; then
-    a='!\(' b='!(' ret=${ret//"$a"/$b}
-    a='@\(' b='@(' ret=${ret//"$a"/$b}
-    a='?\(' b='?(' ret=${ret//"$a"/$b}
-    a='*\(' b='*(' ret=${ret//"$a"/$b}
-    a='+\(' b='+(' ret=${ret//"$a"/$b}
+    a='!\(' b='!(' ret=${ret//"$a"/"$b"}
+    a='@\(' b='@(' ret=${ret//"$a"/"$b"}
+    a='?\(' b='?(' ret=${ret//"$a"/"$b"}
+    a='*\(' b='*(' ret=${ret//"$a"/"$b"}
+    a='+\(' b='+(' ret=${ret//"$a"/"$b"}
   fi
 }
 
@@ -809,9 +831,9 @@ function ble/string#escape-for-bash-specialchars-in-brace {
   ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{,}'
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
-    a=']'   b=\\$a     ret=${ret//"$a"/$b}
-    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
-    a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
+    a=']'   b=\\$a     ret=${ret//"$a"/"$b"}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"}
+    a=$'\t' b=$' \t'   ret=${ret//"$a"/"$b"}
   fi
 }
 
@@ -901,7 +923,7 @@ function ble/util/substr {
 
 function ble/path#add {
   local _ble_local_script='opts=$opts${opts:+:}$2'
-  builtin eval -- "${_ble_local_script//opts/$1}"
+  builtin eval -- "${_ble_local_script//opts/"$1"}"
 }
 function ble/path#remove {
   [[ $2 ]] || return
@@ -909,7 +931,7 @@ function ble/path#remove {
     opts=:${opts//:/::}:
     opts=${opts//:"$2":}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
-  builtin eval -- "${_ble_local_script//opts/$1}"
+  builtin eval -- "${_ble_local_script//opts/"$1"}"
 }
 function ble/path#remove-glob {
   [[ $2 ]] || return
@@ -917,7 +939,7 @@ function ble/path#remove-glob {
     opts=:${opts//:/::}:
     opts=${opts//:$2:}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
-  builtin eval -- "${_ble_local_script//opts/$1}"
+  builtin eval -- "${_ble_local_script//opts/"$1"}"
 }
 
 if ((_ble_bash>=40000)); then
@@ -928,8 +950,8 @@ if ((_ble_bash>=40000)); then
 else
   _ble_util_set_declare=(declare NAME)
   function ble/set#.escape {
-    _ble_local_value=${_ble_local_value//$_ble_term_FS/$_ble_term_FS$_ble_term_FS}
-    _ble_local_value=${_ble_local_value//:/$_ble_term_FS.}
+    _ble_local_value=${_ble_local_value//$_ble_term_FS/"$_ble_term_FS$_ble_term_FS"}
+    _ble_local_value=${_ble_local_value//:/"$_ble_term_FS."}
   }
   function ble/set#add {
     local _ble_local_value=$2; ble/set#.escape
@@ -1430,7 +1452,7 @@ if ((_ble_bash>=40200)); then
         ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
 
         [[ $__ble_hidden_only && $__ble_i == 0 ]] && continue
-        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+        echo "declare $__ble_name='${__ble_value//$__ble_q/$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
@@ -1462,7 +1484,7 @@ else
         [[ $__ble_found ]] || __ble_error= __ble_value= # not found
         [[ $__ble_hidden_only && $__ble_found == 0 ]] && continue
 
-        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+        echo "declare $__ble_name='${__ble_value//$__ble_q/$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
@@ -3014,7 +3036,8 @@ function ble/term/visible-bell/.show {
     ble/canvas/flush.draw
     _ble_term_visible_bell_prev=("$message" "$x0" "$y0" "$x" "$y")
   else
-    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$message}"
+    local esc=${_ble_term_visible_bell_show//'%message%'/"$message"}
+    builtin echo -n "$esc"
     _ble_term_visible_bell_prev=("$message")
   fi
 } >&2
@@ -3035,7 +3058,8 @@ function ble/term/visible-bell/.update {
     ble/canvas/put-cud.draw 1
     ble/canvas/flush.draw
   else
-    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
+    local esc=${_ble_term_visible_bell_show//'%message%'/"$sgr$message"}
+    builtin echo -n "$esc"
   fi
 } >&2
 function ble/term/visible-bell/.clear {
@@ -3251,7 +3275,7 @@ function ble/term/cursor-state/.update {
   local state=$(($1))
   [[ $_ble_term_cursor_current == "$state" ]] && return
 
-  ble/util/buffer "${_ble_term_Ss//@1/$state}"
+  ble/util/buffer "${_ble_term_Ss//@1/"$state"}"
 
   _ble_term_cursor_current=$state
 }

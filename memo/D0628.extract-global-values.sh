@@ -302,7 +302,7 @@ if [[ $mode == test5d ]]; then
 
           ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value=NOT_FOUND
 
-          echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+          echo "declare $__ble_name='${__ble_value//$__ble_q/$__ble_Q}'"
         done
         
         [[ ! $__ble_error ]]
@@ -331,7 +331,7 @@ if [[ $mode == test5d ]]; then
 
           ((__ble_found)) || __ble_error= __ble_value=NOT_FOUND
 
-          echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+          echo "declare $__ble_name='${__ble_value//$__ble_q/$__ble_Q}'"
         done
         
         [[ ! $__ble_error ]]

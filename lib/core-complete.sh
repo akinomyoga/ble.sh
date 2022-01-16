@@ -1319,7 +1319,7 @@ function ble/complete/progcomp/.parse-complete {
   flag_noquote=
   local compdef=${1#'complete '}
 
-  local arg optarg rex='^([^][*?;&|[:space:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:space:]]+'
+  local arg optarg rex='^([^][*?;&|[:space:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:space:]]+' # #D1709 safe
   while ble/complete/progcomp/.parse-complete/next; do
     case $arg in
     (-*)
