@@ -9,18 +9,18 @@
 function ble/init:bind/append {
   local xarg="\"$1\":ble-decode/.hook $2; builtin eval -- \"\$_ble_decode_bind_hook\""
   local rarg=$1 condition=$3${3:+' && '}
-  ble/util/print "${condition}builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
-  ble/util/print "${condition}builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
+  ble/util/print "${condition}builtin bind -x '${xarg//$q/$Q}'" >> "$fbind1"
+  ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >> "$fbind2"
 }
 function ble/init:bind/append-macro {
   local kseq1=$1 kseq2=$2 condition=$3${3:+' && '}
   local sarg="\"$kseq1\":\"$kseq2\"" rarg=$kseq1
-  ble/util/print "${condition}builtin bind    '${sarg//$apos/$APOS}'" >> "$fbind1"
-  ble/util/print "${condition}builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
+  ble/util/print "${condition}builtin bind    '${sarg//$q/$Q}'" >> "$fbind1"
+  ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >> "$fbind2"
 }
 function ble/init:bind/bind-s {
   local sarg=$1
-  ble/util/print "builtin bind '${sarg//$apos/$APOS}'" >> "$fbind1"
+  ble/util/print "builtin bind '${sarg//$q/$Q}'" >> "$fbind1"
 }
 
 function ble/init:bind/generate-binder {
@@ -32,7 +32,7 @@ function ble/init:bind/generate-binder {
   : >| "$fbind1"
   : >| "$fbind2"
 
-  local apos=\' APOS="'\\''"
+  local q=\' Q="'\\''"
   local altdqs24='\xC0\x98'
   local altdqs27='\xC0\x9B'
 

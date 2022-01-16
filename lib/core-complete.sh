@@ -48,29 +48,29 @@ function ble-complete/util/escape-specialchars {
   eval "$ble_util_upvar_setup"
   local a b ret="$*" chars=']['$' \t\n\\''"'\''`$|&;<>()*?{}!^'
   if [[ $ret == *["$chars"]* ]]; then
-    a=\\ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\" b="\\$a" ret="${ret//"$a"/$b}"
-    a=\' b="\\$a" ret="${ret//"$a"/$b}"
-    a=\` b="\\$a" ret="${ret//"$a"/$b}"
-    a=\$ b="\\$a" ret="${ret//"$a"/$b}"
-    a=' '   b="\\$a"   ret="${ret//"$a"/$b}"
-    a=$'\t' b="\\$a"   ret="${ret//"$a"/$b}"
-    a=$'\n' b="\$'\n'" ret="${ret//"$a"/$b}"
-    a=\| b="\\$a" ret="${ret//"$a"/$b}"
-    a=\& b="\\$a" ret="${ret//"$a"/$b}"
-    a=\; b="\\$a" ret="${ret//"$a"/$b}"
-    a=\< b="\\$a" ret="${ret//"$a"/$b}"
-    a=\> b="\\$a" ret="${ret//"$a"/$b}"
-    a=\( b="\\$a" ret="${ret//"$a"/$b}"
-    a=\) b="\\$a" ret="${ret//"$a"/$b}"
-    a=\[ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\* b="\\$a" ret="${ret//"$a"/$b}"
-    a=\? b="\\$a" ret="${ret//"$a"/$b}"
-    a=\] b="\\$a" ret="${ret//"$a"/$b}"
-    a=\{ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\} b="\\$a" ret="${ret//"$a"/$b}"
-    a=\! b="\\$a" ret="${ret//"$a"/$b}"
-    a=\^ b="\\$a" ret="${ret//"$a"/$b}"
+    a=\\ b='\'$a ret=${ret//"$a"/"$b"}
+    a='"' b='\'$a ret=${ret//"$a"/"$b"}
+    a=\' b='\'$a ret=${ret//"$a"/"$b"}
+    a=\` b='\'$a ret=${ret//"$a"/"$b"}
+    a=\$ b='\'$a ret=${ret//"$a"/"$b"}
+    a=' '   b='\'$a   ret=${ret//"$a"/"$b"}
+    a=$'\t' b='\'$a   ret=${ret//"$a"/"$b"}
+    a=$'\n' b=\$\'\\n\' ret=${ret//"$a"/"$b"}
+    a=\| b='\'$a ret=${ret//"$a"/"$b"}
+    a=\& b='\'$a ret=${ret//"$a"/"$b"}
+    a=\; b='\'$a ret=${ret//"$a"/"$b"}
+    a=\< b='\'$a ret=${ret//"$a"/"$b"}
+    a=\> b='\'$a ret=${ret//"$a"/"$b"}
+    a=\( b='\'$a ret=${ret//"$a"/"$b"}
+    a=\) b='\'$a ret=${ret//"$a"/"$b"}
+    a=\[ b='\'$a ret=${ret//"$a"/"$b"}
+    a=\* b='\'$a ret=${ret//"$a"/"$b"}
+    a=\? b='\'$a ret=${ret//"$a"/"$b"}
+    a=\] b='\'$a ret=${ret//"$a"/"$b"}
+    a=\{ b='\'$a ret=${ret//"$a"/"$b"}
+    a=\} b='\'$a ret=${ret//"$a"/"$b"}
+    a=\! b='\'$a ret=${ret//"$a"/"$b"}
+    a=\^ b='\'$a ret=${ret//"$a"/"$b"}
   fi
   eval "$ble_util_upvar"
 }

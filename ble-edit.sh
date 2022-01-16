@@ -1006,7 +1006,7 @@ function ble-edit/prompt/initialize {
           c=$ret
         fi
       fi
-      windir=/cygdrive/$c/${path//$bsl/$sl}
+      windir=/cygdrive/$c/${path//"$bsl"/"$sl"}
     fi
 
     if [[ -e $windir && -w $windir ]]; then
@@ -1065,17 +1065,17 @@ function _ble_edit_prompt.load {
 function ble-edit/prompt/update/append {
   local text=$1 a b
   if [[ $text == *['$\"`']* ]]; then
-    a='\' b='\\' text=${text//"$a"/$b}
-    a='$' b='\$' text=${text//"$a"/$b}
-    a='"' b='\"' text=${text//"$a"/$b}
-    a='`' b='\`' text=${text//"$a"/$b}
+    a='\' b='\'$a text=${text//"$a"/"$b"}
+    a='$' b='\'$a text=${text//"$a"/"$b"}
+    a='"' b='\'$a text=${text//"$a"/"$b"}
+    a='`' b='\'$a text=${text//"$a"/"$b"}
   fi
   ble-edit/draw/put "$text"
 }
 function ble-edit/prompt/update/process-text {
   local text=$1 a b
   if [[ $text == *'"'* ]]; then
-    a='"' b='\"' text=${text//"$a"/$b}
+    a='"' b='\"' text=${text//"$a"/"$b"}
   fi
   ble-edit/draw/put "$text"
 }
@@ -4632,7 +4632,7 @@ function ble-edit/exec:gexec/.setup {
   ((${#_ble_edit_exec_lines[@]}==0)) && return 1
   ble/util/buffer.flush >&2
 
-  local apos=\' APOS="'\\''"
+  local q=\' Q="'\\''"
   local cmd
   local -a buff
   local count=0
@@ -4640,9 +4640,9 @@ function ble-edit/exec:gexec/.setup {
   for cmd in "${_ble_edit_exec_lines[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
       # Note: $_ble_edit_exec_lastarg は $_ を設定するためのものである。
-      local prologue="ble-edit/exec:gexec/.eval-prologue '${cmd//$apos/$APOS}' \"\$_ble_edit_exec_lastarg\""
-      buff[${#buff[@]}]="builtin eval -- '${prologue//$apos/$APOS}"
-      buff[${#buff[@]}]="${cmd//$apos/$APOS}"
+      local prologue="ble-edit/exec:gexec/.eval-prologue '${cmd//$q/$Q}' \"\$_ble_edit_exec_lastarg\""
+      buff[${#buff[@]}]="builtin eval -- '${prologue//$q/$Q}"
+      buff[${#buff[@]}]="${cmd//$q/$Q}"
       buff[${#buff[@]}]="ble-edit/exec:gexec/.save-last-arg'"
       buff[${#buff[@]}]="ble-edit/exec:gexec/.eval-epilogue"
       ((count++))

@@ -1575,8 +1575,8 @@ function ble-decode-bind/cmap/.generate-binder-template {
 }
 
 function ble-decode-bind/cmap/.emit-bindx {
-  local ap="'" eap="'\\''"
-  echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\"'"
+  local q="'" Q="'\''"
+  echo "builtin bind -x '\"${1//$q/$Q}\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\"'"
 }
 function ble-decode-bind/cmap/.emit-bindr {
   echo "builtin bind -r \"$1\""
@@ -1644,7 +1644,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
   local q=\' b=\\ Q="'\''"
   # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンスも処理される
   [[ $_ble_bin_awk_solaris_xpg4 == yes ]] && Q="'$b$b''"
-  local QUOT_Q=\"${Q//"$b"/$b$b}\"
+  local QUOT_Q=\"${Q//"$b"/"$b$b"}\"
   LC_ALL=C ble/bin/awk -v q="$q" '
     BEGIN {
       Q = '"$QUOT_Q"';

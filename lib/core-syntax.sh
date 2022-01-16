@@ -932,14 +932,14 @@ function ble-syntax:bash/cclass/update {
     local histc2=${_ble_syntax_bash_histc12:1:1}
     for key in "${!_ble_syntax_bash_charsFmt[@]}"; do
       local a=${_ble_syntax_bash_charsFmt[key]}
-      a=${a//@h/$histc1}
-      a=${a//@q/$histc2}
+      a=${a//@h/"$histc1"}
+      a=${a//@q/"$histc2"}
       _ble_syntax_bash_chars[key]=$a
     done
 
     local a=$_ble_syntax_bash_chars_simpleFmt
-    a=${a//@h/$histc1}
-    a=${a//@q/$histc2}
+    a=${a//@h/"$histc1"}
+    a=${a//@q/"$histc2"}
     _ble_syntax_bashc_simple=$a
   fi
 
@@ -1019,7 +1019,7 @@ function ble-syntax:bash/simple-word/update {
   local letter='\[[!^]|[^'${_ble_syntax_bashc_simple}']'
   local param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
   local param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
-  local squot='"[^"]*"|\$"([^"\]|\\.)*"'; squot="${squot//\"/$q}"
+  local squot='"[^"]*"|\$"([^"\]|\\.)*"'; squot=${squot//\"/"$q"}
   local dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)*"'
   _ble_syntax_bash_simple_rex_element='(\\.|'$squot'|'$dquot'|'$param1'|'$param2'|'$letter')'
   _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
@@ -1442,7 +1442,7 @@ function ble-syntax:bash/check-history-expansion/.initialize-event {
     local A="[$histc1]"
     [[ $histc1 == '^' ]] && A='\^'
     rex_event=$_ble_syntax_bash_histexpand_RexEventFmt
-    rex_event=${rex_event//@A/$A}
+    rex_event=${rex_event//@A/"$A"}
   fi
 }
 ## 関数 ble-syntax:bash/check-history-expansion/.initialize-quicksub
@@ -1453,8 +1453,8 @@ function ble-syntax:bash/check-history-expansion/.initialize-quicksub {
     rex_quicksub=$_ble_syntax_bash_histexpand_RexQuicksubDef
   else
     rex_quicksub=$_ble_syntax_bash_histexpand_RexQuicksubFmt
-    rex_quicksub=${rex_quicksub//@A/[$histc2]}
-    rex_quicksub=${rex_quicksub//@C/$histc2}
+    rex_quicksub=${rex_quicksub//@A/"[$histc2]"}
+    rex_quicksub=${rex_quicksub//@C/"$histc2"}
   fi
 }
 function ble-syntax:bash/check-history-expansion/.check-modifiers {
@@ -3311,10 +3311,10 @@ function ble-syntax:bash/ctx-heredoc-word/remove-quotes {
       if rex='^\$?"(([^\"]|\\.)*)(\\?$|")'; [[ $text =~ $rex ]]; then
         local str=${BASH_REMATCH[1]}
         local a b
-        b='\`' a='`'; str="${str//"$b"/$a}"
-        b='\"' a='"'; str="${str//"$b"/$a}"
-        b='\$' a='$'; str="${str//"$b"/$a}"
-        b='\\' a='\'; str="${str//"$b"/$a}"
+        b='\`' a='`'; str="${str//"$b"/"$a"}"
+        b='\"' a='"'; str="${str//"$b"/"$a"}"
+        b='\$' a='$'; str="${str//"$b"/"$a"}"
+        b='\\' a='\'; str="${str//"$b"/"$a"}"
         result=$result$str
         text=${text:${#BASH_REMATCH}}
         continue
@@ -3350,12 +3350,12 @@ function ble-syntax:bash/ctx-heredoc-word/escape-delimiter {
   local ret=$1
   if [[ $ret == *[\\\'$_ble_syntax_bash_IFS$_ble_term_FS]* ]]; then
     local a b fs=$_ble_term_FS
-    a=\\   ; b="\\$a"; ret="${ret//"$a"/$b}"
-    a=\'   ; b="\\$a"; ret="${ret//"$a"/$b}"
-    a=' '  ; b="$_ble_syntax_bash_heredoc_EscSP"; ret="${ret//"$a"/$b}"
-    a=$'\t'; b="$_ble_syntax_bash_heredoc_EscHT"; ret="${ret//"$a"/$b}"
-    a=$'\n'; b="$_ble_syntax_bash_heredoc_EscLF"; ret="${ret//"$a"/$b}"
-    a=$fs  ; b="$_ble_syntax_bash_heredoc_EscFS"; ret="${ret//"$a"/$b}"
+    a=\\   ; b="\\$a"; ret="${ret//"$a"/"$b"}"
+    a=\'   ; b="\\$a"; ret="${ret//"$a"/"$b"}"
+    a=' '  ; b="$_ble_syntax_bash_heredoc_EscSP"; ret="${ret//"$a"/"$b"}"
+    a=$'\t'; b="$_ble_syntax_bash_heredoc_EscHT"; ret="${ret//"$a"/"$b"}"
+    a=$'\n'; b="$_ble_syntax_bash_heredoc_EscLF"; ret="${ret//"$a"/"$b"}"
+    a=$fs  ; b="$_ble_syntax_bash_heredoc_EscFS"; ret="${ret//"$a"/"$b"}"
   fi
   escaped=$ret
 }

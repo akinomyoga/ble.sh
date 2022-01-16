@@ -171,7 +171,7 @@ function ble/dense-array#fill-range {
   _ble_util_array_prototype.reserve $(($3-$2))
   local _ble_script='
     local -a sARR; sARR=("${_ble_util_array_prototype[@]::$3-$2}")
-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
+    ARR=("${ARR[@]::$2}" "${sARR[@]/#/"$4"}" "${ARR[@]:$3}")' # WA #D1570 checked
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
@@ -190,7 +190,7 @@ function _ble_util_string_prototype.reserve {
 function ble/string#repeat {
   _ble_util_string_prototype.reserve "$2"
   ret=${_ble_util_string_prototype::$2}
-  ret="${ret// /$1}"
+  ret=${ret//' '/"$1"}
 }
 
 ## 関数 ble/string#common-prefix a b
@@ -397,7 +397,7 @@ function ble/string#escape-for-sed-regex {
   if [[ $ret == *['\.[*^$/']* ]]; then
     local a b
     for a in \\ \. \[ \* \^ \$ \/; do
-      b="\\$a" ret=${ret//"$a"/$b}
+      b='\'$a ret=${ret//"$a"/"$b"}
     done
   fi
 }
@@ -406,7 +406,7 @@ function ble/string#escape-for-awk-regex {
   if [[ $ret == *['\.[*?+|^$(){}/']* ]]; then
     local a b
     for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \} \/; do
-      b="\\$a" ret=${ret//"$a"/$b}
+      b='\'$a ret=${ret//"$a"/"$b"}
     done
   fi
 }
@@ -415,7 +415,7 @@ function ble/string#escape-for-extended-regex {
   if [[ $ret == *['\.[*?+|^$(){}']* ]]; then
     local a b
     for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \}; do
-      b="\\$a" ret=${ret//"$a"/$b}
+      b='\'$a ret=${ret//"$a"/"$b"}
     done
   fi
 }
@@ -819,7 +819,7 @@ if ((_ble_bash>=40200)); then
         ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
 
         [[ $hidden_only && $__ble_i == 0 ]] && continue
-        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+        echo "declare $__ble_name='${__ble_value//$__ble_q/$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
@@ -850,7 +850,7 @@ else
         [[ $__ble_found ]] || __ble_error= __ble_value= # not found
         [[ $hidden_only && $__ble_found == 0 ]] && continue
 
-        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+        echo "declare $__ble_name='${__ble_value//$__ble_q/$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
@@ -1379,7 +1379,7 @@ function ble/util/invoke-hook {
 ##     scriptfile 呼出の起点として使用する関数のみで充分です。
 ##
 function ble-autoload {
-  local apos="'" APOS="'\\''" file=$1 funcname
+  local q="'" Q="'\\''" file=$1 funcname
   shift
 
   # ※$FUNCNAME は元から環境変数に設定されている場合、
@@ -1389,7 +1389,7 @@ function ble-autoload {
   for funcname in "$@"; do
     builtin eval "function $funcname {
       unset -f $funcname
-      ble-import '${file//$apos/$APOS}'
+      ble-import '${file//$q/$Q}'
       $funcname \"\$@\"
     }"
   done
@@ -1616,7 +1616,8 @@ function ble/term/visible-bell/.worker {
   # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
 
   ble/util/sleep 0.05
-  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
+  local esc=${_ble_term_visible_bell_show//'%message%'/"$_ble_term_rev${message::cols}"}
+  builtin echo -n "$esc" >&2
 
   # load time duration settings
   declare msec=$bleopt_vbell_duration
@@ -1640,7 +1641,8 @@ function ble/term/visible-bell {
   local message="$*"
   message=${message:-$bleopt_vbell_default_message}
 
-  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
+  local esc=${_ble_term_visible_bell_show//'%message%'/"${_ble_term_setaf[2]}$_ble_term_rev${message::cols}"}
+  builtin echo -n "$esc" >&2
   ( ble/term/visible-bell/.worker __ble_suppress_joblist__ 1>/dev/null & )
 }
 function ble/term/visible-bell/cancel-erasure {
@@ -1739,7 +1741,8 @@ function ble/term/cursor-state/.update {
   local state=$(($1))
   [[ $_ble_term_cursor_current == $state ]] && return
 
-  ble/util/buffer "${_ble_term_Ss//@1/$state}"
+  local esc=${_ble_term_Ss//@1/"$state"}
+  ble/util/buffer "$esc"
 
   _ble_term_cursor_current=$state
 }
