@@ -894,10 +894,10 @@ function ble/canvas/put-vpa.draw {
 function ble/canvas/put-ech.draw {
   local value=${1:-1} esc
   if [[ $_ble_term_ech ]]; then
-    esc=${_ble_term_ech/'%d'/$value}
+    esc=${_ble_term_ech//'%d'/$value}
   else
     ble/string#reserve-prototype "$value"
-    esc=${_ble_string_prototype::value}${_ble_term_cub/'%d'/$value}
+    esc=${_ble_string_prototype::value}${_ble_term_cub//'%d'/$value}
   fi
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$esc
 }

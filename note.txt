@@ -1688,6 +1688,17 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2022-01-19
+
+  * PS1 のディレクトリ名に特殊文字が含まれている場合の取り扱い
+    https://lists.gnu.org/archive/html/bug-bash/2022-01/msg00051.html
+
+    これは不要な互換性の問題を防ぐために Chet がどの様に対処するのかを見てから
+    それと同じ様に実装するのが良い。
+
+    またその他の文字列についても同様に注意が必要なのではないかと思われる。
+    と思ったが他に任意の文字列を出力する様な状況もない様な気はする。
+
 2022-01-08
 
   * mandb: echo のオプションの抽出 (help echo) がおかしい at fc35 vm
@@ -1704,6 +1715,8 @@ bash_tips
     操作を求めるべきだし、また内容が変更されたらその都度承認を求めるべきである
     (過去に承認したものは hash か或いは実体を記録しておいて再度尋ねはしない様に
     できる)。
+
+    →direnv が丁度同じ事を目的としたプロジェクトの様である。
 
 2021-12-20
 
@@ -5809,6 +5822,56 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-01-20
+
+  * 2022-01-13 bash-5.2 shopt patsub_replacement 対策 [#D1738]
+
+    % 取り敢えず危なそうな箇所を抽出しておく。うーん。やはり可也面倒である。
+    % ble/string#replace 等の関数を作るべきなのかもしれない。
+    %
+    % $ grc '\$\{[[:alnum:]_]+(\[[^][]*\])?/' --exclude={memo,test,wiki}
+    % $ grc '\$\{[[:alnum:]_]+(\[[^][]*\])?//?[^{}]*/[^{}]*[$&]'
+    % $ grc '\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}]*([$&]|\\)'
+    %
+    % done: ./keymap/vi.sh:6974:    ins=${ins//[!$'\n']/"$s"} ★
+    % done: ./lib/core-syntax.sh:976:      a=${a//@h/$histc1}
+    % done: ./lib/core-syntax.sh:977:      a=${a//@q/$histc2}
+    % done: ./lib/core-syntax.sh:982:    a=${a//@h/$histc1}
+    % done: ./lib/core-syntax.sh:983:    a=${a//@q/$histc2}
+    % done: ./lib/core-syntax.sh:2255:    rex_event=${rex_event//@A/$A}
+    % done: ./lib/core-syntax.sh:2266:    rex_quicksub=${rex_quicksub//@A/[$histc2]}
+    % done: ./lib/core-syntax.sh:2267:    rex_quicksub=${rex_quicksub//@C/$histc2}
+    % done: ./lib/core-syntax.sh:4453:    a=\\   ; b="\\$a"; ret="${ret//"$a"/$b}" ★
+    % done: ./src/edit.sh:604:    a='\' b='\\' text=${text//"$a"/$b} ★
+    % done: ./src/util.sh:118:          ble/array#push specs "${var[@]/%/=$value}" # #D1570 WA checked
+    % done: ./src/util.sh:777:    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 checked
+    % done: ./src/util.sh:806:  ret="${ret// /$1}"
+    % done: ./src/util.sh:1083:      a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/$b}
+    % done: ./src/util.sh:5305:  ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}" >&2
+    % done: ./src/util.sh:5622:  local ret=${_ble_term_Ss//@1/$state}
+    %
+    % ????: ./src/util.sh:1379:  builtin eval -- "${_ble_local_script//opts/$1}" # Note: 配列要素に変な文字が入っていると駄目
+    % ????: ./src/util.sh:1383:  builtin eval -- "${_ble_local_script//opts/$1}" # Note: 配列要素に変な文字が入っていると駄目
+    % ????: ./src/util.sh:1391:  builtin eval -- "${_ble_local_script//opts/$1}" # Note: 配列要素に変な文字が入っていると駄目
+    % ????: ./src/util.sh:1399:  builtin eval -- "${_ble_local_script//opts/$1}" # Note: 配列要素に変な文字が入っていると駄目
+    %   →うーん。これらについては元々配列要素を想定していない実装になっているのでここで改めて気にするのも変である。
+    %   それに配列要素を想定している場合には添字は先に1回だけ評価するべきの気がする。なので、そんなに単純ではない。
+    %   これは今回は見送り。
+    %
+    % ok: ./src/util.sh:1516:    builtin eval -- "${_ble_local_script//NAME/$1}"
+    % ok: ./src/util.sh:1899:builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_trap_n2i}"
+    % ok: ./src/util.sh:2515:  builtin eval -- "${_ble_local_script//ARR/$_ble_local_array}"
+
+    外部プロジェクトも気になる。うーん。これは悲惨な結果である。
+    bashdb, bash-completion, etc. が大抵影響を受ける様に見える。
+    -> bug-report bash/report31/affected.txt に移した。
+
+    bug-bash に再度報告した。結局、当初の提案で実装し直して貰った。
+
+    改めて新しい実装に合わせて ble.sh を調整する事にした。改めて丁寧にチェック
+    を行って行ったところ、先の修正で見過ごしていた所も幾らか見つかった。自動検
+    出しやすい様にスタイルを統一し、その上で自動検出を記述した。
 
 2022-01-18
 

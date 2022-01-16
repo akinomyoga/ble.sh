@@ -1,0 +1,298 @@
+From e945e1f541b09b47db1353b0ebf001761cee40ef Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Thu, 13 Jan 2022 18:04:32 +0900
+Subject: [PATCH] [stub] global: work around bash-5.2a patsub_replacement
+
+---
+ keymap/vi.sh       |   8 ++-
+ lib/core-syntax.sh |  36 ++++++++------
+ src/edit.sh        |  12 +++--
+ src/util.sh        | 121 ++++++++++++++++++++++++++++++++++++---------
+ 4 files changed, 133 insertions(+), 44 deletions(-)
+
+diff --git a/keymap/vi.sh b/keymap/vi.sh
+index e586e54..f3824e0 100644
+--- a/keymap/vi.sh
++++ b/keymap/vi.sh
+@@ -6971,7 +6971,13 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
+     fi
+ 
+     local ins=${_ble_edit_str:beg:end-beg}
+-    ins=${ins//[!$'\n']/"$s"}
++    if ((_ble_bash>=50200)) && shopt -q patsub_replacement; then
++      shopt -u patsub_replacement
++      ins=${ins//[!$'\n']/"$s"}
++      shopt -s patsub_replacement
++    else
++      ins=${ins//[!$'\n']/"$s"}
++    fi
+     ble/widget/.replace-range "$beg" "$end" "$ins"
+     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
+     _ble_edit_ind=$beg
+diff --git a/lib/core-syntax.sh b/lib/core-syntax.sh
+index e3214a2..00362f4 100644
+--- a/lib/core-syntax.sh
++++ b/lib/core-syntax.sh
+@@ -972,16 +972,16 @@ function ble/syntax:bash/cclass/update {
+     local histc1=${_ble_syntax_bash_histc12:0:1}
+     local histc2=${_ble_syntax_bash_histc12:1:1}
+     for key in "${!_ble_syntax_bash_charsFmt[@]}"; do
+-      local a=${_ble_syntax_bash_charsFmt[key]}
+-      a=${a//@h/$histc1}
+-      a=${a//@q/$histc2}
+-      _ble_syntax_bash_chars[key]=$a
++      local ret=${_ble_syntax_bash_charsFmt[key]}
++      ble/string#replace "$ret" @h "$histc1"
++      ble/string#replace "$ret" @q "$histc2"
++      _ble_syntax_bash_chars[key]=$ret
+     done
+ 
+-    local a=$_ble_syntax_bash_chars_simpleFmt
+-    a=${a//@h/$histc1}
+-    a=${a//@q/$histc2}
+-    _ble_syntax_bashc_simple=$a
++    local ret=$_ble_syntax_bash_chars_simpleFmt
++    ble/string#replace "$ret" @h "$histc1"
++    ble/string#replace "$ret" @q "$histc2"
++    _ble_syntax_bashc_simple=$ret
+   fi
+ 
+   if [[ $seed == *x ]]; then
+@@ -2251,8 +2251,9 @@ function ble/syntax:bash/check-history-expansion/.initialize-event {
+   else
+     local A="[$histc1]"
+     [[ $histc1 == '^' ]] && A='\^'
+-    rex_event=$_ble_syntax_bash_histexpand_RexEventFmt
+-    rex_event=${rex_event//@A/$A}
++    local ret=$_ble_syntax_bash_histexpand_RexEventFmt
++    ble/string#replace "$ret" @A "$A"
++    rex_event=$ret
+   fi
+ }
+ ## @fn ble/syntax:bash/check-history-expansion/.initialize-quicksub
+@@ -2262,9 +2263,10 @@ function ble/syntax:bash/check-history-expansion/.initialize-quicksub {
+   if [[ $histc2 == '^' ]]; then
+     rex_quicksub=$_ble_syntax_bash_histexpand_RexQuicksubDef
+   else
+-    rex_quicksub=$_ble_syntax_bash_histexpand_RexQuicksubFmt
+-    rex_quicksub=${rex_quicksub//@A/[$histc2]}
+-    rex_quicksub=${rex_quicksub//@C/$histc2}
++    local ret=$_ble_syntax_bash_histexpand_RexQuicksubFmt
++    ble/string#replace "$ret" @A "[$histc2]"
++    ble/string#replace "$ret" @C "$histc2"
++    rex_quicksub=$ret
+   fi
+ }
+ function ble/syntax:bash/check-history-expansion/.check-modifiers {
+@@ -4450,8 +4452,12 @@ function ble/syntax:bash/ctx-heredoc-word/escape-delimiter {
+   local ret=$1
+   if [[ $ret == *[\\\'$_ble_term_IFS$_ble_term_FS]* ]]; then
+     local a b fs=$_ble_term_FS
+-    a=\\   ; b="\\$a"; ret="${ret//"$a"/$b}"
+-    a=\'   ; b="\\$a"; ret="${ret//"$a"/$b}"
++    if ((_ble_bash>=50200)) && shopt -q patsub_replacement; then
++      b='\\&'; ret="${ret//[\\\']/$b}"
++    else
++      a=\\   ; b="\\$a"; ret="${ret//"$a"/$b}"
++      a=\'   ; b="\\$a"; ret="${ret//"$a"/$b}"
++    fi
+     a=' '  ; b="$_ble_syntax_bash_heredoc_EscSP"; ret="${ret//"$a"/$b}"
+     a=$'\t'; b="$_ble_syntax_bash_heredoc_EscHT"; ret="${ret//"$a"/$b}"
+     a=$'\n'; b="$_ble_syntax_bash_heredoc_EscLF"; ret="${ret//"$a"/$b}"
+diff --git a/src/edit.sh b/src/edit.sh
+index 4650217..bdee4e7 100644
+--- a/src/edit.sh
++++ b/src/edit.sh
+@@ -601,10 +601,14 @@ _ble_prompt_term_status_data=()
+ function ble/prompt/print {
+   local text=$1 a b
+   if [[ ! $prompt_noesc && $text == *['$\"`']* ]]; then
+-    a='\' b='\\' text=${text//"$a"/$b}
+-    a='$' b='\$' text=${text//"$a"/$b}
+-    a='"' b='\"' text=${text//"$a"/$b}
+-    a='`' b='\`' text=${text//"$a"/$b}
++    if ((_ble_bash>=50200)) && shopt -q patsub_replacement; then
++      text=${text//[\\\$\"\`]/\\\\&}
++    else
++      a='\' b='\\' text=${text//"$a"/$b}
++      a='$' b='\$' text=${text//"$a"/$b}
++      a='"' b='\"' text=${text//"$a"/$b}
++      a='`' b='\`' text=${text//"$a"/$b}
++    fi
+   fi
+   ble/canvas/put.draw "$text"
+ }
+diff --git a/src/util.sh b/src/util.sh
+index 3a7c16a..6ce9e42 100644
+--- a/src/util.sh
++++ b/src/util.sh
+@@ -115,7 +115,13 @@ function bleopt/.read-arguments {
+ 
+         if [[ $op ]]; then
+           var=("${var[@]}") # #D1570: WA bash-3.0 ${scal[@]/x} bug
+-          ble/array#push specs "${var[@]/%/=$value}" # #D1570 WA checked
++          if ((_ble_bash>=50200)) && shopt -q patsub_replacement; then
++            shopt -u patsub_replacement
++            ble/array#push specs "${var[@]/%/=$value}" # #D1570 WA checked
++            shopt -s patsub_replacement
++          else
++            ble/array#push specs "${var[@]/%/=$value}" # #D1570 WA checked
++          fi
+         else
+           ble/array#push pvars "${var[@]}"
+         fi
+@@ -771,11 +777,18 @@ function ble/array#replace {
+ }
+ 
+ function ble/dense-array#fill-range {
+-  ble/array#reserve-prototype $(($3-$2))
+-  local _ble_script='
+-    local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
+-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 checked
+-  builtin eval -- "${_ble_script//ARR/$1}"
++  if ((_ble_bash>=50200)) && shopt -q patsub_replacement; then
++    shopt -u patsub_replacement
++    ble/dense-array#fill-range "$@"
++    shopt -s patsub_replacement
++    return
++  else
++    ble/array#reserve-prototype $(($3-$2))
++    local _ble_script='
++      local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
++      ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 checked
++    builtin eval -- "${_ble_script//ARR/$1}"
++  fi
+ }
+ 
+ function ble/idict#copy {
+@@ -796,15 +809,48 @@ function ble/string#reserve-prototype {
+   done
+ }
+ 
++## @fn ble/string#replace str before after
++##   @param[in] str before after
++##   @var[out] ret
++if ((_ble_bash>=50200)); then
++  function ble/string#replace {
++    if shopt -q patsub_replacement; then
++      shopt -u patsub_replacement
++      ret=${1//"$1"/$2}
++      shopt -s patsub_replacement
++    else
++      ret=${1//"$1"/$2}
++    fi
++  }
++else
++  function ble/string#replace {
++    ret=${1//"$1"/$2}
++  }
++fi
++
+ ## @fn ble/string#repeat str count
+ ##   @param[in] str
+ ##   @param[in] count
+ ##   @var[out] ret
+-function ble/string#repeat {
+-  ble/string#reserve-prototype "$2"
+-  ret=${_ble_string_prototype::$2}
+-  ret="${ret// /$1}"
+-}
++if ((_ble_bash>=50200)); then
++  function ble/string#repeat {
++    ble/string#reserve-prototype "$2"
++    ret=${_ble_string_prototype::$2}
++    if shopt -q patsub_replacement; then
++      shopt -u patsub_replacement
++      ret="${ret// /$1}"
++      shopt -s patsub_replacement
++    else
++      ret="${ret// /$1}"
++    fi
++  }
++else
++  function ble/string#repeat {
++    ble/string#reserve-prototype "$2"
++    ret=${_ble_string_prototype::$2}
++    ret="${ret// /$1}"
++  }
++fi
+ 
+ ## @fn ble/string#common-prefix a b
+ ##   @param[in] a b
+@@ -1074,16 +1120,41 @@ function ble/string#rtrim {
+ ##   @param[in]     chars1
+ ##   @param[in,opt] chars2
+ ##   @var[out] ret
+-function ble/string#escape-characters {
+-  ret=$1
+-  if [[ $ret == *["$2"]* ]]; then
+-    local chars1=$2 chars2=${3:-$2}
+-    local i n=${#chars1} a b
+-    for ((i=0;i<n;i++)); do
+-      a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/$b}
+-    done
+-  fi
+-}
++if ((_ble_bash>=50200)); then
++  function ble/string#escape-characters {
++    ret=$1
++    if [[ $ret == *["$2"]* ]]; then
++      local patsub_replacement=
++      shopt -q patsub_replacement && patsub_replacement=1
++      if [[ $3 ]]; then
++        shopt -s patsub_replacement
++        ret=${ret//["$2"]/\\\\&}
++        [[ $patsub_replacement ]] ||
++          shopt -u patsub_replacement
++      else
++        shopt -u patsub_replacement
++        local chars1=$2 chars2=${3:-$2}
++        local i n=${#chars1} a b
++        for ((i=0;i<n;i++)); do
++          a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/$b}
++        done
++        [[ ! $patsub_replacement ]] ||
++          shopt -s patsub_replacement
++      fi
++    fi
++  }
++else
++  function ble/string#escape-characters {
++    ret=$1
++    if [[ $ret == *["$2"]* ]]; then
++      local chars1=$2 chars2=${3:-$2}
++      local i n=${#chars1} a b
++      for ((i=0;i<n;i++)); do
++        a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/$b}
++      done
++    fi
++  }
++fi
+ 
+ ## @fn ble/string#escape-for-sed-regex text
+ ## @fn ble/string#escape-for-awk-regex text
+@@ -5301,8 +5372,9 @@ function ble/term/visible-bell:term/init {
+   _ble_term_visible_bell_prev=(term "$message")
+ }
+ function ble/term/visible-bell:term/show {
+-  local sgr=$1 message=${_ble_term_visible_bell_prev[1]}
+-  ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}" >&2
++  local sgr=$1 message=${_ble_term_visible_bell_prev[1]} ret
++  ble/string#replace "$_ble_term_visible_bell_show" %message% "$sgr$message"
++  ble/util/put "$ret" >&2
+ }
+ function ble/term/visible-bell:term/update {
+   ble/term/visible-bell:term/show "$@"
+@@ -5619,7 +5691,8 @@ function ble/term/cursor-state/.update {
+   local state=$(($1))
+   [[ $_ble_term_cursor_current == "$state" ]] && return 0
+ 
+-  local ret=${_ble_term_Ss//@1/$state}
++  local ret
++  ble/string#replace "$_ble_term_Ss" @1 "$state"
+ 
+   # Note: 既に pass-through seq が含まれている時はスキップする。
+   [[ $ret && $ret != $'\eP'*$'\e\\' ]] &&
+-- 
+2.33.1
+

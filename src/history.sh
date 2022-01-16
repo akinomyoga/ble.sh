@@ -1109,7 +1109,7 @@ function ble/builtin/history/array#delete-hindex {
   local script='
     local -a out=()
     local i shift=0
-    for i in "${!ARRAY[@]}"; do
+    for i in "${!ARR[@]}"; do
       local delete=
       while (($#)); do
         if [[ $1 == *-* ]]; then
@@ -1130,11 +1130,11 @@ function ble/builtin/history/array#delete-hindex {
         fi
       done
       [[ ! $delete ]] &&
-        out[i-shift]=${ARRAY[i]}
+        out[i-shift]=${ARR[i]}
     done
-    ARRAY=()
-    for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
-  builtin eval -- "${script//ARRAY/$array_name}"
+    ARR=()
+    for i in "${!out[@]}"; do ARR[i]=${out[i]}; done'
+  builtin eval -- "${script//ARR/$array_name}"
 }
 ## @fn ble/builtin/history/array#insert-range array_name beg len
 function ble/builtin/history/array#insert-range {
@@ -1142,12 +1142,12 @@ function ble/builtin/history/array#insert-range {
   local script='
     local -a out=()
     local i
-    for i in "${!ARRAY[@]}"; do
-      out[i<beg?beg:i+len]=${ARRAY[i]}
+    for i in "${!ARR[@]}"; do
+      out[i<beg?beg:i+len]=${ARR[i]}
     done
-    ARRAY=()
-    for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
-  builtin eval -- "${script//ARRAY/$array_name}"
+    ARR=()
+    for i in "${!out[@]}"; do ARR[i]=${out[i]}; done'
+  builtin eval -- "${script//ARR/$array_name}"
 }
 blehook history_delete+=ble/builtin/history/delete.hook
 blehook history_clear+=ble/builtin/history/clear.hook

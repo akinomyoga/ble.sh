@@ -427,7 +427,7 @@ function ble/prompt/initialize {
           c=$ret
         fi
       fi
-      windir=/cygdrive/$c/${path//$bsl/$sl}
+      windir=/cygdrive/$c/${path//"$bsl"/"$sl"}
     fi
 
     if [[ -e $windir && -w $windir ]]; then
@@ -599,14 +599,10 @@ _ble_prompt_term_status_data=()
 ##   @var[out]  DRAW_BUFF[]
 ##     出力先の配列です。
 function ble/prompt/print {
-  local text=$1 a b
-  if [[ ! $prompt_noesc && $text == *['$\"`']* ]]; then
-    a='\' b='\\' text=${text//"$a"/$b}
-    a='$' b='\$' text=${text//"$a"/$b}
-    a='"' b='\"' text=${text//"$a"/$b}
-    a='`' b='\`' text=${text//"$a"/$b}
-  fi
-  ble/canvas/put.draw "$text"
+  local ret=$1 a b
+  [[ $prompt_noesc ]] ||
+    ble/string#escape-characters "$ret" '$\"`'
+  ble/canvas/put.draw "$ret"
 }
 
 ## @fn ble/prompt/process-prompt-string prompt_string

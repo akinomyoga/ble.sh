@@ -1,5 +1,5 @@
 -x md:bash
---exclude=./{out,dist,tmp}
+--exclude=./{out,dist,tmp,ext}
 --exclude=./?.sh
 --exclude=./test/install
 --exclude=./ble.sh

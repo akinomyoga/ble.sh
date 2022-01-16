@@ -3517,10 +3517,10 @@ function ble/builtin/bind/rlfunc2widget {
 
   if [[ $rlfunc_file ]]; then
     local dict script='
-    ((${#RLFUNC_DICT[@]})) ||
-      ble/util/mapfile RLFUNC_DICT < "$rlfunc_file"
-    dict=("${RLFUNC_DICT[@]}")'
-    builtin eval -- "${script//RLFUNC_DICT/$rlfunc_dict}"
+    ((${#DICT[@]})) ||
+      ble/util/mapfile DICT < "$rlfunc_file"
+    dict=("${DICT[@]}")'
+    builtin eval -- "${script//DICT/$rlfunc_dict}"
 
     local line TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     for line in "${dict[@]}"; do

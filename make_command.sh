@@ -1141,9 +1141,29 @@ function sub:scan/bash301bug-array-element-length {
 
 function sub:scan/bash501-arith-base {
   echo "--- $FUNCNAME ---"
-  # bash-3.1 で ${#arr[index]} を用いると、
-  # 日本語の文字数が変になる。
+  # bash-5.1 で $((10#)) の取り扱いが変わった。
   grc '\b10#\$' --exclude={test,ChangeLog.md}
+}
+
+function sub:scan/bash502-patsub_replacement {
+  echo "--- $FUNCNAME ---"
+  # bash-5.2 patsub_replacement で ${var/pat/string} の string 中の & が特別な
+  # 意味を持つ様になったので、特に意識する場合を除いては quote が必要になった。
+  local esc='(\[[ -?]*[@-~])*'
+  grc --color '\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}"'\'']*([&$]|\\)' --exclude=./test |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z//?\$q/\$Q\}Zd
+      \Z//?\$__ble_q/\$__ble_Q\}Zd
+      \Z//?\$_ble_local_q/\$_ble_local_Q\}Zd
+      \Z/\$\(\([^()]+\)\)\}Zd
+      \Z/\$'\''([^\\]|\\.)+'\''\}Zd
+
+      \Z\$\{[a-zA-Z0-9_]+//(ARR|DICT|PREFIX|NAME)/\$([a-zA-Z0-9_]+|\{[a-zA-Z0-9_#:-]+\})\}Zd
+      \Z\$\{[a-zA-Z0-9_]+//'\''%[dlcxy]'\''/\$[a-zA-Z0-9_]+\}Zd # src/canvas.sh
+
+      \Z#D1738Zd
+      \Z\$\{_ble_edit_str//\$'\''\\n'\''/\$'\''\\n'\''"\$comment_begin"\}Zd # edit.sh
+      g'
 }
 
 function sub:scan/gawk402bug-regex-check {
@@ -1301,6 +1321,7 @@ function sub:scan {
   sub:scan/bash300bug
   sub:scan/bash301bug-array-element-length
   sub:scan/bash501-arith-base
+  sub:scan/bash502-patsub_replacement
   sub:scan/gawk402bug-regex-check
   sub:scan/array-count-in-arithmetic-expression
   sub:scan/unset-variable |
