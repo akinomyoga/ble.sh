@@ -649,8 +649,8 @@ _ble_syntax_bashc=()
       local key
       for key in CTX_ARGI CTX_QUOT CTX_EXPR CTX_PWORD; do
         local a="${_ble_syntax_bashc_fmt[key]}"
-        a="${a//@h/$histc1}"
-        a="${a//@q/$histc2}"
+        a=${a//@h/"$histc1"}
+        a=${a//@q/"$histc2"}
 
         # Bracket expression として安全な順に並び替える必要がある:
         [[ $a == *']'* ]] && a="]${a//]}"
@@ -673,7 +673,7 @@ _ble_syntax_rex_simple_word_element=
 {
   function ble-syntax:bash/.update-rex_simple_word {
     local quot="'"
-    local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
+    local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot=${rex_squot//\"/"$quot"}
     local rex_dquot='\$?"([^'"${_ble_syntax_bashc[CTX_QUOT]}"']|\\.)*"'
     local rex_param='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
     local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
@@ -884,8 +884,8 @@ function ble-syntax:bash/histexpand/initialize-event {
   else
     local A="[$histc1]"
     [[ $histc1 == '^' ]] && A='\^'
-    rex_event="$_ble_syntax_rex_histexpand_event_template"
-    rex_event="${rex_event//@A/$A}"
+    rex_event=$_ble_syntax_rex_histexpand_event_template
+    rex_event=${rex_event//@A/"$A"}
   fi
 }
 
@@ -893,9 +893,9 @@ function ble-syntax:bash/histexpand/initialize-quicksub {
   if [[ $histc2 == '^' ]]; then
     rex_quicksub="$_ble_syntax_rex_histexpand_quicksub"
   else
-    rex_quicksub="$_ble_syntax_rex_histexpand_quicksub_template"
-    rex_quicksub="${rex_quicksub//@A/[$histc2]}"
-    rex_quicksub="${rex_quicksub//@C/$histc2}"
+    rex_quicksub=$_ble_syntax_rex_histexpand_quicksub_template
+    rex_quicksub=${rex_quicksub//@A/"[$histc2]"}
+    rex_quicksub=${rex_quicksub//@C/"$histc2"}
   fi
 }
 

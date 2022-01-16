@@ -48,27 +48,29 @@ function ble-complete/util/escape-specialchars {
   local _a _b _var=ret
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
   local _ret=$1
-  if [[ $_ret == *['][\ "'\''$|&;<>()*?{}!^']* ]]; then
-    _a=\\ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\  _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\" _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\' _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\$ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\| _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\& _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\; _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\< _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\> _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\( _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\) _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\[ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\* _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\? _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\] _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\{ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\} _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\! _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\^ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+  if [[ $_ret == *[']['$' \t\n\\''"'\''$|&;<>()*?{}!^']* ]]; then
+    _a=\\ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\  _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=$'\t' _b='\'$_a    ret=${ret//"$_a"/"$_b"}
+    _a=$'\n' _b=\$\'\\n\' ret=${ret//"$_a"/"$_b"}
+    _a=\" _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\' _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\$ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\| _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\& _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\; _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\< _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\> _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\( _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\) _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\[ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\* _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\? _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\] _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\{ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\} _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\! _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\^ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
   fi
   builtin eval "$_var=\"\$_ret\""
 }
@@ -78,13 +80,13 @@ function ble-complete/util/escape-regexchars {
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
   local _ret=$1
   if [[ $_ret == *['\.[*^$/']* ]]; then
-    _a=\\ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\. _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\[ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\* _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\^ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\$ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
-    _a=\/ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+    _a=\\ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\. _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\[ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\* _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\^ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\$ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
+    _a=\/ _b='\'$_a _ret=${_ret//"$_a"/"$_b"}
   fi
   builtin eval "$_var=\"\$_ret\""
 }

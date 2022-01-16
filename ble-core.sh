@@ -416,7 +416,7 @@ function ble/util/isprint+ {
 ##     scriptfile 呼出の起点として使用する関数のみで充分です。
 ##
 function ble-autoload {
-  local apos="'" APOS="'\\''" file="$1" funcname
+  local q="'" Q="'\\''" file=$1 funcname
   shift
 
   # ※$FUNCNAME は元から環境変数に設定されている場合、
@@ -426,7 +426,7 @@ function ble-autoload {
   for funcname in "$@"; do
     builtin eval "function $funcname {
       unset -f $funcname
-      ble-load '${file//$apos/$APOS}'
+      ble-load '${file//$q/$Q}'
       $funcname \"\$@\"
     }"
   done
@@ -594,7 +594,8 @@ function .ble-term.audible-bell {
 }
 function .ble-term.visible-bell.worker {
   sleep 0.05
-  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
+  local esc=${_ble_term_visible_bell_show//'%message%'/"$_ble_term_rev${message::cols}"}
+  builtin echo -n "$esc" >&2
 
   # load time duration settings
   declare msec=$bleopt_vbell_duration
@@ -620,7 +621,8 @@ function .ble-term.visible-bell {
   local message=$1
   message="${message:-$bleopt_vbell_default_message}"
 
-  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
+  local esc=${_ble_term_visible_bell_show//'%message%'/"${_ble_term_setaf[2]}$_ble_term_rev${message::cols}"}
+  builtin echo -n "$esc" >&2
   ( .ble-term.visible-bell.worker 1>/dev/null & )
 }
 function .ble-term.visible-bell.cancel-erasure {

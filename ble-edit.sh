@@ -803,7 +803,7 @@ function .ble-line-prompt/initialize {
           c=$ret
         fi
       fi
-      windir=/cygdrive/$c/${path//$bsl/$sl}
+      windir=/cygdrive/$c/${path//"$bsl"/"$sl"}
     fi
 
     if [[ -e $windir && -w $windir ]]; then
@@ -856,17 +856,17 @@ function _ble_line_prompt.load {
 function .ble-line-prompt/update/append {
   local text="$1" a b
   if [[ $text == *['$\"`']* ]]; then
-    a='\' b='\\' text="${text//"$a"/$b}"
-    a='$' b='\$' text="${text//"$a"/$b}"
-    a='"' b='\"' text="${text//"$a"/$b}"
-    a='`' b='\`' text="${text//"$a"/$b}"
+    a='\' b='\'$a text=${text//"$a"/"$b"}
+    a='$' b='\'$a text=${text//"$a"/"$b"}
+    a='"' b='\'$a text=${text//"$a"/"$b"}
+    a='`' b='\'$a text=${text//"$a"/"$b"}
   fi
   ble-edit/draw/put "$text"
 }
 function .ble-line-prompt/update/process-text {
   local text="$1" a b
   if [[ $text == *'"'* ]]; then
-    a='"' b='\"' text="${text//"$a"/$b}"
+    a='"' b='\"' text=${text//"$a"/"$b"}
   fi
   ble-edit/draw/put "$text"
 }
@@ -3114,15 +3114,15 @@ function .ble-edit/exec:gexec/setup {
   #
   ((${#_ble_edit_accept_line[@]}==0)) && return 1
 
-  local apos=\' APOS="'\\''"
+  local q=\' Q="'\\''"
   local cmd
   local -a buff
   local count=0
   buff[${#buff[@]}]=.ble-edit/exec:gexec/begin
   for cmd in "${_ble_edit_accept_line[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
-      buff[${#buff[@]}]=".ble-edit/exec:gexec/eval-prologue '${cmd//$apos/$APOS}'"
-      buff[${#buff[@]}]="builtin eval -- '${cmd//$apos/$APOS}'"
+      buff[${#buff[@]}]=".ble-edit/exec:gexec/eval-prologue '${cmd//$q/$Q}'"
+      buff[${#buff[@]}]="builtin eval -- '${cmd//$q/$Q}'"
       buff[${#buff[@]}]=".ble-edit/exec:gexec/eval-epilogue"
       ((count++))
 

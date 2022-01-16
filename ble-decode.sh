@@ -1401,8 +1401,8 @@ function .ble-decode-bind/from-cmap-source {
 }
 
 function .ble-decode-initialize-cmap/emit-bindx {
-  local ap="'" eap="'\\''"
-  echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode-byte:bind $2; builtin eval \"\$_ble_decode_bind_hook\"'"
+  local q="'" Q="'\''"
+  echo "builtin bind -x '\"${1//$q/$Q}\":ble-decode-byte:bind $2; builtin eval \"\$_ble_decode_bind_hook\"'"
 }
 function .ble-decode-initialize-cmap/emit-bindr {
   echo "builtin bind -r \"$1\""
