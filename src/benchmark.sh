@@ -1,12 +1,13 @@
 #!/bin/bash
 
 if ! type ble/util/print &>/dev/null; then
+  function ble/util/unlocal { builtin unset -v "$@"; }
   function ble/util/print { builtin printf '%s\n' "$1"; }
   function ble/util/print-lines { builtin printf '%s\n' "$@"; }
 fi
 
 function ble-measure/.loop {
-  builtin eval "function _target { $2; }"
+  builtin eval "function _target { ${2:+$2; }return 0; }"
   local _i _n=$1
   for ((_i=0;_i<_n;_i++)); do
     _target
@@ -81,12 +82,13 @@ else
 fi
 
 _ble_measure_base= # [nsec]
+_ble_measure_base_real=()
 _ble_measure_base_nestcost=0 # [nsec/10]
 _ble_measure_count=1 # 同じ倍率で _ble_measure_count 回計測して最小を取る。
 _ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上になるようにする
 
 ## @fn ble-measure/calibrate
-function ble-measure/calibrate.0 { local a; ble-measure a=1; }
+function ble-measure/calibrate.0 { ble-measure -qc"$calibrate_count" ''; }
 function ble-measure/calibrate.1 { ble-measure/calibrate.0; }
 function ble-measure/calibrate.2 { ble-measure/calibrate.1; }
 function ble-measure/calibrate.3 { ble-measure/calibrate.2; }
@@ -97,23 +99,39 @@ function ble-measure/calibrate.7 { ble-measure/calibrate.6; }
 function ble-measure/calibrate.8 { ble-measure/calibrate.7; }
 function ble-measure/calibrate.9 { ble-measure/calibrate.8; }
 function ble-measure/calibrate.A { ble-measure/calibrate.9; }
-function ble-measure/calibrate.assign2 { local a b; ble-measure 'a=1; b=2'; }
 function ble-measure/calibrate {
   local ret nsec
+
+  local calibrate_count=1
   _ble_measure_base=0
   _ble_measure_base_nestcost=0
 
   # nest0: calibrate.0 の ble-measure 内部での ${#FUNCNAME[*]}
   local nest0=$((${#FUNCNAME[@]}+2))
-  local nestA=$((nest0+10))
-  ble-measure/calibrate.0 &>/dev/null; local x0=$nsec
-  ble-measure/calibrate.A &>/dev/null; local xA=$nsec
-  ble-measure/calibrate.assign2 &>/dev/null; local y0=$nsec
-
+  ble-measure/calibrate.0; local x0=$nsec
+  ble-measure/calibrate.A; local xA=$nsec
   local nest_cost=$((xA-x0))
-  local nest_base=$((x0-nest_cost*nest0/10))
-  _ble_measure_base=$((nest_base-(y0-x0)))
+  _ble_measure_base=$((x0-nest_cost*nest0/10))
   _ble_measure_base_nestcost=$nest_cost
+}
+function ble-measure/fit {
+  local ret nsec
+  _ble_measure_base=0
+  _ble_measure_base_nestcost=0
+
+  local calibrate_count=10
+
+  local c nest_level=${#FUNCNAME[@]}
+  for c in {0..9} A; do
+    "ble-measure/calibrate.$c"
+    ble/util/print "$((nest_level++)) $nsec"
+  done > a.txt
+
+  gnuplot - <<EOF
+f(x) = a * x + b
+b=4500;a=100
+fit f(x) 'a.txt' via a,b
+EOF
 }
 
 ## @fn ble-measure/.read-arguments.get-optarg
@@ -161,7 +179,7 @@ function ble-measure/.read-arguments {
             measure_threshold=$optarg ;;
         (B)
           ble-measure/.read-arguments.get-optarg &&
-            measure_base=$optarg measure_nestcost= ;;
+            __base=$optarg ;;
         (*)
           ble/util/print "ble-measure: unrecognized option '-$c'."
           flags=E$flags ;;
@@ -188,20 +206,9 @@ function ble-measure/.read-arguments {
 ##   @var[out] nsec
 ##     実行時間を nsec 単位で返します。
 function ble-measure {
-  if [[ ! $_ble_measure_base ]]; then
-    _ble_measure_base=0 nsec=0
-    # : よりも a=1 の方が速い様だ
-    local a
-    ble-measure -qc3 'a=1' 
-    # hp2019 上での評価 (assign=4695 nestcost=619 base=3113)
-    _ble_measure_base=$((nsec*663/1000))
-    _ble_measure_base_nestcost=$((nsec*132/1000))
-  fi
-
+  local __level=${#FUNCNAME[@]} __base=
   local flags= command= count=$_ble_measure_count
   local measure_threshold=$_ble_measure_threshold
-  local measure_base=$_ble_measure_base
-  local measure_nestcost=$_ble_measure_base_nestcost
   ble-measure/.read-arguments "$@" || return "$?"
   if [[ $flags == *h* ]]; then
     ble/util/print-lines \
@@ -211,7 +218,7 @@ function ble-measure {
       '  Options:' \
       '    -q        Do not print results to stdout.' \
       '    -a COUNT  Measure COUNT times and average.' \
-      '    -c COUNT  Measure COUNT times and take maximum.' \
+      '    -c COUNT  Measure COUNT times and take minimum.' \
       '    -T TIME   Set minimal measuring time.' \
       '    -B BASE   Set base time (overhead of ble-measure).' \
       '    --        The rest arguments are treated as command.' \
@@ -226,6 +233,33 @@ function ble-measure {
     return 2
   fi
 
+  if [[ ! $__base ]]; then
+    if [[ $_ble_measure_base ]]; then
+      # ble-measure/calibrate 実行済みの時
+      __base=$((_ble_measure_base+_ble_measure_base_nestcost*__level/10))
+    else
+      # それ以外の時は __level 毎に計測
+      if [[ ! $ble_measure_calibrate && ! ${_ble_measure_base[__level]} ]]; then
+        if [[ ! ${_ble_measure_base_real[__level+1]} ]]; then
+          local ble_measure_calibrate=1
+          local a; ble-measure -qc3 -B 0 ''
+          ble/util/unlocal ble_measure_calibrate a
+          _ble_measure_base_real[__level+1]=$nsec
+          _ble_measure_base[__level+1]=$nsec
+        fi
+
+        # linear-fit result in chatoyancy
+        #   65.9818 pm 2.945 (4.463%)
+        #   4356.75 pm 19.97 (0.4585%)
+        local A=6598 B=435675
+        nsec=${_ble_measure_base_real[__level+1]}
+        _ble_measure_base[__level]=$((nsec*(B+A*(__level-1))/(B+A*__level)))
+        ble/util/unlocal A B
+      fi
+      __base=${_ble_measure_base[__level]:-0}
+    fi
+  fi
+
   local prev_n= prev_utot=
   local -i n
   for n in {1,10,100,1000,10000}\*{1,2,5}; do
@@ -235,14 +269,14 @@ function ble-measure {
     [[ $flags != *q* ]] && printf '%s (x%d)...' "$command" "$n" >&2
     ble-measure/.time "$command" || return 1
     [[ $flags != *q* ]] && printf '\r\e[2K' >&2
+    ((utot >= measure_threshold)) || continue
 
     prev_n=$n prev_utot=$utot
-
-    ((utot >= measure_threshold)) || continue
+    local min_utot=$utot
 
     # 繰り返し計測して最小値 (-a の時は平均値) を採用
     if [[ $count ]]; then
-      local min_utot=$utot sum_utot=$utot sum_count=1 i
+      local sum_utot=$utot sum_count=1 i
       for ((i=2;i<=count;i++)); do
         [[ $flags != *q* ]] && printf '%s' "$command (x$n $i/$count)..." >&2
         if ble-measure/.time "$command"; then
@@ -258,7 +292,20 @@ function ble-measure {
       fi
     fi
 
-    local nsec0=$((measure_base+measure_nestcost*${#FUNCNAME[*]}/10))
+    # upate base if the result is shorter than base
+    if ((min_utot<0x7FFFFFFFFFFFFFFF/1000)); then
+      local __real=$((min_utot*1000/n))
+      [[ ${_ble_measure_base_real[__level]} ]] &&
+        ((__real<_ble_measure_base_real[__level])) &&
+        _ble_measure_base_real[__level]=$__real
+      [[ ${_ble_measure_base[__level]} ]] &&
+        ((__real<_ble_measure_base[__level])) &&
+        _ble_measure_base[__level]=$__real
+      ((__real<__base)) &&
+        __base=$__real
+    fi
+
+    local nsec0=$__base
     if [[ $flags != *q* ]]; then
       local reso=$_ble_measure_resolution
       local awk=ble/bin/awk

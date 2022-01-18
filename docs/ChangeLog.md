@@ -314,6 +314,7 @@
 - edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663` 1af0800
 - make: update lint check `#D1709` 7e26dcd
 - test: save the test log to a file `#D1735` 0000000
+- benchmark: improve determination of the base time `#D1737` 0000000
 
 ## Contrib
 
