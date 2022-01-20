@@ -249,6 +249,7 @@
 - history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
+  - prompt: fix a bug that the special treatment of `\$` in Cygwin/MSYS is disabled `#D1741` 0000000
 - decode: cache `inputrc` translations `#D1652` 994e2a5
 - complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
   - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 8039b77

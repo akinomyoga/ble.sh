@@ -1082,6 +1082,8 @@ function ble/prompt/.instantiate {
 
   local expanded=
   local chars_safe_esc='][0-7aenrdtAT@DhHjlsuvV!$\wW'
+  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $_ble_prompt_const_root == '#' ]] &&
+    chars_safe_esc=${chars_safe_esc//'$'} # Note: cygwin では ble.sh 独自の方法で \$ を処理する。
   if ((_ble_bash>=40400)) && [[ $ps != *'\'[!"$chars_safe_esc"]* ]]; then
     [[ $ps == *'\'[wW]* ]] && ble/prompt/unit/add-hash '$PWD'
     ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
