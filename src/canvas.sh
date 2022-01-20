@@ -62,6 +62,7 @@ function bleopt/check:char_width_mode {
   (west) _ble_unicode_c2w_ambiguous=1 ;;
   (east) _ble_unicode_c2w_ambiguous=2 ;;
   esac
+  ((_ble_prompt_version++))
   ble/util/c2w/clear-cache
 }
 
@@ -121,10 +122,12 @@ bleopt/declare -n char_width_version auto
 function bleopt/check:char_width_version {
   if [[ $value == auto ]]; then
     ble && ble/util/c2w:auto/test.buff first-line
+    ((_ble_prompt_version++))
     ble/util/c2w/clear-cache
     return 0
   elif local ret; ble/unicode/c2w/version2index "$value"; then
     _ble_unicode_c2w_version=$ret
+    ((_ble_prompt_version++))
     ble/util/c2w/clear-cache
     return 0
   else
@@ -207,6 +210,7 @@ function bleopt/check:emoji_version {
   fi
 
   _ble_unicode_EmojiStatus_version=$ret
+  ((_ble_prompt_version++))
   ble/util/c2w/clear-cache
   return 0
 }
@@ -223,6 +227,7 @@ function bleopt/check:emoji_opts {
   local rex=':min=U\+([0-9a-fA-F]+):'
   [[ :$value: =~ $rex ]] &&
     _ble_unicode_EmojiStatus_xIsEmoji=$_ble_unicode_EmojiStatus_xIsEmoji'&&code>=0x'${BASH_REMATCH[1]}
+  ((_ble_prompt_version++))
   ble/util/c2w/clear-cache
   return 0
 }

@@ -133,7 +133,7 @@
 - complete (`source:command`): exclude inactive aliases `#D1715` d6242a7
 - complete (`source:command`): not quote aliases and keywords `#D1715` d6242a7
 - highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
-  - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 0000000
+  - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
 
 ## Fixes
 
@@ -154,7 +154,7 @@
   - mandb: parse `--help` for specified commands `#D1693` e1ad2f1
   - mandb: fix small issues of man-page analysis `#D1708` caa77bc
   - mandb: insert a comma in brace expansions instead of a space `#D1719` 0ac7f03
-  - mandb: supprot man-page format of `rsync` `#D1733` 0000000
+  - mandb: support man-page format of `rsync` `#D1733` 7900144
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -219,9 +219,10 @@
 - highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` b0a0b6f
 - util (visible-bell): erase visible-bell before running external commands `#D1723` 0da0c1c
 - util (`ble/function`): work around `shopt -u extglob` `#D1725` 952c388
-- syntax: fix uninitialized syntax-highlighting in bash-3.2 `#D1731` 0000000
+- syntax: fix uninitialized syntax-highlighting in bash-3.2 `#D1731` e3f5bf7
 - make: fix a bug that config update messages are removed on install `#D1736` 0000000
 - util: fix bugs in conversions from `'` to `\''` `#D1739` 0000000
+- canvas: fix unupdated prompt on async wcwidth resolution `#D1740` 0000000
 
 ## Documentation
 
@@ -285,7 +286,7 @@
 - main: work around `XDG_RUNTIME_DIR` of a different user by `su` (reported by zim0369) `#D1712` 8d37048
 - main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` a41279e
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
-- global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 0000000
+- global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 7545ea3
 - global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 0000000
 
 ## Internal changes and fixes
@@ -315,7 +316,7 @@
 - util: fix leak variables `#D1643` fcf634b
 - edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663` 1af0800
 - make: update lint check `#D1709` 7e26dcd
-- test: save the test log to a file `#D1735` 0000000
+- test: save the test log to a file `#D1735` d8e6ea7
 - benchmark: improve determination of the base time `#D1737` 0000000
 
 ## Contrib

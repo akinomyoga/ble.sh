@@ -1134,7 +1134,8 @@ function ble/prompt/.instantiate {
   elif
     local rows=${prompt_rows:-${LINES:-25}}
     local cols=${prompt_cols:-${COLUMNS:-80}}
-    trace_hash=$opts:$rows,$cols:$bleopt_char_width_mode:$expanded
+    local bleopt=$bleopt_char_width_mode,$bleopt_char_width_version,$bleopt_emoji_version,$bleopt_emoji_opts
+    trace_hash=$opts#$rows,$cols#$bleopt#$expanded
     [[ $trace_hash != "$trace_hash0" ]]
   then
     local trace_opts=$opts:prompt

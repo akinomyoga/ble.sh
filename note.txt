@@ -1688,6 +1688,25 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2022-01-20
+
+  * cygwin で root prompt mark が正しく表示されなくなっていると思ったが、よく考
+    えたら ${PS1@P} を使う様にしているからではないか。振る舞いを修正している物
+    が含まれている場合にも ${PS1@P} の仕様は無効化する必要がある。
+
+    つまり、cygwin, msys, etc において PS1 に \$ が含まれていたら駄目。
+
+  * bash-completion や oh-my-bash の version と terminal ID について C-xC-v で
+    出力したい。
+
+    * それを issue 報告に貼り付ける様にお願いする。
+
+    * terminal ID / version をちゃんと検出する様にする。DA2R も一緒に出力するべ
+      き。
+
+    * bash-it には version 等は存在しないのだろうか。うーん。だからといっていき
+      なり要求するのも違う気がする。
+
 2022-01-19
 
   * PS1 のディレクトリ名に特殊文字が含まれている場合の取り扱い
@@ -5824,6 +5843,34 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-01-20
+
+  * prompt: bash-it や oh-my-bash で最初のプロンプトの座標計算がずれる [#D1740]
+
+    ble.sh を読み込むと最初のプロンプトの表示がずれてしまう。これは ble.sh をロー
+    ドして最初にプロンプトを表示した時には未だ char_width_{mode,version} が解決
+    されていないので、既定の設定が使われて座標計算にずれが生じるのが原因である。
+
+    本来は bleopt_char_width_{mode,version} が変化していれば再描画される筈なの
+    であるが何故再描画が走らないのだろうか。取り敢えず
+    ble/prompt/unit:_ble_prompt_ps1/update の時点で char_width_@ が解説された後
+    に呼び出されていない。ble/prompt/unit#update _ble_prompt_ps1 は実行されてい
+    る。という事を考えると、の間で更新が棄却されているという事になる。
+
+    ohashref='$_ble_prompt_version::$prompt_ps1,$PWD' である。うーん。本来は
+    $_ble_prompt_version と同じ所で char_width_@ も参照するべきの気がする。→結
+    局 prompt_hashref_base に '$_ble_prompt_version' だけが入っていた所
+    に'$bleopt_char_width_mode,$bleopt_char_width_version' も追加する事で解決し
+    た。他にも LC_CTYPE が変わった時にも問題になるのではないか、と思ったが
+    LC_CTYPE がコマンド実行以外で勝手に切り替わる事もないと思われるの
+    で、_ble_prompt_version でカバーできていると考えるべきである。つまり、
+    bleopt_char_width_{mode,version} は非同期で変化する可能性があるのでそれに応
+    じて更新する必要があるという事。
+
+    と思ったが、bleopt_char_width_{mode,version} が変化するのは検出できるのだか
+    ら、其処で、_ble_prompt_version を更新すれば良いだけなのでは→その様に変更
+    する事にした。実は bleopt_char_width_{mode,version} の他にも
+    emoji_{opts,version} が存在した。これらも変化があればちゃんとプロンプトを更
+    新する必要がある可能性がある。全て対応した。ちゃんと動いている。
 
   * bash-5.2 shopt patsub_replacement 対策 [#D1739]
 
