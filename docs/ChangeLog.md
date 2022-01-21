@@ -134,6 +134,7 @@
 - complete (`source:command`): not quote aliases and keywords `#D1715` d6242a7
 - highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
   - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
+- edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 0000000
 
 ## Fixes
 
