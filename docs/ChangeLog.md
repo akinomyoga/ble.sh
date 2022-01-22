@@ -291,6 +291,7 @@
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
 - global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 7545ea3
 - global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 4590997
+- global (`ble/builtin/*`): work around `set -eu` in NixOS initialization `#D1743` 0000000
 
 ## Internal changes and fixes
 

@@ -1426,6 +1426,7 @@ function ble/builtin/history/option:s {
   _ble_builtin_history_prevmax=$max
 }
 function ble/builtin/history {
+  local set shopt; ble/base/.adjust-bash-options set shopt
   local opt_d= flag_error=
   local opt_c= opt_p= opt_s=
   local opt_a= flags=
@@ -1472,12 +1473,15 @@ function ble/builtin/history {
   done
   if [[ $flag_error ]]; then
     builtin history --usage 2>&1 1>/dev/null | ble/bin/grep ^history >&2
+    ble/base/.restore-bash-options set shopt
     return 2
   fi
 
   if [[ $flags == *h* ]]; then
     builtin history --help
-    return "$?"
+    local ext=$?
+    ble/base/.restore-bash-options set shopt
+    return "$ext"
   fi
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
@@ -1500,7 +1504,10 @@ function ble/builtin/history {
     ble/builtin/history/option:"$opt_a" "$1"
     flag_processed=1
   fi
-  [[ $flag_processed ]] && return 0
+  if [[ $flag_processed ]]; then
+    ble/base/.restore-bash-options set shopt
+    return 0
+  fi
 
   # -p
   if [[ $opt_p ]]; then
@@ -1511,6 +1518,7 @@ function ble/builtin/history {
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble-edit/exec/restore-BASH_REMATCH
+  ble/base/.restore-bash-options set shopt
   return "$ext"
 }
 function history { ble/builtin/history "$@"; }

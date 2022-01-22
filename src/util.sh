@@ -1978,14 +1978,17 @@ function ble/builtin/trap/invoke {
   builtin eval -- "${_ble_builtin_trap_handlers[ret]}" 2>&3
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 function ble/builtin/trap {
+  local set shopt; ble/base/.adjust-bash-options set shopt
   local flags command sigspecs
   ble/builtin/trap/.read-arguments "$@"
 
   if [[ $flags == *h* ]]; then
     builtin trap --help
+    ble/base/.restore-bash-options set shopt
     return 2
   elif [[ $flags == *E* ]]; then
     builtin trap --usage 2>&1 1>/dev/null | ble/bin/grep ^trap >&2
+    ble/base/.restore-bash-options set shopt
     return 2
   elif [[ $flags == *l* ]]; then
     builtin trap -l
@@ -2044,6 +2047,7 @@ function ble/builtin/trap {
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble-edit/exec/restore-BASH_REMATCH
+  ble/base/.restore-bash-options set shopt
   return 0
 }
 function trap { ble/builtin/trap "$@"; }
@@ -3046,7 +3050,7 @@ else
     # Note: bash-4.3 以下では BASH_SUBSHELL はパイプやプロセス置換で増えないの
     #   で信頼性が低いらしい。唯、関数内で実行している限りは大丈夫なのかもしれ
     #   ない。
-    ((BASH_SUBSHELL)) && return 0
+    ((BASH_SUBSHELL==0)) || return 0
     local BASHPID; ble/util/getpid
     [[ $$ != $BASHPID ]]
   }
@@ -3725,6 +3729,7 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
   }
 
   function ble/builtin/sleep {
+    local set shopt; ble/base/.adjust-bash-options set shopt
     local frac_scale=100000000000000
     local a=0 b=0 flags=
     if (($#==0)); then
@@ -3761,14 +3766,17 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
       ble/util/print "sleep (ble) $BLE_VERSION"
     fi
     if [[ $flags == *E* ]]; then
-      return 2
+      ble/util/setexit 2
     elif [[ $flags == *[vh]* ]]; then
-      return 0
+      ble/util/setexit 0
     else
       b=00000000000000$b
       b=${b:${#b}-14}
       builtin sleep "$a.$b"
     fi
+    local ext=$?
+    ble/base/.restore-bash-options set shopt 1
+    return "$ext"
   }
   function sleep { ble/builtin/sleep "$@"; }
 elif [[ -f $_ble_base/lib/init-msleep.sh ]] &&

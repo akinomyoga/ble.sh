@@ -3940,11 +3940,7 @@ function ble/builtin/bind/read-user-settings {
 }
 
 function ble/builtin/bind {
-  local nocasematch=
-  ((_ble_bash>=30100)) &&
-    shopt -q nocasematch &&
-    shopt -u nocasematch &&
-    nocasematch=1
+  local set shopt; ble/base/.adjust-bash-options set shopt
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble-edit/exec/save-BASH_REMATCH
@@ -3960,11 +3956,9 @@ function ble/builtin/bind {
     ext=2
   fi
 
-  [[ $nocasematch ]] &&
-    shopt -s nocasematch
-
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble-edit/exec/restore-BASH_REMATCH
+  ble/base/.restore-bash-options set shopt
   return "$ext"
 }
 function bind { ble/builtin/bind "$@"; }

@@ -5296,11 +5296,13 @@ function ble/builtin/exit {
     return 1
   fi
 
+  local set shopt; ble/base/.adjust-bash-options set shopt
   local opt_flags=
   local -a opt_args=()
   ble/builtin/exit/.read-arguments "$@"
   if [[ $opt_flags == *[EH]* ]]; then
     [[ $opt_flags == *H* ]] && builtin exit --help
+    ble/base/.restore-bash-options set shopt
     return 2
   fi
   ((${#opt_args[@]})) || ble/array#push opt_args "$ext"
@@ -5324,12 +5326,15 @@ function ble/builtin/exit {
       ble/builtin/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
       case $ret in
       ([yY]|[yY][eE][sS]) break ;;
-      ([nN]|[nN][oO]|'')  return 0 ;;
+      ([nN]|[nN][oO]|'')
+        ble/base/.restore-bash-options set shopt
+        return 0 ;;
       esac
     done
   fi
 
   ble/util/print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+  ble/base/.restore-bash-options set shopt
   builtin exit "${opt_args[@]}" &>/dev/null
   builtin exit "${opt_args[@]}" &>/dev/null
   return 1 # exit できなかった場合は 1 らしい
@@ -8334,6 +8339,9 @@ function ble/builtin/read {
     return "$?"
   fi
 
+  local _ble_local_set _ble_local_shopt
+  ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
+
   # used by core-complete to cancel progcomp
   [[ $_ble_builtin_read_hook ]] &&
     builtin eval -- "$_ble_builtin_read_hook"
@@ -8342,8 +8350,9 @@ function ble/builtin/read {
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble-edit/exec/save-BASH_REMATCH
   ble/builtin/read/.impl "$@"; local __ble_ext=$?
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble-edit/exec/restore-BASH_REMATCH
-  [[ $__ble_command ]] || return "$__ble_ext"
 
+  ble/base/.restore-bash-options _ble_local_set _ble_local_shopt
+  [[ $__ble_command ]] || return "$__ble_ext"
   # 局所変数により被覆されないように外側で評価
   builtin eval -- "$__ble_command"
 }

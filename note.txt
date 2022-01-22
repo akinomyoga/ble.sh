@@ -5838,6 +5838,29 @@ bash_tips
 
 2022-01-21
 
+  * global: protect overridden builtins against "set -eu" (reported by SuperSandro2000) [#D1743]
+    https://github.com/akinomyoga/ble.sh/issues/169
+
+    またもや set -uex でロードできなくなっているのでその修正を行う。同時に$- 及
+    び $BASHOPTS (bash-4.0 以下では自前で再構築) を持ちて状態保存のコードを単純
+    化した。これで以前よりは効率はよくなったのではないかと思う (nocasematch の
+    検索は多少時間がかかるかもしれない)。
+
+    次に各 builtin に対して対策コードを導入する事にする。
+
+    - done: trap  (util.sh)
+    - done: sleep (util.sh)
+    - done: bind  (decode.sh)
+    - done: read  (edit.sh)
+    - done: exit  (edit.sh)
+    - done: history (history.sh)
+
+    そもそも set -eu をありがたがって使っている時点で余り分かっていない人が書い
+    ているという気がする。何れにしてもその時点で一般には防御が難しいが、NixOS
+    の用意したスクリプトでだけ set -eu を有効にするというのであれば、仕方がない
+    のかもしれない。勝手に builtin を上書きしてそれで問題を起こすのは ble.sh が
+    悪い。これによって状態保存・復元の overhead が生じるが仕方がない。
+
   * prompt: C-c で history_share が有効でない (reported by SuperSandro2000) [#D1742]
     https://github.com/akinomyoga/ble.sh/issues/96#issuecomment-1018101640
 

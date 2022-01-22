@@ -328,7 +328,6 @@ function ble/base/.adjust-bash-options {
   [[ $2 == shopt ]] || builtin eval -- "$2=\$shopt"
   shopt -u nocasematch 2>/dev/null
   return 0
-  fi
 } 2>/dev/null # set -x 対策
 ## @fn ble/base/.restore-bash-options var_set var_shopt
 ##   @param[out] var_set var_shopt
