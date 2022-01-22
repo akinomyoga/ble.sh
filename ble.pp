@@ -871,7 +871,7 @@ _ble_base_attach_PROMPT_COMMAND=
 _ble_base_attach_from_prompt=
 function ble/base/attach-from-PROMPT_COMMAND {
   # 後続の設定によって PROMPT_COMMAND が置換された場合にはそれを保持する
-  [[ $PROMPT_COMMAND != ble/base/attach-from-PROMPT_COMMAND ]] && local PROMPT_COMMAND
+  [[ $PROMPT_COMMAND == ble/base/attach-from-PROMPT_COMMAND ]] || local PROMPT_COMMAND
   PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
   ble-edit/prompt/update/.eval-prompt_command
 
