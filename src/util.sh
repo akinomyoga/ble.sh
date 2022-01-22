@@ -1787,6 +1787,9 @@ function blehook/.read-arguments {
 }
 
 function blehook {
+  local set shopt
+  ble/base/.adjust-bash-options set shopt
+
   local flags print process
   local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
   local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?-?\+?=)(.*)$'
@@ -1797,7 +1800,9 @@ function blehook {
         ble/util/print >&2
       blehook/.print-help
     fi
-    [[ $flags != *E* ]]; return "$?"
+    [[ $flags != *E* ]]; local ext=$?
+    ble/base/.restore-bash-options set shopt
+    return "$ext"
   fi
 
   if ((${#print[@]}==0&&${#process[@]}==0)); then
@@ -1829,6 +1834,7 @@ function blehook {
     blehook/.print "${print[@]}"
   fi
 
+  ble/base/.restore-bash-options set shopt
   return "$ext"
 }
 blehook/.compatibility-ble-0.3
@@ -2060,6 +2066,7 @@ function ble/builtin/trap/.invoke {
   return "$_ble_trap_ext"
 }
 function ble/builtin/trap/.handler {
+  local set shopt; ble/base/.adjust-bash-options set shopt
   local _ble_trap_ext=$? _ble_trap_sig=$1 _ble_trap_name=$2
 
   # ble.sh hook
@@ -2069,9 +2076,9 @@ function ble/builtin/trap/.handler {
   ble/util/joblist.check ignore-volatile-jobs
 
   # user hook
-  local _ble_trap_handler=${_ble_builtin_trap_handlers[_ble_trap_sig]}
+  local _ble_trap_handler=${_ble_builtin_trap_handlers[_ble_trap_sig]-}
   local _ble_trap_done=
-  ble/builtin/trap/.invoke
+  ble/builtin/trap/.invoke # Note: 空コマンドでも実行する
   _ble_trap_ext=$?
   case $_ble_trap_done in
   (break)
@@ -2083,6 +2090,8 @@ function ble/builtin/trap/.handler {
   (*)
     _ble_builtin_trap_hook="return $_ble_trap_ext" ;;
   esac
+
+  ble/base/.restore-bash-options set shopt
 }
 
 function ble/builtin/trap/install-hook {

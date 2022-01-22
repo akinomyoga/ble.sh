@@ -172,15 +172,22 @@ fi 3>&2 &>/dev/null # set -x 対策 #D0930
   # 対策 FUNCNEST
   _ble_bash_FUNCNEST_adjusted=
   _ble_bash_FUNCNEST=
+  _ble_bash_FUNCNEST_set=
   _ble_bash_FUNCNEST_adjust='
     if [[ ! $_ble_bash_FUNCNEST_adjusted ]]; then
       _ble_bash_FUNCNEST_adjusted=1
-      _ble_bash_FUNCNEST=$FUNCNEST FUNCNEST=
+      _ble_bash_FUNCNEST_set=${FUNCNEST+set}
+      _ble_bash_FUNCNEST=${FUNCNEST-}
+      builtin unset -v FUNCNEST
     fi 2>/dev/null'
   _ble_bash_FUNCNEST_restore='
     if [[ $_ble_bash_FUNCNEST_adjusted ]]; then
       _ble_bash_FUNCNEST_adjusted=
-      FUNCNEST=$_ble_bash_FUNCNEST
+      if [[ $_ble_bash_FUNCNEST_set ]]; then
+        FUNCNEST=$_ble_bash_FUNCNEST
+      else
+        builtin unset -v FUNCNEST
+      fi
     fi 2>/dev/null'
   \builtin eval -- "$_ble_bash_FUNCNEST_adjust"
 
@@ -226,10 +233,12 @@ function ble/base/is-POSIXLY_CORRECT {
   fi
 }
 
-_ble_bash_builtins_adjusted=
-_ble_bash_builtins_save=
+{
+  _ble_bash_builtins_adjusted=
+  _ble_bash_builtins_save=
+} 2>/dev/null # set -x 対策
 function ble/base/adjust-builtin-wrappers/.assign {
-  if [[ $_ble_util_assign_base ]]; then
+  if [[ ${_ble_util_assign_base-} ]]; then
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$1" >| "$_ble_local_tmpfile"
     IFS= builtin read -r -d '' defs < "$_ble_local_tmpfile"
@@ -304,23 +313,47 @@ function ble/variable#copy-state {
   fi
 }
 
-: "${_ble_bash_options_adjusted=}"
+function ble/base/.adjust-bash-options {
+  builtin eval -- "$1=\$-"
+  set +exvuk -B
+
+  [[ $2 == shopt ]] || local shopt
+  if ((_ble_bash>=40100)); then
+    shopt=$BASHOPTS
+  else
+    shopt=
+    # Note: nocasematch は bash-3.1 以上
+    shopt -q nocasematch 2>/dev/null && shopt=nocasematch
+  fi
+  [[ $2 == shopt ]] || builtin eval -- "$2=\$shopt"
+  shopt -u nocasematch 2>/dev/null
+  return 0
+  fi
+} 2>/dev/null # set -x 対策
+## @fn ble/base/.restore-bash-options var_set var_shopt
+##   @param[out] var_set var_shopt
+function ble/base/.restore-bash-options {
+  local set=${!1} shopt=${!2}
+  [[ :$shopt: == *:nocasematch:* ]] && shopt -s nocasematch
+  [[ $set == *B* ]] || set +B
+  [[ $set == *k* ]] && set -k
+  [[ $set == *u* ]] && set -u
+  [[ $set == *v* ]] && set -v
+  [[ $set == *x* ]] && set -x
+  [[ $set == *e* ]] && set -e # set -e は最後
+  return 0
+} 2>/dev/null # set -x 対策
+
+{
+  : "${_ble_bash_options_adjusted=}"
+  _ble_bash_set=$-
+  _ble_bash_shopt=${BASHOPTS-}
+} 2>/dev/null # set -x 対策
 function ble/base/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1 || ((1)) # set -e 対策
   _ble_bash_options_adjusted=1
 
-  # Note: set -e 対策が最初でないと && chaining で失敗する
-  _ble_bash_sete=; [[ -o errexit ]] && _ble_bash_sete=1 && set +e
-  _ble_bash_setx=; [[ -o xtrace  ]] && _ble_bash_setx=1 && set +x
-  _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
-  _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
-  _ble_bash_setk=; [[ -o keyword ]] && _ble_bash_setk=1 && set +k
-  _ble_bash_setB=; [[ -o braceexpand ]] && _ble_bash_setB=1 || set -B
-
-  # Note: nocasematch は bash-3.0 以上
-  _ble_bash_nocasematch=
-  shopt -q nocasematch 2>/dev/null &&
-    _ble_bash_nocasematch=1 && shopt -u nocasematch
+  ble/base/.adjust-bash-options _ble_bash_set _ble_bash_shopt
 
   # Note: expand_aliases はユーザー設定を復元する為に記録する
   _ble_bash_expand_aliases=
@@ -368,12 +401,8 @@ function ble/base/restore-bash-options {
   ble/variable#copy-state _ble_bash_LC_ALL LC_ALL
 
   [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
-  [[ ! $_ble_bash_setB && -o braceexpand ]] && set +B
-  [[ $_ble_bash_setk && ! -o keyword ]] && set -k
-  [[ $_ble_bash_setu && ! -o nounset ]] && set -u
-  [[ $_ble_bash_setv && ! -o verbose ]] && set -v
-  [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
-  [[ $_ble_bash_sete && ! -o errexit ]] && set -e # set -e は最後
+
+  ble/base/.restore-bash-options _ble_bash_set _ble_bash_shopt
 } 2>/dev/null # set -x 対策 #D0930 / locale 変更
 function ble/base/recover-bash-options {
   # bind -x が終わる度に設定が復元されてしまうので毎回設定し直す #D1526 #D1574
@@ -1529,7 +1558,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
   {
     if (($#==0)); then
       ble/array#replace PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
-      blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND
+      blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND || ((1)) # set -e 対策
     else
       local save_index=$1 lambda=$2
 

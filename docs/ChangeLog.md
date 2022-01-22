@@ -134,7 +134,7 @@
 - complete (`source:command`): not quote aliases and keywords `#D1715` d6242a7
 - highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
   - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
-- edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 0000000
+- edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
 
 ## Fixes
 
@@ -187,9 +187,10 @@
 - main: work around `. ble.sh --{test,update,clear-cache}` in intereactive sessions `#D1555` bbc2a90
 - Makefile: create `run` directory instead of `tmp` `#D1557` 9bdb37d
 - main: fix the workaround for `set -e` `#D1564` ab2f70b
+  - main: fix the workaround for `set -u` `#D1575` 76073a9
+  - main: fix the workaround for `set -eu` and refactor `#D1743` 0000000
 - util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 24f79da
 - sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 5d85238
-- main: fix the workaround for `set -u` `#D1575` 76073a9
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
 - syntax: fix a bug that argument completion is attempted in nested commands (reported by huresche) `#D1579` 301d40f
 - edit (brackated-paste): fix incomplete `CR => LF` conversion (reported by alborotogarcia) `#D1587` 8d6da16
@@ -221,9 +222,9 @@
 - util (visible-bell): erase visible-bell before running external commands `#D1723` 0da0c1c
 - util (`ble/function`): work around `shopt -u extglob` `#D1725` 952c388
 - syntax: fix uninitialized syntax-highlighting in bash-3.2 `#D1731` e3f5bf7
-- make: fix a bug that config update messages are removed on install `#D1736` 0000000
-- util: fix bugs in conversions from `'` to `\''` `#D1739` 0000000
-- canvas: fix unupdated prompt on async wcwidth resolution `#D1740` 0000000
+- make: fix a bug that config update messages are removed on install `#D1736` 72d968f
+- util: fix bugs in conversions from `'` to `\''` `#D1739` 6d15782
+- canvas: fix unupdated prompt on async wcwidth resolution `#D1740` e14fa5d
 
 ## Documentation
 
@@ -250,7 +251,7 @@
 - history: use `mapfile -d ''` to load history in Bash 5.2 `#D1603` 72c274e
 - prompt: use `${PS1@P}` when the prompt contains only safe prompt sequences `#D1617` 8b5da08
   - prompt: fix not properly set `$?` in `${PS1@P}` evaluation (reported by nihilismus) `#D1644` 521aff9
-  - prompt: fix a bug that the special treatment of `\$` in Cygwin/MSYS is disabled `#D1741` 0000000
+  - prompt: fix a bug that the special treatment of `\$` in Cygwin/MSYS is disabled `#D1741` 4782a33
 - decode: cache `inputrc` translations `#D1652` 994e2a5
 - complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
   - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 8039b77
@@ -289,7 +290,7 @@
 - main (`ble/util/readlink`): work around non-standard or missing `readlink` (motivated by peterzky) `#D1720` a41279e
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
 - global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 7545ea3
-- global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 0000000
+- global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 4590997
 
 ## Internal changes and fixes
 
@@ -319,7 +320,7 @@
 - edit (`command-help`): use `ble/util/assign/.mktmp` to determine the temporary filename `#D1663` 1af0800
 - make: update lint check `#D1709` 7e26dcd
 - test: save the test log to a file `#D1735` d8e6ea7
-- benchmark: improve determination of the base time `#D1737` 0000000
+- benchmark: improve determination of the base time `#D1737` ad866c1
 
 ## Contrib
 

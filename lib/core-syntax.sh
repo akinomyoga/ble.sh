@@ -1874,7 +1874,7 @@ function ble/syntax/highlight/vartype {
     fi
   else
     # set -u のチェック
-    if [[ :$opts: == *:readvar:* && $_ble_bash_setu ]]; then
+    if [[ :$opts: == *:readvar:* && $_ble_bash_set == *u* ]]; then
       if [[ ! $tail ]] || {
            local rex='^:?[-+?=]'
            [[ $tail == :* ]] && lookahead=2
