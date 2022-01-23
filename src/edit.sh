@@ -1442,8 +1442,8 @@ function ble/prompt/update {
     if [[ $_ble_prompt_hash != "$version" && $opts != *:leave:* ]]; then
       if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
         ble-edit/restore-PS1
-        ble/prompt/update/.eval-prompt_command
         ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
+        ble/prompt/update/.eval-prompt_command
         ble-edit/adjust-PS1
       fi
     fi
@@ -5356,12 +5356,13 @@ function exit { ble/builtin/exit "$@"; }
 #--------------------------------------
 
 _ble_edit_exec_TRAPDEBUG_enabled=
+_ble_edit_exec_TRAPDEBUG_postproc=
 _ble_edit_exec_inside_begin=
 _ble_edit_exec_inside_prologue=
 _ble_edit_exec_inside_userspace=
 ble/builtin/trap/reserve DEBUG
 function ble-edit/exec:gexec/.TRAPDEBUG/trap {
-  builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*" || { (($?==2)) && return 0 || break; } &>/dev/null' DEBUG
+  builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc"' DEBUG
 }
 function ble-edit/exec:gexec/.TRAPDEBUG/enter {
   ble/builtin/trap/.initialize
@@ -5370,57 +5371,77 @@ function ble-edit/exec:gexec/.TRAPDEBUG/enter {
   fi
 }
 function ble-edit/exec:gexec/.TRAPDEBUG {
-  [[ ! $_ble_edit_exec_TRAPDEBUG_enabled ]] && return 0
-  [[ $BASH_COMMAND == ble-edit/exec:gexec/.* ]] && return 0
-  [[ $_ble_builtin_trap_inside ]] && return 0
+  local __lastexit=$? __lastarg=$_
+  _ble_edit_exec_TRAPDEBUG_postproc=
+  [[ $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ]] || return 0
+  [[ $BASH_COMMAND != ble-edit/exec:gexec/.* ]] || return 0
+  [[ ! ${_ble_builtin_trap_inside-} ]] || return 0
 
-  ble/builtin/trap/invoke DEBUG; local ext=$?
+  local __set __shopt; ble/base/.adjust-bash-options __set __shopt
 
-  if ((_ble_edit_exec_INT!=0)); then
-    # エラーが起きている時
+  # Run user DEBUG trap
+  local _ble_builtin_trap_postproc
+  ble/util/setexit "$__lastexit" "$__lastarg"
+  ble/builtin/trap/invoke DEBUG
+  _ble_edit_exec_TRAPDEBUG_postproc=$_ble_builtin_trap_postproc
 
+  # Handle INT
+  if [[ $_ble_attached ]] && ((_ble_edit_exec_INT!=0)); then
     local IFS=$_ble_term_IFS
     local depth=${#FUNCNAME[*]}
-    local rex='^(ble-edit/exec:gexec/\.|\<ble/builtin/trap/\.handler)'
-    if ((depth>=2)) && ! [[ ${FUNCNAME[*]:1} =~ $rex ]]; then
+    if ((depth>=2)) && ! ble/string#match "${FUNCNAME[*]:1}" '^ble-edit/exec:gexec/\.|(^| )ble/builtin/trap/\.handler'; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
-      ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 ${FUNCNAME[1]} $1" >&2
-      return 2
-    fi
-
-    local rex='^ble-edit/exec:gexec/\.'
-    if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
+      local source=${_ble_term_setaf[5]}${BASH_SOURCE[1]}
+      local sep=${_ble_term_setaf[6]}:
+      local lineno=${_ble_term_setaf[2]}${BASH_LINENO[0]}
+      local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${FUNCNAME[1]}${1:+ $1}${_ble_term_setaf[6]}')'
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >/dev/tty
+      _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_INT || break; } &>/dev/null"
+    elif ((depth==1)) && ! ble/string#match "$BASH_COMMAND" '^ble-edit/exec:gexec/\.'; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
-      ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 $BASH_COMMAND" >&2
-      return 2
+      local source=${_ble_term_setaf[5]}global
+      local sep=${_ble_term_setaf[6]}:
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $BASH_COMMAND" >/dev/tty
+      _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_INT || break; } &>/dev/null"
     fi
+    ble/base/.restore-bash-options __set __shopt
+    return 0
   fi
 
-  # Note: builtin trap - DEBUG は何故か此処では効かない
-  builtin trap -- - DEBUG
-  return "$ext"
+  if [[ ! ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]]; then
+    # ユーザー DEBUG trap がなくかつ INT 処理中でもない場合は DEBUG は削除して
+    # 良い [ Note: builtin trap - DEBUG は此処では効かない ]
+    _ble_edit_exec_TRAPDEBUG_postproc='builtin trap -- - DEBUG'
+  fi
+
+  ble/base/.restore-bash-options __set __shopt
+  return 0
 }
 function ble/builtin/trap:DEBUG {
   # Note (#D1155): ユーザコマンド実行中に新しく ble/builtin/trap DEBUG
   # が設定された場合は builtin trap DEBUG を仕掛ける。
-  if [[ $1 != - && $_ble_edit_exec_TRAPDEBUG_enabled ]]; then
+  if [[ $1 != - && ( $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ) ]]; then
     ble-edit/exec:gexec/.TRAPDEBUG/trap
   fi
 }
 
 function ble-edit/exec:gexec/.TRAPINT {
-  ble/util/print "$_ble_term_bold^C$_ble_term_sgr0" >&2
-  if ((_ble_bash>=40300)); then
-    _ble_edit_exec_INT=130
+  local sig=130
+  ((_ble_bash>=40300)) || sig=128 # bash-4.2 以下は 128
+  if [[ $_ble_attached ]]; then
+    ble/util/print "$_ble_term_bold^C$_ble_term_sgr0" >&2
+    _ble_edit_exec_INT=$sig
+    ble-edit/exec:gexec/.TRAPDEBUG/trap
   else
-    _ble_edit_exec_INT=128
+    _ble_builtin_trap_postproc="{ return $sig || break; } &>/dev/tty"
   fi
-  ble-edit/exec:gexec/.TRAPDEBUG/trap
 }
 function ble-edit/exec:gexec/.TRAPINT/reset {
   blehook INT-='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
+  local -a BLE_PIPESTATUS
+  BLE_PIPESTATUS=("${_ble_edit_exec_PIPESTATUS[@]}")
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     blehook/invoke "$@"
@@ -5530,7 +5551,7 @@ function ble-edit/exec:gexec/.prologue {
   return "$_ble_edit_exec_lastexit" # set $?
 } &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
-  _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
+  _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$? _ble_edit_exec_PIPESTATUS=("${PIPESTATUS[@]}")
   _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
   builtin eval -- "$_ble_bash_FUNCNEST_adjust" # 他の関数呼び出しよりも先
@@ -9015,4 +9036,5 @@ function ble-edit/attach {
 function ble-edit/detach {
   ble-edit/bind/stdout.finalize
   ble-edit/attach/.detach
+  ble-edit/exec:gexec/.TRAPDEBUG/enter
 }

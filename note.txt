@@ -1306,6 +1306,38 @@ bash_tips
     bug-bash, third-party bugs & reviews
 -------------------------------------------------------------------------------
 
+2022-01-23
+
+  * bash-preexec は既存の DEBUG trap を正しく実行できていない様に思われる
+
+    $ trap 'echo XXX' DEBUG
+    $ echo 1; echo 2; echo 3
+    XXX
+    1
+    XXX
+    2
+    XXX
+    3
+    $ source bash-preexec.sh
+    XXX
+    XXX
+    XXX
+    $ echo 1; echo 2; echo 3
+    XXX
+    1
+    2
+    3
+
+    これは意図的な物なのだろうか。。と思ったら以下に議論がある。
+
+    https://github.com/rcaloras/bash-preexec/issues/52
+    https://github.com/rcaloras/bash-preexec/pull/54
+    https://github.com/rcaloras/bash-preexec/pull/109
+
+    o ユーザーが trap DEBUG etc を実行しても破壊されない。
+    o DEBUG trap の overhead がない。
+    o 他の枠組みが DEBUG trap を設定・削除しても問題が起こらない。
+
 2021-12-11
 
   * bash-completion
@@ -1687,6 +1719,23 @@ bash_tips
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
+
+2022-01-23
+
+  * bash-preexec に API 安定化のお願いをする。
+
+  * "for ((i=0;i<10;i++)); do sleep 1; done" で C-c すると ble.sh 全体がその場で停止する
+
+    これは外部コマンドを実行中にそのコマンドが SIGINT で終了した場合、trap INT
+    に登録されたハンドラーを介さずに即座に実行全体が終了してしまうのが原因であ
+    る。
+
+    もしそれがトップレベルのコマンドであれば ERR を用いて捕まえる事はできる。但
+    し、それが SIGINT によって引き起こされたものなのか、普通のエラーとして返さ
+    れたのかを判定する方法はない。
+
+    更に関数内で実行された場合には ERR でも INT でも捉えられない。RETURN を使っ
+    ても捕まえられない。これを解決する方法はない気がする。
 
 2022-01-20
 
@@ -5837,6 +5886,179 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-01-21
+
+  * bash-preexec に本格的に介入する事を考える事にする (motivated by SuperSandro2000) [#D1744]
+    https://github.com/akinomyoga/ble.sh/issues/96#issuecomment-1016401487
+
+    1. bash-preexec の機能を on/off する方法を探す。
+      特に off にしている時には DEBUG trap は削除する様になっていて欲しい。
+
+      そもそも __bp_install で一体何をしているのか等についてもちゃんと確認する
+      必要がある。以前調べた感じだと PROMPT_COMMAND が他の枠組みに上書きされて
+      も大丈夫な様に DEBUG を使って実際の登録を行う仕組みになっていた筈である。
+
+    2. bash-preexec の機能を PRECMD / PREEXEC で再現できる様にする。
+
+      PIPESTATUS を保存する → BLE_PIPESTATUS に記録する事にした。各 hook の中
+      からはこれを参照すれば最後のコマンドの PIPESTATUS を取得できるという事を
+      wiki にも書く。該当する hook は PRECMD, PREEXEC, POSTEXEC, ERR である。何
+      故か CHPWD は該当しない。
+
+    * そもそも現状の ble.sh に於いて、最初に bash-preexec をロードして置いて、
+      後から source ble.sh を実行すると preexec 用の DEBUG trap が削除されてし
+      まっている。
+
+      この振る舞いについてちゃんと調べて解決する必要があるのではないだろうか。
+
+    * done: 取り敢えず ble.sh の側で対策を実装する事にする。もし bash-preexec
+      に適切な API があったとしてもなかったとしてもちゃんと動く様にする。
+
+      ble.sh の側で実装するとなると何処かのタイミングで bash-preexec を検出しな
+      ければならない。元から bash-preexec が存在している場合にはそのまま検出で
+      きる。後から bash-preexec が読み込まれた時にどの様に対処したら良いのかは
+      非自明である。
+
+      a 一つの方法は precmd_functions 辺りに何か仕掛けておくという事。然し、
+        bash-preexec が実際に読み込まれるかどうかも分からないのに汚染はしたくな
+        い気がする。
+
+      b だとすると POSTEXEC 辺りで bash-preexec 特有の関数が定義されていないか
+        どうかチェックするという事になる気がする。これは overhead であるが、ま
+        あ特に重い処理でもない気がするので気にしなくて良い。
+
+      どの様に実装するのかというのも気になる。外部プラグインとして実装するのか
+      ble.sh 本体に埋め込んでしまうのか。取り敢えず外部プラグインとして実装して
+      置いて、後で本体に組み込むかどうか決定するのが良い気がする。
+
+      →contrib/bash-preexec に実装した。更に読み込み用のコードを ble.sh に埋め
+      込む事にした。
+
+    [テスト]
+
+    * テストの方法
+
+      ロードの順序や attach の方法など色々考えられる。それらについて全部動作確
+      認するべきの気がする。以下の場合を確かめる。
+
+      % - bash-preexec  bashrc / interactive
+      % - ble.sh        (bashrc / interactive) x (prompt / attach)
+      % - どちらを先に source するか。
+      % - 両方 interactive の時には同じコマンドの中で source するかどうか。
+      % - bash-it       bashrc / interactive
+
+      まとめると以下のロードの組み合わせが存在する。
+
+      - done: bp blesh.prompt $
+      - done: bp blesh.attach $
+      - done: bp $ blesh.prompt
+      - done: bp $ blesh.attach
+      - done: $ bp $ blesh.prompt
+      - done: $ bp $ blesh.attach
+      - done: $ bp blesh.prompt
+      - done: $ bp blesh.attach
+      - done: blesh.prompt bp $
+      - done: blesh.attach bp $
+      - done: blesh.prompt $ bp
+      - done: blesh.attach $ bp
+      - done: $ blesh.prompt $ bp
+      - done: $ blesh.attach $ bp
+      - done: $ blesh.prompt bp
+      - done: $ blesh.attach bp
+      - done: bash-it $
+      - done: $ bash-it
+      - done: 更に detach した後もちゃんと動くかも確認する
+
+    x done: 初回の実行時に trap DEBUG が残っている場合が存在する。特に bp が後
+      にロードされた時にこれが起こる。後に bp がロードされた時には POSTEXEC で
+      処理をしているのだから仕方がない。それよりも前の時点で検出する方法はない
+      のだろうか→というか全パターンで trap DEBUG が初回実行で残ってしまってい
+      る。これは何が悪いのだろうか。恐らく最初の PROMPT_COMMAND でから install
+      string を削除できていない。
+
+      と、ここで理由が分かった。そもそも contrib/bash-preexec が POSTEXEC から
+      しか自動ロードされていない。ATTACH 及び ble.sh ソース時にもチェックするべ
+      きである。
+
+    x ok: "bp blesh.attach" 及び "$ bp blesh.attach" に於いて初回のコマンド実行
+      では未だ contrib/bash-preexec による調整が有効になっていない。但し、動作
+      に関しては問題ない。これはまあ仕方がないのだろうという気がする。
+
+    DEBUG 周りを色々と修正し直す事にした。幾らか弄ったら色々動かなくなった。
+
+    x resolved: C-c した時に変なエラーメッセージ (return に空の引数が渡されて
+      いる) が発生している。これは一体何だろうか。うーん。bash --norc, source
+      out/ble.sh --norc でも発生する。一旦発生するとその後もずっとコマンドを
+      実行する度に発生している気がする。
+
+    x resolved: C-c で実行をキャンセルできていない→これは正規表現の編集をミ
+      スして正規表現が不正になっていた。修正した。直った。
+
+    * done: ble/builtin/trap/invoke と ble/builtin/trap/invoke+ を統合する。
+      ble/builtin/trap/invoke+ はもっと単純な戻り値に外で実行するべきコマンド
+      を出力する。
+
+    x resolved: detach した後に TRAPDEBUG が設定されていない。うーん。trap -
+      DEBUG を実行した時点で builtin trap DEBUG が設定されるべきなのにされない
+      という問題である。
+
+      これは実際に builtin trap DEBUG がされていないのか、或いは実際している
+      けれどもそれが関数呼び出しの為に途中で消えてしまっているのかどちらなの
+      だろうか。動作を確認する事にする。
+
+      →どうやら _ble_edit_exec_TRAPDEBUG_enabled によって明示的に無効化され
+      ている様に見える。これは元々何の為の判定だろうか。gexec の中か外かで振
+      る舞いを変えている様子である→分かった。ble.sh の内部にいる時に即座に
+      DEBUG trap を有効にすると ble.sh の中で DEBUG が大量に走って不都合とい
+      う事。
+
+      % そういう事であれば _ble_edit_exec_TRAPDEBUG_enabled=1 にする瞬間に
+      % trapdebug を実行するのが妥当なのではないだろうか。。→と思ったら既に
+      % ble-edit/exec:gexec/.TRAPDEBUG/enter に於いて TRAPDEBUG をちゃんと実
+      % 行していた。
+
+      そもそも ble-detach した時に _ble_edit_exec_TRAPDEBUG_enabled=1 に最終
+      的になるのかもよく分からない → 調べてみると空のままの気がする。detach
+      の際に直接 trapdebug を設定すれば良いのではないだろうか。。と思ったがそ
+      ういう訳でも無い様な。
+
+      % →これは単なる変数名の変更漏れだった。修正した。
+
+      うーん。detach の際に ble-edit/exec:gexec/.TRAPDEBUG/enter を実行すれば良
+      い気がする。
+
+      →これはちゃんと動く様になった。また detach した後でも INT が残っていて悪
+      さをする問題に関しては、TRAPINT で return || break を実行して抜けられる様
+      にする事にする。
+
+    * [保留] "for ((i=0;i<10;i++)); do sleep 1; done" で C-c すると変な事になる。
+      これは元から動いていなかった物なので今新しく動かなくなったという訳ではな
+      い。
+
+      →うーん。どうもこれは sleep が sigint で終了した時には、bash は trap
+      handler は起動せずに完全に実行全体を終了してしまうみたいである。
+
+        $ trap 'echo TRAPINT' INT
+        $ for ((i=0;i<10;i++)); do sleep 1; done
+        ^C
+        $
+
+      この様に trap が発動する事無く即座に終了してしまう。特に ble.sh の中から
+      実行する際には実行が完全に終了した後も端末ハンドラーの設定がそのままになっ
+      ているので、新しいユーザーの入力も RET が来るまでは受け取れないという状態
+      になってしまっている。これは仕方がない。
+
+    * done: wiki trap debug 更新
+
+    * done: SIGINT message をもっと見やすく。これはこんな物だろう。
+
+    * done: wiki に BLE_PIPESTATUS を記述する。
+
+    取り敢えずコミットを作ってしまって良い気がする。
+
+    * done: 後は contrib を修正する。
+
+    * done: PRECMD は PROMPT_COMMAND よりも前に実行するべき。元々どちらでも良かっ
+      たが、bash-preexec が最初に実行する様になっているのでそれに倣う。
 
   * global: protect overridden builtins against "set -eu" (reported by SuperSandro2000) [#D1743]
     https://github.com/akinomyoga/ble.sh/issues/169

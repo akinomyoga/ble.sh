@@ -1844,20 +1844,21 @@ function blehook/has-hook {
   ((count))
 }
 function blehook/invoke {
-  local lastexit=$? FUNCNEST=
+  local _ble_local_lastexit=$? _ble_local_lastarg=$_ FUNCNEST=
   ((_ble_hook_c_$1++))
-  local -a hooks; builtin eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
-  local hook ext=0
-  for hook in "${hooks[@]}"; do
-    if type "$hook" &>/dev/null; then
-      ble/util/setexit "$lastexit"
-      "$hook" "$@" 2>&3
+  local -a _ble_local_hooks
+  builtin eval "_ble_local_hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
+  local _ble_local_hook _ble_local_ext=0
+  for _ble_local_hook in "${_ble_local_hooks[@]}"; do
+    if type "$_ble_local_hook" &>/dev/null; then
+      ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
+      "$_ble_local_hook" "$@" 2>&3
     else
-      ble/util/setexit "$lastexit"
-      builtin eval -- "$hook" 2>&3
-    fi || ext=$?
+      ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
+      builtin eval -- "$_ble_local_hook" 2>&3
+    fi || _ble_local_ext=$?
   done
-  return "$ext"
+  return "$_ble_local_ext"
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 function blehook/eval-after-load {
   local hook_name=${1}_load value=$2
@@ -1970,13 +1971,6 @@ function ble/builtin/trap/reserve {
   ble/builtin/trap/.get-sig-index "$1" || return 1
   _ble_builtin_trap_reserved[ret]=1
 }
-function ble/builtin/trap/invoke {
-  local lastexit=$? ret
-  ble/builtin/trap/.initialize
-  ble/builtin/trap/.get-sig-index "$1" || return 1
-  ble/util/setexit "$lastexit"
-  builtin eval -- "${_ble_builtin_trap_handlers[ret]}" 2>&3
-} 3>&2 2>/dev/null # set -x 対策 #D0930
 function ble/builtin/trap {
   local set shopt; ble/base/.adjust-bash-options set shopt
   local flags command sigspecs
@@ -2052,13 +2046,14 @@ function ble/builtin/trap {
 }
 function trap { ble/builtin/trap "$@"; }
 
-function ble/builtin/trap/.invoke {
+function ble/builtin/trap/invoke.sandbox {
   local _ble_trap_count
   for ((_ble_trap_count=0;_ble_trap_count<1;_ble_trap_count++)); do
-    ble/util/setexit "$_ble_trap_ext"
-    builtin eval -- "$_ble_trap_handler"
+    _ble_trap_done=return
+    ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+    builtin eval -- "$_ble_trap_handler" 2>&3
     _ble_trap_done=done
-    return "$_ble_trap_ext"
+    return "$_ble_trap_lastexit"
   done
 
   # break/continue 検出
@@ -2067,33 +2062,58 @@ function ble/builtin/trap/.invoke {
   else
     _ble_trap_done=continue
   fi
-  return "$_ble_trap_ext"
+  return "$_ble_trap_lastexit"
 }
+## @fn ble/builtin/trap/invoke sig
+##   @param[in] sig
+##   @var[in] ? _
+##   @var[in,out] _ble_builtin_trap_postproc
+function ble/builtin/trap/invoke {
+  local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ _ble_trap_sig=$1
+  if [[ ${_ble_trap_sig//[0-9]} ]]; then
+    local ret
+    ble/builtin/trap/.initialize
+    ble/builtin/trap/.get-sig-index "$1" || return 1
+    _ble_trap_sig=$ret
+  fi
+
+  local _ble_trap_handler=${_ble_builtin_trap_handlers[_ble_trap_sig]-}
+  if [[ $_ble_trap_handler ]]; then
+    local _ble_trap_done=
+    ble/builtin/trap/invoke.sandbox; local ext=$?
+    case $_ble_trap_done in
+    (done)
+      _ble_builtin_trap_postproc="ble/util/setexit $ext" ;;
+    (break)
+      _ble_builtin_trap_postproc=break ;;
+    (continue)
+      _ble_builtin_trap_postproc=continue ;;
+    (return)
+      _ble_builtin_trap_postproc="return $ext" ;;
+    esac
+  fi
+} 3>&2 2>/dev/null # set -x 対策 #D0930
+
+## @fn ble/builtin/trap/.handler sig signame
+##   @var[out] _ble_builtin_trap_postproc
 function ble/builtin/trap/.handler {
+  local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ FUNCNEST=
+  local _ble_trap_sig=$1 _ble_trap_name=$2
   local set shopt; ble/base/.adjust-bash-options set shopt
-  local _ble_trap_ext=$? _ble_trap_sig=$1 _ble_trap_name=$2
+
+  # 透過 _ble_builtin_trap_postproc を設定
+  local _ble_local_q=\' _ble_local_Q="'\''"
+  _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastexit '${_ble_trap_lastarg//$_ble_local_q/$_ble_local_Q}'"
 
   # ble.sh hook
   ble/util/joblist.check
-  ble/util/setexit "$_ble_trap_ext"
+  ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
   blehook/invoke "$_ble_trap_name"
   ble/util/joblist.check ignore-volatile-jobs
 
   # user hook
-  local _ble_trap_handler=${_ble_builtin_trap_handlers[_ble_trap_sig]-}
-  local _ble_trap_done=
-  ble/builtin/trap/.invoke # Note: 空コマンドでも実行する
-  _ble_trap_ext=$?
-  case $_ble_trap_done in
-  (break)
-    _ble_builtin_trap_hook=break ;;
-  (continue)
-    _ble_builtin_trap_hook=continue ;;
-  (done)
-    _ble_builtin_trap_hook="ble/util/setexit $_ble_trap_ext" ;;
-  (*)
-    _ble_builtin_trap_hook="return $_ble_trap_ext" ;;
-  esac
+  ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+  ble/builtin/trap/invoke "$_ble_trap_sig"
 
   ble/base/.restore-bash-options set shopt
 }
@@ -2105,7 +2125,7 @@ function ble/builtin/trap/install-hook {
   local sig=$ret name=${_ble_builtin_trap_signames[ret]}
   ble/builtin/trap/reserve "$sig"
 
-  local handler="ble/builtin/trap/.handler $sig ${name#SIG}; builtin eval -- \"\$_ble_builtin_trap_hook\""
+  local handler="ble/builtin/trap/.handler $sig ${name#SIG}; builtin eval -- \"\$_ble_builtin_trap_postproc\""
   local trap_command="trap -- '$handler' $name"
   if [[ $opts == *:readline:* ]] && ! ble/util/is-running-in-subshell; then
     # Note #D1345: ble.sh の内部で "builtin trap -- WINCH" 等とすると

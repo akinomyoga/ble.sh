@@ -1337,6 +1337,7 @@ blehook ERR+='ble/function#try TRAPERR'
 #%x inc.r|@|lib/core-cmdspec-def|
 #%x inc.r|@|lib/core-syntax-def|
 #%x inc.r|@|lib/core-complete-def|
+#%x inc.r|@|contrib/bash-preexec-def|
 
 bleopt -I
 #------------------------------------------------------------------------------
