@@ -5894,6 +5894,16 @@ bash_tips
 
 2022-01-23
 
+  * main: IN_NIX_SHELL をチェックする (reported by SuperSandro2000) [#D1747]
+    https://github.com/akinomyoga/ble.sh/issues/169#issuecomment-1019405936
+    https://github.com/akinomyoga/ble.sh/issues/169#issuecomment-1019555462
+
+    取り敢えず IN_NIX_SHELL をチェックする事にした。
+
+    またチェックは rshell やその他のチェックよりも先に行うべきである。特に最初
+    にエラーメッセージなしで抜けるのであれば、それは他の条件でエラーメッセージ
+    が表示される前に一番最初にチェックするべきなのである。
+
   * util: _ble_term_TERM が空になっている問題 [#D1746]
 
     mintty で _ble_term_TERM が空になっている。何故か。unknown が設定されるので

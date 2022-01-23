@@ -137,6 +137,12 @@ if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
+if [[ ${BASH_EXECUTION_STRING+set} || ${IN_NIX_SHELL-} ]]; then
+  # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&3
+  # builtin echo "ble.sh: ble.sh will not be activated for nix-shell command execution." >&3
+  return 1 2>/dev/null || builtin exit 1
+fi 3>&2 &>/dev/null # set -x 対策 #D0930
+
 if [[ ! $_ble_init_command ]]; then
   if ((BASH_SUBSHELL)); then
     builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&3
@@ -433,15 +439,6 @@ fi
 
 if shopt -q restricted_shell; then
   builtin echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
-  ble/base/restore-bash-options
-  ble/base/restore-builtin-wrappers
-  ble/base/restore-POSIXLY_CORRECT
-  builtin eval -- "$_ble_bash_FUNCNEST_restore"
-  return 1 2>/dev/null || builtin exit 1
-fi
-
-if [[ ${BASH_EXECUTION_STRING+set} ]]; then
-  # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&2
   ble/base/restore-bash-options
   ble/base/restore-builtin-wrappers
   ble/base/restore-POSIXLY_CORRECT
