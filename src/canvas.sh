@@ -1255,7 +1255,9 @@ function ble/textmap#update/.wrap {
     cs=$cs${_ble_term_cud//'%d'/1}
     changed=1
   elif ((xenl)); then
-    cs=$cs$_ble_term_nl
+    # Note #D1745: 自動改行は CR で表現する事にする。この CR は実際の
+    # 出力時に LF または空文字列に置換する。
+    cs=$cs$_ble_term_cr
     changed=1
   fi
   ((y++,x=0))
@@ -1384,7 +1386,7 @@ function ble/textmap#update {
               if [[ $_ble_term_ech ]]; then
                 eraser=${_ble_term_ech//'%d'/$pad}
               else
-                eraser=${_ble_string_prototype::cols-x}
+                eraser=${_ble_string_prototype::pad}
                 ((x=cols))
               fi
             fi
@@ -1416,9 +1418,18 @@ function ble/textmap#update {
           if [[ :$opts: == *:relative:* ]]; then
             cs=${_ble_term_cub//'%d'/$cols}${_ble_term_cud//'%d'/1}$cs
           elif ((xenl)); then
-            cs=$_ble_term_nl$cs
+            # Note #D1745: 自動改行は CR で表現する事にする。この CR
+            # は実際の出力時に LF または空文字列に置換する。
+            cs=$_ble_term_cr$cs
           fi
-          cs=${_ble_string_prototype::cols-x}$cs
+          local pad=$((cols-x))
+          if ((pad)); then
+            if [[ $_ble_term_ech ]]; then
+              cs=${_ble_term_ech//'%d'/$pad}$cs
+            else
+              cs=${_ble_string_prototype::pad}$cs
+            fi
+          fi
           ((x=cols,changed=1,wrapping=1))
         fi
 
