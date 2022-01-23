@@ -135,7 +135,7 @@
 - highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
   - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
 - edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
-- canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 0000000
+- canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 0000000
 
 ## Fixes
 
@@ -189,7 +189,7 @@
 - Makefile: create `run` directory instead of `tmp` `#D1557` 9bdb37d
 - main: fix the workaround for `set -e` `#D1564` ab2f70b
   - main: fix the workaround for `set -u` `#D1575` 76073a9
-  - main: fix the workaround for `set -eu` and refactor `#D1743` 0000000
+  - main: fix the workaround for `set -eu` and refactor `#D1743` 6a946f0
 - util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 24f79da
 - sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 5d85238
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
@@ -292,8 +292,8 @@
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
 - global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 7545ea3
 - global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 4590997
-- global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 0000000
-- util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` 0000000
+- global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 001c595
+- util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
 
 ## Internal changes and fixes
 

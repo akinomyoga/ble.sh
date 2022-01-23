@@ -1342,6 +1342,11 @@ bash_tips
 
   * bash-completion
 
+    2022-01-23
+
+    https://github.com/scop/bash-completion/pull/687#discussion_r790203991 : IFS=$'\0' in mount
+    https://github.com/scop/bash-completion/pull/687#discussion_r790203132 : mechanism of save/restore shopt
+
     2022-01-11
 
     * bash-completion: curl　の抽出オプションが極端に少ないのは何故か→これは
@@ -5994,6 +5999,21 @@ bash_tips
       ./src/edit.sh:2559:    IFS= builtin eval "ret=\"\$ret\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
 
     → b の方針で実装した。動いている気がする。
+
+    x 2022-01-23 動いていると思ったら勘違いだった。丁度行末に改行がある時に座標
+      がずれてしまう。何かと思ったら \r\n を \n\n に置換しようという所で、間に
+      SGR がある為に置換しきれていないのが原因の様である。
+
+      うーん。これはどうしたら良いのか。単純な置換だと無理の気がする。或いは間
+      に来る SGR が既知であれば固定文字列として置換する事もできる。。と思ったが、
+      そもそも不特定の \r\n の組を対象にして一括置換しようとしているのだから、
+      固定文字列になっている筈がない。うーん。間に入るのは単一 SGR なのだろうか
+      →実装を確認した所 sgr 決め打ちである。という事であれば extglob さえ使え
+      ば置換はできる…と思ったが置換後が固定文字列になってしまうので駄目である。
+
+      うーん。という事を考えるとやはり正規表現で \r を一つずつ一致させて処理す
+      るしか無いのだろうか→うーん。その様にして実装した。CSI seq, ESC seq, 及
+      び SI SO を跨いで改行を検出する様にした。
 
 2022-01-21
 

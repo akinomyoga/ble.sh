@@ -96,6 +96,15 @@ function ble-color-show {
 ## @fn ble/color/g2sgr-ansi g
 ##   @param[in] g
 ##   @var[out] ret
+##
+#
+# Note: もし SGR 以外の制御機能を使って (tput 等の出力を用いて) 描画シー
+#   ケンスを構築する様に拡張する場合には、
+#   ble/textarea#slice-text-buffer に於いて行っている CR LF の組の検出
+#   において、間に許容する制御機能の種類に注意する。もし考慮に入れてい
+#   ない物をここで使いたい時には、それを
+#   ble/textarea#slice-text-buffer の正規表現に追加しなければならない。
+#
 _ble_color_g2sgr=()
 _ble_color_g2sgr_ansi=()
 function ble/color/g2sgr/.impl {
