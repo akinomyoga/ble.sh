@@ -2557,6 +2557,23 @@ function ble/textarea#slice-text-buffer {
     ble/highlight/layer/getg "$i1"
     ble/color/g2sgr "$g"
     IFS= builtin eval "ret=\"\$ret\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
+
+    if [[ $_ble_textarea_bufferName == _ble_textarea_buffer ]]; then
+      # Note #D1745: 自動折返し改行は \r で符号化されている。末尾及び \n 直前の
+      # 自動折返しは \n に変換し、それ以外は削除する。
+      ret=${ret//$_ble_term_cr$_ble_term_nl/"$_ble_term_nl$_ble_term_nl"}
+      if ((i2==iN)); then
+        # 末尾に自動折返しがある時、本当の末尾にいる時には空白で強制的に自動折
+        # 返しを起こした後に空白を削除する。
+        ret=${ret/%$_ble_term_cr/" $_ble_term_cr${_ble_term_ech//'%d'/1}"}
+      else
+        # それ以外の時は、末尾の自動折返しは明示的改行に置換する。これにより行
+        # が寸断されてしまうが、こうしないと端末の座標計算が壊れるので仕方がな
+        # い。
+        ret=${ret/%$_ble_term_cr/"$_ble_term_nl"}
+      fi
+      ret=${ret//$_ble_term_cr}
+    fi
   else
     ret=
   fi

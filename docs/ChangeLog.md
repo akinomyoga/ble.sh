@@ -135,6 +135,7 @@
 - highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
   - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
 - edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
+- canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 0000000
 
 ## Fixes
 
@@ -291,8 +292,8 @@
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
 - global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 7545ea3
 - global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 4590997
-- global (`ble/builtin/*`): work around `set -eu` in NixOS initialization `#D1743` 0000000
-- util, edit, contrib: add support for `bash-preexec` `#D1744` 0000000
+- global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 0000000
+- util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` 0000000
 
 ## Internal changes and fixes
 
