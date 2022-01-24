@@ -171,7 +171,9 @@ function ble/dense-array#fill-range {
   _ble_util_array_prototype.reserve $(($3-$2))
   local _ble_script='
     local -a sARR; sARR=("${_ble_util_array_prototype[@]::$3-$2}")
-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/"$4"}" "${ARR[@]:$3}")' # WA #D1570 checked
+      ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
+  ((_ble_bash>=40300)) && ! shopt -q compat42 &&
+    _ble_script=${_ble_script//'$4'/'"$4"'}
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
@@ -190,7 +192,7 @@ function _ble_util_string_prototype.reserve {
 function ble/string#repeat {
   _ble_util_string_prototype.reserve "$2"
   ret=${_ble_util_string_prototype::$2}
-  ret=${ret//' '/"$1"}
+  ret=${ret// /"$1"}
 }
 
 ## 関数 ble/string#common-prefix a b
@@ -420,14 +422,20 @@ function ble/string#escape-for-extended-regex {
   fi
 }
 
-function ble/util/strlen {
+function ble/util/strlen.impl {
   local LC_ALL= LC_CTYPE=C
   ret=${#1}
-} 2>/dev/null
-function ble/util/substr {
+}
+function ble/util/strlen {
+  ble/util/strlen.impl "$@" 2>/dev/null
+}
+function ble/util/substr.impl {
   local LC_ALL= LC_CTYPE=C
   ret=${1:$2:$3}
-} 2>/dev/null
+}
+function ble/util/substr {
+  ble/util/substr.impl "$@" 2>/dev/null # suppress locale error #D1440
+}
 
 ## 関数 ble/builtin/trap/set-readline-signal sig handler
 ##   ble.sh 内部で使用するハンドラを登録します。
