@@ -162,6 +162,8 @@ bleopt/declare -v prompt_status_line  ''
 bleopt/declare -n prompt_status_align $'justify=\r'
 ble/color/defface prompt_status_line fg=231,bg=240
 
+bleopt/declare -v prompt_command_changes_layout ''
+
 function bleopt/check:prompt_status_align {
   case $value in
   (left|right|center|justify|justify=?*)
@@ -277,6 +279,8 @@ function ble/application/render {
   local render=$_ble_app_render_mode
   case $render in
   (panel)
+    local _ble_prompt_update=owner
+    ble/prompt/update
     ble/edit/leave-command-layout # ble/edit 特有
     ble/canvas/panel/render ;;
   (forms:*)
@@ -1427,20 +1431,46 @@ function ble/prompt/update/.eval-prompt_command {
 ##     leave ... 次行に行く直前の最後の表示である事を示します。
 ##               これが指定された時 transient prompt 等の処理を実行します。
 ##
+##   @var[in,out] _ble_prompt_update_dirty
+##   @var[in,out] _ble_prompt_rps1_enabled
+##
 ##   @var[in]  _ble_edit_PS1
 ##     構築されるプロンプトの内容を指定します。
 ##   @var[out] _ble_prompt_ps1_data
 ##     構築したプロンプトの情報を格納します。
+_ble_prompt_update=
+_ble_prompt_update_dirty=
+_ble_prompt_rps1_enabled=
 function ble/prompt/update {
   local opts=:$1: dirty=
 
+  local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
+  if [[ :$opts: == *:check-dirty:* && $_ble_prompt_update == owner ]]; then
+    if [[ $_ble_prompt_update_dirty && :$opts: != *:leave:* && $_ble_prompt_hash == "$version" ]]; then
+      [[ $_ble_prompt_update_dirty == dirty ]]; local ext=$?
+      _ble_prompt_update_dirty=done
+      return "$ext"
+    fi
+  fi
+
   ble/prompt/timeout/check
 
+  _ble_prompt_rps1_enabled=
+
   # Update PS1 in PROMPT_COMMAND / PRECMD
-  local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
   if ((_ble_textarea_panel==0)); then # 補助プロンプトに対しては PROMPT_COMMAND は実行しない
     if [[ $_ble_prompt_hash != "$version" && $opts != *:leave:* ]]; then
       if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
+        # #D1750 PROMPT_COMMAND 及び PRECMD が何か出力する時は表示が乱れるので
+        # クリアする。点滅などを避ける為、既定では off にしておく。
+        if [[ $bleopt_prompt_command_changes_layout ]]; then
+          ble/edit/enter-command-layout
+          local -a DRAW_BUFF=()
+          ble/canvas/panel#goto.draw 0 0 0 sgr0
+          ble/canvas/bflush.draw
+          ble/util/buffer.flush >&2
+        fi
+
         ble-edit/restore-PS1
         ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
         ble/prompt/update/.eval-prompt_command
@@ -1488,12 +1518,12 @@ function ble/prompt/update {
   # bleopt prompt_rps1
   if [[ :$opts: == *:leave:* && ! $rps1f && $bleopt_prompt_rps1_transient ]]; then
     # prompt_rps1_transient による消去 (以前の大きさを保持)
-    [[ ${_ble_prompt_rps1_data[10]} ]] && dirty=1 rps1_enabled=erase
+    [[ ${_ble_prompt_rps1_data[10]} ]] && dirty=1 _ble_prompt_rps1_enabled=erase
 
   else
     [[ $prompt_rps1 || ${_ble_prompt_rps1_data[10]} ]] &&
       ble/prompt/unit#update _ble_prompt_rps1 && dirty=1
-    [[ ${_ble_prompt_rps1_data[10]} ]] && rps1_enabled=1
+    [[ ${_ble_prompt_rps1_data[10]} ]] && _ble_prompt_rps1_enabled=1
   fi
 
   # bleopt prompt_xterm_title
@@ -1521,6 +1551,7 @@ function ble/prompt/update {
   [[ $bleopt_prompt_status_line || ${_ble_prompt_status_data[10]} ]] &&
     ble/prompt/unit#update _ble_prompt_status && dirty=1
 
+  [[ $dirty ]] && _ble_prompt_update_dirty=dirty
   [[ $dirty ]]
 }
 function ble/prompt/clear {
@@ -2891,8 +2922,8 @@ function ble/textarea#render {
   local ble_textarea_render_flag=1 # ble/textarea#panel::onHeightChange から参照する
   local caret_state=$_ble_textarea_version:$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode
 
-  local dirty= rps1_enabled=
-  if ble/prompt/update "$opts"; then
+  local dirty=
+  if ble/prompt/update "check-dirty:$opts"; then
     dirty=1
   elif ((_ble_edit_dirty_draw_beg>=0)); then
     dirty=1
@@ -2916,6 +2947,7 @@ function ble/textarea#render {
 
   local cols=${COLUMNS-80}
   local rps1_width=${_ble_prompt_rps1_data[11]}
+  local rps1_enabled=$_ble_prompt_rps1_enabled
   _ble_prompt_rps1_data[12]=$rps1_enabled
   if [[ $rps1_enabled ]]; then
     ((cols-=rps1_width+1,_ble_term_xenl||cols--))

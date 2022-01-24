@@ -192,6 +192,19 @@
 #bleopt prompt_ruler=$'\e[94m-'  # blue line
 
 
+## "prompt_command_changes_layout" specifies whether the commands called from
+## the blehook PRECMD or the variable PROMPT_COMMAND output texts to the
+## terminal and changes the layout.  When a non-empty value is specified,
+## ble.sh resets the layout before running the hooks PRECMD and PROMPT_COMMAND
+## and restores the layout after running the hooks.  When a empty value is
+## specified, ble.sh assumes that these hooks do not output texts to the
+## terminal and do not changes the cursor positions and skip the special
+## treatment.
+
+#bleopt prompt_command_changes_layout=   # PRECMD/PROMPT_COMMAND not output
+#bleopt prompt_command_changes_layout=1  # PRECMD/PROMPT_COMMAND may output
+
+
 ## "exec_errexit_mark" specifies the format of the mark to show the exit status
 ## of the command when it is non-zero.  If this setting is an empty string the
 ## exit status will not be shown.  The value can contain ANSI escape sequences.
