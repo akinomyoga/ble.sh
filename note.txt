@@ -5894,6 +5894,15 @@ bash_tips
 
 2022-01-24
 
+  * main: /dev/tty が割り当てられていない時にも ble.sh は初期化しない [#D1749]
+    https://github.com/oilshell/oil/issues/1069#issuecomment-1017189089
+
+    Docker でロードしようとしている時に失敗する。
+
+    後、--test や --update 等の時には通常コマンドとして動作するので様々のチェッ
+    クを無視して良い。更に言うとそもそも /dev/tty から端末を取得しようとする事
+    自体が不要である。取り敢えずその様に実装した。
+
   * canvas: wezterm で DECSTBM のクリアに失敗している [#D1748]
     https://github.com/akinomyoga/ble.sh/issues/96#issuecomment-1019570983
 

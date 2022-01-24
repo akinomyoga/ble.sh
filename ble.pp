@@ -137,13 +137,13 @@ if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
-if [[ ${BASH_EXECUTION_STRING+set} || ${IN_NIX_SHELL-} ]]; then
-  # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&3
-  # builtin echo "ble.sh: ble.sh will not be activated for nix-shell command execution." >&3
-  return 1 2>/dev/null || builtin exit 1
-fi 3>&2 &>/dev/null # set -x 対策 #D0930
-
 if [[ ! $_ble_init_command ]]; then
+  if [[ ${BASH_EXECUTION_STRING+set} || ${IN_NIX_SHELL-} ]]; then
+    # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&3
+    # builtin echo "ble.sh: ble.sh will not be activated for nix-shell command execution." >&3
+    return 1 2>/dev/null || builtin exit 1
+  fi
+
   if ((BASH_SUBSHELL)); then
     builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&3
     return 1 2>/dev/null || builtin exit 1
@@ -152,6 +152,9 @@ if [[ ! $_ble_init_command ]]; then
     (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
     esac  &&
       builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
+    return 1 2>/dev/null || builtin exit 1
+  elif ! [[ -t 0 && -t 1 ]] && ! ((1)) >/dev/tty; then
+    builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
     return 1 2>/dev/null || builtin exit 1
   fi
 fi 3>&2 &>/dev/null # set -x 対策 #D0930

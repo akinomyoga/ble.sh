@@ -3171,20 +3171,27 @@ function ble/fd#close {
 ## @var _ble_util_fd_null
 ## @var _ble_util_fd_zero
 ##   既に定義されている場合は継承する
-if [[ -t 0 ]]; then
-  ble/fd#alloc _ble_util_fd_stdin '<&0' base:overwrite:export
+if [[ $_ble_init_command ]]; then
+  # コマンドモードで実行している時には標準ストリームはそのまま使う。
+  _ble_util_fd_stdin=0
+  _ble_util_fd_stdout=1
+  _ble_util_fd_stderr=2
 else
-  ble/fd#alloc _ble_util_fd_stdin '< /dev/tty' base:inherit
-fi
-if [[ -t 1 ]]; then
-  ble/fd#alloc _ble_util_fd_stdout '>&1' base:overwrite:export
-else
-  ble/fd#alloc _ble_util_fd_stdout '> /dev/tty' base:inherit
-fi
-if [[ -t 2 ]]; then
-  ble/fd#alloc _ble_util_fd_stderr '>&2' base:overwrite:export
-else
-  ble/fd#alloc _ble_util_fd_stderr ">&$_ble_util_fd_stdout" base:inherit:share
+  if [[ -t 0 ]]; then
+    ble/fd#alloc _ble_util_fd_stdin '<&0' base:overwrite:export
+  else
+    ble/fd#alloc _ble_util_fd_stdin '< /dev/tty' base:inherit
+  fi
+  if [[ -t 1 ]]; then
+    ble/fd#alloc _ble_util_fd_stdout '>&1' base:overwrite:export
+  else
+    ble/fd#alloc _ble_util_fd_stdout '> /dev/tty' base:inherit
+  fi
+  if [[ -t 2 ]]; then
+    ble/fd#alloc _ble_util_fd_stderr '>&2' base:overwrite:export
+  else
+    ble/fd#alloc _ble_util_fd_stderr ">&$_ble_util_fd_stdout" base:inherit:share
+  fi
 fi
 ble/fd#alloc _ble_util_fd_null '<> /dev/null' base:inherit
 [[ -c /dev/zero ]] &&

@@ -297,6 +297,7 @@
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell `#D1747` 0000000
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 0000000
+- main: check `/dev/tty` on startup (reported by andychu) `#D1749` 0000000
 
 ## Internal changes and fixes
 
