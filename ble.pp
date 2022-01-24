@@ -62,10 +62,13 @@ if ((BASH_SUBSHELL)); then
 elif [[ $- != *i* ]]; then
   case " ${BASH_SOURCE[*]##*/} " in
   (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
-  esac  &&
+  esac &&
     builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
   return 1 2>/dev/null || builtin exit 1
-fi 3>&2 &>/dev/null # set -x 対策 #D0930
+elif ! [[ -t 4 && -t 5 ]]; then
+  builtin echo "ble.sh: cannot find the correct TTY/PTY in this session." >&3
+  return 1 2>/dev/null || builtin exit 1
+fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
 
 function ble/base/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1 || :
