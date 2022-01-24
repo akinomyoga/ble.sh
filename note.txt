@@ -5892,6 +5892,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-01-24
+
+  * canvas: wezterm で DECSTBM のクリアに失敗している [#D1748]
+    https://github.com/akinomyoga/ble.sh/issues/96#issuecomment-1019570983
+
+    kitty もそうだったが \e[;r では DECSTBM をクリアできない模様。
+    DECSTBM と同様にその場で端末をテストする事にした。修正した。
+    この問題については解決した。
+
 2022-01-23
 
   * main: IN_NIX_SHELL をチェックする (reported by SuperSandro2000) [#D1747]

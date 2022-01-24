@@ -5755,6 +5755,8 @@ function ble/term/DA2/initialize-term {
   da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈 (#D1570 is-array OK)
 
   case $DA2R in
+  ('0;0;0')
+    _ble_term_TERM[depth]=wezterm:0 ;;
   ('1;0'?????';0')
     _ble_term_TERM[depth]=foot:${DA2R:3:5} ;;
   ('1;'*)
@@ -5878,17 +5880,34 @@ function ble/term/quote-passthrough {
 }
 
 _ble_term_DECSTBM=
-function ble/term/test-DECSTBM.hook {
+_ble_term_DECSTBM_reset=
+function ble/term/test-DECSTBM.hook1 {
   (($1==2)) && _ble_term_DECSTBM=$'\e[%s;%sr'
 }
+function ble/term/test-DECSTBM.hook2 {
+  if [[ $_ble_term_DECSTBM ]]; then
+    if (($1==2)); then
+      # Failed to reset DECSTBM with \e[;r
+      _ble_term_DECSTBM_reset=$'\e[r'
+    else
+      _ble_term_DECSTBM_reset=$'\e[;r'
+    fi
+  fi
+}
 function ble/term/test-DECSTBM {
+  # Note: kitty 及び wezterm では SCORC と区別できる形の \e[;r では復
+  # 帰できない。
   local -a DRAW_BUFF=()
   ble/canvas/panel/goto-top-dock.draw
   ble/canvas/put.draw "$_ble_term_sc"$'\e[1;2r'
   ble/canvas/put-cup.draw 2 1
   ble/canvas/put-cud.draw 1
-  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook
-  ble/canvas/put.draw $'\e[;r'"$_ble_term_rc"
+  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook1
+  ble/canvas/put.draw $'\e[;r'
+  ble/canvas/put-cup.draw 2 1
+  ble/canvas/put-cud.draw 1
+  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook2
+  ble/canvas/put.draw $'\e[r'"$_ble_term_rc"
   ble/canvas/bflush.draw
 }
 

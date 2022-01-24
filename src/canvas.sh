@@ -2987,7 +2987,7 @@ function ble/canvas/panel/increase-total-height.draw {
       ble/canvas/put-ind.draw $((top_height-1+delta-_ble_canvas_y))
       ((_ble_canvas_y=top_height-1+delta))
       ble/canvas/excursion-start.draw
-      ble/canvas/put.draw $'\e[r' # Note: Kitty は CSI ; r を認識しない
+      ble/canvas/put.draw "$_ble_term_DECSTBM_reset"
       ble/canvas/excursion-end.draw
       return 0
     else
@@ -3177,7 +3177,7 @@ function ble/canvas/panel/ensure-tmargin.draw {
         ble/canvas/excursion-end.draw
       fi
       ble/canvas/excursion-start.draw
-      ble/canvas/put.draw $'\e[;r'
+      ble/canvas/put.draw "$_ble_term_DECSTBM_reset"
       ble/canvas/excursion-end.draw
       ble/canvas/panel/load-position.draw "$pos"
       return 0
