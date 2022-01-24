@@ -263,14 +263,9 @@ function ble-edit/prompt/.load {
 ##   @var[out]  DRAW_BUFF[]
 ##     出力先の配列です。
 function ble-edit/prompt/print {
-  local text=$1 a b
-  if [[ $text == *['$\"`']* ]]; then
-    a='\' b='\\' text=${text//"$a"/"$b"}
-    a='$' b='\$' text=${text//"$a"/"$b"}
-    a='"' b='\"' text=${text//"$a"/"$b"}
-    a='`' b='\`' text=${text//"$a"/"$b"}
-  fi
-  ble/canvas/put.draw "$text"
+  local ret=$1
+  ble/string#escape-characters "$ret" '\$"`'
+  ble/canvas/put.draw "$ret"
 }
 
 ## 関数 ble-edit/prompt/process-prompt-string prompt_string

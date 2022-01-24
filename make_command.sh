@@ -169,6 +169,11 @@ function sub:check/bash502-patsub_replacement {
       \Z#D1738Zd
       \Z\$\{_ble_edit_str//\$'\''\\n'\''/\$'\''\\n'\''"\$comment_begin"\}Zd # edit.sh
       g'
+
+  grc --color '"[^"]*\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}"'\'']*"[^"]*([&$]|\\)' --exclude=./test |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z#D1751Zd
+      g'
 }
 
 function sub:check/gawk402bug-regex-check {

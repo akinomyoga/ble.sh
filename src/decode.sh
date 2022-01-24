@@ -2119,7 +2119,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
   local q=\' b=\\ Q="'\''"
   # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンスも処理される
   [[ $_ble_bin_awk_solaris_xpg4 == yes ]] && Q="'$b$b''"
-  local QUOT_Q=\"${Q//"$b"/"$b$b"}\"
+  local QUOT_Q=\"${Q//"$b"/"$b$b"}\" # WA #D1751 checked
   LC_ALL=C ble/bin/awk -v q="$q" '
     BEGIN {
       Q = '"$QUOT_Q"';

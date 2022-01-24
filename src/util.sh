@@ -4,7 +4,7 @@
 #------------------------------------------------------------------------------
 # ble.sh options
 
-## 関数 bleopt args...
+## @fn bleopt args...
 ##   @params[in] args
 ##     args は以下の内の何れかの形式を持つ。
 ##
@@ -402,8 +402,10 @@ function ble/array#last-index {
 function ble/dense-array#fill-range {
   ble/array#reserve-prototype $(($3-$2))
   local _ble_script='
-    local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/"$4"}" "${ARR[@]:$3}")' # WA #D1570 checked
+      local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
+      ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
+  ((_ble_bash>=40300)) && ! shopt -q compat42 &&
+    _ble_script=${_ble_script//'$4'/'"$4"'}
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
@@ -422,7 +424,7 @@ function ble/string#reserve-prototype {
 function ble/string#repeat {
   ble/string#reserve-prototype "$2"
   ret=${_ble_string_prototype::$2}
-  ret="${ret// /"$1"}"
+  ret=${ret// /"$1"}
 }
 
 ## 関数 ble/string#common-prefix a b
@@ -731,7 +733,7 @@ function ble/string#escape-for-bash-single-quote {
 function ble/string#escape-for-bash-double-quote {
   ble/string#escape-characters "$1" '\"$`'
   local a b
-  a='!' b='"\!"' ret=${ret//"$a"/"$b"}
+  a='!' b='"\!"' ret=${ret//"$a"/"$b"} # WA #D1751 checked
 }
 function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$1" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
@@ -758,7 +760,7 @@ function ble/string#escape-for-bash-specialchars {
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/"$b"}
-    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"} # WA #D1751 checked
     a=$'\t' b=$'\\\t'  ret=${ret//"$a"/"$b"}
   fi
 
@@ -832,7 +834,7 @@ function ble/string#escape-for-bash-specialchars-in-brace {
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/"$b"}
-    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"} # WA #D1751 checked
     a=$'\t' b=$' \t'   ret=${ret//"$a"/"$b"}
   fi
 }
@@ -923,7 +925,8 @@ function ble/util/substr {
 
 function ble/path#add {
   local _ble_local_script='opts=$opts${opts:+:}$2'
-  builtin eval -- "${_ble_local_script//opts/"$1"}"
+  _ble_local_script=${_ble_local_script//opts/"$1"}
+  builtin eval -- "$_ble_local_script"
 }
 function ble/path#remove {
   [[ $2 ]] || return
@@ -931,7 +934,8 @@ function ble/path#remove {
     opts=:${opts//:/::}:
     opts=${opts//:"$2":}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
-  builtin eval -- "${_ble_local_script//opts/"$1"}"
+  _ble_local_script=${_ble_local_script//opts/"$1"}
+  builtin eval -- "$_ble_local_script"
 }
 function ble/path#remove-glob {
   [[ $2 ]] || return
@@ -939,7 +943,8 @@ function ble/path#remove-glob {
     opts=:${opts//:/::}:
     opts=${opts//:$2:}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
-  builtin eval -- "${_ble_local_script//opts/"$1"}"
+  _ble_local_script=${_ble_local_script//opts/"$1"}
+  builtin eval -- "$_ble_local_script"
 }
 
 if ((_ble_bash>=40000)); then
@@ -3275,7 +3280,8 @@ function ble/term/cursor-state/.update {
   local state=$(($1))
   [[ $_ble_term_cursor_current == "$state" ]] && return
 
-  ble/util/buffer "${_ble_term_Ss//@1/"$state"}"
+  local esc=${_ble_term_Ss//@1/"$state"}
+  ble/util/buffer "$esc"
 
   _ble_term_cursor_current=$state
 }

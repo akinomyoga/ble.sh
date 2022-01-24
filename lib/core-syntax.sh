@@ -3625,10 +3625,10 @@ function ble/syntax:bash/ctx-heredoc-word/remove-quotes {
       if rex='^\$?"(([^\"]|\\.)*)(\\?$|")'; [[ $text =~ $rex ]]; then
         local str=${BASH_REMATCH[1]}
         local a b
-        b='\`' a='`'; str="${str//"$b"/"$a"}"
-        b='\"' a='"'; str="${str//"$b"/"$a"}"
-        b='\$' a='$'; str="${str//"$b"/"$a"}"
-        b='\\' a='\'; str="${str//"$b"/"$a"}"
+        b='\`' a='`'; str=${str//"$b"/"$a"}
+        b='\"' a='"'; str=${str//"$b"/"$a"} # WA #D1751 safe
+        b='\$' a='$'; str=${str//"$b"/"$a"}
+        b='\\' a='\'; str=${str//"$b"/"$a"}
         result=$result$str
         text=${text:${#BASH_REMATCH}}
         continue
@@ -3664,12 +3664,12 @@ function ble/syntax:bash/ctx-heredoc-word/escape-delimiter {
   local ret=$1
   if [[ $ret == *[\\\'$_ble_syntax_bash_IFS$_ble_term_FS]* ]]; then
     local a b fs=$_ble_term_FS
-    a=\\   ; b="\\$a"; ret="${ret//"$a"/"$b"}"
-    a=\'   ; b="\\$a"; ret="${ret//"$a"/"$b"}"
-    a=' '  ; b="$_ble_syntax_bash_heredoc_EscSP"; ret="${ret//"$a"/"$b"}"
-    a=$'\t'; b="$_ble_syntax_bash_heredoc_EscHT"; ret="${ret//"$a"/"$b"}"
-    a=$'\n'; b="$_ble_syntax_bash_heredoc_EscLF"; ret="${ret//"$a"/"$b"}"
-    a=$fs  ; b="$_ble_syntax_bash_heredoc_EscFS"; ret="${ret//"$a"/"$b"}"
+    a=\\   ; b='\'$a; ret=${ret//"$a"/"$b"}
+    a=\'   ; b='\'$a; ret=${ret//"$a"/"$b"}
+    a=' '  ; b=$_ble_syntax_bash_heredoc_EscSP; ret=${ret//"$a"/"$b"}
+    a=$'\t'; b=$_ble_syntax_bash_heredoc_EscHT; ret=${ret//"$a"/"$b"}
+    a=$'\n'; b=$_ble_syntax_bash_heredoc_EscLF; ret=${ret//"$a"/"$b"}
+    a=$fs  ; b=$_ble_syntax_bash_heredoc_EscFS; ret=${ret//"$a"/"$b"}
   fi
   escaped=$ret
 }
