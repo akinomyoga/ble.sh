@@ -212,6 +212,25 @@
 #bleopt exec_errexit_mark=$'\e[91m[ble: exit %d]\e[m'
 
 
+## "exec_elapsed_mark" specifies the format of the command execution time
+## report.  It takes two arguments: the first is the string that explains the
+## elapsed time, and the second is a number that represents the percentage of
+## CPU core usage.  "exec_elapsed_enabled" specifies the condition that the
+## command execution time report is displayed after the command execution.  The
+## condition is expressed by an arithmetic expression, where a non-zero result
+## causes displaying the report.  In the arithmetic expression, variables
+## "real", "{usr,sys}{,_self,_child}", and "cpu" can be used.  "real"
+## represents the elapsed time.  "usr" and "sys" represent the user and system
+## time, respectively.  The suffixes "_self" and "_child" represent the part
+## consumed in the main shell process and the other child processes including
+## subshells and external programs, respectively.  "cpu" represents the
+## percentage of the CPU core usage in integer, which can be calculated by
+## "(usr+sys)*100/real".  The other values are all in unit of milliseconds.
+
+#bleopt/declare -v exec_elapsed_mark $'\e[94m[ble: elapsed %s (CPU %s%%)]\e[m'
+#bleopt/declare -v exec_elapsed_enabled 'usr+sys>=10000'
+
+
 ## The following setting controls the exit when jobs are remaining. When an
 ## empty string is set, the shell will never exit with remaining jobs through
 ## widgets. When an non-empty value is set, the shell will exit when exit is

@@ -235,6 +235,9 @@ bleopt/declare -v accept_line_threshold 5
 ##   この変数が空の時、終了ステータスは表示しません。
 bleopt/declare -v exec_errexit_mark $'\e[91m[ble: exit %d]\e[m'
 
+bleopt/declare -v exec_elapsed_mark $'\e[94m[ble: elapsed %s (CPU %s%%)]\e[m'
+bleopt/declare -v exec_elapsed_enabled 'usr+sys>=10000'
+
 ## @bleopt line_limit_length
 ##   一括挿入時のコマンドライン文字数の上限を指定します。
 ##   0以下の値は文字数に制限を与えない事を示します。
@@ -5399,6 +5402,222 @@ function ble/builtin/exit {
 
 function exit { ble/builtin/exit "$@"; }
 
+# start time - end time - end
+
+# time Command による計測
+_ble_exec_time_TIMEFILE=$_ble_base_run/$$.exec.time
+_ble_exec_time_TIMEFORMAT=
+_ble_exec_time_tot=
+_ble_exec_time_usr=
+_ble_exec_time_sys=
+function ble/exec/time#adjust-TIMEFORMAT {
+  if [[ ${TIMEFORMAT+set} ]]; then
+    _ble_exec_time_TIMEFORMAT=$TIMEFORMAT
+  else
+    builtin unset -v _ble_exec_time_TIMEFORMAT
+  fi
+  TIMEFORMAT='%R %U %S'
+}
+function ble/exec/time#restore-TIMEFORMAT {
+  if [[ ${_ble_exec_time_TIMEFORMAT+set} ]]; then
+    TIMEFORMAT=$_ble_exec_time_TIMEFORMAT
+  else
+    builtin unset -v 'TIMEFORMAT[0]'
+  fi
+  local tot usr sys dummy
+  IFS=' ' builtin read -r tot usr sys dummy < "$_ble_exec_time_TIMEFILE"
+  ((_ble_exec_time_tot=10#0${tot//[!0-9]}))
+  ((_ble_exec_time_usr=10#0${usr//[!0-9]}))
+  ((_ble_exec_time_sys=10#0${sys//[!0-9]}))
+}
+
+_ble_exec_time_TIMES=$_ble_base_run/$$.exec.times
+_ble_exec_time_usr_self=
+_ble_exec_time_sys_self=
+function ble/exec/time/times.parse-time {
+  local rex='^([0-9]+m)?([0-9]*)([^0-9ms][0-9]{3})?s?$'
+  [[ $1 =~ $rex ]] || return 1
+  local min=$((10#0${BASH_REMATCH[1]%m}))
+  local sec=$((10#0${BASH_REMATCH[2]}))
+  local msc=$((10#0${BASH_REMATCH[3]#?}))
+  ((ret=(min*60+sec)*1000+msc))
+  return 0
+} 2>/dev/tty
+function ble/exec/time/times.start {
+  builtin times >| "$_ble_exec_time_TIMES"
+}
+function ble/exec/time/times.end {
+  builtin times >> "$_ble_exec_time_TIMES"
+  local times
+  ble/util/readfile times "$_ble_exec_time_TIMES"
+  ble/string#split-words times "$times"
+
+  _ble_exec_time_usr_self=
+  _ble_exec_time_sys_self=
+  local ret= t1 t2
+  ble/exec/time/times.parse-time "${times[0]}" && t1=$ret &&
+    ble/exec/time/times.parse-time "${times[4]}" && t2=$ret &&
+    ((_ble_exec_time_usr_self=t2>t1?t2-t1:0,
+      _ble_exec_time_usr_self>_ble_exec_time_usr&&(
+        _ble_exec_time_usr_self=_ble_exec_time_usr)))
+  ble/exec/time/times.parse-time "${times[1]}" && t1=$ret &&
+    ble/exec/time/times.parse-time "${times[5]}" && t2=$ret &&
+    ((_ble_exec_time_sys_self=t2>t1?t2-t1:0,
+      _ble_exec_time_sys_self>_ble_exec_time_sys&&(
+        _ble_exec_time_sys_self=_ble_exec_time_sys)))
+  return 0
+}
+function ble/exec/time#mark-enabled {
+  # Note: exec_elapsed_enabled から参照できる変数
+  local real=$_ble_exec_time_tot
+  local usr=$_ble_exec_time_usr usr_self=$_ble_exec_time_usr_self
+  local sys=$_ble_exec_time_sys sys_self=$_ble_exec_time_sys_self
+  local usr_child=$((usr-usr_self))
+  local sys_child=$((sys-sys_self))
+  local cpu=$((real>0?(usr+sys)*100/real:0))
+  ((bleopt_exec_elapsed_enabled))
+}
+
+_ble_exec_time_beg=
+_ble_exec_time_end=
+_ble_exec_time_ata=
+function ble/exec/time#start {
+  # 初回呼び出しで初期化
+
+  if ((_ble_bash>=50000)); then
+    _ble_exec_time_EPOCHREALTIME_delay=0
+    _ble_exec_time_EPOCHREALTIME_beg=
+    _ble_exec_time_EPOCHREALTIME_end=
+    function ble/exec/time#start {
+      # EPOCHREALTIME の時は精度が高いので、正確に計測するため直接
+      # prologue/epilogue に記述する
+      ble/exec/time/times.start
+      _ble_exec_time_EPOCHREALTIME_beg=
+      _ble_exec_time_EPOCHREALTIME_end=
+    }
+    function ble/exec/time#end {
+      local beg=${_ble_exec_time_EPOCHREALTIME_beg//[!0-9]}
+      local end=${_ble_exec_time_EPOCHREALTIME_end//[!0-9]}
+      ((beg+=delay,beg>end)) && beg=$end
+      _ble_exec_time_beg=$beg
+      _ble_exec_time_end=$end
+      _ble_exec_time_ata=$((end-beg))
+      _ble_exec_time_LINENO=$LINENO
+      ble/exec/time/times.end
+    }
+
+    function ble/exec/time#calibrate.restore-lastarg {
+      _ble_exec_time_EPOCHREALTIME_beg=$EPOCHREALTIME
+      return "$_ble_edit_exec_lastexit"
+    }
+    function ble/exec/time#calibrate.save-lastarg {
+      _ble_exec_time_EPOCHREALTIME_end=$EPOCHREALTIME
+      ble/exec/time#adjust-TIMEFORMAT
+    }
+    function ble/exec/time#calibrate {
+      local _ble_edit_exec_lastexit=0
+      local _ble_edit_exec_lastarg=hello
+      local _ble_exec_time_EPOCHREALTIME_beg=
+      local _ble_exec_time_EPOCHREALTIME_end=
+      local _ble_exec_time_tot=
+      local _ble_exec_time_usr=
+      local _ble_exec_time_sys=
+      local TIMEFORMAT=
+
+      # create a script
+      local script1='ble/exec/time#calibrate.restore-lastarg "$_ble_edit_exec_lastarg"'
+      local script2='{ ble/exec/time#calibrate.save-lastarg; } &>/dev/null'
+      local script=$script1$_ble_term_nl$script2$_ble_term_nl
+
+      # make a histogram
+      local -a hist=()
+      local i
+      for i in {00..99}; do
+        { builtin eval -- "$script" 2>&$_ble_util_fd_stderr; } 2>| "$_ble_exec_time_TIMEFILE"
+        ble/exec/time#restore-TIMEFORMAT
+        local beg=${_ble_exec_time_EPOCHREALTIME_beg//[!0-9]}
+        local end=${_ble_exec_time_EPOCHREALTIME_end//[!0-9]}
+        ((hist[end-beg]++))
+      done
+
+      # calculate weighted average
+      local -a keys; keys=("${!hist[@]}")
+      keys=("${keys[@]::(${#keys[@]}+1)/2}") # Remove outliers
+      local s=0 n=0 t
+      for t in "${keys[@]}"; do ((s+=t*hist[t],n+=hist[t])); done
+      ((_ble_exec_time_EPOCHREALTIME_delay=s/n))
+    }
+    ble/exec/time#calibrate
+    builtin unset -f ble/exec/time#calibrate
+    builtin unset -f ble/exec/time#calibrate.restore-lastarg
+    builtin unset -f ble/exec/time#calibrate.save-lastarg
+
+  else
+    _ble_exec_time_CLOCK_base=0
+    _ble_exec_time_CLOCK_beg=
+    _ble_exec_time_CLOCK_end=
+    function ble/exec/time#end.adjust {
+      # 辻褄合わせ
+      ((_ble_exec_time_beg<prev_end)) && _ble_exec_time_beg=$prev_end
+      local delta=$((_ble_exec_time_end-_ble_exec_time_beg))
+      if ((delta<_ble_exec_time_ata)); then
+        _ble_exec_time_end=$((_ble_exec_time_beg+_ble_exec_time_ata))
+      else
+        _ble_exec_time_beg=$((_ble_exec_time_end-_ble_exec_time_ata))
+      fi
+      _ble_exec_time_LINENO=$LINENO
+    }
+
+    function ble/exec/time#start {
+      ble/exec/time/times.start
+      _ble_exec_time_CLOCK_beg=
+      _ble_exec_time_CLOCK_end=
+      local ret; ble/util/clock
+      _ble_exec_time_CLOCK_beg=$ret
+    }
+    function ble/exec/time#end {
+      local ret; ble/util/clock
+      _ble_exec_time_CLOCK_end=$ret
+      local prev_end=$_ble_exec_time_end
+      _ble_exec_time_beg=$((_ble_exec_time_CLOCK_base+_ble_exec_time_CLOCK_beg*1000))
+      _ble_exec_time_end=$((_ble_exec_time_CLOCK_base+_ble_exec_time_CLOCK_end*1000))
+      _ble_exec_time_ata=$((_ble_exec_time_tot*1000))
+      ble/exec/time#end.adjust
+      ble/exec/time/times.end
+    }
+
+    case $_ble_util_clock_type in
+    (printf) ;;
+    (uptime|SECONDS)
+      # これらの原点は unix epoch でないので補正する。
+      ble/util/assign _ble_exec_time_SECONDS_base 'ble/bin/date +%s000000'
+      local ret; ble/util/clock
+      ((_ble_exec_time_SECONDS_base-=ret*1000)) ;;
+    (date)
+      # どうせファイルコマンドを使うのであればより精度の良い物を使う。
+      if ble/util/assign ret 'ble/bin/date +%6N' 2>/dev/null && [[ $ret ]]; then
+        function ble/exec/time#start {
+          ble/exec/time/times.start
+          _ble_exec_time_CLOCK_beg=
+          _ble_exec_time_CLOCK_end=
+          ble/util/assign _ble_exec_time_CLOCK_beg 'ble/bin/date +%s%6N'
+        }
+        function ble/exec/time#end {
+          ble/util/assign _ble_exec_time_CLOCK_end 'ble/bin/date +%s%6N'
+          local prev_end=$_ble_exec_time_end
+          _ble_exec_time_beg=$_ble_exec_time_CLOCK_beg
+          _ble_exec_time_end=$_ble_exec_time_CLOCK_end
+          _ble_exec_time_ata=$((_ble_exec_time_tot*1000))
+          ble/exec/time#end.adjust
+          ble/exec/time/times.end
+        }
+      fi ;;
+    esac
+  fi
+
+  ble/exec/time#start
+}
+
 ## @fn ble-edit/exec:$bleopt_internal_exec_type/process
 ##   指定したコマンドを実行します。
 ##   @param[in,out] _ble_edit_exec_lines
@@ -5582,6 +5801,9 @@ function ble-edit/exec:gexec/.end {
   ble-edit/bind/.tail # flush will be called here
 }
 
+## @fn ble-edit/exec:gexec/.prologue command
+##   @param[in] command
+##     次に実行するコマンド。_ble_edit_exec_BASH_COMMAND に記録する。
 function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_inside_prologue=1
   local IFS=$_ble_term_IFS
@@ -5598,28 +5820,51 @@ function ble-edit/exec:gexec/.prologue {
   ble-edit/exec/print-PS0 >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
   ((++_ble_edit_CMD))
 
+  ble/exec/time#start
   ble-edit/exec/restore-BASH_REMATCH
+}
+
+## @fn ble-edit/exec:gexec/.restore-lastarg lastarg
+##   @param[dummy] lastarg
+##     この引数は続くコマンドが $_ で参照する為の物なのでこの関数自身は利用しな
+##     い。
+function ble-edit/exec:gexec/.restore-lastarg {
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
   ble/base/restore-builtin-wrappers
-  builtin eval -- "$_ble_bash_FUNCNEST_restore" # これ以降関数は呼び出せない
+
+  # Note: これ以降関数は呼び出せない。但し一重までなら関数を呼び出せるので
+  # ble-edit/exec:gexec/.restore-lastarg だけなら問題ない筈。
+  builtin eval -- "$_ble_bash_FUNCNEST_restore"
   _ble_edit_exec_TRAPDEBUG_enabled=1
   _ble_edit_exec_inside_userspace=1
+  _ble_exec_time_EPOCHREALTIME_beg=$EPOCHREALTIME
   return "$_ble_edit_exec_lastexit" # set $?
 } &>/dev/null # set -x 対策 #D0930
-function ble-edit/exec:gexec/.save-last-arg {
-  _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$? _ble_edit_exec_PIPESTATUS=("${PIPESTATUS[@]}")
+function ble-edit/exec:gexec/.save-lastarg {
+  _ble_exec_time_EPOCHREALTIME_end=$EPOCHREALTIME \
+    _ble_edit_exec_lastexit=$? \
+    _ble_edit_exec_lastarg=$_ \
+    _ble_edit_exec_PIPESTATUS=("${PIPESTATUS[@]}")
   _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
-  builtin eval -- "$_ble_bash_FUNCNEST_adjust" # 他の関数呼び出しよりも先
+
+  # Note: 他の関数呼び出しよりも先。FUNCNEST の効果があるのは最低でも
+  # FUNCNEST=1 なので一重なら関数はいつでも呼び出せる。なのでこの関数
+  # .save-lastarg 自体の呼び出しは問題ない。
+  builtin eval -- "$_ble_bash_FUNCNEST_adjust"
   ble/base/adjust-bash-options
+  ble/exec/time#adjust-TIMEFORMAT
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.epilogue {
-  _ble_edit_exec_lastexit=$? # lastexit
+  # Note: $_ は同じ eval の中でないと取れないのでここでは読み取らない。
+  _ble_exec_time_EPOCHREALTIME_end=${_ble_exec_time_EPOCHREALTIME_end:-$EPOCHREALTIME} \
+    _ble_edit_exec_lastexit=$?
   _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
-  builtin eval -- "$_ble_bash_FUNCNEST_adjust" # 他の関数呼び出しよりも先
+  # Note: 他の関数呼び出しよりも先
+  builtin eval -- "$_ble_bash_FUNCNEST_adjust"
   ble/base/adjust-builtin-wrappers-1
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit=$_ble_edit_exec_INT
@@ -5637,23 +5882,59 @@ function ble-edit/exec:gexec/.epilogue {
   ble-edit/adjust-READLINE
   ble-edit/adjust-PS1
   ble-edit/exec/save-BASH_REMATCH
+  ble/exec/time#restore-TIMEFORMAT
+  ble/exec/time#end
   ble/util/reset-keymap-of-editing-mode
   ble-edit/exec/.adjust-eol
   _ble_edit_exec_inside_prologue=
 
+  ble/util/buffer.flush >&$_ble_util_fd_stderr
   ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC
 
+  local msg=
   if ((_ble_edit_exec_lastexit)); then
     # SIGERR処理
     ble-edit/exec:gexec/invoke-hook-with-setexit ERR
-    if [[ $bleopt_exec_errexit_mark == $'\e[91m[ble: exit %d]\e[m' ]]; then
-      ble/util/print "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0"
-    elif [[ $bleopt_exec_errexit_mark ]]; then
+    if [[ $bleopt_exec_errexit_mark ]]; then
       local ret
       ble/util/sprintf ret "$bleopt_exec_errexit_mark" "$_ble_edit_exec_lastexit"
-      x=0 y=0 g=0 ble/canvas/trace "$ret"
-      ble/util/print "$ret"
-    fi >&3 # Note: >&3 は set -x 対策による呼び出し元のリダイレクトと対応 #D0930
+      msg=$ret
+    fi
+  fi
+
+  if ble/exec/time#mark-enabled; then
+    local format=$bleopt_exec_elapsed_mark
+    if [[ $format ]]; then
+      # ata
+      local ata=$((_ble_exec_time_ata/1000))
+      if ((ata<1000)); then
+        ata="${ata}ms"
+      elif ((ata<1000*1000)); then
+        ata="${ata::${#ata}-3}.${ata:${#ata}-3}s"
+      else
+        local min
+        ((ata/=1000,min=ata/60,ata%=60))
+        ata="${min}m${ata}s"
+      fi
+
+      # cpu
+      local cpu='--.-'
+      if ((_ble_exec_time_tot)); then
+        cpu=$(((_ble_exec_time_usr+_ble_exec_time_sys)*1000/_ble_exec_time_tot))
+        cpu=$((cpu/10)).$((cpu%10))
+      fi
+
+      local ret
+      ble/util/sprintf ret "$format" "$ata" "$cpu"
+      msg=$msg$ret
+      ble/string#ltrim "$_ble_edit_exec_BASH_COMMAND"
+      msg="$msg $ret"
+    fi
+  fi
+
+  if [[ $msg ]]; then
+    x=0 y=0 g=0 LINES=1 ble/canvas/trace "$msg" confine:truncate
+    ble/util/buffer.print "$ret"
   fi
 }
 function ble-edit/exec:gexec/.setup {
@@ -5675,12 +5956,21 @@ function ble-edit/exec:gexec/.setup {
   buff[${#buff[@]}]=ble-edit/exec:gexec/.begin
   for cmd in "${_ble_edit_exec_lines[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
-      # Note: $_ble_edit_exec_lastarg は $_ を設定するためのものである。
-      local prologue="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}' \"\$_ble_edit_exec_lastarg\""
-      buff[${#buff[@]}]="builtin eval -- '${prologue//$q/$Q}"
-      buff[${#buff[@]}]="${cmd//$q/$Q}"
-      buff[${#buff[@]}]="{ ble-edit/exec:gexec/.save-last-arg; } &>/dev/null'" # Note: &>/dev/null は set -x 対策 #D0930
-      buff[${#buff[@]}]="{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null"
+      # Note: restore-lastarg の $_ble_edit_exec_lastarg は $_ を設定するための
+      #   ものである。
+      # Note #D0465: restore-lastarg と実際のコマンドを同じ eval の中に入れるの
+      #   は set -v の時の出力を抑える為である。prologue で set -v を復元した直
+      #   後にそのままコマンドを実行しないと無駄な出力がされてしまう。
+      # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
+      #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
+      #   る時に eval の最終引数になってしまう)。
+      local prologue=""
+      buff[${#buff[@]}]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}'"
+      buff[${#buff[@]}]='{ time builtin eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
+      buff[${#buff[@]}]='$_ble_edit_exec_BASH_COMMAND'
+      buff[${#buff[@]}]='{ ble-edit/exec:gexec/.save-lastarg; } &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
+      buff[${#buff[@]}]='" 2>&$_ble_util_fd_stderr; } 2>| "$_ble_exec_time_TIMEFILE"'
+      buff[${#buff[@]}]='{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null'
       ((count++))
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に

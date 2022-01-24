@@ -4749,9 +4749,12 @@ _ble_util_clock_reso=
 _ble_util_clock_type=
 function ble/util/clock/.initialize {
   local LC_ALL= LC_NUMERIC=C
-  if ((_ble_bash>=50000)) && [[ $EPOCHREALTIME == *.???* ]]; then
+  if ((_ble_bash>=50000)) && {
+       local now=$EPOCHREALTIME
+       [[ $now == *.???* && $now != $EPOCHREALTIME ]]; }; then
     # implementation with EPOCHREALTIME
-    _ble_util_clock_base=$((10#0${EPOCHREALTIME%.*}))
+    readonly EPOCHREALTIME
+    _ble_util_clock_base=$((10#0${now%.*}))
     _ble_util_clock_reso=1
     _ble_util_clock_type=EPOCHREALTIME
     function ble/util/clock {
@@ -4788,6 +4791,7 @@ function ble/util/clock/.initialize {
       ((ret=(now-_ble_util_clock_base)*1000))
     }
   elif [[ $SECONDS && ! ${SECONDS//[0-9]} ]]; then
+    readonly SECONDS
     _ble_util_clock_base=$SECONDS
     _ble_util_clock_reso=1000
     _ble_util_clock_type=SECONDS

@@ -82,13 +82,14 @@
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
   - menu (menu-style:desc): fix not working `bleopt menu_desc_multicolumn_width=` `#D1727` 2140d1e
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
-  - util: refactor `_ble_term_TERM` `#D1746` 0000000
+  - util: refactor `_ble_term_TERM` `#D1746` 63fba6b
 - complete: requote for more compact representations on full completions `#D1700` a1859b6
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
   - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` e12bae4
   - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0786e92
 - complete (menu-style:align): refactor `complete_menu_align => menu_align_{min,max}` (motivated by banoris) `#D1717` 22a2449
-- prompt: support `bleopt prompt_command_changes_layout` `#D1750` 0000000
+- prompt: support `bleopt prompt_command_changes_layout` `#D1750` e199bee
+- exec: measure execution times `#D1756` 0000000
  
 ## Changes
 
@@ -137,8 +138,8 @@
 - highlight (`wtype=CTX_CMDI`): check alias names before shell expansions `#D1715` d6242a7
   - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
 - edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
-- canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 0000000
-- edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands `#D1755` 0000000
+- canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 dc3827b
+- edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
 
 ## Fixes
 
@@ -295,15 +296,15 @@
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
 - global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 7545ea3
 - global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 4590997
-  - global: work around compat42 quoting of "${v/pat/"$rep"}" `#D1751` 0000000
-  - prompt: fix a bug of ble/prompt/print redundantly quoting '$' `#D1752` 0000000
-  - global: identify bash-4.2 bug that internal quoting of `${v/%$empty/"$rep"}` remains `#D1753` 0000000
-  - global: work around `shopt -s compat42` `#D1754` 0000000
+  - global: work around `compat42` quoting of `"${v/pat/"$rep"}"` `#D1751` a75bb25
+  - prompt: fix a bug of `ble/prompt/print` redundantly quoting `$` `#D1752` a75bb25
+  - global: identify bash-4.2 bug that internal quoting of `${v/%$empty/"$rep"}` remains `#D1753` a75bb25
+  - global: work around `shopt -s compat42` `#D1754` a75bb25
 - global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 001c595
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
-- main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell `#D1747` 0000000
-- canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 0000000
-- main: check `/dev/tty` on startup (reported by andychu) `#D1749` 0000000
+- main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
+- canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
+- main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
 
 ## Internal changes and fixes
 

@@ -324,6 +324,13 @@ bleopt prompt_eol_mark='⏎'
 bleopt exec_errexit_mark=
 # Tip: 代わりに他の文字列をご指定頂くこともできます。
 bleopt exec_errexit_mark=$'\e[91m[error %d]\e[m'
+
+# コマンド実行時間マーカー "[ble: elapsed 1.203s (CPU 0.4%)]" の無効化
+bleopt exec_elapsed_mark=
+# Tip: 代わりに別の文字列をご指定いただくこともできます。
+bleopt exec_elapsed_mark=$'\e[94m[%ss (%s %%)]\e[m'
+# Tip: マーカーを表示する条件を変更することも可能です。
+bleopt exec_elapsed_enabled='sys+usr>=10*60*1000' # 例: 合計CPU時間が 10 分以上の時に表示
 ```
 
 ## 2.3 曖昧文字幅

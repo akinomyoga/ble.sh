@@ -302,6 +302,13 @@ bleopt prompt_eol_mark='⏎'
 bleopt exec_errexit_mark=
 # Tip: you may instead specify another string:
 bleopt exec_errexit_mark=$'\e[91m[error %d]\e[m'
+
+# Disable elapsed-time marker like "[ble: elapsed 1.203s (CPU 0.4%)]"
+bleopt exec_elapsed_mark=
+# Tip: you may instead specify another string
+bleopt exec_elapsed_mark=$'\e[94m[%ss (%s %%)]\e[m'
+# Tip: you may instead change the threshold of showing the mark
+bleopt exec_elapsed_enabled='sys+usr>=10*60*1000' # e.g. ten minutes for total CPU usage
 ```
 
 ## 2.3 CJK Width
