@@ -44,22 +44,21 @@ case ${BASH_VERSINFO[4]} in
     "  We recommend using ble.sh with a release version of Bash." >&2 ;;
 esac
 
-if [[ $- != *i* ]]; then
-  case " ${BASH_SOURCE[*]##*/} " in
-  (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
-  esac  &&
-    builtin echo "ble.sh: This is not an interactive session." >&2 || ((1))
-  return 1 2>/dev/null || exit 1
-fi
-
 if ((BASH_SUBSHELL)); then
   unset -v _ble_bash
   builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&2
   return 1 2>/dev/null || builtin exit 1
 elif [[ $- != *i* ]]; then
   unset -v _ble_bash
-  echo "ble.sh: This is not an interactive session." >&2
-  return 1 2>/dev/null || exit 1
+  case " ${BASH_SOURCE[*]##*/} " in
+  (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
+  esac  &&
+    builtin echo "ble.sh: This is not an interactive session." >&2 || ((1))
+  return 1 2>/dev/null || builtin exit 1
+elif ! [[ -t 0 && -t 1 ]]; then
+  unset -v _ble_bash
+  builtin echo "ble.sh: cannot find the correct TTY/PTY in this session." >&2
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 _ble_init_original_IFS_set=${IFS+set}
