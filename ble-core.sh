@@ -15,7 +15,7 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
-function ble/util/unlocal { builtin unset "$@"; }
+function ble/util/unlocal { builtin unset -v "$@"; }
 
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }

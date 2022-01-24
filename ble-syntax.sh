@@ -282,8 +282,9 @@ function ble-syntax/print-status/.graph {
 function ble-syntax/print-status/.tree-prepend {
   local -i j="$1"
   local t="$2"
-  tree[j]="$t${tree[j]}"
-  ((max_tree_width<${#tree[j]}&&(max_tree_width=${#tree[j]})))
+  local value=$t${tree[j]}
+  tree[j]=$value
+  ((max_tree_width<${#value}&&(max_tree_width=${#value})))
 }
 
 function ble-syntax/print-status/.dump-arrays/.append-attr-char {

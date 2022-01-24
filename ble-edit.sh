@@ -531,7 +531,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       # HVP "CSI f"
       local -a params
       ble/string#split params $' \t\n' "${param//[^0-9]/ }"
-      params=("${params[@]/#/10#0}")
+      params=("${params[@]/#/10#0}") # WA #D1570 checked
       ((x=params[1]-1))
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),
@@ -552,7 +552,7 @@ function ble-edit/draw/trace/process-csi-sequence {
             scosc=(${_ble_draw_trace_brack[lastIndex]})
             ((x=scosc[0]))
             ((y=scosc[1]))
-            unset "_ble_draw_trace_brack[$lastIndex]"
+            unset -v '_ble_draw_trace_brack[lastIndex]'
           fi
         fi
         return
@@ -1776,7 +1776,7 @@ function .ble-edit/edit/attach {
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
     _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
-    unset LINENO; LINENO="$_ble_edit_LINENO"
+    unset -v LINENO; LINENO="$_ble_edit_LINENO"
     _ble_edit_CMD="$_ble_edit_LINENO"
   fi
 
@@ -2662,9 +2662,9 @@ function .ble-edit.locate-current-xword {
   .ble-edit.locate-forward-xword "$r"
 }
 #%)
-#%x locate-xword .r/xword/uword/ .r/generic word/unix word/ .r/%FS%/"${IFS:-$' \t\n'}"/
+#%x locate-xword .r/xword/uword/ .r/generic word/unix word/ .r/%FS%/${IFS:-$' \t\n'}/
 #%x locate-xword .r/xword/sword/ .r/generic word/shell word/.r/%FS%/$'|&;()<> \t\n'/
-#%x locate-xword .r/xword/fword/ .r/generic word/filename/  .r|%FS%|"/${IFS:-$' \t\n'}"|
+#%x locate-xword .r/xword/fword/ .r/generic word/filename/  .r|%FS%|/${IFS:-$' \t\n'}|
 
 # 
 #%m kill-uword (
@@ -3071,7 +3071,7 @@ function .ble-edit/exec:gexec/end {
 function .ble-edit/exec:gexec/eval-prologue {
   BASH_COMMAND="$1"
   ble-edit/restore-PS1
-  unset HISTCMD; .ble-edit/history/getcount -v HISTCMD
+  unset -v HISTCMD; .ble-edit/history/getcount -v HISTCMD
   _ble_edit_accept_line_INT=0
   .ble-stty.leave
   .ble-edit/exec/setexit
@@ -3462,7 +3462,7 @@ function .ble-edit.history-add {
             fi
           done
           for ((i=lastIndex;i>n;i--)); do
-            unset '_ble_edit_history[$i]'
+            unset -v '_ble_edit_history[i]'
           done
           ;;
         esac
@@ -3637,7 +3637,7 @@ function ble-edit/isearch/.push-isearch-array {
   # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
   local ilast="$((${#_ble_edit_isearch_arr[@]}-1))"
   if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
-    unset "_ble_edit_isearch_arr[$ilast]"
+    unset -v '_ble_edit_isearch_arr[ilast]'
     return
   fi
 
@@ -3765,7 +3765,7 @@ function ble-edit+isearch/prev {
 
   local ilast=$((sz-1))
   local top="${_ble_edit_isearch_arr[ilast]}"
-  unset "_ble_edit_isearch_arr[$ilast]"
+  unset -v '_ble_edit_isearch_arr[ilast]'
 
   local ind dir beg end
   ind="${top%%:*}"; top="${top#*:}"
