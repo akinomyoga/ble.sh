@@ -605,7 +605,7 @@ _ble_prompt_term_status_data=()
 function ble/prompt/print {
   local ret=$1 a b
   [[ $prompt_noesc ]] ||
-    ble/string#escape-characters "$ret" '$\"`'
+    ble/string#escape-characters "$ret" '\$"`'
   ble/canvas/put.draw "$ret"
 }
 

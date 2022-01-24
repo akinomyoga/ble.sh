@@ -40,10 +40,13 @@ function ble/keymap:vi_test/check {
     ((ntest++,nsuccess++))
   else
     ((ntest++))
+    local esc_in=${in//$nl/"$NL"}
+    local esc_fin=${fin//$nl/"$NL"}
+    local esc_str=${_ble_edit_str//$nl/"$NL"}
     ble/util/print "test($section/$id): keys = ($kspecs)"
-    ble/util/print "  initial  = \"$i:${in//$nl/"$NL"}\""
-    ble/util/print "  expected = \"$f:${fin//$nl/"$NL"}\""
-    ble/util/print "  result   = \"$_ble_edit_ind:${_ble_edit_str//$nl/"$NL"}\""
+    ble/util/print "  initial  = \"$i:$esc_in\""
+    ble/util/print "  expected = \"$f:$esc_fin\""
+    ble/util/print "  result   = \"$_ble_edit_ind:$esc_str\""
   fi >&2
 
   # restore states

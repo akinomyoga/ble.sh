@@ -294,6 +294,10 @@
 - menu (`menu-style:desc`): work around xenl quirks for relative cursor movements (reported by telometto) `#D1728` 3e136a6
 - global: work around the arithmetic syntax error of `10#` in Bash-5.1 `#D1734` 7545ea3
 - global: adjust implementations for Bash 5.2 `patsub_replacement` `#D1738` 4590997
+  - global: work around compat42 quoting of "${v/pat/"$rep"}" `#D1751` 0000000
+  - prompt: fix a bug of ble/prompt/print redundantly quoting '$' `#D1752` 0000000
+  - global: identify bash-4.2 bug that internal quoting of `${v/%$empty/"$rep"}` remains `#D1753` 0000000
+  - global: work around `shopt -s compat42` `#D1754` 0000000
 - global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 001c595
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell `#D1747` 0000000

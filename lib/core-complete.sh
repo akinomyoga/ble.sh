@@ -3429,7 +3429,12 @@ function ble/complete/progcomp/.compgen {
     done
     [[ $has_desc ]] && bleopt complete_menu_style=desc
   else
-    [[ $progcomp_prefix ]] && cands=("${cands[@]/#/"$progcomp_prefix"}") # WA #D1570 safe
+    [[ $progcomp_prefix ]] &&
+      if ((_ble_bash>=40300)) && ! shopt -q compat42; then
+        cands=("${cands[@]/#/"$progcomp_prefix"}") # WA #D1570 #D1751 safe
+      else
+        cands=("${cands[@]/#/$progcomp_prefix}") # WA #D1570 #D1738 safe
+      fi
   fi
   ble/complete/cand/yield.batch "$action" "$comp_opts"
 

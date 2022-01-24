@@ -208,6 +208,12 @@
 
 bash 実装上で注意するべき事
 
+  * bash-5.2 以上の patsub_replacement に注意する。
+
+    任意の文字列に置換する場合は & が勝手に解釈されない様に "${var/x/"$s"}" の
+    様に quote すると良い。但し、bash-4.2 では "${var/x/"$s"}" の " は literal
+    に解釈されてしまう事に注意する。一番安全なのは一旦変数に代入するという事。
+
   * 変数の代入は基本的に quote は必要ないが、
 
     1 チルダで始まる時はチルダ展開を防ぐ為に quote が必要。
@@ -5893,6 +5899,135 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-01-24
+
+  * patsubWA: compat42 での振る舞い [#D1754]
+
+    それとは別に compat42 の効果についても考察する必要がある。compat42 の時には
+    結局問題が生じるのではないだろうか?? quote しても無駄である。という事を考え
+    ると compat42 の時は単純に実装を切り替えるというのは動作しない。とは言いつ
+    つ惨事を防ぐ為にはやはり配慮が必要である。
+
+  * patsubWA: bash-dev で \q{} が動かない [#D1753]
+
+    うーん。これも patsub が原因の気がする。或いは bash-dev の振る舞いの変化に
+    よって引き起こされている? 取り敢えず調べる → やはり patsub WA によって動か
+    なくなっている。bash 側の振る舞いの変化による物ではなかった。
+
+    実際の動作を調べる。先ずそもそも \q{} が呼び出されているのか? うーん。呼び
+    出されていない。つまり @P による展開になってしまっているという事だろうか →
+    否、@P による展開にはなっていない。
+
+    うーん。どうやら \q{} はいつの間にかに \\q{} に変換されてしまっている様子。
+    何故だろうか。うーん。bleopt_prompt_rps1 の値の時点で \\q{} になってしまっ
+    ている。つまり、bleopt が悪い。
+
+    うーん。引数読み取りの時点で駄目になっている。
+
+    $ ble/array#push specs "${var[@]/%/"=$value"}" # #D1570 #D1751 WA checked
+    $ ble/debug/print-variables var value specs |& cat -v >/dev/tty
+    var=('bleopt_prompt_rps1') value='\q{blerc/rps1}' specs=('bleopt_prompt_rps1=\\q{blerc/rps1}')
+
+    うーん。不思議だ。bash-5.2 のバグだろうか。うーん。これはバグである。という
+    か /% 等の様にパターンが空の時には escape は処理されないのである。
+
+      $ var= rep='&'; echo "${var/%/"$rep"}"
+
+    うーん。Bash に報告しようと思ったが思ったよりも複雑である。続きは
+    bug-report/bash/report31 で議論する事にした。取り敢えず patch は作った。最
+    終的にどうなるかは分からないが取り敢えずは patch 付きでコンパイルしていれば
+    今の ble.sh の実装で大丈夫のはず。
+
+  * patsubWA: bash-4.3 で \$ になる [#D1752]
+
+    これもつい最近までは見られなかった問題である。bash-3.0 迄影響を受けている。
+    これも patsub_replacement 対策が悪さをしていると見える。
+
+    % うーん。_ble_prompt_const_root を出力している箇所から既に問題が起こっている
+    % 気がするが、_ble_prompt_const_root の値は昔から変わらず "\$" だった様だ。
+    % 然し、patsub 修正よりも前にはちゃんと単一の $ になっていた。
+    %
+    % $ declare -p _ble_prompt_const_root
+    % declare -- _ble_prompt_const_root="\$"
+    %
+    % →これは declare の出力の quote であって、_ble_prompt_const_root の値自体
+    % は常に単一の '$' だった。
+
+    というよりそもそも ble/prompt/print は $ を解釈しないのではなかったのか。だ
+    とすれば \$ の様にする意味がない。うーん。つまり以前の実装が間違っていたと
+    いう事。
+
+    うーん。分かった。確かに以前の実装は間違っている。escape-characters に渡す
+    文字集合は '$\`"' ではなく '\$`"' でなければならない。つまり一番最初に '\'
+    を置換しなければ他の文字の置換結果の '\' も二重に置換してしまう事になる。こ
+    の様な実装に切り替えたのは patsub の事だと思ったが
+
+    % よく考えたらそれよりも前から二重のバグによってたまたま動いていただけに過
+    % ぎない → これも勘違い。以前は '$' を正しく quote して正しく最終的に '$'
+    % になっていた。
+    %
+    % |  function ble/prompt/print {
+    % | -  local text=$1 a b
+    % | -  if [[ ! $prompt_noesc && $text == *['$\"`']* ]]; then
+    % | -    a='\' b='\\' text=${text//"$a"/$b}
+    % | -    a='$' b='\$' text=${text//"$a"/$b}
+    % | -    a='"' b='\"' text=${text//"$a"/$b}
+    % | -    a='`' b='\`' text=${text//"$a"/$b}
+    % | -  fi
+    % | -  ble/canvas/put.draw "$text"
+    % | +  local ret=$1 a b
+    % | +  [[ $prompt_noesc ]] ||
+    % | +    ble/string#escape-characters "$ret" '$\"`'
+    % | +  ble/canvas/put.draw "$ret"
+    % |  }
+    %
+    % と思ったがこの編集を見ると以前はちゃんと動いていた筈なのである。という事は、
+    % 先ず初めに '\$' が \\\$ になって、更に評価時に \$ になる筈。不思議である。
+    % うーん。以前は \$ は \\\$ になって、更に評価された時に \$ になるという仕組
+    % みだった筈。
+
+    何れにしても問題の部分を修正したらちゃんと動く様になった。
+
+    % 然し何故これで動くのかは未だに謎である。うーん。何故?
+    %
+    % →ずっと遡っていくと実はずっと単一の '$' である。。そして
+    % _ble_prompt_const_root も単一の '$' である。declare の出力が double
+    % quoted だから \$ と表示していたけれども実は単一の $ だったという事である。
+    % つまり勘違いだった。
+
+    結局これで万事大丈夫になった。
+
+  * patsubWA: bash-4.2 で文法エラーが発生する (bind.delay 周り) [#D1751]
+
+    何と、bash-4.2 では "${var//xx/"yy"}" の " は literal になる。テストで検出
+    された物を少し修正したが他にも沢山ありそうだ。
+
+    $ grc '"[^"]*\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}"'\'']*"[^"]*([&$]|\\)' --exclude=./test
+    done: ./keymap/vi_test.sh:44:    ble/util/print "  initial  = \"$i:${in//$nl/"$NL"}\""
+    done: ./keymap/vi_test.sh:45:    ble/util/print "  expected = \"$f:${fin//$nl/"$NL"}\""
+    done: ./keymap/vi_test.sh:46:    ble/util/print "  result   = \"$_ble_edit_ind:${_ble_edit_str//$nl/"$NL"}\""
+    done: ./lib/core-complete.sh:3432:    [[ $progcomp_prefix ]] && cands=("${cands[@]/#/"$progcomp_prefix"}") # WA #D1570 safe
+    done: ./lib/core-syntax.sh:4414:        b='\`' a='`'; str="${str//"$b"/"$a"}"
+    done: ./lib/core-syntax.sh:4415:        b='\"' a='"'; str="${str//"$b"/"$a"}"
+    done: ./lib/core-syntax.sh:4416:        b='\$' a='$'; str="${str//"$b"/"$a"}"
+    done: ./lib/core-syntax.sh:4417:        b='\\' a='\'; str="${str//"$b"/"$a"}"
+    done: ./lib/core-syntax.sh:4453:    a=\\   ; b="\\$a"; ret="${ret//"$a"/"$b"}"
+    done: ./lib/core-syntax.sh:4454:    a=\'   ; b="\\$a"; ret="${ret//"$a"/"$b"}"
+    done: ./lib/core-syntax.sh:4455:    a=' '  ; b="$_ble_syntax_bash_heredoc_EscSP"; ret="${ret//"$a"/"$b"}"
+    done: ./lib/core-syntax.sh:4456:    a=$'\t'; b="$_ble_syntax_bash_heredoc_EscHT"; ret="${ret//"$a"/"$b"}"
+    done: ./lib/core-syntax.sh:4457:    a=$'\n'; b="$_ble_syntax_bash_heredoc_EscLF"; ret="${ret//"$a"/"$b"}"
+    done: ./lib/core-syntax.sh:4458:    a=$fs  ; b="$_ble_syntax_bash_heredoc_EscFS"; ret="${ret//"$a"/"$b"}"
+    done: ./src/util.sh:118:          ble/array#push specs "${var[@]/%/"=$value"}" # #D1570 WA checked
+    done: ./src/util.sh:777:    ARR=("${ARR[@]::$2}" "${sARR[@]/#/"$4"}" "${ARR[@]:$3}")' # WA #D1570 checked
+    done: ./src/util.sh:1138:  a='!' b='"\!"' ret=${ret//"$a"/"$b"}
+    done: ./src/util.sh:1165:    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"}
+    done: ./src/util.sh:1401:  builtin eval -- "${_ble_local_script//opts/"$1"}"
+    done: ./src/util.sh:1405:  builtin eval -- "${_ble_local_script//opts/"$1"}"
+    done: ./src/util.sh:1413:  builtin eval -- "${_ble_local_script//opts/"$1"}"
+    done: ./src/util.sh:1421:  builtin eval -- "${_ble_local_script//opts/"$1"}"
+    done: ./src/util.sh:1574:    ret=("${ret[@]//$_ble_term_FS,/"$_ble_term_FS"}") # WA #D1570 checked
+    done: ./src/util.sh:5371:  ble/util/put "${_ble_term_visible_bell_show//'%message%'/"$sgr$message"}" >&
+
+    取り敢えず全て修正した。一応動作はしている。
 
   * prompt: wezterm shell-integration が PRECMD で何かを出力するがずれる [#D1750]
 

@@ -115,7 +115,11 @@ function bleopt/.read-arguments {
 
         if [[ $op ]]; then
           var=("${var[@]}") # #D1570: WA bash-3.0 ${scal[@]/x} bug
-          ble/array#push specs "${var[@]/%/"=$value"}" # #D1570 WA checked
+          if ((_ble_bash>=40300)) && ! shopt -q compat42; then
+            ble/array#push specs "${var[@]/%/"=$value"}" # #D1570 #D1751 WA checked
+          else
+            ble/array#push specs "${var[@]/%/=$value}" # #D1570 #D1738 WA checked
+          fi
         else
           ble/array#push pvars "${var[@]}"
         fi
@@ -773,8 +777,10 @@ function ble/array#replace {
 function ble/dense-array#fill-range {
   ble/array#reserve-prototype $(($3-$2))
   local _ble_script='
-    local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/"$4"}" "${ARR[@]:$3}")' # WA #D1570 checked
+      local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
+      ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
+  ((_ble_bash>=40300)) && ! shopt -q compat42 &&
+    _ble_script=${_ble_script//'$4'/'"$4"'}
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
@@ -803,7 +809,7 @@ function ble/string#reserve-prototype {
 function ble/string#repeat {
   ble/string#reserve-prototype "$2"
   ret=${_ble_string_prototype::$2}
-  ret="${ret// /"$1"}"
+  ret=${ret// /"$1"}
 }
 
 ## @fn ble/string#common-prefix a b
@@ -1135,7 +1141,7 @@ function ble/string#escape-for-bash-single-quote {
 function ble/string#escape-for-bash-double-quote {
   ble/string#escape-characters "$1" '\"$`'
   local a b
-  a='!' b='"\!"' ret=${ret//"$a"/"$b"}
+  a='!' b='"\!"' ret=${ret//"$a"/"$b"} # WA #D1751 checked
 }
 function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$1" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
@@ -1162,7 +1168,7 @@ function ble/string#escape-for-bash-specialchars {
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/"$b"}
-    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/"$b"} # WA #D1751 checked
     a=$'\t' b=$'\\\t'  ret=${ret//"$a"/"$b"}
   fi
 
@@ -1246,8 +1252,8 @@ else
   function ble/string#quote-words {
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@//$q/$Q}")
-    ret=("${ret[@]/%/"$q"}") # WA #D1570 checked
-    ret="${ret[*]/#/"$q"}"   # WA #D1570 checked
+    ret=("${ret[@]/%/$q}") # WA #D1570 #D1738 ok
+    ret="${ret[*]/#/$q}"   # WA #D1570 #D1738 ok
   }
   function ble/string#quote-command {
     if (($#<=1)); then
@@ -1256,9 +1262,9 @@ else
     fi
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@:2}")
-    ret=("${ret[@]//$q/$Q}")  # WA #D1570 checked
-    ret=("${ret[@]/%/"$q"}")  # WA #D1570 checked
-    ret="$1 ${ret[*]/#/"$q"}" # WA #D1570 checked
+    ret=("${ret[@]//$q/$Q}")  # WA #D1570 #D1738 ok
+    ret=("${ret[@]/%/$q}")    # WA #D1570 #D1738 ok
+    ret="$1 ${ret[*]/#/$q}"   # WA #D1570 #D1738 ok
   }
 fi
 ## @fn ble/string#quote-word text opts
@@ -1398,11 +1404,13 @@ function ble/util/substr {
 
 function ble/path#append {
   local _ble_local_script='opts=$opts${opts:+:}$2'
-  builtin eval -- "${_ble_local_script//opts/"$1"}"
+  _ble_local_script=${_ble_local_script//opts/"$1"}
+  builtin eval -- "$_ble_local_script"
 }
 function ble/path#prepend {
   local _ble_local_script='opts=$2${opts:+:}$opts'
-  builtin eval -- "${_ble_local_script//opts/"$1"}"
+  _ble_local_script=${_ble_local_script//opts/"$1"}
+  builtin eval -- "$_ble_local_script"
 }
 function ble/path#remove {
   [[ $2 ]] || return 1
@@ -1410,7 +1418,8 @@ function ble/path#remove {
     opts=:${opts//:/::}:
     opts=${opts//:"$2":}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
-  builtin eval -- "${_ble_local_script//opts/"$1"}"
+  _ble_local_script=${_ble_local_script//opts/"$1"}
+  builtin eval -- "$_ble_local_script"
 }
 function ble/path#remove-glob {
   [[ $2 ]] || return 1
@@ -1418,7 +1427,8 @@ function ble/path#remove-glob {
     opts=:${opts//:/::}:
     opts=${opts//:$2:}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
-  builtin eval -- "${_ble_local_script//opts/"$1"}"
+  _ble_local_script=${_ble_local_script//opts/"$1"}
+  builtin eval -- "$_ble_local_script"
 }
 function ble/path#contains {
   builtin eval "[[ :\${$1}: == *:\"\$2\":* ]]"
@@ -1570,8 +1580,8 @@ function ble/adict#keys {
   _ble_local_keylist=${!_ble_local_keylist%:}
   ble/string#split ret : "$_ble_local_keylist"
   if [[ $_ble_local_keylist == *"$_ble_term_FS"* ]]; then
-    ret=("${ret[@]//$_ble_term_FS./:}")               # WA #D1570 checked
-    ret=("${ret[@]//$_ble_term_FS,/"$_ble_term_FS"}") # WA #D1570 checked
+    ret=("${ret[@]//$_ble_term_FS./:}")             # WA #D1570 checked
+    ret=("${ret[@]//$_ble_term_FS,/$_ble_term_FS}") # WA #D1570 #D1738 checked
   fi
 
   # filter out unset elements
@@ -5368,7 +5378,8 @@ function ble/term/visible-bell:term/init {
 }
 function ble/term/visible-bell:term/show {
   local sgr=$1 message=${_ble_term_visible_bell_prev[1]}
-  ble/util/put "${_ble_term_visible_bell_show//'%message%'/"$sgr$message"}" >&2
+  message=${_ble_term_visible_bell_show//'%message%'/"$sgr$message"}
+  ble/util/put "$message" >&2
 }
 function ble/term/visible-bell:term/update {
   ble/term/visible-bell:term/show "$@"
