@@ -138,6 +138,7 @@
   - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
 - edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
 - canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 0000000
+- edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands `#D1755` 0000000
 
 ## Fixes
 

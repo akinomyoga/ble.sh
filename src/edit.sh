@@ -5765,16 +5765,30 @@ function ble/widget/.insert-newline {
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
   _ble_canvas_panel_height[_ble_textarea_panel]=1
 }
+## @fn ble/widget/.hide-current-line [opts]
+##   @param[in] opts
+##     a colon-separated list of the following fields:
+##
+##     keep-header
+##       keep the multiline prompt displayed in the terminal except
+##       for the last line.
+##
 function ble/widget/.hide-current-line {
+  local opts=$1 y_erase=0
+  [[ :$opts: == *:keep-header:* ]] && y_erase=${_ble_prompt_ps1_data[4]}
   ble/edit/enter-command-layout
   local -a DRAW_BUFF=()
-  ble/canvas/panel#clear.draw "$_ble_textarea_panel"
-  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+  if ((y_erase)); then
+    ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" 0 "$y_erase"
+  else
+    ble/canvas/panel#clear.draw "$_ble_textarea_panel"
+  fi
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$y_erase"
   ble/canvas/bflush.draw
   ble/textarea#invalidate
-  _ble_canvas_x=0 _ble_canvas_y=0
-  _ble_textarea_gendx=0 _ble_textarea_gendy=0
-  _ble_canvas_panel_height[_ble_textarea_panel]=1
+  _ble_canvas_x=0 _ble_canvas_y=$y_erase
+  _ble_textarea_gendx=0 _ble_textarea_gendy=$y_erase
+  ((_ble_canvas_panel_height[_ble_textarea_panel]=1+y_erase))
 }
 
 function ble/widget/.newline/clear-content {
@@ -9023,7 +9037,7 @@ function ble/widget/.EDIT_COMMAND {
   local -x READLINE_MARK=$_ble_edit_mark
   [[ $_ble_edit_arg ]] &&
     local -x READLINE_ARGUMENT=$_ble_edit_arg
-  ble/widget/.hide-current-line
+  ble/widget/.hide-current-line keep-header
   ble/util/buffer.flush >&2
   builtin eval -- "$command" || return 1
   ble-edit/content/clear-arg
