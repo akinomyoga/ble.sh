@@ -1844,7 +1844,15 @@ function ble/util/buffer.print {
   ble/util/buffer "$1"$'\n'
 }
 function ble/util/buffer.flush {
-  IFS= builtin eval 'builtin echo -n "${_ble_util_buffer[*]-}"'
+  IFS= builtin eval 'local text="${_ble_util_buffer[*]-}"'
+
+  # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal 途中
+  # のカーソル移動も無理やり表示しようとする端末に対する対策。
+  [[ $_ble_term_state == internal ]] &&
+    [[ $_ble_term_cursor_hidden_internal != hidden ]] &&
+    text=$_ble_term_civis$text$_ble_term_cvvis
+
+  ble/util/put "$text"
   _ble_util_buffer=()
 }
 function ble/util/buffer.clear {
