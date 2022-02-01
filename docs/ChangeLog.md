@@ -302,6 +302,7 @@
   - global: work around `shopt -s compat42` `#D1754` a75bb25
 - global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 001c595
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
+  - util (`ble/builtin/trap`): fix resetting `$?` and `$_` (reported by SuperSandro2000) `#D1757` 0000000
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f

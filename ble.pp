@@ -1376,7 +1376,7 @@ function ble/dispatch/.help {
 }
 function ble/dispatch {
   if (($#==0)); then
-    [[ $_ble_attach && ! $_ble_edit_exec_inside_userspace ]]
+    [[ $_ble_attached && ! $_ble_edit_exec_inside_userspace ]]
     return $?
   fi
 
