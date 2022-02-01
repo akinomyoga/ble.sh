@@ -4039,7 +4039,15 @@ function ble/util/buffer.print {
   ble/util/buffer "$1"$'\n'
 }
 function ble/util/buffer.flush {
-  IFS= builtin eval 'ble/util/put "${_ble_util_buffer[*]-}"'
+  IFS= builtin eval 'local text="${_ble_util_buffer[*]-}"'
+
+  # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal 途中
+  # のカーソル移動も無理やり表示しようとする端末に対する対策。
+  [[ $_ble_term_state == internal ]] &&
+    [[ $_ble_term_cursor_hidden_internal != hidden ]] &&
+    text=$_ble_term_civis$text$_ble_term_cvvis
+
+  ble/util/put "$text"
   _ble_util_buffer=()
 }
 function ble/util/buffer.clear {
@@ -5751,7 +5759,7 @@ function ble/term/cursor-state/.update {
 
   if [[ ! $_ble_term_Ss ]]; then
     case $_ble_term_TERM in
-    (mintty:*|xterm:*|RLogin:*|kitty:*|screen:*|tmux:*|contra:*|cygwin:*)
+    (mintty:*|xterm:*|RLogin:*|kitty:*|screen:*|tmux:*|contra:*|cygwin:*|wezterm:*|wt:*)
       local _ble_term_Ss=$'\e[@1 q' ;;
     esac
   fi
@@ -5828,6 +5836,10 @@ function ble/term/DA2/initialize-term {
   case $DA2R in
   ('0;0;0')
     _ble_term_TERM[depth]=wezterm:0 ;;
+  ('0;10;1') # Windows Terminal
+    # 現状ハードコードされている。
+    # https://github.com/microsoft/terminal/blob/bcc38d04/src/terminal/adapter/adaptDispatch.cpp#L779-L782
+    _ble_term_TERM[depth]=wt:0 ;;
   ('1;0'?????';0')
     _ble_term_TERM[depth]=foot:${DA2R:3:5} ;;
   ('1;'*)

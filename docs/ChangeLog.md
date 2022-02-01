@@ -140,6 +140,7 @@
 - edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
 - canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 dc3827b
 - edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
+- util (`ble/util/buffer`): hide cursor in rendering `#D1758` 0000000
 
 ## Fixes
 
@@ -306,6 +307,7 @@
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
+- util: add identification of Windows Terminal `wt` `#D1758` 0000000
 
 ## Internal changes and fixes
 
