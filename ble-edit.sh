@@ -320,7 +320,14 @@ function ble-edit/draw/put.vpa {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$out"
 }
 function ble-edit/draw/flush {
-  IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
+  IFS= builtin eval 'local text="${DRAW_BUFF[*]}"'
+
+  # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal 途中
+  # のカーソル移動も無理やり表示しようとする端末に対する対策。
+  ((_ble_highlight_layer_overwrite_mode_index<0)) &&
+    text=$_ble_term_civis$text$_ble_term_cvvis
+
+  ble/util/put "$text"
   DRAW_BUFF=()
 }
 function ble-edit/draw/sflush {

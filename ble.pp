@@ -78,6 +78,7 @@ function ble/init/restore-IFS {
 #------------------------------------------------------------------------------
 # check environment
 
+function ble/util/put { builtin printf '%s' "$1"; }
 function ble/util/print { builtin printf '%s\n' "$1"; }
 
 # will be overwritten by src/util.sh

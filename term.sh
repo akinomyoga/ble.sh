@@ -121,6 +121,9 @@ function ble/term.sh/initialize {
   ble/term.sh/define-cap _ble_term_sc $'\e[s' sc:sc
   ble/term.sh/define-cap _ble_term_rc $'\e[u' rc:rc
 
+  ble/term.sh/define-cap _ble_term_cvvis $'\e[?25h' cvvis:vs
+  ble/term.sh/define-cap _ble_term_civis $'\e[?25l' civis:vi
+
   # SGR clear
   ble/term.sh/define-cap _ble_term_sgr0 $'\e[m' sgr0:me
 
