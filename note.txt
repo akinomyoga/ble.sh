@@ -1348,6 +1348,24 @@ bash_tips
 
   * bash-completion
 
+    2022-02-02
+
+    * [DraftPR で修正済み] _services が failglob で問題を起こしている。
+
+      _comp_init_set_up_service_completions も駄目。うーん。failglob ではある
+      がこれは自分が修正している途中の物ではない新しい物だろうか? →これは既に
+      fix-failglob　の中に含まれていた。
+
+    * [修正済み] rsync で *-from が云々という failglob が発生している
+      →これは最新版では既に修正されている。
+
+      結局ロードして欲しい bash-completion が全然ロードされない。何故 → 結局ロー
+      カルの場所ではなくて其処で make install されている物が読み出されている様だ
+      が、make install しても何故かずっと古いままという状態になっている様だった。
+      autoreconf -i をし直して実行したらちゃんと新しい物に置き換えられた。make 自
+      体がちゃんと動いていなかったという事になるのだろうか。何れにしてもこれでちゃ
+      んと動く様になった。
+
     2022-01-23
 
     683 にも unresolved patch suggestion がある。
@@ -1736,15 +1754,6 @@ bash_tips
 
   * nix-build -A の補完が効かないという問題
     https://github.com/akinomyoga/ble.sh/issues/171#issue-1113799687
-
-  * rsync --no-while-f[TAB] で説明が一緒に挿入されてしまう。DATA を挿入している
-    のだろうか。。或いは、単一確定の場合に postprocess が走っていなくて直接補完
-    されている。後で確認する必要がある。
-
-  * bash-completion _services が failglob で問題を起こしてい
-    る。_comp_init_set_up_service_completions も駄目。うーん。failglob ではある
-    がこれは自分が修正している途中の物ではない新しい物だろうか? →これは既に
-    fix-failglob　の中に含まれていた。
 
 2022-01-23
 
@@ -5948,6 +5957,18 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-02-02
+
+  * mandb: rsync --no-while-f[TAB] で説明が一緒に挿入されてしまう [#D1761]
+
+    DATA を挿入しているのだろうか。。或いは、単一確定の場合に postprocess が走っ
+    ていなくて直接補完されている。後で確認する必要がある。
+
+    →どうやら ACTION progcomp で生成されている様だ。--no-whole-file に対しては
+    問題発生するが、--whole-file に対しては問題は発生しない。どうも CAND の時点
+    で大変な事になっている。
+
+    →OK. --no-OPTION の説明を勝手に生成した時に mandb_count++ するのを忘れてい
+    た為に、mandb 処理がスキップされていたのが原因だった。
 
   * complete: fzf と組み合わせている時に補完の再試行がされない問題 (reported by SuperSandro2000) [#D1760]
     https://github.com/akinomyoga/ble.sh/issues/171#issuecomment-1021326168

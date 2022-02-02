@@ -89,7 +89,7 @@
   - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0786e92
 - complete (menu-style:align): refactor `complete_menu_align => menu_align_{min,max}` (motivated by banoris) `#D1717` 22a2449
 - prompt: support `bleopt prompt_command_changes_layout` `#D1750` e199bee
-- exec: measure execution times `#D1756` 0000000
+- exec: measure execution times `#D1756` 2b28bec
  
 ## Changes
 
@@ -140,7 +140,7 @@
 - edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
 - canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 dc3827b
 - edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
-- util (`ble/util/buffer`): hide cursor in rendering `#D1758` 0000000
+- util (`ble/util/buffer`): hide cursor in rendering `#D1758` e332dc5
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 0000000
 
 ## Fixes
@@ -163,6 +163,7 @@
   - mandb: fix small issues of man-page analysis `#D1708` caa77bc
   - mandb: insert a comma in brace expansions instead of a space `#D1719` 0ac7f03
   - mandb: support man-page format of `rsync` `#D1733` 7900144
+  - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -305,7 +306,7 @@
   - global: work around `shopt -s compat42` `#D1754` a75bb25
 - global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 001c595
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
-  - util (`ble/builtin/trap`): fix resetting `$?` and `$_` (reported by SuperSandro2000) `#D1757` 0000000
+  - util (`ble/builtin/trap`): fix resetting `$?` and `$_` (reported by SuperSandro2000) `#D1757` dfc6221
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f

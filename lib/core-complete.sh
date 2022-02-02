@@ -3237,6 +3237,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
                 optarg = "";
                 suffix = " ";
               }
+              mandb_count++;
               print option FS optarg FS suffix FS desc;
             }
             next;
