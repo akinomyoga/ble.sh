@@ -5838,6 +5838,13 @@ function ble/term/DA2/initialize-term {
   da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈; WA #D1570 checked (is-array)
 
   case $DA2R in
+  # Note #D1946: Terminology は xterm と区別が付かないが決め打ちの様なので、丁
+  # 度 xterm の該当 version を使っている可能性は低いと見て、取り敢えず
+  # terminology と判断する事にする。
+  ('0;271;0')  _ble_term_TERM[depth]=terminology:200 ;;   # 2012-10-05 https://github.com/borisfaure/terminology/commit/500e7be8b2b876462ed567ef6c90527f37482adb
+  ('41;285;0') _ble_term_TERM[depth]=terminology:300 ;;   # 2013-01-22 https://github.com/borisfaure/terminology/commit/526cc2aeacc0ae54825cbc3a3e2ab64f612f83c9
+  ('61;337;0') _ble_term_TERM[depth]=terminology:10400 ;; # 2019-01-20 https://github.com/borisfaure/terminology/commit/96bbfd054b271f7ad7f31e699b13c12cb8fbb2e2
+
   # Note #D1909: wezterm が 2022-04-07 に DA2 を変更している。xterm-277 と区別
   # が付かないが、ちょうど該当 xterm version (2012-01-08) を使っている可能性は
   # 低いと見て取り敢えず wezterm とする。
@@ -5937,6 +5944,11 @@ function ble/term/DA2/notify {
       if [[ ! ${_ble_term_Ss-} ]]; then
         _ble_term_Ss=$'\e[@1 q'
       fi ;;
+    (terminology:*)
+      # Note #D1946: Terminology にはカーソル位置を戻した時に xenl 状態
+      # (ty->termstate.wrapnext) が残ってしまうバグがある。これを避ける為に一旦
+      # CR で行頭に戻ってから DECRC する。
+      _ble_term_sc=$'\e7' _ble_term_rc=$'\r\e8' ;;
     esac
 
     if [[ $is_outermost ]]; then

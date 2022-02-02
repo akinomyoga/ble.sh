@@ -458,6 +458,7 @@
 - main: show warning for empty locale (movivated by Ultra980) `#D1927` 92f2006
 - main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006 0ceb0cb
 - canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` b0c16dd
+- term (`terminology`): work around terminal glitches `#D1946` xxxxxxx
 
 ## Test
 
