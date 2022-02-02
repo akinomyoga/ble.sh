@@ -361,9 +361,8 @@ function ble-complete/source/argument/.compgen-helper-func {
   eval '"$comp_func" "$cmd" "$cur" "$prev"'; local ret=$?
   unset -f compopt
 
-  if [[ $is_default_completion && $ret == 124 ]]; then
-    is_default_completion=retry
-  fi
+  [[ $ret == 124 ]] && progcomp_retry=1
+  return 0
 }
 
 ## 関数 ble-complete/source/argument/.compgen
@@ -380,13 +379,12 @@ function ble-complete/source/argument/.compgen {
   local comp_prog= comp_func=
   ble-syntax:bash/extract-command "$index" || return 1
 
-  local cmd=${comp_words[0]} compcmd= is_default_completion=
+  local cmd=${comp_words[0]} compcmd=
   if complete -p "$cmd" &>/dev/null; then
     compcmd=$cmd
   elif [[ ${cmd##*/} != "$cmd" ]] && complete -p "${cmd##*/}" &>/dev/null; then
     compcmd=${cmd##*/}
   elif complete -p -D &>/dev/null; then
-    is_default_completion=1
     compcmd='-D'
   fi
 
@@ -437,12 +435,15 @@ function ble-complete/source/argument/.compgen {
   # WA #D1682: libvirt の virsh 用の補完が勝手に変数 IFS 及び word を書き換えて
   # そのまま放置して抜けてしまう。仕方がないので tmpenv で変数の内容を復元する
   # 事にする。
+  local progcomp_retry=
   IFS=$IFS word= ble/util/assign compgen 'builtin compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
 
-  # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
-  #   ble-complete/source/argument/.compgen-helper-func 関数内で補間関数の終了ステータスを確認し、
-  #   もし 124 だった場合には is_default_completion に retry を設定する。
-  if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
+  # Note #D0534: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始
+  #   めから補完を行う。ble/complete/progcomp/.compgen-helper-func 関数内で補間
+  #   関数の終了ステータスを確認し、もし 124 だった場合には
+  #   progcomp_retry に retry を設定する。
+  # Note #D1760: complete -D 以外の時でも 124 が返された時再試行する。
+  if [[ $progcomp_retry && ! $_ble_complete_retry_guard ]]; then
     local _ble_complete_retry_guard=1
     ble-complete/source/argument/.compgen
     return
