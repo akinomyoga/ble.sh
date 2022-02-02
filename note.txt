@@ -1734,6 +1734,9 @@ bash_tips
 
 2022-01-31
 
+  * nix-build -A の補完が効かないという問題
+    https://github.com/akinomyoga/ble.sh/issues/171#issue-1113799687
+
   * rsync --no-while-f[TAB] で説明が一緒に挿入されてしまう。DATA を挿入している
     のだろうか。。或いは、単一確定の場合に postprocess が走っていなくて直接補完
     されている。後で確認する必要がある。
@@ -5945,6 +5948,111 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-02-02
+
+  * complete: fzf と組み合わせている時に補完の再試行がされない問題 (reported by SuperSandro2000) [#D1760]
+    https://github.com/akinomyoga/ble.sh/issues/171#issuecomment-1021326168
+
+    fzf / bash-completion を両方組み合わせている時に ssh_config から読み取ったホスト名が正しく補完されない問題。
+
+    | 先ず普通の bash で動く様にするまでが大変だった。取り敢えず以下の順序で初期化すれば動く。
+    |
+    | $ bash --norc
+    | $ source ~/.mwg/git/scop/bash-completion/bash_completion
+    | $ _ble_contrib_fzf_base=~/.mwg/git/junegunn/fzf
+    | $ PATH=$PATH:$_ble_contrib_fzf_base/bin
+    | $ source $_ble_contrib_fzf_base/shell/completion.bash
+    |
+    | 然し、同じ順序で ble.sh を初期化したらちゃんと動く。うーん。初帰化の順序に
+    | 依存するのではないか。
+    |
+    | つまり、bash-completion を fzf よりも先に読み込んでいない為に起こっているの
+    | ではないかと推測されて、例えば ble.sh を bashrc の最初で source していて
+    | blerc の中で直接 ble-import を実行しているのだとしたら、その場で fzf
+    | completion.bash が読み取られる。その後で bashrc に戻ってきて
+    | bash_completion を初期化しているという可能性がある。
+    |
+    | 然し instruction では ble-import -d を使う様にお願いしている筈だ。という事
+    | を考えると bash-completion を bashrc の後で source していても問題は起こらな
+    | いのではないかという気がするが…。
+
+    * done: fzf-completion は bash-completion よりも先に読み込んでおく必要があ
+      るという事を何処かに記述しておく。
+
+    [問題再現]
+
+    嗚呼分かった。2回目以降で動くようになるというのは既にちゃんと報告を受けてい
+    た。そして実際に報告通りに初回は失敗して2回目以降はちゃんと動くという振る舞
+    いになっている。
+
+    [原因]
+
+    | これは補完再実行の仕組みに関係しているのだろう→うーん。戻り値 124 を期待し
+    | ているのにそもそも 124 を補完関数が返さなくなっているのが問題の様に見える。
+    |
+    | →うーん。分かった。retry は default completion の時にだけ確認する様にして
+    | いたが、実は任意の補完についてやり直しが可能という事なのだろう。bash のマニュ
+    | アルを見ると 124 による再試行は -D と組み合わせると便利とは書かれているが、-D
+    | と組み合わせた時にしか有効にならないとは書かれていない。つまり、
+    | is_default_completion でなくても再試行は行うべきである。
+
+    fzf completion はロード時に bash-completion を検出した場合、今後の補完で
+    _completion_loader による補完を呼び出そうとする。初回の _completion_loader
+    呼び出し時には 124 を返して Bash に対して補完の再試行を要求する。これはどの
+    コマンドの補完に対しても同様である。
+
+    一方で ble.sh は 124 に対する補完の再試行は complete -D による補完の時だけ
+    しか許さない様になっていた。従って、fzf が予め設定している ssh に対する補完
+    設定については、いざ _completion_loader によって内部的に bash-completion が
+    呼び出されて 124 を返したとしても、補完の再試行が行われない。というのが問題
+    であった。
+
+    [過去の関連修正]
+
+    | ? これに関係する修正を最近しなかったか。その時の都合で現在の様な実装になっ
+    |   ている可能性がないかについて確認する。
+    |
+    |   98835b5a lib/core-complete.sh (Koichi Murase   2021-05-17 14:52:51 +0900 3036)   builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr; local ret=$?
+    |   58e1be46 lib/core-complete.sh (Koichi Murase   2020-02-10 00:42:04 +0800 3037)   ble/function#pop compopt
+    |   4df15e1e complete.sh          (Koichi Murase   2017-10-12 00:52:41 +0900 3038)
+    |   4df15e1e complete.sh          (Koichi Murase   2017-10-12 00:52:41 +0900 3039)   if [[ $is_default_completion && $ret == 124 ]]; then
+    |   4df15e1e complete.sh          (Koichi Murase   2017-10-12 00:52:41 +0900 3040)     is_default_completion=retry
+    |   4df15e1e complete.sh          (Koichi Murase   2017-10-12 00:52:41 +0900 3041)   fi
+    |   cdd38598 complete.sh          (Koichi Murase   2015-11-23 23:58:01 +0900 3042) }
+    |
+    |   と思ったが該当部分の判定は4.5年間変化していない。つまり、関係ないはず。
+    |   では最近の問題は何だったろうか。
+    |
+    |   →うーん。fzf で note.txt を検索しても特に何も出てこない。
+    |
+    | * 分かった。これだ bash-completion に対する PR の議論だった。
+    |   https://github.com/scop/bash-completion/pull/653
+    |
+    |   bash-completion も他の補完が設定されている時にそれを呼び出すという処理を
+    |   している。その時に、これまで bash-completion は 124 が返ってきても何もし
+    |   ていなかったのをちゃんと再実行する様に変更するという PR だった。
+    |
+    |   結局最近何か処理した気がするというのは bash-completion の話だったので
+    |   ble.sh は関係ない。つまり、現在の実装になっているのには何の理由もないので
+    |   単純に修正すれば良いのだという結論。
+
+    関連する修正があった様な気がしたがそれは bash-completion の話だった。
+
+    問題の箇所を実装した時の議論 #D0534 を確認すると、「complete -D による補完
+    の時に 124 が返されたら再試行」とはっきりと書かれている。つまり仕様を勘違い
+    していた事になる。
+
+    ? 一方で報告によると auto-complete を off にしたら問題が発生しなくなったと
+     している。不思議だ。うーん。一節には auto-complete でメニューが初期化され
+     てその中だけで補完しようとする事によって補完内容が減少してしまっている可能
+     性。然し、auto-complete ではその様な事は起こらないし、或いは表示されている
+     物に惑わされて補完候補が生成されないと勘違いしている?
+
+     と思ったがもう一つの可能性として TAB に独自の auto-complete 用の binding
+     を付加している可能性もある。うーん。然し過去に SuperSandro2000 そういう議
+     論を開いた訳でもない。然しそれでも何処かの説明を見て TAB の設定を追加して
+     いるという可能性はある。
+
+     これは取り敢えず向こうの設定が原因になっている可能性があるので後回しで良い。
 
   * complete: / が symlink に対して付加されたり付加されなかったりする (reported by SuperSandro2000) [#D1759]
     https://github.com/akinomyoga/ble.sh/issues/171#issuecomment-1021326168

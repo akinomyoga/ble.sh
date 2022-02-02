@@ -232,6 +232,7 @@
 - make: fix a bug that config update messages are removed on install `#D1736` 72d968f
 - util: fix bugs in conversions from `'` to `\''` `#D1739` 6d15782
 - canvas: fix unupdated prompt on async wcwidth resolution `#D1740` e14fa5d
+- progcomp: retry completions on `$? == 124` also for non-default completions (reported by SuperSandro2000) `#D1759` 0000000
 
 ## Documentation
 
