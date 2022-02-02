@@ -1958,16 +1958,22 @@ function ble/widget/.CHARS {
 
 # **** ^U ^V ^W ^? 対策 ****                                   @decode.bind.uvw
 
+# ref #D0003, #D1092
 _ble_decode_bind__uvwflag=
 function ble-decode-bind/uvw {
   [[ $_ble_decode_bind__uvwflag ]] && return
   _ble_decode_bind__uvwflag=1
 
   # 何故か stty 設定直後には bind できない物たち
-  builtin bind -x '"":ble-decode/.hook 21; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode/.hook 22; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode/.hook 23; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode/.hook 127; builtin eval "$_ble_decode_bind_hook"'
+  # Note: bind 'set bind-tty-special-chars on' の時に以下が必要である (#D1092)
+  builtin bind -x $'"\025":ble-decode/.hook 21; builtin eval -- "$_ble_decode_bind_hook"'  # ^U
+  builtin bind -x $'"\026":ble-decode/.hook 22; builtin eval -- "$_ble_decode_bind_hook"'  # ^V
+  builtin bind -x $'"\027":ble-decode/.hook 23; builtin eval -- "$_ble_decode_bind_hook"'  # ^W
+  builtin bind -x $'"\177":ble-decode/.hook 127; builtin eval -- "$_ble_decode_bind_hook"' # ^?
+  # Note: 更に terminology は erase を DEL ではなく HT に設定しているので、以下
+  # も再設定する必要がある。他の端末でも似た物があるかもしれないので、念の為端
+  # 末判定はせずに常に上書きを実行する様にする。
+  builtin bind -x $'"\010":ble-decode/.hook 8; builtin eval -- "$_ble_decode_bind_hook"'   # ^H
 }
 
 # **** POSIXLY_CORRECT workaround ****
