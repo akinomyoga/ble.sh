@@ -6047,6 +6047,168 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-02-12
+
+  * 2022-02-02 main: やはり nix-shell の中でも有効にする [#D1766]
+    Ref #D1747
+
+    そもそも nix-shell で ble.sh が欲しい事もあるそうだ。報告がいい加減なので無
+    駄な修正をした。
+    https://github.com/akinomyoga/ble.sh/issues/169#issuecomment-1027096640
+
+    * 改めて調べてみたら実際に実行するコマンドが exec になるのは ruby がコマン
+      ド文字列に含まれている時のみの様である。
+
+      # というか、ruby という部分文字列が含まれているだけで実装が切り替わるので
+      # かなりいい加減な実装である。更に、単にこの四文字を探す為だけに
+      # std::regex を初期化しているのもおかしい。
+
+      実際にはユーザーによって指定された文字列 + exit を実行している様だ。なの
+      で return をすると通常のシェルに入る事ができる、という事になっているのだ。
+
+      https://github.com/NixOS/nix/blob/master/src/nix-build/nix-build.cc#L187
+
+      # これも単に exit を付加するだけだと quoting の問題で何だか変な事になる気
+      # がするが大丈夫なのだろうか。これ自体にセキュリティーの問題はないが、こ
+      # れはセキュリティーの問題が起こるパターンの最たるものである。nix-shell
+      # の実装はかなり怪しいと言わざるを言えない。
+
+    うーん。これに対する対策はどうするのか? IN_NIX_SHELL が設定されている時には
+    ble-attach を無効化して attach=none であっても prompt attach を強行するとい
+    う風にするべきだろうか。。
+
+    現在 bashrc の中にいるかどうかの判定はどの様にするのだったか。
+
+    というか、もし rcfile の名前が固定なのであれば、BASH_SOURCE を使って検出す
+    る事が可能なのではないだろうか。うーん。"一時ディレクトリ/rc" という形をし
+    ているらしい。
+
+    % そして一時ディレクトリは環境変数に設定されている。
+    %
+    % https://github.com/NixOS/nix/blob/73d5f38a47e7c3dea62994cfb8f962976194f767/src/nix-build/nix-build.cc#L428
+    %
+    % 例えば [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == $NIX_BUILD_TOP/rc ]] で
+    % テストできるのだろうか。これは実際に nix-shell を入れてみない事には分から
+    % ない気がする。
+    %
+    % →NIX_BUILD_TOP の中身を出力してみたがユーザーの run になっていて nix の
+    % 一時ディレクトリではない。その他の一時ディレクトリも全てそうである。改め
+    % て確認してみると tmpDir と TMPDIR は異なる変数だった。
+
+    以下を観察すると nix-shell, nix-build という名前の一時ディレクトリになるらしい。
+
+    https://github.com/NixOS/nix/blob/73d5f38a47e7c3dea62994cfb8f962976194f767/src/nix-build/nix-build.cc#L95-L101
+
+    うーん。というか或いはそもそも IN_NIX_SHELL の時は ble-attach をしたら強制
+    的に prompt attach で良いのではないかという気がする。と思ったが、そこまです
+    る事もないので、取り敢えず BASH_SOURCE の末端が /rc だったら prompt attach
+    を設定する事にした。
+
+    これで一応動作はしている。
+
+    x 2022-02-04 然し、今度は別のエラーが発生している。bind は builtin じゃない
+      と出ている。誰かが無効化しているという事なのだろうか。或いは、もしかする
+      と非対話シェルでは bind は常に存在していないのだろうか→うーん。確かめて
+      みたが "行編集は有効になっていません" という表示が出るのみである。なので、
+      nix-shell に於いては何だか怪しげな事がされている?
+
+      調べてみると ble-attach の中で発生している。特に ble/decode/initialize の
+      内部で発生している。不思議なのはちゃんと attach はできているという事。な
+      ので bind が全く使えないという訳ではないという事。なのに何故 builtin は
+      bind が存在しないという報告をするのだろうか。
+
+      ble/builtin/bind/read-user-settings で問題が生じている。うーん。最初の
+      builtin bind では何も問題が生じていない。という事は何処かから呼び出してい
+      る builtin bind の綴を間違えているか或いは余分な文字が混入しているという
+      事だろうか。
+
+      と思ったら分かった。"$BASH" 云々 -c 'builtin bind -m emacs -p' 云々として
+      既定の binding を読み取っている箇所で問題が起こっている。うーん。そうだと
+      しても何故 builtin bind が使えないのか? 不思議である。
+
+      →うーん。実際のバイナリは以下の様になっている。
+
+      $ ls -la /proc/$$/exe
+      lrwxrwxrwx 1 murase murase 0 2022-02-04 09:14:11 /proc/30092/exe -> /nix/store/xz3kkiscxh01yazxa1dk08q047mfl1fh-bash-interactive-5.1-p12/bin/bash
+      $ echo "$BASH"
+      /nix/store/2kh3c4v2vf6d6xg6c9n8zvfpwf3zzwca-bash-5.1-p12/bin/bash
+
+      うーん。ちょっと何が起こっているのか分からなくなった。
+
+      1 最初 (bashrc source 時): この時点で何故 BASH が現在のシェルではなくて
+        /bin/bash になっているのか謎である。
+
+        SHELL=/bin/bash
+        BASH=/bin/bash
+
+        うーん。SHELL に関しては外から export した物がちゃんと伝播している。
+        BASH に関しては謎だ。もしかすると bash はビルド時に BASH を埋め込んでい
+        る? と思ったがそうでもない様に見える。普通に
+
+        $ /nix/store/xz3kkiscxh01yazxa1dk08q047mfl1fh-bash-interactive-5.1-p12/bin/bash
+
+        としてログインした場合には何も変な事は起こっていない。ちゃんと自身の
+        BASH が見えている。何か chroot 的な物をして bash をスタートしているのだ
+        ろうか。bash のソースを見ると shell_name が相対パスでかつ login シェル
+        ならばユーザー情報から BASH を初期化している。と思ったが、
+
+        $ (PATH=/nix/store/xz3kkiscxh01yazxa1dk08q047mfl1fh-bash-interactive-5.1-p12/bin:$PATH; hash -r; bash --login -c 'echo $BASH')
+
+        を実行してもちゃんと現在のシェルを見つけることができている。というか、
+        shell_name の時点で正しく見つけることができているという事か。
+
+      2 次に $stdenv/setup で BASH=$SHELL が設定されていると思ったが、そうする
+        と最終的に BASH=non-interactive-bash になっている理由が分からない。
+
+      3 更に最終的な SHELL の値は SHELL=interactive-bash になっている。つまり
+        SHELL=non-interactive-bash になっている瞬間はない気がする。改めて SHELL
+        の値について確認してみたが、これは stdenv/setup よりも後に設定されてい
+        る様なので、最終的に interactive-bash にはなっていてもそれが BASH に反
+        映されていなくても不思議はない。
+
+      うーん。trace を得た。
+
+      declare -x SHELL="/bin/bash"
+      declare -- BASH="/bin/bash"
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:1: export SHELL=/nix/store/2kh3c4v2vf6d6xg6c9n8zvfpwf3zzwca-bash-5.1-p12/bin/bash
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:14: [[ -n "${BASH_VERSINFO-}" && "${BASH_VERSINFO-}" -lt 4 ]]
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:303: [ -z "${SHELL:-}" ]
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:304: BASH="$SHELL"
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:305: export CONFIG_SHELL="$SHELL"
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:309: export shell="$SHELL"
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:685: [[ -z "${NIX_SSL_CERT_FILE:-}" && "${IN_NIX_SHELL:-}" != "impure" ]]
+      /nix/store/xcy53qbjynin70g46w1nx011gr7jw8l1-stdenv-linux/setup:689: [[ -z "${SSL_CERT_FILE:-}" && "${IN_NIX_SHELL:-}" != "impure" ]]
+      /tmp/nix-shell-49112-0/rc:3: SHELL='/nix/store/xz3kkiscxh01yazxa1dk08q047mfl1fh-bash-interactive-5.1-p12/bin/bash'
+      /tmp/nix-shell-49112-0/rc:3: [ -n "$PS1" -a -z "$NIX_SHELL_PRESERVE_PROMPT" ]
+
+      うーん。setup.sh 1行目で SHELL を書き換えている。。。まとめると、
+
+      1 何故か分からないが nix 環境では bash は BASH の初期化に失敗して
+        /bin/bash を取り敢えず BASH に設定する。
+
+      2 $stdenv/setup は非対話シェル用(特にビルド用)の環境であり、非対話用に特
+        別にコンパイルされた bash の上で動作する事を想定している。なので中で
+        SHELL と BASH に無理やり固定の値 (非対話 Bash) の値を設定している。
+
+      3 更に nix-shell の呼び出し元では SHELL を対話シェルのパスに上書きしてい
+        る。此処で BASH も同様に更新するべきではないか。
+
+    * うーん。面倒になった来たのでやはり nix 用の workaround を追加する事にする。
+      つまり問題は BASH が変な値になっているのが原因である。という事は無理やり
+      BASH を補正してしまえば良い。
+
+      a 環境の補正は ble.pp で集中して行っている箇所があるので其処で調整する事
+        にする。と、思ったがよく考えたら nix-shell では setup の中で BASH を勝
+        手に変更していて、更に、setup は bashrc よりも後で読み込まれるのだから、
+        ble.sh の初期化時に BASH を補正しても仕方がない。うーん。
+
+      b 一つの手は ble-attach の時に BASH を補正するという事。結局 "$BASH" を使っ
+        ているのは、decode の初期化であって、decode の初期化は ble-attach で呼
+        び出しているのだから。そして、現在既に ble-attach に nix 用の
+        workaround が入っている。
+
+      上記の b の箇所で BASH を上書きする事にした。
+
 2022-02-09
 
   * edit: exit を実行すると時間計測結果が表示されてしまう [#D1765]

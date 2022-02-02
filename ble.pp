@@ -138,9 +138,8 @@ if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [[ ! $_ble_init_command ]]; then
-  if [[ ${BASH_EXECUTION_STRING+set} || ${IN_NIX_SHELL-} ]]; then
+  if [[ ${BASH_EXECUTION_STRING+set} ]]; then
     # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&3
-    # builtin echo "ble.sh: ble.sh will not be activated for nix-shell command execution." >&3
     return 1 2>/dev/null || builtin exit 1
   fi
 
@@ -1427,10 +1426,14 @@ function ble/base/load-rcfile {
   fi
 }
 
+## @fn ble-attach [opts]
 function ble-attach {
-  if (($#)); then
-    ble/base/print-usage-for-no-argument-command 'Attach to ble.sh.' "$@"
-    return "$?"
+  if (($# >= 2)); then
+    ble/util/print-lines \
+      'usage: ble-attach [opts]' \
+      'Attach to ble.sh.' >&2
+    [[ $1 != --help ]] && return 2
+    return 0
   fi
 
   # when detach flag is present
@@ -1451,6 +1454,25 @@ function ble-attach {
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
   ble/base/adjust-builtin-wrappers-2
+
+  if [[ ${IN_NIX_SHELL-} ]]; then
+    # nix-shell rc の中から実行している時は強制的に prompt-attach にする
+    if [[ "${BASH_SOURCE[*]}" == */rc && $1 != *:force:* ]]; then
+      ble/base/install-prompt-attach
+      _ble_attached=
+      BLE_ATTACHED=
+      ble/base/restore-bash-options
+      ble/base/restore-POSIXLY_CORRECT
+      ble/base/restore-builtin-wrappers
+      builtin eval -- "$_ble_bash_FUNCNEST_restore"
+      return 0
+    fi
+
+    # nix-shell は BASH を誤った値に書き換えるので上書きする。
+    local ret
+    ble/util/readlink "/proc/$$/exe"
+    [[ -x $ret ]] && BASH=$ret
+  fi
 
   # char_width_mode=auto
   ble/canvas/attach
@@ -1549,6 +1571,28 @@ blehook EXIT+=ble/base/unload
 
 _ble_base_attach_from_prompt=
 _ble_base_attach_PROMPT_COMMAND=()
+## @fn ble/base/install-prompt-attach
+function ble/base/install-prompt-attach {
+  [[ ! $_ble_base_attach_from_prompt ]] || return 0
+  _ble_base_attach_from_prompt=1
+  if ((_ble_bash>=50100)); then
+    ((${#PROMPT_COMMAND[@]})) || PROMPT_COMMAND[0]=
+    ble/array#push PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
+    if [[ $_ble_edit_detach_flag == reload ]]; then
+      _ble_edit_detach_flag=prompt-attach
+      blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
+    fi
+  else
+    local save_index=${#_ble_base_attach_PROMPT_COMMAND[@]}
+    _ble_base_attach_PROMPT_COMMAND[save_index]=${PROMPT_COMMAND-}
+    ble/function#lambda PROMPT_COMMAND \
+                        "ble/base/attach-from-PROMPT_COMMAND $save_index \"\$FUNCNAME\""
+    if [[ $_ble_edit_detach_flag == reload ]]; then
+      _ble_edit_detach_flag=prompt-attach
+      blehook PRECMD+="$PROMPT_COMMAND"
+    fi
+  fi
+}
 ## @fn ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
 function ble/base/attach-from-PROMPT_COMMAND {
 #%if measure_load_time
@@ -1582,7 +1626,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
     _ble_base_attach_from_prompt=
   } 3>&2 2>/dev/null # set -x 対策 #D0930
 
-  ble-attach
+  ble-attach force
 
   # Note: 何故か分からないが PROMPT_COMMAND から ble-attach すると
   # ble/bin/stty や ble/bin/mkfifo や tty 2>/dev/null などが
@@ -1628,25 +1672,9 @@ ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
   # attach
   case $attach in
   (attach) ble-attach ;;
-  (prompt)
-    _ble_base_attach_from_prompt=1
-    if ((_ble_bash>=50100)); then
-      ((${#PROMPT_COMMAND[@]})) || PROMPT_COMMAND[0]=
-      ble/array#push PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
-      if [[ $_ble_edit_detach_flag == reload ]]; then
-        _ble_edit_detach_flag=prompt-attach
-        blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
-      fi
-    else
-      local save_index=${#_ble_base_attach_PROMPT_COMMAND[@]}
-      _ble_base_attach_PROMPT_COMMAND[save_index]=${PROMPT_COMMAND-}
-      ble/function#lambda PROMPT_COMMAND \
-                          "ble/base/attach-from-PROMPT_COMMAND $save_index \"\$FUNCNAME\""
-      if [[ $_ble_edit_detach_flag == reload ]]; then
-        _ble_edit_detach_flag=prompt-attach
-        blehook PRECMD+="$PROMPT_COMMAND"
-      fi
-    fi ;;
+  (prompt) ble/base/install-prompt-attach ;;
+  (none) ;;
+  (*) ble/util/print "ble.sh: unrecognized attach method --attach='$attach'." ;;
   esac
 }
 

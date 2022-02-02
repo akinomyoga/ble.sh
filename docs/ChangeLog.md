@@ -311,6 +311,7 @@
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
   - util (`ble/builtin/trap`): fix resetting `$?` and `$_` (reported by SuperSandro2000) `#D1757` dfc6221
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
+  - main: force prompt-attach inside the nix-shell `rc` `#D1766` 0000000
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
 - util: add identification of Windows Terminal `wt` `#D1758` e332dc5
