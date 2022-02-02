@@ -1172,7 +1172,7 @@ function ble/complete/action/complete.addtail {
 }
 function ble/complete/action/complete.mark-directory {
   [[ :$comp_type: == *:markdir:* && $CAND != */ ]] &&
-    [[ :$comp_type: == *:marksymdir:* || ! -h $CAND ]] &&
+    [[ ! -h $CAND || ( $insert == "$COMPS" || :$comp_type: == *:marksymdir:* ) ]] &&
     ble/complete/action/complete.addtail /
 }
 function ble/complete/action/complete.close-quotation {

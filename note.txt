@@ -5946,6 +5946,18 @@ bash_tips
 
 2022-02-02
 
+  * complete: / が symlink に対して付加されたり付加されなかったりする (reported by SuperSandro2000) [#D1759]
+    https://github.com/akinomyoga/ble.sh/issues/171#issuecomment-1021326168
+
+    bash-completion なしでも再現する → これは分かった。bind -v で
+    mark-symlinked-directories が off になっているのが原因だった。元の bash だ
+    とこれが off になっていたとしても2回 TAB を押したら結局 / を挿入する様だ。
+    →もう少し調べてみると ins が空の時には mark-symlinked-directories がなくて
+    も / を挿入するという事らしい。
+
+    うーん。元の bash と同じ振る舞いになる様に調整する事にした。これの判定は手
+    持ちの情報で既にできたのでその様にした。
+
   * term: wt で 描画中のカーソル移動が気になる [#D1758]
 
     flush する時か、或いは描画シーケンス自体にカーソル消去・表示のコードを埋め

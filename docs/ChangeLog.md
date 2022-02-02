@@ -141,6 +141,7 @@
 - canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 dc3827b
 - edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
 - util (`ble/util/buffer`): hide cursor in rendering `#D1758` 0000000
+- complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 0000000
 
 ## Fixes
 
