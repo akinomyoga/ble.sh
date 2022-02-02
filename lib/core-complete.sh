@@ -170,7 +170,7 @@ function ble/complete/action/util/complete.addtail {
 }
 function ble/complete/action/util/complete.mark-directory {
   [[ :$comp_type: == *:markdir:* && $CAND != */ ]] &&
-    [[ :$comp_type: == *:marksymdir:* || ! -h $CAND ]] &&
+    [[ ! -h $CAND || ( $insert == "$COMPS" || :$comp_type: == *:marksymdir:* ) ]] &&
     ble/complete/action/util/complete.addtail /
 }
 function ble/complete/action/util/complete.close-quotation {
