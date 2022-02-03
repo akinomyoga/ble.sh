@@ -253,6 +253,7 @@ bleopt/declare -v line_limit_type none
 
 _ble_app_render_mode=panel
 _ble_app_winsize=()
+_ble_app_render_Processing=
 function ble/application/.set-up-render-mode {
   [[ $1 == "$_ble_app_render_mode" ]] && return 0
   case $1 in
@@ -279,18 +280,86 @@ function ble/application/pop-render-mode {
   ble/array#shift _ble_app_render_mode
 }
 function ble/application/render {
-  local render=$_ble_app_render_mode
-  case $render in
-  (panel)
-    local _ble_prompt_update=owner
-    ble/prompt/update
-    ble/edit/leave-command-layout # ble/edit 特有
-    ble/canvas/panel/render ;;
-  (forms:*)
-    ble/forms/render "${render#*:}" ;;
-  esac
-  _ble_app_winsize=("$COLUMNS" "$LINES")
-  ble/util/buffer.flush >&2
+  local _ble_app_render_Processing=1
+  {
+    local render=$_ble_app_render_mode
+    case $render in
+    (panel)
+      local _ble_prompt_update=owner
+      ble/prompt/update
+      ble/edit/leave-command-layout # ble/edit 特有
+      ble/canvas/panel/render ;;
+    (forms:*)
+      ble/forms/render "${render#*:}" ;;
+    esac
+    _ble_app_winsize=("$COLUMNS" "$LINES")
+    ble/util/buffer.flush >&2
+  }
+  ble/util/unlocal _ble_app_render_Processing
+  if [[ $_ble_application_render_winch ]]; then
+    _ble_application_render_winch=
+    ble/application/onwinch
+  fi
+}
+
+function ble/application/onwinch {
+  if [[ $_ble_app_render_Processing || $_ble_decode_hook_Processing == body || $_ble_decode_hook_Processing == prologue ]]; then
+    # Note #D1762: 別の処理が走っている途中に描画更新すると中途半端な
+    # データに対して処理が実行されてデータが破壊されるので後で処理する。
+    #
+    # ble_decode_hook_body=1 の時は EPILOGUE が後で必ず呼び出されるの
+    # でその時に ble/application/render が呼び出される。その中で
+    # _ble_application_render_winch がチェックされて改めてこの関数が呼
+    # び出される。_ble_app_render_Processing=1 の時には、
+    # ble/application/render の末尾でやはりチェックが走ると期待する。
+    _ble_application_render_winch=1
+    return 0
+  fi
+
+  _ble_textmap_pos=()
+  # 処理中に届いた WINCH は失われる様だ。連続的サイズ変化を通知す
+  # る端末の場合、途中のサイズの WINCH の処理中に最終的なサイズの
+  # WINCH を逃して表示が乱れたままになる。対策として描画終了時に処
+  # 理中にサイズ変化が起こっていないか確認する。
+
+  local old_size= i
+  for ((i=0;i<20;i++)); do
+    # 次の待つと共にサブシェルで checkwinsize を誘発
+    (ble/util/msleep 50)
+    # trap 中だと bash のバグでジョブが溜まるので逐次捌く
+    ble/util/joblist.check ignore-volatile-jobs
+    local size=$LINES:$COLUMNS
+    [[ $size == "$old_size" ]] && break
+
+    local _ble_app_render_Processing=1
+    {
+      old_size=$size
+
+      case $bleopt_canvas_winch_action in
+      (clear)
+        # 全消去して一番上から再描画
+        ble/util/buffer "$_ble_term_clear" ;;
+      (redraw-here)
+        # 現在位置から再描画 (幅が減った時は前のコマンドの出力結果を破壊しな
+        # いので戻る)
+        if ((COLUMNS<_ble_app_winsize[0])); then
+          local -a DRAW_BUFF=()
+          ble/canvas/panel#goto.draw 0 0 0
+          ble/canvas/bflush.draw
+        fi ;;
+      (redraw-prev)
+        # 前回の開始相対位置が変化していないと仮定して戻って再描画
+        local -a DRAW_BUFF=()
+        ble/canvas/panel#goto.draw 0 0 0
+        ble/canvas/bflush.draw ;;
+      esac
+
+      ble/canvas/panel/invalidate height # 高さの再確保も含めて。
+    }
+    ble/util/unlocal _ble_app_render_Processing
+
+    ble/application/render
+  done
 }
 
 # canvas.sh 設定
@@ -529,6 +598,16 @@ function ble/prompt/unit#update/.update-dependencies {
   if [[ $otree ]]; then
     ble/string#split otree , "$otree"
 
+    if [[ ! $ble_prompt_unit_processing ]]; then
+      local ble_prompt_unit_processing=1
+      "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}" # WA #D1570
+    elif ble/set#contains ble_prompt_unit_mark "$unit"; then
+      ble/util/print "ble/prompt: FATAL: detected cyclic dependency ($unit required by $ble_prompt_unit_parent)" >/dev/tty
+      return 1
+    fi
+    local ble_prompt_unit_parent=$unit
+    ble/set#add ble_prompt_unit_mark "$unit"
+
     local prompt_unit= # 依存関係の登録はしない
     local child
     for child in "${otree[@]}"; do
@@ -537,6 +616,8 @@ function ble/prompt/unit#update/.update-dependencies {
       ble/is-function ble/prompt/unit:"$child"/update &&
         ble/prompt/unit#update "$child"
     done
+
+    ble/set#remove ble_prompt_unit_mark "$unit"
   fi
 }
 function ble/prompt/unit#clear {
@@ -2344,54 +2425,9 @@ function ble-edit/eval-IGNOREEOF {
 bleopt/declare -n canvas_winch_action redraw-here
 
 function ble-edit/attach/TRAPWINCH {
-  local FUNCNEST=
-  local IFS=$_ble_term_IFS
-  if ((_ble_edit_attached)); then
-    if [[ $_ble_term_state == internal ]]; then
-      _ble_textmap_pos=()
-      ble-edit/bind/stdout.on
-
-      # 処理中に届いた WINCH は失われる様だ。連続的サイズ変化を通知す
-      # る端末の場合、途中のサイズの WINCH の処理中に最終的なサイズの
-      # WINCH を逃して表示が乱れたままになる。対策として描画終了時に処
-      # 理中にサイズ変化が起こっていないか確認する。
-
-      local old_size= i
-      for ((i=0;i<20;i++)); do
-        # 次の待つと共にサブシェルで checkwinsize を誘発
-        (ble/util/msleep 50)
-        # trap 中だと bash のバグでジョブが溜まるので逐次捌く
-        ble/util/joblist.check ignore-volatile-jobs
-        local size=$LINES:$COLUMNS
-        [[ $size == "$old_size" ]] && break
-        old_size=$size
-
-        case $bleopt_canvas_winch_action in
-        (clear)
-          # 全消去して一番上から再描画
-          ble/util/buffer "$_ble_term_clear" ;;
-        (redraw-here)
-          # 現在位置から再描画 (幅が減った時は前のコマンドの出力結果を破壊しな
-          # いので戻る)
-          if ((COLUMNS<_ble_app_winsize[0])); then
-            local -a DRAW_BUFF=()
-            ble/canvas/panel#goto.draw 0 0 0
-            ble/canvas/bflush.draw
-          fi ;;
-        (redraw-prev)
-          # 前回の開始相対位置が変化していないと仮定して戻って再描画
-          local -a DRAW_BUFF=()
-          ble/canvas/panel#goto.draw 0 0 0
-          ble/canvas/bflush.draw ;;
-        esac
-
-        ble/canvas/panel/invalidate height # 高さの再確保も含めて。
-        ble/application/render
-      done
-
-      ble-edit/bind/stdout.off
-    fi
-  fi
+  # 現在前面に出ていなければ関係ない
+  ((_ble_edit_attached)) && [[ $_ble_term_state == internal ]] || return 0
+  ble/application/onwinch 2>&$_ble_util_fd_stderr
 }
 
 ## called by ble-edit/attach

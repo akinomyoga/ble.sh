@@ -503,6 +503,7 @@
 - complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 5777d7f
 - highlight: fix remaininig highlighting of vanishing words `#D1421` `#D1422` 1066653
 - complete: fix a problem that the user setting `dotglob` is changed `#D1425` 987436d
+- app: work around data corruption by WINCH on intermediate state `#D1762` 0000000
 
 ## Compatibility
 

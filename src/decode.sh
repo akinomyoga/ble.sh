@@ -638,6 +638,7 @@ elif ((_ble_bash>=40000)); then
   ble/function#suppress-stderr ble/decode/nonblocking-read
 fi
 
+_ble_decode_hook_Processing=
 function ble-decode/.hook {
   if ble/util/is-stdin-ready; then
     ble/array#push _ble_decode_input_buffer "$@"
@@ -675,7 +676,9 @@ function ble-decode/.hook {
   [[ $_ble_bash_options_adjusted ]] && set +v || :
 
   local IFS=$_ble_term_IFS
+  local _ble_decode_hook_Processing=prologue
   ble-decode/PROLOGUE
+  _ble_decode_hook_Processing=body
 
   # abort #D0998
   if ble-decode/.check-abort "$1"; then
@@ -722,6 +725,7 @@ function ble-decode/.hook {
   ble/decode/has-input || ble-decode-key/batch/flush
 
   builtin eval -- "$_ble_decode_erase_progress_hook"
+  _ble_decode_hook_Processing=epilogue
   ble-decode/EPILOGUE
 }
 

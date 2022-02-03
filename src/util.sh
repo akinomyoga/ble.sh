@@ -2149,6 +2149,7 @@ function ble/builtin/trap/invoke {
 function ble/builtin/trap/.handler {
   local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ FUNCNEST=
   local _ble_trap_sig=$1 _ble_trap_name=$2
+  local FUNCNEST= IFS=$_ble_term_IFS
   local set shopt; ble/base/.adjust-bash-options set shopt
 
   # 透過 _ble_builtin_trap_postproc を設定
