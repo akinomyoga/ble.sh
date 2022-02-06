@@ -141,7 +141,7 @@
 - canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 dc3827b
 - edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
 - util (`ble/util/buffer`): hide cursor in rendering `#D1758` e332dc5
-- complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 0000000
+- complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
 
 ## Fixes
 
@@ -163,7 +163,7 @@
   - mandb: fix small issues of man-page analysis `#D1708` caa77bc
   - mandb: insert a comma in brace expansions instead of a space `#D1719` 0ac7f03
   - mandb: support man-page format of `rsync` `#D1733` 7900144
-  - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 0000000
+  - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 88614b8
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -233,7 +233,9 @@
 - make: fix a bug that config update messages are removed on install `#D1736` 72d968f
 - util: fix bugs in conversions from `'` to `\''` `#D1739` 6d15782
 - canvas: fix unupdated prompt on async wcwidth resolution `#D1740` e14fa5d
-- progcomp: retry completions on `$? == 124` also for non-default completions (reported by SuperSandro2000) `#D1759` 0000000
+- progcomp: retry completions on `$? == 124` also for non-default completions (reported by SuperSandro2000) `#D1759` 82b9c01
+- app: work around data corruption by WINCH on intermediate state `#D1762` 5065fda
+- util (`ble/util/import`): work around filenames with bash special characters `#D1763` 0000000
 
 ## Documentation
 
@@ -310,7 +312,7 @@
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
-- util: add identification of Windows Terminal `wt` `#D1758` 0000000
+- util: add identification of Windows Terminal `wt` `#D1758` e332dc5
 
 ## Internal changes and fixes
 
@@ -503,7 +505,6 @@
 - complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 5777d7f
 - highlight: fix remaininig highlighting of vanishing words `#D1421` `#D1422` 1066653
 - complete: fix a problem that the user setting `dotglob` is changed `#D1425` 987436d
-- app: work around data corruption by WINCH on intermediate state `#D1762` 0000000
 
 ## Compatibility
 

@@ -4560,19 +4560,33 @@ function ble/util/import/search {
   fi
   [[ -e $ret && ! -d $ret ]]
 }
+function ble/util/import/encode-filename {
+  ret=$1
+  local chars=%$'\t\n !"$&\'();<>\\^`|' # <emacs bug `>
+  if [[ $ret == *["$chars"]* ]]; then
+    local i n=${#chars} reps a b
+    reps=(%{25,08,0A,2{0..2},24,2{6..9},3B,3C,3E,5C,5E,60,7C})
+    for ((i=0;i<n;i++)); do
+      a=${chars:i:1} b=${reps[i]} ret=${ret//"$a"/"$b"}
+    done
+  fi
+  return 0
+}
 function ble/util/import/is-loaded {
   local ret
   ble/util/import/search "$1" &&
-    ble/is-function "ble/util/import/guard:$ret"
+    ble/util/import/encode-filename "$ret" &&
+    ble/is-function ble/util/import/guard:"$ret"
 }
 # called by ble/base/unload (ble.pp)
 function ble/util/import/finalize {
-  local file
+  local file ret
   for file in "${_ble_util_import_files[@]}"; do
-    local guard=ble/util/import/guard:$file
+    ble/util/import/encode-filename "$file"; local enc=$ret
+    local guard=ble/util/import/guard:$enc
     builtin unset -f "$guard"
 
-    local onload=ble/util/import/onload:$file
+    local onload=ble/util/import/onload:$enc
     if ble/is-function "$onload"; then
       "$onload" ble/util/unlocal
       builtin unset -f "$onload"
@@ -4642,16 +4656,17 @@ function ble/util/import/.read-arguments {
   return 0
 }
 function ble/util/import {
-  local file ext=0
+  local file ext=0 ret enc
   for file; do
-    local guard=ble/util/import/guard:$file
+    ble/util/import/encode-filename "$file"; enc=$ret
+    local guard=ble/util/import/guard:$enc
     ble/is-function "$guard" && return 0
     [[ -e $file ]] || return 1
     source "$file" || { ext=$?; continue; }
     builtin eval "function $guard { :; }"
     ble/array#push _ble_util_import_files "$file"
 
-    local onload=ble/util/import/onload:$file
+    local onload=ble/util/import/onload:$enc
     ble/function#try "$onload" ble/util/invoke-hook
   done
   return "$ext"
@@ -4691,11 +4706,12 @@ function ble/util/import/eval-after-load {
     return 2
   fi; file=$ret
 
-  local guard=ble/util/import/guard:$file
+  ble/util/import/encode-filename "$file"; local enc=$ret
+  local guard=ble/util/import/guard:$enc
   if ble/is-function "$guard"; then
     builtin eval -- "$2"
   else
-    local onload=ble/util/import/onload:$file
+    local onload=ble/util/import/onload:$enc
     if ! ble/is-function "$onload"; then
       local q=\' Q="'\''" list=_ble_util_import_onload_$((_ble_util_import_onload_count++))
       builtin eval -- "$list=(); function $onload { \"\$1\" $list \"\${@:2}\"; }"
