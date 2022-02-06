@@ -2302,6 +2302,19 @@ function ble-autoload {
   ble/util/autoload "$file" "${functions[@]}"
 }
 
+function ble/util/import/encode-filename {
+  ret=$1
+  local chars=%$'\t\n !"$&\'();<>\\^`|' # <emacs bug `>
+  if [[ $ret == *["$chars"]* ]]; then
+    local i n=${#chars} reps a b
+    reps=(%{25,08,0A,2{0..2},24,2{6..9},3B,3C,3E,5C,5E,60,7C})
+    for ((i=0;i<n;i++)); do
+      a=${chars:i:1} b=${reps[i]} ret=${ret//"$a"/"$b"}
+    done
+  fi
+  return 0
+}
+
 ## 関数 ble-import scriptfile...
 ##   指定したファイルを検索して source で読み込みます。
 ##   既に import 済みのファイルは読み込みません。
@@ -2313,9 +2326,10 @@ function ble-autoload {
 ##
 _ble_util_import_guards=()
 function ble/util/import {
-  local file=$1
+  local file=$1 ret
+  ble/util/import/encode-filename "$file"; local enc=$ret
   if [[ $file == /* ]]; then
-    local guard=ble/util/import/guard:$1
+    local guard=ble/util/import/guard:$enc
     ble/is-function "$guard" && return 0
     if [[ -f $file ]]; then
       source "$file"
@@ -2324,7 +2338,7 @@ function ble/util/import {
     fi && eval "function $guard { :; }" &&
       ble/array#push _ble_util_import_guards "$guard"
   else
-    local guard=ble/util/import/guard:ble/$1
+    local guard=ble/util/import/guard:ble/$enc
     ble/is-function "$guard" && return 0
     if [[ -f $_ble_base/$file ]]; then
       source "$_ble_base/$file"
