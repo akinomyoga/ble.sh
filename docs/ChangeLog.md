@@ -90,6 +90,7 @@
 - complete (menu-style:align): refactor `complete_menu_align => menu_align_{min,max}` (motivated by banoris) `#D1717` 22a2449
 - prompt: support `bleopt prompt_command_changes_layout` `#D1750` e199bee
 - exec: measure execution times `#D1756` 2b28bec
+  - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 0000000
  
 ## Changes
 

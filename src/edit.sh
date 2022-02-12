@@ -5429,10 +5429,41 @@ function ble/builtin/exit {
     done
   fi
 
+  # Note #D1765: Bash 4.4..5.1 では "{ time { exit 2>/dev/tty; } } 2>/dev/null"
+  #   に対して、time の時間計測結果を 2>/dev/null ではなくて 2>/dev/tty に出力
+  #   してしまうバグがある。その為に ble/exec/time の計測に使用している time の
+  #   出力が画面に表示されてしまう。仕方がないので time の出力を空の TIMEFORMAT
+  #   により抑制する。抑々 4.3 以前では exit を実行した時に外側の time の測定も
+  #   全てキャンセルされていたので time を握り潰しても 4.3 以前の振る舞いに戻る
+  #   だけなので気にしない事にする。
+  # Note #D1765: 手元の実験では local TIMEFORMAT= だけ指定していれば問題は発生
+  #   しなかったが、実際に ble.sh に実装してみると global TIMEFORMAT を指定しな
+  #   ければ抑制できなかったので、global TIMEFORMAT を一時的に書き換える。
+  if ((40400<=_ble_bash&&_ble_bash<50200)); then
+    # TIMEFORMAT の値の保存
+    local global_TIMEFORMAT local_TIMEFORMAT
+    ble/util/assign global_TIMEFORMAT 'ble/util/print-global-definitions TIMEFORMAT'
+    if [[ $global_TIMEFORMAT == 'declare TIMEFORMAT; builtin unset -v TIMEFORMAT' ]]; then
+      global_TIMEFORMAT='declare TIMEFORMAT=$'\''\nreal\t%3lR\nuser\t%3lU\nsys %3lS'\'
+    else
+      global_TIMEFORMAT="declare -g ${global_TIMEFORMAT#declare }"
+    fi
+    ble/variable#copy-state TIMEFORMAT local_TIMEFORMAT
+
+    declare -g TIMEFORMAT=
+    TIMEFORMAT=
+  fi
+
   ble/util/print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   ble/base/.restore-bash-options set shopt
   builtin exit "${opt_args[@]}" &>/dev/null
   builtin exit "${opt_args[@]}" &>/dev/null
+
+  # exit に失敗した時はできるだけ元の状態に戻す
+  if ((40400<=_ble_bash&&_ble_bash<50200)); then
+    builtin eval -- "$global_TIMEFORMAT"
+    ble/variable#copy-state local_TIMEFORMAT TIMEFORMAT
+  fi
   return 1 # exit できなかった場合は 1 らしい
 }
 
