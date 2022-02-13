@@ -90,7 +90,7 @@
 - complete (menu-style:align): refactor `complete_menu_align => menu_align_{min,max}` (motivated by banoris) `#D1717` 22a2449
 - prompt: support `bleopt prompt_command_changes_layout` `#D1750` e199bee
 - exec: measure execution times `#D1756` 2b28bec
-  - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 0000000
+  - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 3de751e 0000000
  
 ## Changes
 
@@ -140,7 +140,7 @@
   - util (`ble/is-alias`): fix a bug of unredirected error messages for bash-3.2 (fixup d6242a7) `#D1730` 31372cb
 - edit (`history_share`): update history on `discard-line` (reported by SuperSandro2000) `#D1742` 8dbefe0
 - canvas: do not insert explicit newlines on line folding if possible (reported by banoris) `#D1745` 02b9da6 dc3827b
-  - edit: fix layout with `prompt_rps1` caused by missing `opts=relative` for `ble/textmap#update` `#D1769` 0000000
+  - edit: fix layout with `prompt_rps1` caused by missing `opts=relative` for `ble/textmap#update` `#D1769` f6af802
 - edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
 - util (`ble/util/buffer`): hide cursor in rendering `#D1758` e332dc5
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
@@ -237,7 +237,7 @@
 - canvas: fix unupdated prompt on async wcwidth resolution `#D1740` e14fa5d
 - progcomp: retry completions on `$? == 124` also for non-default completions (reported by SuperSandro2000) `#D1759` 82b9c01
 - app: work around data corruption by WINCH on intermediate state `#D1762` 5065fda
-- util (`ble/util/import`): work around filenames with bash special characters `#D1763` 0000000
+- util (`ble/util/import`): work around filenames with bash special characters `#D1763` b27f758
 
 ## Documentation
 
@@ -311,13 +311,13 @@
 - global (`ble/builtin/*`): work around `set -eu` in NixOS initialization (reported by SuperSandro2000) `#D1743` 001c595
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
   - util (`ble/builtin/trap`): fix resetting `$?` and `$_` (reported by SuperSandro2000) `#D1757` dfc6221
-  - util (`ble/builtin/trap`): fix a failure of setting the trap-handler exit status (reported by SuperSandro2000) `#D1771` 0000000
+  - util (`ble/builtin/trap`): fix a failure of setting the trap-handler exit status (reported by SuperSandro2000) `#D1771` c513ed4
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
-  - main: force prompt-attach inside the nix-shell `rc` `#D1766` 0000000
+  - main: force prompt-attach inside the nix-shell `rc` `#D1766` ceb2e7c
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
 - util: add identification of Windows Terminal `wt` `#D1758` e332dc5
-- complete: evaluate words for `noquote` (motivated by SuperSandro2000) `#D1767` 0000000
+- complete: evaluate words for `noquote` (motivated by SuperSandro2000) `#D1767` 0a42299
 
 ## Internal changes and fixes
 

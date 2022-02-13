@@ -5446,7 +5446,7 @@ function ble/builtin/exit {
     local global_TIMEFORMAT local_TIMEFORMAT
     ble/util/assign global_TIMEFORMAT 'ble/util/print-global-definitions TIMEFORMAT'
     if [[ $global_TIMEFORMAT == 'declare TIMEFORMAT; builtin unset -v TIMEFORMAT' ]]; then
-      global_TIMEFORMAT='declare TIMEFORMAT=$'\''\nreal\t%3lR\nuser\t%3lU\nsys %3lS'\'
+      global_TIMEFORMAT='declare -g TIMEFORMAT=$'\''\nreal\t%3lR\nuser\t%3lU\nsys %3lS'\'
     else
       global_TIMEFORMAT="declare -g ${global_TIMEFORMAT#declare }"
     fi
