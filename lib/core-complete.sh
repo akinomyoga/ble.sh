@@ -1681,11 +1681,61 @@ function ble/complete/action:file/get-desc {
 #
 #   DATA ... compopt 互換のオプションをコロン区切りで指定します
 #
-function ble/complete/action:progcomp/initialize {
-  ble/complete/action/quote-insert progcomp
+## @fn ble/complete/action:progcomp/initialize/.reconstruct-from-noquote
+##   @var[in,out] INSERT CAND
+##   @var[in] progcomp_resolve_brace
+function ble/complete/action:progcomp/initialize/.reconstruct-from-noquote {
+  local simple_flags simple_ibrace ret count
+  ble/syntax:bash/simple-word/is-simple-or-open-simple "$INSERT" &&
+    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$INSERT" &&
+    ble/complete/source/eval-simple-word "$ret" single:count &&
+    ((count==1)) || return 0
+
+  CAND=$ret
+
+  # ブレース展開がある時は逆に INSERT を補正し返す。
+  if [[ $quote_fixed_comps && $CAND == "$quote_fixed_compv"* ]]; then
+    local ret; ble/complete/string#escape-for-completion-context "${CAND:quote_fixed_compv_len}" "$escape_flags"
+    INSERT=$quote_fixed_comps$quote_trav_prefix$ret
+    return 3
+  fi
+  return 0
 }
+
+function ble/complete/action:progcomp/initialize {
+  if [[ :$DATA: == *:noquote:* ]]; then
+    local progcomp_resolve_brace=$quote_fixed_comps
+    [[ :$DATA: == *:syntax-raw:* ]] && progcomp_resolve_brace=
+    ble/complete/action:progcomp/initialize/.reconstruct-from-noquote
+    return 0
+  else
+    ble/complete/action/quote-insert progcomp
+  fi
+}
+## @fn ble/complete/action:progcomp/initialize.batch
+##   @arr[in] cands
+##   @arr[out] inserts
 function ble/complete/action:progcomp/initialize.batch {
-  ble/complete/action/quote-insert.batch newline
+  if [[ :$DATA: == *:noquote:* ]]; then
+    inserts=("${cands[@]}")
+
+    # Note: 直接 comp_words に対して補完した時は意図的にブレース展開を潰してい
+    # ると解釈できるので、ブレース展開を復元する事はしない。
+    local progcomp_resolve_brace=$quote_fixed_comps
+    [[ :$DATA: == *:syntax-raw:* ]] && progcomp_resolve_brace=
+
+    cands=()
+    local INSERT simple_flags simple_ibrace ret count icand=0
+    for INSERT in "${inserts[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      local CAND=$INSERT
+      ble/complete/action:progcomp/initialize/.reconstruct-from-noquote ||
+        inserts[icand]=$INSERT # INSERT を上書きした時 ($?==3)
+      cands[icand++]=$CAND
+    done
+  else
+    ble/complete/action/quote-insert.batch newline
+  fi
 }
 
 function ble/complete/action:progcomp/complete {
@@ -1972,11 +2022,11 @@ function ble/complete/cand/yield {
   [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && return 0
   [[ $flag_source_filter ]] || ble/complete/candidates/filter#test "$CAND" || return 0
 
-  local PREFIX_LEN=0
-  [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
-
   local INSERT=$CAND
   ble/complete/action:"$ACTION"/initialize || return "$?"
+
+  local PREFIX_LEN=0
+  [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
 
   local icand
   ((icand=cand_count++))

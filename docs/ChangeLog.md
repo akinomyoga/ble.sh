@@ -315,6 +315,7 @@
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
 - util: add identification of Windows Terminal `wt` `#D1758` e332dc5
+- complete: evaluate words for `noquote` (motivated by SuperSandro2000) `#D1767` 0000000
 
 ## Internal changes and fixes
 
