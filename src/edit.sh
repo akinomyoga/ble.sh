@@ -3337,13 +3337,15 @@ ble/function#try ble/util/idle.push-background ble/textarea#render-defer.idle
 
 function ble/widget/.update-textmap {
   # rps1 がある時の幅の再現
-  local cols=${COLUMNS:-80}
-  local rps1w=${_ble_prompt_rps1_data[11]}
-  local rps1q=${_ble_prompt_rps1_data[12]}
-  [[ $rps1q ]] && ((cols-=rps1w+1,_ble_term_xenl||cols--))
+  local cols=${COLUMNS:-80} render_opts=
+  if [[ $_ble_prompt_rps1_enabled ]]; then
+    local rps1_width=${_ble_prompt_rps1_data[11]}
+    render_opts=relative
+    ((cols-=rps1_width+1,_ble_term_xenl||cols--))
+  fi
 
   local x=$_ble_textmap_begx y=$_ble_textmap_begy
-  COLUMNS=$cols ble/textmap#update "$_ble_edit_str"
+  COLUMNS=$cols ble/textmap#update "$_ble_edit_str" "$render_opts"
 }
 function ble/widget/do-lowercase-version {
   local n=${#KEYS[@]}; ((n&&n--))

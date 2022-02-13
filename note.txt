@@ -1754,17 +1754,20 @@ bash_tips
 
 2022-02-12
 
-  * git submodule update は even の時にはしなくても良いのでは
-    https://github.com/raccoonasdf/raccoonpkgs/commit/d7ec0af3db2cd473adcb12a0132e53d3c216dddf
-
   * highlight: ls -l ~/.c{onfig,a/b}
     ブレース展開の中に / が含まれているとディレクトリパス着色が動かない。
 
-  * complete: ls ~/.c{onfig,1}/[TAB] としても候補が生成されない。
+    うーん。そもそも highlight の仕組み的に / が含まれているとどうしたら着色で
+    きるか謎という可能性がある? と思ったが恐らくそういう事ではない。何れにして
+    も全体を一番最初に一致した PATH に対する色で同じ色で着色する様になっている
+    筈。但し、その着色を実行する上で / で分割してから各 segment に対して着色す
+    る様になっている為に、brace 展開中に / があると / で分断されてしまって正し
+    く着色できないという事になるのだろう。
 
-  * いつの間にかに rps1 に接した時の計算が壊れてしまっている。改行位置が正しく
-    計算できていない? と思ったが、うーん。これは改行が継続する様にして欲しいと
-    いう要望に応えた時に導入したバグの気がする。
+    ちゃんと対応する為には、"ブレース展開に対して最初の要素で着色をする" のでは
+    なくて、ちゃんと各要素に対して着色をするという方向に改める必要があるのかも
+    しれない。然し、それは実際の所面倒だし、そこまでする必要があるのかというの
+    も謎である。これは優先度は低いがもし実装できたら面白いだろうという事である。
 
 2022-02-08
 
@@ -6083,6 +6086,100 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-02-13
+
+  * [棄却] complete: ls ~/.c{onfig,1}/[TAB] としても候補が生成されない [#D1770]
+
+    うーん。これは今迄ちゃんと候補が生成できるだろうと思っていたがそうでもない
+    様だ。改めて振る舞いを調べてみるのが良い。やはり動かない。bash-completion
+    の所為でもない。ble.sh の元々の機能を使っていてもやはり生成されない。
+
+    というか寧ろ元々の機能を使っているから候補が生成されないという可能性もある?
+    と思って改めて bash-completion を使って試してみたがそれでも駄目である。取り
+    敢えず、bash-completion が介在しない場合について振る舞いを確認する。
+
+    →と思ったらどうやらブレース展開の一番最後の要素を使って補完を実行する仕組
+    みになっている様だ。なので、 ls ~/.c{1,onfig}/[TAB] とした場合にはちゃんと
+    候補が生成される。これは単にそういう設計という事なので修正しなくて良い。
+
+  * edit: いつの間にかに rps1 に接した時の計算が壊れてしまっている [#D1769]
+
+    改行位置が正しく計算できていない? と思ったが、うーん。これは改行が継続する
+    様にして欲しいという要望に応えた時に導入したバグの気がする。
+
+    Ref #D1745
+
+    改めて edit.sh で D1745 に関係している所を確認してみた所… rps1 があるかど
+    うかのチェックを忘れている。→と思ったがそもそも CR を埋め込む時点でそれは
+    処理していたのではないか? 確認してみた所 *:relative:* の時には CR は埋め込
+    まれない様になっている筈。
+
+    確認してみると relative が opts に指定されている時と指定されていない時が存
+    在する。textmap#update の呼び出し元を確認してみると
+    ble/widget/.update-textmap から呼び出している物については opts を指定してい
+    なかった。実は結構な確率で ble/widget/.update-textmap 経由で更新が行われる
+    という事だった様だ。何れにしてもちゃんと同じ引数で textmap#update を呼び出
+    す必要があるのだった。
+
+    * [経緯確認] というか今迄は rps1 が存在していても relative にせずに直接描画
+      計算をしていたという事になるのではないか。そう思うと今迄動いていたのは偶
+      だったという事になる。或いは、relative になる様にしたのは #D1745 だったの
+      だったか。
+
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 3009)   local render_opts=
+      d84bcd8d src/edit.sh (Koichi Murase 2020-10-11 02:05:09 +0900 3010)   [[ $rps1_enabled ]] && render_opts=relative
+      cf8d9493 src/edit.sh (Koichi Murase 2021-06-07 12:13:56 +0900 3011)   COLUMNS=$cols ble/textmap#update "$text" "$render_opts" # [ref] x y
+
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 2483)   local render_opts=
+      d84bcd8d src/edit.sh (Koichi Murase 2020-10-11 02:05:09 +0900 2484)   [[ $rps1_enabled ]] && render_opts=relative
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 2485)   COLUMNS=$cols ble/textmap#update "$text" "$render_opts"
+
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 2064)   local render_opts=
+      b86709af src/edit.sh (Koichi Murase 2019-03-23 12:36:07 +0900 2065)   [[ $rps1_show ]] && render_opts=relative
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 2066)   COLUMNS=$cols ble/textmap#update "$text" "$render_opts"
+
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 1668)   local render_opts=
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 1669)   [[ $flag_rps1 ]] && render_opts=relative
+      90a8915c src/edit.sh (Koichi Murase 2019-03-09 11:40:10 +0900 1670)   COLUMNS=$cols ble/textmap#update "$text" "$render_opts"
+
+      b2e2461a ble-edit.sh (Koichi Murase 2017-10-05 01:12:01 +0900 1669)   ble/textmap#update # text x y → x y
+
+      これを見ると3年前からずっと relative 指定していたけれど、単に絶対移動でも
+      問題が生じていなかったというだけの様である。確かに論理的には問題は生じ得
+      なかったのかもしれない。ちゃんと改行は改行として処理していたので。
+
+      因みに最初に opts を導入した時点で既に ble/widget/.update-textmap は rps1
+      に拘らず opts なしで textmap#update を呼び出していた様である。同時に
+      ble/widget/.update-textmap の textmap#update の呼び出しも修正しているのに
+      opts を指定しなかったのは唯単に油断したからだろうか。
+
+      opts を導入したのは #D0959 であった。そしてこれは確認してみた所、rps1 を
+      最初に導入した commit だった。という事を考えると本当にずっと relative あ
+      りとなしの両方で動かしていたという事になる。
+
+  * [棄却] git submodule update は even の時にはしなくても良いのでは [#D1768]
+    https://github.com/raccoonasdf/raccoonpkgs/commit/d7ec0af3db2cd473adcb12a0132e53d3c216dddf
+
+    と思って改めて makefile を確認してみたが git submodule update は、
+    contrib/.git 及び contrib/contrib.mk さえ存在していれば実行されない様な気が
+    する。或いは、ble-update について話しているのかとも思ったがそれも変な気がす
+    る。ble-update は結局本体の更新の為にインターネットに接続するのだから、同時
+    に submodule update を実行しても特に問題になる様にも思われない。
+
+    うーん。これはこの上のファイルを記述した人が勘違いしているだけという気がし
+    てきた。つまり、makefile に git submodule init があるのを見つけて、これは
+    make の時に必ず呼び出されるのに違いと思っているのではないか。実際には
+    working tree に展開されていれば呼び出される事はないのだが。或いは、nix の設
+    定だと submodule fetch するだけで working tree に反映しないという可能性もあ
+    る。その場合には git submodule は make から呼び出される事になるが、しかし一
+    方でこれは必ず呼び出さないと行けないものでもある。
+
+    一方で現在の ble.sh gitmodules が指している commit と現在 HEAD が異なる時に
+    は update を自動的に実行することもできる。と思ったが流石にそれは一時的に異
+    なる物にして試したい時などにとても面倒である。という事を考えると、わざわざ
+    その様な事はしなくて良い。結局 ble-update を実行した時にちゃんとした状態に
+    調整される筈。
 
 2022-02-12
 
