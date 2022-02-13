@@ -2117,7 +2117,7 @@ function ble/builtin/trap/invoke {
   case $_ble_trap_done in
   (done)
     _ble_builtin_trap_lastarg=$_ble_trap_lastarg
-    _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastext" ;;
+    _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastexit" ;;
   (break | continue)
     _ble_builtin_trap_lastarg=$_ble_trap_lastarg
     if ble/string#match "$_ble_trap_lastarg" '^-?[0-9]+$'; then
