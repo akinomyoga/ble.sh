@@ -1264,9 +1264,10 @@ function ble/textmap#update/.wrap {
 }
 
 ## 関数 ble/textmap#update text [opts]
-##   @var[in    ] text
-##   @var[in,out] x y
-##   @var[in,out] _ble_textmap_*
+##   @param[in]     text
+##   @param[in,opt] opts
+##   @var[in,out]   x y
+##   @var[in,out]   _ble_textmap_*
 function ble/textmap#update {
   local IFS=$' \t\n'
   local dbeg dend dend0

@@ -2096,8 +2096,14 @@ function ble/textarea#clear-state {
 # **** redraw, clear-screen, etc ****                             @widget.clear
 
 function ble/widget/.update-textmap {
-  local text=$_ble_edit_str x=$_ble_textmap_begx y=$_ble_textmap_begy
-  ble/textmap#update "$text"
+  local cols=${COLUMNS:-80} render_opts=
+  if [[ $_ble_edit_rprompt ]]; then
+    local rps1_width=${_ble_edit_rprompt_bbox[2]}
+    render_opts=relative
+    ((cols-=rps1_width+1,_ble_term_xenl||cols--))
+  fi
+  local x=$_ble_textmap_begx y=$_ble_textmap_begy
+  COLUMNS=$cols ble/textmap#update "$_ble_edit_str" "$render_opts"
 }
 function ble/widget/redraw-line {
   ble-edit/content/clear-arg
