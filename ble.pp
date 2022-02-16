@@ -1564,12 +1564,13 @@ function ble/base/unload {
   ble/term/stty/TRAPEXIT
   ble/term/leave
   ble/util/buffer.flush >&2
-  ble/fd#finalize
-  ble/util/import/finalize
+  blehook/invoke unload
   ble/decode/keymap#unload
   ble-edit/bind/clear-keymap-definition-loader
+  ble/builtin/trap/finalize
+  ble/util/import/finalize
+  ble/fd#finalize
   ble/bin/rm -rf "$_ble_base_run/$$".* 2>/dev/null
-  blehook/invoke unload
   return 0
 }
 blehook EXIT+=ble/base/unload
@@ -1764,6 +1765,11 @@ ble/function#trace ble-attach
 ble/function#trace ble
 ble/function#trace ble/dispatch
 ble/function#trace ble/base/attach-from-PROMPT_COMMAND
+
+# Note #D1775: 以下は ble/base/unload 時に元の trap または ble.sh 有効
+#   時にユーザーが設定した trap を復元する為に用いる物。
+ble/function#trace ble/base/unload
+ble/function#trace ble/builtin/trap/finalize
 
 ble-import -f lib/_package
 if [[ $_ble_init_command ]]; then

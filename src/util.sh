@@ -1981,6 +1981,19 @@ function ble/builtin/trap/reserve {
   ble/builtin/trap/.get-sig-index "$1" || return 1
   _ble_builtin_trap_reserved[ret]=1
 }
+function ble/builtin/trap/finalize {
+  local sig
+  for sig in "${!_ble_builtin_trap_reserved[@]}"; do
+    local name=${_ble_builtin_trap_signames[index]}
+    [[ $name && ${_ble_builtin_trap_reserved[sig]} ]] || continue
+    if [[ ${_ble_builtin_trap_handlers[sig]+set} ]]; then
+      builtin trap -- "${_ble_builtin_trap_handlers[sig]+set}" "$name"
+    else
+      builtin trap -- - "$name"
+    fi
+  done
+}
+
 function ble/builtin/trap {
   local set shopt; ble/base/.adjust-bash-options set shopt
   local flags command sigspecs
@@ -2187,6 +2200,8 @@ function ble/builtin/trap/install-hook {
 
   local handler="ble/builtin/trap/.handler $sig ${name#SIG}; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\$_ble_builtin_trap_lastarg\""
   local trap_command="trap -- '$handler' $name"
+  local trap_string; ble/util/assign trap_string "builtin trap -p $name"
+
   if [[ $opts == *:readline:* ]] && ! ble/util/is-running-in-subshell; then
     # Note #D1345: ble.sh の内部で "builtin trap -- WINCH" 等とすると
     # readline の処理が行われなくなってしまう (COLUMNS, LINES が更新さ
@@ -2207,12 +2222,28 @@ function ble/builtin/trap/install-hook {
     # - INT は bind -x 内だと改めて設定しないと有効にならない(?)様なの
     #   で既に登録されていても、builtin trap は省略できない。
     #
-    local trap
-    ble/util/assign trap "builtin trap -p $name"
-    [[ $trap_command == "$trap" ]] && return 0
+    [[ $trap_command == "$trap_string" ]] && return 0
   fi
 
-  builtin eval "builtin $trap_command"
+  builtin eval "builtin $trap_command"; local ext=$?
+
+  case $trap_string in
+  ("trap -- 'ble/builtin/trap/"*) ;; # ble-0.4
+  ("trap -- 'ble/base/unload"*|"trap -- 'ble-edit/"*) ;; # bash-0.3 以前
+  ("trap -- '"*)
+    # Note: 既存の handler がない時のみ設定を読み取る。既存の設定がある時は
+    # ble.sh をロードしてから trap が実行された事を意味する。一方で、ble.sh が
+    # ロードされて以降に builtin trap の設定がユーザーによって直接変更される事
+    # は想定していないので、builtin trap から読み取った結果は ble.sh ロード前と
+    # 想定して良い。
+    [[ ! ${_ble_builtin_trap_handlers[sig]+set} ]] &&
+      # Note: 1000 以上はデバグ用の trap (DEBUG, RETURN, EXIT) で既定では trap
+      # が関数呼び出しで継承されないので、trap_string の内容は信用できない。
+      ((sig<1000)) &&
+      builtin eval -- "ble/builtin/$trap_string" ;;
+  esac
+
+  return "$ext"
 }
 
 #------------------------------------------------------------------------------

@@ -1768,6 +1768,39 @@ bash_tips
   * return without arguments in trap handlers. これは結局強い理由がないと変更さ
     れない雰囲気になっている。
 
+2020-04-25
+
+  * starship コマンド実行時間の計測
+    preexec と precmd を使っている?
+    https://github.com/starship/starship/blob/master/src/init/starship.bash
+
+    追記 2022-02-17 これは ble.sh でも類似の物を実装した。
+
+  * pipexec という物があるそうだ。と思ったが調べたら C で書かれている。
+    https://github.com/flonatel/pipexec
+
+  * zsh のテーマである powerlevel10k は実は結構複雑な処理を実装している。
+    ごちゃごちゃとした雑多の設定の寄せ集めではない。
+    ble.sh 程ではないが単にプロンプトと呼べるレベルを超えている。
+    * https://github.com/romkatv/powerlevel10k
+    * https://github.com/Powerlevel9k/powerlevel9k
+      p9k と initial commit が同じなので再実装というよりは fork の気がする。
+
+    https://github.com/aristocratos/bashtop
+    これは最近現れた物で pure bash で色々な UI を実装している。
+    オプション引数はなく設定は直接編集する様になっている。
+    背景が明るい時の配色に対応していない。256色要求。
+
+    * 実用性よりも見た目重視。これはツールの性格による。
+      ble.sh 自体は他のプログラムを呼び出す為の物なので主張は控え目。
+      然し、宣伝の為には見た目を派手にした物も必要なのかもしれない。
+    * 何故か現れたばかりなのに 6.3k も集まっているし、
+      一体何が起こるとこのように話題になるのだろうか。不思議である。
+      HN にも reddit にも対して人気になった物は見られない。
+      何処から広まってどう人気になったのか不明である。
+    * freebsd, aur, debian, fedora/centos にまでパッケージが在る。
+
+
 @todo
 *******************************************************************************
     ToDo
@@ -1777,9 +1810,6 @@ bash_tips
 
   * ble/builtin/trap DEBUG は関数の入れ子や trace 属性などは考慮していない。こ
     の事によって問題が起こる可能性もある。
-
-  * DEBUG trap 以外についても元からあった trap を拾う様にしたい
-    Ref #D1772
 
   * 関数の定義位置を DEBUG trap 等を使って抽出する事が可能なのではないか?
 
@@ -3957,11 +3987,6 @@ bash_tips
       "${_histcmd@P}" が使える (bash 4.4)。HISTCMD が unset されているか
       どうかは HISTCMD=A して値が変化するかどうかで判定できる。
 
-2020-09-01
-
-  * trap: ble.sh で上書きする時に元々存在していた trap はどうなっていたか。
-  * trap: ble.sh を unload する時に復元する仕組みがあっても良いのではないか。
-
 2020-08-27
 
   * 真面目に宣伝など考えるべきなのかもしれない。
@@ -4262,34 +4287,6 @@ bash_tips
     続けて何度試しても問題は発生しない。何が起こったかは謎である。
 
 2020-04-25
-
-  * starship コマンド実行時間の計測
-    preexec と precmd を使っている?
-    https://github.com/starship/starship/blob/master/src/init/starship.bash
-
-    pipexec という物があるそうだ。と思ったが調べたら C で書かれている。
-    https://github.com/flonatel/pipexec
-
-    zsh のテーマである powerlevel10k は実は結構複雑な処理を実装している。
-    ごちゃごちゃとした雑多の設定の寄せ集めではない。
-    ble.sh 程ではないが単にプロンプトと呼べるレベルを超えている。
-    * https://github.com/romkatv/powerlevel10k
-    * https://github.com/Powerlevel9k/powerlevel9k
-      p9k と initial commit が同じなので再実装というよりは fork の気がする。
-
-    https://github.com/aristocratos/bashtop
-    これは最近現れた物で pure bash で色々な UI を実装している。
-    オプション引数はなく設定は直接編集する様になっている。
-    背景が明るい時の配色に対応していない。256色要求。
-
-    * 実用性よりも見た目重視。これはツールの性格による。
-      ble.sh 自体は他のプログラムを呼び出す為の物なので主張は控え目。
-      然し、宣伝の為には見た目を派手にした物も必要なのかもしれない。
-    * 何故か現れたばかりなのに 6.3k も集まっているし、
-      一体何が起こるとこのように話題になるのだろうか。不思議である。
-      HN にも reddit にも対して人気になった物は見られない。
-      何処から広まってどう人気になったのか不明である。
-    * freebsd, aur, debian, fedora/centos にまでパッケージが在る。
 
   * trap: DEBUG trap を用いて DEBUG trap を再現できるか? [#T0003]
     参考: #M0016
@@ -6117,6 +6114,23 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-02-17
+
+  * 2020-09-01 trap: ble.sh を unload する時に復元する仕組みがあっても良いのではないか [#D1777]
+    #D1775 と同時に対応した。
+
+  * 2020-09-01 desolved: trap: ble.sh で上書きする時に元々存在していた trap はどうなっていたか [#D1776]
+    Ref #D1775
+
+  * util: DEBUG trap 以外についても元からあった trap を拾う様にしたい [#D1775]
+    Ref #D1772
+
+    RETURN と ERR 以外については中から普通に trap を見ることができる筈なので、
+    そのまま中から値を抽出するというので良い。現在使用しているのは EXIT, WINCH,
+    INT である。他に bash3 等で USR1 も使っていた筈。
+
+    実際に trap を設定しているのは ble/builtin/trap/install-hook の一箇所のみで
+    ある。ここで trap を読み取って ble/builtin/trap の枠組みで再設定すれば良い。
+    対応した。
 
   * bash-3.0 でコマンドを実行するとプロンプトの前に変な文字列 '' が出力される [#D1774]
 

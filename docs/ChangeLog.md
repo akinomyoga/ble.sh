@@ -91,6 +91,7 @@
 - prompt: support `bleopt prompt_command_changes_layout` `#D1750` e199bee
 - exec: measure execution times `#D1756` 2b28bec
   - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 3de751e 0000000
+- util: preserve original traps and restore them on unload `#D1775` `#D1776` `#D1777` 0000000
  
 ## Changes
 
