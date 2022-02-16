@@ -134,7 +134,16 @@ function sub:check/bash300bug {
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
-  grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./test --exclude=./make_command.sh
+  grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh
+
+  # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
+  grc '\$\{[a-zA-Z_0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
+    grep -v '#D1570'
+
+  # bash-3.0 では "..${var-$'hello'}.." は (var が存在しない時) "..'hello'..." になる。
+  grc '".*\$\{[^{}]*\$'\''([^\\'\'']|\\.)*'\''\}.*"' --exclude={./make_command.sh,memo,\*.md} --color |
+    grep -v '#D1774'
+
 }
 
 function sub:check/bash301bug-array-element-length {
@@ -265,7 +274,13 @@ function sub:check {
   sub:check/bash502-patsub_replacement
   sub:check/gawk402bug-regex-check
   sub:check/array-count-in-arithmetic-expression
-  sub:check/unset-variable
+  sub:check/unset-variable |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zunset _ble_init_(version|arg|exit|command)\bZd
+      \Zbuiltins1=\(.* unset .*\)Zd
+      \Zfunction unsetZd
+      \Zreadonly -f unsetZd
+      g'
 
   sub:check/memo-numbering
 }
