@@ -490,7 +490,10 @@ function ble/syntax/print-status/nest.get-text {
     if [[ $nparam == none ]]; then
       nparam=
     else
-      nparam=" nparam=${nparam//$_ble_term_FS/$'\e[7m^\\\e[m'}"
+      # Note #D1774: bash-3.0 bug "${var//../$'...'}" とすると $'' の引用符が残
+      #   る問題の回避の為に行を分けて代入する。
+      nparam=${nparam//$_ble_term_FS/$'\e[7m^\\\e[m'}
+      nparam=" nparam=$nparam"
     fi
 
     nest=" nest=($nctx w=$nword n=$nnest t=$nchild:$nprev$nparam)"
@@ -544,7 +547,10 @@ function ble/syntax/print-status/stat.get-text {
     if [[ $snparam == none ]]; then
       snparam=
     else
-      snparam=" nparam=${snparam//"$_ble_term_FS"/$'\e[7m^\\\e[m'}"
+      # Note #D1774: bash-3.0 bug "${var//$'...'}" とすると余分な引用符が残る問
+      #   題を回避する為に行を分けて代入している。
+      snparam=${snparam//"$_ble_term_FS"/$'\e[7m^\\\e[m'}
+      snparam=" nparam=$snparam"
     fi
 
     local stat_lookahead=

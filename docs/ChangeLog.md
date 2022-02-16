@@ -319,6 +319,7 @@
 - util: add identification of Windows Terminal `wt` `#D1758` e332dc5
 - complete: evaluate words for `noquote` (motivated by SuperSandro2000) `#D1767` 0a42299
 - edit (TRAPDEBUG): preserve original `DEBUG` trap and enabled it in `PROMPT_COMMAND` (motivated by ammarooo) `#D1772` `#D1773` 0000000
+- global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 0000000
 
 ## Internal changes and fixes
 

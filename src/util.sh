@@ -2683,7 +2683,7 @@ else
     local _ble_local_ret=$? TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
-    builtin eval "$1=\${$1%$'\n'}"
+    builtin eval "$1=\${$1%$_ble_term_nl}"
     return "$_ble_local_ret"
   }
 fi
@@ -5956,7 +5956,9 @@ function ble/term/DA2/notify {
       ble/term/quote-passthrough $'\e[>c' $((depth+1))
       ble/util/buffer "$ret" ;;
     (contra:*)
-      : "${_ble_term_Ss:=$'\e[@1 q'}" ;;
+      if [[ ! ${_ble_term_Ss-} ]]; then
+        _ble_term_Ss=$'\e[@1 q'
+      fi ;;
     esac
 
     # 外側の端末情報は以降では処理しない

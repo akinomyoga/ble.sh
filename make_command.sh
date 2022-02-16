@@ -1130,6 +1130,10 @@ function sub:scan/bash300bug {
   grc '\$\{[a-zA-Z_0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
     grep -v '#D1570'
 
+  # bash-3.0 では "..${var-$'hello'}.." は (var が存在しない時) "..'hello'..." になる。
+  grc '".*\$\{[^{}]*\$'\''([^\\'\'']|\\.)*'\''\}.*"' --exclude={./make_command.sh,memo,\*.md} --color |
+    grep -v '#D1774'
+
 }
 
 function sub:scan/bash301bug-array-element-length {
@@ -1344,27 +1348,45 @@ function sub:scan {
   sub:scan/memo-numbering
 }
 
+function sub:show-contrib/canonicalize {
+  sed 's/, /\n/g;s/ and /\n/g' | sed 's/[[:space:]]/_/g' | LANG=C sort
+}
+function sub:show-contrib/count {
+  LANG=C sort | uniq -c | LANG=C sort -rnk1 |
+    awk 'function xflush() {if(c!=""){printf("%4d %s\n",c,n);}} {if($1!=c){xflush();c=$1;n=$2}else{n=n", "$2;}}END{xflush()}' |
+    ifold -w 131 -s --indent=' +[0-9] +'
+}
 function sub:show-contrib {
   local cache_contrib_github=out/contrib-github.txt
   if [[ ! ( $cache_contrib_github -nt .git/refs/remotes/origin/master ) ]]; then
     {
       wget 'https://api.github.com/repos/akinomyoga/ble.sh/issues?state=all&per_page=100&pulls=true' -O -
+      wget 'https://api.github.com/repos/akinomyoga/ble.sh/issues?state=all&per_page=100&pulls=true&page=2' -O -
       wget 'https://api.github.com/repos/akinomyoga/blesh-contrib/issues?state=all&per_page=100&pulls=true' -O -
     } |
       sed -n 's/^[[:space:]]*"login": "\(.*\)",$/\1/p' |
-      sort | uniq -c | sort -rn > "$cache_contrib_github"
+      sub:show-contrib/canonicalize > "$cache_contrib_github"
   fi
 
   echo "Contributions (from GitHub Issues/PRs)"
-  cat "$cache_contrib_github"
+  < "$cache_contrib_github" sub:show-contrib/count
 
   echo "Contributions (from memo.txt)"
-  sed -En 's/^  \* .*\([^()]+ by ([^()]+)\).*/\1/p' memo/done.txt note.txt |
-    sort | uniq -c | sort -rn
+  sed -En 's/^  \* .*\([^()]+ by ([^()]+)\).*/\1/p' memo/done.txt note.txt | sub:show-contrib/canonicalize | sub:show-contrib/count
 
   echo "Contributions (from ChangeLog.md)"
-  sed -n 's/.*([^()]* by \([^()]*\)).*/\1/p' memo/ChangeLog.md |
-    sort | uniq -c | sort -rn
+  sed -n 's/.*([^()]* by \([^()]*\)).*/\1/p' docs/ChangeLog.md | sub:show-contrib/canonicalize | sub:show-contrib/count
+
+  echo "Σ: Issues/PRs + max(memo.txt,ChangeLog)"
+
+  LANG=C join -j 2 -e 0 \
+      <(sed -En 's/^  \* .*\([^()]+ by ([^()]+)\).*/\1/p' memo/done.txt note.txt | sub:show-contrib/canonicalize | uniq -c | LANG=C sort -k2) \
+      <(sed -n 's/.*([^()]* by \([^()]*\)).*/\1/p' docs/ChangeLog.md | sub:show-contrib/canonicalize | uniq -c | LANG=C sort -k2) |
+    LANG=C join -e 0 -1 1 - -2 2 <(uniq -c "$cache_contrib_github" | LANG=C sort -k2) |
+    awk 'function max(x,y){return x<y?y:x;}{printf("%4d %s\n",max($2,$3)+$4,$1)}' |
+    sort -rnk1 |
+    awk 'function xflush() {if(c!=""){printf("%4d %s\n",c,n);}} {if($1!=c){xflush();c=$1;n=$2}else{n=n", "$2;}}END{xflush()}' |
+    ifold -w 131 -s --indent=' +[0-9] +'
   echo
 }
 

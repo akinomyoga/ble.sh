@@ -3768,7 +3768,7 @@ function ble/builtin/bind/read-user-settings/.collect {
     ble/util/print __CLEAR__
     ble/util/print KEYMAP="$map"
     ble/util/print __BIND0__
-    ble/util/print "${cache_content%$'\n'}"
+    ble/util/print "${cache_content%$_ble_term_nl}"
     if ((_ble_bash>=40300)); then
       ble/util/print __BINDX__
       builtin bind -m "$map" -X
