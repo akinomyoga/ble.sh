@@ -566,7 +566,7 @@ else
     local _ble_local_ret=$?
     TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
-    builtin eval "$1=\${$1%$'\n'}"
+    builtin eval "$1=\${$1%$_ble_term_nl}"
     return "$_ble_local_ret"
   }
 fi
