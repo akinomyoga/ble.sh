@@ -2823,6 +2823,36 @@ function ble/function#evaldef {
   return "$ext"
 }
 
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_util_function_traced}"
+function ble/function#trace {
+  declare -ft "$1" &>/dev/null &&
+    ble/gdict#set _ble_util_function_traced "$1" 1
+}
+function ble/function#has-trace {
+  ble/gdict#has _ble_util_function_traced "$1"
+}
+## @fn ble/function/is-global-trace-context
+##   この関数の呼び出し元の文脈で確実に global の DEBUG が見えているかどうかを
+##   判定します。
+function ble/function/is-global-trace-context {
+  # Note: 例え set -T が設定されていたとしても、それが global で設定された物な
+  #   のか呼び出しの何処かの深さで設定された物なのか分からない。なので、set -T
+  #   が設定されていたからと言って無条件に global が見えているとは限らない。
+  # Note: ble に属する関数は勝手に set -T を一時的に有効にしたりする事は基本的
+  #   にないので許可する。但し、内部で一時的に restore-bash-options している時
+  #   はあるが、その内部で ble-attach 乃至は ble/function/is-global-trace-context等
+  #   を実行する事はないと仮定する。
+  local func depth=1 ndepth=${#FUNCNAME[*]}
+  for func in "${FUNCNAME[@]:1}"; do
+    local src=${BASH_SOURCE[depth]}
+    [[ $- == *T* && ( $func == ble || $func == ble[-/]* || $func == source && $src == "$_ble_base_blesh_raw" ) ]] ||
+      [[ $func == source && depth -eq ndepth-1 && BASH_LINENO[depth] -eq 0 && ( ${src##*/} == .bashrc || ${src##*/} == .bash_profile || ${src##*/} == .profile ) ]] ||
+      ble/gdict#has _ble_util_function_traced "$func" || return 1
+    ((depth++))
+  done
+  return 0
+}
+
 ## @fn ble/function#try function args...
 ##   関数 function が存在している時に限り関数を呼び出します。
 ##

@@ -1493,19 +1493,30 @@ else
 fi
 
 function ble/prompt/update/.has-prompt_command {
-  [[ ${PROMPT_COMMAND[*]} ]]
+  [[ ${_ble_edit_PROMPT_COMMAND[*]} == *[![:space:]]* ]]
 }
-function ble/prompt/update/.eval-prompt_command.1 {
-  # Note: return 等と記述されていた時対策として関数内評価する。
+function _ble_prompt_update__eval_prompt_command_1 {
+  # Note: return 等と記述されていた時の対策として関数内評価する。
+  # Note #D1772: 本来は tempenv として _ble_edit_exec_TRAPDEBUG_enabled=1 も指
+  # 定すれば ble-edit/exec/.setexit や builtin eval に対する DEBUG trap の除外
+  # を明示的に確認しなくても済むはずだが、bash-4.4..5.2(少なくとも) にはバグが
+  # あって builtin eval を使うと DEBUG trap の中から tmpenv が見えなくなってし
+  # まう。仕方がないので local で _ble_edit_exec_TRAPDEBUG_enabled=1 を設定する。
+  local _ble_edit_exec_TRAPDEBUG_enabled=1
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     builtin eval -- "$1"
 }
+ble/function#trace _ble_prompt_update__eval_prompt_command_1
 function ble/prompt/update/.eval-prompt_command {
-  local _command
+  ((${#PROMPT_COMMAND[@]})) || return 0
+  local _command _ble_edit_exec_TRAPDEBUG_adjusted=1
+  ble-edit/exec:gexec/.TRAPDEBUG/restore filter
   for _command in "${PROMPT_COMMAND[@]}"; do
-    ble/prompt/update/.eval-prompt_command.1 "$_command"
+    [[ $_command ]] || continue
+    _ble_prompt_update__eval_prompt_command_1 "$_command"
   done
+  _ble_edit_exec_gexec__TRAPDEBUG_adjust
 }
 ## @fn ble/prompt/update opts
 ##   _ble_edit_PS1 からプロンプトを構築します。
@@ -2347,16 +2358,38 @@ function ble-edit/content/push-kill-ring {
 
 _ble_edit_PS1_adjusted=
 _ble_edit_PS1='\s-\v\$ '
+_ble_edit_PROMPT_COMMAND=
 function ble-edit/adjust-PS1 {
   [[ $_ble_edit_PS1_adjusted ]] && return 0
   _ble_edit_PS1_adjusted=1
   _ble_edit_PS1=$PS1
-  [[ $bleopt_internal_suppress_bash_output ]] || PS1=
+  if [[ $bleopt_internal_suppress_bash_output ]]; then
+    # Note #D1772: ble.sh の処理中に落ちた場合に表示されるプロンプト。現状でそ
+    # の様な事が起こった事はない気がするし、実際にそうなった時の動作確認もでき
+    # ていないが念の為設定しておく。
+    PS1='[ble: press RET to continue]'
+  else
+    # suppress_bash_output をしていない時はそのまま bash のプロンプトが表示され
+    # てしまわない様に PS1 は空にしておく。
+    PS1=
+  fi
+
+  if ble/is-array PROMPT_COMMAND; then
+    ble/idict#copy _ble_edit_PROMPT_COMMAND PROMPT_COMMAND
+  else
+    ble/variable#copy-state PROMPT_COMMAND _ble_edit_PROMPT_COMMAND
+  fi
+  builtin unset -v PROMPT_COMMAND
 }
 function ble-edit/restore-PS1 {
   [[ $_ble_edit_PS1_adjusted ]] || return 1
   _ble_edit_PS1_adjusted=
   PS1=$_ble_edit_PS1
+  if ble/is-array _ble_edit_PROMPT_COMMAND; then
+    ble/idict#copy PROMPT_COMMAND _ble_edit_PROMPT_COMMAND
+  else
+    ble/variable#copy-state _ble_edit_PROMPT_COMMAND PROMPT_COMMAND
+  fi
 }
 
 _ble_edit_IGNOREEOF_adjusted=
@@ -5701,37 +5734,75 @@ function ble/exec/time#start {
 #--------------------------------------
 
 _ble_edit_exec_TRAPDEBUG_enabled=
+_ble_edit_exec_TRAPDEBUG_lastexit=
+_ble_edit_exec_TRAPDEBUG_lastarg=
 _ble_edit_exec_TRAPDEBUG_postproc=
 _ble_edit_exec_inside_begin=
 _ble_edit_exec_inside_prologue=
 _ble_edit_exec_inside_userspace=
 ble/builtin/trap/reserve DEBUG
+
+## @fn ble-edit/exec:gexec/.TRAPDEBUG/trap [opts]
+##   @param[in] opts
+##     filter
+##       DEBUG trap の filter を (TRAPDEBUG の特別処理がなくても) 明示的に強制
+##       する事を示します。PROMPT_COMMAND の処理などで、PROMPT_COMMAND の処理の
+##       みに対して DEBUG trap を走らせる為に指定します。
 function ble-edit/exec:gexec/.TRAPDEBUG/trap {
+  # Note #D1772: 本来は ! $_ble_attached の時には user trap を直接 trap したい
+  #   が、それだと ble-attach 直後に ble.sh の関数 (特に ble-decode/.hook) に対
+  #   して意図しない DEBUG trap が発火する事を防げないので TRAPDEBUG 経由にして、
+  #   DEBUG を選別することにする。
+  # Note #D1772: コマンド実行の為の TRAPDEBUG の場合でも、やはり
+  #   ble-edit/exec:gexec/.* を除外する為に TRAPDEBUG 経由で user trap を実行す
+  #   る事にする。もし FUNCNAME, BASH_SOURCE 等を DEBUG trap から参照したいユー
+  #   ザーがいれば、コマンド実行の時には既定で user trap を直接 trap する様にし
+  #   ても良い。
   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc"' DEBUG
+
+  # Note: 以下は条件付きで user trap を直接 trap するコード。
+  # if [[ $_ble_attached && _ble_edit_exec_INT -ne 0 || :$1: == *:filter:* ]]; then
+  #   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc"' DEBUG
+  # else
+  #   local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]}
+  #   builtin trap -- "$user_trap" DEBUG
+  # fi
 }
-function ble-edit/exec:gexec/.TRAPDEBUG/enter {
+
+_ble_edit_exec_TRAPDEBUG_adjusted=
+# Note: bash-3.1 以下では特殊な関数名の関数には declare -ft を付加する事ができない。
+function _ble_edit_exec_gexec__TRAPDEBUG_adjust {
+  builtin trap - DEBUG
+  _ble_edit_exec_TRAPDEBUG_adjusted=1
+}
+ble/function#trace _ble_edit_exec_gexec__TRAPDEBUG_adjust
+function ble-edit/exec:gexec/.TRAPDEBUG/restore {
+  _ble_edit_exec_TRAPDEBUG_adjusted=
+  local opts=$1
   ble/builtin/trap/.initialize
   if [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]} ]]; then
-    ble-edit/exec:gexec/.TRAPDEBUG/trap
+    ble-edit/exec:gexec/.TRAPDEBUG/trap "$opts"
   fi
 }
+
 function ble-edit/exec:gexec/.TRAPDEBUG {
-  local __lastexit=$? __lastarg=$_
+  local __lastexit=$? __lastarg=$_ bash_command=$BASH_COMMAND # Note XXXX: bash-3.0 では BASH_COMMAND が異なる。
   _ble_edit_exec_TRAPDEBUG_postproc=
   [[ $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ]] || return 0
-  [[ $BASH_COMMAND != ble-edit/exec:gexec/.* ]] || return 0
+  [[ $bash_command != *ble-edit/exec:gexec/.* ]] || return 0
+  [[ ! ( ${FUNCNAME[1]-} == _ble_prompt_update__eval_prompt_command_1 && ( $bash_command == 'ble-edit/exec/.setexit '* || $bash_command == 'BASH_COMMAND='*' builtin eval -- '* ) ) ]] || return 0
   [[ ! ${_ble_builtin_trap_inside-} ]] || return 0
 
-  local __set __shopt; ble/base/.adjust-bash-options __set __shopt
-
-  # Run user DEBUG trap
-  local _ble_builtin_trap_postproc
-  ble/util/setexit "$__lastexit" "$__lastarg"
-  ble/builtin/trap/invoke DEBUG
-  _ble_edit_exec_TRAPDEBUG_postproc=$_ble_builtin_trap_postproc
-
-  # Handle INT
   if [[ $_ble_attached ]] && ((_ble_edit_exec_INT!=0)); then
+    local __set __shopt; ble/base/.adjust-bash-options __set __shopt
+
+    # Run user DEBUG trap in the sandbox
+    local _ble_builtin_trap_postproc
+    ble/util/setexit "$__lastexit" "$__lastarg"
+    ble/builtin/trap/invoke DEBUG
+    _ble_edit_exec_TRAPDEBUG_postproc=$_ble_builtin_trap_postproc # unused
+
+    # Handle INT
     local IFS=$_ble_term_IFS
     local depth=${#FUNCNAME[*]}
     if ((depth>=2)) && ! ble/string#match "${FUNCNAME[*]:1}" '^ble-edit/exec:gexec/\.|(^| )ble/builtin/trap/\.handler'; then
@@ -5742,33 +5813,109 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
       local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${FUNCNAME[1]}${1:+ $1}${_ble_term_setaf[6]}')'
       ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >/dev/tty
       _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_INT || break; } &>/dev/null"
-    elif ((depth==1)) && ! ble/string#match "$BASH_COMMAND" '^ble-edit/exec:gexec/\.'; then
+    elif ((depth==1)) && ! ble/string#match "$bash_command" '^ble-edit/exec:gexec/\.'; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
       local source=${_ble_term_setaf[5]}global
       local sep=${_ble_term_setaf[6]}:
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $BASH_COMMAND" >/dev/tty
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $bash_command" >/dev/tty
       _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_INT || break; } &>/dev/null"
     fi
-    ble/base/.restore-bash-options __set __shopt
-    return 0
-  fi
 
-  if [[ ! ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]]; then
+    ble/base/.restore-bash-options __set __shopt
+
+  elif [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]]; then
+    # ユーザートラップだけの場合は、ユーザートラップを外で実行
+    _ble_edit_exec_TRAPDEBUG_lastexit=$__lastexit
+    _ble_edit_exec_TRAPDEBUG_lastarg=$__lastarg
+    _ble_edit_exec_TRAPDEBUG_postproc='ble/util/setexit "$_ble_edit_exec_TRAPDEBUG_lastexit" "$_ble_edit_exec_TRAPDEBUG_lastarg"'
+    local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]}
+    if [[ $user_trap == *[![:space:]]* ]]; then
+      _ble_edit_exec_TRAPDEBUG_postproc="$_ble_edit_exec_TRAPDEBUG_postproc;$user_trap"
+    fi
+
+  else
     # ユーザー DEBUG trap がなくかつ INT 処理中でもない場合は DEBUG は削除して
     # 良い [ Note: builtin trap - DEBUG は此処では効かない ]
     _ble_edit_exec_TRAPDEBUG_postproc='builtin trap -- - DEBUG'
   fi
 
-  ble/base/.restore-bash-options __set __shopt
   return 0
 }
+_ble_builtin_trap_DEBUG_userTrapInitialized=
 function ble/builtin/trap:DEBUG {
+  _ble_builtin_trap_DEBUG_userTrapInitialized=1
   # Note (#D1155): ユーザコマンド実行中に新しく ble/builtin/trap DEBUG
   # が設定された場合は builtin trap DEBUG を仕掛ける。
   if [[ $1 != - && ( $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ) ]]; then
     ble-edit/exec:gexec/.TRAPDEBUG/trap
   fi
 }
+
+## @fn _ble_builtin_trap_DEBUG__initialize
+##   ユーザーの設定した DEBUG trap を何処かの時点で読み取る。
+##
+## DEBUG trap は基本的には ble.sh 内部では無効化される。但し、PROMPT_COMMAND を
+## 評価する時には一時的に有効化される。ble/builtin/trap による DEBUG は関数の入
+## れ子等は考慮に入れていない。
+##
+## Note: 関数名が POSIX の要求する物になっているのは bash-3.1 以下で特殊文字を
+##   含む関数名に対して declare -ft を実行することができない為。
+##
+## Note: 先に ble.sh を source した場合は殆どの場合は上の trap:DEBUG 経由で正し
+##   い trap string が登録するので殆どの場合動く。
+##
+##   但し、bash-5.0 以下で先に ble.sh を source して prompt-attach を行い、更に
+##   PROMPT_COMMAND を書き換えた場合には、PROMPT_COMMAND の中で
+##   attach-from-PROMPT_COMMAND よりも後に実行している処理は DEBUG trap が無効
+##   化された状態で実行される事になる。これは PROMPT_COMMAND 内で DEBUG trap を
+##   有効にしている動作とずれる。
+##
+## Note: 先に DEBUG trap を設定した後に ble.sh を source した場合には、以下の場
+##   合にロード直後は DEBUG trap が ble.sh 内部の処理に対しても有効になっている
+##   事に注意する。最初のユーザー入力または端末による DA2 応答等の時に改めて
+##   DEBUG trap の読み取り
+##
+##   - rcfile の名前が .bashrc でも .profile でも .bash_profile でもない場合
+##     (これは現在 rcfile の中にいるかどうかを判定する方法が bash にはない事か
+##     ら、rcfile かどうかをファイル名と行番号だけから判定しなければならない事
+##     に由来する)
+##
+##   - コマンドラインから source ~/.bashrc 等の様にして手動で bashrc を読み込ん
+##     だ時 (これは source が DEBUG trap を継承しないという Bash の制限に由来す
+##     る)
+##
+##   - rcfile から一旦別のファイルを source してそのファイルから ble.sh を
+##     source した時。または関数内から ble.sh を source した時 (これも DEBUG
+##     trap の継承に関する Bash の制限に由来する)
+##
+##   - bash-3.1 以下の時 (これは declare -ft で trace を付加できる関数の関数名
+##     に対する制限に由来する)
+function _ble_builtin_trap_DEBUG__initialize {
+  if [[ $_ble_builtin_trap_DEBUG_userTrapInitialized ]]; then
+    # Note: 既に ble/builtin/trap:DEBUG 等によって user trap が設定されている場
+    # 合は改めて読み取る事はしない (読み取っても TRAPDEBUG が見えるだけ)。
+    builtin eval -- "function $FUNCNAME() ((1))"
+    return 0
+  elif [[ $1 == force ]] || ble/function/is-global-trace-context; then
+    _ble_builtin_trap_DEBUG_userTrapInitialized=1
+    builtin eval -- "function $FUNCNAME() ((1))"
+    local tmp=$_ble_base_run/$$.trap.DEBUG ret
+    builtin trap -p DEBUG >| "$tmp"
+    local content; ble/util/readfile content "$tmp"
+    ble/util/put '' >| "$tmp"
+
+    # ble.sh の設定した DEBUG trap は無視する。
+    case ${content#"trap -- '"} in
+    (ble-edit/exec:gexec/.TRAPDEBUG*) ;; # ble-0.4
+    (ble-edit/exec:exec/.eval-TRAPDEBUG*|ble-edit/exec:gexec/.eval-TRAPDEBUG*) ;; # ble-0.2
+    (.ble-edit/exec:exec/eval-TRAPDEBUG*|.ble-edit/exec:gexec/eval-TRAPDEBUG*) ;; # ble-0.1
+    (*) builtin eval -- "$content" ;; # ble/builtin/trap に処理させる
+    esac
+    return 0
+  fi
+}
+ble/function#trace _ble_builtin_trap_DEBUG__initialize
+_ble_builtin_trap_DEBUG__initialize
 
 function ble-edit/exec:gexec/.TRAPINT {
   local sig=130
@@ -5839,7 +5986,6 @@ function ble-edit/exec:gexec/TERM/enter {
 function ble-edit/exec:gexec/.begin {
   _ble_edit_exec_inside_begin=1
   local IFS=$_ble_term_IFS
-  _ble_decode_bind_hook=
   _ble_edit_exec_PWD=$PWD
   ble-edit/exec:gexec/TERM/leave
   ble/term/leave
@@ -5849,7 +5995,7 @@ function ble-edit/exec:gexec/.begin {
   # C-c に対して
   ble/builtin/trap/install-hook INT # 何故か改めて実行しないと有効にならない
   blehook INT+='ble-edit/exec:gexec/.TRAPINT'
-  ble-edit/exec:gexec/.TRAPDEBUG/enter
+  ble-edit/exec:gexec/.TRAPDEBUG/restore
 }
 function ble-edit/exec:gexec/.end {
   _ble_edit_exec_inside_begin=
@@ -6015,16 +6161,26 @@ function ble-edit/exec:gexec/.setup {
   #   declare -a arr=(a b c) の様な特殊な構文の物は上書きできない。
   #   この所為で、例えば source 内で declare した配列などが壊れる。
   #
-  ((${#_ble_edit_exec_lines[@]}==0)) && return 1
-  ble/util/buffer.flush >&2
+  ((${#_ble_edit_exec_lines[@]})) || [[ ! $_ble_edit_exec_TRAPDEBUG_adjusted ]] || return 1
 
-  local q=\' Q="'\\''"
-  local cmd
-  local -a buff=()
-  local count=0
-  buff[${#buff[@]}]=ble-edit/exec:gexec/.begin
-  for cmd in "${_ble_edit_exec_lines[@]}"; do
-    if [[ "$cmd" == *[^' 	']* ]]; then
+  local buff='_ble_decode_bind_hook=' ibuff=1
+
+  if [[ ! $_ble_edit_exec_TRAPDEBUG_adjusted ]]; then
+    # Note #D1772: bash-3.1 以下で prompt attach すると、何故か一番外側で実行し
+    #   ていても attach-from-PROMPT_COMMAND の中で実行している事になっているので、
+    #   明示的に force を指定して DEBUG trap を読み取らせる。
+    buff[ibuff++]='_ble_builtin_trap_DEBUG__initialize force'
+    buff[ibuff++]=_ble_edit_exec_gexec__TRAPDEBUG_adjust
+  fi
+
+  ble/array#filter-by-glob _ble_edit_exec_lines '*[![:space:]]*'
+  local count=${#_ble_edit_exec_lines[@]}
+  if ((count)); then
+    ble/util/buffer.flush >&2
+
+    local q=\' Q="'\''" cmd
+    buff[ibuff++]=ble-edit/exec:gexec/.begin
+    for cmd in "${_ble_edit_exec_lines[@]}"; do
       # Note: restore-lastarg の $_ble_edit_exec_lastarg は $_ を設定するための
       #   ものである。
       # Note #D0465: restore-lastarg と実際のコマンドを同じ eval の中に入れるの
@@ -6034,28 +6190,30 @@ function ble-edit/exec:gexec/.setup {
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
       #   る時に eval の最終引数になってしまう)。
       local prologue=""
-      buff[${#buff[@]}]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}'"
-      buff[${#buff[@]}]='{ time builtin eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
-      buff[${#buff[@]}]='$_ble_edit_exec_BASH_COMMAND'
-      buff[${#buff[@]}]='{ ble-edit/exec:gexec/.save-lastarg; } &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
-      buff[${#buff[@]}]='" 2>&$_ble_util_fd_stderr; } 2>| "$_ble_exec_time_TIMEFILE"'
-      buff[${#buff[@]}]='{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null'
-      ((count++))
+      buff[ibuff++]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}'"
+      buff[ibuff++]='{ time builtin eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
+      buff[ibuff++]='$_ble_edit_exec_BASH_COMMAND'
+      buff[ibuff++]='{ ble-edit/exec:gexec/.save-lastarg; } &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
+      buff[ibuff++]='" 2>&$_ble_util_fd_stderr; } 2>| "$_ble_exec_time_TIMEFILE"'
+      buff[ibuff++]='{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null'
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
       #   続きの行が実行されない事になってしまう。
-    fi
-  done
-  _ble_edit_exec_lines=()
+    done
+    _ble_edit_exec_lines=()
 
-  ((count==0)) && return 1
+    # Note: 現在は _ble_decode_bind_hook 経由で処理しているので問題ないが、
+    #   builtin trap - INT DEBUG を使う時一番外側 (此処) でないと効かない
+    buff[ibuff++]=_ble_edit_exec_gexec__TRAPDEBUG_adjust
+    buff[ibuff++]=ble-edit/exec:gexec/.end
+  fi
 
-  # Note: 現在は blehook 経由で処理しているので問題ないが、
-  #   builtin trap - INT DEBUG を使う時一番外側 (此処) でないと効かない
-  buff[${#buff[@]}]='builtin trap -- - DEBUG'
-  buff[${#buff[@]}]=ble-edit/exec:gexec/.end
-  IFS=$'\n' builtin eval '_ble_decode_bind_hook="${buff[*]}"'
-  return 0
+  if ((ibuff>=2)); then
+    IFS=$'\n' builtin eval '_ble_decode_bind_hook="${buff[*]}"'
+  fi
+
+  # コマンド実行をする場合は ble-edit/bind/.tail は遅延する
+  ((count>=1)); return $?
 }
 
 function ble-edit/exec:gexec/process {
@@ -9459,6 +9617,12 @@ function ble-edit/initialize {
   ble/prompt/initialize
 }
 function ble-edit/attach {
+  # user DEBUG trap 取得を試行
+  _ble_builtin_trap_DEBUG__initialize
+  # user DEBUG trap が取得済みなら DEBUG trap 削除
+  [[ $_ble_builtin_trap_DEBUG_userTrapInitialized ]] &&
+    _ble_edit_exec_gexec__TRAPDEBUG_adjust
+
   ble-edit/attach/.attach
   _ble_canvas_x=0 _ble_canvas_y=0
   ble/util/buffer "$_ble_term_cr"
@@ -9466,5 +9630,7 @@ function ble-edit/attach {
 function ble-edit/detach {
   ble-edit/bind/stdout.finalize
   ble-edit/attach/.detach
-  ble-edit/exec:gexec/.TRAPDEBUG/enter
+  ble-edit/exec:gexec/.TRAPDEBUG/restore
 }
+
+ble/function#trace ble-edit/attach

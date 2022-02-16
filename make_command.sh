@@ -1319,6 +1319,7 @@ function sub:scan {
       \Zline = "bind"Zd
       \Zlocal trap_command="trap -- Zd
       \Zlocal trap$Zd
+      \Z\$\{content#"trap -- '\''"\}Zd
       g'
 
   sub:scan/a.txt

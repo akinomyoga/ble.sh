@@ -323,7 +323,7 @@ function ble/variable#copy-state {
 
 function ble/base/.adjust-bash-options {
   builtin eval -- "$1=\$-"
-  set +exvuk -B
+  set +exvukT -B
 
   [[ $2 == shopt ]] || local shopt
   if ((_ble_bash>=40100)); then
@@ -343,6 +343,7 @@ function ble/base/.restore-bash-options {
   local set=${!1} shopt=${!2}
   [[ :$shopt: == *:nocasematch:* ]] && shopt -s nocasematch
   [[ $set == *B* ]] || set +B
+  [[ $set == *T* ]] && set -T
   [[ $set == *k* ]] && set -k
   [[ $set == *u* ]] && set -u
   [[ $set == *v* ]] && set -v
@@ -933,6 +934,8 @@ function ble/base/.create-user-directory {
 
 ##
 ## @var _ble_base
+## @var _ble_base_blesh
+## @var _ble_base_blesh_raw
 ##
 ##   ble.sh のインストール先ディレクトリ。
 ##   読み込んだ ble.sh の実体があるディレクトリとして解決される。
@@ -942,9 +945,11 @@ function ble/base/initialize-base-directory {
   local defaultDir=${2-}
 
   # resolve symlink
-  if [[ -h $src ]] && type -t readlink &>/dev/null; then
+  _ble_base_blesh_raw=$src
+  if [[ -h $src ]]; then
     local ret; ble/util/readlink "$src"; src=$ret
   fi
+  _ble_base_blesh=$src
 
   if [[ -s $src && $src != */* ]]; then
     _ble_base=$PWD
@@ -1587,6 +1592,7 @@ function ble/base/install-prompt-attach {
     _ble_base_attach_PROMPT_COMMAND[save_index]=${PROMPT_COMMAND-}
     ble/function#lambda PROMPT_COMMAND \
                         "ble/base/attach-from-PROMPT_COMMAND $save_index \"\$FUNCNAME\""
+    ble/function#trace "$PROMPT_COMMAND"
     if [[ $_ble_edit_detach_flag == reload ]]; then
       _ble_edit_detach_flag=prompt-attach
       blehook PRECMD+="$PROMPT_COMMAND"
@@ -1607,12 +1613,14 @@ function ble/base/attach-from-PROMPT_COMMAND {
       local save_index=$1 lambda=$2
 
       # 待避していた内容を復元・実行
-      [[ $PROMPT_COMMAND == "$lambda" ]] || local PROMPT_COMMAND
+      local PROMPT_COMMAND_local=
+      [[ $PROMPT_COMMAND == "$lambda" ]] || local PROMPT_COMMAND PROMPT_COMMAND_local=1
       PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
       local ble_base_attach_from_prompt_command=processing
       ble/prompt/update/.eval-prompt_command 2>&3
       ble/util/unlocal ble_base_attach_from_prompt_command
       _ble_base_attach_PROMPT_COMMAND[save_index]=$PROMPT_COMMAND
+      [[ ! $PROMPT_COMMAND_local ]] || ble/util/unlocal PROMPT_COMMAND
       blehook PRECMD-="$lambda" || ((1)) # set -e 対策
 
       # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
@@ -1747,6 +1755,15 @@ function ble/base/sub:clear-cache {
 #%if measure_load_time
 ble/debug/measure-set-timeformat ble.pp/epilogue; }
 #%end
+
+# Note: ble-attach 及びそれを呼び出す可能性がある物には DEBUG trap を
+#   継承させる。これはユーザーの設定した user trap を正しく抽出する為
+#   に必要。現在は ble-attach から呼び出される ble-edit/attach で処理
+#   している。
+ble/function#trace ble-attach
+ble/function#trace ble
+ble/function#trace ble/dispatch
+ble/function#trace ble/base/attach-from-PROMPT_COMMAND
 
 ble-import -f lib/_package
 if [[ $_ble_init_command ]]; then
