@@ -1539,7 +1539,8 @@ _ble_prompt_rps1_enabled=
 function ble/prompt/update {
   local opts=:$1: dirty=
 
-  local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
+  local count; ble/history/get-count
+  local version=$COLUMNS:$_ble_edit_lineno:$count
   if [[ :$opts: == *:check-dirty:* && $_ble_prompt_update == owner ]]; then
     if [[ $_ble_prompt_update_dirty && :$opts: != *:leave:* && $_ble_prompt_hash == "$version" ]]; then
       [[ $_ble_prompt_update_dirty == dirty ]]; local ext=$?
@@ -1554,7 +1555,8 @@ function ble/prompt/update {
 
   # Update PS1 in PROMPT_COMMAND / PRECMD
   if ((_ble_textarea_panel==0)); then # 補助プロンプトに対しては PROMPT_COMMAND は実行しない
-    if [[ $_ble_prompt_hash != "$version" && $opts != *:leave:* ]]; then
+    # Note #D1778: version の内の history count は PROMPT_COMMAND の更新には使わない。
+    if [[ ${_ble_prompt_hash%:*} != "${version%:*}" && $opts != *:leave:* ]]; then
       if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
         # #D1750 PROMPT_COMMAND 及び PRECMD が何か出力する時は表示が乱れるので
         # クリアする。点滅などを避ける為、既定では off にしておく。

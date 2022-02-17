@@ -1324,6 +1324,7 @@ function sub:scan {
       \Zlocal trap_command="trap -- Zd
       \Zlocal trap$Zd
       \Z\$\{content#"trap -- '\''"\}Zd
+      \Z\("trap -- '\''.*"\*\)Zd
       g'
 
   sub:scan/a.txt

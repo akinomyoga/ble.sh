@@ -728,8 +728,8 @@ function ble/array#index {
   local _ble_local_script='
     local eARR iARR=0
     for eARR in "${ARR[@]}"; do
-      [[ $eARR == "$2" ]] && { ret=$iARR; return 0; }
-      ((iARR++))
+      if [[ $eARR == "$2" ]]; then ret=$iARR; return 0; fi
+      ((++iARR))
     done
     ret=-1; return 1
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
@@ -745,20 +745,29 @@ function ble/array#last-index {
     ret=-1; return 1
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## @fn ble/array#remove arr index
+## @fn ble/array#remove-at arr index
 function ble/array#remove-at {
   local _ble_local_script='
     builtin unset -v "ARR[$2]"
     ARR=("${ARR[@]}")
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## @fn ble/array#replace arr needle [replacement]
+function ble/array#fill-range {
+  ble/array#reserve-prototype $(($3-$2))
+  local _ble_script='
+      local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
+      ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
+  ((_ble_bash>=40300)) && ! shopt -q compat42 &&
+    _ble_script=${_ble_script//'$4'/'"$4"'}
+  builtin eval -- "${_ble_script//ARR/$1}"
+}
+## @fn ble/idict#replace arr needle [replacement]
 ##   needle に一致する要素を全て replacement に置換します。
 ##   replacement が指定されていない時は該当要素を unset します。
 ##   @var[in] arr
 ##   @var[in] needle
 ##   @var[in,opt] replacement
-function ble/array#replace {
+function ble/idict#replace {
   local _ble_local_script='
     local iARR=0 extARR=1
     for iARR in "${!ARR[@]}"; do
@@ -772,16 +781,6 @@ function ble/array#replace {
     done
     return "$extARR"
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
-}
-
-function ble/dense-array#fill-range {
-  ble/array#reserve-prototype $(($3-$2))
-  local _ble_script='
-      local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
-      ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
-  ((_ble_bash>=40300)) && ! shopt -q compat42 &&
-    _ble_script=${_ble_script//'$4'/'"$4"'}
-  builtin eval -- "${_ble_script//ARR/$1}"
 }
 
 function ble/idict#copy {

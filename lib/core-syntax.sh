@@ -756,7 +756,7 @@ function ble/syntax/parse/word-cancel {
   local wlen=${word[1]} tplen=${word[3]}
   local wbegin=$((i-wlen))
   tchild=$((tplen<0?tplen:i-tplen))
-  ble/dense-array#fill-range _ble_syntax_tree "$wbegin" "$i" ''
+  ble/array#fill-range _ble_syntax_tree "$wbegin" "$i" ''
 }
 
 # 入れ子構造の管理
@@ -7171,7 +7171,7 @@ function ble/highlight/layer:syntax/word/.apply-attribute {
     wbeg<wend)) || return 1
 
   if [[ $wattr =~ ^[0-9]+$ ]]; then
-    ble/dense-array#fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"
+    ble/array#fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"
   elif [[ $wattr == m* ]]; then
     local ranges; ble/string#split ranges , "${wattr:1}"
     local i=$wbeg j range
@@ -7186,7 +7186,7 @@ function ble/highlight/layer:syntax/word/.apply-attribute {
       (((i=j)<wend)) || break
     done
   elif [[ $wattr == d ]]; then
-    ble/dense-array#fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
+    ble/array#fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
   fi
 }
 

@@ -6115,6 +6115,65 @@ bash_tips
 
 2022-02-17
 
+  * main, edit: 起動時に無駄に PROMPT_COMMAND が実行されるのを防げないか [#D1778]
+
+    PS1 に含まれるコマンド置換も同様である。画面サイズが変わる等しない限りは再
+    計算する必要はない筈である。
+
+    今試してみたがそれほど無駄に実行している訳でもない様に思われる。
+
+    * 但し、_ble_history_count が初期化される前と初期化された後で
+      PROMPT_COMMAND が再計算されていたのは修正する事にした。これで恐らく起動時
+      刻も短くなったのではないかと思われる。これで1回実行が減少した。
+
+    * 実は #D1772 の時点で既に1回実行を減らしている筈である。PROMPT_COMMAND を
+      待避した事によって減っていると期待する。しかし本当にこれで減ったのだろう
+      か。怪しい → 試して見た所 manual attach の時に回数を一回減らす事ができて
+      いると判明した。
+
+    これで合計で4回実行されていた #D1772 の状況を再現できた。更に減らす事は可能
+    だろうか。現在 prompt-attach を使っているが、ble-attach の時にはもっと減っ
+    ても良いのではないか? → 確認してみると manual attach の時には
+    _ble_history_count が bashrc の中で 1 で、その後で実際の数に増えるという事
+    の様である。
+
+    * うーん。そもそも PROMPT_COMMAND の決定に _ble_history_count が影響を与え
+      るのだろうか。というのは疑問である。実は PROMPT_COMMAND に関しては
+      _ble_history_count に関係なく version を決めて良いのではないか?
+
+      →その様に変更する事にした。これで manual attach ならば唯1回の
+      PROMPT_COMMAND の実行になった。
+
+      一方で PS1 の評価に関しては history count が影響を与えるので
+      _ble_history_count が変化したらちゃんと再評価しなければならない。これが二
+      重に評価されるのは仕方がないと諦める事にする。
+
+    * prompt attach の場合には依然として二重に PROMPT_COMMAND が実行されている。
+      うーん。PROMPT_COMMAND が書き換えられて直接削除できない場合は仕方がないと
+      して、内部で実行している場合には呼び出しを省略できないのか。と思ったが、
+      PROMPT_COMMAND 配列の時には結局 bash は全てを実行するし、或いは、内部で保
+      持している物についてはその場で実行しておかないと bash-preexec.sh の様に内
+      部で PROMPT_COMMAND を書き換える様な物に対して矛盾のない動作を提供する事
+      ができない。或いはもっと注意深く考察すれば何かできるのかもしれないが。
+
+      或いは逆に ble-attach の中で実行している PROMPT_ATTACH の方を省略させる?
+      と思ったが、
+
+      x その場合 PROMPT_COMMAND 配列でより後にある PROMPT_COMMAND の実行結果が
+        反映されない事になるし、ble-attach の処理が終わった後に続きで実行される
+        PROMPT_COMMAND を阻止する事は結局できない。
+
+      とは言いつつも scalar PROMPT_COMMAND (他によって修正されていない) または
+      "配列 PROMPT_COMMAND かつ最終要素" の場合には、続きで別の処理が走らないと
+      いう事は保証できるので、ble-attach の内部で走る PROMPT_ATTACH は省略でき
+      る。
+
+    2022-02-19 うーん。bash-it のプロンプトが prompt attach で初期化されなくなっ
+    た。どうやら bash-preexec precmd 経由で bash-it は設定を行っている様で、
+    bash-preexec が ble.sh によって置き換えられた事によって precmd が実行されな
+    くなっているのが原因の様だ。うーん。precmd は実行しておくべきの気がしてきた。
+    →取り敢えず PRECMD を呼び出す様にしたら期待通りに動く様になった。
+
   * 2020-09-01 trap: ble.sh を unload する時に復元する仕組みがあっても良いのではないか [#D1777]
     #D1775 と同時に対応した。
 
@@ -7030,9 +7089,10 @@ bash_tips
     * 後に ble.sh を source した場合には以下の場合にロード直後は DEBUG trap が
       ble.sh 内部の処理に対しても有効になっている。
 
-      - rcfile が .bashrc でも .profile でも .bash_profile でもない場合 (これ
-        は現在 rcfile の中にいるかどうかを判定する方法が bash にはない事から、
-        rcfile かどうかをファイル名と行番号だけから判定しなければならない事に
+      - (set -T & --attach=attach の時の条件) rcfile が .bashrc でも
+        .profile でも .bash_profile でもない場合 (これは現在 rcfile の
+        中にいるかどうかを判定する方法が bash にはない事から、rcfile
+        かどうかをファイル名と行番号だけから判定しなければならない事に
         由来する)
 
       - source ~/.bashrc 等の様にして手動で bashrc を読み込んだ時 (これは

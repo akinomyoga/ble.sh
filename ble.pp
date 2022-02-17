@@ -1600,28 +1600,49 @@ function ble/base/install-prompt-attach {
     fi
   fi
 }
+_ble_base_attach_from_prompt_lastexit=
+_ble_base_attach_from_prompt_lastarg=
+_ble_base_attach_from_prompt_PIPESTATUS=()
 ## @fn ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
 function ble/base/attach-from-PROMPT_COMMAND {
-#%if measure_load_time
-  ble/util/print "ble.sh: $EPOCHREALTIME start prompt-attach" >&2
-#%end
   # 後続の設定によって PROMPT_COMMAND が置換された場合にはそれを保持する
   {
+    # save $?, $_ and ${PIPE_STATUS[@]}
+    _ble_base_attach_from_prompt_lastexit=$? \
+      _ble_base_attach_from_prompt_lastarg=$_ \
+      _ble_base_attach_from_prompt_PIPESTATUS=("${PIPESTATUS[@]}")
+#%if measure_load_time
+    ble/util/print "ble.sh: $EPOCHREALTIME start prompt-attach" >&2
+#%end
+    if ((BASH_LINENO[${#BASH_LINENO[@]}-1]>=1)); then
+      # 既にコマンドを実行している時にはそのコマンドの結果を記録する
+      _ble_edit_exec_lastexit=$_ble_base_attach_from_prompt_lastexit
+      _ble_edit_exec_lastarg=$_ble_base_attach_from_prompt_lastarg
+      _ble_edit_exec_PIPESTATUS=("${_ble_base_attach_from_prompt_PIPESTATUS[@]}")
+      # Note: 本当は一つ前のコマンドを知りたいが確実な方法がないのでこの関数の名前を入れておく。
+      _ble_edit_exec_BASH_COMMAND=$FUNCNAME
+    fi
+
+    local is_last_PROMPT_COMMAND=1
     if (($#==0)); then
-      ble/array#replace PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
+      if local ret; ble/array#index PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND; then
+        local keys; keys=("${!PROMPT_COMMAND[@]}")
+        ((ret==keys[${#keys[@]}-1])) || is_last_PROMPT_COMMAND=
+        ble/idict#replace PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
+      fi
       blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND || ((1)) # set -e 対策
     else
       local save_index=$1 lambda=$2
 
       # 待避していた内容を復元・実行
       local PROMPT_COMMAND_local=
-      [[ $PROMPT_COMMAND == "$lambda" ]] || local PROMPT_COMMAND PROMPT_COMMAND_local=1
+      [[ $PROMPT_COMMAND == "$lambda" ]] || local PROMPT_COMMAND is_last_PROMPT_COMMAND=
       PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
       local ble_base_attach_from_prompt_command=processing
       ble/prompt/update/.eval-prompt_command 2>&3
       ble/util/unlocal ble_base_attach_from_prompt_command
       _ble_base_attach_PROMPT_COMMAND[save_index]=$PROMPT_COMMAND
-      [[ ! $PROMPT_COMMAND_local ]] || ble/util/unlocal PROMPT_COMMAND
+      [[ $is_last_PROMPT_COMMAND ]] || ble/util/unlocal PROMPT_COMMAND
       blehook PRECMD-="$lambda" || ((1)) # set -e 対策
 
       # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
@@ -1633,6 +1654,20 @@ function ble/base/attach-from-PROMPT_COMMAND {
     # 既に attach 状態の時は処理はスキップ
     [[ $_ble_base_attach_from_prompt ]] || return 0
     _ble_base_attach_from_prompt=
+
+    # Note #D1778: この attach-from-PROMPT_COMMAND が PROMPT_COMMAND
+    #   処理の最後と見做せる場合、この時点で PROMPT_COMMAND は一通り終
+    #   わったと見做せるので、ble-attach 内部で改めて PROMPT_COMMAND
+    #   を実行する必要はなくなる。それを伝える為に中間状態の
+    #   _ble_prompt_hash の値を設定する。
+    # Note #D1778: bash-preexec 経由でプロンプトを設定しようとしている
+    #   場合は、この時点で既に PRECMD に hook が移動している可能性があ
+    #   るので PRECMD も発火しておく (PROMPT_COMMAND と PRECMD の順序
+    #   が逆になるが仕方がない。問題になれば後で考える)。
+    if [[ $is_last_PROMPT_COMMAND ]]; then
+      ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
+      _ble_prompt_hash=$COLUMNS:$_ble_edit_lineno:prompt_attach
+    fi
   } 3>&2 2>/dev/null # set -x 対策 #D0930
 
   ble-attach force
