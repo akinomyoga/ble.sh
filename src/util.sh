@@ -2900,6 +2900,20 @@ function ble/function#try {
   "$@"
 }
 
+function ble/function#get-source-and-lineno {
+  local ret unset_extdebug=
+  shopt -q extdebug || { unset_extdebug=1; shopt -s extdebug; }
+  ble/util/assign ret "declare -F '$1' 2>/dev/null"; local ext=$?
+  [[ ! $unset_extdebug ]] || shopt -u extdebug
+  if ((ext==0)); then
+    ret=${ret#*' '}
+    lineno=${ret%%' '*}
+    source=${ret#*' '}
+    [[ $lineno && ! ${lineno//[0-9]} && $source ]] || return 1
+  fi
+  return "$ext"
+}
+
 ## @fn ble/function#advice type function proc
 ##   既存の関数の振る舞いを変更します。
 ##

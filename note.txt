@@ -1808,10 +1808,14 @@ bash_tips
 
 2022-02-14
 
+  * 全ての ble.sh session にコマンドを送る機能があれば screen に再 attach した
+    時の再調整等に役立つのでは。
+
+    _ble_term_TERM の最初期かもできるし、或いは DISPLAY 環境変数の再設定もでき
+    る。チェックの頻度は history-share と同様で良い気がする。
+
   * ble/builtin/trap DEBUG は関数の入れ子や trace 属性などは考慮していない。こ
     の事によって問題が起こる可能性もある。
-
-  * 関数の定義位置を DEBUG trap 等を使って抽出する事が可能なのではないか?
 
 2022-02-12
 
@@ -6112,6 +6116,19 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-02-18
+
+  * command-help: 関数の help として関数が定義されたファイルを表示する [#D1779]
+
+    関数の定義位置を DEBUG trap 等を使って抽出する事が可能なのではないか?
+
+    これは bash_completion の debug の時にも便利である。というか、
+    bash_completion の version を表示するのにも使える。
+
+    と思ったら shopt -s extdebug; declare -F 関数名 で普通に取得できるのだとい
+    う事が判明した。
+    https://www.cyberciti.biz/faq/how-to-find-bash-shell-function-source-code-on-linuxunix/
 
 2022-02-17
 

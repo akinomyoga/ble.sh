@@ -145,6 +145,7 @@
 - edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
 - util (`ble/util/buffer`): hide cursor in rendering `#D1758` e332dc5
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
+- edit (command-help): show source files for functions `#D1779` 0000000
 
 ## Fixes
 

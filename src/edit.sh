@@ -9047,6 +9047,30 @@ function ble/widget/command-help/.locate-in-man-bash {
   local manpager="$pager -r +'/$rex_ext$cr$((iline-1))g'"
   builtin eval -- "$manpager" <<< "$man_content" # 1 fork
 }
+function ble/widget/command-help/.show-bash-script {
+  local _ble_local_pipeline=$1
+  local -x LESS="${LESS:+$LESS }-r" # Note: Bash のバグで tempenv builtin eval は消滅するので #D1438
+  type -t source-highlight &>/dev/null &&
+    _ble_local_pipeline='source-highlight -s sh -f esc | '$_ble_local_pipeline
+  builtin eval -- "$_ble_local_pipeline"
+}
+function ble/widget/command-help/.locate-function-in-source {
+  local func=$1 source lineno line
+  ble/function#get-source-and-lineno "$func" || return 1
+  [[ -f $source && -s $source ]] || return 1 # pipe 等は読み取らない
+
+  # check if pager is less
+  local pager; ble/util/get-pager pager
+  local pager_cmd=${pager%%["$_ble_term_IFS"]*}
+  [[ ${pager_cmd##*/} == less ]] || return 1
+
+  # check if the file really contains the function definition
+  ble/util/assign line 'ble/bin/sed -n "${lineno}{p;q;}" "$source"'
+  [[ $line == *"$func"* ]] || return 1
+
+  ble/widget/command-help/.show-bash-script '"$pager" +"${lineno}g"' < "$source"
+}
+
 ## @fn ble/widget/command-help.core
 ##   @var[in] type
 ##   @var[in] command
@@ -9059,13 +9083,11 @@ function ble/widget/command-help.core {
     # 組み込みコマンド・キーワードは man bash を表示
     ble/widget/command-help/.locate-in-man-bash "$command" && return 0
   elif [[ $type == function ]]; then
+    ble/widget/command-help/.locate-function-in-source "$command" && return 0
+
     # シェル関数は定義を表示
-    local pager=ble/util/pager
-    type -t source-highlight &>/dev/null &&
-      pager='source-highlight -s sh -f esc | '$pager
     local def; ble/function#getdef "$command"
-    local -x LESS="$LESS -r" # Note: Bash のバグで tempenv builtin eval は消滅するので #D1438
-    builtin eval -- "$pager" <<< "$def" && return 0
+    ble/widget/command-help/.show-bash-script ble/util/pager <<< "$def" && return 0
   fi
 
   if ble/is-function ble/bin/man; then
