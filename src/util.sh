@@ -5934,6 +5934,13 @@ function ble/term/DA2/initialize-term {
     # 現状ハードコードされている。
     # https://github.com/microsoft/terminal/blob/bcc38d04/src/terminal/adapter/adaptDispatch.cpp#L779-L782
     _ble_term_TERM[depth]=wt:0 ;;
+  ('0;'*';1')
+    if ((da2r[1]>=1001)); then
+      # Alacritty
+      # https://github.com/alacritty/alacritty/blob/4734b2b8/alacritty_terminal/src/term/mod.rs#L1315
+      # https://github.com/alacritty/alacritty/blob/4734b2b8/alacritty_terminal/src/term/mod.rs#L3104
+      _ble_term_TERM[depth]=alacritty:$((da2r[1]))
+    fi ;;
   ('1;0'?????';0')
     _ble_term_TERM[depth]=foot:${DA2R:3:5} ;;
   ('1;'*)
@@ -5942,8 +5949,6 @@ function ble/term/DA2/initialize-term {
     elif ((2000<=da2r[1]&&da2r[1]<5400&&da2r[2]==0)); then
       _ble_term_TERM[depth]=vte:$((da2r[1]))
     fi ;;
-  ('99;'*)
-    _ble_term_TERM[depth]=contra:$((da2r[1])) ;;
   ('65;'*)
     if ((5300<=da2r[1]&&da2r[2]==1)); then
       _ble_term_TERM[depth]=vte:$((da2r[1]))
@@ -5962,6 +5967,8 @@ function ble/term/DA2/initialize-term {
     [[ $DA2R =~ $rex ]] && _ble_term_TERM[depth]=screen:$((da2r[1])) ;;
   ('84;0;0')
     _ble_term_TERM[depth]=tmux:0 ;;
+  ('99;'*)
+    _ble_term_TERM[depth]=contra:$((da2r[1])) ;;
   esac
   [[ ${_ble_term_TERM[depth]} ]] && return 0
 

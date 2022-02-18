@@ -3416,11 +3416,328 @@ function ble/widget/clear-display {
   ble/util/buffer $'\e[3J'
   ble/widget/clear-screen
 }
+
+function ble/edit/display-version/git-rev-parse {
+  ret=
+  local git_base opts=$2
+  case $1 in
+  (.)       git_base=$PWD ;;
+  (./*)     git_base=$PWD/${1#./} ;;
+  (..|../*) git_base=$PWD/$1 ;;
+  (*)       git_base=$1 ;;
+  esac
+
+  "${_ble_util_set_declare[@]//NAME/visited}"
+  until [[ -s $git_base/HEAD || -s $git_base/.git/HEAD ]]; do
+    # guard for cyclic refs
+    ble/set#contains visited "$git_base" && return 1
+    ble/set#add visited "$git_base"
+
+    # submodule?
+    if [[ -f $git_base/.git ]]; then
+      local content
+      ble/util/mapfile content < "$git_base/.git"
+      if ble/string#match "$content" '^gitdir: (.*)'; then
+        git_base=$git_base/${BASH_REMATCH[1]}
+        continue
+      fi
+    fi
+
+    # parent directory?
+    if [[ :$opts: == *:parent:* && $git_base == */* ]]; then
+      git_base=${git_base%/*}
+      continue
+    fi
+
+    break
+  done
+  [[ -s $git_base/HEAD ]] || git_base=$git_base/.git
+
+  local head=$git_base/HEAD
+  if [[ -f $head ]]; then
+    local content
+    ble/util/mapfile content < "$head"
+    if ble/string#match "$content" '^ref: (.*)$'; then
+      head=$git_base/${BASH_REMATCH[1]}
+      ble/util/mapfile content < "$head"
+    fi
+    if ble/string#match "$content" '^[a-f0-9]+$'; then
+      content=${content::8}
+    fi
+    ret=$content
+    [[ $ret ]]
+    return $?
+  fi
+  return 1
+}
+function ble/edit/display-version/git-hash-object {
+  local file=$1 size
+  if ! ble/util/assign size 'ble/bin/wc -c "$file" 2>/dev/null'; then
+    ret='error'
+    return 1
+  fi
+  ble/string#split-words size "$size"
+
+  if ble/bin#has git; then
+    ble/util/assign ret 'git hash-object "$file"'
+    ret="hash:$ret, $size bytes"
+  elif ble/bin#has sha1sum; then
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    { printf 'blob %d\0' "$size"; ble/bin/cat "$file"; } >| "$_ble_local_tmpfile"
+    blob_data=$_ble_local_tmpfile ble/util/assign ret 'sha1sum "$blob_data"'
+    ble/util/assign/.rmtmp
+
+    ble/string#split-words ret "$ret"
+    ret="sha1:$ret, $size bytes"
+  elif ble/bin#has cksum; then
+    ble/util/assign ret 'cksum "$file"'
+    ble/string#split-words ret "$ret"
+    ble/util/sprintf ret 'cksum:%08x, %d bytes' "$ret" "$size"
+  else
+    ret=size:$size
+  fi
+}
+function ble/edit/display-version/add-line {
+  lines[iline++]=$1
+}
+function ble/edit/display-version/check:bash-completion {
+  [[ ${BASH_COMPLETION_VERSINFO[0]-} ]] || return 1
+
+  local patch=${BASH_COMPLETION_VERSINFO[2]-}
+  local version=${BASH_COMPLETION_VERSINFO[0]}.${BASH_COMPLETION_VERSINFO[1]:-y}${patch:+.$patch}
+  local source lineno ret
+  if ble/function#get-source-and-lineno _init_completion; then
+    if ble/edit/display-version/git-rev-parse "${source%/*}"; then
+      version=$sgrV$version+$ret$sgr0
+    elif ble/edit/display-version/git-hash-object "$source"; then
+      version="$sgrV$version$sgr0 ($ret)"
+    fi
+  fi
+  ble/edit/display-version/add-line "${sgrF}bash-completion$sgr0, version $version$label_noarch"
+}
+function ble/edit/display-version/check:bash-preexec {
+  local source lineno ret
+  ble/function#get-source-and-lineno __bp_preexec_invoke_exec || return 1
+
+  local version="${source/#$HOME/~}$label_noarch"
+  if ble/edit/display-version/git-rev-parse "${source%/*}"; then
+    version="version $sgrV+$ret$sgr0$label_noarch"
+  elif ble/edit/display-version/git-hash-object "$source"; then
+    version="($ret)$label_noarch"
+  fi
+
+  local file=${source##*/}
+  if [[ $file == bash-preexec.sh || $file == bash-preexec.bash ]]; then
+    file=
+  else
+    file=" ($file)"
+  fi
+
+  local integ=
+  ble/util/import/is-loaded contrib/bash-preexec && integ=$label_integration
+  ble/edit/display-version/add-line "${sgrF}bash-preexec$sgr0$file, $version$integ"
+}
+function ble/edit/display-version/check:fzf {
+  # fzf-key-bindings
+  local source lineno ret
+  if ble/function#get-source-and-lineno __fzf_select__; then
+    local version="${source/#$HOME/~}$label_noarch"
+    if ble/edit/display-version/git-rev-parse "${source%/*}" parent; then
+      version="version $sgrV+$ret$sgr0$label_noarch"
+    elif ble/edit/display-version/git-hash-object "$source"; then
+      version="($ret)$label_noarch"
+    fi
+
+    local integ=
+    ble/util/import/is-loaded contrib/fzf-key-bindings && integ=$label_integration
+
+    ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}key-bindings$sgr0, $version$integ"
+  fi
+
+  # fzf-completion
+  if ble/function#get-source-and-lineno __fzf_orig_completion; then
+    local version="${source/#$HOME/~}$label_noarch"
+    if ble/edit/display-version/git-rev-parse "${source%/*}" parent; then
+      version="version $sgrV+$ret$sgr0$label_noarch"
+    elif ble/edit/display-version/git-hash-object "$source"; then
+      version="($ret)$label_noarch"
+    fi
+
+    local integ=
+    ble/util/import/is-loaded contrib/fzf-completion && integ=$label_integration
+
+    ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}completion$sgr0, $version$integ"
+  fi
+}
+function ble/edit/display-version/check:starship {
+  local source lineno
+  ble/function#get-source-and-lineno starship_precmd || return 1
+
+  # get starship path
+  local sed_script='s/^[[:space:]]*PS1="\$(\(.\{1,\}\) prompt .*)";\{0,1\}$/\1/p'
+  ble/util/assign-array starship 'declare -f starship_precmd | ble/bin/sed -n "$sed_script"'
+  if ! ble/bin#has "$starship"; then
+    { builtin eval -- "starship=$starship" && ble/bin#has "$starship"; } ||
+      { starship=starship; ble/bin#has "$starship"; } || return 1
+  fi
+
+  local awk_script='
+    sub(/^starship /, "") { version = $0; next; }
+    sub(/^branch:/, "") { gsub(/[[:space:]]/, "_"); if ($0 != "") version = version "-" $0; next; }
+    sub(/^commit_hash:/, "") { gsub(/[[:space:]]/, "_"); if ($0 != "") version = version "+" $0; next; }
+    sub(/^build_time:/, "") { build_time = $0; }
+    sub(/^build_env:/, "") { build_env = $0; }
+    END {
+      if (version != "") {
+        print version;
+        print build_env, build_time
+      }
+    }
+  '
+  local version=
+  ble/util/assign-array version '"$starship" --version | ble/bin/awk "$awk_script"'
+  [[ $version ]] || return 1
+
+  local ret; ble/string#trim "${version[1]}"; local build=$ret
+  ble/edit/display-version/add-line "${sgrF}starship${sgr0}, version $sgrV$version$sgr0${build:+ ($build)}"
+}
+function ble/edit/display-version/check:bash-it {
+  [[ ${BASH_IT-} ]] && ble/is-function bash-it || return 1
+
+  local version= ret
+  if ble/edit/display-version/git-rev-parse "$BASH_IT"; then
+    version="version $sgrV+$ret$sgr0$label_noarch"
+  elif ble/edit/display-version/git-hash-object "$BASH_IT/bash_it.sh"; then
+    version="($ret)$label_noarch"
+  else
+    version="(bash-it version)"
+  fi
+
+  # list enabled modules
+  local modules=
+  if ble/is-function _bash-it-component-item-is-enabled; then
+    local category subdir suffix
+    for category in aliases:alias completion plugins:plugin; do
+      local subdir=${category%:*} suffix=${category#*:} list
+      list=()
+      local file name
+      for file in "$BASH_IT/$subdir/available"/*.*.bash; do
+        name=${file##*/}
+        name=${name%."$suffix"*.bash}
+        _bash-it-component-item-is-enabled "$suffix" "$name" && ble/array#push list "$name"
+      done
+      modules="$modules, $suffix(${list[*]})"
+    done
+  fi
+  ble/edit/display-version/add-line "${sgrF}bash-it$sgr0${theme:+ ($theme)}, $version$modules"
+}
+function ble/edit/display-version/check:oh-my-bash {
+  local source lineno ret version=
+  if [[ ${OMB_VERSINFO-set} ]] && ble/function#get-source-and-lineno _omb_module_require; then
+    version=${OMB_VERSINFO[0]}.${OMB_VERSINFO[1]}.${OMB_VERSINFO[2]}
+    if ble/edit/display-version/git-rev-parse "${source%/*}"; then
+      version="version $sgrV$version+$ret$sgr0$label_noarch"
+    elif ble/edit/display-version/git-hash-object "$source"; then
+      version="version $sgrV$version$sgr0 ($ret)$label_noarch"
+    else
+      version="version $sgrV$version$sgr0$label_noarch"
+    fi
+  elif [[ ${OSH_CUSTOM-set} ]] && ble/function#get-source-and-lineno is_plugin; then
+    # old version of oh-my-bash
+    version="${source/#$HOME/~}$label_noarch"
+    if ble/edit/display-version/git-rev-parse "${source%/*}" parent; then
+      version="version $sgrV+$ret$sgr0$label_noarch"
+    elif ble/edit/display-version/git-hash-object "$source"; then
+      version="($ret)$label_noarch"
+    fi
+  fi
+
+  if [[ $version ]]; then
+    local theme=${OMB_THEME-${OSH_THEME-}}
+    local modules="aliases(${aliases[*]}), completions(${completions[*]}), plugins(${plugins[*]})"
+    ble/edit/display-version/add-line "${sgrF}oh-my-bash$sgr0${theme:+ ($theme)}, $version, $modules"
+  fi
+}
+function ble/edit/display-version/check:sbp {
+  local source lineno ret
+  ble/function#get-source-and-lineno _sbp_set_prompt || return 1
+
+  local version="${source/#$HOME/~}$label_noarch"
+  if ble/edit/display-version/git-rev-parse "${source%/*}"; then
+    version="version $sgrV+$ret$sgr0$label_noarch"
+  elif ble/edit/display-version/git-hash-object "$source"; then
+    version="($ret)$label_noarch"
+  fi
+
+  local hooks="hooks(${settings_hooks[*]-${SBP_HOOKS[*]}})"
+  local left="left(${settings_segments_left[*]-${SBP_SEGMENTS_LEFT[*]}})"
+  local right="right(${settings_segments_right[*]-${RBP_SEGMENTS_RIGHT[*]}})"
+  local modules="$hooks, $left, $right"
+  ble/edit/display-version/add-line "${sgrF}sbp$sgr0, $version, $modules"
+}
+function ble/edit/display-version/check:gitstatus {
+  local source lineno ret
+  ble/function#get-source-and-lineno gitstatus_query || return 1
+
+  local version="${source/#$HOME/~}$label_noarch"
+  if ble/edit/display-version/git-rev-parse "${source%/*}"; then
+    version="version $sgrV+$ret$sgr0$label_noarch"
+  elif ble/edit/display-version/git-hash-object "$source"; then
+    version="($ret)$label_noarch"
+  fi
+
+  ble/edit/display-version/add-line "${sgrF}romkatv/gitstatus$sgr0, $version"
+}
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
-  ble/widget/print \
-    "GNU bash, version $BASH_VERSION ($MACHTYPE)" \
-    "ble.sh, version $BLE_VERSION (noarch)"
+
+  local sgrC= sgrF= sgrV= sgrA= sgr2= sgr3= sgr0=
+  if [[ -t 1 ]]; then
+    sgr0=$_ble_term_sgr0
+    ble/color/face2sgr command_file; sgrC=$ret
+    ble/color/face2sgr command_function; sgrF=$ret
+    ble/color/face2sgr syntax_expr; sgrV=$ret
+    ble/color/face2sgr varname_readonly; sgrA=$ret
+    ble/color/face2sgr syntax_varname; sgr2=$ret
+    ble/color/face2sgr syntax_quoted; sgr3=$ret
+  fi
+  local label_noarch=" (${sgrA}noarch$sgr0)"
+  local label_integration=" $_ble_term_bold(integration: on)$sgr0"
+
+  local lines="${sgrC}GNU bash$sgr0, version $sgrV$BASH_VERSION$sgr0 ($sgrA$MACHTYPE$sgr0)" iline=1
+  lines[iline++]="${sgrF}ble.sh$sgr0, version $sgrV$BLE_VERSION$sgr0$label_noarch"
+
+  ble/edit/display-version/check:bash-completion
+  ble/edit/display-version/check:fzf
+  ble/edit/display-version/check:bash-preexec
+  ble/edit/display-version/check:starship
+  ble/edit/display-version/check:bash-it
+  ble/edit/display-version/check:oh-my-bash
+  ble/edit/display-version/check:sbp
+  ble/edit/display-version/check:gitstatus
+
+  # locale
+  local q=\'
+  local ret='(unset)'
+  [[ ${LANG+set} ]] && ble/string#quote-word "$LANG" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
+  local var line="${_ble_term_bold}locale$sgr0: ${sgr2}LANG$sgrV=$sgr0$ret"
+  for var in "${!LC_@}"; do
+    ble/string#quote-word "${!var}" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
+    line="$line $sgr2$var$sgrV=$sgr0$ret"
+  done
+  lines[iline++]=$line
+
+  # terminal
+  ret='(unset)'
+  [[ ${TERM+set} ]] && ble/string#quote-word "$TERM" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
+  local i line="${_ble_term_bold}terminal$sgr0: ${sgr2}TERM$sgrV=$sgr0$ret"
+  line="$line ${sgr2}wcwidth$sgrV=$sgr0$bleopt_char_width_version-$bleopt_char_width_mode${bleopt_emoji_width:+/$bleopt_emoji_version-$bleopt_emoji_width+$bleopt_emoji_opts}"
+  for i in "${!_ble_term_DA2R[@]}"; do
+    line="$line, $sgrC${_ble_term_TERM[i]-unknown}$sgr0 ($sgrV${_ble_term_DA2R[i]}$sgr0)"
+  done
+  lines[iline++]=$line
+
+  ble/widget/print "${lines[@]}"
 }
 function ble/widget/readline-dump-functions {
   ble-edit/content/clear-arg
