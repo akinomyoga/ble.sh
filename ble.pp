@@ -449,9 +449,158 @@ if shopt -q restricted_shell; then
   return 1 2>/dev/null || builtin exit 1
 fi
 
-_ble_init_original_IFS_set=${IFS+set}
-_ble_init_original_IFS=$IFS
-IFS=$' \t\n'
+#--------------------------------------
+# save IFS / BASH_REMATCH
+
+function ble/init/adjust-IFS {
+  _ble_init_original_IFS_set=${IFS+set}
+  _ble_init_original_IFS=$IFS
+  IFS=$' \t\n'
+}
+function ble/init/restore-IFS {
+  if [[ $_ble_init_original_IFS_set ]]; then
+    IFS=$_ble_init_original_IFS
+  else
+    builtin unset -v IFS
+  fi
+  builtin unset -v _ble_init_original_IFS_set
+  builtin unset -v _ble_init_original_IFS
+}
+
+if ((_ble_bash>=50100)); then
+  _ble_bash_BASH_REMATCH_level=0
+  _ble_bash_BASH_REMATCH=()
+  function ble/base/adjust-BASH_REMATCH {
+    ((_ble_bash_BASH_REMATCH_level++==0)) || return 0
+    _ble_bash_BASH_REMATCH=("${BASH_REMATCH[@]}")
+  }
+  function ble/base/restore-BASH_REMATCH {
+    ((_ble_bash_BASH_REMATCH_level>0&&
+        --_ble_bash_BASH_REMATCH_level==0)) || return 0
+    BASH_REMATCH=("${_ble_bash_BASH_REMATCH[@]}")
+  }
+
+else
+  _ble_bash_BASH_REMATCH_level=0
+  _ble_bash_BASH_REMATCH=()
+  _ble_bash_BASH_REMATCH_rex=none
+
+  ## @fn ble/base/adjust-BASH_REMATCH/increase delta
+  ##   @param[in] delta
+  ##   @var[in,out] i rex
+  function ble/base/adjust-BASH_REMATCH/increase {
+    local delta=$1
+    ((delta)) || return 1
+    ((i+=delta))
+    if ((delta==1)); then
+      rex=$rex.
+    else
+      rex=$rex.{$delta}
+    fi
+  }
+  function ble/base/adjust-BASH_REMATCH/is-updated {
+    local i n=${#_ble_bash_BASH_REMATCH[@]}
+    ((n!=${#BASH_REMATCH[@]})) && return 0
+    for ((i=0;i<n;i++)); do
+      [[ ${_ble_bash_BASH_REMATCH[i]} != "${BASH_REMATCH[i]}" ]] && return 0
+    done
+    return 1
+  }
+  # This is a simplified version of ble/string#index-of text sub
+  function ble/base/adjust-BASH_REMATCH/.find-substr {
+    local t=${1#*"$2"}
+    ((ret=${#1}-${#t}-${#2},ret<0&&(ret=-1),ret>=0))
+  }
+  function ble/base/adjust-BASH_REMATCH {
+    ((_ble_bash_BASH_REMATCH_level++==0)) || return 0
+    ble/base/adjust-BASH_REMATCH/is-updated || return 1
+
+    local size=${#BASH_REMATCH[@]}
+    if ((size==0)); then
+      _ble_bash_BASH_REMATCH=()
+      _ble_bash_BASH_REMATCH_rex=none
+      return 0
+    fi
+
+    local rex= i=0
+    local text=$BASH_REMATCH sub ret isub
+
+    local -a rparens=()
+    local isub rex i=0 count=0
+    for ((isub=1;isub<size;isub++)); do
+      local sub=${BASH_REMATCH[isub]}
+
+      # 既存の子一致の孫一致になるか確認
+      while ((count>=1)); do
+        local end=${rparens[count-1]}
+        if ble/base/adjust-BASH_REMATCH/.find-substr "${text:i:end-i}" "$sub"; then
+          ble/base/adjust-BASH_REMATCH/increase "$ret"
+          ((rparens[count++]=i+${#sub}))
+          rex=$rex'('
+          break
+        else
+          ble/base/adjust-BASH_REMATCH/increase $((end-i))
+          rex=$rex')'
+          builtin unset -v 'rparens[--count]'
+        fi
+      done
+
+      ((count>0)) && continue
+
+      # 新しい子一致
+      if ble/base/adjust-BASH_REMATCH/.find-substr "${text:i}" "$sub"; then
+        ble/base/adjust-BASH_REMATCH/increase "$ret"
+        ((rparens[count++]=i+${#sub}))
+        rex=$rex'('
+      else
+        break # 復元失敗
+      fi
+    done
+
+    while ((count>=1)); do
+      local end=${rparens[count-1]}
+      ble/base/adjust-BASH_REMATCH/increase $((end-i))
+      rex=$rex')'
+      builtin unset -v 'rparens[--count]'
+    done
+
+    ble/base/adjust-BASH_REMATCH/increase $((${#text}-i))
+
+    _ble_bash_BASH_REMATCH=("${BASH_REMATCH[@]}")
+    _ble_bash_BASH_REMATCH_rex=$rex
+  }
+  function ble/base/restore-BASH_REMATCH {
+    ((_ble_bash_BASH_REMATCH_level>0&&
+        --_ble_bash_BASH_REMATCH_level==0)) || return 0
+    [[ $_ble_bash_BASH_REMATCH =~ $_ble_bash_BASH_REMATCH_rex ]]
+  }
+fi
+
+ble/init/adjust-IFS
+ble/base/adjust-BASH_REMATCH
+
+## @fn ble/init/clean-up [opts]
+function ble/init/clean-up {
+  local ext=$? opts=$1 # preserve exit status
+
+  # 一時グローバル変数消去
+  builtin unset -v _ble_init_version
+  builtin unset -v _ble_init_arg
+  builtin unset -v _ble_init_exit
+  builtin unset -v _ble_init_command
+  builtin unset -v _ble_init_attached
+
+  # 状態復元
+  ble/base/restore-BASH_REMATCH
+  ble/init/restore-IFS
+  if [[ :$opts: != *:check-attach:* && ! $_ble_attached ]]; then
+    ble/base/restore-bash-options
+    ble/base/restore-POSIXLY_CORRECT
+    ble/base/restore-builtin-wrappers
+    builtin eval -- "$_ble_bash_FUNCNEST_restore"
+  fi
+  return "$ext"
+}
 
 #------------------------------------------------------------------------------
 # read arguments
@@ -560,10 +709,7 @@ function ble/base/read-blesh-arguments {
 }
 if ! ble/base/read-blesh-arguments "$@"; then
   builtin echo "ble.sh: cancel initialization." >&2
-  ble/base/restore-bash-options
-  ble/base/restore-builtin-wrappers
-  ble/base/restore-POSIXLY_CORRECT
-  builtin eval -- "$_ble_bash_FUNCNEST_restore"
+  ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 2 2>/dev/null || builtin exit 2
 fi
 
@@ -571,10 +717,7 @@ if [[ ${_ble_base-} ]]; then
   [[ $_ble_init_command ]] && _ble_init_attached=$_ble_attached
   if ! ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
-    ble/base/restore-bash-options
-    ble/base/restore-builtin-wrappers
-    ble/base/restore-POSIXLY_CORRECT
-    builtin eval -- "$_ble_bash_FUNCNEST_restore"
+    ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
     return 1 2>/dev/null || builtin exit 1
   fi
 fi
@@ -668,7 +811,7 @@ fi
 # POSIX utilities
 
 _ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep cat wc mv sh od cp)
-function ble/.check-environment {
+function ble/init/check-environment {
   if ! ble/bin#has "${_ble_init_posix_command_list[@]}"; then
     local cmd commandMissing=
     for cmd in "${_ble_init_posix_command_list[@]}"; do
@@ -676,7 +819,7 @@ function ble/.check-environment {
         commandMissing="$commandMissing\`$cmd', "
       fi
     done
-    ble/util/print "ble.sh: Insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
+    ble/util/print "ble.sh: insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
 
     # try to fix PATH
     local default_path=$(command -p getconf PATH 2>/dev/null)
@@ -694,7 +837,7 @@ function ble/.check-environment {
   fi
 
   if [[ ! $USER ]]; then
-    ble/util/print "ble.sh: Insane environment: \$USER is empty." >&2
+    ble/util/print "ble.sh: insane environment: \$USER is empty." >&2
     if type id &>/dev/null; then
       export USER=$(id -un)
       ble/util/print "ble.sh: modified USER=$USER" >&2
@@ -706,8 +849,10 @@ function ble/.check-environment {
 
   return 0
 }
-if ! ble/.check-environment; then
-  _ble_bash=
+if ! ble/init/check-environment; then
+  ble/util/print "ble.sh: failed to adjust the environment. canceling the load of ble.sh." 1>&2
+  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
 
@@ -909,6 +1054,8 @@ function ble/bin/.load-builtin {
 # ble/bin/.load-builtin mkfifo
 # ble/bin/.load-builtin rm
 
+#------------------------------------------------------------------------------
+
 function ble/base/.create-user-directory {
   local var=$1 dir=$2
   if [[ ! -d $dir ]]; then
@@ -971,6 +1118,7 @@ function ble/base/initialize-base-directory {
 if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
   ble/util/print "ble.sh: ble base directory not found!" 1>&2
   builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
 
@@ -1046,6 +1194,7 @@ function ble/base/initialize-runtime-directory {
 if ! ble/base/initialize-runtime-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_run." 1>&2
   builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
 
@@ -1161,6 +1310,7 @@ function ble/base/migrate-cache-directory {
 if ! ble/base/initialize-cache-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
   builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
 ble/base/migrate-cache-directory
@@ -1459,6 +1609,7 @@ function ble-attach {
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
   ble/base/adjust-builtin-wrappers-2
+  ble/base/adjust-BASH_REMATCH
 
   if [[ ${IN_NIX_SHELL-} ]]; then
     # nix-shell rc の中から実行している時は強制的に prompt-attach にする
@@ -1466,6 +1617,7 @@ function ble-attach {
       ble/base/install-prompt-attach
       _ble_attached=
       BLE_ATTACHED=
+      ble/base/restore-BASH_REMATCH
       ble/base/restore-bash-options
       ble/base/restore-POSIXLY_CORRECT
       ble/base/restore-builtin-wrappers
@@ -1498,6 +1650,7 @@ function ble-attach {
     BLE_ATTACHED=
     ble-edit/detach
     ble/term/leave
+    ble/base/restore-BASH_REMATCH
     ble/base/restore-bash-options
     ble/base/restore-POSIXLY_CORRECT
     ble/base/restore-builtin-wrappers
@@ -1722,33 +1875,6 @@ ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
   esac
 }
 
-function ble/base/initialize/.clean-up {
-  local ext=$? # preserve exit status
-
-  # 一時グローバル変数消去
-  builtin unset -v _ble_init_version
-  builtin unset -v _ble_init_arg
-  builtin unset -v _ble_init_exit
-  builtin unset -v _ble_init_command
-  builtin unset -v _ble_init_attached
-
-  # 状態復元
-  if [[ $_ble_init_original_IFS_set ]]; then
-    IFS=$_ble_init_original_IFS
-  else
-    builtin unset -v IFS
-  fi
-  builtin unset -v _ble_init_original_IFS_set
-  builtin unset -v _ble_init_original_IFS
-  if [[ ! $_ble_attached ]]; then
-    ble/base/restore-bash-options
-    ble/base/restore-POSIXLY_CORRECT
-    ble/base/restore-builtin-wrappers
-    builtin eval -- "$_ble_bash_FUNCNEST_restore"
-  fi
-  return "$ext"
-}
-
 function ble/base/sub:test {
   local error= logfile=
 
@@ -1822,6 +1948,6 @@ echo "ble.sh: $EPOCHREALTIME load end" >&2
 ble/util/setexit "$_ble_init_exit"
 #%end
 
-ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
+ble/init/clean-up check-attach 2>/dev/null # set -x 対策 #D0930
 { builtin eval "return $? || exit $?"; } 2>/dev/null # set -x 対策 #D0930
 ###############################################################################

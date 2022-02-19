@@ -3947,7 +3947,7 @@ function ble/builtin/bind {
   local set shopt; ble/base/.adjust-bash-options set shopt
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/save-BASH_REMATCH
+    ble/base/adjust-BASH_REMATCH
 
   ble/decode/initialize
   local flags= ext=0
@@ -3961,7 +3961,7 @@ function ble/builtin/bind {
   fi
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/restore-BASH_REMATCH
+    ble/base/restore-BASH_REMATCH
   ble/base/.restore-bash-options set shopt
   return "$ext"
 }

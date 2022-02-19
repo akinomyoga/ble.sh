@@ -5285,104 +5285,6 @@ function ble-edit/exec/.adjust-eol {
   ble/canvas/bflush.draw
 }
 
-if ((_ble_bash>=50100)); then
-  _ble_edit_exec_BASH_REMATCH=()
-  function ble-edit/exec/save-BASH_REMATCH {
-    _ble_edit_exec_BASH_REMATCH=("${BASH_REMATCH[@]}")
-  }
-  function ble-edit/exec/restore-BASH_REMATCH {
-    BASH_REMATCH=("${_ble_edit_exec_BASH_REMATCH[@]}")
-  }
-
-else
-  _ble_edit_exec_BASH_REMATCH=()
-  _ble_edit_exec_BASH_REMATCH_rex=none
-
-  ## @fn ble-edit/exec/save-BASH_REMATCH/increase delta
-  ##   @param[in] delta
-  ##   @var[in,out] i rex
-  function ble-edit/exec/save-BASH_REMATCH/increase {
-    local delta=$1
-    ((delta)) || return 1
-    ((i+=delta))
-    if ((delta==1)); then
-      rex=$rex.
-    else
-      rex=$rex.{$delta}
-    fi
-  }
-  function ble-edit/exec/save-BASH_REMATCH/is-updated {
-    local i n=${#_ble_edit_exec_BASH_REMATCH[@]}
-    ((n!=${#BASH_REMATCH[@]})) && return 0
-    for ((i=0;i<n;i++)); do
-      [[ ${_ble_edit_exec_BASH_REMATCH[i]} != "${BASH_REMATCH[i]}" ]] && return 0
-    done
-    return 1
-  }
-  function ble-edit/exec/save-BASH_REMATCH {
-    ble-edit/exec/save-BASH_REMATCH/is-updated || return 1
-
-    local size=${#BASH_REMATCH[@]}
-    if ((size==0)); then
-      _ble_edit_exec_BASH_REMATCH=()
-      _ble_edit_exec_BASH_REMATCH_rex=none
-      return 0
-    fi
-
-    local rex= i=0
-    local text=$BASH_REMATCH sub ret isub
-
-    local -a rparens=()
-    local isub rex i=0
-    for ((isub=1;isub<size;isub++)); do
-      local sub=${BASH_REMATCH[isub]}
-
-      # 既存の子一致の孫一致になるか確認
-      local r rN=${#rparens[@]}
-      for ((r=rN-1;r>=0;r--)); do
-        local end=${rparens[r]}
-        if ble/string#index-of "${text:i:end-i}" "$sub"; then
-          ble-edit/exec/save-BASH_REMATCH/increase "$ret"
-          ble/array#push rparens $((i+${#sub}))
-          rex=$rex'('
-          break
-        else
-          ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
-          rex=$rex')'
-          builtin unset -v 'rparens[r]'
-        fi
-      done
-
-      ((r>=0)) && continue
-
-      # 新しい子一致
-      if ble/string#index-of "${text:i}" "$sub"; then
-        ble-edit/exec/save-BASH_REMATCH/increase "$ret"
-        ble/array#push rparens $((i+${#sub}))
-        rex=$rex'('
-      else
-        break # 復元失敗
-      fi
-    done
-
-    local r rN=${#rparens[@]}
-    for ((r=rN-1;r>=0;r--)); do
-      local end=${rparens[r]}
-      ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
-      rex=$rex')'
-      builtin unset -v 'rparens[r]'
-    done
-
-    ble-edit/exec/save-BASH_REMATCH/increase $((${#text}-i))
-
-    _ble_edit_exec_BASH_REMATCH=("${BASH_REMATCH[@]}")
-    _ble_edit_exec_BASH_REMATCH_rex=$rex
-  }
-  function ble-edit/exec/restore-BASH_REMATCH {
-    [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
-  }
-fi
-
 _ble_prompt_ps10_data=()
 function ble/prompt/unit:_ble_prompt_ps10/update {
   ble/prompt/unit:{section}/update _ble_prompt_ps10 "$PS0" ''
@@ -5403,7 +5305,7 @@ function ble-edit/exec/print-PS0 {
 
 function ble/builtin/exit/.read-arguments {
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/save-BASH_REMATCH
+    ble/base/adjust-BASH_REMATCH
   while (($#)); do
     local arg=$1; shift
     if [[ $arg == --help ]]; then
@@ -5416,7 +5318,7 @@ function ble/builtin/exit/.read-arguments {
     fi
   done
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/restore-BASH_REMATCH
+    ble/base/restore-BASH_REMATCH
 }
 function ble/builtin/exit {
   local ext=$?
@@ -6038,7 +5940,7 @@ function ble-edit/exec:gexec/.prologue {
   ((++_ble_edit_CMD))
 
   ble/exec/time#start
-  ble-edit/exec/restore-BASH_REMATCH
+  ble/base/restore-BASH_REMATCH
 }
 
 ## @fn ble-edit/exec:gexec/.restore-lastarg lastarg
@@ -6095,10 +5997,10 @@ function ble-edit/exec:gexec/.epilogue {
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
   ble/base/adjust-builtin-wrappers-2
+  ble/base/adjust-BASH_REMATCH
   ble-edit/adjust-IGNOREEOF
   ble-edit/adjust-READLINE
   ble-edit/adjust-PS1
-  ble-edit/exec/save-BASH_REMATCH
   ble/exec/time#restore-TIMEFORMAT
   ble/exec/time#end
   ble/util/reset-keymap-of-editing-mode
@@ -8958,9 +8860,9 @@ function ble/builtin/read {
     builtin eval -- "$_ble_builtin_read_hook"
 
   local __ble_command= __ble_args= __ble_input=
-  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble-edit/exec/save-BASH_REMATCH
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble/base/adjust-BASH_REMATCH
   ble/builtin/read/.impl "$@"; local __ble_ext=$?
-  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble-edit/exec/restore-BASH_REMATCH
+  [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble/base/restore-BASH_REMATCH
 
   ble/base/.restore-bash-options _ble_local_set _ble_local_shopt
   [[ $__ble_command ]] || return "$__ble_ext"
@@ -9409,6 +9311,7 @@ function ble-edit/bind/.check-detach {
 
     if [[ $attached ]]; then
       # ここで ble-detach/impl した時は調整は最低限でOK
+      ble/base/restore-BASH_REMATCH
       ble/base/restore-bash-options
       ble/base/restore-POSIXLY_CORRECT
       ble/base/restore-builtin-wrappers

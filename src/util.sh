@@ -1797,6 +1797,7 @@ function blehook/.read-arguments {
 
 function blehook {
   local set shopt
+  ble/base/adjust-BASH_REMATCH
   ble/base/.adjust-bash-options set shopt
 
   local flags print process
@@ -1811,6 +1812,7 @@ function blehook {
     fi
     [[ $flags != *E* ]]; local ext=$?
     ble/base/.restore-bash-options set shopt
+    ble/base/restore-BASH_REMATCH
     return "$ext"
   fi
 
@@ -1844,6 +1846,7 @@ function blehook {
   fi
 
   ble/base/.restore-bash-options set shopt
+  ble/base/restore-BASH_REMATCH
   return "$ext"
 }
 blehook/.compatibility-ble-0.3
@@ -2011,7 +2014,7 @@ function ble/builtin/trap {
   fi
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/save-BASH_REMATCH
+    ble/base/adjust-BASH_REMATCH
 
   if [[ $flags == *p* ]]; then
     ble/builtin/trap/.initialize
@@ -2062,7 +2065,7 @@ function ble/builtin/trap {
   fi
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/restore-BASH_REMATCH
+    ble/base/restore-BASH_REMATCH
   ble/base/.restore-bash-options set shopt
   return 0
 }

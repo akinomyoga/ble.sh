@@ -6117,6 +6117,55 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-02-19
+
+  * trap: 初期化時に既存の trap がある時にエラーメッセージが出る (reported by SuperSandro2000) [#D1780]
+    https://github.com/akinomyoga/ble.sh/issues/179
+
+    初期化時に以下のメッセージが出る。
+
+    $ nix-shell -p hello
+    bash: ble-edit/exec/save-BASH_REMATCH: No such file or directory
+    bash: ble-edit/exec/restore-BASH_REMATCH: No such file or directory
+
+    これは一番最近の commit で起こった事だった。新しく既存の trap　を保持する様
+    に修正したが、その時に既存の trap は
+
+    * そもそも trap の内部で使うのだから {save,restore}-BASH_REMATCH は移動するべきでは。
+
+      →ble.pp に移動した。また同時に source ble.sh 直前の BASH_REMATCH を保持する様に修正した。
+
+    * reject: ble/builtin/trap を実際に呼び出す必要はなくて単に値を代入すれば良
+      いのではないか? その他にしなければならない操作などがあるだろうか。確認す
+      る。と、思ったが解析するのも面倒である。という事を考えれば、やはりそのま
+      ま実行する方が良いのではないか。一応 eval して配列に代入すればその3番目の
+      単語として trap_string を取得する事はできる。
+
+      うーん。やはり {save,restore}-BASH_REMATCH さえ移動すれば今の実装で良い気
+      がする。下手に自前で実装するよりも既にある実装を使った方が (効率は悪いか
+      もしれないが) コードの管理という点では良い。また、この部分は到底ボトルネッ
+      クではないので速度を重視する必要も全く無い。
+
+    * ble.pp でも BASH_REMATCH を保持する様に修正するべきでは。
+
+    [動作確認]
+
+    x fixed: source ble.sh の前後で BASH_REMATCH が保持される事を確認する。
+
+      と思ったら保持されていない。どうやら restore-BASH_REMATCH の数がバランス
+      していない様だ。元々 BASH_REMATCH の復元にはチェックが入っていなかった。
+      という事は、これは意図的に重複して retore-BASH_REMATCH を呼び出す様になっ
+      ていたということではないのか。gexec での使い方について改めて確認する。
+
+      うーん。別に余分に実行しているという事もない。単に ble-attach で adjust
+      し忘れているのが原因に思われる。
+
+      →ble-attach に追加した。更に {adjust,restore}-bash-options と同じ箇所で
+      ちゃんと呼び出す様に全体をチェックして追加した。
+
+      →また _ble_bash_BASH_REMATCH_level が負になっていたので、負にならない様
+      にチェックを追加する。
+
 2022-02-18
 
   * command-help: 関数の help として関数が定義されたファイルを表示する [#D1779]

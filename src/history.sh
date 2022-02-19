@@ -1485,7 +1485,7 @@ function ble/builtin/history {
   fi
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/save-BASH_REMATCH
+    ble/base/adjust-BASH_REMATCH
 
   # -cdanwr
   local flag_processed=
@@ -1517,7 +1517,7 @@ function ble/builtin/history {
   fi; local ext=$?
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
-    ble-edit/exec/restore-BASH_REMATCH
+    ble/base/restore-BASH_REMATCH
   ble/base/.restore-bash-options set shopt
   return "$ext"
 }
