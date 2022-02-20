@@ -1936,7 +1936,8 @@ _ble_builtin_trap_signames=()
 _ble_builtin_trap_reserved=()
 _ble_builtin_trap_handlers=()
 _ble_builtin_trap_DEBUG=
-_ble_builtin_trap_inside=
+_ble_builtin_trap_inside=  # ble/builtin/trap 処理中かどうか
+_ble_builtin_trap_processing= # ble/buitlin/trap/.handler 実行中かどうか
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_trap_n2i}"
 function ble/builtin/trap/.register {
   local index=$1 name=$2
@@ -2078,6 +2079,7 @@ _ble_builtin_trap_user_lastexit=
 ## @fn ble/builtin/trap/invoke.sandbox
 ##   @var[in] _ble_trap_handler
 ##   @var[out] _ble_trap_done
+##   @var[in,out] _ble_trap_lastexit _ble_trap_lastarg
 function ble/builtin/trap/invoke.sandbox {
   local _ble_trap_count
   for ((_ble_trap_count=0;_ble_trap_count<1;_ble_trap_count++)); do
@@ -2148,6 +2150,17 @@ function ble/builtin/trap/invoke {
     # の状態を keep するぐらいしかない気がする。
     _ble_builtin_trap_lastarg=$ext
     _ble_builtin_trap_postproc="return $ext" ;;
+  (exit)
+    # Note #D1782: trap handler の中で ble/builtin/exit (edit.sh) を呼
+    #   び出した時は、即座に bash を終了せずに取り敢えずは trap の処理
+    #   は完了させる。TRAPDEBUGによって _ble_trap_done=exit が設定され
+    #   る。また、元々 exit に渡された引数は $_ble_trap_lastarg に設定
+    #   される。
+    # Note #D1782: 他の trap の中で更にまた DEBUG trap が起動している
+    #   時などの為に、builtin exit ではなく ble/builtin/exit を再度呼
+    #   び出し直す。
+    _ble_builtin_trap_lastarg=$_ble_trap_lastarg
+    _ble_builtin_trap_postproc="ble/builtin/exit $_ble_trap_lastarg" ;;
   esac
 
   # save $_ and $? for user trap handlers
@@ -2167,10 +2180,26 @@ function ble/builtin/trap/.handler {
   local FUNCNEST= IFS=$_ble_term_IFS
   local set shopt; ble/base/.adjust-bash-options set shopt
 
+  local _ble_builtin_trap_processing=$_ble_trap_sig
+
   # 透過 _ble_builtin_trap_postproc を設定
   local _ble_local_q=\' _ble_local_Q="'\''"
   _ble_builtin_trap_lastarg=$_ble_trap_lastarg
   _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastexit"
+
+  # Note #D1782: ble/builtin/exit で "builtin exit ... &>/dev/null" と
+  #   したリダイレクションを元に戻す。元々 builtin exit が出力するエラー
+  #   を無視する為のリダイレクトだが、続いて呼び出される EXIT trap に
+  #   対してもこのリダイレクションが有効なままになる (但し、
+  #   bash-4.4..5.1 ではバグで top-level まで制御を戻してから EXIT
+  #   trap 他の処理が実行されるので、EXIT trap は tty に繋がった状態で
+  #   実行される)。他の trap が予期せず呼び出された場合にも同様の事が
+  #   起こる。trap handler を exit を実行した文脈での stdout/stderr で
+  #   実行する為に、stdout/stderr を保存していた物に繋ぎ戻す。
+  if [[ $_ble_builtin_exit_processing ]]; then
+    exec 1>&- 1>&"$_ble_builtin_exit_stdout"
+    exec 2>&- 2>&"$_ble_builtin_exit_stderr"
+  fi
 
   # ble.sh hook
   ble/util/joblist.check
@@ -2181,6 +2210,11 @@ function ble/builtin/trap/.handler {
   # user hook
   ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
   ble/builtin/trap/invoke "$_ble_trap_sig"
+
+  # 何処かの時点で exit が要求された場合
+  if [[ $_ble_builtin_trap_processing == exit:* && $_ble_builtin_trap_postproc != 'ble/builtin/exit '* ]]; then
+    _ble_builtin_trap_postproc="ble/builtin/exit ${_ble_builtin_trap_processing#exit:}"
+  fi
 
   # Note #D1757: 現在 eval が終わった後の $_ を設定する為には eval に
   # '#' "$lastarg" を余分に渡すしかないので改行を含める事はできない。

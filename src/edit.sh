@@ -5620,6 +5620,7 @@ function ble-edit/exec/print-PS0 {
   fi
 }
 
+_ble_builtin_exit_processing=
 function ble/builtin/exit/.read-arguments {
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble/base/adjust-BASH_REMATCH
@@ -5634,18 +5635,19 @@ function ble/builtin/exit/.read-arguments {
       opt_flags=${opt_flags}E
     fi
   done
+  if ((${#opt_args[@]}>=2)); then
+    ble/util/print "exit: too many arguments" >&2
+    opt_flags=${opt_flags}E
+  fi
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble/base/restore-BASH_REMATCH
 }
 function ble/builtin/exit {
   local ext=$?
-  if ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; then
-    if (($#)); then
-      builtin exit "$@"
-    else
-      builtin exit "$ext"
-    fi
-    return 1
+  if [[ ! $_ble_builtin_trap_processing ]] && { ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; }; then
+    (($#)) || set -- "$ext"
+    builtin exit "$@"
+    return $? # オプションの指定間違いなどで失敗する可能性がある。
   fi
 
   local set shopt; ble/base/.adjust-bash-options set shopt
@@ -5659,30 +5661,45 @@ function ble/builtin/exit {
   fi
   ((${#opt_args[@]})) || ble/array#push opt_args "$ext"
 
-  local joblist
-  ble/util/joblist
-  if ((${#joblist[@]})); then
-    local ret
-    while
-      local cancel_reason=
-      if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
-        cancel_reason='stopped jobs'
-      elif [[ :$opts: == *:checkjobs:* ]]; then
-        if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
-          cancel_reason='running jobs'
+  if [[ $_ble_builtin_trap_processing ]]; then
+    # Note #D1782: trap の中で処理している時は exit は trap の側で処理する。な
+    # ので exit は延期して一旦元の呼び出し元まで戻る。これによって細かな動作の
+    # 違いが問題になる可能性はある。例えば trap の中で time で時間計測中だった
+    # 場合、時間計測が中止されず結果が出力される。
+    _ble_edit_exec_TRAPDEBUG_EXIT=$opt_args
+    ble-edit/exec:gexec/.TRAPDEBUG/trap
+    return 0
+  fi
+
+  if [[ ! $_ble_builtin_exit_processing ]]; then
+    # 終了確認と [ble: exit] の出力
+
+    local joblist
+    ble/util/joblist
+    if ((${#joblist[@]})); then
+      local ret
+      while
+        local cancel_reason=
+        if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
+          cancel_reason='stopped jobs'
+        elif [[ :$opts: == *:checkjobs:* ]]; then
+          if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
+            cancel_reason='running jobs'
+          fi
         fi
-      fi
-      [[ $cancel_reason ]]
-    do
-      jobs
-      ble/builtin/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
-      case $ret in
-      ([yY]|[yY][eE][sS]) break ;;
-      ([nN]|[nN][oO]|'')
-        ble/base/.restore-bash-options set shopt
-        return 0 ;;
-      esac
-    done
+        [[ $cancel_reason ]]
+      do
+        jobs
+        ble/builtin/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
+        case $ret in
+        ([yY]|[yY][eE][sS]) break ;;
+        ([nN]|[nN][oO]|'')
+          ble/base/.restore-bash-options set shopt
+          return 0 ;;
+        esac
+      done
+    fi
+    ble/util/print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   fi
 
   # Note #D1765: Bash 4.4..5.1 では "{ time { exit 2>/dev/tty; } } 2>/dev/null"
@@ -5710,12 +5727,17 @@ function ble/builtin/exit {
     TIMEFORMAT=
   fi
 
-  ble/util/print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   ble/base/.restore-bash-options set shopt
+  _ble_builtin_exit_processing=1
+  ble/fd#alloc _ble_builtin_exit_stdout '>&1' # EXIT trap で stdin/stdout を復元する
+  ble/fd#alloc _ble_builtin_exit_stderr '>&2'
   builtin exit "${opt_args[@]}" &>/dev/null
   builtin exit "${opt_args[@]}" &>/dev/null
 
   # exit に失敗した時はできるだけ元の状態に戻す
+  _ble_builtin_exit_processing=
+  ble/fd#close _ble_builtin_exit_stdout
+  ble/fd#close _ble_builtin_exit_stderr
   if ((40400<=_ble_bash&&_ble_bash<50200)); then
     builtin eval -- "$global_TIMEFORMAT"
     ble/variable#copy-state local_TIMEFORMAT TIMEFORMAT
@@ -5958,6 +5980,8 @@ _ble_edit_exec_TRAPDEBUG_enabled=
 _ble_edit_exec_TRAPDEBUG_lastexit=
 _ble_edit_exec_TRAPDEBUG_lastarg=
 _ble_edit_exec_TRAPDEBUG_postproc=
+_ble_edit_exec_TRAPDEBUG_INT=
+_ble_edit_exec_TRAPDEBUG_EXIT=
 _ble_edit_exec_inside_begin=
 _ble_edit_exec_inside_prologue=
 _ble_edit_exec_inside_userspace=
@@ -5982,7 +6006,7 @@ function ble-edit/exec:gexec/.TRAPDEBUG/trap {
   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc"' DEBUG
 
   # Note: 以下は条件付きで user trap を直接 trap するコード。
-  # if [[ $_ble_attached && _ble_edit_exec_INT -ne 0 || :$1: == *:filter:* ]]; then
+  # if [[ $_ble_attached && _ble_edit_exec_TRAPDEBUG_INT || :$1: == *:filter:* ]]; then
   #   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc"' DEBUG
   # else
   #   local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]}
@@ -6014,17 +6038,56 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
   [[ ! ( ${FUNCNAME[1]-} == _ble_prompt_update__eval_prompt_command_1 && ( $bash_command == 'ble-edit/exec/.setexit '* || $bash_command == 'BASH_COMMAND='*' builtin eval -- '* ) ) ]] || return 0
   [[ ! ${_ble_builtin_trap_inside-} ]] || return 0
 
-  if [[ $_ble_attached ]] && ((_ble_edit_exec_INT!=0)); then
-    local __set __shopt; ble/base/.adjust-bash-options __set __shopt
+  # Handle EXIT
+  if [[ $_ble_edit_exec_TRAPDEBUG_EXIT ]]; then
+    # 或る特定のレベルまでは素通りする (そもそも exit なのでユーザーの DEBUG
+    # trap も処理しなくて良い)。
+    local flag_clear= flag_exit=
+    if [[ ! $_ble_builtin_trap_processing ]] || ((${#FUNCNAME[*]}<=1)); then
+      # 本来は此処に来る事はない筈
+      flag_clear=1
+      flag_exit=$_ble_edit_exec_TRAPDEBUG_EXIT
+    else
+      case "${FUNCNAME[1]-} ${FUNCNAME[2]-}" in
+      ('ble/builtin/trap/invoke.sandbox ble/builtin/trap/invoke')
+        _ble_trap_done=exit
+        _ble_trap_lastarg=$_ble_edit_exec_TRAPDEBUG_EXIT
+        _ble_edit_exec_TRAPDEBUG_postproc='return 0'
+        flag_clear=1 ;;
+      ('blehook/invoke ble/builtin/trap/.handler')
+        _ble_builtin_trap_processing=exit:$_ble_edit_exec_TRAPDEBUG_EXIT
+        flag_clear=1 ;;
+      ('ble/builtin/trap/invoke '* | 'ble/builtin/trap/.handler '* | 'ble-edit/exec:gexec/.TRAPDEBUG '*)
+        # 此処にも本来は来ない筈
+        flag_clear=1 ;;
+      (*)
+        # trap handler 内部の処理は全てスキップして呼び出し元に戻る。
+        _ble_edit_exec_TRAPDEBUG_postproc="{ return 130 || break; } &>/dev/null"  ;;
+      esac
+    fi
+
+    if [[ $flag_clear ]]; then
+      if [[ ! ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]]; then
+        _ble_edit_exec_TRAPDEBUG_postproc="builtin trap - DEBUG${_ble_edit_exec_TRAPDEBUG_postproc:+;$_ble_edit_exec_TRAPDEBUG_postproc}"
+      fi
+      _ble_edit_exec_TRAPDEBUG_EXIT=
+      if [[ $flag_exit ]]; then
+        builtin exit "$flag_exit"
+      fi
+    fi
+
+  elif [[ $_ble_edit_exec_TRAPDEBUG_INT ]]; then
+    local IFS=$_ble_term_IFS __set __shopt
+    ble/base/.adjust-bash-options __set __shopt
 
     # Run user DEBUG trap in the sandbox
+    local _ble_builtin_trap_processing=$_ble_builtin_trap_DEBUG
     local _ble_builtin_trap_postproc
     ble/util/setexit "$__lastexit" "$__lastarg"
     ble/builtin/trap/invoke DEBUG
     _ble_edit_exec_TRAPDEBUG_postproc=$_ble_builtin_trap_postproc # unused
 
     # Handle INT
-    local IFS=$_ble_term_IFS
     local depth=${#FUNCNAME[*]}
     if ((depth>=2)) && ! ble/string#match "${FUNCNAME[*]:1}" '^ble-edit/exec:gexec/\.|(^| )ble/builtin/trap/\.handler'; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
@@ -6033,13 +6096,13 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
       local lineno=${_ble_term_setaf[2]}${BASH_LINENO[0]}
       local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${FUNCNAME[1]}${1:+ $1}${_ble_term_setaf[6]}')'
       ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >/dev/tty
-      _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_INT || break; } &>/dev/null"
+      _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_TRAPDEBUG_INT || break; } &>/dev/null"
     elif ((depth==1)) && ! ble/string#match "$bash_command" '^ble-edit/exec:gexec/\.'; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
       local source=${_ble_term_setaf[5]}global
       local sep=${_ble_term_setaf[6]}:
       ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $bash_command" >/dev/tty
-      _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_INT || break; } &>/dev/null"
+      _ble_edit_exec_TRAPDEBUG_postproc="break &>/dev/null"
     fi
 
     ble/base/.restore-bash-options __set __shopt
@@ -6143,7 +6206,7 @@ function ble-edit/exec:gexec/.TRAPINT {
   ((_ble_bash>=40300)) || sig=128 # bash-4.2 以下は 128
   if [[ $_ble_attached ]]; then
     ble/util/print "$_ble_term_bold^C$_ble_term_sgr0" >&2
-    _ble_edit_exec_INT=$sig
+    _ble_edit_exec_TRAPDEBUG_INT=$sig
     ble-edit/exec:gexec/.TRAPDEBUG/trap
   else
     _ble_builtin_trap_postproc="{ return $sig || break; } &>/dev/tty"
@@ -6243,14 +6306,13 @@ function ble-edit/exec:gexec/.end {
 function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_inside_prologue=1
   local IFS=$_ble_term_IFS
-  BASH_COMMAND=$1
   _ble_edit_exec_BASH_COMMAND=$1
   ble-edit/restore-PS1
   ble-edit/restore-READLINE
   ble-edit/restore-IGNOREEOF
   builtin unset -v HISTCMD; ble/history/get-count -v HISTCMD
 
-  _ble_edit_exec_INT=0
+  _ble_edit_exec_TRAPDEBUG_INT=
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND"
   ble-edit/exec/print-PS0 >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
@@ -6302,10 +6364,12 @@ function ble-edit/exec:gexec/.epilogue {
   # Note: 他の関数呼び出しよりも先
   builtin eval -- "$_ble_bash_FUNCNEST_adjust"
   ble/base/adjust-builtin-wrappers-1
-  if ((_ble_edit_exec_lastexit==0)); then
-    _ble_edit_exec_lastexit=$_ble_edit_exec_INT
+  if [[ $_ble_edit_exec_TRAPDEBUG_INT ]]; then
+    if ((_ble_edit_exec_lastexit==0)); then
+      _ble_edit_exec_lastexit=$_ble_edit_exec_TRAPDEBUG_INT
+    fi
+    _ble_edit_exec_TRAPDEBUG_INT=
   fi
-  _ble_edit_exec_INT=0
 
   local IFS=$_ble_term_IFS
   # Note: builtin trap -- - DEBUG は此処では何故か効かない

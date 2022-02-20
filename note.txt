@@ -1806,6 +1806,22 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2022-02-20
+
+  * trap (lastarg): 一応 heredoc 等を使えば eval の中から複数行の lastarg を設
+    定する事ができるのではないか。他に複数行で、eval されても余分な実行が起こら
+    ない様な方法はあるだろうか。不完全な引用符の場合には結局エラーが出力されて
+    しまう。
+
+  * exec: builtin sleep に対して C-c が効かない
+
+    % 現在の実装だと bash-5.0 以下で C-c でループ中に走っている外部コマンドを止
+    % めた時に応答がなくなってしまう。bash-5.1 以上では一旦実行が停止するものの
+    % 一応応答はする。
+
+    と思ったらこの問題は外部コマンドではなくて builtin sleep を呼び出している時
+    特有の問題だった。trap INT を設定しているのは問題なのだろうか。
+
 2022-02-14
 
   * 全ての ble.sh session にコマンドを送る機能があれば screen に再 attach した
@@ -6104,6 +6120,66 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-02-20
+
+  * edit: work around exit called from EXIT trap (reported by SuperSandro2000) [#D1782]
+    https://github.com/akinomyoga/ble.sh/issues/179#issuecomment-1046122787
+
+    nix-shell の内部で exit を実行すると2回 [ble: exit] が表示される。これは
+    nix-shell が設定する EXIT trap の中で再度 exit が呼び出される為である。
+    ble.sh は独自に trap を処理しているし、また blehook EXIT も実行したいので、
+    勝手に EXIT の中から本当に exit されると困る。なので、trap handler 実行中に
+    ble/builtin/exit が呼び出された時には DEBUG trap を設定して、trap の呼び出
+    し元まで制御を戻して続きの処理を実行することにする。呼び出し元まで戻った時
+    に exit が trap handler の中で呼び出されたという事を記録しておいて、trap
+    handler の処理の終わりに元々呼ばれた exit を呼び出し直す。
+
+    * exit を trap handler の中で実行した時にはそのまま終了するのではなくて、
+      trap の処理が完了するまで待ってから終了するべきなのではないか → その様に
+      実装した。既存の TRAPDEBUG の枠組みにコードを追加して実現した。
+
+    x fixed: exit 1 2 の様に余分な引数を指定した時、exit の準備をして [ble:
+      exit] まで表示した後に exit: too many arguments のエラーが発生して exit
+      がキャンセルされる。事前に引数の問題はチェックするべきである。
+
+    取り敢えず実装して 3.0, 3.2, 5.0 で動作確認した。期待通りに動いている。以下
+    のコマンドなどを使ってちゃんと全ての EXIT handler が実行される事を確認した。
+
+    $ trap 'exit 5' EXIT; exit
+    $ trap 'echo trap EXIT' EXIT; f1() { echo "$FUNCNAME $*"; exit "$1"; }; blehook EXIT+='f1 2 hello' EXIT+='f1 3 world';exit
+
+    ? 関係ないが jobs がある時にユーザーが exit をキャンセルした時、後続の処理
+      が実行されるのは問題ではないか? これに対しても何らかの対処が必要になるの
+      ではないか?
+
+    ? もし現在の TRAPDEBUG の枠組みが信用できるのであれば try/catch の枠組みを
+      整備しても良いのかもしれないという気がする。その方が見通しも良いのでは。
+      然し同じ commit でやるのは大げさな気がする。
+
+      上記の exit キャンセルの際の振る舞いに関してはその枠組が整ってから対応す
+      るのが良い気がする。
+
+    →上の2つは別項目で処理する事にした。
+
+    x bash-5.2 以降で EXIT trap の stdout が /dev/null になっている。これはどう
+      したら良いのだろうか。うーん。EXIT trap の時だけ stdout/stdin を繋ぎ直す
+      のが良いだろうか。
+
+      調べてみた所 bash-5.2 以降では exit も EXIT handler も現在の関数の内部で
+      行われる様だ。これは bash-5.1 までの top-level で実行されていたときと振る
+      舞いが異なる。と思ったが、bash-4.4..5.1 の振る舞いが変だっただけの様だ。
+
+      うーん。builtin exit を呼び出す時の redirection を削除するか? と思ったが、
+      それだとやはり余分なエラーメッセージが出るのが心配である。という事を考え
+      ると、元々の stdout/stdin を何処かに記録しておくべきなのだろうという気が
+      する。
+
+  * edit: 現在の TRAPDEBUG の枠組みを拡張して try/catch/finally を実装できるのでは
+    Ref #D1783
+
+    もしその枠組がちゃんとできるのであれば edit.sh から util.sh に移動する。
+
+
 2022-02-19
 
   * 2022-01-20 \C-x\C-v で bash-completion や terminal ID 等の情報も出力する [#D1781]
@@ -6145,7 +6221,7 @@ bash_tips
     * done: starship
     * done: bash-it
     * done: sbp
-    * gitstatus
+    * git: gitstatus
 
     取り敢えず思いつく物は全て登録したのでOK。
 
