@@ -92,6 +92,7 @@
 - prompt: support `bleopt prompt_command_changes_layout` `#D1750` e199bee
 - exec: measure execution times `#D1756` 2b28bec
   - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 3de751e e61dbaa
+  - edit (`exec_elapsed_mark`): show hours and days `#D1793` 0000000
 - util: preserve original traps and restore them on unload `#D1775` `#D1776` `#D1777` 398e404
 - progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 0000000
 - sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 0000000

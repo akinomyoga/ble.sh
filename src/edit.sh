@@ -6428,10 +6428,18 @@ function ble-edit/exec:gexec/.epilogue {
         ata="${ata}ms"
       elif ((ata<1000*1000)); then
         ata="${ata::${#ata}-3}.${ata:${#ata}-3}s"
-      else
+      elif ((ata/=1000,ata<3600*100)); then # ata [s]
         local min
-        ((ata/=1000,min=ata/60,ata%=60))
-        ata="${min}m${ata}s"
+        ((min=ata/60,ata%=60))
+        if ((min<100)); then
+          ata="${min}m${ata}s"
+        else
+          ata="$((min/60))h$((min%60))m${ata}s"
+        fi
+      else
+        local hour
+        ((ata/=60,hour=ata/60,ata%=60))
+        ata="$((hour/24))d$((hour%24))h${ata}m"
       fi
 
       # cpu
