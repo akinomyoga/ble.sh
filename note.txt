@@ -1806,6 +1806,11 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2022-02-23
+
+  * detach 状態で終了した時、また detach している間の履歴が記録されなくなってい
+    る気がする。EXIT が呼び出されていないのだろうか。また後で確認する。
+
 2022-02-20
 
   * 何故か2回目の char_width_@=auto がちゃんと動いていない気がする。何故だろう
@@ -1867,16 +1872,6 @@ bash_tips
 
     と思ったらこの問題は外部コマンドではなくて builtin sleep を呼び出している時
     特有の問題だった。trap INT を設定しているのは問題なのだろうか。
-
-  * bash-it から detach するとプロンプトが壊れた状態になる。oh-my-bash
-    から抜けても同じ状態になる。nix-shell の場合には大丈夫。
-
-    どうやら PROMPT_COMMAND に何か設定されているとこうなる様だ。何故
-    PROMPT_COMMAND があるかどうかで変わるのだろうか。因みに
-    PROMPT_COMMAND も退避されたままになっている。
-
-  * bash-it-minimal を実行すると bash-preexec の実行に失敗する。
-    或いは、ble.sh 自体の prompt-attach に失敗している?
 
   * edit: 現在の TRAPDEBUG の枠組みを拡張して try/catch/finally を実装できるのでは
     Ref #D1783
@@ -6180,6 +6175,73 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-02-23
+
+  * bash-it から detach するとプロンプトが壊れた状態になる [#D1784]
+    Ref #D1772
+
+    # #D1772 に関係はしているが直接の原因ではない。元々 PS1 が退避された状態で
+    # ble-detach になってしまうのだったが、(1) PROMPT_COMMAND は待避していなかっ
+    # た (2) PS1 を "待避" した後も通常の場合は PS1 の元の値をそのままにしてい
+    # たという二重の理由で問題が起こらなかったのである。#D1772 によって両方の振
+    # る舞いを壊した為に問題として発現した。
+
+    oh-my-bash から抜けても同じ状態になる。nix-shell の場合には大丈夫。
+
+    どうやら PROMPT_COMMAND に何か設定されているとこうなる様だ。何故
+    PROMPT_COMMAND があるかどうかで変わるのだろうか。因みに
+    PROMPT_COMMAND も退避されたままになっている。
+
+    うーん。何故か ble-detach/message の中から ble/textarea#render が呼び出され
+    ている。この時に PS1 adjust が走ってそのままになっている。そもそも何故
+    ble-detach/message の中で render が呼び出されているのか? うーん。恐らく
+    stty の設定の為に Bash に制御を戻しても Bash が prompt を表示してくれないの
+    が問題。その為に ble-detach/mesasge を介して態々プロンプトを描画しているの
+    である。
+
+    a eval-PROMPT_COMMAND の前後の PS1 adjust/restore は attached の時にだけ実
+      行する? と思ってこれで実装したが…。
+
+      そもそも textarea#render を detached 状態で呼び出して問題は発生しないのか。
+      特に、既に様々の bash option 等を設定した状態で正しく ble-detach/message
+      を呼び出す事ができるのかすら非自明である。
+
+      と思ったが ble-detach/impl は実は restore option までは未だ実行していない
+      状態の様だ。単に detached state に移行するだけである。
+
+    b 或いは ble-detach/message を表示してから ble-detach/impl を実行するべきな
+      のではないか。
+
+      うーん。ble-detach/impl の中で何か出力されたりする可能性はあるのだろうか。
+      エラーメッセージなど。確認すると、呼び出されているのは以下の 3 項目である。
+
+      blehook/invoke DETACH
+      ble-edit/detach
+      ble/decode/detach
+
+      後ろの2つはともかくとして最初の1つでユーザーが何かメッセージを出力したい
+      という事があるかもしれない。うーん。という事を考えるとやはり後で
+      ble-detach/message を実行するべきなのだろうか。
+
+    やはり a の方針で修正する事にした。restore-PS1 は本来 ble-edit/detach から
+    呼び出される物であって、其処で管理している状態は _ble_edit_attached 変数に
+    格納されているので、この変数の値に基づいて PROMPT_ATTACH の周りで
+    adjust/restore を行う事にした。
+
+    修正した。PROMPT_ATTACH を設定した状態でも問題が生じない事を確認した。また
+    bash-it, oh-my-bash による動作確認もした。
+
+  * [棄却] bashrc: .bashrc.bash-it-minimal から実行するとエラーメッセージが出る [#D1783]
+
+    PROMPT_COMMAND に ';:' という文字列が設定されて PROMPT_COMMAND を実行する度
+    にエラーが発生する。或いは、ble.sh 自体の prompt-attach に失敗している?
+
+    →と思ったらこれは単に .bashrc.bash-it-minimal の問題だった。このファイルを
+    作成した当時は --attach=prompt の時、必ず PROMPT_COMMAND に文字列が設定され
+    るという事を想定してよかった。現在は bash-5.1 以上では配列を用いて第2要素以
+    降に設定するので、単に ';:' という文字列を付加するとエラーが発生するのだっ
+    た。
 
 2022-02-20
 

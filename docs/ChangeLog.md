@@ -241,6 +241,7 @@
 - progcomp: retry completions on `$? == 124` also for non-default completions (reported by SuperSandro2000) `#D1759` 82b9c01
 - app: work around data corruption by WINCH on intermediate state `#D1762` 5065fda
 - util (`ble/util/import`): work around filenames with bash special characters `#D1763` b27f758
+- edit: fix the restore failure of `PS1` and `PROMPT_COMMAND` on `ble-detach` `#D1784` 0000000
 
 ## Documentation
 

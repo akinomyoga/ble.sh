@@ -1568,10 +1568,10 @@ function ble/prompt/update {
           ble/util/buffer.flush >&2
         fi
 
-        ble-edit/restore-PS1
+        ((_ble_edit_attached)) && ble-edit/restore-PS1
         ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
         ble/prompt/update/.eval-prompt_command
-        ble-edit/adjust-PS1
+        ((_ble_edit_attached)) && ble-edit/adjust-PS1
       fi
     fi
   fi
