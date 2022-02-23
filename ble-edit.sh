@@ -1040,9 +1040,9 @@ function .ble-line-prompt/update {
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
-    local PS1=$_ble_edit_PS1
+    ((_ble_edit_attached)) && ble-edit/restore-PS1
     .ble-line-prompt/update/eval-prompt_command
-    _ble_edit_PS1=$PS1
+    ((_ble_edit_attached)) && ble-edit/adjust-PS1
   fi
   local ps1=$_ble_edit_PS1
 
