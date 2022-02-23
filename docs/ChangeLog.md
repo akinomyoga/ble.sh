@@ -84,6 +84,7 @@
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
   - util: refactor `_ble_term_TERM` `#D1746` 63fba6b
 - complete: requote for more compact representations on full completions `#D1700` a1859b6
+  - complete (requote): requote from optarg/rhs starting point `#D1786` 0000000
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
   - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` e12bae4
   - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0786e92
@@ -146,7 +147,7 @@
 - util (`ble/util/buffer`): hide cursor in rendering `#D1758` e332dc5
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
 - edit (command-help): show source files for functions `#D1779` 7683ab9
-- edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 0000000
+- edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 6fdabf3
 
 ## Fixes
 
@@ -241,7 +242,7 @@
 - progcomp: retry completions on `$? == 124` also for non-default completions (reported by SuperSandro2000) `#D1759` 82b9c01
 - app: work around data corruption by WINCH on intermediate state `#D1762` 5065fda
 - util (`ble/util/import`): work around filenames with bash special characters `#D1763` b27f758
-- edit: fix the restore failure of `PS1` and `PROMPT_COMMAND` on `ble-detach` `#D1784` 0000000
+- edit: fix the restore failure of `PS1` and `PROMPT_COMMAND` on `ble-detach` `#D1784` b9fdaab
 
 ## Documentation
 
@@ -326,7 +327,7 @@
 - edit (TRAPDEBUG): preserve original `DEBUG` trap and enabled it in `PROMPT_COMMAND` (motivated by ammarooo) `#D1772` `#D1773` ec2a67a
   - main, trap: fix initialization order of `{save,restore}-BASH_REMATCH` (reported by SuperSandro2000) `#D1780` 689534d
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
-- util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 0000000
+- util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
 
 ## Internal changes and fixes
 

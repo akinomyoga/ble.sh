@@ -6178,6 +6178,13 @@ bash_tips
 
 2022-03-01
 
+  * complete (requote): --prefix='a b c d e' の様に prefix 部分は requote から除外 [#D1786]
+    Ref #D1787
+
+    全体を quote し直す時にオプション的な部分・もしくは変数代入的な部分は除外す
+    る様にする。例えば --option=hello\ 1\ 2\ 3 が '--option=hello 1 2 3' になる
+    のではなく、--option='hello 1 2 3' になって欲しいという事。
+
   * edit: 古い terminator で表示が乱れる (reported by dongxi8) [#D1785]
     https://github.com/ohmybash/oh-my-bash/issues/314
 

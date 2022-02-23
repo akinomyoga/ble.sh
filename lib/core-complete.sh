@@ -1523,14 +1523,35 @@ function ble/complete/action/quote-insert.batch {
 }
 
 function ble/complete/action/requote-final-insert {
+  local comps_prefix= check_optarg=
   if [[ $insert == "$COMPS"* ]]; then
     [[ $comps_flags == *[SEDI]* ]] && return 0
-    local comps_prefix=$COMPS
+
+    # Note: 以下の設定は遡って書き換える事を許す事になる
+    [[ $COMPS != *[!':/={,'] ]] && comps_prefix=$COMPS
+    check_optarg=$COMPS
   else
     # 遡って書き換える場合 (中途半端な quote 状態ではないと仮定)
-    local comps_prefix=
-    [[ $comps_fixed ]] &&
-      comps_prefix=${COMPS::${comps_fixed%%:*}}
+    check_optarg=$insert
+  fi
+
+  # Note: --prefix='/usr/local', PREFIX='/usr/local', -L'/usr/local/share/lib'
+  # 等、オプション・変数代入の右辺などの quote は、その開始点と思われる箇所から
+  # 始める。
+  if [[ $check_optarg ]]; then
+    if ble/string#match "$check_optarg" '^([_a-zA-Z][_a-zA-Z0-9]*|-[-a-zA-Z0-9.]+)=(([^\'\''"`${}]*|\\.)*:)?'; then
+      # --prefix= や PREFIX=, PATH=xxxx: 等があった場合には = や : の直後から quote する。
+      comps_prefix=$BASH_REMATCH
+    elif [[ $COMP_PREFIX == -[!'-=:/\'\''"$`{};&|<>!^{}'] && $check_optarg == "$COMP_PREFIX"* ]]; then
+      # -L'/path/to/library' 等。COMP_PREFIX=-L かつ COMPS が -L で始まっている時のみ。
+      comps_prefix=${check_optarg::2}
+    fi
+  fi
+
+  if [[ $comps_fixed ]]; then
+    local comps_fixed_part=${COMPS::${comps_fixed%%:*}}
+    [[ $comps_prefix == "$comps_fixed_part"* ]] ||
+      comps_prefix=$comps_fixed_part
   fi
 
   if [[ $insert == "$comps_prefix"* && $comps_prefix != *[!':/={,'] ]]; then
@@ -1541,7 +1562,9 @@ function ble/complete/action/requote-final-insert {
         ((${#ret[@]}==1))
     then
       ble/string#quote-word "$ret" quote-empty
-      ((${#ret}<=${#ins})) && insert=$comps_prefix$ret
+      ((${#ret}<=${#ins})) || return 0
+      insert=$comps_prefix$ret
+      [[ $insert == "$COMPS"* ]] || insert_flags=r$insert_flags # 遡って書き換えた
     fi
   fi
   return 0
@@ -6257,10 +6280,10 @@ function ble/complete/insert-common {
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-all {
   local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
-  local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
+  local pack beg=$COMP1 end=$COMP2 insert= suffix= insert_flags= index=0
   for pack in "${cand_pack[@]}"; do
     ble/complete/cand/unpack "$pack"
-    insert=$INSERT suffix=
+    insert=$INSERT suffix= insert_flags=
 
     if ble/is-function ble/complete/action:"$ACTION"/complete; then
       ble/complete/action:"$ACTION"/complete
@@ -7440,9 +7463,9 @@ function ble/complete/auto-complete/.check-context {
   fi
 
   local type=
-  if [[ $word == "$COMPS"* ]]; then
+  if [[ $insert == "$COMPS"* ]]; then
     # 入力候補が既に続きに入力されている時は提示しない
-    [[ ${comp_text:COMP1} == "$word"* ]] && return 1
+    [[ ${comp_text:COMP1} == "$insert"* ]] && return 1
 
     type=c
     ble/complete/auto-complete/.insert "${insert:${#COMPS}}"
