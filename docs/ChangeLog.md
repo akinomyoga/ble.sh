@@ -145,8 +145,8 @@
 - edit (`ble-bind -x`): preserve multiline prompts on execution of `bind -x` commands (requested by SuperSandro2000) `#D1755` 7d05a28
 - util (`ble/util/buffer`): hide cursor in rendering `#D1758` e332dc5
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
-- edit (command-help): show source files for functions `#D1779` 0000000
-- edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` 0000000
+- edit (command-help): show source files for functions `#D1779` 7683ab9
+- edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 0000000
 
 ## Fixes
 
@@ -271,7 +271,7 @@
 - decode: cache `inputrc` translations `#D1652` 994e2a5
 - complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
   - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 8039b77
-- prompt: reduce redundant evaluation of `PROMPT_COMMAND` on the startup `#D1778` 0000000
+- prompt: reduce redundant evaluation of `PROMPT_COMMAND` on the startup `#D1778` 042376b
 
 ## Compatibility
 
@@ -323,7 +323,7 @@
 - util: add identification of Windows Terminal `wt` `#D1758` e332dc5
 - complete: evaluate words for `noquote` (motivated by SuperSandro2000) `#D1767` 0a42299
 - edit (TRAPDEBUG): preserve original `DEBUG` trap and enabled it in `PROMPT_COMMAND` (motivated by ammarooo) `#D1772` `#D1773` ec2a67a
-  - main, trap: fix initialization order of `{save,restore}-BASH_REMATCH` (reported by SuperSandro2000) `#D1780` 0000000
+  - main, trap: fix initialization order of `{save,restore}-BASH_REMATCH` (reported by SuperSandro2000) `#D1780` 689534d
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
 
 ## Internal changes and fixes

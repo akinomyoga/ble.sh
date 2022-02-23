@@ -1808,6 +1808,52 @@ bash_tips
 
 2022-02-20
 
+  * 何故か2回目の char_width_@=auto がちゃんと動いていない気がする。何故だろう
+    か。後で確認する。
+
+  * complete: cygwin$ pdflatex [TAB] で /usr/bin/cat: '': No such file or
+    directory というエラーが出力される。chat では再現しない。bash-completion は
+    ロードされていない。
+
+  * より一般の補完 framework に向けたインターフェイスについて
+    https://github.com/rsteube/carapace/issues/431
+
+    > prevent default file completion when no values returned
+
+    このオプションを提供する事にする。
+
+    * 拡張 comp_opts をまとめる。prog-trim, syntax-raw, filter_by_prefix
+
+      現在参照している comp_opts は以下の通り。
+
+      $ grc '(comp_opts|DATA):? =='
+
+      元から bash に存在しているオプションは以下の通り:
+      bashdefault default dirnames filenames noquote nosort nospace plusdirs
+
+  * rsteube の記事
+    https://dev.to/rsteube/a-pragmatic-approach-to-shell-completion-4gp0
+
+    filtering を description に対しても適用するという事が書かれている。
+    それは確かに便利そうである。現状の実装では対応が難しい様には思われるが。
+
+  * sabbrev を削除する機能がない
+
+    削除の仕方としては以下の2種類が考えられる。
+
+    ble-sabbrev -r a # bind, complete と同様
+    ble-sabbrev a=-  # trap と同様
+
+    後者は本当に "-" に展開させたい時 (実際そういう場合が存在するのかは謎だが)
+    と衝突するので前者の方が良い気がする。
+
+    また、前者を採用するとしたら -r に対して optarg を要求するのか、或いは -r
+    に対して optarg を要求するのかで振る舞いが変わってくる。
+
+  * complete (action:command): function の description の quote が邪魔。最初の2
+    行と末尾の } は削除して良い。また、quote ではなくて text と同様の表示の仕方
+    にしたい気がする。
+
   * trap (lastarg): 一応 heredoc 等を使えば eval の中から複数行の lastarg を設
     定する事ができるのではないか。他に複数行で、eval されても余分な実行が起こら
     ない様な方法はあるだろうか。不完全な引用符の場合には結局エラーが出力されて
@@ -1821,6 +1867,21 @@ bash_tips
 
     と思ったらこの問題は外部コマンドではなくて builtin sleep を呼び出している時
     特有の問題だった。trap INT を設定しているのは問題なのだろうか。
+
+  * bash-it から detach するとプロンプトが壊れた状態になる。oh-my-bash
+    から抜けても同じ状態になる。nix-shell の場合には大丈夫。
+
+    どうやら PROMPT_COMMAND に何か設定されているとこうなる様だ。何故
+    PROMPT_COMMAND があるかどうかで変わるのだろうか。因みに
+    PROMPT_COMMAND も退避されたままになっている。
+
+  * bash-it-minimal を実行すると bash-preexec の実行に失敗する。
+    或いは、ble.sh 自体の prompt-attach に失敗している?
+
+  * edit: 現在の TRAPDEBUG の枠組みを拡張して try/catch/finally を実装できるのでは
+    Ref #D1783
+
+    もしその枠組がちゃんとできるのであれば edit.sh から util.sh に移動する。
 
 2022-02-14
 
@@ -6174,11 +6235,62 @@ bash_tips
       ると、元々の stdout/stdin を何処かに記録しておくべきなのだろうという気が
       する。
 
-  * edit: 現在の TRAPDEBUG の枠組みを拡張して try/catch/finally を実装できるのでは
-    Ref #D1783
+    2022-02-20 exit を DEBUG return で再現しようとしても　DEBUG trap の対象であ
+    る "現在のコマンド" は必ず実行されてその後で return/continue 等の効果が現れ
+    る。なので blehook 内での exit は意図した動作をしない。
 
-    もしその枠組がちゃんとできるのであれば edit.sh から util.sh に移動する。
+    % blehook の中で exit をしても trap の実行が其処で終了しない。continue が実
+    % 行されている筈なのに効いていないのは何故だろうか。うーん。eval の中から
+    % continue を実行しても効かないのだろうか。
+    % →それとも bash の特定の version を使っている事によるバグだろうかと思って
+    % 振る舞いを確認したが、4.0..dev まで全て同じ振る舞いである
 
+    →うーん。振る舞いを調べて分かったのは、DEBUG trap が呼び出された対象のコマ
+    ンドは結局何れにしても実行される様だという事。例えば continue を trap 内部
+    で実行すると、確かにその場で continue によって制御が変更され、trap 内の続き
+    の処理も実行されない。そしてtrap の外側にあるループを抜ける。然し、その前に
+    DEBUG trap の対象であるコマンドはちゃんと実行される様だという事。
+
+    ? このコマンド実行をキャンセルする方法はないのだろうか。extdebug が設定され
+      ていれば trap の戻り値によって振る舞いが変わるらしい。特に 2 を返せばその
+      場で return を実行する事ができる。然し、continue をその場で実行する方法は
+      不明である。continue が成功すれば戻り値は 0 になるので DEBUG 対象のコマン
+      ドは結局実行される。逆にそれを阻止する為に戻り値を 0 以外にしようとすると
+      continue を失敗させるしかなく、それだと次のループに移る事ができない。或い
+      は BASH_COMMAND を書き換えたら実行するコマンドを書き換える事ができると言っ
+      た事はないのだろうか。
+
+      実際に extdebug を設定して試しても見たが、マニュアルから予想される通り、
+      continue が成功すればコマンドも実行するし、コマンドの実行をキャンセルする
+      には continue を実行する訳には行かない。continue 直前の終了ステータスを変
+      更しても何の効果もなかった。つまり、continue 自体の戻り値が使われる。
+
+      他に次のコマンドを無効にする手法はないのか? というか次のコマンドを無効に
+      したとしても更にまた次のコマンドが実行されるというのだと際限がない。なの
+      で、やはり extdebug を一時的に設定して 2 を返す事によって実行を中断させる
+      しかないのだろうか。
+
+    * extdebug を一瞬有効にして return (終了ステータス 2) でトップレベルまで戻
+      るしかない気がする。
+
+      ? extdebug は trap の中で無効化した場合でもその trap に対して失効するのだ
+        ろうか。これについては振る舞いを確認する必要がある。→やはり trap の中
+        で shopt -u extdebug すると即座に extdebug の動作はしなくなる様だ。ちゃ
+        んとどの bash の version でも同様である事を確認した。
+
+        だとするとどの時点で extdebug を off にするのかについて確認が必要になる。
+        然し取り敢えずは sandbox の中で実行しているのであればその呼出元で解除す
+        る様にすれば良い。※という事は、sandbox の中では未だ DEBUG trap は
+        clear はしないという事になる。
+
+      うーん。取り敢えず実装した。動いている。というかそもそも元々 continue を
+      hook の中で実行する事を許していたのが変な気もする。或いは、continue 及び
+      return を使って他の hook の処理に干渉したりできるというのも一つの機能だっ
+      たかもしれないが、それならそれで別の枠組みを提供するべきの気もする。或い
+      は、もし return continue を使うとしても trap sandbox の様に終了の仕方を検
+      出して制御を決めるのが良いのだろうという気がする。
+
+      現在は現状のままで良い気がしている。
 
 2022-02-19
 

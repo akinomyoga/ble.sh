@@ -5666,6 +5666,7 @@ function ble/builtin/exit {
     # ので exit は延期して一旦元の呼び出し元まで戻る。これによって細かな動作の
     # 違いが問題になる可能性はある。例えば trap の中で time で時間計測中だった
     # 場合、時間計測が中止されず結果が出力される。
+    shopt -s extdebug
     _ble_edit_exec_TRAPDEBUG_EXIT=$opt_args
     ble-edit/exec:gexec/.TRAPDEBUG/trap
     return 0
@@ -6038,43 +6039,59 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
   [[ ! ( ${FUNCNAME[1]-} == _ble_prompt_update__eval_prompt_command_1 && ( $bash_command == 'ble-edit/exec/.setexit '* || $bash_command == 'BASH_COMMAND='*' builtin eval -- '* ) ) ]] || return 0
   [[ ! ${_ble_builtin_trap_inside-} ]] || return 0
 
-  # Handle EXIT
+  # Handle EXIT (#D1782)
+  #
+  # 前提: _ble_edit_exec_TRAPDEBUG_EXIT が設定される時には extdebug も設定され
+  # ていると仮定する。
   if [[ $_ble_edit_exec_TRAPDEBUG_EXIT ]]; then
     # 或る特定のレベルまでは素通りする (そもそも exit なのでユーザーの DEBUG
     # trap も処理しなくて良い)。
-    local flag_clear= flag_exit=
+    local flag_clear= flag_exit= postproc=
     if [[ ! $_ble_builtin_trap_processing ]] || ((${#FUNCNAME[*]}<=1)); then
       # 本来は此処に来る事はない筈
-      flag_clear=1
+      flag_clear=2
       flag_exit=$_ble_edit_exec_TRAPDEBUG_EXIT
     else
-      case "${FUNCNAME[1]-} ${FUNCNAME[2]-}" in
-      ('ble/builtin/trap/invoke.sandbox ble/builtin/trap/invoke')
+      # 本来は extdebug が設定されている筈なので extdebug が設定されていない時
+      # の対処は不要だが、念の為 extdebug が設定されていない時の動作も定義して
+      # おく。
+      case " ${FUNCNAME[*]:1} " in
+      (' ble/builtin/trap/invoke.sandbox ble/builtin/trap/invoke '*)
         _ble_trap_done=exit
         _ble_trap_lastarg=$_ble_edit_exec_TRAPDEBUG_EXIT
-        _ble_edit_exec_TRAPDEBUG_postproc='return 0'
-        flag_clear=1 ;;
-      ('blehook/invoke ble/builtin/trap/.handler')
+        postproc='ble/util/setexit 2'
+        shopt -q extdebug || postproc='return 0' ;;
+      (' blehook/invoke.sandbox blehook/invoke ble/builtin/trap/.handler '*)
+        _ble_local_ext=$_ble_edit_exec_TRAPDEBUG_EXIT
         _ble_builtin_trap_processing=exit:$_ble_edit_exec_TRAPDEBUG_EXIT
+        postproc='ble/util/setexit 2'
+        shopt -q extdebug || postproc='return 0' ;;
+      (' ble/builtin/trap/invoke '* | ' blehook/invoke '*)
+        # 此処で確実に trap DEBUG を解除する為には sandbox の呼び出しよりも後に
+        # 少なくとも1つコマンドが必要。現在は return が必ず両 invoke の終わりに
+        # 実行される様になっているので大丈夫の筈。
         flag_clear=1 ;;
-      ('ble/builtin/trap/invoke '* | 'ble/builtin/trap/.handler '* | 'ble-edit/exec:gexec/.TRAPDEBUG '*)
-        # 此処にも本来は来ない筈
-        flag_clear=1 ;;
+      (' ble/builtin/trap/.handler '* | ' ble-edit/exec:gexec/.TRAPDEBUG '*)
+        # 本来此処には来ない筈。extdebug には触れずに DEBUG trap だけ解除する。
+        flag_clear=2 ;;
       (*)
         # trap handler 内部の処理は全てスキップして呼び出し元に戻る。
-        _ble_edit_exec_TRAPDEBUG_postproc="{ return 130 || break; } &>/dev/null"  ;;
+        postproc='ble/util/setexit 2'
+        shopt -q extdebug || postproc='return 128' ;;
       esac
     fi
 
     if [[ $flag_clear ]]; then
-      if [[ ! ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]]; then
-        _ble_edit_exec_TRAPDEBUG_postproc="builtin trap - DEBUG${_ble_edit_exec_TRAPDEBUG_postproc:+;$_ble_edit_exec_TRAPDEBUG_postproc}"
-      fi
+      [[ $flag_clear == 2 ]] || shopt -u extdebug
       _ble_edit_exec_TRAPDEBUG_EXIT=
+      [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]] ||
+        postproc="builtin trap - DEBUG${postproc:+;$postproc}"
       if [[ $flag_exit ]]; then
         builtin exit "$flag_exit"
       fi
     fi
+
+    _ble_edit_exec_TRAPDEBUG_postproc=$postproc
 
   elif [[ $_ble_edit_exec_TRAPDEBUG_INT ]]; then
     local IFS=$_ble_term_IFS __set __shopt

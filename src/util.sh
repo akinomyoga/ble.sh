@@ -1855,6 +1855,17 @@ function blehook/has-hook {
   builtin eval "local count=\${#_ble_hook_h_$1[@]}"
   ((count))
 }
+## @fn blehook/invoke.sandbox
+##   @var[in] _ble_local_hook _ble_local_lastexit _ble_local_lastarg
+function blehook/invoke.sandbox {
+  if type "$_ble_local_hook" &>/dev/null; then
+    ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
+    "$_ble_local_hook" "$@" 2>&3
+  else
+    ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
+    builtin eval -- "$_ble_local_hook" 2>&3
+  fi
+}
 function blehook/invoke {
   local _ble_local_lastexit=$? _ble_local_lastarg=$_ FUNCNEST=
   ((_ble_hook_c_$1++))
@@ -1862,13 +1873,7 @@ function blehook/invoke {
   builtin eval "_ble_local_hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
   local _ble_local_hook _ble_local_ext=0
   for _ble_local_hook in "${_ble_local_hooks[@]}"; do
-    if type "$_ble_local_hook" &>/dev/null; then
-      ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
-      "$_ble_local_hook" "$@" 2>&3
-    else
-      ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
-      builtin eval -- "$_ble_local_hook" 2>&3
-    fi || _ble_local_ext=$?
+    blehook/invoke.sandbox || _ble_local_ext=$?
   done
   return "$_ble_local_ext"
 } 3>&2 2>/dev/null # set -x 対策 #D0930
@@ -2169,6 +2174,7 @@ function ble/builtin/trap/invoke {
     _ble_builtin_trap_user_lastarg=$_ble_trap_lastarg
   fi
 
+  return 0
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 
 ## @fn ble/builtin/trap/.handler sig signame

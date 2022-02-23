@@ -329,11 +329,13 @@ function ble/base/.adjust-bash-options {
   if ((_ble_bash>=40100)); then
     shopt=$BASHOPTS
   else
-    shopt=
     # Note: nocasematch は bash-3.1 以上
-    shopt -q nocasematch 2>/dev/null && shopt=nocasematch
+    shopt=
+    shopt -q extdebug 2>/dev/null && shopt=$shopt:extdebug
+    shopt -q nocasematch 2>/dev/null && shopt=$shopt:nocasematch
   fi
   [[ $2 == shopt ]] || builtin eval -- "$2=\$shopt"
+  shopt -u extdebug
   shopt -u nocasematch 2>/dev/null
   return 0
 } 2>/dev/null # set -x 対策
@@ -342,6 +344,7 @@ function ble/base/.adjust-bash-options {
 function ble/base/.restore-bash-options {
   local set=${!1} shopt=${!2}
   [[ :$shopt: == *:nocasematch:* ]] && shopt -s nocasematch
+  [[ :$shopt: == *:extdebug:* ]] && shopt -s extdebug
   [[ $set == *B* ]] || set +B
   [[ $set == *T* ]] && set -T
   [[ $set == *k* ]] && set -k
