@@ -1278,9 +1278,9 @@ function ble-edit/prompt/update {
 
   if ((_ble_textarea_panel==0)); then # 補助プロンプトに対しては PROMPT_COMMAND は実行しない
     if [[ $PROMPT_COMMAND ]]; then
-      local PS1=$_ble_edit_PS1
+      ((_ble_edit_attached)) && ble-edit/restore-PS1
       ble-edit/prompt/update/eval-prompt_command
-      _ble_edit_PS1=$PS1
+      ((_ble_edit_attached)) && ble-edit/adjust-PS1
     fi
   fi
   local ps1=$_ble_edit_PS1
