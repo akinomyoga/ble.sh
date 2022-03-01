@@ -1636,7 +1636,7 @@ function ble/complete/source:argument {
   fi
 
   if ((cand_count<=old_cand_count)); then
-    if local rex='^/?[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
+    if local rex='^/?[-_a-zA-Z0-9.]+[:=]|^-[^-/=:]'; [[ $COMPV =~ $rex ]]; then
       # var=filename --option=filename /I:filename など。
       local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
       local COMP_PREFIX=$prefix

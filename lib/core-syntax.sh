@@ -4507,14 +4507,16 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
     local src
     for src in "${source[@]}"; do
       ble/syntax/completion-context/.add "$src" "$istat"
-      if [[ $src != argument ]]; then
-        local rex="^([^'\"\$\\]|\\.)*="
-        if [[ $word =~ $rex ]]; then
-          word=${word:${#BASH_REMATCH}}
-          ble/syntax/completion-context/.add "$src" $((index-${#word}))
-        fi
-      fi
     done
+
+    if [[ ${source[0]} != argument ]]; then
+      # 引数の途中に unquoted '=' がある場合
+      local rex="^([^='\"\$\\{}]|\\.)*="
+      if [[ $word =~ $rex ]]; then
+        word=${word:${#BASH_REMATCH}}
+        ble/syntax/completion-context/.add rhs $((index-${#word}))
+      fi
+    fi
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
     # 単語が未だ開始していない時 (空白)
     local src
