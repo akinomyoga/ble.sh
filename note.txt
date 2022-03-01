@@ -6176,9 +6176,27 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-03-01
+
+  * edit: 古い terminator で表示が乱れる (reported by dongxi8) [#D1785]
+    https://github.com/ohmybash/oh-my-bash/issues/314
+
+    要するに Terminal 0.98 が使っている vte では DECSCUSR に対応していない。そ
+    れにも拘らず TERM=xterm にしているので _ble_term_Ss に値が設定されている。
+
+    https://bugzilla.gnome.org/show_bug.cgi?id=720821#c33
+    此処によると DECSCUSR は vte 0.40 で導入された様だ。
+
+    古い version の vte で DECSCUSR を無効化するコードを追加する事にする。所で、
+    vte version と値の関係がどうなっているのか調べる必要がある。うーん。vte
+    0.28.2 という事なのだろうか。。。そういう気がする。実際に一番最近の
+    Terminator で vte:66xx になっていて、GitLab 上の最新版は 0.67.x なので、や
+    はり vte 0.28.2 という事なのだろうという気がする。vte の番号を使って判定す
+    る事にする。
+
 2022-02-23
 
-  * bash-it から detach するとプロンプトが壊れた状態になる [#D1784]
+  * edit: bash-it から detach するとプロンプトが壊れた状態になる [#D1784]
     Ref #D1772
 
     # #D1772 に関係はしているが直接の原因ではない。元々 PS1 が退避された状態で

@@ -326,6 +326,7 @@
 - edit (TRAPDEBUG): preserve original `DEBUG` trap and enabled it in `PROMPT_COMMAND` (motivated by ammarooo) `#D1772` `#D1773` ec2a67a
   - main, trap: fix initialization order of `{save,restore}-BASH_REMATCH` (reported by SuperSandro2000) `#D1780` 689534d
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
+- util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 0000000
 
 ## Internal changes and fixes
 

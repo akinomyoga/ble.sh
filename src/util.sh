@@ -5987,7 +5987,15 @@ function ble/term/DA2/initialize-term {
     if ((4000<=da2r[1]&&da2r[1]<=4009&&3<=da2r[2])); then
       _ble_term_TERM[depth]=kitty:$((da2r[1]-4000))
     elif ((2000<=da2r[1]&&da2r[1]<5400&&da2r[2]==0)); then
-      _ble_term_TERM[depth]=vte:$((da2r[1]))
+      local version=$((da2r[1]))
+      _ble_term_TERM[depth]=vte:$version
+      if ((version<4000)); then
+        # Note #D1785: vte 0.40.0 未満では DECSCUSR に対応していない。更に未知のシーケ
+        # ンスを無視する事もできない。それにも拘らず vte-based な端末は
+        # TERM=xterm を設定するので DECSCUSR が出力されて表示が乱れる原因になる。
+        # vte の version を見て強制的に DECSCUSR を off にする。
+        _ble_term_Ss=
+      fi
     fi ;;
   ('65;'*)
     if ((5300<=da2r[1]&&da2r[2]==1)); then
