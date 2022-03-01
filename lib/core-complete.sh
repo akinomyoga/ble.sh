@@ -1860,10 +1860,17 @@ function ble/complete/action:command/get-desc {
       [[ $path == ?*/"$CAND" ]] && path="from ${path%/"$CAND"}"
       title=file value=$path ;;
     ($_ble_attr_CMD_FUNCTION)
+
+      local source lineno
+      ble/function#get-source-and-lineno "$CAND"
+
       local def; ble/function#getdef "$CAND"
-      local ret
-      ble/string#quote-word "$def" ansi:sgrq="$desc_sgrq":quote-empty
-      title=function value=$ret ;;
+      ble/string#match "$def" '^[^()]*\(\)[[:space:]]*\{[[:space:]]+(.*[^[:space:]])[[:space:]]+\}[[:space:]]*$' &&
+        def=${BASH_REMATCH[1]} # 関数の中身を抽出する
+      local ret sgr0=$'\e[27m' sgr1=$'\e[7m' # Note: sgr-ansi で生成
+      lines=1 cols=${COLUMNS:-80} x=0 y=0 ble/canvas/trace-text "$def" external-sgr
+
+      title=function value="${source##*/}:$lineno $desc_sgrq$ret" ;;
     ($_ble_attr_CMD_JOBS)
       ble/util/joblist.check
       local job; ble/util/assign job 'jobs -- "$CAND" 2>/dev/null' || job='???'

@@ -148,6 +148,7 @@
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
 - edit (command-help): show source files for functions `#D1779` 7683ab9
 - edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 6fdabf3
+- complete (`source:command/get-desc`): show function location and body `#D1788` 0000000
 
 ## Fixes
 

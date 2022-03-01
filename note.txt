@@ -1858,10 +1858,6 @@ bash_tips
     また、前者を採用するとしたら -r に対して optarg を要求するのか、或いは -r
     に対して optarg を要求するのかで振る舞いが変わってくる。
 
-  * complete (action:command): function の description の quote が邪魔。最初の2
-    行と末尾の } は削除して良い。また、quote ではなくて text と同様の表示の仕方
-    にしたい気がする。
-
   * trap (lastarg): 一応 heredoc 等を使えば eval の中から複数行の lastarg を設
     定する事ができるのではないか。他に複数行で、eval されても余分な実行が起こら
     ない様な方法はあるだろうか。不完全な引用符の場合には結局エラーが出力されて
@@ -6180,6 +6176,21 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-03-01
+
+  * complete (action:command): function の description の quote が邪魔 [#D1788]
+
+    最初の2行と末尾の } は削除して良い。また、quote ではなくて trace-text と同
+    様の表示の仕方にしたい気がする。
+
+    trace-text と同様の文字列に変換する関数は既になかったか?
+
+    うーん。ble/unicode/GraphemeCluster/.get-ascii-rep という関数があるがこれは
+    内部的にしか使用されていない。一方で、うーん。というか
+    ble/canvas/trace-text をそのまま呼び出すべきの気がしてきた。そもそもその為
+    の関数の筈である。
+
+    或いはファイル名と行番号を表示した方が有益の気もする。取り敢えず両方表示す
+    る事にした。ファイルパスは長くなるので最後の名前だけ表示する事にした。
 
   * complete: --optarg= に対して progcomp が走らない (motivated by rsteube) [#D1787]
 
