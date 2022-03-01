@@ -5382,11 +5382,13 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
       ble/syntax/completion-context/.add "$src" "$istat"
     done
 
-    # 引数の途中に unquoted '=' がある場合
-    local rex="^([^'\"\$\\]|\\.)*="
-    if [[ $word =~ $rex ]]; then
-      word=${word:${#BASH_REMATCH}}
-      ble/syntax/completion-context/.add rhs $((index-${#word}))
+    if [[ ${source[0]} != argument ]]; then
+      # 引数の途中に unquoted '=' がある場合
+      local rex="^([^='\"\$\\{}]|\\.)*="
+      if [[ $word =~ $rex ]]; then
+        word=${word:${#BASH_REMATCH}}
+        ble/syntax/completion-context/.add rhs $((index-${#word}))
+      fi
     fi
   elif ble/syntax/completion-context/.check-prefix/.test-redirection "$word"; then
     true

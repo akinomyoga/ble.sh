@@ -1827,6 +1827,9 @@ bash_tips
 
     このオプションを提供する事にする。
 
+    後 core-complete の中から公開 interface を決めてそれを説明する必要がある気
+    がする。
+
     * 拡張 comp_opts をまとめる。prog-trim, syntax-raw, filter_by_prefix
 
       現在参照している comp_opts は以下の通り。
@@ -1864,7 +1867,7 @@ bash_tips
     ない様な方法はあるだろうか。不完全な引用符の場合には結局エラーが出力されて
     しまう。
 
-  * exec: builtin sleep に対して C-c が効かない
+  * [保留] exec: builtin sleep に対して C-c が効かない
 
     % 現在の実装だと bash-5.0 以下で C-c でループ中に走っている外部コマンドを止
     % めた時に応答がなくなってしまう。bash-5.1 以上では一旦実行が停止するものの
@@ -6177,6 +6180,97 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-03-01
+
+  * complete: --optarg= に対して progcomp が走らない (motivated by rsteube) [#D1787]
+
+    これは "--optarg=" 全体に対する引数補完よりも = の右辺 "" に対する優先順位
+    が高いから。
+
+    [導入経緯確認]
+
+    然し、この様に引数の途中に = が含まれる時に rhs 補完も実行する様にしたのは
+    何か別の理由があった様な気もする。その時の記録を確認する必要がある。遡る。
+
+    da384044 #D1701 で変更されているがこれで導入された訳ではない。と思ったが
+    #D1701 よりも前は以下の様になっていて argument でない時にのみ rhs を設置し
+    ていた。
+
+    local word=${text:istat:index-istat}
+    if ble/syntax:bash/simple-word/is-simple-or-open-simple "$word"; then
+      # 単語が istat から開始している場合
+      local src
+      for src in "${source[@]}"; do
+        ble/syntax/completion-context/.add "$src" "$istat"
+        if [[ $src != argument ]]; then
+          local rex="^([^'\"\$\\]|\\.)*="
+          if [[ $word =~ $rex ]]; then
+            word=${word:${#BASH_REMATCH}}
+            ble/syntax/completion-context/.add "$src" $((index-${#word}))
+          fi
+        fi
+      done
+
+    つまり、やはり #D1701 によってこの取扱が導入された事になる。
+
+    * reject: と、思ったが上記のコードはそもそもおかしい。source には大体複数の
+      文脈が登録されているので結局 rhs は argument の有無に関係なく大体複数生成
+      される事になる。と思ったが、そうではない。 add rhs ではなくて add "$src"
+      としているので、 argument 以外については = 以降からでも同様に生成するとい
+      う取り扱いになっている。
+
+    * #D1701 の議論を確認したが大した事は書かれていない。特にこの取扱の変更に関
+      しては全く触れられていない。然し、実際に source 配列の中身を見ると option
+      という物が追加されている。これが理由なのではないだろうか。つまり、option
+      という項目を追加したが、option が = の続きから挿入されるのは変である。な
+      ので、option も argument と同じく途中から文脈設定する必要性がない。他に
+      variable:= という物もあるが、これも途中から挿入するのは変である。command
+      も sabbrev も同様である。結局、途中からの挿入を許すのは source:file だけ
+      である。という事を考えれば最初から file を固定して = の後の位置に補完開始
+      点を設置するのは自然である。
+
+    然し、そもそも unquoted な = の位置から補完を開始する選択肢を加えたのはどの
+    時点だろうか。
+
+    先ず 2f2f0eb6 (#D0941 eval の引数・変数代入の対応) の時点で既にあった。どう
+    やら e9ba343f (#D0744 a=[TAB] が a=a=b になる問題に対する対処) で最初に導入
+    された様だ。この時点でのコードは以下の形をしている。
+
+      if [[ $source != argument ]]; then
+        local sub=${text:wbeg:index-wbeg}
+        if [[ $sub == *[=:]* ]]; then
+          sub=${sub##*[=:]}
+          ble-syntax/completion-context/.add "$source" $((index-${#sub}))
+        fi
+      fi
+
+    この時は source は配列ではなかった。つまり、$source != argument は実際に
+    source に argument が含まれていないという事の確認になっていたのだった。後の
+    変更で source が配列になった時にこの条件がそのまま放置されたのは恐らくバグ
+    である。
+
+    [修正方法]
+
+    a "virtual starting point" 的な物を導入してそれに基づいて補完文脈の優先順位
+      を決定する。
+
+    b rhs の補完開始点は飽くまで単語の先頭にして、しかし補完を実際に行う時に =
+      以降について候補を生成する様に調整する。この時、source:file 等を内部から
+      呼び出しているが、この source:file に中途半端な位置から補完を開始する仕組
+      みを取り付ける? と思ったが、COMPV, COMPS 等既に計算済みの物をちゃんと正確
+      に切り出せる事を保証しなければならないなど、暗黙の仮定を色々持ち込む事に
+      なり余りすっきりしない。
+
+    c 或いはこう言った物は argument の側で全て処理するべきなのではないか?
+
+      実際に rhs をなくしてもちゃんと動いている様に見える。うーん。だとしたら完
+      全に削除してしまっても良い? これについてはやはり導入経緯を確認する必要が
+      ある→うーん。どうも現在 argument と rhs の両方が生成されているのはバグの
+      気がする。バグと判断して良い。そもそも argument の側でもちゃんと同様の =
+      生成を実行している。
+
+    どうも rhs と argument の両方が生成されているのは歴史的に見て元々意図した物
+    ではなかった様に思われる。従って、"c" の様に argument を生成している時には
+    rhs は生成しない様に修正してしまって良い。
 
   * complete (requote): --prefix='a b c d e' の様に prefix 部分は requote から除外 [#D1786]
     Ref #D1787
