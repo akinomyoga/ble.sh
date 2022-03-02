@@ -953,12 +953,33 @@ function ble/builtin/history/.initialize {
   ble/builtin/history/.set-rskip "$histfile" "$rskip"
   return 0
 }
-## @fn ble/builtin/history/.check-uncontrolled-change
+## @fn ble/builtin/history/.delete-range beg end
+function ble/builtin/history/.delete-range {
+  local beg=$1 end=${2:-$1}
+  if ((_ble_bash>=50000&&beg<end)); then
+    builtin history -d "$beg-$end"
+  else
+    local i
+    for ((i=end;i>=beg;i--)); do
+      builtin history -d "$i"
+    done
+  fi
+}
+## @fn ble/builtin/history/.check-uncontrolled-change [filename opts]
 ##   ble/builtin/history の管理外で履歴が読み込まれた時、
 ##   それを history -a の対象から除外する為に wskip を更新する。
 function ble/builtin/history/.check-uncontrolled-change {
+  [[ $_ble_decode_bind_state == none ]] && return 0
+  local filename=${1-} opts=${2-} prevmax=$_ble_builtin_history_prevmax
   local max; ble/builtin/history/.get-max
-  if ((max!=_ble_builtin_history_prevmax)); then
+  if ((max!=prevmax)); then
+    if [[ $filename && :$opts: == *:append:* ]] && ((_ble_builtin_history_wskip<prevmax&&prevmax<max)); then
+      # 最後に管理下で追加された事を確認した範囲 wskip..prevmax を書き込む。
+      (
+        ble/builtin/history/.delete-range $((prevmax+1)) "$max"
+        ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append:fetch
+      )
+    fi
     _ble_builtin_history_wskip=$max
     _ble_builtin_history_prevmax=$max
   fi
@@ -1199,14 +1220,7 @@ function ble/builtin/history/option:d {
   ((end<0)) && ((end+=max+1)); ((end<min?(end=min):(end>max&&(end=max))))
   ((beg<=end)) || return 0
 
-  if ((_ble_bash>=50000&&beg<end)); then
-    builtin history -d "$beg-$end"
-  else
-    local i
-    for ((i=end;i>=beg;i--)); do
-      builtin history -d "$i"
-    done
-  fi
+  ble/builtin/history/.delete-range "$beg" "$end"
   if ((_ble_builtin_history_wskip>=end)); then
     ((_ble_builtin_history_wskip-=end-beg+1))
   elif ((_ble_builtin_history_wskip>beg-1)); then
@@ -1241,7 +1255,7 @@ function ble/builtin/history/option:a {
   ble/builtin/history/.initialize skip0 || return "$?"
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
-  ble/builtin/history/.check-uncontrolled-change
+  ble/builtin/history/.check-uncontrolled-change "$filename" append
   local rskip; ble/builtin/history/.get-rskip "$filename"
   ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append:fetch
   [[ -r $filename ]] && ble/builtin/history/.read "$filename" "$rskip" fetch

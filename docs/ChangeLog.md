@@ -251,6 +251,7 @@
 - util (`ble/util/import`): work around filenames with bash special characters `#D1763` b27f758
 - edit: fix the restore failure of `PS1` and `PROMPT_COMMAND` on `ble-detach` `#D1784` b9fdaab
 - complete: do not attempt an independent rhs completion for arguments (reported by rsteube) `#D1787` 0000000
+- history: fix the unsaved history in the detached state `#D1795` 0000000
 
 ## Documentation
 
