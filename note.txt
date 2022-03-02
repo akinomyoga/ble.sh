@@ -1813,10 +1813,10 @@ bash_tips
 
 2022-02-20
 
-  * 何故か2回目の char_width_@=auto がちゃんと動いていない気がする。何故だろう
-    か。後で確認する。
+  * BUG 何故か2回目の char_width_@=auto がちゃんと動いていない気がする。何故だ
+    ろうか。後で確認する。
 
-  * complete: cygwin$ pdflatex [TAB] で /usr/bin/cat: '': No such file or
+  * BUG complete: cygwin$ pdflatex [TAB] で /usr/bin/cat: '': No such file or
     directory というエラーが出力される。chat では再現しない。bash-completion は
     ロードされていない。
 
@@ -6154,6 +6154,14 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-03-02
+
+  * blehook -+= は入力しにくいし見にくいので != を一意追加として対応する [#D1791]
+
+    * done: !=  ... 未だ登録されていない時に追加する
+    * done: -+= ... 後ろに持ってくるという意味に変える。
+    * done: +-= ... 前に持ってくるという意味で追加する。
+
+    * update wiki
 
   * complete: sabbrev を削除する機能がない [#D1790]
 

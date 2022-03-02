@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1193
+ble/test/start-section 'ble/util' 1197
 
 # bleopt
 
@@ -1073,7 +1073,23 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
            stdout='blehook FOO='
   ble/test 'blehook/has-hook FOO' exit=1
 
+  # uniq hook
+  blehook FOO+='echo hello'
+  blehook FOO+='echo world'
+  blehook FOO!='echo hello'
+  ble/test 'blehook --color=never FOO' \
+           stdout="blehook FOO+='echo hello'${_ble_term_nl}blehook FOO+='echo world'"
+  # uniq append
+  blehook FOO-+='echo hello'
+  ble/test 'blehook --color=never FOO' \
+           stdout="blehook FOO+='echo world'${_ble_term_nl}blehook FOO+='echo hello'"
+  # uniq prepend
+  blehook FOO+-='echo hello'
+  ble/test 'blehook --color=never FOO' \
+           stdout="blehook FOO+='echo hello'${_ble_term_nl}blehook FOO+='echo world'"
+
   # invoke hook
+  blehook FOO=
   blehook FOO+='echo hello'
   blehook FOO+='echo empty'
   blehook FOO+='echo world'

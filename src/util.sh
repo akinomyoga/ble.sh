@@ -1727,7 +1727,9 @@ function blehook/.print-help {
     '    NAME=COMMAND    Set hook after removing the existing hooks.' \
     '    NAME+=COMMAND   Add hook.' \
     '    NAME-=COMMAND   Remove hook.' \
-    '    NAME-+=COMMAND  Add hook if the command is not registered.' \
+    '    NAME!=COMMAND   Add hook if the command is not registered.' \
+    '    NAME-+=COMMAND  Append the hook and remove the duplicates.' \
+    '    NAME+-=COMMAND  Prepend the hook and remove the duplicates.' \
     ''
 }
 
@@ -1802,7 +1804,7 @@ function blehook {
 
   local flags print process
   local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
-  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?-?\+?=)(.*)$'
+  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?([-+!]|-\+|\+-)?=)(.*)$'
   blehook/.read-arguments "$@"
   if [[ $flags == *[HE]* ]]; then
     if [[ $flags == *H* ]]; then
@@ -1825,9 +1827,12 @@ function blehook {
   for proc in "${process[@]}"; do
     [[ $proc =~ $rex2 ]]
     local name=${BASH_REMATCH[1]}
-    local type=${BASH_REMATCH[2]}
-    local value=${BASH_REMATCH[3]}
-    if [[ $type == *-* ]]; then
+    local type=${BASH_REMATCH[3]}
+    local value=${BASH_REMATCH[4]}
+
+    local append=$value
+    case $type in
+    (*-*) # -=, -+=, +-=
       local ret
       ble/array#last-index "_ble_hook_h_$name" "$value"
       if ((ret>=0)); then
@@ -1835,10 +1840,22 @@ function blehook {
       elif [[ ${type#:} == '-=' ]]; then
         ext=1
       fi
-    fi
-    [[ ${type#:} == '=' ]] && builtin eval "_ble_hook_h_$name=()"
-    [[ ${type#:} != '-=' && $value ]] &&
-      ble/array#push "_ble_hook_h_$name" "$value"
+
+      if [[ $type != -+ ]]; then
+        append=
+        [[ $type == +- ]] &&
+          ble/array#unshift "_ble_hook_h_$name" "$value"
+      fi ;;
+
+    ('!') # !=
+      local ret
+      ble/array#last-index "_ble_hook_h_$name" "$value"
+      ((ret>=0)) && append= ;;
+
+    ('') builtin eval "_ble_hook_h_$name=()" ;; # =
+    ('+'|*) ;; # +=
+    esac
+    [[ $append ]] && ble/array#push "_ble_hook_h_$name" "$append"
   done
 
   if ((${#print[@]})); then

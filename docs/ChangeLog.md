@@ -95,6 +95,7 @@
 - util: preserve original traps and restore them on unload `#D1775` `#D1776` `#D1777` 398e404
 - progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 0000000
 - sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 0000000
+- util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0000000
 
 ## Changes
 
