@@ -9710,7 +9710,7 @@ function ble-edit/bind/.check-detach {
         "Please run \`stty sane' to recover the correct TTY state."
 
       if ((_ble_bash>=40000)); then
-        READLINE_LINE='stty sane;' READLINE_POINT=10 READLINE_MARK=0
+        READLINE_LINE=' stty sane;' READLINE_POINT=11 READLINE_MARK=0
         printf %s "$READLINE_LINE"
       fi
     fi
