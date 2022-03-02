@@ -1832,21 +1832,9 @@ bash_tips
   * rsteube の記事
     https://dev.to/rsteube/a-pragmatic-approach-to-shell-completion-4gp0
 
-    filtering を description に対しても適用するという事が書かれている。
-    それは確かに便利そうである。現状の実装では対応が難しい様には思われるが。
-
-  * sabbrev を削除する機能がない
-
-    削除の仕方としては以下の2種類が考えられる。
-
-    ble-sabbrev -r a # bind, complete と同様
-    ble-sabbrev a=-  # trap と同様
-
-    後者は本当に "-" に展開させたい時 (実際そういう場合が存在するのかは謎だが)
-    と衝突するので前者の方が良い気がする。
-
-    また、前者を採用するとしたら -r に対して optarg を要求するのか、或いは -r
-    に対して optarg を要求するのかで振る舞いが変わってくる。
+    filtering を description に対しても適用するという事が書かれている。それは確
+    かに便利そうである。現状の実装では対応が難しい様には思われるが。これは fzf
+    の様に一旦絞り込み専用の入力欄に移動するなどの事がないと使いにくいだろう。
 
   * trap (lastarg): 一応 heredoc 等を使えば eval の中から複数行の lastarg を設
     定する事ができるのではないか。他に複数行で、eval されても余分な実行が起こら
@@ -6166,6 +6154,19 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-03-02
+
+  * complete: sabbrev を削除する機能がない [#D1790]
+
+    削除の仕方としては以下の2種類が考えられる。
+
+    ble-sabbrev -r a # bind, complete と同様
+    ble-sabbrev a=-  # trap と同様
+
+    後者は本当に "-" に展開させたい時 (実際そういう場合が存在するのかは謎だが)
+    と衝突するので前者の方が良い気がする。
+
+    また、前者を採用するとしたら -r に対して optarg を要求するのか、或いは -r
+    に対して optarg を要求するのかで振る舞いが変わってくる。
 
   * progcomp: ble.sh 既定の候補を生成しない機能 (motivated by rsteube) [#D1789]
     https://github.com/rsteube/carapace/issues/431

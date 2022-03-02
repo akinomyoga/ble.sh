@@ -7808,6 +7808,10 @@ function ble/complete/sabbrev/.print-definition {
 ##   登録されている静的略語展開の一覧を表示します。
 ##   @var[in] flags
 ##
+## @fn ble/complete/sabbrev/reset [keys...]
+##   登録されている静的略語展開を削除します。
+##   @var[in] flags
+##
 ## @fn ble/complete/sabbrev/get key
 ##   静的略語展開の展開値を取得します。
 ##   @param[in] key
@@ -7841,6 +7845,17 @@ function ble/complete/sabbrev/list {
   done
   return "$ext"
 }
+function ble/complete/sabbrev/reset {
+  if (($#)); then
+    local key
+    for key; do
+      ble/gdict#unset _ble_complete_sabbrev "$key"
+    done
+  else
+    ble/gdict#clear _ble_complete_sabbrev
+  fi
+  return 0
+}
 function ble/complete/sabbrev/get {
   local key=$1
   ble/gdict#get _ble_complete_sabbrev "$key"
@@ -7860,6 +7875,8 @@ function ble/complete/sabbrev/read-arguments {
       case $arg in
       (--help)
         flags=H$flags ;;
+      (--reset)
+        flags=r$flags
       (--color|--color=always)
         flags=c${flags//[cn]} ;;
       (--color=never)
@@ -7881,6 +7898,8 @@ function ble/complete/sabbrev/read-arguments {
             else
               ble/array#push specs "$c:$1"; shift
             fi ;;
+          (r)
+            flags=r$flags ;;
           (*)
             ble/util/print "ble-sabbrev: unknown option '-$c'." >&2
             flags=E$flags ;;
@@ -7902,14 +7921,20 @@ function ble-sabbrev {
   if [[ $flags == *H* || $flags == *E* ]]; then
     [[ $flags == *E* ]] && ble/util/print
     ble/util/print-lines \
-      'usage: ble-sabbrev [key=value|-m key=function|--help]' \
+      'usage: ble-sabbrev [KEY=VALUE|-m KEY=FUNCTION]...' \
+      'usage: ble-sabbrev [-r|--reset] [KEY...]' \
+      'usage: ble-sabbrev --help' \
       '     Register sabbrev expansion.'
     [[ ! $flags == *E* ]]; return "$?"
   fi
 
   local ext=0
   if ((${#specs[@]}==0||${#print[@]})); then
-    ble/complete/sabbrev/list "${print[@]}" || ext=$?
+    if [[ $flags == *r* ]]; then
+      ble/complete/sabbrev/reset "${print[@]}"
+    else
+      ble/complete/sabbrev/list "${print[@]}"
+    fi || ext=$?
   fi
 
   local spec key type value
