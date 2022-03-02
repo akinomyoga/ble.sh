@@ -7194,7 +7194,7 @@ function ble-edit/bind/.check-detach {
       ble/textarea#render
       ble/util/buffer.flush >&2
       if ((_ble_bash>=40000)); then
-        READLINE_LINE='stty sane;' READLINE_POINT=10
+        READLINE_LINE=' stty sane;' READLINE_POINT=10
         printf %s "$READLINE_LINE"
       fi
     fi
