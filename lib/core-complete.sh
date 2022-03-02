@@ -1728,7 +1728,7 @@ function ble/complete/action:progcomp/initialize/.reconstruct-from-noquote {
 function ble/complete/action:progcomp/initialize {
   if [[ :$DATA: == *:noquote:* ]]; then
     local progcomp_resolve_brace=$quote_fixed_comps
-    [[ :$DATA: == *:syntax-raw:* ]] && progcomp_resolve_brace=
+    [[ :$DATA: == *:ble/syntax-raw:* ]] && progcomp_resolve_brace=
     ble/complete/action:progcomp/initialize/.reconstruct-from-noquote
     return 0
   else
@@ -1745,7 +1745,7 @@ function ble/complete/action:progcomp/initialize.batch {
     # Note: 直接 comp_words に対して補完した時は意図的にブレース展開を潰してい
     # ると解釈できるので、ブレース展開を復元する事はしない。
     local progcomp_resolve_brace=$quote_fixed_comps
-    [[ :$DATA: == *:syntax-raw:* ]] && progcomp_resolve_brace=
+    [[ :$DATA: == *:ble/syntax-raw:* ]] && progcomp_resolve_brace=
 
     cands=()
     local INSERT simple_flags simple_ibrace ret count icand=0
@@ -1765,7 +1765,7 @@ function ble/complete/action:progcomp/complete {
   if [[ $DATA == *:filenames:* ]]; then
     ble/complete/action:file/complete
   else
-    if [[ $DATA != *:no-mark-directories:* && -d $CAND ]]; then
+    if [[ $DATA != *:ble/no-mark-directories:* && -d $CAND ]]; then
       ble/complete/action/requote-final-insert
       ble/complete/action/complete.mark-directory
     else
@@ -1774,6 +1774,7 @@ function ble/complete/action:progcomp/complete {
   fi
 
   [[ $DATA == *:nospace:* ]] && suffix=${suffix%' '}
+  [[ $DATA == *:ble/no-mark-directories:* && -d $CAND ]] && suffix=${suffix%/}
 }
 function ble/complete/action:progcomp/init-menu-item {
   if [[ $DATA == *:filenames:* ]]; then
@@ -3045,7 +3046,7 @@ function ble/complete/progcomp/.compgen-helper-prog {
     ble/complete/progcomp/.compvar-initialize
     local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
 
-    if [[ $comp_opts == *:prog-trim:* ]]; then
+    if [[ $comp_opts == *:ble/prog-trim:* ]]; then
       # WA: aws_completer
       local compreply
       ble/util/assign compreply '"$comp_prog" "$cmd" "$cur" "$prev" < /dev/null'
@@ -3243,7 +3244,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
   # 1. sed (sort 前処理)
   local sed_script=
   {
-    # $comp_opts == *:filter_by_prefix:*
+    # $comp_opts == *:ble/filter-by-prefix:*
     #
     # Note: "$COMPV" で始まる単語だけを sed /^$rex_compv/ でフィルタする。
     #   それで候補が一つもなくなる場合にはフィルタ無しで単語を列挙する。
@@ -3253,7 +3254,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
     #   #D0245 cdd38598 で ble/complete/progcomp/.compgen-helper-func に於いて、
     #   "$comp_func" に引数を渡し忘れていたのが原因と思われる。
     #   これは 1929132b に於いて修正されたが念のためにフィルタを残していた気がする。
-    if [[ $comp_opts == *:filter_by_prefix:* ]]; then
+    if [[ $comp_opts == *:ble/filter-by-prefix:* ]]; then
       local ret; ble/string#escape-for-sed-regex "$COMPV"; local rex_compv=$ret
       sed_script='!/^'$rex_compv'/d'
     fi
@@ -3434,7 +3435,7 @@ function ble/complete/progcomp/.compgen {
   if [[ $comp_prog ]]; then
     # aws
     if [[ $comp_prog == aws_completer ]]; then
-      comp_opts=${comp_opts}no-mark-directories:prog-trim:
+      comp_opts=${comp_opts}ble/no-mark-directories:ble/prog-trim:
     fi
   fi
 
@@ -4917,6 +4918,7 @@ function ble/complete/source:argument {
   # try complete&compgen
   ble/complete/source:argument/.generate-user-defined-completion; local ext=$?
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
+  [[ $comp_opts == *:ble/no-default:* ]] && return "$ext"
 
   # "-option" の時は complete options based on mandb
   ble/complete/source:option; local ext=$?

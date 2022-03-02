@@ -1823,21 +1823,11 @@ bash_tips
   * より一般の補完 framework に向けたインターフェイスについて
     https://github.com/rsteube/carapace/issues/431
 
-    > prevent default file completion when no values returned
-
-    このオプションを提供する事にする。
-
-    後 core-complete の中から公開 interface を決めてそれを説明する必要がある気
-    がする。
-
-    * 拡張 comp_opts をまとめる。prog-trim, syntax-raw, filter_by_prefix
-
-      現在参照している comp_opts は以下の通り。
-
-      $ grc '(comp_opts|DATA):? =='
-
-      元から bash に存在しているオプションは以下の通り:
-      bashdefault default dirnames filenames noquote nosort nospace plusdirs
+  * compopt 実装: 現在の実装では "name" や -DEI が与えられた場合には何もせずに
+    戻る様になっているが、本来現在の設定を変更するべきなのではないか。また、丁
+    度変更対象の補完が現在の補完と一致している時には現在の補完の振る舞いに影響
+    を与えるべきなのではないか。これについては実際の Bash の振る舞いを確認する
+    必要がある。
 
   * rsteube の記事
     https://dev.to/rsteube/a-pragmatic-approach-to-shell-completion-4gp0
@@ -6174,6 +6164,149 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-03-02
+
+  * progcomp: ble.sh 既定の候補を生成しない機能 (motivated by rsteube) [#D1789]
+    https://github.com/rsteube/carapace/issues/431
+
+    > prevent default file completion when no values returned
+
+    このオプションを提供する事にする。
+
+    現在 "候補が生成されていたら" という意味で生成候補数を参照している箇所を全
+    て書き換える必要がある気がする。
+
+    後 core-complete の中から公開 interface を決めてそれを説明する必要がある気
+    がする。
+
+    * 拡張 comp_opts をまとめる。prog-trim, syntax-raw, filter_by_prefix,
+      no-mark-directories
+
+      現在参照している comp_opts は以下の通り。
+
+      $ grc '(comp_opts|DATA):? =='
+
+      元から bash に存在しているオプションは以下の通り:
+      bashdefault default dirnames filenames noquote nosort nospace plusdirs
+
+    * done: 拡張オプション名は分かる様にした方が良いのでは。例えば ble- で始め
+      る。或いは、- で始める。もしくは -ble- で始める。
+
+      " a -prog-trim, -syntax-raw, -filter-by-prefix, -no-default
+      "
+      "   うーん。- だけだと結局ユーザー的には混乱の元であるというより、すぐにそ
+      "   れが "ble.sh" 特有の機能であると理解しにくいのではないかという気がする。
+      "   然し一方で "-" で始まっている時点で非標準の機能であるという事は明らかで
+      "   ある。
+      "
+      " b ble-prog-trim, ble-syntax-raw, ble-filter-by-prefix, ble-no-default
+      "
+      "   ble- だけでも十分の気がするが、これだと名前空間的になっていて、もっと細
+      "   かく分類したくなってしまう。
+      "
+      " c -ble-prog-trim, -ble-syntax-raw, -ble-filter-by-prefix, -ble-no-defualt
+      "
+      "   CSS の vendor prefix の様に -ms- だとか -moz-, -webkit-, -o- の様にして
+      "   いる物を真似て -ble- だとか -mwg- だとかで良いのではないかという気がす
+      "   る。-mwg- は今迄使った事がないので ble.sh には組み込まない様にしておき
+      "   たい。
+      "
+      "   然し、一方で、他の compopt の枠組みが今後出てくる様にも思われないし、対
+      "   応していない物を bash に渡したら何れにしてもエラーになるので、結局汎用
+      "   の補完を作成するとしても呼び出し元で場合分けする事になる。なので vendor
+      "   prefix の様な物を設定して場合分けに使える様にする必要があるのかも分から
+      "   ない。この様に名前を分けるのは主にユーザーの側でこれが非標準であるとい
+      "   う事が分かる様にする為の物である。
+      "
+      " どれにすれば良いか分からないが、長いものを採用する上で憚りになるのは、単
+      " に無駄な prefix がついていると読みにくいという事、冗長になるという事であ
+      " る。一方で、ユーザーや他の人の意見も聞いて最終的に決定するとなると、何れ
+      " にしても "ble" は入れた方が良いという様に要請されるのは明らかである。
+      "
+      " 然し、既に様々の ble.sh の独自機能に使われている opts では ble- 等の
+      " prefix は使っていないし、今後使う必要も全く無い。その様な物との整合性を考
+      " えると、やはり特別な prefix は特につけなくても良いのではないかという気も
+      " してきてしまう。一方で compopt はやはり本来は Bash の機能なので名前空間を
+      " 乱すのも変である。
+      "
+      " うーん。面倒なのでやはり何も新しい prefix は付けずに manual で説明・注意
+      " 喚起するだけで十分なのではないかという気がしてきた。うーん。本当だろうか。
+      "
+      " うーん。- で始まる prefix はそれ単体でオプションの様でもあるからやはり混
+      " 乱の元の気がする。と思えば prefix を設定するとしても "ble-" 一択の気がし
+      " てきた。
+      "
+      " d 或いは compopt -o prog-trim ではなくて compopt --bleopt prog-trim だと
+      "   か、compopt -O prog-trim だとか、compopt -s prog-trim の様な形の別の指
+      "   定の仕方をさせるという手もある。内部的には -prog-trim 等で良いのだろう
+      "   という気がする。compopt は実質的に -o, +o だけしかオプションがない (一
+      "   応 -DEI もある)。或いは prog-trim=on 等でも良いかもしれないと考えたが、
+      "   これは compopt を適用する対象のコマンド名と区別がつかなくなるので駄目。
+      "   飽くまでオプションの形をしていなければならない。オプションの形をしてい
+      "   る物については仮にそのオプションが存在していなかったとしてもちゃんと知
+      "   らないオプションとしてエラーになる様である。
+      "
+      "   compopt -s prog-trim; compopt -u prog-trim
+      "   compopt -O prog-trim; compopt +O prog-trim
+      "   compopt -o prog-trim; compopt +o prog-trim
+      "   compopt -o ble-prog-trim; compopt +o ble-prog-trim
+      "   compopt -o -prog-trim; compopt +o -prog-trim
+      "
+      "   うーん。やはり奇を衒った様な事をするのではなくて単に -o/+o を流用するの
+      "   が自然の気がする。"-" で始まるのも混乱の元である様に思われる。
+      "
+      "   compopt -prog-trim; compopt +prog-trim
+      "
+      "   これは短オプションの集合と区別が付かないので却下。
+      "
+      " e もう少し異なる名前付けで区別する可能性
+      "
+      "   compopt -o _prog_trim
+      "   compopt -o progTrim
+      "   compopt -o ProgTrim
+      "
+      "   これらは Bash のオプションとは違うという雰囲気は出るかもしれないがやは
+      "   り ble に関連するという事が明白ではないし、中途半端に違いを出しても仕方
+      "   がない。
+      "
+      "   いっその事、関数名に倣って / で分けるというのも手である。
+      "
+      "   compopt -o ble/prog-trim
+      "   compopt -o ble/filter-by-prefix
+      "   compopt -o ble/syntax-raw
+      "
+      "   よくある設定の様に "." で名前空間を分けるというのも有効である。
+      "
+      "   compopt -o ble.prog-trim
+      "   compopt -o ble.filter-by-prefix
+      "   compopt -o ble.syntax-raw
+      "
+      "   うーん。contrib 等との整合性も考えると / で分けるのが良い気がしてきた。
+      "   つまり、既に "名前 + /" を vendor prefix の様に使って来たのだからそれを
+      "   踏襲するのが良い。新しい option は ble/no-default という事にする。
+
+      結局 "ble/*" で統一する事にした。
+
+    [実装]
+
+    取り敢えず実装した。
+
+    * ok: うーん。然し、もし source:argument をキャンセルしたとしても、結局また
+      別の source が候補を生成するのではないかという気がする。全ての source を
+      キャンセルする必要があるだろうか。或いは、また別の source は別の種類の補
+      完に相当するので気にしない? うーん。気にしないで良い気がしてきた。
+
+      それに、候補が複雑な場合には何れにしても source:argument は何も候補を生成
+      しなくなるが、その時に意図しない別の種類の補完が起動したという記憶はない。
+      従って、実際の所 source:argument をキャンセルするだけで大体補完は終わるの
+      ではないか。つまり、argument を跨ぐ様な補完 source は現在はないので
+      source:argument が一番最後の source であり、だとすると source:argument を
+      キャンセルするだけで良い。
+
+      もし argument を跨ぐ様な補完の可能性があれば、それはまた完全に独立した補
+      完なので progcomp によって補完がキャンセルされる言われもない様な気がする。
+      これは今後実際にそういう要望が (仮に) 出た時に考えれば良い。
 
 2022-03-01
 

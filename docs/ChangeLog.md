@@ -93,7 +93,8 @@
 - exec: measure execution times `#D1756` 2b28bec
   - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 3de751e e61dbaa
 - util: preserve original traps and restore them on unload `#D1775` `#D1776` `#D1777` 398e404
- 
+- progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 0000000
+
 ## Changes
 
 - syntax: exclude <code>\\ + LF</code> at the word beginning from words (motivated by cmplstofB) `#D1431` 67e62d6
