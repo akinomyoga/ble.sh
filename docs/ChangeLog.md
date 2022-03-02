@@ -133,6 +133,7 @@
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
+  - util (CPR): fix the problem of always timing out (fixup 1481d48) `#D1792` 0000000
 - main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 88e2df5
 - mandb: integrate `mandb` with `bash-completion` (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) `#D1688` c1cd666
 - syntax: do not start argument completions immediately after previous word (reported by EmilySeville7cfg) `#D1690` 371a5a4

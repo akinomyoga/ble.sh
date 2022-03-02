@@ -6171,6 +6171,7 @@ _ble_term_CPR_hook=()
 function ble/term/CPR/request.buff {
   ((SECONDS>_ble_term_CPR_last_seconds+_ble_term_CPR_timeout)) &&
     _ble_term_CPR_hook=()
+  _ble_term_CPR_last_seconds=$SECONDS
   ble/array#push _ble_term_CPR_hook "$1"
   ble/util/buffer $'\e[6n'
   return 147
@@ -6178,6 +6179,7 @@ function ble/term/CPR/request.buff {
 function ble/term/CPR/request.draw {
   ((SECONDS>_ble_term_CPR_last_seconds+_ble_term_CPR_timeout)) &&
     _ble_term_CPR_hook=()
+  _ble_term_CPR_last_seconds=$SECONDS
   ble/array#push _ble_term_CPR_hook "$1"
   ble/canvas/put.draw $'\e[6n'
   return 147
