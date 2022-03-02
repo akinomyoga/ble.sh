@@ -1813,10 +1813,6 @@ bash_tips
 
 2022-02-20
 
-  * BUG complete: cygwin$ pdflatex [TAB] で /usr/bin/cat: '': No such file or
-    directory というエラーが出力される。chat では再現しない。bash-completion は
-    ロードされていない。
-
   * より一般の補完 framework に向けたインターフェイスについて
     https://github.com/rsteube/carapace/issues/431
 
@@ -6151,6 +6147,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-03-02
+
+  * complete: BUG cygwin$ pdflatex [TAB] で /usr/bin/cat: '': No such file or directory というエラー [#D1794]
+    Ref #D1637
+
+    chat では再現しない。bash-completion はロードされていない。
+
+    うーん。これは 2365e09c によるバグである。今迄5ヶ月間ずっと mandb を正しく
+    抽出する事ができていなかったという事になる。今迄何故気付かなかったのだろう。
+    不思議である。或いは、また別の方法によって抽出できていたという事か? → そう
+    いう事だ。つまり、Linux 等では man -w 等を使ってファイルを決定できていたの
+    で問題がなかったのである。
 
   * edit (exec_elapsed_mark): やはり既定で時・日などの分解能の表示にも対応する [#D1793]
 

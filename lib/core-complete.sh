@@ -3832,6 +3832,12 @@ function ble/complete/mandb/search-file/.check {
     return 1
   fi
 }
+## @fn ble/complete/mandb/search-file command
+##   指定したコマンドに対応する man ページのファイルを検索します。
+##   @var[out] ret
+##     見つかったファイルへのパスを格納します。
+##   @exit
+##     該当するファイルが見つかった時に成功します。
 function ble/complete/mandb/search-file {
   local command=$1
 
@@ -3840,7 +3846,7 @@ function ble/complete/mandb/search-file {
   ble/complete/mandb/search-file/.check "$path" && return
 
   # Get manpaths
-  local ret; ble/string#split ret : "$MANPATH"
+  ble/string#split ret : "$MANPATH"
 
   # Replace empty paths with the default manpaths
   ((${#ret[@]})) || ret=('')
@@ -3858,25 +3864,25 @@ function ble/complete/mandb/search-file {
   local path
   for path in "${manpath[@]}"; do
     [[ -d $path ]] || continue
-    ble/complete/mandb/search-file/.check "$path/man1/$command.1" && return
-    ble/complete/mandb/search-file/.check "$path/man1/$command.8" && return
+    ble/complete/mandb/search-file/.check "$path/man1/$command.1" && return 0
+    ble/complete/mandb/search-file/.check "$path/man1/$command.8" && return 0
     if ble/is-function ble/bin/gzip; then
-      ble/complete/mandb/search-file/.check "$path/man1/$command.1.gz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$command.8.gz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.gz" && return 0
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.gz" && return 0
     fi
     if ble/is-function ble/bin/bzcat; then
-      ble/complete/mandb/search-file/.check "$path/man1/$command.1.bz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$command.1.bz2" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$command.8.bz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$command.8.bz2" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.bz" && return 0
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.bz2" && return 0
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.bz" && return 0
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.bz2" && return 0
     fi
     if ble/is-function ble/bin/xzcat; then
-      ble/complete/mandb/search-file/.check "$path/man1/$command.1.xz" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$command.8.xz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.xz" && return 0
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.xz" && return 0
     fi
     if ble/is-function ble/bin/lzcat; then
-      ble/complete/mandb/search-file/.check "$path/man1/$command.1.lzma" && return
-      ble/complete/mandb/search-file/.check "$path/man1/$command.8.lzma" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$command.1.lzma" && return 0
+      ble/complete/mandb/search-file/.check "$path/man1/$command.8.lzma" && return 0
     fi
   done
   return 1

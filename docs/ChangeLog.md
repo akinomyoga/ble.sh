@@ -176,6 +176,7 @@
   - mandb: insert a comma in brace expansions instead of a space `#D1719` 0ac7f03
   - mandb: support man-page format of `rsync` `#D1733` 7900144
   - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 88614b8
+  - mandb: fix a bug that the man page is not correctly searched (fixup 2365e09) `#D1794` 0000000
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
