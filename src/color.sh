@@ -872,34 +872,24 @@ function ble/color/read-sgrspec {
     elif ((100<=arg&&arg<108)); then
       local color=$((arg-100+8))
       ble/color/g.setbg-index "$color"
-    elif ((arg==1)); then
-      ((g|=_ble_color_gflags_Bold))
-    elif ((arg==22)); then
-      ((g&=~_ble_color_gflags_Bold))
-    elif ((arg==4)); then
-      ((g|=_ble_color_gflags_Underline))
-    elif ((arg==24)); then
-      ((g&=~_ble_color_gflags_Underline))
-    elif ((arg==7)); then
-      ((g|=_ble_color_gflags_Revert))
-    elif ((arg==27)); then
-      ((g&=~_ble_color_gflags_Revert))
-    elif ((arg==3)); then
-      ((g|=_ble_color_gflags_Italic))
-    elif ((arg==23)); then
-      ((g&=~_ble_color_gflags_Italic))
-    elif ((arg==5)); then
-      ((g|=_ble_color_gflags_Blink))
-    elif ((arg==25)); then
-      ((g&=~_ble_color_gflags_Blink))
-    elif ((arg==8)); then
-      ((g|=_ble_color_gflags_Invisible))
-    elif ((arg==28)); then
-      ((g&=~_ble_color_gflags_Invisible))
-    elif ((arg==9)); then
-      ((g|=_ble_color_gflags_Strike))
-    elif ((arg==29)); then
-      ((g&=~_ble_color_gflags_Strike))
+    else
+      case $arg in
+      (1)    ((g|=_ble_color_gflags_Bold))       ;;
+      (22)   ((g&=~_ble_color_gflags_Bold))      ;;
+      (4)    ((g|=_ble_color_gflags_Underline))  ;;
+      (24)   ((g&=~_ble_color_gflags_Underline)) ;;
+      (7)    ((g|=_ble_color_gflags_Revert))     ;;
+      (27)   ((g&=~_ble_color_gflags_Revert))    ;;
+      (9807) ((g^=_ble_color_gflags_Revert))     ;; # toggle (for internal use)
+      (3)    ((g|=_ble_color_gflags_Italic))     ;;
+      (23)   ((g&=~_ble_color_gflags_Italic))    ;;
+      (5)    ((g|=_ble_color_gflags_Blink))      ;;
+      (25)   ((g&=~_ble_color_gflags_Blink))     ;;
+      (8)    ((g|=_ble_color_gflags_Invisible))  ;;
+      (28)   ((g&=~_ble_color_gflags_Invisible)) ;;
+      (9)    ((g|=_ble_color_gflags_Strike))     ;;
+      (29)   ((g&=~_ble_color_gflags_Strike))    ;;
+      esac
     fi
   done
 }

@@ -97,6 +97,7 @@
 - progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 0000000
 - sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 0000000
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0000000
+- prompt: escape control characters in `\w` and `\W` `#D1798` 0000000
 
 ## Changes
 

@@ -883,10 +883,27 @@ function ble/prompt/backslash:V { # = bash version %d.%d.%d
   ble/prompt/print "$_ble_prompt_const_V"
   return 0
 }
+function ble/prompt/backslash/.escape-control-characters {
+  ret=$1
+  local glob_ctrl=$'[\001-\037\177]'
+  [[ $ret == *$glob_ctrl* ]] || return 0
+
+  local out= head tail=$ret
+  while head=${tail%%$glob_ctrl*}; [[ $head != "$tail" ]]; do
+    out=$out$head
+    ble/util/s2c "${tail:${#head}:1}"
+    ble/util/c2s $((ret<32?ret+64:63))
+    out=$out$'\e[9807m'^$ret$'\e[9807m'
+    tail=${tail#*$glob_ctrl}
+  done
+  ret=$out$tail
+}
 function ble/prompt/backslash:w { # PWD
   ble/prompt/unit/add-hash '$PWD'
   ble/prompt/.update-working-directory
-  ble/prompt/print "$prompt_cache_wd"
+  local ret
+  ble/prompt/backslash/.escape-control-characters "$prompt_cache_wd"
+  ble/prompt/print "$ret"
   return 0
 }
 function ble/prompt/backslash:W { # PWD短縮
@@ -895,7 +912,9 @@ function ble/prompt/backslash:W { # PWD短縮
     ble/prompt/print "$PWD"
   else
     ble/prompt/.update-working-directory
-    ble/prompt/print "${prompt_cache_wd##*/}"
+    local ret
+    ble/prompt/backslash/.escape-control-characters "${prompt_cache_wd##*/}"
+    ble/prompt/print "$ret"
   fi
   return 0
 }
@@ -1172,7 +1191,7 @@ function ble/prompt/.instantiate {
   local chars_safe_esc='][0-7aenrdtAT@DhHjlsuvV!$\wW'
   [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $_ble_prompt_const_root == '#' ]] &&
     chars_safe_esc=${chars_safe_esc//'$'} # Note: cygwin では ble.sh 独自の方法で \$ を処理する。
-  if ((_ble_bash>=40400)) && [[ $ps != *'\'[!"$chars_safe_esc"]* ]]; then
+  if ((_ble_bash>=40400)) && [[ $ps != *'\'[!"$chars_safe_esc"]* && ! ( $ps == *'\'[wW]* && $PWD == *[$'\001'-$'\037\177']* ) ]]; then
     [[ $ps == *'\'[wW]* ]] && ble/prompt/unit/add-hash '$PWD'
     ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
     BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
