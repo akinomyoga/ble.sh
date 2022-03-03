@@ -1729,7 +1729,6 @@ function ble/base/unload {
   ble/bin/rm -rf "$_ble_base_run/$$".* 2>/dev/null
   return 0
 }
-blehook EXIT+=ble/base/unload
 
 _ble_base_attach_from_prompt=
 _ble_base_attach_PROMPT_COMMAND=()

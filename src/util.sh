@@ -2247,6 +2247,11 @@ function ble/builtin/trap/.handler {
   [[ $_ble_builtin_trap_lastarg == *$'\n'* ]] &&
     _ble_builtin_trap_lastarg=
 
+  # Note #D1797: EXIT に対する ble/base/unload は trap handler のできるだけ最後
+  # に実行する。勝手に削除されても困るし、他の handler が ble.sh の機能を使った
+  # 時に問題が起こらない様にする為。
+  ((_ble_trap_sig==0)) && ble/base/unload
+
   ble/base/.restore-bash-options set shopt
 }
 

@@ -284,6 +284,7 @@
 - complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
   - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 8039b77
 - prompt: reduce redundant evaluation of `PROMPT_COMMAND` on the startup `#D1778` 042376b
+- main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 0000000
 
 ## Compatibility
 
