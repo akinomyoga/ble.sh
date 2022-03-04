@@ -445,7 +445,7 @@ function ble/keymap:vi/info_reveal.hook {
 blehook info_reveal+=ble/keymap:vi/info_reveal.hook
 
 function ble/keymap:vi/update-mode-name {
-  if ! [[ $_ble_attached && $_ble_edit_layout == normal ]]; then
+  if [[ ! $_ble_attached ]] || ble/edit/is-command-layout; then
     _ble_keymap_vi_mode_name_dirty=1
     return 0
   fi

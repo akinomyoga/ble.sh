@@ -1256,6 +1256,20 @@ function sub:scan/mistake-_ble_bash {
   grc '\(\(.*\b_ble_base\b.*\)\)'
 }
 
+function sub:scan/command-layout {
+  echo "--- $FUNCNAME ---"
+  local esc='(\[[ -?]*[@-~])*'
+
+  # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
+  grc '/(enter-command-layout|\.insert-newline|\.newline)([[:space:]]|$)' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z^[[:space:]]*#Zd
+      \Z^[[:space:]]*function [^[:space:]]* \{$Zd
+      \Z[: ]keep-infoZd
+      \Z#D1800Zd
+      g'
+}
+
 function sub:scan {
   if ! type grc >/dev/null; then
     echo 'blesh check: grc not found. grc can be found in github.com:akinomyoga/mshex.git/' >&2

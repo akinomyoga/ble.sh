@@ -658,7 +658,7 @@ function ble/complete/menu#show {
   ble/edit/info/immediate-show "${_ble_complete_menu_info_data[@]}"
 }
 function ble/complete/menu#clear {
-  ble/edit/info/clear
+  ble/edit/info/default
 }
 
 
@@ -6903,14 +6903,14 @@ function ble/widget/complete {
       [[ :$opts: != *:no-bell:* ]] &&
         ble/widget/.bell 'complete: limit reached'
       if [[ $cand_limit_reached == cancel ]]; then
-        ble/edit/info/clear
+        ble/edit/info/default
         return 1
       fi
     fi
     if ((ext!=0||cand_count==0)); then
       [[ :$opts: != *:no-bell:* && ! $cand_limit_reached ]] &&
         ble/widget/.bell 'complete: no completions'
-      ble/edit/info/clear
+      ble/edit/info/default
       return 1
     fi
   fi

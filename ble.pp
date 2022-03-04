@@ -1698,7 +1698,7 @@ function ble-detach/impl {
 function ble-detach/message {
   ble/util/buffer.flush >&2
   printf '%s\n' "$@" 1>&2
-  ble/edit/info/hide
+  ble/edit/info/clear
   ble/textarea#render
   ble/util/buffer.flush >&2
 }

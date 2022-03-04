@@ -287,7 +287,6 @@ function ble/application/render {
     (panel)
       local _ble_prompt_update=owner
       ble/prompt/update
-      ble/edit/leave-command-layout # ble/edit 特有
       ble/canvas/panel/render ;;
     (forms:*)
       ble/forms/render "${render#*:}" ;;
@@ -368,16 +367,30 @@ _ble_canvas_panel_focus=0
 _ble_canvas_panel_class=(ble/textarea ble/textarea ble/edit/info ble/prompt/status)
 _ble_canvas_panel_vfill=3
 
-_ble_edit_layout=normal
+_ble_edit_command_layout_level=0
 function ble/edit/enter-command-layout {
-  [[ $_ble_edit_layout == command ]] && return 0
-  _ble_edit_layout=command
-  ble/edit/info/hide
+  ((_ble_edit_command_layout_level++==0)) || return 0
+
+  # 一時的に info 及び status を消去する。
+  ble/edit/info#collapse "$_ble_edit_info_panel"
   ble/prompt/status#collapse
 }
 function ble/edit/leave-command-layout {
-  _ble_edit_layout=normal
-  ble/edit/info/reveal
+  ((_ble_edit_command_layout_level>0&&
+      --_ble_edit_command_layout_level==0)) || return 0
+
+  # 抑制した info を改めて表示し直す。一時的に表示していた内容は消去して
+  # default の内容を表示する。
+  blehook/invoke info_reveal
+  ble/edit/info/default
+}
+function ble/edit/clear-command-layout {
+  ((_ble_edit_command_layout_level>0)) || return 0
+  _ble_edit_command_layout_level=1
+  ble/edit/leave-command-layout
+}
+function ble/edit/is-command-layout {
+  ((_ble_edit_command_layout_level>0))
 }
 
 # 
@@ -388,6 +401,9 @@ _ble_prompt_status_panel=3
 _ble_prompt_status_dirty=
 _ble_prompt_status_data=()
 _ble_prompt_status_bbox=()
+
+# Note: 高さは 0 か 1 のどちらかである事を前提に設計してある。より多くの行を表
+# 示したい場合には _ble_prompt_status_data を計算する時点で調整が必要になる。
 
 function ble/prompt/status#panel::invalidate {
   _ble_prompt_status_dirty=1
@@ -425,12 +441,10 @@ function ble/prompt/status#panel::render {
   ble/canvas/bflush.draw
 }
 function ble/prompt/status#panel::getHeight {
-  if [[ $_ble_edit_layout == command ]]; then
+  if ble/edit/is-command-layout || [[ ! ${_ble_prompt_status_data[10]} ]]; then
     height=0:0
-  elif [[ ${_ble_prompt_status_data[10]} ]]; then
-    height=0:1
   else
-    height=0:0
+    height=0:1
   fi
 }
 function ble/prompt/status#panel::onHeightChange {
@@ -1487,11 +1501,12 @@ if ble/is-function ble/util/idle.push; then
   _ble_prompt_timeout_lineno=
   function ble/prompt/timeout/process {
     ble/util/idle.suspend # exit に失敗した時の為 task を suspend にする
-    _ble_edit_line_disabled=1 ble/widget/.insert-newline
-    ble/util/buffer.flush
-    ble/util/print "${_ble_term_setaf[12]}[ble: auto-logout]$_ble_term_sgr0 timed out waiting for input"
-    builtin exit 0 &>/dev/null
-    builtin exit 0 &>/dev/null
+    local msg="${_ble_term_setaf[12]}[ble: auto-logout]$_ble_term_sgr0 timed out waiting for input"
+    ble/widget/.internal-print-command '
+      ble/util/print "$msg"
+      builtin exit 0 &>/dev/null
+      builtin exit 0 &>/dev/null' pre-flush
+    return 1 # exit に失敗した時
   } >/dev/tty
   function ble/prompt/timeout/check {
     [[ $_ble_edit_lineno == "$_ble_prompt_timeout_lineno" ]] && return 0
@@ -1580,7 +1595,7 @@ function ble/prompt/update {
         # #D1750 PROMPT_COMMAND 及び PRECMD が何か出力する時は表示が乱れるので
         # クリアする。点滅などを避ける為、既定では off にしておく。
         if [[ $bleopt_prompt_command_changes_layout ]]; then
-          ble/edit/enter-command-layout
+          ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
           local -a DRAW_BUFF=()
           ble/canvas/panel#goto.draw 0 0 0 sgr0
           ble/canvas/bflush.draw
@@ -1591,6 +1606,10 @@ function ble/prompt/update {
         ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
         ble/prompt/update/.eval-prompt_command
         ((_ble_edit_attached)) && ble-edit/adjust-PS1
+
+        if [[ $bleopt_prompt_command_changes_layout ]]; then
+          ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
+        fi
       fi
     fi
   fi
@@ -1745,10 +1764,10 @@ _ble_edit_info_invalidated=
 
 function ble/edit/info#panel::getHeight {
   (($1!=_ble_edit_info_panel)) && return 0
-  if [[ ${_ble_edit_info[2]} ]]; then
-    height=1:$((_ble_edit_info[1]+1))
-  else
+  if ble/edit/is-command-layout || [[ ! ${_ble_edit_info[2]} ]]; then
     height=0:0
+  else
+    height=1:$((_ble_edit_info[1]+1))
   fi
 }
 function ble/edit/info#panel::invalidate {
@@ -1757,19 +1776,41 @@ function ble/edit/info#panel::invalidate {
 }
 function ble/edit/info#panel::render {
   (($1!=_ble_edit_info_panel)) && return 0
+  ble/edit/is-command-layout && return 0
   [[ $_ble_edit_info_invalidated ]] || return 0
-  _ble_edit_info_invalidated=
-  ((_ble_canvas_panel_height[$1])) || return 0
 
+  local x=${_ble_edit_info[0]} y=${_ble_edit_info[1]} content=${_ble_edit_info[2]}
   local -a DRAW_BUFF=()
-  ble/canvas/panel#clear.draw "$_ble_edit_info_panel"
-  if [[ ${_ble_edit_info[2]} ]]; then
-    ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
-    ble/canvas/put.draw "${_ble_edit_info[2]}"
-    ((_ble_canvas_x=_ble_edit_info[0]))
-    ((_ble_canvas_y+=_ble_edit_info[1]))
+  if [[ ! $content ]]; then
+    ble/canvas/panel#set-height.draw "$_ble_edit_info_panel" 0
+  else
+    ble/canvas/panel/reallocate-height.draw
+    if ((y<_ble_canvas_panel_height[$1])); then
+      ble/canvas/panel#clear.draw "$_ble_edit_info_panel"
+      ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
+      ble/canvas/put.draw "$content"
+      ((_ble_canvas_y+=y,_ble_canvas_x=x))
+    else
+      # 表示領域が足りない場合は内容消去 (本来 construct-content に於いてちゃん
+      # と確保できる高さに収められている筈。もしそれが駄目なら前回の
+      # construct-content 以降に端末の大きさが変わった等の理由が考えられる。)
+      _ble_edit_info=(0 0 "")
+      ble/canvas/panel#set-height.draw "$_ble_edit_info_panel" 0
+    fi
   fi
   ble/canvas/bflush.draw
+  _ble_edit_info_invalidated=
+}
+## @fn ble/edit/info#collapse
+##   一時的に非表示状態にする (旧 ble/edit/info/hide に対応)。
+function ble/edit/info#collapse {
+  local panel=${1-$_ble_prompt_info_panel}
+  ((panel!=_ble_edit_info_panel)) && return 0
+
+  local -a DRAW_BUFF=()
+  ble/canvas/panel#set-height.draw "$panel" 0
+  ble/canvas/bflush.draw
+  _ble_edit_info_invalidated=1
 }
 
 ## @fn ble/edit/info/.construct-content type text
@@ -1803,40 +1844,20 @@ function ble/edit/info/.construct-content {
   esac
 }
 
-function ble/edit/info/.clear-content {
-  [[ ${_ble_edit_info[2]} ]] || return 1
-  [[ $_ble_app_render_mode == panel ]] || return 0
-
-  local -a DRAW_BUFF=()
-  ble/canvas/panel#set-height.draw "$_ble_edit_info_panel" 0
-  ble/canvas/bflush.draw
-
-  _ble_edit_info=(0 0 "")
-}
-
-## @fn ble/edit/info/.render-content x y content
+## @fn ble/edit/info/.render-content x y content [opts]
 ##   @param[in] x y content
 function ble/edit/info/.render-content {
-  local x=$1 y=$2 content=$3
+  local x=$1 y=$2 content=$3 opts=$4
 
-  # 既に同じ内容で表示されているとき…。
-  [[ $content == "${_ble_edit_info[2]}" ]] && return 0
-
-  if [[ ! $content ]]; then
-    ble/edit/info/.clear-content; return "$?"
+  # 新しい内容が設定される時にのみ invalidate を設定する。
+  if [[ $content != "${_ble_edit_info[2]}" ]]; then
+    _ble_edit_info=("$x" "$y" "$content")
+    _ble_edit_info_invalidated=1
   fi
 
-  _ble_edit_info=("$x" "$y" "$content")
-
+  [[ :$opts: == *:defer:* ]] && return 0
   [[ $_ble_app_render_mode == panel ]] || return 0
-
-  local -a DRAW_BUFF=()
-  ble/canvas/panel/reallocate-height.draw
-  ble/canvas/panel#clear.draw "$_ble_edit_info_panel"
-  ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
-  ble/canvas/put.draw "$content"
-  ((_ble_canvas_y+=y,_ble_canvas_x=x))
-  ble/canvas/bflush.draw
+  ble/edit/info#panel::render "$_ble_edit_info_panel"
 }
 
 _ble_edit_info_default=(0 0 "")
@@ -1877,30 +1898,24 @@ function ble/edit/info/set-default {
   local x y content
   ble/edit/info/.construct-content "$type" "$text"
   _ble_edit_info_default=("$x" "$y" "$content")
+  [[ $_ble_edit_info_scene == default ]] &&
+    ble/edit/info/.render-content "${_ble_edit_info_default[@]}" defer
 }
 function ble/edit/info/default {
   _ble_edit_info_scene=default
-  (($#)) && ble/edit/info/set-default "$@"
+  if (($#)); then
+    ble/edit/info/set-default "$@"
+  else
+    ble/edit/info/.render-content "${_ble_edit_info_default[@]}" defer
+  fi
   return 0
 }
-function ble/edit/info/clear {
-  ble/edit/info/default
-}
 
-## @fn ble/edit/info/hide
-## @fn ble/edit/info/reveal
-##
-##   これらの関数は .newline 前後に一時的に info の表示を抑制するための関数である。
-##   この関数の呼び出しの後に flush が入ることを想定して ble/util/buffer.flush は実行しない。
-##
-function ble/edit/info/hide {
-  ble/edit/info/.clear-content
-}
-function ble/edit/info/reveal {
-  blehook/invoke info_reveal
-  if [[ $_ble_edit_info_scene == default ]]; then
-    ble/edit/info/.render-content "${_ble_edit_info_default[@]}"
-  fi
+function ble/edit/info/clear {
+  [[ ${_ble_edit_info[2]} ]] || return 1
+  [[ $_ble_app_render_mode == panel ]] || return 0
+  _ble_edit_info_scene=clear
+  ble/edit/info/.render-content 0 0 ""
 }
 
 function ble/edit/info/immediate-show {
@@ -1909,10 +1924,10 @@ function ble/edit/info/immediate-show {
   ble/canvas/panel/load-position "$ret"
   ble/util/buffer.flush >&2
 }
-function ble/edit/info/immediate-clear {
+function ble/edit/info/immediate-default {
   local ret; ble/canvas/panel/save-position
-  ble/edit/info/clear
-  ble/edit/info/reveal
+  ble/edit/info/default
+  ble/edit/info/.render-content "${_ble_edit_info_default[@]}"
   ble/canvas/panel/load-position "$ret"
   ble/util/buffer.flush >&2
 }
@@ -3039,9 +3054,11 @@ function ble/textarea#render {
   # 描画内容の計算 (配置情報、着色文字列)
 
   local cols=${COLUMNS-80}
-  local rps1_width=${_ble_prompt_rps1_data[11]}
+
+  local subprompt_enabled=
+  ((_ble_textarea_panel==0)) && subprompt_enabled=1
   local rps1_enabled=$_ble_prompt_rps1_enabled
-  _ble_prompt_rps1_data[12]=$rps1_enabled
+  local rps1_width=${_ble_prompt_rps1_data[11]}
   if [[ $rps1_enabled ]]; then
     ((cols-=rps1_width+1,_ble_term_xenl||cols--))
     if [[ $rps1_enabled == erase ]]; then
@@ -3119,9 +3136,11 @@ function ble/textarea#render {
     # プロンプトに更新があれば表示
     [[ $rps1_enabled ]] && ble/textarea#render/.show-rprompt
     ble/textarea#render/.show-prompt
-    ble/textarea#render/.show-control-string _ble_prompt_xterm_title
-    ble/textarea#render/.show-control-string _ble_prompt_screen_title
-    ble/textarea#render/.show-control-string _ble_prompt_term_status
+    if [[ $subprompt_enabled ]]; then
+      ble/textarea#render/.show-control-string _ble_prompt_xterm_title
+      ble/textarea#render/.show-control-string _ble_prompt_screen_title
+      ble/textarea#render/.show-control-string _ble_prompt_term_status
+    fi
 
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
@@ -3154,9 +3173,11 @@ function ble/textarea#render {
     # プロンプト描画
     [[ $rps1_enabled ]] && ble/textarea#render/.show-rprompt force
     ble/textarea#render/.show-prompt force
-    ble/textarea#render/.show-control-string _ble_prompt_xterm_title  force
-    ble/textarea#render/.show-control-string _ble_prompt_screen_title force
-    ble/textarea#render/.show-control-string _ble_prompt_term_status  force
+    if [[ $subprompt_enabled ]]; then
+      ble/textarea#render/.show-control-string _ble_prompt_xterm_title  force
+      ble/textarea#render/.show-control-string _ble_prompt_screen_title force
+      ble/textarea#render/.show-control-string _ble_prompt_term_status  force
+    fi
 
     # 全体描画
     _ble_textarea_scroll=$scroll
@@ -3422,7 +3443,7 @@ function ble/widget/redraw-line {
 }
 function ble/widget/clear-screen {
   ble-edit/content/clear-arg
-  ble/edit/enter-command-layout
+  ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
   ble/textarea#invalidate
   local -a DRAW_BUFF=()
   ble/canvas/panel/goto-top-dock.draw
@@ -3430,6 +3451,7 @@ function ble/widget/clear-screen {
   ble/util/buffer "$_ble_term_clear"
   _ble_canvas_x=0 _ble_canvas_y=0
   ble/term/visible-bell/cancel-erasure
+  ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
 }
 function ble/widget/clear-display {
   ble/util/buffer $'\e[3J'
@@ -4685,7 +4707,7 @@ function ble/widget/exit {
 
   # Note: bleopt_syntax_debug=1 の時 ble/textarea#render の中で info が設定されるので、
   #   これは ble/textarea#render より後である必要がある。
-  ble/edit/enter-command-layout
+  ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
 
   local -a DRAW_BUFF=()
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
@@ -4696,6 +4718,7 @@ function ble/widget/exit {
   # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
   builtin exit 0 &>/dev/null
   builtin exit 0 &>/dev/null
+  ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
   return 1
 }
 function ble/widget/delete-forward-char-or-exit {
@@ -5555,6 +5578,10 @@ _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 _ble_edit_exec_BASH_COMMAND=$BASH
 function ble-edit/exec/register {
+  if [[ $1 != *[!"$_ble_term_IFS"]* ]]; then
+    ble/edit/leave-command-layout
+    return 1
+  fi
   ble/array#push _ble_edit_exec_lines "$1"
 }
 function ble-edit/exec/has-pending-commands {
@@ -6285,7 +6312,7 @@ function ble-edit/exec:gexec/TERM/enter {
       ble-detach
       ble-edit/bind/.check-detach && return 1
     fi
-    ble/edit/info/immediate-clear
+    ble/edit/info/immediate-default
   fi
 }
 
@@ -6332,6 +6359,7 @@ function ble-edit/exec:gexec/.end {
   ble/term/enter
   ble-edit/exec:gexec/TERM/enter || return 0 # rebind に失敗した時 .tail せずに抜ける
   ble/util/c2w:auto/check
+  ble/edit/clear-command-layout
   [[ $1 == restore ]] && return 0 # Note: 前回の呼出で .end に失敗した時 #D1170
   ble-edit/bind/.tail # flush will be called here
 }
@@ -6502,7 +6530,6 @@ function ble-edit/exec:gexec/.setup {
     buff[ibuff++]=_ble_edit_exec_gexec__TRAPDEBUG_adjust
   fi
 
-  ble/array#filter-by-glob _ble_edit_exec_lines '*[![:space:]]*'
   local count=${#_ble_edit_exec_lines[@]}
   if ((count)); then
     ble/util/buffer.flush >&2
@@ -6592,7 +6619,7 @@ function ble/widget/.insert-newline {
     ble/canvas/bflush.draw
   else
     # 最終状態の描画
-    ble/edit/enter-command-layout
+    ble/edit/enter-command-layout # #D1800 checked=.insert-newline
     ble/textarea#render leave
     ble/widget/.insert-newline/trim-prompt
 
@@ -6622,7 +6649,6 @@ function ble/widget/.insert-newline {
 function ble/widget/.hide-current-line {
   local opts=$1 y_erase=0
   [[ :$opts: == *:keep-header:* ]] && y_erase=${_ble_prompt_ps1_data[4]}
-  ble/edit/enter-command-layout
   local -a DRAW_BUFF=()
   if ((y_erase)); then
     ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" 0 "$y_erase"
@@ -6667,7 +6693,7 @@ function ble/widget/.newline {
       ble/textarea#invalidate str # (#D0995)
   fi
 
-  _ble_complete_menu_active= ble/widget/.insert-newline "$opts"
+  _ble_complete_menu_active= ble/widget/.insert-newline "$opts" # #D1800 checked=.newline
 
   # update LINENO
   local ret; ble/string#count-char "$_ble_edit_str" $'\n'
@@ -6740,17 +6766,16 @@ function ble/widget/default/accept-line {
   # 履歴展開
   local hist_expanded
   if ! ble-edit/hist_expanded.update "$command"; then
-    _ble_edit_line_disabled=1 ble/widget/.insert-newline
+    ble/widget/.internal-print-command \
+      'ble/edit/hist_expanded/.core 1>/dev/null' pre-flush # エラーメッセージを表示
     shopt -q histreedit &>/dev/null || ble/widget/.newline/clear-content
-    ble/util/buffer.flush >&2
-    ble/edit/hist_expanded/.core 1>/dev/null # エラーメッセージを表示
     return "$?"
   fi
 
   local hist_is_expanded=
   if [[ $hist_expanded != "$command" ]]; then
     if shopt -q histverify &>/dev/null; then
-      _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
       ble-edit/content/reset-and-check-dirty "$hist_expanded"
       _ble_edit_ind=${#hist_expanded}
       _ble_edit_mark=0
@@ -6762,7 +6787,7 @@ function ble/widget/default/accept-line {
     hist_is_expanded=1
   fi
 
-  ble/widget/.newline
+  ble/widget/.newline # #D1800 register
 
   [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $command"
 
@@ -6837,15 +6862,14 @@ function ble/widget/accept-single-line-or-newline {
 ## @fn ble/widget/edit-and-execute-command.edit content opts
 ##   @var[in] content
 ##   @var[in] opts
+##     no-newline が指定されていない時、内部で enter-command-layout を実行する。
+##     続けて ble-edit/exec/register が実行される事を想定する。
 ##   @var[out] ret
 function ble/widget/edit-and-execute-command.edit {
   local content=$1 opts=:$2:
 
   local file=$_ble_base_run/$$.blesh-fc.bash
   ble/util/print "$content" >| "$file"
-
-  [[ $opts == *:no-newline:* ]] ||
-    _ble_edit_line_disabled=1 ble/widget/.newline
 
   local fallback=vi
   if type emacs &>/dev/null; then
@@ -6855,6 +6879,9 @@ function ble/widget/edit-and-execute-command.edit {
   elif type nano &>/dev/null; then
     fallback=nano
   fi
+
+  [[ $opts == *:no-newline:* ]] ||
+    _ble_edit_line_disabled=1 ble/widget/.newline # #D1800 (呼び出し元で exec/register)
 
   ble/term/leave
   ${bleopt_editor:-${VISUAL:-${EDITOR:-$fallback}}} "$file"; local ext=$?
@@ -6869,12 +6896,14 @@ function ble/widget/edit-and-execute-command.edit {
   return 0
 }
 function ble/widget/edit-and-execute-command.impl {
-  local ret
+  local ret=
   ble/widget/edit-and-execute-command.edit "$1"
   local command=$ret
 
-  command=${command%$'\n'}
-  if [[ ! ${command//["$_ble_term_IFS"]} ]]; then
+  ble/string#match "$command" $'[\n]+$' &&
+    command=${command::${#command}-${#BASH_REMATCH}}
+  if [[ $command != *[!"$_ble_term_IFS"]* ]]; then
+    ble/edit/leave-command-layout
     ble/widget/.bell
     return 1
   fi
@@ -7387,7 +7416,7 @@ function ble-edit/history/history-message.hook {
   if [[ $message ]]; then
     ble/edit/info/immediate-show text "$message"
   else
-    ble/edit/info/immediate-clear
+    ble/edit/info/immediate-default
   fi
 }
 blehook history_message+=ble-edit/history/history-message.hook
@@ -9199,9 +9228,9 @@ function ble/builtin/read/.loop {
     ble/canvas/bflush.draw
   else
     if ((_ble_edit_read_accept==1)); then
-      ble/widget/.insert-newline
+      ble/widget/.insert-newline # #D1800 (既に外部状態なのでOK)
     else
-      _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 (既に外部状態なのでOK)
     fi
   fi
 
@@ -9846,29 +9875,35 @@ function ble-decode/EPILOGUE {
   return 0
 }
 
+function ble/widget/.internal-print-command {
+  local command=$1 opts=$2
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
+  [[ :$opts: != *:pre-flush:* ]] || ble/util/buffer.flush >&2
+  BASH_COMMAND=$command builtin eval -- "$command"
+  ble/edit/leave-command-layout # #D1800 pair=.insert-newline
+  [[ :$opts: != *:post-flush:* ]] || ble/util/buffer.flush >&2
+}
+
 function ble/widget/print {
   ble-edit/content/clear-arg
-  local message="$*"
+  local message="$*" lines
   [[ ${message//["$_ble_term_IFS"]} ]] || return 1
-
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline
-  ble/util/buffer.flush >&2
-  ble/util/print-lines "$@" >&2
+  lines=("$@")
+  ble/widget/.internal-print-command \
+    'ble/util/print-lines "${lines[@]}" >&2' pre-flush
 }
 function ble/widget/internal-command {
   ble-edit/content/clear-arg
   local command=$1
   [[ ${command//[$_ble_term_IFS]} ]] || return 1
-
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline
-  BASH_COMMAND=$command builtin eval -- "$command"
+  ble/widget/.internal-print-command "$command"
 }
 function ble/widget/external-command {
   ble-edit/content/clear-arg
   local _ble_local_command=$1
   [[ ${_ble_local_command//[$_ble_term_IFS]} ]] || return 1
 
-  ble/edit/enter-command-layout
+  ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
   ble/textarea#invalidate
   local -a DRAW_BUFF=()
   ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
@@ -9878,18 +9913,20 @@ function ble/widget/external-command {
   ble/util/buffer.flush >&2
   BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"; local ext=$?
   ble/term/enter
+  ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
   return "$ext"
 }
 function ble/widget/execute-command {
   ble-edit/content/clear-arg
   local command=$1
-
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline
-
-  # Note: 空コマンドでも .insert-newline は実行する。
-  [[ ${command//[$_ble_term_IFS]} ]] || return 1
+  if [[ $command != *[!"$_ble_term_IFS"]* ]]; then
+    # Note: 空コマンドでも .insert-newline は実行する。
+    _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
+    return 1
+  fi
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=exec/register
   ble-edit/exec/register "$command"
 }
 
@@ -9906,10 +9943,12 @@ function ble/widget/.EDIT_COMMAND {
   local -x READLINE_MARK=$_ble_edit_mark
   [[ $_ble_edit_arg ]] &&
     local -x READLINE_ARGUMENT=$_ble_edit_arg
+  ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
   ble/widget/.hide-current-line keep-header
   ble/util/buffer.flush >&2
-  builtin eval -- "$command" || return 1
+  builtin eval -- "$command"; local ext=$?
   ble-edit/content/clear-arg
+  ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     ble-edit/content/reset-and-check-dirty "$READLINE_LINE"
@@ -9919,6 +9958,8 @@ function ble/widget/.EDIT_COMMAND {
   local N=${#_ble_edit_str}
   ((_ble_edit_ind<0?_ble_edit_ind=0:(_ble_edit_ind>N&&(_ble_edit_ind=N))))
   ((_ble_edit_mark<0?_ble_edit_mark=0:(_ble_edit_mark>N&&(_ble_edit_mark=N))))
+
+  return "$ext"
 }
 
 ## ble-decode.sh 用の設定
@@ -9933,6 +9974,7 @@ function ble-decode/INITIALIZE_DEFMAP {
   fi
 
   # エラーメッセージ
+  ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
   ble/widget/.hide-current-line
   local -a DRAW_BUFF=()
   ble/canvas/put.draw "$_ble_term_cr$_ble_term_el${_ble_term_setaf[9]}"
@@ -9940,6 +9982,7 @@ function ble-decode/INITIALIZE_DEFMAP {
   ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_nl"
   ble/canvas/bflush.draw
   ble/util/buffer.flush >&2
+  ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
 
   # Fallback keymap "safe"
   ble-edit/bind/load-editing-mode safe &&

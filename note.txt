@@ -2185,6 +2185,12 @@ bash_tips
   * PROMPT_COMMAND / trap DEBUG で問題が起こる? (found by rashad-moves)
     https://github.com/rashad-moves/HomeConfigurationFiles/commit/efbac4153fd5021f1bc00d42c618fd9d6f4090b9
 
+    2022-03-03 うーん。どうもこの問題は以下で報告されている物と同じの気がする。
+    timer_show が含まれている。
+    https://github.com/akinomyoga/ble.sh/issues/176
+
+    実行時間の表示について Q&A にでも書いておくべきだろうか。
+
   * complete (source:rhs): 変数名依存の補完に対応しても良いのでは。
 
   * complete: ARGEX (eval 文脈) の補完
@@ -2333,9 +2339,6 @@ bash_tips
     bash-4.3 26MB 31MB
     bash-5.1 33MB 40MB
 
-  * bash-3.2 で syntax highlighting がロードされるのが遅い。
-    もしかして遅延している?
-
 2021-11-05
 
   * vim の :term 内部で実行すると振る舞いが変だ
@@ -2384,15 +2387,24 @@ bash_tips
 
       各パネルについて再配置で予期しない結果になる可能性について判定する。
 
-
-  * ble/builtin/read: status が表示されている気がする
-
   * ble/builtin/read: WINCH を受信できていない気がする。
     もしかすると subshell の中では受信できないという事なのかもしれない。
 
   * winch: Window サイズを変化した時に menu の座標計算がずれる
     (menu_style=dense)そもそも resize した時点で menu の再配置を実行しなければ
     ならない筈である。
+
+    或いはサイズが変わった時には menu-complete はキャンセルするべきなのではない
+    か? 特に大量の WINCH を送ってくる端末があって、大量のメニュー項目の後ろの方
+    のページを表示しているとすると、ほぼフリーズした様な形になってしまう。
+
+    或いは次に TAB を押して他の項目を移動しようとした時点で改めて配置計算を実行
+    する? 例えば、WINCH を受け取った時点では info を単に非表示にしておいて、次
+    にメニューに対して表示の変更等を行う必要が生じた時に改めて計算を実行する。
+
+    2022-03-04 そもそも ble/edit/info 自体が WINCH の時に再計算するべきなのでは
+    ないか。特に高さだけでなく幅についても考えて再計算しないと内容が乱れてしま
+    う。
 
   * スタートしてから数秒間は user input detection for C-m を off にした方が良い
     のでは。スタートした直後にペーストを実行する事があるとは思われない…。
@@ -6165,7 +6177,200 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-03-04
+
+  * 2021-10-26 ble/builtin/read: status が表示されている気がする [#D1800]
+
+    更新はされていないので実際に表示する時の問題である。然し、vi_cmap 等の時に
+    表示されるのは特に問題ない動作である。という事を考えると、その意味で status
+    が有効になっていると考えても良いのだろうか? 特に read を widget の中で使っ
+    ている時には status の高さも考慮に入れて上書きしてしまわない様にするべきな
+    のではないか。という事を考えると status を有効・無効にする条件を考える必要
+    がある気がする。
+
+    現状で既に read をどの様に表示するかを呼び出している状況で区別していなかっ
+    たか。つまり、どの panel で表示するかを切り替えていた様な気がする。確認した
+    所、特に切り替えてはいなくて常に _ble_textarea_panel=1 に表示している様だ。
+
+    右プロンプトについても同様に問題が生じそうな気がするのにも拘らず問題は起こっ
+    ていない。調べてみると右プロンプトに関しては _ble_textarea_panel=0 の時にだ
+    け有効化されて、有効な時にだけ表示される様になっている様だ。
+
+    * fixed: 一方で、prompt_xterm_title 等は read に対しても有効の儘になってい
+      る気がする。これは出力しない様にするべきなのではないか。或いは、read の中
+      で一時的に別の値に設定するべきだろうか。
+
+      ble/textarea を read 以外の textbox 等に使う場合も考えると、xterm_title
+      等についてもやはり _ble_textarea_panel=0 の時にだけ表示する様にするべきの
+      気がする。
+
+    * fixed: _ble_prompt_rps1_data[12]=$rps1_enabled という行があるが現在は
+      [12] は使っていないのではないか。
+
+      f6af802c で rps1_enabled を用いて update-textmap の計算を更新する様に変更
+      したが、これは [12] とは関係ない様だ。
+
+      元々 [12] に値を代入する様になったのは cf8d9493 である。此処では
+      update-textmap で rps1 が有効になっているかどうかを参照する為に [12] に情
+      報を格納している。然し、先述の f6af802c に於いて最早 rps1_data[12] は参照
+      されなくなった。
+
+      という事を考えると rps1_data[12] に今現在代入しているのは削除して良い。
+      (或いは現在 rps1_enabled にしているのを rps1_data[12] に代入しても良い気
+      はするが、一応決定している箇所が異なる様に思われるので現状の儘にする)
+
+    うーん。実は status_line は ble/propmt/update とはまた別の管轄の様である。
+    ble/canvas/panel/render から呼び出された時に表示している気がする。特に
+    ble/prompt/status#panel::render が呼び出された時に、正しく表示されるべき時
+    は表示し表示されない時は表示されない様に実装されているのか。特に getHeight
+    で変な値を返していないかだとかが気になる。
+
+    どうやら _ble_edit_layout が normal に戻ってしまっている様だ。本来
+    _ble_edit_layout はずっと command のままであるべきであるのにも拘らず。何処
+    で _ble_edit_layout が設定されるのは、特に command 以外の値に設定されるのは
+    leave-command-layout だけである。確認してみるとどうやら
+    ble/application/render で leave-command-layout が呼び出されている様子である。
+
+    * できるだけ明示的に enter-command-layout と leave-command-layout を対にし
+      て実行する事にした。
+
+    * .insert-newline で enter-command-layout をしているが、それに対応する
+      leave-command-layout を正しく記述する必要がある。
+
+      .insert-newline の呼び出し元。確認してみたがとても沢山ある。
+
+      ./src/edit.sh:1491:    _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      ./src/edit.sh:6687:  _ble_complete_menu_active= ble/widget/.insert-newline "$opts"
+
+        ./src/edit.sh:6701:  _ble_edit_line_disabled=1 ble/widget/.newline keep-info
+        ./src/edit.sh:6750:    ble/widget/.newline keep-info
+          keep-info を指定している時には問題ない。
+
+        ./src/edit.sh:6782:  ble/widget/.newline
+          これはコマンド実行
+        ./src/edit.sh:6865:    _ble_edit_line_disabled=1 ble/widget/.newline
+          ble/widget/edit-and-execute-command.edit
+          これは最終的に ble-edit/exec/register に至る。
+
+      ./src/edit.sh:6760:    _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      ./src/edit.sh:6770:      _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      ./src/edit.sh:9219:      ble/widget/.insert-newline
+      ./src/edit.sh:9221:      _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      ./src/edit.sh:9871:  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      ./src/edit.sh:9880:  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      ./src/edit.sh:9905:  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      ./keymap/vi_test.sh:424:  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+
+      うーん。一旦 disable して出力して再び描画するというパターンが多い気がする
+      のでこれは関数にするべきなのではないかという気がする。と思ったが、出力に
+      用いるコマンドが色々なので、eval の様な形になるだろうか。少々面倒の気がする。
+
+    * done: ble/edit/info refactor
+
+      aplication/render で leave-command-layout を実行しているのは info をこの
+      時点で表示させるのが目的だった可能性? 恐らく高さの計算は info/render を呼
+      び出さないと分からないので先に計算させているのだろうという気がする。
+
+      これは本来 getHeight の段階で正しく計算して返すべきである。現在の設計では
+      info 自体は自身が有効化されているかどうかを把握していなくて外部から表示・
+      非表示を制御する構造になっているのがいけないのではないか。
+
+      というよりそれを言い出すと textarea も同様なのではないか。textarea の表示
+      非表示はどの様に制御されているのだったか → _ble_textarea_panel が一致し
+      ていれば更新する。もし一致していなければそのままにする。もしくは "0:現在
+      の高さ" を返しているので潰れてしまう事は許容している (_ble_textarea_panel
+      が復元した時に改めて再描画するという事なのだろう)。そういう意味で
+      _ble_textarea_panel=-1 等にする事によって textarea を完全に off にする事
+      も可能である。或る意味、自身で表示・非表示・(現在の状態を保持) の状態を保
+      持していると言える。info についてもその様な状態を保持させて管理するべきの
+      気がする。それは getHeight の段階でちゃんと参照する様にする。
+
+      改めて確認したが問題はそんなに簡単ではない様な気がする。そもそも render
+      の段階では info の内容は決定されない。そういう意味に於いて別に問題は起こ
+      らない筈。問題が起こるのは、ble/edit/info/reveal を実行する事によって内容
+      を改めて構築し直す必要があるという事の気がする。何故そうなっていたのかと
+      いうと enter-command-layout に入る時に info の内容を消去しているから。
+
+      * 現状では既に leave-command-layout が何処かで呼び出されている前提なんで
+        改めて info/reveal を呼び出す必要はない。leave-command-layout が呼び出
+        された時点で info の内容も再構築されている筈だから。
+
+      x と思ったら起動時に info が表示されなくなってしまった。うーん。改めてど
+        ういう条件で再描画が必要になるのか整理して、再描画が必要になった箇所で
+        必ず invalidated を設定する様に修正する必要がある。
+
+        うーん。何だか分かった様な気がする。高さが 0 だとそもそも invalidated
+        のチェックすら来ないという事なのではないか? と思ったがそれも変である。
+        例え invaldiated であっても panel::getHeight は呼び出される筈だから。
+
+      改めて info が一体どの様にして状態を管理しているのか確認するべきである。
+      或いは再設計する。_ble_edit_info はもし info が表示されていたとしたら表示
+      されている内容である。_ble_edit_info_default は既定の内容であってこれは
+      scene が default になる時に表示される内容である。現在はどうも info が表示
+      されていないという状態も _ble_edit_info で取り扱おうとしているのが混乱の
+      原因になっている気がする。
+
+      * ok: ble/edit/info/hide を使っている箇所はあるか → 一箇所しかない。これ
+        は info#collapse に置き換えたと思って良い。
+
+    * うーん。構造的にもっと別の方法にした方が良いのかもしれないとも思われる。
+
+      ! つまり、render の側でコマンド実行中かそうでないかで動作を切り替える。コ
+      ! マンド実行中でない時には何れにしても leave-command-layout はコマンド実
+      ! 行終了後に有効にする。
+
+      コマンド実行中にだけ command-layout にするというのの方が正しいのではない
+      か。とも思ったが、enter-command-layout の時点で実はプロンプトや status,
+      info 等を削除して command-layout に入っている。という事を考えると、やはり
+      現状の実装の方が正しい様な気もする。
+
+      例えば、仮にその場でだけ command-layout になって、一旦はまた通常 layout
+      に戻って、それからその後でまた command-layout になってコマンドを実行する
+      とどうなるのだろうか。
+
+    x 空のコマンドしか実行しない状態になっていると leave-command-layout の実行
+      が抜けてしまうのではないか。
+
+      a 空のコマンドがあるかどうかは呼び出し元でちゃんとチェックする前提として、
+        gexec の側ではスキップは行わない。
+
+      b 空のコマンドしかない場合でも leave-command-layout は必ず実行する様にす
+        る。
+
+        然し、そうするとこれは .end の後で実行するしかなくなるが、.end の中で
+        .tail まで呼び出しているので、.end の後で leave-command-layout を実行し
+        ても意味がない。改めて .tail 及び再描画を呼び出す必要があって無駄である。
+
+        或いは、空のコマンドしか無い場合は特別扱いで leave-command-layout と
+        .tail を両方呼び出す様にする?
+
+      うーん。a の方法の方が良い気がする。
+
+      結局 ble-edit/exec/register の側でもチェックを入れる事にした。一部でチェッ
+      クが重複する事になるが、その方が安全であるし、論理的にすっきりしている。
+
+    x fixed: と思ったが複数のコマンドを実行して一部は leave-command-layout を実
+      行して一部は実行しないという状態になったら一体何が起こるのだろうか。。一
+      番最後に実行した物が leave-command-layout を実行していると何だか変な事に
+      なる気がする。
+
+      或いは、_ble_app_render_mode として panel の他に command も用意して、
+      command の時には reveal を実行せずに ble/canvas/panel/render を実行する?
+      panel の時には leave-command-layout を強制的に呼び出す様にする。コマンド
+      を実行している間は _ble_app_render_mode=command とする。その方が今迄の実
+      装に近いしすっきりしている様な気もする。
+
+      然し、論理的に正しい事をしているのかどうかというのは良く分からない。
+
+      うーん。これに関しては enter/leave で単に既に command かどうかを判定する
+      のではなくて、enter/leave の深さを数える様に変更する事にした。
+
 2022-03-03
+
+  * [解消] 2021-11-21 bash-3.2 で syntax highlighting がロードされるのが遅い [#D1799]
+    もしかして遅延している?
+
+    Ref #D1731 重複
 
   * 2022-01-19 PS1 のディレクトリ名に特殊文字が含まれている場合の取り扱い [#D1798]
     https://lists.gnu.org/archive/html/bug-bash/2022-01/msg00051.html
