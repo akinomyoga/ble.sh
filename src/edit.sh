@@ -465,31 +465,79 @@ function ble/prompt/status#collapse {
 _ble_prompt_hash=
 _ble_prompt_version=0
 
+function ble/prompt/.escape-control-characters {
+  ret=$1
+  local glob_ctrl=$'[\001-\037\177-\237]'
+  [[ $ret == *$glob_ctrl* ]] || return 0
+
+  local out= head tail=$ret cs
+  while head=${tail%%$glob_ctrl*}; [[ $head != "$tail" ]]; do
+    ble/util/s2c "${tail:${#head}:1}"
+    ble/unicode/GraphemeCluster/.get-ascii-rep "$ret" # -> cs
+    out=$out$head$'\e[9807m'$cs$'\e[9807m'
+    tail=${tail#*$glob_ctrl}
+  done
+  ret=$out$tail
+}
+
+## @fn ble/prompt/.initialize-constant ps defeval [opts]
+##   @param ps
+##     初期化に使用する prompt シーケンスを指定します。
+##   @param defeval
+##     初期化に使用するコマンドを指定します。ret に結果を格納します。
+##   @param[opt] opts
+##     コロン区切りのオプションリストです。escape が指定されている時、
+##     展開結果に含まれる制御文字をエスケープします。
+function ble/prompt/.initialize-constant {
+  local __ps=$1 __defeval=$2 __opts=$3
+  if ((_ble_bash>=40400)); then
+    ret=${__ps@P}
+  else
+    builtin eval -- "$__defeval"
+  fi
+
+  if [[ $__opts == *:escape:* ]]; then
+    if ((_ble_bash>=50200)); then
+      # bash-5.2 以上では bash が escape を行うが、反転などの処理が実
+      # 装されていないので、制御文字が含まれている場合には ble.sh の側
+      # で処理を行う。
+      if [[ $ret == *\^['A'-'Z[\]^_?']* ]]; then
+        builtin eval -- "$__defeval"
+        ble/prompt/.escape-control-characters "$ret"
+      elif [[ $ret == *$'\t'* ]]; then
+        ble/prompt/.escape-control-characters "$ret"
+      fi
+    else
+      ble/prompt/.escape-control-characters "$_ble_prompt_const_s"
+    fi
+  fi
+}
+
 ## called by ble-edit/initialize
 function ble/prompt/initialize {
+  local ret
+
   # hostname
-  _ble_prompt_const_H=${HOSTNAME}
+  ble/prompt/.initialize-constant '\H' 'ret=$HOSTNAME' escape
+  _ble_prompt_const_H=$ret
   if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $HOSTNAME =~ $rex ]]; then
     # IPv4 の形式の場合には省略しない
-    _ble_prompt_const_h=$HOSTNAME
+    _ble_prompt_const_h=$_ble_prompt_const_H
   else
-    _ble_prompt_const_h=${HOSTNAME%%.*}
+    _ble_prompt_const_h=${_ble_prompt_const_H%%.*}
   fi
 
   # tty basename
-  local tmp
-  if ((_ble_bash>=40400)); then
-    tmp='\l' _ble_prompt_const_l=${tmp@P}
-  else
-    ble/util/assign tmp 'ble/bin/tty 2>/dev/null'
-    _ble_prompt_const_l=${tmp##*/}
-  fi
+  ble/prompt/.initialize-constant '\l' 'ble/util/assign ret "ble/bin/tty 2>/dev/null";ret=${ret##*/}'
+  _ble_prompt_const_l=$ret
 
   # command name
-  _ble_prompt_const_s=${0##*/}
+  ble/prompt/.initialize-constant '\s' 'ret=${0##*/}' escape
+  _ble_prompt_const_s=$ret
 
   # user
-  _ble_prompt_const_u=${USER}
+  ble/prompt/.initialize-constant '\s' 'ret=$USER' escape
+  _ble_prompt_const_u=$ret
 
   # bash versions
   ble/util/sprintf _ble_prompt_const_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
@@ -897,26 +945,11 @@ function ble/prompt/backslash:V { # = bash version %d.%d.%d
   ble/prompt/print "$_ble_prompt_const_V"
   return 0
 }
-function ble/prompt/backslash/.escape-control-characters {
-  ret=$1
-  local glob_ctrl=$'[\001-\037\177]'
-  [[ $ret == *$glob_ctrl* ]] || return 0
-
-  local out= head tail=$ret
-  while head=${tail%%$glob_ctrl*}; [[ $head != "$tail" ]]; do
-    out=$out$head
-    ble/util/s2c "${tail:${#head}:1}"
-    ble/util/c2s $((ret<32?ret+64:63))
-    out=$out$'\e[9807m'^$ret$'\e[9807m'
-    tail=${tail#*$glob_ctrl}
-  done
-  ret=$out$tail
-}
 function ble/prompt/backslash:w { # PWD
   ble/prompt/unit/add-hash '$PWD'
   ble/prompt/.update-working-directory
   local ret
-  ble/prompt/backslash/.escape-control-characters "$prompt_cache_wd"
+  ble/prompt/.escape-control-characters "$prompt_cache_wd"
   ble/prompt/print "$ret"
   return 0
 }
@@ -927,7 +960,7 @@ function ble/prompt/backslash:W { # PWD短縮
   else
     ble/prompt/.update-working-directory
     local ret
-    ble/prompt/backslash/.escape-control-characters "${prompt_cache_wd##*/}"
+    ble/prompt/.escape-control-characters "${prompt_cache_wd##*/}"
     ble/prompt/print "$ret"
   fi
   return 0
@@ -1178,6 +1211,27 @@ function ble/prompt/.get-keymap-for-current-mode {
     keymap=${_ble_decode_keymap_stack[index]}
   done
 }
+
+function ble/prompt/.uses-builtin-prompt-expansion {
+  ((_ble_bash>=40400)) || return 1
+
+  local ps=$1
+  local chars_safe_esc='][0-7aenrdtAT@DhHjlsuvV!$\wW'
+  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $_ble_prompt_const_root == '#' ]] &&
+    chars_safe_esc=${chars_safe_esc//'$'} # Note: cygwin では ble.sh 独自の方法で \$ を処理する。
+
+  [[ $ps == *'\'[!"$chars_safe_esc"]* ]] && return 1
+
+  local glob_ctrl=$'[\001-\037\177]'
+  [[ $ps == *'\'[wW]* && $PWD == *$glob_ctrl* ]] && return 1
+  [[ $ps == *'\s'* && $_ble_prompt_const_s == *$'\e'* ]] && return 1
+  [[ $ps == *'\u'* && $_ble_prompt_const_u == *$'\e'* ]] && return 1
+  [[ $ps == *'\h'* && $_ble_prompt_const_h == *$'\e'* ]] && return 1
+  [[ $ps == *'\H'* && $_ble_prompt_const_H == *$'\e'* ]] && return 1
+
+  return 0
+}
+
 ## @fn ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 esc0 trace_hash0]
 ##
 ##   @var[out] x y g
@@ -1202,10 +1256,7 @@ function ble/prompt/.instantiate {
   [[ ! $ps ]] && return 0
 
   local expanded=
-  local chars_safe_esc='][0-7aenrdtAT@DhHjlsuvV!$\wW'
-  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $_ble_prompt_const_root == '#' ]] &&
-    chars_safe_esc=${chars_safe_esc//'$'} # Note: cygwin では ble.sh 独自の方法で \$ を処理する。
-  if ((_ble_bash>=40400)) && [[ $ps != *'\'[!"$chars_safe_esc"]* && ! ( $ps == *'\'[wW]* && $PWD == *[$'\001'-$'\037\177']* ) ]]; then
+  if ble/prompt/.uses-builtin-prompt-expansion "$ps"; then
     [[ $ps == *'\'[wW]* ]] && ble/prompt/unit/add-hash '$PWD'
     ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
     BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \

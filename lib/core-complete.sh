@@ -5925,16 +5925,16 @@ function ble/complete/menu-complete.class/render-item {
 
   # 基本色の初期化 (Note: 高速化の為、直接 _ble_color_g2sgr を参照する)
   local sgrN0= sgrN1= sgrB0= sgrB1=
-  [[ :$opts: == *:selected:* ]] && ((g0|=_ble_color_gflags_Revert))
+  [[ :$opts: == *:selected:* ]] && ((g0^=_ble_color_gflags_Revert))
   ret=${_ble_color_g2sgr[g=g0]}
   [[ $ret ]] || ble/color/g2sgr "$g"; sgrN0=$ret
-  ret=${_ble_color_g2sgr[g=g0|_ble_color_gflags_Revert]}
+  ret=${_ble_color_g2sgr[g=g0^_ble_color_gflags_Revert]}
   [[ $ret ]] || ble/color/g2sgr "$g"; sgrN1=$ret
   if ((${#m[@]})); then
     # 一致色の初期化
     ret=${_ble_color_g2sgr[g=g0|_ble_color_gflags_Bold]}
     [[ $ret ]] || ble/color/g2sgr "$g"; sgrB0=$ret
-    ret=${_ble_color_g2sgr[g=g0|_ble_color_gflags_Bold|_ble_color_gflags_Revert]}
+    ret=${_ble_color_g2sgr[g=(g0|_ble_color_gflags_Bold)^_ble_color_gflags_Revert]}
     [[ $ret ]] || ble/color/g2sgr "$g"; sgrB1=$ret
   fi
 
