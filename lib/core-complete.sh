@@ -3339,6 +3339,33 @@ function ble/complete/progcomp/.filter-and-split-compgen {
   return 0
 } 2>/dev/null
 
+function ble/complete/progcomp/.cobraV2.patch {
+  local prefix=$cur
+  [[ $comps_flags == *v* ]] && prefix=$COMPV
+  local unprocessed has_desc=
+  unprocessed=()
+  local lines line cand desc
+  for lines in "${out[@]}"; do
+    ble/string#split-lines lines "$lines"
+    for line in "${lines[@]}"; do
+      if [[ $line == *$'\t'* ]]; then
+        cand=${line%%$'\t'*}
+        desc=${line#*$'\t'}
+        [[ $cand == "$prefix"* ]] || continue
+        ble/complete/cand/yield word "$cand" "$desc"
+        has_desc=1
+      else
+        ble/array#push unprocessed "$line"
+      fi
+    done
+  done
+  [[ $has_desc ]] && bleopt complete_menu_style=desc
+  if ((${#unprocessed[@]})); then
+    out=("${unprocessed[@]}")
+    ble/function#advice/do
+  fi
+}
+
 ## @fn ble/complete/progcomp/.compgen opts
 ##
 ##   @param[in] opts
@@ -3430,6 +3457,13 @@ function ble/complete/progcomp/.compgen {
       ble/function#suppress-stderr _scp_remote_files 2>/dev/null
 
       ble/complete/mandb:_parse_help/inject
+    fi
+
+    # cobra GenBashCompletionV2
+    if [[ $comp_func == __start_* ]]; then
+      local target=__${comp_func#__start_}_handle_completion_types
+      ble/is-function "$target" &&
+        ble/function#advice around "$target" ble/complete/progcomp/.cobraV2.patch
     fi
   fi
   if [[ $comp_prog ]]; then

@@ -84,7 +84,7 @@
 - term: let <kbd>DECSCUSR</kbd> pass through terminal multiplexers (motivated by cmplstofB) `#D1697` a3349e4
   - util: refactor `_ble_term_TERM` `#D1746` 63fba6b
 - complete: requote for more compact representations on full completions `#D1700` a1859b6
-  - complete (requote): requote from optarg/rhs starting point `#D1786` 0000000
+  - complete (requote): requote from optarg/rhs starting point `#D1786` 93c2786
 - complete: improve support for `declare` and `[[ ... ]]` `#D1701` da38404
   - syntax: fix completion and highlighting of `declare` with assignment arguments `#D1704` `#D1705` e12bae4
   - cmdspec: refactor `{mandb => cmdspec}_opts` `#D1706` `#D1707` 0786e92
@@ -92,12 +92,12 @@
 - prompt: support `bleopt prompt_command_changes_layout` `#D1750` e199bee
 - exec: measure execution times `#D1756` 2b28bec
   - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 3de751e e61dbaa
-  - edit (`exec_elapsed_mark`): show hours and days `#D1793` 0000000
+  - edit (`exec_elapsed_mark`): show hours and days `#D1793` 699dabb
 - util: preserve original traps and restore them on unload `#D1775` `#D1776` `#D1777` 398e404
-- progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 0000000
-- sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 0000000
-- util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0000000
-- prompt: escape control characters in `\w` and `\W` `#D1798` 0000000
+- progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 7b70a0e
+- sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 29b8be3
+- util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097
+- prompt: escape control characters in `\w` and `\W` `#D1798` 8940434 a9551e5
 
 ## Changes
 
@@ -135,7 +135,7 @@
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
 - repo: add subdirectories `make` and `docs` `#D1657` 75bd04c
 - util: time out <kbd>CPR</kbd> requests `#D1669` 1481d48
-  - util (CPR): fix the problem of always timing out (fixup 1481d48) `#D1792` 0000000
+  - util (CPR): fix the problem of always timing out (fixup 1481d48) `#D1792` 9b331c4
 - main: suppress non-interactive warnings from manually sourced startup files (reported by andreclerigo) `#D1676` 0525528 88e2df5
 - mandb: integrate `mandb` with `bash-completion` (motivated by Shahabaz-Bagwan, bbyfacekiller and EmilySeville7cfg) `#D1688` c1cd666
 - syntax: do not start argument completions immediately after previous word (reported by EmilySeville7cfg) `#D1690` 371a5a4
@@ -154,8 +154,8 @@
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
 - edit (command-help): show source files for functions `#D1779` 7683ab9
 - edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 6fdabf3
-- complete (`source:command/get-desc`): show function location and body `#D1788` 0000000
-- edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 0000000
+- complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
+- edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
 
 ## Fixes
 
@@ -178,7 +178,7 @@
   - mandb: insert a comma in brace expansions instead of a space `#D1719` 0ac7f03
   - mandb: support man-page format of `rsync` `#D1733` 7900144
   - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 88614b8
-  - mandb: fix a bug that the man page is not correctly searched (fixup 2365e09) `#D1794` 0000000
+  - mandb: fix a bug that the man page is not correctly searched (fixup 2365e09) `#D1794` 65ffe70
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -252,9 +252,9 @@
 - app: work around data corruption by WINCH on intermediate state `#D1762` 5065fda
 - util (`ble/util/import`): work around filenames with bash special characters `#D1763` b27f758
 - edit: fix the restore failure of `PS1` and `PROMPT_COMMAND` on `ble-detach` `#D1784` b9fdaab
-- complete: do not attempt an independent rhs completion for arguments (reported by rsteube) `#D1787` 0000000
-- history: fix the unsaved history in the detached state `#D1795` 0000000
-- edit: fix an unexpected leave from the command layout on `read` `#D1800` 0000000
+- complete: do not attempt an independent rhs completion for arguments (reported by rsteube) `#D1787` f8bbe2c
+- history: fix the unsaved history in the detached state `#D1795` 344168e
+- edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
 
 ## Documentation
 
@@ -286,7 +286,7 @@
 - complete: use `awk` for batch `quote-insert` (motivated by banoris) `#D1714` a0b2ad2 92d9734
   - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 8039b77
 - prompt: reduce redundant evaluation of `PROMPT_COMMAND` on the startup `#D1778` 042376b
-- main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 0000000
+- main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 115baec
 
 ## Compatibility
 
@@ -341,6 +341,7 @@
   - main, trap: fix initialization order of `{save,restore}-BASH_REMATCH` (reported by SuperSandro2000) `#D1780` 689534d
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
+- progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` XXXXXXX
 
 ## Internal changes and fixes
 
