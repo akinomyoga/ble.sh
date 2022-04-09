@@ -6193,6 +6193,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-04-10
+
+  * blehook に引数が渡されなくなっている (reported by SuperSandro2000) [#D1804]
+    https://github.com/akinomyoga/ble.sh/issues/185
+
+    調べたら invoke.sandbox 経由で呼び出す時に引数が継承されていない。
+    invoke.sandbox を導入したのは最近である。6fdabf32 が該当する変更である。
+    https://github.com/akinomyoga/ble.sh/issues/179#issuecomment-1048416510
+
 2022-04-05
 
   * progcomp: cobra で生成される補完が説明を混入させる (reported by SuperSandro2000) [#D1803]

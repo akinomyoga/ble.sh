@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1197
+ble/test/start-section 'ble/util' 1198
 
 # bleopt
 
@@ -1113,6 +1113,11 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
            stdout=bar_load \
            stdout=yes
   ble/test 'blehook/eval-after-load bar "echo next"' stdout=next
+
+  # arguments
+  function func { ret="[$1]"; }
+  blehook FOO=func
+  ble/test 'blehook/invoke FOO xQAHbcpMFyFyQ' ret='[xQAHbcpMFyFyQ]'
 )
 
 # ble/builtin/trap

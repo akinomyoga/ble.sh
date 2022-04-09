@@ -1890,7 +1890,7 @@ function blehook/invoke {
   builtin eval "_ble_local_hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
   local _ble_local_hook _ble_local_ext=0
   for _ble_local_hook in "${_ble_local_hooks[@]}"; do
-    blehook/invoke.sandbox || _ble_local_ext=$?
+    blehook/invoke.sandbox "$@" || _ble_local_ext=$?
   done
   return "$_ble_local_ext"
 } 3>&2 2>/dev/null # set -x 対策 #D0930

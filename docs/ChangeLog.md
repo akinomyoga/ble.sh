@@ -154,6 +154,7 @@
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
 - edit (command-help): show source files for functions `#D1779` 7683ab9
 - edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 6fdabf3
+  - util (`blehook`): fix a bug that the the hook arguments are lost (reported by SuperSandro2000) `#D1804` XXXXXXX
 - complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
 
@@ -341,7 +342,7 @@
   - main, trap: fix initialization order of `{save,restore}-BASH_REMATCH` (reported by SuperSandro2000) `#D1780` 689534d
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
-- progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` XXXXXXX
+- progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
 
 ## Internal changes and fixes
 
