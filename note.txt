@@ -6195,6 +6195,20 @@ bash_tips
 
 2022-04-10
 
+  * BSD make で実行しようとする人対策 (question by lu9dce) [#D1805]
+    https://github.com/akinomyoga/ble.sh/issues/184
+
+    FreeBSD で make でコンパイルしようとしている人がいる。面倒なので BSD make
+    用の Makefile も用意して make で実行しても代わりに gmake を呼び出す様にする
+    事にした。
+
+    shebang が #!/bin/bash であるのが原因だと勝手に言っていたが、これは関係ない。
+    今後も似たような御節介の誤った報告が来るかもしれないので shebang 自体を削除
+    してしまっても良いのかもしれない。或いは -*- mode: sh; mode: sh-bash -*- に
+    する。然し、これだと自分の所の設定でしか Bash モードが有効にならないという
+    問題がある。取り敢えずは現状のままという事にする。今後も何か指摘してくる人
+    が居たら全部 shebang を削除する事にする。
+
   * blehook に引数が渡されなくなっている (reported by SuperSandro2000) [#D1804]
     https://github.com/akinomyoga/ble.sh/issues/185
 

@@ -30,6 +30,7 @@ In fact, I personally read it verbosely as /biːɛliː dɑt ɛseɪtʃ/ in my hea
 Installation requires the commands `git`, `make` (GNU make), and `gawk` (in addition to `bash` and POSIX standard utilities).
 For detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
 [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
+Please replace `make` with `gmake` if your system provides GNU make as `gmake` (such as in BSD).
 
 ```bash
 # TRIAL without installation
@@ -60,7 +61,7 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 You may also install `ble.sh` through package-management systems (currently only AUR):
 
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@capezotte`](https://github.com/capezotte)
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
 
 ## Features
 

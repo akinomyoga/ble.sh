@@ -28,6 +28,7 @@
 `ble.sh` インストールには `git`, `make` (GNU make), and `gawk` が必要です。
 詳細は、試用またはインストールに関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
+以下、GNU make が `gmake` として提供されているシステム (BSD など) では `make` を `gmake` に置き換えて実行してください。
 
 ```bash
 # 簡単お試し (インストールせずにお試しいただけます)
@@ -58,7 +59,7 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 パッケージ管理システムを通じて `ble.sh` をインストールする事もできます (現在 AUR のみ)。
 
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3) maintained by [`@capezotte`](https://github.com/capezotte)
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
 
 ## 機能概要
 
