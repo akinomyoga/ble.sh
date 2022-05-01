@@ -98,6 +98,7 @@
 - sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 29b8be3
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097
 - prompt: escape control characters in `\w` and `\W` `#D1798` 8940434 a9551e5
+  - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` XXXXXXX
 
 ## Changes
 
@@ -154,7 +155,7 @@
 - complete (`action:file`): always suffix `/` to complete symlinked directory names (reported by SuperSandro2000) `#D1759` 397ac1f
 - edit (command-help): show source files for functions `#D1779` 7683ab9
 - edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 6fdabf3
-  - util (`blehook`): fix a bug that the the hook arguments are lost (reported by SuperSandro2000) `#D1804` XXXXXXX
+  - util (`blehook`): fix a bug that the the hook arguments are lost (reported by SuperSandro2000) `#D1804` 479795d
 - complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
 

@@ -467,7 +467,14 @@ _ble_prompt_version=0
 
 function ble/prompt/.escape-control-characters {
   ret=$1
-  local glob_ctrl=$'[\001-\037\177-\237]'
+
+  local ctrl=$'\001-\037\177'
+  case $_ble_util_locale_encoding in
+  (UTF-8) ctrl=$ctrl$'\302\200-\302\237' ;;
+  (C)     ctrl=$ctrl$'\200-\237' ;;
+  esac
+
+  local LC_ALL= LC_COLLATE=C glob_ctrl=[$ctrl]
   [[ $ret == *$glob_ctrl* ]] || return 0
 
   local out= head tail=$ret cs
@@ -479,6 +486,7 @@ function ble/prompt/.escape-control-characters {
   done
   ret=$out$tail
 }
+ble/function#suppress-stderr ble/prompt/.escape-control-characters # LC_COLLATE
 
 ## @fn ble/prompt/.initialize-constant ps defeval [opts]
 ##   @param ps

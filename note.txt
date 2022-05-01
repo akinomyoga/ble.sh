@@ -1809,9 +1809,26 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2022-04-13
+
+  * bash が `vi-edit-and-execute-command' を追加している。
+
+    これは自分が以下で報告した事が元になっているのだろう。
+    https://lists.gnu.org/archive/html/help-bash/2022-02/msg00031.html
+
+    d70b5339 で追加されている。つまり help-bash で発言した次の日には修正が入っ
+    ていたのだった。
+
 2022-03-19
 
   * BUG bash-5.2 で \q{...} が動かなくなっている
+
+    どうもこれは bleopt の設定時に \ が重複しているのが原因の様だ。表示時の問題
+    ではなくて本当に値が変わってしまっているという事を確認した。
+
+    どうもこれは ${var[@]/%/"=$value"} の振る舞いに関する物の様だ。というかこれ
+    は既に別に patch を用意した物の気がする。というか既にこの問題を発見してそれ
+    で修正したという事の気がする。やはり早く patch を提出する事にする。
 
   * 編集文字列に含まれる制御文字の反転表示の可能性
 
@@ -2074,7 +2091,128 @@ bash_tips
 
   * term: prompt_staus_line でずれが生じる端末がやはり存在している。何故だろうか。
 
-    2022-02-02 windows terminal でもずれる
+    2022-02-02 windows terminal でもずれる。改めて確認してみる。実は status を
+    表示していなくても端末の一番下の行で改行をしようとしても開業されないのであ
+    る。という事はここで使っているシーケンスの内 windows terminal で動作しない
+    物が存在しているという事。
+
+    increase-height.draw が動作していないのではないだろうか。
+
+    うーん。もしかして DL をした時に新しく追加した行が削除されて逆スクロールし
+    ている? 更に IL も動作が変だという事が判明した。
+
+    →Cygwin に報告したらすぐに修正してくれた。これで待っていればちゃんとした振
+    る舞いになる。それまでは仕方がないので我慢する。
+
+    * 2022-03-04 terminology でずれる原因は分かった。これは terminology のバグで
+      ある。以下で変な振る舞いをするという事が分かる。
+
+      $ printf 'O\e7\e[%d;%dHA\e8K\n' $LINES $COLUMNS
+
+      https://github.com/borisfaure/terminology 報告しようと思ったが何だか良く
+      分からない。http://issues.terminolo.gy/ から
+      https://phab.enlightenment.org/project/view/8/ に跳んだが issue を作る方
+      法が分からないので取り敢えずログインする事にしてみた。そしたら元からある
+      チケットですら見ることができなくなってしまった。
+
+      面倒になったのでこれは PR にして出す事にした。
+      https://github.com/borisfaure/terminology/pull/115
+
+      * terminology version 判定
+
+        WA を追加しようと思ったが terminology を判定する方法は実は無い。xterm の
+        ふりをしているので区別が付かない。もし terminology の区別がつくのだとした
+        ら、terminology では最後の行を使わない様に修正するのが良い。
+
+        DA2 応答は 1.4.0 以降は 61;337;0 である。それより前は 41;285;0 だった様だ。
+        https://github.com/borisfaure/terminology/commit/96bbfd054b271f7ad7f31e699b13c12cb8fbb2e2 1.4.0 "61;337;0"
+        https://github.com/borisfaure/terminology/commit/e4d7cb93f2ad3c09d50362cee557815e10997687 1.4.0 "41;337;0" (not-released)
+        https://github.com/borisfaure/terminology/commit/59ad20f6f8e364b02e1c65ec28f480649eea714a 0.4.0 (DA2 には変更なし)
+        https://github.com/borisfaure/terminology/commit/526cc2aeacc0ae54825cbc3a3e2ab64f612f83c9 0.3.0 "41;285;0"
+        https://github.com/borisfaure/terminology/commit/db902446540f5e014694da0ec6fb495cfab15e62 0.2.0 "0;271;0"
+        https://github.com/borisfaure/terminology/commit/500e7be8b2b876462ed567ef6c90527f37482adb 0.2.0 "1;271;0" (not-released)
+        https://github.com/borisfaure/terminology/commit/8b822a61d7721fce16e145b57dc67ca6ae8b752d 0.1.0 "\e[?1;0c" DA2 じゃない (initial commit)
+
+        まとめると、
+
+        terminology-0.1.0 ... DA2 応答は返さない
+        terminology-0.2.0 ... 0;271;0
+        terminology-0.3.0 ... 41;285;0
+        terminology-1.4.0 ... 61;337;0
+
+      一応 temrinology はこれで100%ではないが検出できる。然し、考えてみれば検出
+      できたとしてもどうやって workaround を加えれば良いのか不明である。うーん。
+      \e8 する前に一旦 \r で行頭に戻るというのが一つの対策かもしれない。
+      →この対策でちゃんと動く様になった。
+
+    * 2022-03-08 上記と同様の現象が bash-3.2 では未だ健在である。何故だろうか。
+
+      terminal ID がうまく動いていないという事だろうか。→terminal ID はちゃん
+      とうまく行っている。terminology 1.4 という事になっている。
+
+      また別の問題という事だろうか → patched terminology では発生していない。
+      つまり同じバグ。
+
+      _ble_term_rc がちゃんと置き換わっていない可能性? → そうでもない。ちゃん
+      と \r が挿入されている。
+
+      直接 '\e8' を記述している箇所がある可能性? →うーん。そういう箇所もない。
+      DECSTBM のテストに用いている \e[r によって wrapnext が不自然な状態になっ
+      ている可能性? → テストの方にも \r を入れてみたが振る舞いは変わらない。
+
+      また問題が発生するのは最初の1回だけの様でもある。つまり、未だ端末の種類を
+      特定するよりも前の時点で実行した rc により wrapnext が壊れている可能性。
+
+
+    * 2022-03-04 terminology で最初のコマンドを実行する迄 C-h 及び BS が全く効
+      かない。何故だろうか。そもそも C-h を受信できているのかも不明である。
+      一回コマンドを実行すれば問題なくなる。
+
+      builtin bind -X を見た感じが問題ない。然し、何故か bind -X の実行結果に
+
+      "\C-h": "ble-decode/.hook 8; builtin eval -- \"$_ble_decode_bind_hook\""
+
+      というのが混入する状態になっている。
+
+      ? 何故 terminology だけで発生するのだろうか。うーん。不思議だ。調べるとど
+        の端末でも bind uvw は何か変な状態になって登録されている状態になってい
+        る。然し、\C-h も同様に設定されているのは terminology だけである。
+
+        然し、そもそも何故 uvw が直接 bind されてそれが bind external に登録さ
+        れてしまっているのか。これは何らかのミスなのではないか。
+
+        そもそもこれらの bind が設定されている箇所を特定すれば何処でこれが起こっ
+        ているのか判明する筈。
+
+        うーん。bind -x を実行している箇所を見たが別に .hook 8 を特別に指定して
+        いる箇所もないし、decode.bind.50108.UTF-8.bind も特に変な事はない。
+
+      * うーん。bind -X で違いが出るという事は bind.save に問題があるのかもしれ
+        ないと考えたが、どうやらそうでもない様だ。別に bind.save の内容は変化し
+        ていない。
+
+      * bash の version によるバグかもしれないと思って調べてみたが bash-3.2 か
+        ら 5.1 まで全て問題は再現する。plain Bash + ble.sh --norc でも再現する。
+        noattach でスタートして ble-attach を使って attach した時にも再現する。
+
+      * うーん。分かった。terminology は erase を ^? から ^H に差し替えて端末を
+        初期化している。これによって UVW? の workaround が効かなくなっていたと
+        いう事。うーん。つまり、原理的にあらゆる文字がこの影響を受ける可能性が
+        あるという事では。
+
+      --- stty1.txt^I2022-03-08 20:10:24.782885825 +0900
+      +++ stty2.txt^I2022-03-08 20:10:44.466968954 +0900
+      @@ -1,5 +1,5 @@
+       speed 38400 baud; rows 24; columns 80; line = 0;
+      -intr = ^C; quit = ^\; erase = ^H; kill = ^U; eof = ^D; eol = <undef>;
+      +intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = <undef>;
+       eol2 = <undef>; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R;
+       werase = ^W; lnext = ^V; discard = ^O; min = 1; time = 0;
+       -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
+
+      * 愈 bind-tty-special-chars を off にする必要があるという事だろうか。
+
+        但し bash-3.0 には bind-tty-special-chars は存在していない様である。
 
 2021-12-22
 
@@ -6192,6 +6330,13 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-05-01
+
+  * 日本語を含むディレクトリに入ると化けてしまう事に気づいた [#D1806]
+    Ref #D1798 a9551e5
+
+    これは \w, \W, etc 対策の副作用である。修正した。
 
 2022-04-10
 
