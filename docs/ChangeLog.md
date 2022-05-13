@@ -344,6 +344,7 @@
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
+- complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` XXXXXXX
 
 ## Internal changes and fixes
 

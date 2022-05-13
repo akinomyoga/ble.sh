@@ -3114,7 +3114,21 @@ function ble/complete/progcomp/.compgen-helper-func {
   local fDefault=
   local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
   ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
+
+  # WA for blocking scp/ssh #D1807
+  ble/function#push ssh '
+    local IFS=$_ble_term_IFS
+    if [[ " ${FUNCNAME[*]} " == *" ble/complete/progcomp/.compgen "* ]]; then
+      local -a args; args=("$@")
+      ble/util/conditional-sync "exec ssh \"\${args[@]}\"" \
+        "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall
+    else
+      ble/function#push/call-top "$@"
+    fi'
+
   builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr; local ret=$?
+
+  ble/function#pop ssh
   ble/function#pop compopt
 
   [[ $ret == 124 ]] && progcomp_retry=1
@@ -3465,6 +3479,12 @@ function ble/complete/progcomp/.compgen {
       ble/is-function "$target" &&
         ble/function#advice around "$target" ble/complete/progcomp/.cobraV2.patch
     fi
+
+    # WA for dnf completion
+    ble/function#advice around _dnf_commands_helper '
+      ble/util/conditional-sync \
+        ble/function#advice/do \
+        "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall' 2>/dev/null
   fi
   if [[ $comp_prog ]]; then
     # aws

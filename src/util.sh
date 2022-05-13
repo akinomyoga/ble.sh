@@ -3124,8 +3124,11 @@ function ble/function#push/call-top {
   else
     while ble/is-function "ble/function#push/$index:$func"; do ((index++)); done
   fi
-  ((index)) || return 0
-  "ble/function#push/$((index-1)):$func" "$@"
+  if ((index==0)); then
+    command "$func" "$@"
+  else
+    "ble/function#push/$((index-1)):$func" "$@"
+  fi
 }
 
 : "${_ble_util_lambda_count:=0}"
@@ -4061,6 +4064,46 @@ function ble/util/sleep {
 #------------------------------------------------------------------------------
 # ble/util/conditional-sync
 
+function ble/util/conditional-sync/.collect-descendant-pids {
+  local pid=$1 awk_script='
+    $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ {
+      child[$2,child[$2]++]=$1;
+    }
+    function print_recursive(pid, _, n, i) {
+      if (child[pid]) {
+        n = child[pid];
+        child[pid] = 0; # avoid infinite loop
+        for (i = 0; i < n; i++) {
+          print_recursive(child[pid, i]);
+        }
+      }
+      print pid;
+    }
+    END { print_recursive(pid); }
+  '
+  ble/util/assign ret 'ble/bin/ps -A -o pid,ppid'
+  ble/util/assign-array ret 'ble/bin/awk -v pid="$pid" "$awk_script" <<< "$ret"'
+}
+
+## @fn ble/util/conditional-sync/.kill
+##   @var __pid
+##   @var __opts
+function ble/util/conditional-sync/.kill {
+  local kill_pids
+  if [[ :$__opts: == *:killall:* ]]; then
+    ble/util/conditional-sync/.collect-descendant-pids "$__pid"
+    kill_pids=("${ret[@]}")
+  else
+    kill_pids=("$__pid")
+  fi
+
+  if [[ :$__opts: == *:SIGKILL:* ]]; then
+    builtin kill "${kill_pids[@]}" &>/dev/null
+  else
+    builtin kill -9 "${kill_pids[@]}" &>/dev/null
+  fi
+} &>/dev/null
+
 ## @fn ble/util/conditional-sync command [condition weight opts]
 ##   @param[in] command
 ##   @param[in,opt] condition
@@ -4088,7 +4131,7 @@ function ble/util/conditional-sync {
       # check timeout
       if [[ $__timeout ]]; then
         if ((__timeout<=0)); then
-          builtin kill "$__pid" &>/dev/null
+          ble/util/conditional-sync/.kill
           return 142
         fi
         ((__weight>__timeout)) && __weight=$__timeout
@@ -4101,7 +4144,7 @@ function ble/util/conditional-sync {
       builtin kill -0 "$__pid" &>/dev/null
     do
       if ! builtin eval -- "$__continue"; then
-        builtin kill "$__pid" &>/dev/null
+        ble/util/conditional-sync/.kill
         return 148
       fi
     done
