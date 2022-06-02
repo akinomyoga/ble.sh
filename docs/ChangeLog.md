@@ -98,7 +98,7 @@
 - sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 29b8be3
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097
 - prompt: escape control characters in `\w` and `\W` `#D1798` 8940434 a9551e5
-  - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` XXXXXXX
+  - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` d340233
 
 ## Changes
 
@@ -344,7 +344,7 @@
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
-- complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` XXXXXXX
+- complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e XXXXXXX
 
 ## Internal changes and fixes
 

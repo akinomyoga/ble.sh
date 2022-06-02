@@ -1809,6 +1809,21 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2022-06-02
+
+  * bash-4.4 crash (reported by notmike-5)
+    https://github.com/akinomyoga/ble.sh/issues/195
+
+    source した瞬間に crash するという事だろうか?
+
+    一方で別の問題を発見した。bash-completion scp の補完で 4.4 がcrash する。こ
+    れは ble.sh なしでも再現する。また、bash-5.0 以降では発生しない。
+    bash-4.2..4.4 の全てで再現する。これは後で bash-completion の側で対処が必要。
+
+2022-05-12
+
+  * isearch: 現在行と全く同じ内容の行には一致しないというオプション
+
 2022-04-13
 
   * bash が `vi-edit-and-execute-command' を追加している。
@@ -6364,6 +6379,9 @@ bash_tips
       然し、遅延ロードされる関数に確実に介入するには遅延ロードした時に上書きす
       る必要がある。うーん。一応 bash-completion に関しては 124 により一旦制御
       を返すので介入はできる気がする。
+
+    2022-06-02 conditional-sync のミスを push する。暫く手元に置いていたがずっ
+    とこのままにしておくのは好ましくない。
 
 2022-05-01
 

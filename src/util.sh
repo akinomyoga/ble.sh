@@ -4098,18 +4098,40 @@ function ble/util/conditional-sync/.kill {
   fi
 
   if [[ :$__opts: == *:SIGKILL:* ]]; then
-    builtin kill "${kill_pids[@]}" &>/dev/null
-  else
     builtin kill -9 "${kill_pids[@]}" &>/dev/null
+  else
+    builtin kill "${kill_pids[@]}" &>/dev/null
   fi
 } &>/dev/null
 
 ## @fn ble/util/conditional-sync command [condition weight opts]
+##   Evaluate COMMAND and kill it when CONDITION becomes unsatisfied before
+##   COMMAND ends.
+##
 ##   @param[in] command
+##     The command that is evaluated in a subshell
 ##   @param[in,opt] condition
+##     The command to test the condition to continue to run the command.  The
+##     default condition is "! ble/decode/has-input".
 ##   @param[in,opt] weight
+##     The interval of checking CONDITION in milliseconds.  The default is
+##     "100".
 ##   @param[in,opt] opts
-##     progressive-weight
+##     A colon-separated list of the following fields to control the detailed
+##     behavior:
+##
+##     @opt progressive-weight
+##       The interval of checking CONDITION is gradually increased and stops
+##       at the value specified by WEIGHT.
+##     @opt timeout=TIMEOUT
+##       When this is specified, COMMAND is unconditionally terminated when
+##       it does not end until the time specified by TIMEOUT in milliseconds
+##     @opt killall
+##       Kill also all the children and descendant processes. When this is
+##       unspecified, only the subshell used to run COMMAND is killed.
+##     @opt SIGKILL
+##       The processes are killed by SIGKILL.  When this is unspecified, the
+##       processes are killed by SIGTERM.
 ##
 function ble/util/conditional-sync {
   local __command=$1
