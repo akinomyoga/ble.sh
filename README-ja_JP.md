@@ -125,6 +125,16 @@ Vimモードの実装は2017年9月に始まり2018年3月に一先ず完成と�
 - 20xx-xx v0.5 (plan) -- TUI設定画面
 - 20xx-xx v0.6 (plan) -- エラー診断?
 
+## 制限
+
+ユーザー設定や他の Bash の枠組みとの干渉によって問題が起こる可能性があります。
+
+- `ble.sh` は一般的な変数名のシェル変数や環境変数 (`LC_*` など) がグローバルで読み込み専用変数になっていないことを想定します。
+  Bash ではグローバル変数の読み込み専用属性は関数のローカルスコープに於いても制限を与えます。
+  つまり、同名の異なるローカル変数さえ定義することができません。
+  この問題は `ble.sh` 固有の制限ではなく、あらゆる Bash の枠組みがグローバルの読み込み専用変数に影響を受けます。
+  一般的にグローバルスコープに読み込み変数を設定することはセキュリティ的な理由がない限りは非推奨と考えられています (参照 [[1]](https://lists.gnu.org/archive/html/bug-bash/2019-03/threads.html#00150), [[2]](https://lists.gnu.org/archive/html/bug-bash/2020-04/threads.html#00200), [[3]](https://mywiki.wooledge.org/BashProgramming?highlight=%28%22readonly%22%20flag,%20or%20an%20%22integer%22%20flag,%20but%20these%20are%20mostly%20useless,%20and%20serious%20scripts%20shouldn%27t%20be%20using%20them%29#Variables))。
+
 # 1 使い方
 
 ## 1.1 最新の git repository のソースから生成して試す (バージョン ble-0.4)<sup><a id="get-from-source" href="#get-from-source">†</a></sup>
