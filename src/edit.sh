@@ -4181,7 +4181,7 @@ else
     builtin history -p -- '' &>/dev/null
     ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
     if [[ $line1 != "$line2" ]]; then
-      local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
+      local rex_head='^[[:space:]]*[0-9]+\*?[[:space:]]*'
       [[ $line1 =~ $rex_head ]] &&
         line1=${line1:${#BASH_REMATCH}}
 
@@ -4577,6 +4577,7 @@ function ble-edit/history/get-count {
       local history_line
       ble/util/assign history_line 'builtin history 1'
       ble/string#split-words history_line "$history_line"
+      history_line=${history_line/'*'}
       _ble_edit_history_count=${history_line[0]}
     fi
     _ret=$_ble_edit_history_count
