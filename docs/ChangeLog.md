@@ -257,6 +257,7 @@
 - complete: do not attempt an independent rhs completion for arguments (reported by rsteube) `#D1787` f8bbe2c
 - history: fix the unsaved history in the detached state `#D1795` 344168e
 - edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
+- history: work around possible dirty prefix `*` in the history output `#D1808` XXXXXXX
 
 ## Documentation
 
@@ -344,7 +345,7 @@
 - global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
-- complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e XXXXXXX
+- complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13
 
 ## Internal changes and fixes
 

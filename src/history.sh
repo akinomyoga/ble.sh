@@ -44,10 +44,12 @@ function ble/builtin/history/is-empty {
 }
 function ble/builtin/history/.get-min {
   ble/util/assign min 'builtin history | head -1'
+  min=${min/'*'}
   ble/string#split-words min "$min"
 }
 function ble/builtin/history/.get-max {
   ble/util/assign max 'builtin history 1'
+  max=${max/'*'}
   ble/string#split-words max "$max"
 }
 
@@ -1316,7 +1318,7 @@ function ble/builtin/history/option:p {
   builtin history -p -- '' &>/dev/null
   ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
   if [[ $line1 != "$line2" ]]; then
-    local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
+    local rex_head='^[[:space:]]*[0-9]+\*?[[:space:]]*'
     [[ $line1 =~ $rex_head ]] &&
       line1=${line1:${#BASH_REMATCH}}
 
