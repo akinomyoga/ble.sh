@@ -257,7 +257,7 @@
 - complete: do not attempt an independent rhs completion for arguments (reported by rsteube) `#D1787` f8bbe2c
 - history: fix the unsaved history in the detached state `#D1795` 344168e
 - edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
-- history: work around possible dirty prefix `*` in the history output `#D1808` XXXXXXX
+- history: work around possible dirty prefix `*` in the history output `#D1808` 64a740d
 
 ## Documentation
 
@@ -376,6 +376,7 @@
 - make: update lint check `#D1709` 7e26dcd
 - test: save the test log to a file `#D1735` d8e6ea7
 - benchmark: improve determination of the base time `#D1737` ad866c1
+- main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` XXXXXXX
 
 ## Contrib
 

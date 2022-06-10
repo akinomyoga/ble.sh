@@ -128,8 +128,8 @@ I started working on the enhancement of the completion in August, 2018 and relea
 
 Some user configurations or other Bash frameworks may conflict with ble.sh. For example,
 
-- `ble.sh` need to assume that common variable names and environment variables (such as `LC_*`) are not used for the global readonly variables.
-  In Bash, global readonly variables take effect in any scope including the local scope of the function, which means that we cannot even define a local variable that have the same name as a global variable constants.
+- `ble.sh` assumes that common variable names and environment variables (such as `LC_*`) are not used for the global readonly variables.
+  In Bash, global readonly variables take effect in any scope including the local scope of the function, which means that we cannot even define a local variable that have the same name as a global readonly variable.
   This is not the problem specific to `ble.sh`, but any Bash framework may suffer from the global readonly variables.
   It is generally not recommended to define global readonly variables in Bash except for the security reasoning
   (Refs. [[1]](https://lists.gnu.org/archive/html/bug-bash/2019-03/threads.html#00150), [[2]](https://lists.gnu.org/archive/html/bug-bash/2020-04/threads.html#00200), [[3]](https://mywiki.wooledge.org/BashProgramming?highlight=%28%22readonly%22%20flag,%20or%20an%20%22integer%22%20flag,%20but%20these%20are%20mostly%20useless,%20and%20serious%20scripts%20shouldn%27t%20be%20using%20them%29#Variables)).

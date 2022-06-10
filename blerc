@@ -227,8 +227,8 @@
 ## percentage of the CPU core usage in integer, which can be calculated by
 ## "(usr+sys)*100/real".  The other values are all in unit of milliseconds.
 
-#bleopt/declare -v exec_elapsed_mark $'\e[94m[ble: elapsed %s (CPU %s%%)]\e[m'
-#bleopt/declare -v exec_elapsed_enabled 'usr+sys>=10000'
+#bleopt exec_elapsed_mark=$'\e[94m[ble: elapsed %s (CPU %s%%)]\e[m'
+#bleopt exec_elapsed_enabled='usr+sys>=10000'
 
 
 ## The following setting controls the exit when jobs are remaining. When an
@@ -934,7 +934,15 @@ blehook/eval-after-load keymap_vi blerc/vim-load-hook
 ## syntax analysis information and the syntax tree.  This is only effective in
 ## devel versions.
 
-#bleopt_syntax_debug=
+#bleopt syntax_debug=
+
+
+## When a non-empty value is specified to this option, xtrace (set -x) is
+## enabled for the internal processing of ble.sh.  The value is used for the
+## xtrace output log filename. [ Caution: The file size of the log file can
+## soon grow up to hundred megabytes or to gigabytes. ]
+
+#bleopt debug_xtrace=~/blesh.xtrace
 
 
 ## [The setting "openat_base" needs to be set before ble.sh is loaded or

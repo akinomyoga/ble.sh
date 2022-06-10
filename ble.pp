@@ -321,9 +321,95 @@ function ble/variable#copy-state {
   fi
 }
 
+# BASH_XTRACEFD は書き換えると勝手に元々設定されていた fd を閉じてしまうので、
+# 元々の fd を dup しておくなど特別な配慮が必要。
+{
+  _ble_bash_xtrace=()
+  _ble_bash_xtrace_debug_enabled=
+  _ble_bash_xtrace_debug_filename=
+  _ble_bash_xtrace_debug_fd=
+  _ble_bash_XTRACEFD=
+  _ble_bash_XTRACEFD_set=
+  _ble_bash_XTRACEFD_dup=
+} 2>/dev/null # set -x 対策
+# From src/util.sh (ble/fd#is-open and ble/fd#alloc/.nextfd)
+function ble/base/xtrace/.fdcheck { builtin : >&"$1"; } 2>/dev/null
+function ble/base/xtrace/.fdnext {
+  (($1=${_ble_util_openat_nextfd:-30},1))
+  while ble/base/xtrace/.fdcheck "${!1}"; do (($1++,1)); done
+} 
+function ble/base/xtrace/adjust {
+  local level=${#_ble_bash_xtrace[@]}
+  if [[ $- == *x* ]]; then
+    _ble_bash_xtrace[level]=1
+  else
+    _ble_bash_xtrace[level]=
+  fi
+  set +x
+
+  ((level==0)) || return 0
+  _ble_bash_xtrace_debug_enabled=
+  if [[ ${bleopt_debug_xtrace:-/dev/null} == /dev/null ]]; then
+    if [[ $_ble_bash_xtrace_debug_fd ]]; then
+      builtin eval "exec $_ble_bash_xtrace_debug_fd>&-" || return 0
+      _ble_bash_xtrace_debug_filename=
+      _ble_bash_xtrace_debug_fd=
+    fi
+  else
+    if [[ $_ble_bash_xtrace_debug_filename != "$bleopt_debug_xtrace" ]]; then
+      _ble_bash_xtrace_debug_filename=$bleopt_debug_xtrace
+      [[ $_ble_bash_xtrace_debug_fd ]] || ble/base/xtrace/.fdnext _ble_bash_xtrace_debug_fd
+      builtin eval "exec $_ble_bash_xtrace_debug_fd>>\"$bleopt_debug_xtrace\"" || return 0
+    fi
+
+    _ble_bash_XTRACEFD=${BASH_XTRACEFD-}
+    _ble_bash_XTRACEFD_set=${BASH_XTRACEFD+set}
+    if [[ ${BASH_XTRACEFD-} =~ ^[0-9]+$ ]] && ble/base/xtrace/.fdcheck "$BASH_XTRACEFD"; then
+      ble/base/xtrace/.fdnext _ble_bash_XTRACEFD_dup
+      builtin eval "exec $_ble_bash_XTRACEFD_dup>&$BASH_XTRACEFD" || return 0
+      builtin eval "exec $BASH_XTRACEFD>&$_ble_bash_xtrace_debug_fd" || return 0
+    else
+      _ble_bash_XTRACEFD_dup=
+      local newfd; ble/base/xtrace/.fdnext newfd
+      builtin eval "exec $newfd>&$_ble_bash_xtrace_debug_fd" || return 0
+      BASH_XTRACEFD=$newfd
+    fi
+    _ble_bash_xtrace_debug_enabled=1
+    set -x
+  fi
+}
+function ble/base/xtrace/restore {
+  local level=$((${#_ble_bash_xtrace[@]}-1))
+  ((level>=0)) || return 0
+  if [[ ${_ble_bash_xtrace[level]-} ]]; then
+    set -x
+  else
+    set +x
+  fi
+  builtin unset -v '_ble_bash_xtrace[level]'
+
+  ((level==0)) || return 0
+  if [[ $_ble_bash_xtrace_debug_enabled ]]; then
+    _ble_bash_xtrace_debug_enabled=
+    if [[ $_ble_bash_XTRACEFD_dup ]]; then
+      # BASH_XTRACEFD の fd を元の出力先に繋ぎ直す
+      builtin eval "exec $BASH_XTRACEFD>&$_ble_bash_XTRACEFD_dup" &&
+        builtin eval "exec $_ble_bash_XTRACEFD_dup>&-" || ((1))
+    else
+      # BASH_XTRACEFD の fd は新しく割り当てた fd なので値上書きで閉じて良い
+      if [[ $_ble_bash_XTRACEFD_set ]]; then
+        BASH_XTRACEFD=$_ble_bash_XTRACEFD
+      else
+        builtin unset -v BASH_XTRACEFD
+      fi
+    fi
+  fi
+}
+
 function ble/base/.adjust-bash-options {
   builtin eval -- "$1=\$-"
-  set +exvukT -B
+  set +evukT -B
+  ble/base/xtrace/adjust
 
   [[ $2 == shopt ]] || local shopt
   if ((_ble_bash>=40100)); then
@@ -345,12 +431,12 @@ function ble/base/.restore-bash-options {
   local set=${!1} shopt=${!2}
   [[ :$shopt: == *:nocasematch:* ]] && shopt -s nocasematch
   [[ :$shopt: == *:extdebug:* ]] && shopt -s extdebug
+  ble/base/xtrace/restore
   [[ $set == *B* ]] || set +B
   [[ $set == *T* ]] && set -T
   [[ $set == *k* ]] && set -k
   [[ $set == *u* ]] && set -u
   [[ $set == *v* ]] && set -v
-  [[ $set == *x* ]] && set -x
   [[ $set == *e* ]] && set -e # set -e は最後
   return 0
 } 2>/dev/null # set -x 対策
@@ -1475,6 +1561,8 @@ BLE_ATTACHED=
 
 #%x inc.r|@|src/def|
 #%x inc.r|@|src/util|
+
+bleopt/declare -v debug_xtrace ''
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 ble/bin/.freeze-utility-path man

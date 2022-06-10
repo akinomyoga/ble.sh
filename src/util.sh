@@ -3280,7 +3280,7 @@ fi
 
 ## @fn ble/fd#is-open fd
 ##   指定したファイルディスクリプタが開いているかどうか判定します。
-function ble/fd#is-open { : >&"$1"; } 2>/dev/null
+function ble/fd#is-open { builtin : >&"$1"; } 2>/dev/null
 
 _ble_util_openat_nextfd=
 function ble/fd#alloc/.nextfd {
