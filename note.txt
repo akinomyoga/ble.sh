@@ -6392,6 +6392,17 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-06-15
+
+  * github/workflows: nightly build (contributed by uyha) [#D1814]
+    https://github.com/akinomyoga/ble.sh/pull/197
+
+    色々勝手に建て増しした。nightly build のページに情報を載せた。nightly build
+    の ble-update ではnightly build を取得する様にした。動作確認もした。
+    file#hash の取得に使うコマンドは動的ではなくて初期化時に freeze する様にし
+    た。序でに ble/util/getmtime -> ble/file#mtime に改名して初期化を遅延させる
+    様にした (これで初期化時の fork/exec は一つ減っただろう)。
+
 2022-06-13
 
   * util (fd#alloc): fd の上限に達した時にどうするか。無限ループになるのではないか [#D1813]

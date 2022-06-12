@@ -379,6 +379,7 @@
 - main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` XXXXXXX
 - test: clean up check failures by `make check` and `make scan` `#D1812` XXXXXXX
 - util (`fd#alloc`): limit the search range of free fds `#D1813` XXXXXXX
+- github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` XXXXXXX
 
 ## Contrib
 
