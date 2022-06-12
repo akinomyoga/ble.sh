@@ -1,0 +1,25 @@
+name: ble.sh build
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  builds:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Package
+        run: |
+          make install INSDIR="$(pwd)/ble.sh"
+          tar -cJf "ble-nightly.tar.xz" ble.sh
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ble-nightly.tar.xz
+          tag_name: nightly
+          prerelease: true
+          body: Nightly build
