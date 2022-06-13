@@ -335,8 +335,9 @@ function ble/variable#copy-state {
 # From src/util.sh (ble/fd#is-open and ble/fd#alloc/.nextfd)
 function ble/base/xtrace/.fdcheck { builtin : >&"$1"; } 2>/dev/null
 function ble/base/xtrace/.fdnext {
-  (($1=${_ble_util_openat_nextfd:-30},1))
-  while ble/base/xtrace/.fdcheck "${!1}"; do (($1++,1)); done
+  local __init=${_ble_util_openat_nextfd:=${bleopt_openat_base:-30}}
+  for (($1=__init;$1<__init+1024;$1++)); do ble/base/xtrace/.fdcheck "${!1}" || break; done
+  (($1<__init+1024)) || { (($1=__init,_ble_util_openat_nextfd++)); builtin eval "exec ${!1}>&-"; } || ((1))
 } 
 function ble/base/xtrace/adjust {
   local level=${#_ble_bash_xtrace[@]}

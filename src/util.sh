@@ -3285,16 +3285,25 @@ function ble/fd#is-open { builtin : >&"$1"; } 2>/dev/null
 _ble_util_openat_nextfd=
 function ble/fd#alloc/.nextfd {
   [[ $_ble_util_openat_nextfd ]] ||
-    _ble_util_openat_nextfd=$bleopt_openat_base
+    _ble_util_openat_nextfd=${bleopt_openat_base:-30}
   # Note: Bash 3.1 では exec fd>&- で明示的に閉じても駄目。
   #   開いた後に読み取りプロセスで読み取りに失敗する。
   #   なので開いていない fd を探す必要がある。#D0992
   # Note: 指定された fd が開いているかどうかを
   #   可搬に高速に判定する方法を見つけたので
   #   常に開いていない fd を探索する。#D1318
-  while ble/fd#is-open "$_ble_util_openat_nextfd"; do
+  # Note: fd が枯渇すると探索が無限ループになるので fd 探索範囲の上限を 1024 に
+  #   制限する。もし見つからない場合には初期値の fd を上書きする。
+  local _ble_local_init=$_ble_util_openat_nextfd
+  local _ble_local_limit=$((_ble_local_init+1024))
+  while ((_ble_util_openat_nextfd<_ble_local_limit)) &&
+          ble/fd#is-open "$_ble_util_openat_nextfd"; do
     ((_ble_util_openat_nextfd++))
   done
+  if ((_ble_util_openat_nextfd>=_ble_local_lim)); then
+    _ble_util_openat_nextfd=$_ble_local_init
+    builtin eval "exec $_ble_util_openat_nextfd>&-"
+  fi
   (($1=_ble_util_openat_nextfd++))
 }
 

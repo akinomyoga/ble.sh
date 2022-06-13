@@ -378,6 +378,7 @@
 - benchmark: improve determination of the base time `#D1737` ad866c1
 - main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` XXXXXXX
 - test: clean up check failures by `make check` and `make scan` `#D1812` XXXXXXX
+- util (`fd#alloc`): limit the search range of free fds `#D1813` XXXXXXX
 
 ## Contrib
 
