@@ -1623,7 +1623,7 @@ function ble/canvas/trace/.process-csi-sequence {
       # HVP "CSI f"
       local -a params
       ble/string#split-words params "${param//[^0-9]/ }"
-      params=("${params[@]/#/10#0}") # #D1570 is-array OK
+      params=("${params[@]/#/10#0}") # WA #D1570 checked (is-array)
       local dstx dsty
       ((dstx=params[1]-1))
       ((dsty=params[0]-1))

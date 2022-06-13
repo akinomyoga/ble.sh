@@ -4418,7 +4418,7 @@ function ble/syntax:bash/ctx-heredoc-word/remove-quotes {
         local str=${BASH_REMATCH[1]}
         local a b
         b='\`' a='`'; str=${str//"$b"/"$a"}
-        b='\"' a='"'; str=${str//"$b"/"$a"} # WA #D1751 safe
+        b='\"' a='"'; str=${str//"$b"/"$a"} # WA #D1751 checked
         b='\$' a='$'; str=${str//"$b"/"$a"}
         b='\\' a='\'; str=${str//"$b"/"$a"}
         result=$result$str

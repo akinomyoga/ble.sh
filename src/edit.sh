@@ -670,7 +670,7 @@ function ble/prompt/unit#update/.update-dependencies {
 
     if [[ ! $ble_prompt_unit_processing ]]; then
       local ble_prompt_unit_processing=1
-      "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}" # WA #D1570
+      "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}" # WA #D1570 checked
     elif ble/set#contains ble_prompt_unit_mark "$unit"; then
       ble/util/print "ble/prompt: FATAL: detected cyclic dependency ($unit required by $ble_prompt_unit_parent)" >/dev/tty
       return 1
@@ -1384,7 +1384,7 @@ function ble/prompt/unit:{section}/update {
   local -a vars; vars=(data dirty)
   [[ :$opts: == *:measure-bbox:* ]] && ble/array#push vars bbox
   [[ :$opts: == *:measure-gbox:* ]] && ble/array#push vars gbox
-  local "${vars[@]/%/=}" # #D1570 OK
+  local "${vars[@]/%/=}" # WA #D1570 checked
   ble/util/restore-vars "${prefix}_" "${vars[@]}"
 
   local has_changed=
@@ -1699,7 +1699,7 @@ function ble/prompt/update {
   local prompt_hashref_base='$_ble_prompt_version'
   local prompt_rows=${LINES:-25}
   local prompt_cols=${COLUMNS:-80}
-  local "${_ble_prompt_cache_vars[@]/%/=}" # #D1570 OK
+  local "${_ble_prompt_cache_vars[@]/%/=}" # WA #D1570 checked
 
   ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
 
@@ -3527,7 +3527,7 @@ function ble/edit/display-version/git-rev-parse {
   (*)       git_base=$1 ;;
   esac
 
-  "${_ble_util_set_declare[@]//NAME/visited}"
+  "${_ble_util_set_declare[@]//NAME/visited}" # WA #D1570 checked
   until [[ -s $git_base/HEAD || -s $git_base/.git/HEAD ]]; do
     # guard for cyclic refs
     ble/set#contains visited "$git_base" && return 1
@@ -5718,7 +5718,7 @@ function ble-edit/exec/print-PS0 {
     local prompt_hashref_base='$version'
     local prompt_rows=${LINES:-25}
     local prompt_cols=${COLUMNS:-80}
-    local "${_ble_prompt_cache_vars[@]/%/=}" # #D1570 OK
+    local "${_ble_prompt_cache_vars[@]/%/=}" # WA #D1570 checked
     ble/prompt/unit#update _ble_prompt_ps10
     ble/prompt/unit:{section}/get _ble_prompt_ps10
     ble/util/put "$ret"

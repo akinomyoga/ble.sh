@@ -1324,6 +1324,7 @@ function sub:scan {
       \Zunset _ble_init_(version|arg|exit|command)\bZd
       \Zreadonly -f unsetZd
       \Zunset -f builtinZd
+      \Z'\''\(unset\)'\''Zd
       g'
   sub:scan/builtin 'unalias' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -1339,6 +1340,7 @@ function sub:scan {
       \Zlocal trap$Zd
       \Z\$\{content#"trap -- '\''"\}Zd
       \Z\("trap -- '\''.*"\*\)Zd
+      \Z# EXIT trapZd
       g'
 
   sub:scan/a.txt
@@ -1355,6 +1357,7 @@ function sub:scan {
       \Zbuiltins1=\(.* unset .*\)Zd
       \Zfunction unsetZd
       \Zreadonly -f unsetZd
+      \Z'\''\(unset\)'\''Zd
       g'
   sub:scan/eval-literal
   sub:scan/WA-localvar_inherit

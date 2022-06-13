@@ -1194,7 +1194,7 @@ function ble/complete/action/complete.close-quotation {
 ##
 ## Example:
 ##
-##   local "${_ble_complete_quote_insert_varnames[@]/%/=}" # WA #D1570 safe
+##   local "${_ble_complete_quote_insert_varnames[@]/%/=}" # WA #D1570 checked
 ##   ble/complete/action/quote-insert.initialize "$action"
 ##   for INSERT; do
 ##     ble/complete/action/quote-insert "$action"
@@ -1281,7 +1281,7 @@ function ble/complete/action/quote-insert.initialize {
 
 function ble/complete/action/quote-insert {
   if [[ ! $quote_action ]]; then
-    local "${_ble_complete_quote_insert_varnames[@]/%/=}" # WA #D1570 safe
+    local "${_ble_complete_quote_insert_varnames[@]/%/=}" # WA #D1570 checked
     ble/complete/action/quote-insert.initialize "${1:-plain}"
   fi
 
@@ -2116,7 +2116,7 @@ function ble/complete/cand/yield-filenames {
   done
 
   [[ $FIGNORE ]] && local flag_force_fignore=1
-  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   ble/complete/cand/yield.batch "$action"
 }
@@ -2203,7 +2203,7 @@ function ble/complete/source:wordlist {
   [[ $opt_noword ]] && action=substr
   [[ $opt_raw ]] && action=literal-$action
 
-  local cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   for cand; do
     [[ $cand == "$COMPV"* ]] && ble/complete/cand/yield "$action" "$cand"
@@ -2393,7 +2393,7 @@ function ble/complete/source:command {
 
   ble/complete/source/test-limit ${#arr[@]} || return 1
 
-  local action=command "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local action=command "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
 
   # 無効 keyword, alias 判定用
@@ -2714,7 +2714,7 @@ function ble/complete/source:fd {
     local comp_filter_type=head
 
   local old_cand_count=$cand_count
-  local action=word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local action=word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   ble/complete/cand/yield "$action" -
   if [[ -d /proc/self/fd ]]; then
@@ -3547,7 +3547,7 @@ function ble/complete/progcomp/.compgen {
 
   local old_cand_count=$cand_count
 
-  local action=progcomp "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local action=progcomp "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   if [[ $flag_mandb ]]; then
     local -a entries; entries=("${cands[@]}")
@@ -3567,9 +3567,9 @@ function ble/complete/progcomp/.compgen {
   else
     [[ $progcomp_prefix ]] &&
       if ((_ble_bash>=40300)) && ! shopt -q compat42; then
-        cands=("${cands[@]/#/"$progcomp_prefix"}") # WA #D1570 #D1751 safe
+        cands=("${cands[@]/#/"$progcomp_prefix"}") # WA #D1570 #D1751 checked
       else
-        cands=("${cands[@]/#/$progcomp_prefix}") # WA #D1570 #D1738 safe
+        cands=("${cands[@]/#/$progcomp_prefix}") # WA #D1570 #D1738 checked
       fi
   fi
   ble/complete/cand/yield.batch "$action" "$comp_opts"
@@ -4873,7 +4873,7 @@ function ble/complete/source:option {
   # "--" や非オプション引数など、オプション無効化条件をチェック
   ble/complete/source:option/.is-option-context "${prev_args[@]}" || return 1
 
-  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize mandb
   local entry fs=$_ble_term_FS has_desc=
   for entry in "${entries[@]}"; do
@@ -5000,7 +5000,7 @@ function ble/complete/source:argument {
     [[ :$comp_type: != *:[maA]:* && $value =~ ^.+/ ]] &&
       COMP_PREFIX=$prefix${BASH_REMATCH[0]}
 
-    local ret cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+    local ret cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
     ble/complete/source:file/.construct-pathname-pattern "$value"
     ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
     ble/complete/source/test-limit ${#ret[@]} || return 1
@@ -5036,7 +5036,7 @@ function ble/complete/source/compgen {
   # 既に完全一致している場合は、より前の起点から補完させるために省略
   [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return 0
 
-  local cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   for cand in "${arr[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
@@ -5162,7 +5162,7 @@ function ble/complete/source:glob {
     ble/complete/source/eval-simple-word "$pattern*"; (($?==148)) && return 148
   fi
 
-  local cand action=file "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local cand action=file "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   for cand in "${ret[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
@@ -5188,7 +5188,7 @@ function ble/complete/source:dynamic-history {
   local rex_wordbreaks='['$wordbreaks']'
   ble/util/assign-array ret 'HISTTIMEFORMAT= builtin history | ble/bin/grep -Eo "$rex_needle" | ble/bin/sed "s/^$rex_wordbreaks//" | ble/bin/sort -u'
 
-  local cand action=literal-word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local cand action=literal-word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   for cand in "${ret[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
@@ -6193,7 +6193,7 @@ function ble/complete/menu/generate-candidates-from-menu {
   # remaining candidates
   cand_count=${#_ble_complete_menu_items[@]}
   cand_cand=() cand_word=() cand_pack=()
-  local pack "${_ble_complete_cand_varnames[@]/%/=}" # #D1570 WA checked
+  local pack "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
   for pack in "${_ble_complete_menu_items[@]}"; do
     ble/complete/cand/unpack "$pack"
     ble/array#push cand_cand "$CAND"
@@ -7021,7 +7021,7 @@ function ble/complete/menu-filter/.filter-candidates {
   cand_pack=()
 
   local iloop=0 interval=$bleopt_complete_polling_cycle
-  local filter_type pack "${_ble_complete_cand_varnames[@]/%/=}" # #D1570 WA checked
+  local filter_type pack "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
   for filter_type in head substr hsubseq subseq; do
     ble/path#remove-glob comp_type '[maA]'
     case $filter_type in
@@ -8053,7 +8053,7 @@ function ble/complete/sabbrev/expand {
     local -a COMPREPLY=()
     builtin eval -- "$value"
 
-    local cand action=word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+    local cand action=word "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
     ble/complete/cand/yield.initialize "$action"
     for cand in "${COMPREPLY[@]}"; do
       ble/complete/cand/yield "$action" "$cand" ""
@@ -8110,7 +8110,7 @@ function ble/complete/source:sabbrev {
   local comp_filter_type
   local comp_filter_pattern
   ble/complete/candidates/filter#init "$filter_type" "$COMPS"
-  local cand action=sabbrev "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+  local cand action=sabbrev "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
   for cand in "${keys[@]}"; do
     ble/complete/candidates/filter#test "$cand" || continue
@@ -8437,14 +8437,14 @@ function ble/cmdinfo/complete:cd/.impl {
     case $type in
     (pushd)
       if [[ $COMPV == - || $COMPV == -n ]]; then
-        local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+        local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
         ble/complete/cand/yield.initialize "$action"
         ble/complete/cand/yield "$action" -n
       fi ;;
     (*)
       COMP_PREFIX=$COMPV
       local -a list=()
-      local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 safe
+      local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
       ble/complete/cand/yield.initialize "$action"
       [[ $COMPV == -* ]] && ble/complete/cand/yield "$action" "${COMPV}"
       [[ $COMPV != *L* ]] && ble/complete/cand/yield "$action" "${COMPV}L"

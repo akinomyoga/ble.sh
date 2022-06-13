@@ -1483,7 +1483,7 @@ ble/test ble/util/is-running-in-subshell exit=1
 
   ble/test '[[ ! ${vn+set} ]]'
   for name in v1 v{2..8}{a,b}; do
-    ble/test "declare -p $name x$name | cat -A >&2; [[ \$$name == \$x$name ]]"
+    ble/test "declare -p $name x$name | cat -v >&2; [[ \$$name == \$x$name ]]"
   done
 
   function status { eval 'ret="${#'$1'[*]}:(""${'$1'[*]}"")"'; }
@@ -1585,13 +1585,14 @@ ble/util/msleep/.calibrate-loop &>/dev/null
 
 # ble/util/cat
 (
-  ble/test ":| ble/util/cat | cat -A"   stdout=
-  ble/test "printf a | ble/util/cat | cat -A"   stdout=a
-  ble/test "printf '\0' | ble/util/cat | cat -A"   stdout=^@
-  ble/test "printf 'hello\nworld\n'| ble/util/cat | cat -A" stdout={hello\$,world\$}
-  ble/test "printf 'hello\nworld'| ble/util/cat | cat -A"   stdout={hello\$,world}
-  ble/test "printf 'hello\0world\0'| ble/util/cat | cat -A" stdout=hello^@world^@
-  ble/test "printf 'hello\0world'| ble/util/cat | cat -A"   stdout=hello^@world
+  function ble/test:ble/util/cat { { ble/util/cat; echo x; } | cat -v; }
+  ble/test ":| ble/test:ble/util/cat"                       stdout=x
+  ble/test "printf a | ble/test:ble/util/cat"               stdout=ax
+  ble/test "printf '\0' | ble/test:ble/util/cat"            stdout=^@x
+  ble/test "printf 'hello\nworld\n'| ble/test:ble/util/cat" stdout={hello,world,x}
+  ble/test "printf 'hello\nworld'| ble/test:ble/util/cat"   stdout={hello,worldx}
+  ble/test "printf 'hello\0world\0'| ble/test:ble/util/cat" stdout=hello^@world^@x
+  ble/test "printf 'hello\0world'| ble/test:ble/util/cat"   stdout=hello^@worldx
 )
 
 # ble/util/get-pager

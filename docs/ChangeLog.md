@@ -377,6 +377,7 @@
 - test: save the test log to a file `#D1735` d8e6ea7
 - benchmark: improve determination of the base time `#D1737` ad866c1
 - main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` XXXXXXX
+- test: clean up check failures by `make check` and `make scan` `#D1812` XXXXXXX
 
 ## Contrib
 

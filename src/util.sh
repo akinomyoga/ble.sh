@@ -116,9 +116,9 @@ function bleopt/.read-arguments {
         if [[ $op ]]; then
           var=("${var[@]}") # #D1570: WA bash-3.0 ${scal[@]/x} bug
           if ((_ble_bash>=40300)) && ! shopt -q compat42; then
-            ble/array#push specs "${var[@]/%/"=$value"}" # #D1570 #D1751 WA checked
+            ble/array#push specs "${var[@]/%/"=$value"}" # WA #D1570 #D1751 checked
           else
-            ble/array#push specs "${var[@]/%/=$value}" # #D1570 #D1738 WA checked
+            ble/array#push specs "${var[@]/%/=$value}" # WA #D1570 #D1738 checked
           fi
         else
           ble/array#push pvars "${var[@]}"
@@ -1251,8 +1251,8 @@ else
   function ble/string#quote-words {
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@//$q/$Q}")
-    ret=("${ret[@]/%/$q}") # WA #D1570 #D1738 ok
-    ret="${ret[*]/#/$q}"   # WA #D1570 #D1738 ok
+    ret=("${ret[@]/%/$q}") # WA #D1570 #D1738 checked
+    ret="${ret[*]/#/$q}"   # WA #D1570 #D1738 checked
   }
   function ble/string#quote-command {
     if (($#<=1)); then
@@ -1261,9 +1261,9 @@ else
     fi
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@:2}")
-    ret=("${ret[@]//$q/$Q}")  # WA #D1570 #D1738 ok
-    ret=("${ret[@]/%/$q}")    # WA #D1570 #D1738 ok
-    ret="$1 ${ret[*]/#/$q}"   # WA #D1570 #D1738 ok
+    ret=("${ret[@]//$q/$Q}")  # WA #D1570 #D1738 checked
+    ret=("${ret[@]/%/$q}")    # WA #D1570 #D1738 checked
+    ret="$1 ${ret[*]/#/$q}"   # WA #D1570 #D1738 checked
   }
 fi
 ## @fn ble/string#quote-word text opts
@@ -4754,7 +4754,7 @@ function ble/util/import/search {
     fi
     ble/array#push dirs "$_ble_base"{,/contrib,/lib}
 
-    "${_ble_util_set_declare[@]//NAME/checked}" # #D1570
+    "${_ble_util_set_declare[@]//NAME/checked}" # WA #D1570 checked
     local path
     for path in "${dirs[@]}"; do
       ble/set#contains checked "$path" && continue
@@ -6052,7 +6052,7 @@ function ble/term/DA2/initialize-term {
   local rex='^[0-9]*(;[0-9]*)*$'; [[ $DA2R =~ $rex ]] || return
   local da2r
   ble/string#split da2r ';' "$DA2R"
-  da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈 (#D1570 is-array OK)
+  da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈; WA #D1570 checked (is-array)
 
   case $DA2R in
   ('0;0;0')

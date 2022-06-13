@@ -125,12 +125,12 @@ function ble-measure/fit {
   for c in {0..9} A; do
     "ble-measure/calibrate.$c"
     ble/util/print "$((nest_level++)) $nsec"
-  done > a.txt
+  done > ble-measure-fit.txt
 
   gnuplot - <<EOF
 f(x) = a * x + b
 b=4500;a=100
-fit f(x) 'a.txt' via a,b
+fit f(x) 'ble-measure-fit.txt' via a,b
 EOF
 }
 
