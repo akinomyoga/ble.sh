@@ -1614,9 +1614,9 @@ ble/util/msleep/.calibrate-loop &>/dev/null
 )
 
 
-# # ble/util/getmtime
+# # ble/file#mtime
 # (
-#   ble/test 'ble/util/getmtime a'
+#   ble/test 'ble/file#mtime a'
 # )
 
 # ble/util/buffer
