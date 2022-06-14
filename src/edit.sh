@@ -1914,7 +1914,7 @@ function ble/prompt/update {
 
   # bleopt prompt_xterm_title
   case ${_ble_term_TERM:-$TERM:-} in
-  (sun*|minix*) ;; # black list
+  (sun*|minix*|eterm*) ;; # black list
   (*)
     [[ $bleopt_prompt_xterm_title || ${_ble_prompt_xterm_title_data[10]} ]] &&
       ble/prompt/unit#update _ble_prompt_xterm_title && dirty=1 ;;
@@ -4854,6 +4854,14 @@ _ble_edit_bracketed_paste_proc=
 _ble_edit_bracketed_paste_count=0
 function ble/widget/bracketed-paste {
   ble-edit/content/clear-arg
+  if [[ ${TERM%%-*} == eterm ]]; then
+    # Note (#D2087): eterm の中では \e[200~ (paste_begin) だけが入力として入っ
+    # て来て \e[201~ (paste_end) が来ない (Emacs 28.2)。これは内側で
+    # bracketed-paste を有効にしていなくても発生する。結果として
+    # bracketed-paste mode から抜け出せなくなって見た目上応答がなくなる。対策と
+    # して eterm の中では bracketed-paste mode には入らない。
+    return 0
+  fi
   _ble_edit_mark_active=
   _ble_edit_bracketed_paste=()
   _ble_edit_bracketed_paste_count=0

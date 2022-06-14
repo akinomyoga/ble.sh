@@ -147,6 +147,7 @@ function ble/init:term/initialize {
   ble/init:term/define-cap _ble_term_dl $'\e[%dM' -c dl:DL 123
   _ble_term_il=${_ble_term_il//123/%d}
   _ble_term_dl=${_ble_term_dl//123/%d}
+  [[ ${TERM%%-*} == eterm ]] && _ble_term_il=$'\r\e[%dL' _ble_term_dl=$'\r\e[%dM'
 
   # EL
   ble/init:term/define-cap _ble_term_el  $'\e[K'  el:ce

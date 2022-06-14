@@ -6065,6 +6065,11 @@ function ble/term/bracketed-paste-mode/.init {
     # Bash 5.1 以降では既定で on なのでもし無効になっていたら意図的にユーザーが
     # off にしたという事。
     bleopt term_bracketed_paste_mode=
+  elif [[ ${TERM%%-*} == eterm ]]; then
+    # Note (#D2087): eterm (Emacs 28.2) では eterm 中で bracketed paste を送信
+    # すると終了判定が壊れる様である。然し、シェルの側でこれを無効にしても解決
+    # しない。Emacs 自体が設定した bracketed paste の処理の問題と思われる。
+    bleopt term_bracketed_paste_mode=
   fi
   function bleopt/check:term_bracketed_paste_mode {
     if [[ $_ble_term_bracketedPasteMode_internal ]]; then

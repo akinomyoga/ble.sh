@@ -55,6 +55,7 @@
 - canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` 31d168cc
 - canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 9d84b424
 - complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` 595f905b
+- term: add workarounds for `eterm` `#D2087` xxxxxxxx
 
 ## Contrib
 

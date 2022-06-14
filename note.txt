@@ -1989,27 +1989,6 @@ bash_tips
 
       waitlist で待たなければならない。
 
-2023-09-02
-
-  * tmux の外側の端末が取得できていない
-    https://github.com/akinomyoga/ble.sh/issues/359
-
-    自分の手元でも問題は再現する。何処かの時点で tmux の振る舞いが変わったとい
-    う事なのだろうか。padparadscha の tmux 2.9a ではちゃんと動いている。
-    chatoyancy の tmux 3.3a では動いていない。これは tmux version の問題だろう
-    か。調べると 3.1, 3.2 では動いている。3.3 の CHANGES を見ていたら
-    passthrough sequence を既定で off にしたと書かれている。以下の commit
-
-    https://github.com/tmux/tmux/commit/eabbc80b75ef8e02653c2728d7f646fc6a8f558f
-
-    なので set -g allow-passthrough on にしてもらわないと外側の端末を検出する事
-    ができないのである。とは言いつつもし DECSCUSR をちゃんと tmux が外側に伝播
-    するのであれば問題は起きないはず。と思ったが、どうもDECSCUSR に関しては 3.1
-    でもちゃんと動いていない気がする。微妙に外側にカーソル形状変更が伝わってい
-    るが一旦ブロックになると元に戻らない。この振る舞いは遡っても変わらない (2.6
-    20170830 まで試した)。screen の中では動いている。更に 3.3 になると次のコマ
-    ンドラインに行ってもカーソル形状は復元されなくなっている。
-
 2023-08-17
 
   * ext: Android OS コンパイル環境での問題
@@ -2771,21 +2750,6 @@ bash_tips
 
     これは元々存在している inputrc か何かが悪さをしている可能性? 然しそうだとし
     ても普通に attach したら問題は生じない。なのでやはり違うのだろうか。
-
-  * eterm: Emacs に実装されている M-x term 若しくは M-x ansi-term
-
-    端末実装が色々滅茶苦茶である。infocmp にて対応している事になっている機能で
-    も振る舞いが変である。
-
-    * 先ず、IL, DL は行の途中で実行するとおかしな事になる。IL はその位置に改行
-      を挿入して行を2つに分ける機能を持っている。DL は一方で emacs 内部で C-k
-      をするのと同じ機能である。即ちその位置以降の文字列を消去するか、行末にい
-      る場合には次の行と結合する。これは一応行頭に移動すれば問題ない気がする。
-
-    * RI に関しては端末の一番下にいる時に全体を scroll down し、端末の一番上に
-      いる時には何も実行しない。
-
-    未だちゃんと動かない。これは後でちゃんと調べる必要がある。
 
 2022-06-02
 
@@ -7086,7 +7050,182 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-11-22
+
+  * 2022-06-14 eterm: Emacs に実装されている M-x term 若しくは M-x ansi-term [#D2087]
+
+    端末実装が色々滅茶苦茶である。infocmp にて対応している事になっている機能で
+    も振る舞いが変である。
+
+    * 先ず、IL, DL は行の途中で実行するとおかしな事になる。IL はその位置に改行
+      を挿入して行を2つに分ける機能を持っている。DL は一方で emacs 内部で C-k
+      をするのと同じ機能である。即ちその位置以降の文字列を消去するか、行末にい
+      る場合には次の行と結合する。これは一応行頭に移動すれば問題ない気がする。
+
+    * RI に関しては端末の一番下にいる時に全体を scroll down し、端末の一番上に
+      いる時には何も実行しない。
+
+      > diff --git a/lib/init-term.sh b/lib/init-term.sh
+      > index d49cee5f..57f660e3 100644
+      > --- a/lib/init-term.sh
+      > +++ b/lib/init-term.sh
+      > @@ -102,7 +102,9 @@ function ble/init:term/initialize {
+      >    ble/init:term/define-cap.2 _ble_term_ind $'\n' ind:sf # $'\eD'
+      >    ble/init:term/define-cap   _ble_term_ri  ''    ri:sr  # $'\eM'
+      >    ble/init:term/define-cap   _ble_term_cr  $'\r' cr:cr
+      > -  if [[ $OSTYPE == msys && ! $_ble_term_CR ]]; then # msys-1.0
+      > +  if [[ ${TERM%%-*} == eterm ]]; then
+      > +    _ble_term_ri=
+      > +  elif [[ $OSTYPE == msys && ! $_ble_term_CR ]]; then # msys-1.0
+      >      [[ $_ble_term_cr ]] || _ble_term_cr=$'\e[G'
+      >      if [[ $TERM == cygwin ]]; then
+      >        [[ $_ble_term_ind == $'\eD' ]] && _ble_term_ind=$'\n'
+
+      2023-11-13 改めて試してみたら RI は動く様になっていた (GNU Emacs 28.2)。
+      然し、二回連続で実行したりすると振る舞いが変だ。例えば以下のコマンドの結
+      果が他の端末と異なる。他の端末では [1]..[4] が階段状に表示されるが、eterm
+      の内部では [4] だけしか表示されない。
+
+      $ printf $'\e[H[1]\eM[2]\eM[3]\eM[4]\n\n\n\n'
+
+      取り敢えず再び RI は有効化する。
+
+    * 2023-11-13 bracketed paste がちゃんと動かない。解除コードが認識されていな
+      い? 手動で ESC [201~ を入力するとまた制御が戻ってくる。
+
+      もっと調べてみるとどうやら bash の側の時点で \e[200~ や \e[201~ を受信で
+      きていない様だ。emacs の側で処理していて、それがちゃんと処理できていない
+      という事の気がする。
+
+      そうすると plain Bash でも動かないのではないか? →実際に plain Bash でも
+      問題になるという事を確認した。誰か報告していたりするか? 或いは、contra だ
+      けで起こっている可能性もある? → mintty でも同様の問題が発生する事を確認
+      した。
+
+      これは emacs の側のバグである。ble.sh の側で bracketed paste を off にし
+      ていたとしても \e[200~ が送られてくるので変な状態に突入する。
+
+    未だちゃんと動かない。これは後でちゃんと調べる必要がある。
+
+    2023-11-22 取り敢えず現在は動いている様な気がする。未だ変な振る舞いはあるが
+    これらは eterm の側のバグなので気にしない事にする。eterm のバグについては
+    wiki の方に纏める事にする。
+
 2023-11-16
+
+  * 2023-09-02 wiki: tmux の外側の端末が取得できていない [#D2086]
+    https://github.com/akinomyoga/ble.sh/issues/359
+
+    自分の手元でも問題は再現する。何処かの時点で tmux の振る舞いが変わったとい
+    う事なのだろうか。padparadscha の tmux 2.9a ではちゃんと動いている。
+    chatoyancy の tmux 3.3a では動いていない。これは tmux version の問題だろう
+    か。調べると 3.1, 3.2 では動いている。3.3 の CHANGES を見ていたら
+    passthrough sequence を既定で off にしたと書かれている。以下の commit
+
+    https://github.com/tmux/tmux/commit/eabbc80b75ef8e02653c2728d7f646fc6a8f558f
+
+    なので set -g allow-passthrough on にしてもらわないと外側の端末を検出する事
+    ができないのである。とは言いつつもし DECSCUSR をちゃんと tmux が外側に伝播
+    するのであれば問題は起きないはず。
+
+    * 結局これはユーザーに適切に設定してもらうしか方法はない。wiki に
+      allow-passthrough を設定する様に説明を書くしかない。然し一方で何処に書け
+      ば良いのかは謎である。端末検出について記述している箇所は今の所ない。
+      widget display-shell-version についても単に表内に現れるだけである。tmux
+      に対する言及も各項目で必要がある場所で行っているのみである。
+
+      ? reject: うーん。結局 --cursor の箇所で一緒に記述する事にする? と思った
+        が問題が起こるのは tmux-3.3 以降であって、一方で tmux 3.4 以降では単に
+        cursor-style を指定すれば良くて、tmux 3.3 では allow-passthrough と
+        cursor-style を両方指定したとしても結局動かない。
+
+    x と思ったが、どうもDECSCUSR に関しては 3.1でもちゃんと動いていない気がする。
+      微妙に外側にカーソル形状変更が伝わっているが一旦ブロックになると元に戻ら
+      ない。この振る舞いは遡っても変わらない (2.6 20170830 まで試した)。screen
+      の中では動いている。更に 3.3 になると次のコマンドラインに行ってもカーソル
+      形状は復元されなくなっている。
+
+      改めて確認してみると screen は DECSCUSR をちゃんと外側に伝播する様である。
+      2.9a 及び 3.1 で既にちゃんと伝播している。現在の 3.3a もちゃんと伝播して
+      いる。なので気にしなくて良いだろう。
+
+      うーん。現在の実装だと quote-passthrough DECSCUSR '' all でシーケンスを構
+      築して外側に送信している気がする。手動で実際に quote-passthrough でシーケ
+      ンスを構築して結果を送ってみるとちゃんと正しく DECSCUSR が適用されている
+      様に見える。screen も全く同じ筈なのに screen に関してはちゃんと動いている。
+      何が問題なのだろうか。
+
+      →何が問題なのか分かった。DECSCUSR(0) を送信すると勝手に tmux が、tmux が
+      既定だと思う 1 に変換してしまうのである。0 を指定したらちゃんと 0 として
+      記録しておいてそれを外側の term に送信する様にして欲しい物である。
+
+      実装を確認してみたが最初の実装[1]から 0 は個別に取り扱っている様に見える。
+      何故現在の実装ではそう振る舞っていない様に見えるのだろうか。因みに
+      tmux-1.7 の時点で DECSCUSR に対応していて、おそらく外側の端末にちゃんと伝
+      播している。現在の実装の設定部分[2]を見ても0だったらそのまま0になる気がす
+      る。改めて tmux の動作を確認するが 3.3a でも 3.1 でもやはり echo $'\E[3
+      q' してから echo $'\E[0 q' とすると block カーソルに変化してしまう。一方
+      で passthrough させれば contra は 0 に対して事前にユーザーが設定した物に
+      リセットする。それでも実装を見る限りは SCREEN_CURSOR_DEFAULT は 0 で
+      BLOCK とは区別されているような気がする。
+
+      [1] https://github.com/tmux/tmux/commit/3ea5e06bfb04278fa53885e551bc363a84bad8d1
+      [2] https://github.com/tmux/tmux/blob/bdf8e614af34ba1eaa8243d3a818c8546cb21812/input.c#L1639-L1643
+
+      最新の master でも同じ振る舞いである。具体的にソースを弄って内部状態を調
+      べてみる。どうも cstyle はちゃんと指定された物になっているが、mode が異な
+      る物になっている様である。flag 0x80 が立っている。これは何だろうか。
+      0x80 は MODE_CURSOR_BLINKING の様である。
+
+      うーん。分かった。[3] 明示的に s->default_cstyle に書き換えてから更新を行っ
+      ている。default_cstyle は何処で設定されているかというと、[4] で
+      cursor-style というオプションから設定されている。例えば自分の場合には
+      cursor-style を 4 辺りに設定しておけば良い。因みに cursor-style というオ
+      プションは[5]を受けて[5]で追加された物で、3.3 からしか使えない。
+
+      [3] https://github.com/tmux/tmux/blob/bdf8e614af34ba1eaa8243d3a818c8546cb21812/tty.c#L760
+      [4] https://github.com/tmux/tmux/blob/bdf8e614af34ba1eaa8243d3a818c8546cb21812/window.c#L1660-L1662
+      [5] https://github.com/tmux/tmux/pull/2960
+      [6] https://github.com/tmux/tmux/commit/57100376cc70739f53a1f8a4bacf192b8cdcd124
+
+      取り敢えず wiki にどの様に設定するべきかについて記述した。
+
+      x fixed: と思ったが cursor-style 4 を指定しても動かない。エラーが出る。
+        どうやら underline 等の文字列で指定する必要がある様だ。
+
+      x ok: ちゃんと underline と指定しても動かない。blinking block になってし
+        まう。うーん。何が悪いのだろう。やはり cursor-style は関係ないのだろう
+        か。
+
+        と思って master の tmux で試してみたらちゃんと動く。うーん。
+
+        試しに自前コンパイルの 3.3a についても動作を確認しておく事にする→動か
+        ない。という事は何処かで修正されたという事だろう。仕方がないので bisect
+        を手動で行う事にする。bisect したら d9f84854 で修正されていた。どうやら
+        単にバグだった様だ。なので実際に動く様になるのは 3.4 以降になる。
+
+      ? no: cursor-style に default (0) を指定する事もできる様になっている気が
+        する。然し元々既定で 0 なので default にしても変わらず、結局
+        blinking-block になってしまうのだろうか。或いは明示的に 0 を指定してお
+        けばちゃんと外側の端末に対して 0 を送ってくれるのだろうか。
+
+        →実際に default を指定してみたが blinking-block になってしまう。これが
+        意味する所は結局何処かで 0 はすり変わって1が出力されてしまうという事だ
+        ろう。
+
+        うーん。if (tty->cstyle != SCREEN_CURSOR_DEFAULT) という条件が満たされ
+        た時にのみ 0 が送信される事になっている様だ。うーん。つまり、0 は決して
+        送信されないという事? これはどういう事だろうか? → 確認してみたが完全に
+        dead code という訳でもない。何だかよく分からないが深入りはしない事にす
+        る。
+
+        何れにしても現在の cstyle が 0 であっても default_cstyle が 0 であって
+        も、実際に DECSCUSR(0) が出力される状況はとても限定されているという事。
+        特に default_cstyle が 0 の場合には何も出力されずに終わるという事。
+
+      wiki には underline 以外の指定例についても全て載せる事にした。3.3 ではな
+      く 3.4 が必要である事も記述した。set -g cursor-style default を指定しても
+      駄目な事も記述した。
 
   * complete: " {," まで入力すると mandb 関連のエラーが表示される [#D2085]
 
