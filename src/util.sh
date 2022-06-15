@@ -3300,7 +3300,7 @@ function ble/fd#alloc/.nextfd {
           ble/fd#is-open "$_ble_util_openat_nextfd"; do
     ((_ble_util_openat_nextfd++))
   done
-  if ((_ble_util_openat_nextfd>=_ble_local_lim)); then
+  if ((_ble_util_openat_nextfd>=_ble_local_limit)); then
     _ble_util_openat_nextfd=$_ble_local_init
     builtin eval "exec $_ble_util_openat_nextfd>&-"
   fi

@@ -376,10 +376,10 @@
 - make: update lint check `#D1709` 7e26dcd
 - test: save the test log to a file `#D1735` d8e6ea7
 - benchmark: improve determination of the base time `#D1737` ad866c1
-- main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` XXXXXXX
-- test: clean up check failures by `make check` and `make scan` `#D1812` XXXXXXX
-- util (`fd#alloc`): limit the search range of free fds `#D1813` XXXXXXX
-- github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` XXXXXXX
+- main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` 022d38b
+- test: clean up check failures by `make check` and `make scan` `#D1812` bb3e0a3
+- util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 XXXXXXX
+- github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
 
 ## Contrib
 
