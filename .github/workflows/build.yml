@@ -1,0 +1,88 @@
+name: nightly build
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Build
+        run: |
+          pkgver=nightly-$(date +'%Y%m%d')+$(git rev-parse --short HEAD)
+          echo "blesh_build_pkgver=$pkgver" >> "$GITHUB_ENV"
+          make FULLVER="0.4.0-nightly"
+          sed -i "s/^_ble_base_repository=.*/_ble_base_repository=release:$pkgver/" "out/ble.sh"
+      - name: Test
+        run: make check
+      - name: Package
+        run: |
+          make install INSDIR="./ble-${{ env.blesh_build_pkgver }}"
+          tar -cJf "ble-${{ env.blesh_build_pkgver }}.tar.xz" "ble-${{ env.blesh_build_pkgver }}"
+          cp "ble-${{ env.blesh_build_pkgver }}.tar.xz" ble-nightly.tar.xz
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ble-nightly.tar.xz
+            ble-${{ env.blesh_build_pkgver }}.tar.xz
+          tag_name: nightly
+          prerelease: true
+          body: |
+            ## Usage
+
+            **Prerequisites**
+
+            Bash 3.0+ and basic POSIX utilities are required.
+
+            **Download ble-nightly.tar.xz**
+
+            Link kept updated for every nightly build:
+
+            ${{ github.event.repository.url }}/releases/download/nightly/ble-nightly.tar.xz
+
+            Permalink to the current nightly build:
+
+            ${{ github.event.repository.url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
+
+            ```bash
+            # DOWNLOAD with wget
+            wget ${{ github.event.repository.url }}/releases/download/nightly/ble-nightly.tar.xz
+
+            # DOWNLOAD with curl
+            curl -LO ${{ github.event.repository.url }}/releases/download/nightly/ble-nightly.tar.xz
+
+            # DOWNLOAD with wget (this specific nightly build)
+            wget ${{ github.event.repository.url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
+
+            # DOWNLOAD with curl (this specific nightly build)
+            curl -LO ${{ github.event.repository.url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
+            ```
+
+            **Trial & Install**
+
+            ```bash
+            # TRIAL
+            tar xJf ble-nightly.tar.xz
+            source ble-${{ env.blesh_build_pkgver }}/ble.sh
+
+            # INSTALL (quick)
+            tar xJf ble-nightly.tar.xz
+            mkdir -p ~/.local/share/blesh
+            cp -fR ble-${{ env.blesh_build_pkgver }}/* ~/.local/share/blesh/
+            echo 'source ~/.local/share/blesh' >> ~/.bashrc
+
+            # INSTALL (more robust)
+            tar xJf ble-nightly.tar.xz
+            mkdir -p ~/.local/share/blesh
+            cp -fR ble-${{ env.blesh_build_pkgver }}/* ~/.local/share/blesh/
+            # Add the following line near the top of ~/.bashrc
+            [[ $- == *i* ]] && source ~/.local/share/blesh/ble.sh --attach=none
+            # Add the following line at the end of ~/.bashrc
+            [[ ${BLE_VERSION-} ]] && ble-attach
+            ```

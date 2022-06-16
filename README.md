@@ -27,10 +27,15 @@ In fact, I personally read it verbosely as /biːɛliː dɑt ɛseɪtʃ/ in my hea
 
 ## Quick instructions
 
-Installation requires the commands `git`, `make` (GNU make), and `gawk` (in addition to `bash` and POSIX standard utilities).
-For detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
-[Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
-Please replace `make` with `gmake` if your system provides GNU make as `gmake` (such as in BSD).
+To use `ble.sh`, Bash 3.0+ and POSIX standard utilities are required.
+There are two ways to get `ble.sh`: to download and build `ble.sh` using `git`, or to download the nightly build using `curl` or `wget`.
+For the detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
+and [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
+
+<details open><summary><b>Download and generate <code>ble.sh</code> using <code>git</code></b></summary>
+
+This requires the commands `git`, `make` (GNU make), and `gawk` (GNU awk).
+In the following, please replace `make` with `gmake` if your system provides GNU make as `gmake` (such as in BSD).
 
 ```bash
 # TRIAL without installation
@@ -44,7 +49,57 @@ source ble.sh/out/ble.sh
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+```
+</details>
 
+<details><summary><b>Download the nightly build with <code>curl</code></b></summary>
+
+This requires the commands `curl`, `tar` (with the support for the `J` flag), and `xz` (XZ Utils).
+
+```bash
+# TRIAL without installation
+
+curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+source ble-nightly*/ble.sh
+
+# Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
+
+curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+mkdir -p ~/.local/share/blesh
+mv ble-nightly* ~/.local/share/blesh
+echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+```
+</details>
+
+<details><summary><b>Download the nightly build with <code>wget</code></b></summary>
+
+This requires the commands `wget`, `tar` (with the support for the `J` flag), and `xz` (XZ Utils).
+
+```bash
+# TRIAL without installation
+
+wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+source ble-nightly*/ble.sh
+
+# Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
+
+wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+mkdir -p ~/.local/share/blesh
+mv ble-nightly* ~/.local/share/blesh
+echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+```
+</details>
+
+<details open><summary><b>Install a package using a package manager</b> (currently only AUR packages)</summary>
+
+This only requires the corresponding package manager.
+
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+</details>
+
+<details open><summary><b>Update an existing copy of <code>ble.sh</code></b></summary>
+
+```bash
 # UPDATE (in a ble.sh session)
 
 ble-update
@@ -52,16 +107,18 @@ ble-update
 # UPDATE (outside ble.sh sessions)
 
 bash /path/to/ble.sh --update
+```
+</details>
 
+<details><summary><b>Create a package of <code>ble.sh</code></b></summary>
+
+```bash
 # PACKAGE (for package maintainers)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
-
-You may also install `ble.sh` through package-management systems (currently only AUR):
-
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+</details>
 
 ## Features
 
@@ -120,7 +177,7 @@ I started working on the enhancement of the completion in August, 2018 and relea
 - 2015-12 v0.1 -- Syntax highlighting [[v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14)]
 - 2018-03 v0.2 -- Vim mode [[v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6)]
 - 2019-02 v0.3 -- Enhanced completion [[v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3)]
-- 20xx-xx v0.4 (plan) -- programmable highlighting [`master`]
+- 20xx-xx v0.4 (plan) -- programmable highlighting [[nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)]
 - 20xx-xx v0.5 (plan) -- TUI configuration
 - 20xx-xx v0.6 (plan) -- error diagnostics?
 
@@ -185,7 +242,7 @@ To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
 For download, trial and install, see the description at each release page.
 The stable versions are significantly old compared to the devel version, so many features are unavailable.
 
-- Devel [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
+- Devel [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
 - Stable [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) Enhanced completions
 - Stable [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) Vim mode
 - Stable [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) Syntax highlighting
@@ -250,7 +307,7 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 ## 1.6 Uninstall
 
-Basically you can simply delete the installed directory and the settings that user added.
+Basically you can simply delete the installed directory and the settings that the user added.
 
 - Close all the `ble.sh` sessions (the Bash interactive sessions with `ble.sh`)
 - Remove the added lines in `.bashrc`.
@@ -261,7 +318,7 @@ Basically you can simply delete the installed directory and the settings that us
 
 # 2 Basic settings
 
-Here some of the settings for `~/.blerc` are picked up.
+Here, some of the settings for `~/.blerc` are picked up.
 You can find useful settings also in [Q\&A](https://github.com/akinomyoga/ble.sh/wiki/Q&A),
 [Recipes](https://github.com/akinomyoga/ble.sh/wiki/Recipes)
 and [`contrib` repository](https://github.com/akinomyoga/blesh-contrib).
@@ -519,7 +576,7 @@ If you want to accept the suggestion and immediately run the command, you can us
 ## 3.4 Use `sabbrev` (static abbrev expansions)
 
 By registering words to `sabbrev`, the words can be expanded to predefined strings.
-When the cursor is just after a registered word, typing <kbd>SP</kbd> causes `sabbrev` expansion.
+When the cursor is just after a registered word, typing <kbd>SP</kbd> causes the `sabbrev` expansion.
 For example, with the following settings, when you type <kbd>SP</kbd> after the string `command L`, the command line will be expanded to `command | less`.
 
 ```bash
@@ -527,7 +584,7 @@ For example, with the following settings, when you type <kbd>SP</kbd> after the 
 ble-sabbrev L='| less'
 ```
 
-The sabbrev names that starts from `\` are also recommended since it is unlikely to conflict with the real words that is a part of the executed command.
+The sabbrev names that starts with `\` plus alphabetical letters are also recommended since it is unlikely to conflict with real words that are a part of the executed command.
 
 ```bash
 # blerc

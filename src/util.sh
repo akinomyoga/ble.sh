@@ -4224,24 +4224,84 @@ function ble/util/pager {
   builtin eval -- "$pager \"\$@\""
 }
 
-## @fn ble/util/getmtime filename
+## @fn ble/file#mtime filename
 ##   ファイル filename の mtime を取得し標準出力に出力します。
 ##   ミリ秒も取得できる場合には第二フィールドとしてミリ秒を出力します。
 ##   @param[in] filename ファイル名を指定します。
 ##
-if ble/bin/date -r / +%s &>/dev/null; then
-  function ble/util/getmtime { ble/bin/date -r "$1" +'%s %N' 2>/dev/null; }
-elif ble/bin/.freeze-utility-path stat; then
-  # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
-  if ble/bin/stat -c %Y / &>/dev/null; then
-    function ble/util/getmtime { ble/bin/stat -c %Y "$1" 2>/dev/null; }
-  elif ble/bin/stat -f %m / &>/dev/null; then
-    function ble/util/getmtime { ble/bin/stat -f %m "$1" 2>/dev/null; }
+function ble/file#mtime {
+  # fallback: print current time
+  function ble/file#mtime { ble/util/strftime '%s %N'; } || return 1
+
+  if ble/bin/date -r / +%s &>/dev/null; then
+    function ble/file#mtime { ble/bin/date -r "$1" +'%s %N' 2>/dev/null; }
+  elif ble/bin/.freeze-utility-path stat; then
+    # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
+    if ble/bin/stat -c %Y / &>/dev/null; then
+      function ble/file#mtime { ble/bin/stat -c %Y "$1" 2>/dev/null; }
+    elif ble/bin/stat -f %m / &>/dev/null; then
+      function ble/file#mtime { ble/bin/stat -f %m "$1" 2>/dev/null; }
+    fi
   fi
+
+  ble/file#mtime "$@"
+}
+
+function ble/file#hash {
+  local file=$1 size
+  if ! ble/util/assign size 'ble/bin/wc -c "$file" 2>/dev/null'; then
+    ret=error:$RANDOM
+    return 1
+  fi
+  ble/string#split-words size "$size"
+  ble/file#hash/.impl
+}
+if ble/bin/.freeze-utility-path -n git; then
+  function ble/file#hash/.impl {
+    ble/util/assign ret 'ble/bin/git hash-object "$file"'
+    ret="size:$size;hash:$ret"
+  }
+elif ble/bin/.freeze-utility-path -n openssl; then
+  function ble/file#hash/.impl {
+    ble/util/assign ret 'ble/bin/openssl sha1 -r "$file"'
+    ble/string#split-words ret "$ret"
+    ret="size:$size;sha1:$ret"
+  }
+elif ble/bin/.freeze-utility-path -n sha1sum; then
+  function ble/file#hash/.impl {
+    ble/util/assign ret 'ble/bin/sha1sum "$file"'
+    ble/string#split-words ret "$ret"
+    ret="size:$size;sha1:$ret"
+  }
+elif ble/bin/.freeze-utility-path -n sha1; then
+  function ble/file#hash/.impl {
+    ble/util/assign ret 'ble/bin/sha1 -r "$file"'
+    ble/string#split-words ret "$ret"
+    ret="size:$size;sha1:$ret"
+  }
+elif ble/bin/.freeze-utility-path -n md5sum; then
+  function ble/file#hash/.impl {
+    ble/util/assign ret 'ble/bin/md5sum "$file"'
+    ble/string#split-words ret "$ret"
+    ret="size:$size;md5:$ret"
+  }
+elif ble/bin/.freeze-utility-path -n md5; then
+  function ble/file#hash/.impl {
+    ble/util/assign ret 'ble/bin/md5 -r "$file"'
+    ble/string#split-words ret "$ret"
+    ret="size:$size;md5:$ret"
+  }
+elif ble/bin/.freeze-utility-path -n cksum; then
+  function ble/file#hash/.impl {
+    ble/util/assign ret 'ble/bin/cksum "$file"'
+    ble/string#split-words ret "$ret"
+    ret="size:$size;cksum:$ret"
+  }
+else
+  function ble/file#hash/.impl {
+    ret="size:$size"
+  }
 fi
-# fallback: print current time
-ble/is-function ble/util/getmtime ||
-  function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
 #------------------------------------------------------------------------------
 ## @fn ble/util/buffer text

@@ -869,15 +869,20 @@ function ble/bin/.default-utility-path {
     builtin eval "function ble/bin/$cmd { command $cmd \"\$@\"; }"
   done
 }
-## @fn ble/bin/.freeze-utility-path commands...
+## @fn ble/bin/.freeze-utility-path [-n] commands...
 ##   PATH が破壊された後でも ble が動作を続けられる様に、
 ##   現在の PATH で基本コマンドのパスを固定して ble/bin/* から使える様にする。
 ##
 ##   実装に ble/util/assign を使用しているので ble-core 初期化後に実行する必要がある。
 ##
 function ble/bin/.freeze-utility-path {
-  local cmd path q=\' Q="'\''" fail=
+  local cmd path q=\' Q="'\''" fail= flags=
   for cmd; do
+    if [[ $cmd == -n ]]; then
+      flags=n$flags
+      continue
+    fi
+    [[ $flags == *n* ]] && ble/bin#has "ble/bin/$cmd" && continue
     ble/bin#has "ble/bin/.frozen:$cmd" && continue
     if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
       builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
@@ -1418,6 +1423,7 @@ function ble-reload { source "$_ble_base/ble.sh"; }
 
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 #%$ echo "_ble_base_branch=$(git rev-parse --abbrev-ref HEAD)"
+_ble_base_repository_url=https://github.com/akinomyoga/ble.sh
 function ble-update/.check-install-directory-ownership {
   if [[ ! -O $_ble_base ]]; then
     ble/uti/print 'ble-update: install directory is owned by another user:' >&2
@@ -1465,13 +1471,103 @@ function ble-update/.reload {
   ((ext==6)) && ext=0
   return "$ext"
 }
+function ble-update/.download-nightly-build {
+  if ! ble/bin#has tar xz; then
+    local command
+    for command in tar xz; do
+      ble/bin#has "$command" ||
+        ble/util/print "ble-update (nightly): '$command' command is not available." >&2
+    done
+    return 1
+  fi
+
+  if ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
+    # _ble_base が自分の物でない時は sudo でやり直す
+    sudo "$BASH" "$_ble_base/ble.sh" --update &&
+      ble-update/.reload 6
+    return $?
+  fi
+
+  local tarname=ble-nightly.tar.xz
+  local url_tar=$_ble_base_repository_url/releases/download/nightly/$tarname
+  (
+    shopt -u failglob
+    shopt -s nullglob
+
+    # mkcd "$_ble_base/src"
+    if ! ble/bin/mkdir -p "$_ble_base/src"; then
+      ble/util/print "ble-update (nightly): failed to create the directory '$_ble_base/src'" >&2
+      return 1
+    fi
+    if ! builtin cd "$_ble_base/src"; then
+      ble/util/print "ble-update (nightly): failed to enter the directory '$_ble_base/src'" >&2
+      return 1
+    fi
+
+    local ret
+    ble/file#hash "$tarname"; local ohash=$ret
+
+    # download "$url_tar" "$tarname"
+    # Note: アップロードした直後は暫く 404 Not Found になるようなので何回か再試
+    # 行する。
+    local retry max_retry=5
+    for ((retry=0;retry<=max_retry;retry++)); do
+      if ((retry>0)); then
+        local wait=$((retry<3?retry*10:30))
+        ble/util/print "ble-update (nightly): retry downloading in $wait seconds... ($retry/$max_retry)" >&2
+        ble/util/sleep "$wait"
+      fi
+
+      if ble/bin#has wget; then
+        wget -N "$url_tar" && break
+      elif ble/bin#has curl; then
+        curl -LRo "$tarname" -z "$tarname" "$url_tar" && break
+      else
+        ble/util/print "ble-update (nightly): command 'wget' nor 'curl' is available." >&2
+        return 1
+      fi
+    done
+    if ((retry>max_retry)); then
+      ble/util/print "ble-update (nightly): failed to download the archive from '$url_tar'." >&2
+      return 7
+    fi
+
+    # 前回ダウンロードした物と同じ場合は省略
+    ble/file#hash "$tarname"; local nhash=$ret
+    [[ $ohash == "$nhash" ]] && return 6
+
+    # tar xJf "$tarname"
+    ble/bin/rm -rf ble-nightly*/
+    if ! tar xJf "$tarname"; then
+      ble/util/print 'ble-update (nightly): failed to extract the tarball. Removing possibly broken tarball.' >&2
+      ble/bin/rm -rf "$tarname"
+      return 1
+    fi
+
+    # cp -T ble-nightly* "$_ble_base"
+    local extracted_dir
+    extracted_dir=(ble-nightly*/)
+    if ((${#extracted_dir[@]}!=1)); then
+      if ((${#extracted_dir[@]}==0)); then
+        ble/util/print 'ble-update (nightly): the directory "ble-nightly*" not found in the tarball.' >&2
+      else
+        ble/util/print 'ble-update (nightly): multiple directories "ble-nightly*" found in the tarball.' >&2
+        ble/bin/rm -rf ble-nightly*/*
+      fi
+      return 1
+    fi
+    ble/bin/cp -Rf "$extracted_dir"/* "$_ble_base/" || return 1
+    ble/bin/rm -rf "$extracted_dir"
+  ) &&
+    ble-update/.reload
+}
 function ble-update {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
     return "$?"
   fi
 
-  if [[ $_ble_base_package_type ]] && ble/is-function ble/base/package:"$_ble_base_package_type"/update; then
+  if [[ ${_ble_base_package_type-} ]] && ble/is-function ble/base/package:"$_ble_base_package_type"/update; then
     ble/util/print "ble-update: delegate to '$_ble_base_package_type' package manager..." >&2
     ble/base/package:"$_ble_base_package_type"/update; local ext=$?
     if ((ext==125)); then
@@ -1482,11 +1578,22 @@ function ble-update {
     fi
   fi
 
+  if [[ ${_ble_base_repository-} == release:nightly-* ]]; then
+    if ble-update/.download-nightly-build; local ext=$?; ((ext==0||ext==6||ext==7)); then
+      if ((ext==6)); then
+        ble/util/print 'ble-update (nightly): Already up to date.' >&2
+      elif ((ext==7)); then
+        ble/util/print 'ble-update (nightly): Remote temporarily unavailable. Try it again later.' >&2
+      fi
+      return 0
+    fi
+  fi
+
   # check make
   local MAKE=
-  if type gmake &>/dev/null; then
+  if ble/bin#has gmake; then
     MAKE=gmake
-  elif type make &>/dev/null && make --version 2>&1 | ble/bin/grep -qiF 'GNU Make'; then
+  elif ble/bin#has make && make --version 2>&1 | ble/bin/grep -qiF 'GNU Make'; then
     MAKE=make
   else
     ble/util/print "ble-update: GNU Make is not available." >&2
@@ -1497,7 +1604,7 @@ function ble-update {
   if ! ble/bin#has git gawk; then
     local command
     for command in git gawk; do
-      type "$command" &>/dev/null ||
+      ble/bin#has "$command" ||
         ble/util/print "ble-update: '$command' command is not available." >&2
     done
     return 1
@@ -1507,7 +1614,7 @@ function ble-update {
   [[ ! -d $insdir_doc && -d ${_ble_base%/*}/doc/blesh ]] &&
     insdir_doc=${_ble_base%/*}/doc/blesh
 
-  if [[ $_ble_base_repository && $_ble_base_repository != release:* ]]; then
+  if [[ ${_ble_base_repository-} && $_ble_base_repository != release:* ]]; then
     if [[ ! -e $_ble_base_repository/.git ]]; then
       ble/util/print "ble-update: git repository not found at '$_ble_base_repository'." >&2
     elif [[ ! -O $_ble_base_repository ]]; then
@@ -1542,7 +1649,7 @@ function ble-update {
     # _ble_base/src 内部に clone して make install
     local branch=${_ble_base_branch:-master}
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
-        git clone --recursive --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
+        git clone --recursive --depth 1 "$_ble_base_repository_url" "$_ble_base/src/ble.sh" -b "$branch" &&
         builtin cd ble.sh && "$MAKE" all &&
         "$MAKE" INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install ) &&
       ble-update/.reload

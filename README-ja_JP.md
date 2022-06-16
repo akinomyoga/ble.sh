@@ -11,7 +11,7 @@
 `ble.sh` (*Bash Line Editor*) はピュア Bash スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
 
 現在の開発バージョンは 0.4 です。
-このスクリプトは Bash 3.0 以降で利用できますが、速度・機能などの観点から 4.0 以降ののリリース版 Bash でお使い頂くことがお薦めです。
+このスクリプトは Bash 3.0 以降で利用できますが、速度・機能などの観点から 4.0 以降のリリース版 Bash でお使い頂くことがお薦めです。
 現時点では、文字コードとして `UTF-8` のみの対応です。
 このスクリプトは [**BSD License**](LICENSE.md) (3条項 BSD ライセンス) の下で提供されます。
 
@@ -25,10 +25,15 @@
 
 ## 簡単設定
 
-`ble.sh` インストールには `git`, `make` (GNU make), and `gawk` が必要です。
+`ble.sh` をお使いいただくには Bash 3.0 以上 (及び POSIX の基本的なコマンド) が必要です。
+`ble.sh` を取得するには主に2つの方法があります: `git` を用いてソースを取得しビルドする方法と `curl` または `wget` を用いて nightly ビルドをダウンロードする方法です。
 詳細は、試用またはインストールに関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
-以下、GNU make が `gmake` として提供されているシステム (BSD など) では `make` を `gmake` に置き換えて実行してください。
+
+<details open><summary><b><code>git</code> を用いてソースを取得し <code>ble.sh</code> を生成</b></summary>
+
+この方法では `git`, `make` (GNU make), 及び `gawk` が必要です。
+以下、GNU make が `gmake` として提供されているシステム (BSD など) では、`make` を `gmake` に置き換えて実行してください。
 
 ```bash
 # 簡単お試し (インストールせずにお試しいただけます)
@@ -42,7 +47,56 @@ source ble.sh/out/ble.sh
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+```
 
+<details><summary><b><code>curl</code> を用いて nightly ビルドをダウンロード</b></summary>
+
+この方法では `curl`, `tar` (オプション `J` に対応), 及び `xz` (XZ Utils) が必要です。
+
+```bash
+# 簡単お試し (インストールせずにお試しいただけます)
+
+curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+source ble-nightly*/ble.sh
+
+# インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
+
+curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+mkdir -p ~/.local/share/blesh
+mv ble-nightly* ~/.local/share/blesh
+echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+```
+</details>
+
+<details><summary><b><code>wget</code> を用いて nightly ビルドをダウンロード</b></summary>
+
+この方法では `wget`, `tar` (オプション `J` に対応), 及び `xz` (XZ Utils) が必要です。
+
+```bash
+# 簡単お試し (インストールせずにお試しいただけます)
+
+wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+source ble-nightly*/ble.sh
+
+# インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
+
+wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
+mkdir -p ~/.local/share/blesh
+mv ble-nightly* ~/.local/share/blesh
+echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+```
+</details>
+
+<details open><summary><b>パッケージ管理システムを通じてパッケージをインストール</b> (現在 AUR のみ)</summary>
+
+この方法では対応するパッケージ管理ツールのみが必要です。
+
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+</details>
+
+<details open><summary><b>既存の <code>ble.sh</code> を更新</b></summary>
+
+```bash
 # 更新 (ble.sh をロードした状態で)
 
 ble-update
@@ -50,16 +104,18 @@ ble-update
 # 更新 (ble.sh 外部から)
 
 bash /path/to/ble.sh --update
+```
+</details>
 
+<details><summary><b><code>ble.sh</code> のパッケージ作成</b></summary>
+
+```bash
 # パッケージ作成用コマンド
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
-
-パッケージ管理システムを通じて `ble.sh` をインストールする事もできます (現在 AUR のみ)。
-
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+</details>
 
 ## 機能概要
 
@@ -100,7 +156,7 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
-## これまでとこれから
+## 来し方行く末
 
 このプロジェクトは初めは `.bashrc` の片隅で行われた小さな実験からスタートしました。
 2013年5月に `zsh-syntax-highlighting` のとある記事に触発されたのがきっかけでした。
@@ -121,7 +177,7 @@ Vimモードの実装は2017年9月に始まり2018年3月に一先ず完成と�
 - 2015-12 v0.1 -- 構文着色 [[v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14)]
 - 2018-03 v0.2 -- Vim モード [[v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6)]
 - 2019-02 v0.3 -- 拡張補完 [[v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3)]
-- 20xx-xx v0.4 (plan) -- プログラム着色 [`master`]
+- 20xx-xx v0.4 (plan) -- プログラム着色 [[nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)]
 - 20xx-xx v0.5 (plan) -- TUI設定画面
 - 20xx-xx v0.6 (plan) -- エラー診断?
 
@@ -186,7 +242,7 @@ Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` 
 ダウンロード・試用・インストールの方法については各リリースページの説明を御覧ください。
 現在、安定版は開発版に比べてかなり古いので様々な機能が欠けている事にご注意下さい。
 
-- 開発版 [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12)
+- 開発版 [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
 - 安定版 [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) 拡張補完
 - 安定版 [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) Vim モード
 - 安定版 [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) 構文着色
