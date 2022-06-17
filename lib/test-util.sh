@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1198
+ble/test/start-section 'ble/util' 1223
 
 # bleopt
 
@@ -1223,6 +1223,22 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   x[1]=$'\1'
 
   ble/test "ble/util/writearray -d '' x | sha256sum | awk '{print \$1}'" stdout=$(printf '%s\0' "${x[@]}" | sha256sum | awk '{print $1}')
+
+  # gawk では $'\302\203' という文字列を unescape する上で注意が必要
+  x=($'\302\203' alpha)
+  ble/test "ble/util/writearray -d '' x | sha256sum | awk '{print \$1}'" stdout=$(printf '%s\0' "${x[@]}" | sha256sum | awk '{print $1}')
+
+  for pair in $'\a:007' $'\b:010' $'\t:011' $'\v:013' $'\f:014' $'\r:015'; do
+    for awk in awk nawk mawk gawk; do
+      if ble/is-function ble/bin/"$awk"; then
+        ctrl=${pair%:*}
+        seq=${pair#*:}
+        value=$(ble/bin/"$awk" '{gsub(/\'"$seq"'/, "<DEL>");print $0 "x";}' <<< "x${ctrl}y")
+        value=${value%x}
+        ble/test code:"ret=\$value # \"$awk gsub(/\\$seq/)\"" ret="x<DEL>y"
+      fi
+    done
+  done
 )
 
 # ble/is-function

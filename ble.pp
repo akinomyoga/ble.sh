@@ -951,47 +951,75 @@ if ! ble/init/check-environment; then
   return 1
 fi
 
-# src/util で awk を使う
+# Note: src/util.sh で ble/util/assign を定義した後に呼び出される。
 _ble_bin_awk_type=
 function ble/bin/awk/.instantiate {
-  local path q=\' Q="'\''"
-  if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
-    # Solaris の既定の awk は全然駄目なので /usr/xpg4 以下の awk を使う。
-    _ble_bin_awk_type=xpg4
-    function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; }
-  elif ble/util/assign path "builtin type -P -- nawk 2>/dev/null" && [[ $path ]]; then
-    _ble_bin_awk_type=nawk
-    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }"
-  elif ble/util/assign path "builtin type -P -- mawk 2>/dev/null" && [[ $path ]]; then
-    _ble_bin_awk_type=mawk
-    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
-  elif ble/util/assign path "builtin type -P -- gawk 2>/dev/null" && [[ $path ]]; then
-    _ble_bin_awk_type=gawk
-    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
-  elif ble/util/assign path "builtin type -P -- awk 2>/dev/null" && [[ $path ]]; then
-    local version
-    ble/util/assign version '"$path" --version 2>&1'
-    if [[ $version == *'GNU Awk'* ]]; then
-      _ble_bin_awk_type=gawk
-    elif [[ $version == *mawk* ]]; then
-      _ble_bin_awk_type=mawk
-    elif [[ $version == 'awk version '[12][0-9][0-9][0-9][01][0-9][0-3][0-9] ]]; then
+  local path q=\' Q="'\''" ext=1
+
+  if ble/util/assign path "builtin type -P -- nawk 2>/dev/null" && [[ $path ]]; then
+    builtin eval "function ble/bin/nawk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }"
+    if [[ ! $_ble_bin_awk_type ]]; then
       _ble_bin_awk_type=nawk
-    else
-      _ble_bin_awk_type=unknown
+      builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }" && ext=0
     fi
-    builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
+  fi
+
+  if ble/util/assign path "builtin type -P -- mawk 2>/dev/null" && [[ $path ]]; then
+    builtin eval "function ble/bin/mawk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
+    if [[ ! $_ble_bin_awk_type ]]; then
+      _ble_bin_awk_type=mawk
+      builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }" && ext=0
+    fi
+  fi
+
+  if ble/util/assign path "builtin type -P -- gawk 2>/dev/null" && [[ $path ]]; then
+    builtin eval "function ble/bin/gawk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
+    if [[ ! $_ble_bin_awk_type ]]; then
+      _ble_bin_awk_type=gawk
+      builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }" && ext=0
+    fi
+  fi
+
+  if [[ ! $_ble_bin_awk_type ]]; then
+    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+      # Solaris の既定の awk は全然駄目なので /usr/xpg4 以下の awk を使う。
+      _ble_bin_awk_type=xpg4
+      function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; } && ext=0
+    elif ble/util/assign path "builtin type -P -- awk 2>/dev/null" && [[ $path ]]; then
+      local version
+      ble/util/assign version '"$path" --version 2>&1'
+      if [[ $version == *'GNU Awk'* ]]; then
+        _ble_bin_awk_type=gawk
+      elif [[ $version == *mawk* ]]; then
+        _ble_bin_awk_type=mawk
+      elif [[ $version == 'awk version '[12][0-9][0-9][0-9][01][0-9][0-3][0-9] ]]; then
+        _ble_bin_awk_type=nawk
+      else
+        _ble_bin_awk_type=unknown
+      fi
+      builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }" && ext=0
+      [[ $_ble_bin_awk_type == [gmn]awk ]] &&
+        ! ble/is-function "ble/bin/$_ble_bin_awk_type" &&
+        builtin eval "function ble/bin/$_ble_bin_awk_type { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
+    fi
+  fi
+  return "$ext"
+}
+
+# Note: ble//bin/awk/.instantiate が実行される前に使おうとした時の為の暫定実装
+function ble/bin/awk {
+  if ble/bin/awk/.instantiate; then
+    ble/bin/awk "$@"
   else
-    return 1
+    awk "$@"
   fi
 }
 
-function ble/bin/awk {
-  ble/bin/awk/.instantiate &&
-    ble/bin/awk "$@"
-}
 # Do not overwrite by .freeze-utility-path
 function ble/bin/.frozen:awk { :; }
+function ble/bin/.frozen:nawk { :; }
+function ble/bin/.frozen:mawk { :; }
+function ble/bin/.frozen:gawk { :; }
 
 function ble/util/mkd {
   local dir

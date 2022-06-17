@@ -5568,10 +5568,6 @@ bash_tips
     ble/widget/vi_xmap/visual-replace-char.hook 置換に使う文字の入力
     ble/lib/vim-surround.sh/get-char-from-key 囲み文字の入力 (あらゆる遅延入力)
 
-2018-03-14
-
-  * emacs: C-w を続けて実行すると kill-ring に追記にするべき
-
 2018-02-21
 
   * vi-mode: nmap (, ), {, }
@@ -6391,6 +6387,343 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-06-17
+
+  * util: ble/util/writearray 最適化 [#D1816]
+
+    やはり巨大な配列になると書き出しが最も遅い。
+
+      printf '%s\0' "${_ble_history[@]}"       ...  365ms
+      ble/util/writearray -d '' _ble_history   ... 1387ms (mawk だと速い?)
+      ble/util/writearray --nlfix _ble_history ... 1397ms
+
+    と思ったら mawk を使っている場合には writearray も高速なのであった。nawk
+    と gawk ではとても遅い。#D1522 を見たら多少改善したと書かれているがそうで
+    もなかったという事だろうか。改めて注意深く計測してみる事にする。→うーん。
+    単に mawk がコンパイルに失敗して動作していないだけだった。
+
+      bash-5.1
+      [  0.170960 sec] write by printf
+      [  0.035244 sec] write by declare -p
+      [  0.236600 sec] write by ${_ble_history[@]@Q}
+      [  0.677771 sec] write by nawk
+      [  0.428015 sec] write by mawk
+      [  1.804527 sec] write by gawk
+      [  0.689799 sec] write by nawk --nlfix
+      [  0.421999 sec] write by mawk --nlfix
+      [  1.806602 sec] write by gawk --nlfix
+
+      bash-5.2
+      [  0.455534 sec] write by printf
+      [  0.023524 sec] write by declare -p
+      [  0.690759 sec] write by nawk
+      [  0.434321 sec] write by mawk
+      [  1.810687 sec] write by gawk
+      [  0.693987 sec] write by nawk --nlfix
+      [  0.423758 sec] write by mawk --nlfix
+      [  1.832763 sec] write by gawk --nlfix
+
+    a writearray の awk 高速化?
+
+      うーん。やはり writearray の awk を高速化できないだろうか。何処で時間が
+      かかっているのかを確認する。
+
+      % 先ず全ての文字列を連結しているがこれが遅い可能性は?
+      %
+      %   連結部分の時間
+      %   [  0.041765 sec] write by nawk
+      %   [  0.061284 sec] write by mawk
+      %   [  0.032100 sec] write by gawk
+      %
+      % 無視できる訳でもないが全体の処理時間に比べればずっと小さい。これの最適化
+      % も考えたい気がするが、これは後でも良い気がする。
+      %
+      %   declare除去終了時刻
+      %   [  0.049391 sec] write by nawk → 8ms
+      %   [  0.062445 sec] write by mawk → 1ms
+      %   [  0.036025 sec] write by gawk → 4ms
+      %   全体quote除去 終了時刻
+      %   [  0.059244 sec] write by nawk → 10ms
+      %   [  0.062717 sec] write by mawk → 0ms
+      %   [  0.045702 sec] write by gawk → 9ms
+      %   bashバグ調整 終了時刻 (Bash 5.1 では何もしない筈)
+      %   [  0.059713 sec] write by nawk → 0ms
+      %   [  0.062856 sec] write by mawk → 0ms
+      %   [  0.045834 sec] write by gawk → 0ms
+      %   変数名除去等 終了時刻
+      %   [  0.079104 sec] write by nawk → 10ms
+      %   [  0.078687 sec] write by mawk → 16ms
+      %   [  0.136127 sec] write by gawk → 91ms
+      %
+      % この文字列の全体処理の時点で
+      %
+      %   [  0.079104 sec] write by nawk →  38ms
+      %   [  0.078687 sec] write by mawk →  17ms
+      %   [  0.136127 sec] write by gawk → 104ms
+      %
+      % だけ処理に時間がかかっている。うーん。これはもっと短くできる気がする。末
+      % 尾の処理に関しては最後にならないと分からない。先ずは入力を結合せずに配列
+      % に保持するなどして、結合する前に適用するのが良い様な気もする。これは何れ
+      % にしても結合部分を最適化してから考えるのが良い気がする。
+      %
+      % →よく考えてみれば、そもそも declare -p は1行しか出力しないのでここで
+      % 実際に連結が大量に行われるという事はない。なので、この最初の部分をもっ
+      % と小さな文字列に分解して処理するという方向での高速化はできない。
+
+        dq判定直前
+        [  0.079104 sec] write by nawk
+        [  0.078687 sec] write by mawk
+        [  0.136127 sec] write by gawk
+        dq判定直後
+        [  0.089831 sec] write by nawk
+        [  0.076440 sec] write by mawk
+        [  0.146535 sec] write by gawk
+        split直後
+        [  0.211504 sec] write by nawk → 122
+        [  0.091142 sec] write by mawk → 15
+        [  0.230322 sec] write by gawk → 84
+
+      うーん。後は普通に loop に時間がかかっているという事
+
+        配列添字の除去直後でcontinueした場合
+        [  0.443631 sec] write by nawk → 232
+        [  0.130103 sec] write by mawk →  39
+        [  0.348103 sec] write by gawk → 118
+        matchループ直後でcontinueした場合
+        [  0.657334 sec] write by nawk → 214
+        [  0.412463 sec] write by mawk → 282
+        [  1.758804 sec] write by gawk → 1410
+
+      うーん。これの高速化は難しい様な気がする。正規表現をやめて一文字ずつ処理
+      する様にしたら更に悪化しそうな気がする。
+
+      * reject: 微妙に弄ってみる事にする。元々の時刻を測っておく。
+
+        [  0.698775 sec] write by nawk
+        [  0.424295 sec] write by mawk
+        [  1.823190 sec] write by gawk
+
+        うーん。split を /" / で実行したら良いのではないかと考えたが
+        [1]=$'...' の形式等もあるので /" / だけで分割するという訳にも行かない。
+        だからと言って /['"] / で分割してしまうと、其処にあった文字が ' だっ
+        たのか " だったのかの情報が失われてしまう。なので、この案は駄目だ。
+
+        一応、結果が変わってしまうが /" / で分割して処理した時の時間を見てお
+        く。一応高速化はちゃんとする様である。
+
+        [  0.391338 sec] write by nawk
+        [  0.269026 sec] write by mawk
+        [  1.267509 sec] write by gawk
+
+      やはり writearray の awk をこれ以上高速化する方法はない様な気がする。既
+      にほぼ最速の実装になっているという気がするのである。
+
+      * 先に数十の単位で連結を行って多少復元してから処理を行う? それでも連結
+        コストはかかるしうーん。どうなのだろうか。
+
+        元のコード
+
+          function analyze_elements_general(decl, _, arr, i, n, str, elem) {
+            nlfix_indices = "";
+            nlfix_index = 0;
+            n = split(decl, arr, / /);
+            for (i = 1; i <= n; i++) {
+              str = arr[i];
+              sub(/^\[[0-9]+\]=/, "", str);
+              elem = "";
+              while (1) {
+                if (match(str, /'"$rex_dq"'|'"$rex_es"'|'"$rex_sq"'|'"$rex_normal"'|^\\./)) {
+                  mlen = RLENGTH;
+                  elem = elem unquote(substr(str, 1, mlen));
+                  str = substr(str, mlen + 1);
+                } else if (str ~ /^[$"'\''\\]/ && i + 1 <= n) {
+                  str = str " " arr[++i];
+                } else {
+                  break;
+                }
+              }
+
+              _process_elem(elem);
+            }
+            if (FLAG_NLFIX)
+              printf("%s\n", nlfix_indices);
+            return 1;
+          }
+
+          [  0.723085 sec] write by nawk
+          [  0.430691 sec] write by mawk
+          [  1.822919 sec] write by gawk
+
+        N個ずつ処理する時
+
+          function analyze_elements_general(decl, _, arr, i, n, str, elem) {
+            nlfix_indices = "";
+            nlfix_index = 0;
+
+            n = split(decl, arr, / /);
+            str = "";
+            elem = "";
+            first = 1;
+            for (i = 1; i <= n; i++) {
+              str = str " " arr[i];
+              if (i % 5 != 0 && i != n) continue;
+              while (1) {
+                if (sub(/^ (\[[0-9]+\]=)?/, "", str)) {
+                  if (first)
+                    first = 0;
+                  else
+                    _process_elem(elem);
+                  elem = "";
+                } else if (match(str, /'"$rex_dq"'|'"$rex_es"'|'"$rex_sq"'|'"$rex_normal"'|^\\./)) {
+                  mlen = RLENGTH;
+                  elem = elem unquote(substr(str, 1, mlen));
+                  str = substr(str, mlen + 1);
+                } else {
+                  break;
+                }
+              }
+            }
+            _process_elem(elem);
+
+            if (FLAG_NLFIX)
+              printf("%s\n", nlfix_indices);
+            return 1;
+          }
+
+          5個ずつ処理する時
+          [  0.729255 sec] write by nawk
+          [  0.368347 sec] write by mawk
+          [  1.642443 sec] write by gawk
+          10個ずつ処理する時
+          [  0.714652 sec] write by nawk
+          [  0.347246 sec] write by mawk
+          [  1.636028 sec] write by gawk
+          100個ずつ処理する時
+          [  0.727583 sec] write by nawk
+          [  0.371555 sec] write by mawk
+          [  1.678000 sec] write by gawk
+
+        "]=" で分割する作戦
+
+          "]=" で分割する時
+          [  0.438765 sec] write by nawk 39% speedup
+          [  0.303779 sec] write by mawk 30% speedup
+          [  1.378912 sec] write by gawk 24% speedup
+          "]=" で分割する時/2個ずつ
+          [  0.443567 sec] write by nawk
+          [  0.305656 sec] write by mawk
+          [  1.368339 sec] write by gawk
+          "]=" で分割する時/5個ずつ
+          [  0.456370 sec] write by nawk
+          [  0.306033 sec] write by mawk
+          [  1.400369 sec] write by gawk
+
+          ループの仕方を多少工夫
+          [  0.385840 sec] write by nawk
+          [  0.283110 sec] write by mawk
+          [  1.295154 sec] write by gawk
+
+          この方法で思ったよりは高速になった。
+
+      * unquote_dq の最適化
+
+          gawkでgensub を使う様に変更
+          [  0.388626 sec] write by nawk
+          [  0.282651 sec] write by mawk
+          [  1.015230 sec] write by gawk
+          gsubによる実装に変更
+          [  0.356890 sec] write by nawk
+          [  0.218238 sec] write by mawk
+          [  1.016223 sec] write by gawk
+          unquote判定の簡略化
+          [  0.348118 sec] write by nawk
+          [  0.213385 sec] write by mawk
+          [  0.990123 sec] write by gawk
+          [  0.367019 sec] write by nawk
+          [  0.211183 sec] write by mawk
+          [  1.001340 sec] write by gawk
+          [  0.346388 sec] write by nawk
+          [  0.211842 sec] write by mawk
+          [  1.005543 sec] write by gawk
+
+    b reject: ${_ble_history[@]@Q} を解析する可能性?
+
+      うーん。或いは declare -p は諦めて ${_ble_history[@]@Q} の結果を解析する
+      方が簡単で良い? と思ったがこれはこれで処理に時間がかかりそうな予感がする。
+      何より split が非自明である。
+
+      a 単に /' \$?'/ で split すれば良いのか、というと違う気がする。うーん。或
+        いは実はそれで行ける? 落ち着いて考える…やはり駄目だ。これだと $ があっ
+        たかどうかの情報が失われてしまう。
+
+      b /' '/ で split して更にその後で /' \$'/ で split する? うーん。問題は関
+        係ない物を誤って split してしまわないかという事。例えば 'a'\'' ' 'b' と
+        なっていた場合違う所で split してしまう。結局繰り返し match が必要にな
+        るので処理が重くなる気がする。
+
+        或いは先に '\'' を適当に処理してしまう (置換して別の文字にするなど)? と
+        思ったが今度は $'\n\'\'' 等に於いて関係ない '\'' をひっかけてしまう。
+
+      更に ${_ble_history[@]@Q} の評価自体も別にそれほど高速という訳でもない。
+      200ms かかっている。やはり declare -p の 35ms には勝てないのである。
+
+    c 或いは高速化の為に C で処理するプログラムを書いてしまうのも手なのかもしれない。
+    d もしそうするのであれば寧ろ bash loadable builtin にしてしまう?
+
+      これらの処理を実装するのだとしたらもっと広範に渡って bottleneck を C /
+      builtin 実装に置き換えたい気がする。
+
+    以下テストに用いたコード
+
+    {
+      # 計測結果
+      (
+        ble/debug/stopwatch/start
+        printf '%s\0' "${_ble_history[@]}"      >| "$itmp1"
+        ble/debug/stopwatch/stop "write by printf" >/dev/tty
+
+        ble/debug/stopwatch/start
+        declare -p _ble_history >| "$itmp1"
+        ble/debug/stopwatch/stop "write by declare -p" >/dev/tty
+
+        ble/debug/stopwatch/start
+        echo "${_ble_history[@]@Q}" >| "$itmp1"
+        ble/debug/stopwatch/stop "write by \${_ble_history[@]@Q}" >/dev/tty
+
+        ble/bin/awk() { "$_ble_bin_awk_type" -v AWKTYPE="$_ble_bin_awk_type" "$@"; }
+        for _ble_bin_awk_type in nawk mawk gawk; do
+          ble/debug/stopwatch/start
+          ble/util/writearray -d '' _ble_history >| "$itmp1"
+          ble/debug/stopwatch/stop "write by $_ble_bin_awk_type" >/dev/tty
+        done
+
+        for _ble_bin_awk_type in nawk mawk gawk; do
+          ble/debug/stopwatch/start
+          ble/util/writearray --nlfix _ble_history >| "$itmp1"
+          ble/debug/stopwatch/stop "write by $_ble_bin_awk_type --nlfix" >/dev/tty
+        done
+      )
+
+      #_ble_bin_awk_type=nawk
+      #_ble_bin_awk_type=mawk
+      _ble_bin_awk_type=gawk
+      ble/bin/awk() { "$_ble_bin_awk_type" -v AWKTYPE="$_ble_bin_awk_type" "$@"; }
+      ble/util/writearray -d '' _ble_history      >| "$itmp1" & local pid1=$!
+      ble/util/writearray -d '' _ble_history_edit >| "$itmp2"
+      wait "$pid1"
+      cat "$itmp1" "$itmp2" | tr '\0' '\n' > 1.txt
+      printf '%s\0' "${_ble_history[@]}"      >| "$itmp1" & local pid1=$!
+      printf '%s\0' "${_ble_history_edit[@]}" >| "$itmp2"
+      wait "$pid1"
+      cat "$itmp1" "$itmp2" | tr '\0' '\n' > 0.txt
+      command diff -u 0.txt 1.txt > 1.diff
+      command rm 0.txt 1.txt
+    }
+
+  * [実装済] 2018-03-14 emacs: C-w を続けて実行すると kill-ring に追記にするべき [#D1815]
+
+    古い項目。これは既に実装されている。
 
 2022-06-15
 

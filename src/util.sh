@@ -508,6 +508,20 @@ function ble/debug/print-variables {
   done
   ble/debug/print "${_ble_local_out%' '}"
 }
+
+_ble_debug_stopwatch=()
+function ble/debug/stopwatch/start {
+  ble/array#push _ble_debug_stopwatch "${EPOCHREALTIME:-$SECONDS.000000}"
+}
+function ble/debug/stopwatch/stop {
+  local end=${EPOCHREALTIME:-$SECONDS.000000}
+  if local ret; ble/array#pop _ble_debug_stopwatch; then
+    local usec=$(((${end%%[.,]*}-${ret%%[,.]*})*1000000+(10#${end#*[.,]}-10#${ret#*[,.]})))
+    printf '[%3d.%06d sec] %s\n' "$((usec/1000000))" "$((usec%1000000))" "$1"
+  else
+    printf '[---.------ sec] %s\n' "$1"
+  fi
+}
 #%end
 
 #
@@ -2410,16 +2424,214 @@ function ble/util/writearray/.read-arguments {
   [[ $_ble_local_nlfix ]] && _ble_local_delim=$'\n'
   [[ $flags != *E* ]]
 }
+
+_ble_bin_awk_libES='
+  function s2i_initialize(_, i) {
+    for (i = 0; i < 16; i++)
+      xdigit2int[sprintf("%x", i)] = i;
+    for (i = 10; i < 16; i++)
+      xdigit2int[sprintf("%X", i)] = i;
+  }
+  function s2i(s, base, _, i, n, r) {
+    if (!base) base = 10;
+    r = 0;
+    n = length(s);
+    for (i = 1; i <= n; i++)
+      r = r * base + xdigit2int[substr(s, i, 1)];
+    return r;
+  }
+
+  # ENCODING: UTF-8
+  function c2s_initialize(_, i, n, buff) {
+    if (sprintf("%c", 945) == "α") {
+      C2S_UNICODE_PRINTF_C = 1;
+      n = split(ENVIRON["__ble_rawbytes"], buff);
+      for (i = 1; i <= n; i++)
+        c2s_byte2raw[127 + i] = buff[i];
+    } else {
+      C2S_UNICODE_PRINTF_C = 0;
+      for (i = 1; i <= 255; i++)
+        c2s_byte2char[i] = sprintf("%c", i);
+    }
+  }
+  function c2s(code, _, leadbyte_mark, leadbyte_sup, tail) {
+    if (C2S_UNICODE_PRINTF_C)
+      return sprintf("%c", code);
+
+    leadbyte_sup = 128; # 0x80
+    leadbyte_mark = 0;
+    tail = "";
+    while (leadbyte_sup && code >= leadbyte_sup) {
+      leadbyte_sup /= 2;
+      leadbyte_mark = leadbyte_mark ? leadbyte_mark / 2 : 65472; # 0xFFC0
+      tail = c2s_byte2char[128 + int(code % 64)] tail;
+      code = int(code / 64);
+    }
+    return c2s_byte2char[(leadbyte_mark + code) % 256] tail;
+  }
+  function c2s_raw(code, _, ret) {
+    if (code >= 128 && C2S_UNICODE_PRINTF_C) {
+      ret = c2s_byte2raw[code];
+      if (ret != "") return ret;
+    }
+    return sprintf("%c", code);
+  }
+
+  function es_initialize(_, c) {
+    s2i_initialize();
+    c2s_initialize();
+    es_control_chars["a"] = "\a";
+    es_control_chars["b"] = "\b";
+    es_control_chars["t"] = "\t";
+    es_control_chars["n"] = "\n";
+    es_control_chars["v"] = "\v";
+    es_control_chars["f"] = "\f";
+    es_control_chars["r"] = "\r";
+    es_control_chars["e"] = "\033";
+    es_control_chars["E"] = "\033";
+    es_control_chars["?"] = "?";
+    es_control_chars["'\''"] = "'\''";
+    es_control_chars["\""] = "\"";
+    es_control_chars["\\"] = "\\";
+
+    for (c = 32; c < 127; c++)
+      es_s2c[sprintf("%c", c)] = c;
+  }
+  function es_unescape(s, _, head, c) {
+    head = "";
+    while (match(s, /^[^\\]*\\/)) {
+      head = head substr(s, 1, RLENGTH - 1);
+      s = substr(s, RLENGTH + 1);
+      if ((c = es_control_chars[substr(s, 1, 1)])) {
+        head = head c;
+        s = substr(s, 2);
+      } else if (match(s, /^[0-9]([0-9][0-9]?)?/)) {
+        head = head c2s_raw(s2i(substr(s, 1, RLENGTH), 8) % 256);
+        s = substr(s, RLENGTH + 1);
+      } else if (match(s, /^x[0-9a-fA-F][0-9a-fA-F]?/)) {
+        head = head c2s_raw(s2i(substr(s, 2, RLENGTH - 1), 16));
+        s = substr(s, RLENGTH + 1);
+      } else if (match(s, /^U[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
+        # \\U[0-9]{5,8}
+        head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+        s = substr(s, RLENGTH + 1);
+      } else if (match(s, /^[uU][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
+        # \\[uU][0-9]{1,4}
+        head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+        s = substr(s, RLENGTH + 1);
+      } else if (match(s, /^c[ -~]/)) {
+        # \\c[ -~] (non-ascii characters are unsupported)
+        c = es_s2c[substr(s, 2, 1)];
+        head = head c2s(_ble_bash >= 40400 && c == 63 ? 127 : c % 32);
+        s = substr(s, 3);
+      } else {
+        head = head "\\";
+      }
+    }
+    return head s;
+  }
+'
+_ble_bin_awk_libNLFIX='
+  ## @var nlfix_index
+  ## @var nlfix_indices
+  ## @var nlfix_rep_slash
+  ## @var nlfix_rep_double_slash
+  ## @fn nlfix_begin()
+  ## @fn nlfix_push(elem)
+  ## @fn nlfix_end()
+  function nlfix_begin(_, tmp) {
+    nlfix_rep_slash = "\\";
+    if (AWKTYPE == "xpg4") nlfix_rep_slash = "\\\\";
+
+    nlfix_rep_double_slash = "\\\\";
+    sub(/.*/, nlfix_rep_double_slash, tmp);
+    if (tmp == "\\") nlfix_rep_double_slash = "\\\\\\\\";
+
+    nlfix_indices = "";
+    nlfix_index = 0;
+  }
+  function nlfix_push(elem, file) {
+    if (elem ~ /\n/) {
+      gsub(/\\/,   nlfix_rep_double_slash, elem);
+      gsub(/'\''/, nlfix_rep_slash "'\''", elem);
+      gsub(/\007/, nlfix_rep_slash "a",    elem);
+      gsub(/\010/, nlfix_rep_slash "b",    elem);
+      gsub(/\011/, nlfix_rep_slash "t",    elem);
+      gsub(/\012/, nlfix_rep_slash "n",    elem);
+      gsub(/\013/, nlfix_rep_slash "v",    elem);
+      gsub(/\014/, nlfix_rep_slash "f",    elem);
+      gsub(/\015/, nlfix_rep_slash "r",    elem);
+      if (file)
+        printf("$'\''%s'\''\n", elem) > file;
+      else
+        printf("$'\''%s'\''\n", elem);
+      nlfix_indices = nlfix_indices != "" ? nlfix_indices " " nlfix_index : nlfix_index;
+    } else {
+      if (file)
+        printf("%s\n", elem) > file;
+      else
+        printf("%s\n", elem);
+    }
+    nlfix_index++;
+  }
+  function nlfix_end(file) {
+    if (file)
+      printf("%s\n", nlfix_indices) > file;
+    else
+      printf("%s\n", nlfix_indices);
+  }
+'
+_ble_util_writearray_rawbytes=
 function ble/util/writearray {
   local _ble_local_array
   local -x _ble_local_nlfix _ble_local_delim
   ble/util/writearray/.read-arguments "$@" || return 2
 
-  local rex_dq='^"([^\\"]|\\.)*"'
-  local rex_es='^\$'\''([^\\'\'']|\\.)*'\'''
-  local rex_sq='^'\''([^'\'']|'\'\\\\\'\'')*'\'''
-  local rex_normal='^[^[:space:]$`"'\''()|&;<>\\]' # Note: []{}?*#!~^, @(), +() は quote されていなくても OK とする
-  declare -p "$_ble_local_array" | ble/bin/awk -v _ble_bash="$_ble_bash" '
+  # select the fastest awk implementation
+  local __ble_awk=ble/bin/awk __ble_awktype=$_ble_bin_awk_type
+  if ble/is-function ble/bin/mawk; then
+    __ble_awk=ble/bin/mawk __ble_awktype=mawk
+  elif ble/is-function ble/bin/nawk; then
+    __ble_awk=ble/bin/nawk __ble_awktype=nawk
+  fi
+
+  # Note: printf も遅いが awk による parse の方が遅いので nlfix でない限りは直
+  # 接 printf を使う。但し、bash-5.2 以降では printf が格段に遅くなるので避ける。
+  if ((!_ble_local_nlfix)) && ! [[ _ble_bash -ge 50200 && $__ble_awktype == [mn]awk ]]; then
+    if [[ $_ble_local_delim ]]; then
+      if [[ $_ble_local_delim == *["%\'"]* ]]; then
+        local __ble_q=\' __ble_Q="'\''"
+        _ble_local_delim=${_ble_local_delim//'%'/'%%'}
+        _ble_local_delim=${_ble_local_delim//'\'/'\\'}
+        _ble_local_delim=${_ble_local_delim//$__ble_q/$__ble_Q}
+      fi
+      builtin eval "printf '%s$_ble_local_delim' \"\${$_ble_local_array[@]}\""
+    else
+      builtin eval "printf '%s\0' \"\${$_ble_local_array[@]}\""
+    fi
+    return "$?"
+  fi
+
+  # Note: mawk は定義していない関数を使おうとすると、それが実際に決し
+  # て実行されないとしてもコンパイルに失敗して動かない。
+  local __ble_function_gensub_dummy=
+  [[ $__ble_awktype == gawk ]] ||
+    __ble_function_gensub_dummy='function gensub(rex, rep, n, str) { exit 3; }'
+
+  # Note: gawk の内部では $'\302' 等から現在のコードにないバイトを生成できない
+  # ので外部から与える。
+  if [[ ! $_ble_util_writearray_rawbytes ]]; then
+    local IFS=$_ble_term_IFS __ble_tmp; __ble_tmp=('\'{2,3}{0..7}{0..7})
+    builtin eval "local _ble_util_writearray_rawbytes=\$'${__ble_tmp[*]}'"
+  fi
+  local -x __ble_rawbytes=$_ble_util_writearray_rawbytes
+
+  local __ble_rex_dq='^"([^\\"]|\\.)*"'
+  local __ble_rex_es='^\$'\''([^\\'\'']|\\.)*'\'''
+  local __ble_rex_sq='^'\''([^'\'']|'\'\\\\\'\'')*'\'''
+  local __ble_rex_normal='^[^[:space:]$`"'\''()|&;<>\\]' # Note: []{}?*#!~^, @(), +() は quote されていなくても OK とする
+  declare -p "$_ble_local_array" | "$__ble_awk" -v _ble_bash="$_ble_bash" '
+    '"$__ble_function_gensub_dummy"'
     BEGIN {
       DELIM = ENVIRON["_ble_local_delim"];
       FLAG_NLFIX = ENVIRON["_ble_local_nlfix"];
@@ -2427,19 +2639,17 @@ function ble/util/writearray {
 
       IS_GAWK = AWKTYPE == "gawk";
       IS_XPG4 = AWKTYPE == "xpg4";
+
       REP_SL = "\\";
       if (IS_XPG4) REP_SL = "\\\\";
 
-      REP_DBL_SL = "\\\\";
-      sub(/.*/, REP_DBL_SL, tmp);
-      if (tmp == "\\") REP_DBL_SL = "\\\\\\\\";
-
-      s2i_initialize();
-      c2s_initialize();
       es_initialize();
 
       decl = "";
     }
+
+    '"$_ble_bin_awk_libES"'
+    '"$_ble_bin_awk_libNLFIX"'
 
     # Note: "str" must not contain "&" or "\\\\".  When "&" is
     # present, the escaping rule for "\\" changes in some awk.
@@ -2450,120 +2660,38 @@ function ble/util/writearray {
       return str;
     }
 
-    function s2i_initialize() {
-      for (i = 0; i < 16; i++)
-        xdigit2int[sprintf("%x", i)] = i;
-      for (i = 10; i < 16; i++)
-        xdigit2int[sprintf("%X", i)] = i;
-    }
-    function s2i(s, base, _, i, n, r) {
-      if (!base) base = 10;
-      r = 0;
-      n = length(s);
-      for (i = 1; i <= n; i++)
-        r = r * base + xdigit2int[substr(s, i, 1)];
-      return r;
-    }
-
-    # ENCODING: UTF-8
-    function c2s_initialize(_, i) {
-      if (sprintf("%c", 945) == "α") {
-        C2S_UNICODE_PRINTF_C = 1;
-      } else {
-        C2S_UNICODE_PRINTF_C = 0;
-        for (i = 1; i <= 255; i++)
-          c2s_byte2char[i] = sprintf("%c", i);
-      }
-    }
-    function c2s(code, _, leadbyte_mark, leadbyte_sup, tail) {
-      if (C2S_UNICODE_PRINTF_C)
-        return sprintf("%c", code);
-
-      leadbyte_sup = 128; # 0x80
-      leadbyte_mark = 0;
-      tail = "";
-      while (leadbyte_sup && code >= leadbyte_sup) {
-        leadbyte_sup /= 2;
-        leadbyte_mark = leadbyte_mark ? leadbyte_mark / 2 : 65472; # 0xFFC0
-        tail = c2s_byte2char[128 + int(code % 64)] tail;
-        code = int(code / 64);
-      }
-      return c2s_byte2char[(leadbyte_mark + code) % 256] tail;
-    }
-
-    function es_initialize() {
-      es_control_chars["a"] = "\a";
-      es_control_chars["b"] = "\b";
-      es_control_chars["t"] = "\t";
-      es_control_chars["n"] = "\n";
-      es_control_chars["v"] = "\v";
-      es_control_chars["f"] = "\f";
-      es_control_chars["r"] = "\r";
-      es_control_chars["e"] = "\033";
-      es_control_chars["E"] = "\033";
-      es_control_chars["?"] = "?";
-      es_control_chars["'\''"] = "'\''";
-      es_control_chars["\""] = "\"";
-      es_control_chars["\\"] = "\\";
-
-      for (c = 32; c < 127; c++)
-        es_s2c[sprintf("%c", c)] = c;
-    }
-    function es_unescape(s, _, head, c) {
-      head = "";
-      while (match(s, /^[^\\]*\\/)) {
-        head = head substr(s, 1, RLENGTH - 1);
-        s = substr(s, RLENGTH + 1);
-        if ((c = es_control_chars[substr(s, 1, 1)])) {
-          head = head c;
-          s = substr(s, 2);
-        } else if (match(s, /^[0-9]([0-9][0-9]?)?/)) {
-          head = head c2s(s2i(substr(s, 1, RLENGTH), 8) % 256);
-          s = substr(s, RLENGTH + 1);
-        } else if (match(s, /^x[0-9a-fA-F][0-9a-fA-F]?/)) {
-          head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
-          s = substr(s, RLENGTH + 1);
-        } else if (match(s, /^U[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
-          # \\U[0-9]{5,8}
-          head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
-          s = substr(s, RLENGTH + 1);
-        } else if (match(s, /^[uU][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
-          # \\[uU][0-9]{1,4}
-          head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
-          s = substr(s, RLENGTH + 1);
-        } else if (match(s, /^c[ -~]/)) {
-          # \\c[ -~] (non-ascii characters are unsupported)
-          c = es_s2c[substr(s, 2, 1)];
-          head = head c2s(_ble_bash >= 40400 && c == 63 ? 127 : c % 32);
-          s = substr(s, 3);
-        } else {
-          head = head "\\";
-        }
-      }
-      return head s;
-    }
 
     function unquote_dq(s, _, head) {
-      head = "";
-      while (match(s, /^([^\\]|\\[^$`"\\])*\\[$`"\\]/)) {
-        head = head substr(s, 1, RLENGTH - 2) substr(s, RLENGTH, 1);
-        s = substr(s, RLENGTH + 1);
+      if (IS_GAWK) {
+        return gensub(/\\([$`"\\])/, "\\1", "g", s);
+      } else {
+        if (s ~ /\\[$`"\\]/) {
+          gsub(/\\\$/, "$" , s);
+          gsub(/\\`/ , "`" , s);
+          gsub(/\\"/ , "\"", s);
+          gsub(/\\\\/, "\\", s);
+        }
+        return s;
       }
-      return head s;
     }
     function unquote_sq(s) {
       gsub(/'\'\\\\\'\''/, "'\''", s);
       return s;
     }
-    function unquote(s, _, c) {
-      c = substr(s, 1, 1);
-      if (c == "\"")
+    function unquote_dqes(s) {
+      if (s ~ /^"/)
         return unquote_dq(substr(s, 2, length(s) - 2));
-      else if (c == "$")
+      else
         return es_unescape(substr(s, 3, length(s) - 3));
-      else if (c == "'\''")
+    }
+    function unquote(s) {
+      if (s ~ /^"/)
+        return unquote_dq(substr(s, 2, length(s) - 2));
+      else if (s ~ /^\$/)
+        return es_unescape(substr(s, 3, length(s) - 3));
+      else if (s ~ /^'\''/)
         return unquote_sq(substr(s, 2, length(s) - 2));
-      else if (c == "\\")
+      else if (s ~ /^\\/)
         return substr(s, 2, 1);
       else
         return s;
@@ -2608,54 +2736,61 @@ function ble/util/writearray {
       }
       return 0;
     }
+
+    function _process_elem(elem) {
+      if (FLAG_NLFIX) {
+        nlfix_push(elem);
+      } else if (DELIM != "") {
+        printf("%s", elem DELIM);
+      } else {
+        printf("%s%c", elem, 0);
+      }
+    }
+
 #%  # 任意の場合は多少遅くなるがこちらの関数で処理する。
-    function analyze_elements_general(decl, _, arr, i, n, nlfix_indices) {
-      n = split(decl, arr, / /);
-      nlfix_indices = "";
-      for (i = 1; i <= n; i++) {
-        elem = arr[i];
-        sub(/^\[[0-9]+\]=/, "", elem);
-        line = "";
-        while (1) {
-          if (match(elem, /'"$rex_dq"'|'"$rex_es"'|'"$rex_sq"'|'"$rex_normal"'|^\\./)) {
-            mlen = RLENGTH;
-            line = line unquote(substr(elem, 1, mlen));
-            elem = substr(elem, mlen + 1);
-          } else if (elem ~ /^[$"'\''\\]/ && i + 1 <= n) {
-            elem = elem " " arr[++i];
-          } else {
-            break;
-          }
+    function analyze_elements_general(decl, _, arr, i, n, str, elem, m) {
+      if (FLAG_NLFIX)
+        nlfix_begin();
+
+      # Note: We here assume that all the elements have the form [N]=...
+      # Note: We here assume that the original array has at least one element
+      n = split(decl, arr, /\]=/);
+      str = " " arr[1];
+      elem = "";
+      first = 1;
+      for (i = 2; i <= n; i++) {
+        str = str "]=" arr[i];
+        if (sub(/^ \[[0-9]+\]=/, "", str)) {
+          if (first)
+            first = 0;
+          else
+            _process_elem(elem);
+          elem = "";
         }
 
-        if (FLAG_NLFIX) {
-          if (line ~ /\n/) {
-            gsub(/\\/, REP_DBL_SL, line);
-            gsub(/'\''/, REP_SL "'\''", line);
-            gsub(/\a/, REP_SL "a", line);
-            gsub(/\b/, REP_SL "b", line);
-            gsub(/\t/, REP_SL "t", line);
-            gsub(/\n/, REP_SL "n", line);
-            gsub(/\v/, REP_SL "v", line);
-            gsub(/\f/, REP_SL "f", line);
-            gsub(/\r/, REP_SL "r", line);
-            printf("$'\''%s'\''\n", line);
-            nlfix_indices = nlfix_indices != "" ? nlfix_indices " " (i - 1) : (i - 1);
-          } else {
-            printf("%s\n", line);
+        if (match(str, /('"$__ble_rex_dq"'|'"$__ble_rex_es"') /)) {
+          mlen = RLENGTH;
+          elem = elem unquote_dqes(substr(str, 1, mlen - 1));
+          str = substr(str, mlen);
+          continue;
+        } else if (i == n || str !~ /^[\$"]/) {
+          # Fallback: As far as all the values have the form "" or $'', the
+          # control would only enter this branch for the last element.
+          while (match(str, /'"$__ble_rex_dq"'|'"$__ble_rex_es"'|'"$__ble_rex_sq"'|'"$__ble_rex_normal"'|^\\./)) {
+            mlen = RLENGTH;
+            elem = elem unquote(substr(str, 1, mlen));
+            str = substr(str, mlen + 1);
           }
-        } else if (DELIM != "") {
-          printf("%s", line DELIM);
-        } else {
-          printf("%s%c", line, 0);
         }
       }
+      _process_elem(elem);
+
       if (FLAG_NLFIX)
-        printf("%s\n", nlfix_indices);
+        nlfix_end();
       return 1;
     }
 
-    function process_declaration(decl, _, mlen, line) {
+    function process_declaration(decl) {
 #%    # declare 除去
       sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
 
@@ -2708,7 +2843,7 @@ function ble/util/readarray {
   else
     local _ble_local_script='
       local IFS= ARRI=0; ARR=()
-      while builtin read -r -d "" "ARR[ARRI++]"; do :; done'
+      while builtin read "${_ble_bash_tmout_wa[@]}" -r -d "$_ble_local_delim" "ARR[ARRI++]"; do :; done'
   fi
 
   if [[ $_ble_local_nlfix ]]; then
@@ -2828,7 +2963,7 @@ else
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
     local IFS= i=0 _ble_local_arr
-    while builtin read -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmpfile"
+    while builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
     [[ ${_ble_local_arr[--i]} ]] || builtin unset -v "_ble_local_arr[i]"
     ble/util/unlocal i IFS

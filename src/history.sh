@@ -120,6 +120,13 @@ if ((_ble_bash>=40000)); then
       opt_null=1
     fi
 
+    # from ble/util/writearray
+    if [[ ! $_ble_util_writearray_rawbytes ]]; then
+      local IFS=$_ble_term_IFS __ble_tmp; __ble_tmp=('\'{2,3}{0..7}{0..7})
+      builtin eval "local _ble_util_writearray_rawbytes=\$'${__ble_tmp[*]}'"
+    fi
+    local -x __ble_rawbytes=$_ble_util_writearray_rawbytes
+
     local apos=\'
     # 482ms for 37002 entries
     builtin history $arg_count | ble/bin/awk -v apos="$apos" -v arg_offset="$arg_offset" -v _ble_bash="$_ble_bash" '
@@ -142,9 +149,12 @@ if ((_ble_bash>=40000)); then
       }
 
       # ENCODING: UTF-8
-      function c2s_initialize(_, i) {
+      function c2s_initialize(_, i, n, buff) {
         if (sprintf("%c", 945) == "α") {
           C2S_UNICODE_PRINTF_C = 1;
+          n = split(ENVIRON["__ble_rawbytes"], buff);
+          for (i = 1; i <= n; i++)
+            c2s_byte2raw[127 + i] = buff[i];
         } else {
           C2S_UNICODE_PRINTF_C = 0;
           for (i = 1; i <= 255; i++)
@@ -165,6 +175,13 @@ if ((_ble_bash>=40000)); then
           code = int(code / 64);
         }
         return c2s_byte2char[(leadbyte_mark + code) % 256] tail;
+      }
+      function c2s_raw(code, _, ret) {
+        if (code >= 128 && C2S_UNICODE_PRINTF_C) {
+          ret = c2s_byte2raw[code];
+          if (ret != "") return ret;
+        }
+        return sprintf("%c", code);
       }
 
       function es_initialize(_, c) {
@@ -194,10 +211,10 @@ if ((_ble_bash>=40000)); then
             head = head c;
             s = substr(s, 2);
           } else if (match(s, /^[0-9]([0-9][0-9]?)?/)) {
-            head = head c2s(s2i(substr(s, 1, RLENGTH), 8) % 256);
+            head = head c2s_raw(s2i(substr(s, 1, RLENGTH), 8) % 256);
             s = substr(s, RLENGTH + 1);
           } else if (match(s, /^x[0-9a-fA-F][0-9a-fA-F]?/)) {
-            head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
+            head = head c2s_raw(s2i(substr(s, 2, RLENGTH - 1), 16));
             s = substr(s, RLENGTH + 1);
           } else if (match(s, /^U[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
             # \\U[0-9]{5,8}
