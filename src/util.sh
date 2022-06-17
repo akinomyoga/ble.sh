@@ -3187,7 +3187,7 @@ function ble/function#advice {
   (before|after|around)
     if [[ $def != *'ble/function#advice/.proc'* ]]; then
       ble/function#evaldef "ble/function#advice/original:$def"
-      builtin eval "function $name { ble/function#advice/.proc \"\${FUNCNAME#*:}\" \"\$@\"; }"
+      builtin eval "function $name { ble/function#advice/.proc \"\$FUNCNAME\" \"\$@\"; }"
     fi
 
     local q=\' Q="'\''"

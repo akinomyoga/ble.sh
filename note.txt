@@ -6390,7 +6390,80 @@ bash_tips
 
 2022-06-17
 
+  * util: erasedups 高速化 (motivated by SuperSandro2000) [#D1817]
+    https://github.com/akinomyoga/ble.sh/issues/198
+
+    一旦ファイルに書き出して awk で処理してから読み出す方式を試してみた。然し単
+    に配列を走査するよりも遅くなってしまった。
+
+    計測してみると awk による処理自体は高速だが書き出しと読み取りの両方で滅茶苦
+    茶時間がかかっている。printf '%s\n' "${arr[@]}" は遅いのだった。また、
+    mapfile -d '' も内部では1文字ずつ読むモードに切り替わってしまうのか遅い。こ
+    れは bash-5.2 以降でしか高速ではないのだった。
+
+    過去に同様の事をした気がする → #D1522 が対応する議論であった。
+
+    awk による処理は十分に高速の様だ (45ms)。読み取りは nlfix にすれば無視でき
+    るぐらいコストを小さくできる筈 (改行が大量に含まれていない限り)。
+
+    * done: 書き出しの高速化に関して。
+
+      printf '%s\0' が遅いので writearray を実装した筈なのに
+      writearray を確認してみたら遅い。これは別項目で考える事にする。
+
+      或いは history の出力を改めて解析した方が余程早いのではないか。と思ったが
+      history の出力が編集されていると微妙である。基本的には history の出力を使っ
+      て _ble_history を作っているのだから (そして勝手に Readline の編集が起こっ
+      ていなければ)、_ble_history の内容と history の出力結果は一致している筈で
+      ある。一方で、_ble_history_edit の内容に関しては結局配列として出力しなけ
+      ればならない。_ble_history の書き出しと _ble_history_edit の書き出しを並
+      列で実行するのだとしたら、_ble_history の側だけを history の出力を使って
+      高速化しても余り意味がない。
+
+    うーん。どうにも書き込みは並列で書き込むとしても精々 170 (printf) までしか
+    減らせない。更に bash-5.2 では printf は 455 もかかる。mawk でも 434 である。
+    なので、bash-5.2 だと絶望的である。元々直接ループを回していた時で 790 であ
+    る。高速化はしているが、結局大して高速化は期待できないのではないか。特に
+    5.2 以降で高速化しないのであれば古い ver で頑張る意味もない。
+
+    * done: 5.2 未満では nlfix で読み取らせる事にした。以下テスト用コード
+
+      {
+        ble/debug/stopwatch/start
+        ble/debug/stopwatch/stop 'save-data' >/dev/tty
+        ble/debug/stopwatch/start
+        ble/debug/stopwatch/stop 'proc-data' >/dev/tty
+        ble/debug/stopwatch/start
+        ble/debug/stopwatch/stop "load-data (${#_ble_history[*]}, ${#_ble_history_edit[*]})" >/dev/tty
+        # DEBUG
+        local dup=$( ( ( time ble/builtin/history/option:s/erasedups "$cmd"
+                         declare -p _ble_history _ble_history_edit | sha256sum)
+                       ( time ble/builtin/history/option:s/erasedups.awk "$cmd"
+                         declare -p _ble_history _ble_history_edit | sha256sum) ) | uniq -u)
+        ble/builtin/history/option:s/erasedups "$cmd"
+        if [[ ! $dup ]]; then
+          echo "${#delete_indices[@]}: ok"
+        else
+          echo "${#delete_indices[@]}: ng"
+          echo "$dup"
+        fi >/dev/tty
+      }
+
+    * done: awk0 が使えない場合には書き出しも nlfix にしてしまう?
+
+      →その様に実装してみた。nawk は遅くなる。mawk と gawk は十分な速度が出て
+      いる。それでも \0 の時よりは遅くなる様である。というか、mawk と gawk は結
+      局 \0 に対応しているので、この nlfix は実際の所使われる事はないという事に
+      なる。
+
+    * 別の可能性として erasedups で探索する範囲を制限するという事も考えられる。
+      Bash の erasedups は一時的に off にして、手動で見つかった項目を Bash のコ
+      マンド履歴からも削除するということ。探索範囲については、例えば起動時の
+      history の大きさを記録しておいて、それ以降に追加された項目のみを検査する
+      等。うーん。これは別項目として独立させる事にする。
+
   * util: ble/util/writearray 最適化 [#D1816]
+    Ref. #D1817
 
     やはり巨大な配列になると書き出しが最も遅い。
 

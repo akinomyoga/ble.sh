@@ -1021,6 +1021,36 @@ function ble/bin/.frozen:nawk { :; }
 function ble/bin/.frozen:mawk { :; }
 function ble/bin/.frozen:gawk { :; }
 
+## @fn ble/bin/awk0
+##   awk implementation that supports NUL record separator
+## @fn ble/bin/awk0.available
+##   initialize ble/bin/awk0 and returns whether ble/bin/awk0 is available
+function ble/bin/awk0.available/test {
+  local count=0 cmd_awk=$1 awk_script='BEGIN { RS = "\0"; } { count++; } END { print count; }'
+  ble/util/assign count 'printf "a\0b\0" | "$cmd_awk" "$awk_script"'
+  ((count==2))
+}
+function ble/bin/awk0.available {
+  local awk
+  for awk in mawk gawk; do
+    if ble/bin/.freeze-utility-path -n "$awk" &&
+        ble/bin/awk0.available/test ble/bin/"$awk" &&
+        builtin eval -- "function ble/bin/awk0 { ble/bin/$awk -v AWKTYPE=$awk \"\$@\"; }"; then
+      function ble/bin/awk0.available { ((1)); }
+      return 0
+    fi
+  done
+
+  if ble/bin/awk0.available/test ble/bin/awk &&
+      function ble/bin/awk0 { ble/bin/awk "$@"; }; then
+    function ble/bin/awk0.available { ((1)); }
+    return 0
+  fi
+
+  function ble/bin/awk0.available { ((0)); }
+  return 1
+}
+
 function ble/util/mkd {
   local dir
   for dir; do
@@ -1028,20 +1058,6 @@ function ble/util/mkd {
     [[ -e $dir || -L $dir ]] && ble/bin/rm -f "$dir"
     ble/bin/mkdir -p "$dir"
   done
-}
-
-_ble_bin_awk_supports_null_RS=
-function ble/bin/awk.supports-null-record-separator {
-  if [[ ! $_ble_bin_awk_supports_null_RS ]]; then
-    local count=0 awk_script='BEGIN { RS = "\0"; } { count++; } END { print count; }'
-    ble/util/assign count 'printf "a\0b\0" | ble/bin/awk "$awk_script" '
-    if ((count==2)); then
-      _ble_bin_awk_supports_null_RS=yes
-    else
-      _ble_bin_awk_supports_null_RS=no
-    fi
-  fi
-  [[ $_ble_bin_awk_supports_null_RS == yes ]]
 }
 
 #------------------------------------------------------------------------------

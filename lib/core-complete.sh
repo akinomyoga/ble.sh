@@ -6379,10 +6379,10 @@ function ble/complete/insert-all {
 function ble/complete/insert-braces/.compose {
   # Note: awk が RS = "\0" に対応していれば \0 で区切る。
   #   それ以外の場合には \x1E (ASCII RS) で区切る。
-  if ble/bin/awk.supports-null-record-separator; then
-    local printf_format='%s\0' RS='"\0"'
+  if ble/bin/awk0.available; then
+    local printf_format='%s\0' RS='"\0"' awk=ble/bin/awk0
   else
-    local printf_format='%s\x1E' RS='"\x1E"'
+    local printf_format='%s\x1E' RS='"\x1E"' awk=ble/bin/awk
   fi
 
   local q=\'
@@ -6400,7 +6400,7 @@ function ble/complete/insert-braces/.compose {
     esac
   fi
 
-  printf "$printf_format" "$@" | ble/bin/awk '
+  printf "$printf_format" "$@" | "$awk" '
     function starts_with(str, head) {
       return substr(str, 1, length(head)) == head;
     }

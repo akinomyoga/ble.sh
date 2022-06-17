@@ -291,6 +291,7 @@
 - prompt: reduce redundant evaluation of `PROMPT_COMMAND` on the startup `#D1778` 042376b
 - main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 115baec
 - util: optimize `ble/util/writearray` `#D1816` XXXXXXX
+- history: optimize processing of `erasedups` (motivated by SuperSandro2000) `#D1817` XXXXXXX
 
 ## Compatibility
 

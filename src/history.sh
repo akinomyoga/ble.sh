@@ -130,117 +130,9 @@ if ((_ble_bash>=40000)); then
     local apos=\'
     # 482ms for 37002 entries
     builtin history $arg_count | ble/bin/awk -v apos="$apos" -v arg_offset="$arg_offset" -v _ble_bash="$_ble_bash" '
-      #------------------------------------------------------------------------
-      # util (from ble/util/writearay)
-
-      function s2i_initialize() {
-        for (i = 0; i < 16; i++)
-          xdigit2int[sprintf("%x", i)] = i;
-        for (i = 10; i < 16; i++)
-          xdigit2int[sprintf("%X", i)] = i;
-      }
-      function s2i(s, base, _, i, n, r) {
-        if (!base) base = 10;
-        r = 0;
-        n = length(s);
-        for (i = 1; i <= n; i++)
-          r = r * base + xdigit2int[substr(s, i, 1)];
-        return r;
-      }
-
-      # ENCODING: UTF-8
-      function c2s_initialize(_, i, n, buff) {
-        if (sprintf("%c", 945) == "α") {
-          C2S_UNICODE_PRINTF_C = 1;
-          n = split(ENVIRON["__ble_rawbytes"], buff);
-          for (i = 1; i <= n; i++)
-            c2s_byte2raw[127 + i] = buff[i];
-        } else {
-          C2S_UNICODE_PRINTF_C = 0;
-          for (i = 1; i <= 255; i++)
-            c2s_byte2char[i] = sprintf("%c", i);
-        }
-      }
-      function c2s(code, _, leadbyte_mark, leadbyte_sup, tail) {
-        if (C2S_UNICODE_PRINTF_C)
-          return sprintf("%c", code);
-
-        leadbyte_sup = 128; # 0x80
-        leadbyte_mark = 0;
-        tail = "";
-        while (leadbyte_sup && code >= leadbyte_sup) {
-          leadbyte_sup /= 2;
-          leadbyte_mark = leadbyte_mark ? leadbyte_mark / 2 : 65472; # 0xFFC0
-          tail = c2s_byte2char[128 + int(code % 64)] tail;
-          code = int(code / 64);
-        }
-        return c2s_byte2char[(leadbyte_mark + code) % 256] tail;
-      }
-      function c2s_raw(code, _, ret) {
-        if (code >= 128 && C2S_UNICODE_PRINTF_C) {
-          ret = c2s_byte2raw[code];
-          if (ret != "") return ret;
-        }
-        return sprintf("%c", code);
-      }
-
-      function es_initialize(_, c) {
-        es_control_chars["a"] = "\a";
-        es_control_chars["b"] = "\b";
-        es_control_chars["t"] = "\t";
-        es_control_chars["n"] = "\n";
-        es_control_chars["v"] = "\v";
-        es_control_chars["f"] = "\f";
-        es_control_chars["r"] = "\r";
-        es_control_chars["e"] = "\033";
-        es_control_chars["E"] = "\033";
-        es_control_chars["?"] = "?";
-        es_control_chars[apos] = apos;
-        es_control_chars["\""] = "\"";
-        es_control_chars["\\"] = "\\";
-
-        for (c = 32; c < 127; c++)
-          es_s2c[sprintf("%c", c)] = c;
-      }
-      function es_unescape(s, _, head, c) {
-        head = "";
-        while (match(s, /^[^\\]*\\/)) {
-          head = head substr(s, 1, RLENGTH - 1);
-          s = substr(s, RLENGTH + 1);
-          if ((c = es_control_chars[substr(s, 1, 1)])) {
-            head = head c;
-            s = substr(s, 2);
-          } else if (match(s, /^[0-9]([0-9][0-9]?)?/)) {
-            head = head c2s_raw(s2i(substr(s, 1, RLENGTH), 8) % 256);
-            s = substr(s, RLENGTH + 1);
-          } else if (match(s, /^x[0-9a-fA-F][0-9a-fA-F]?/)) {
-            head = head c2s_raw(s2i(substr(s, 2, RLENGTH - 1), 16));
-            s = substr(s, RLENGTH + 1);
-          } else if (match(s, /^U[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
-            # \\U[0-9]{5,8}
-            head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
-            s = substr(s, RLENGTH + 1);
-          } else if (match(s, /^[uU][0-9a-fA-F]([0-9a-fA-F]([0-9a-fA-F][0-9a-fA-F]?)?)?/)) {
-            # \\[uU][0-9]{1,4}
-            head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
-            s = substr(s, RLENGTH + 1);
-          } else if (match(s, /^c[ -~]/)) {
-#%          # \\c[ -~] (非ASCIIは未対応)
-            c = es_s2c[substr(s, 2, 1)];
-            head = head c2s(_ble_bash >= 40400 && c == 63 ? 127 : c % 32);
-            s = substr(s, 3);
-          } else {
-            head = head "\\";
-          }
-        }
-        return head s;
-      }
-
-      #------------------------------------------------------------------------
+      '"$_ble_bin_awk_libES"'
 
       BEGIN {
-        s2i_initialize();
-        c2s_initialize();
         es_initialize();
 
         INDEX_FILE = ENVIRON["INDEX_FILE"];
@@ -1354,6 +1246,206 @@ function ble/builtin/history/option:p {
 
   builtin history -p -- "$@"
 }
+## @fn ble/builtin/history/option:s/erasedups cmd
+## @fn ble/builtin/history/option:s/erasedups.awk cmd
+##   @param[in] cmd
+##   @var[in] N
+##   @var[in] HISTINDEX_NEXT
+##   @var[in] _ble_builtin_history_wskip
+##   @arr[out] delete_indices
+##   @var[out] shift_histindex_next
+##   @var[out] shift_wskip
+function ble/builtin/history/option:s/erasedups {
+  local cmd=$1
+  delete_indices=()
+  shift_histindex_next=0
+  shift_wskip=0
+
+  local i
+  for ((i=0;i<N-1;i++)); do
+    if [[ ${_ble_history[i]} == "$cmd" ]]; then
+      builtin unset -v '_ble_history[i]'
+      builtin unset -v '_ble_history_edit[i]'
+      ble/array#push delete_indices "$i"
+      ((i<_ble_builtin_history_wskip&&shift_wskip++))
+      ((i<HISTINDEX_NEXT&&shift_histindex_next++))
+    fi
+  done
+  if ((${#delete_indices[@]})); then
+    _ble_history=("${_ble_history[@]}")
+    _ble_history_edit=("${_ble_history_edit[@]}")
+  fi
+}
+function ble/builtin/history/option:s/erasedups.awk {
+  local cmd=$1
+  delete_indices=()
+  shift_histindex_next=0
+  shift_wskip=0
+  ((N)) || return 0
+
+  # select the fastest awk implementation
+  local -x erasedups_nlfix_read=
+  local awk writearray_options
+  if ble/bin/awk0.available; then
+    erasedups_nlfix_read=
+    writearray_options=(-d '')
+    awk=ble/bin/awk0
+  else
+    erasedups_nlfix_read=1
+    writearray_options=(--nlfix)
+    if ble/is-function ble/bin/mawk; then
+      awk=ble/bin/mawk
+    elif ble/is-function ble/bin/gawk; then
+      awk=ble/bin/gawk
+    else
+      ble/builtin/history/option:s/erasedups
+      return "$?"
+    fi
+  fi
+
+  local _ble_local_tmpfile
+  ble/util/assign/.mktmp; local otmp1=$_ble_local_tmpfile
+  ble/util/assign/.mktmp; local otmp2=$_ble_local_tmpfile
+  ble/util/assign/.mktmp; local itmp1=$_ble_local_tmpfile
+  ble/util/assign/.mktmp; local itmp2=$_ble_local_tmpfile
+
+  # Note: ジョブを無効にする為 subshell で実行
+  ( ble/util/writearray "${writearray_options[@]}" _ble_history      >| "$itmp1" & local pid1=$!
+    ble/util/writearray "${writearray_options[@]}" _ble_history_edit >| "$itmp2"
+    wait "$pid1" )
+
+  local -x erasedups_cmd=$cmd
+  local -x erasedups_out1=$otmp1
+  local -x erasedups_out2=$otmp2
+  local -x erasedups_histindex_next=$HISTINDEX_NEXT
+  local -x erasedups_wskip=$_ble_builtin_history_wskip
+  local awk_script='
+    '"$_ble_bin_awk_libES"'
+    '"$_ble_bin_awk_libNLFIX"'
+
+    BEGIN {
+      NLFIX_READ     = ENVIRON["erasedups_nlfix_read"] != "";
+      cmd            = ENVIRON["erasedups_cmd"];
+      out1           = ENVIRON["erasedups_out1"];
+      out2           = ENVIRON["erasedups_out2"];
+      histindex_next = ENVIRON["erasedups_histindex_next"];
+      wskip          = ENVIRON["erasedups_wskip"];
+
+      if (NLFIX_READ)
+        es_initialize();
+      else
+        RS = "\0";
+
+      NLFIX_WRITE = _ble_bash < 50200;
+      if (NLFIX_WRITE) nlfix_begin();
+
+      hist_index = 0;
+      edit_index = 0;
+      delete_count = 0;
+      shift_histindex_next = 0;
+      shift_wskip = 0;
+    }
+
+    function process_hist(elem) {
+      if (hist_index < N - 1 && elem == cmd) {
+        delete_indices[delete_count++] = hist_index;
+        delete_table[hist_index] = 1;
+        if (hist_index < wskip         ) shift_wskip++;
+        if (hist_index < histindex_next) shift_histindex_next++;
+      } else {
+        if (NLFIX_WRITE)
+          nlfix_push(elem, out1);
+        else
+          printf("%s%c", elem, 0) > out1;
+      }
+      hist_index++;
+    }
+
+    function process_edit(elem) {
+      if (delete_count == 0) exit;
+      if (NLFIX_WRITE) {
+        if (edit_index == 0) {
+          nlfix_end(out1);
+          nlfix_begin();
+        }
+        if (!delete_table[edit_index++])
+          nlfix_push(elem, out2);
+      } else {
+        if (!delete_table[edit_index++])
+          printf("%s%c", elem, 0) > out2;
+      }
+    }
+
+    mode == "edit" {
+      if (NLFIX_READ) {
+        edit[edit_index++] = $0;
+      } else {
+        process_edit($0);
+      }
+      next;
+    }
+    {
+      if (NLFIX_READ)
+        hist[hist_index++] = $0;
+      else
+        process_hist($0);
+    }
+
+    END {
+      if (NLFIX_READ) {
+        n = split(hist[hist_index - 1], indices)
+        for (i = 1; i <= n; i++) {
+          elem = hist[indices[i]];
+          if (elem ~ /^\$'\''.*'\''/)
+            hist[indices[i]] = es_unescape(substr(elem, 3, length(elem) - 3));
+        }
+        n = hist_index - 1;
+        hist_index = 0;
+        for (i = 0; i < n; i++)
+          process_hist(hist[i]);
+
+        n = split(edit[edit_index - 1], indices)
+        for (i = 1; i <= n; i++) {
+          elem = edit[indices[i]];
+          if (elem ~ /^\$'\''.*'\''/)
+            edit[indices[i]] = es_unescape(substr(elem, 3, length(elem) - 3));
+        }
+        n = edit_index - 1;
+        edit_index = 0;
+        for (i = 0; i < n; i++)
+          process_edit(edit[i]);
+      }
+
+      if (NLFIX_WRITE) nlfix_end(out2);
+
+      line = "delete_indices=("
+      for (i = 0; i < delete_count; i++) {
+        if (i != 0) line = line " ";
+        line = line delete_indices[i];
+      }
+      line = line ")";
+      print line;
+      print "shift_wskip=" shift_wskip;
+      print "shift_histindex_next=" shift_histindex_next;
+    }
+  '
+  local awk_result
+  ble/util/assign awk_result '"$awk" -v _ble_bash="$_ble_bash" -v N="$N" "$awk_script" "$itmp1" mode=edit "$itmp2"'
+  builtin eval -- "$awk_result"
+  if ((${#delete_indices[@]})); then
+    if ((_ble_bash<50200)); then
+      ble/util/readarray --nlfix _ble_history      < "$otmp1"
+      ble/util/readarray --nlfix _ble_history_edit < "$otmp2"
+    else
+      mapfile -d '' -t _ble_history      < "$otmp1"
+      mapfile -d '' -t _ble_history_edit < "$otmp2"
+    fi
+  fi
+  _ble_local_tmpfile=$itmp2 ble/util/assign/.rmtmp
+  _ble_local_tmpfile=$itmp1 ble/util/assign/.rmtmp
+  _ble_local_tmpfile=$otmp2 ble/util/assign/.rmtmp
+  _ble_local_tmpfile=$otmp1 ble/util/assign/.rmtmp
+}
 ## @fn ble/builtin/history/option:s
 function ble/builtin/history/option:s {
   ble/builtin/history/.initialize
@@ -1392,22 +1484,14 @@ function ble/builtin/history/option:s {
         ((lastIndex>=0)) && [[ $cmd == "${_ble_history[lastIndex]}" ]] && return 0
       fi
       if [[ $erasedups ]]; then
-        local -a delete_indices=()
-        local shift_histindex_next=0
-        local shift_wskip=0
-        local i N=${#_ble_history[@]}
-        for ((i=0;i<N-1;i++)); do
-          if [[ ${_ble_history[i]} == "$cmd" ]]; then
-            builtin unset -v '_ble_history[i]'
-            builtin unset -v '_ble_history_edit[i]'
-            ble/array#push delete_indices "$i"
-            ((i<_ble_builtin_history_wskip&&shift_wskip++))
-            ((i<HISTINDEX_NEXT&&shift_histindex_next++))
-          fi
-        done
+        local N=${#_ble_history[@]}
+        local delete_indices shift_histindex_next shift_wskip
+        if ((_ble_bash>=40000&&N>=10000)); then
+          ble/builtin/history/option:s/erasedups.awk "$cmd"
+        else
+          ble/builtin/history/option:s/erasedups "$cmd"
+        fi
         if ((${#delete_indices[@]})); then
-          _ble_history=("${_ble_history[@]}")
-          _ble_history_edit=("${_ble_history_edit[@]}")
           blehook/invoke history_delete "${delete_indices[@]}"
           ((_ble_builtin_history_wskip-=shift_wskip))
           [[ ${HISTINDEX_NEXT+set} ]] && ((HISTINDEX_NEXT-=shift_histindex_next))
