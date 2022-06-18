@@ -18,6 +18,8 @@ ble/util/autoload "$_ble_base/keymap/vi.sh" \
                   ble/widget/vi-command/{forward,backward}-{v,u}word \
                   ble/widget/vi-command/forward-{v,u}word-end
 
+bleopt/declare -v keymap_emacs_mode_string_multiline $'\e[1m-- MULTILINE --\e[m'
+
 #------------------------------------------------------------------------------
 
 _ble_keymap_emacs_white_list=(
@@ -84,22 +86,28 @@ _ble_keymap_emacs_modeline=::
 ble/array#push _ble_textarea_local_VARNAMES \
                _ble_keymap_emacs_modeline
 function ble/keymap:emacs/update-mode-name {
-  local opt_multiline=; [[ $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
+  local opt_multiline=
+  [[ $bleopt_keymap_emacs_mode_string_multiline && $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
   local footprint=$opt_multiline:$_ble_edit_arg:$_ble_edit_kbdmacro_record
 
   [[ $footprint == "$_ble_keymap_emacs_modeline" ]] && return 0
   _ble_keymap_emacs_modeline=$footprint
 
   local name=
-  [[ $opt_multiline ]] && name=$'\e[1m-- MULTILINE --\e[m'
+  [[ $opt_multiline ]] && name=$bleopt_keymap_emacs_mode_string_multiline
 
   local info=
   [[ $_ble_edit_arg ]] &&
     info=$info$' (arg: \e[1;34m'$_ble_edit_arg$'\e[m)'
   [[ $_ble_edit_kbdmacro_record ]] &&
     info=$info$' \e[1;31mREC\e[m'
-  [[ ! $info && $opt_multiline ]] &&
-    info=$' (\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
+  if [[ ! $info && $opt_multiline ]]; then
+    local keybinding_C_m=${_ble_decode_emacs_kmap_[_ble_decode_Ctrl|0x6d]}
+    local keybinding_C_j=${_ble_decode_emacs_kmap_[_ble_decode_Ctrl|0x6a]}
+    [[ $keybinding_C_m == *:ble/widget/accept-single-line-or-newline ]] &&
+      [[ $keybinding_C_j == *:ble/widget/accept-line ]] &&
+      info=$' (\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
+  fi
 
   [[ $name ]] || info=${info#' '}
   name=$name$info

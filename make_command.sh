@@ -1558,7 +1558,7 @@ function sub:first-defined {
   return 1
 }
 function sub:first-defined/help {
-  printf '  first-defined KEYWORDS...\n'
+  printf '  first-defined ERE...\n'
 }
 
 #------------------------------------------------------------------------------

@@ -755,9 +755,33 @@
 #ble-bind -f C-w 'kill-region-or kill-uword'
 #ble-bind -f M-w 'copy-region-or copy-uword'
 
+##-----------------------------------------------------------------------------
+## Settings for Emacs mode
+
+function blerc/emacs-load-hook {
+  ## This option specifies the mode string shown in the information line in the
+  ## multiline editing mode.  When an empty string is specified, the mode
+  ## string is not shown in the multiline editing mode.
+
+  # default
+  #bleopt keymap_emacs_mode_string_multiline=$'\e[1m-- MULTILINE --\e[m'
+  # do not show mode string
+  #bleopt keymap_emacs_mode_string_multiline=
+
+
+  ## With the following setting, RET and C-m always causes the execution of the
+  ## command even in the multiline mode or when the command is not
+  ## syntactically completed.
+
+  #ble-bind -f C-m 'accept-line'
+  #ble-bind -f RET 'accept-line'
+
+  return
+}
+blehook/eval-after-load keymap_emacs blerc/emacs-load-hook
 
 ##-----------------------------------------------------------------------------
-## Settings for vim-mode
+## Settings for Vim mode
 
 function blerc/vim-load-hook {
   ((_ble_bash>=40300)) && builtin bind 'set keyseq-timeout 1'

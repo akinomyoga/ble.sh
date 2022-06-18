@@ -6388,6 +6388,26 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-06-18
+
+  * emacs: MULTILINE mode メッセージの改善 (motivated by ArianaAsl) [#D1818]
+    https://github.com/akinomyoga/ble.sh/discussions/199
+
+    * done: Q&A に書く。
+
+    * done: MULTILINE モードの表示をしない様にする設定
+      →keymap_emacs_show_multiline という設定変数名を追加した。
+
+      * やはり MUTILINE モード名自体を設定する設定項目にする方が良い。
+        keymap_vi_mode_string_nmap との一貫性により。設定変数名は
+        keymap_emacs_mode_string_multiline に変更する事にした。
+
+    * done: MULTILINE モードの表示メッセージを binding によって変える
+
+    * rlvar enable-bracketed-paste の設定の alias bleopt を作成してそれを上書き
+      する。この方法はその他の補完設定に対しても適用するべきなのではないか。独
+      立した項目で全体的に対応する事にする。
+
 2022-06-17
 
   * util: erasedups 高速化 (motivated by SuperSandro2000) [#D1817]
