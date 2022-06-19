@@ -99,9 +99,9 @@
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097
 - prompt: escape control characters in `\w` and `\W` `#D1798` 8940434 a9551e5
   - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` d340233
-- emacs: support `bleopt keymap_emacs_mode_string_multiline` (motivated by ArianaAsl) `#D1818` XXXXXXX
-- util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` XXXXXXX
-- history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` XXXXXXX
+- emacs: support `bleopt keymap_emacs_mode_string_multiline` (motivated by ArianaAsl) `#D1818` 8e9d273
+- util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` 6d20f51
+- history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a XXXXXXX
 
 ## Changes
 
@@ -161,7 +161,7 @@
   - util (`blehook`): fix a bug that the the hook arguments are lost (reported by SuperSandro2000) `#D1804` 479795d
 - complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
-- decode (bind): do not treat non-beginning `#` as comments `#D1820` XXXXXXX
+- decode (bind): do not treat non-beginning `#` as comments `#D1820` 65c4138
 
 ## Fixes
 
@@ -262,7 +262,7 @@
 - history: fix the unsaved history in the detached state `#D1795` 344168e
 - edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
 - history: work around possible dirty prefix `*` in the history output `#D1808` 64a740d
-- decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` XXXXXXX
+- decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
 
 ## Documentation
 
@@ -295,8 +295,8 @@
   - complete (quote-insert.batch): fix regex escaping in bracket expr of awk (reported by telometto) `#D1729` 8039b77
 - prompt: reduce redundant evaluation of `PROMPT_COMMAND` on the startup `#D1778` 042376b
 - main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 115baec
-- util: optimize `ble/util/writearray` `#D1816` XXXXXXX
-- history: optimize processing of `erasedups` (motivated by SuperSandro2000) `#D1817` XXXXXXX
+- util: optimize `ble/util/writearray` `#D1816` 96e9bf8
+- history: optimize processing of `erasedups` (motivated by SuperSandro2000) `#D1817` 944d48e
 
 ## Compatibility
 
@@ -385,7 +385,7 @@
 - benchmark: improve determination of the base time `#D1737` ad866c1
 - main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` 022d38b
 - test: clean up check failures by `make check` and `make scan` `#D1812` bb3e0a3
-- util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 XXXXXXX
+- util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072
 - github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
 
 ## Contrib

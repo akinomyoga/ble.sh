@@ -1314,7 +1314,7 @@ function ble/builtin/history/erasedups/.impl-awk {
     elif ble/is-function ble/bin/gawk; then
       awk=ble/bin/gawk
     else
-      ble/builtin/history/erasedups
+      ble/builtin/history/erasedups/.impl-for "$@"
       return "$?"
     fi
   fi
