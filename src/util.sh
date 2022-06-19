@@ -4755,12 +4755,32 @@ function ble/util/reset-keymap-of-editing-mode {
   fi
 }
 
-## @fn ble/util/test-rl-variable name [default_exit]
-function ble/util/test-rl-variable {
-  local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
-  if [[ $rl_variables == *"set $1 on"* ]]; then
+## @fn ble/util/rlvar#load
+##   @var[out] _ble_local_rlvars
+function ble/util/rlvar#load {
+  ble/util/assign _ble_local_rlvars 'builtin bind -v'
+  _ble_local_rlvars=$'\n'$_ble_local_rlvars
+}
+
+## @fn ble/util/rlvar#has name
+##   指定した readline 変数に bash が対応しているか確認します。
+function ble/util/rlvar#has {
+  if [[ ! ${_ble_local_rlvars:-} ]]; then
+    local _ble_local_rlvars
+    ble/util/rlvar#load
+  fi
+  [[ $_ble_local_rlvars == *$'\n'"set $1 "* ]]
+}
+
+## @fn ble/util/rlvar#test name [default(0 or 1)]
+function ble/util/rlvar#test {
+  if [[ ! ${_ble_local_rlvars:-} ]]; then
+    local _ble_local_rlvars
+    ble/util/rlvar#load
+  fi
+  if [[ $_ble_local_rlvars == *$'\n'"set $1 on"* ]]; then
     return 0
-  elif [[ $rl_variables == *"set $1 off"* ]]; then
+  elif [[ $_ble_local_rlvars == *$'\n'"set $1 off"* ]]; then
     return 1
   elif (($#>=2)); then
     (($2))
@@ -4769,12 +4789,82 @@ function ble/util/test-rl-variable {
     return 2
   fi
 }
-## @fn ble/util/read-rl-variable name [default_value]
-function ble/util/read-rl-variable {
-  ret=$2
-  local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
-  local rhs=${rl_variables#*$'\n'"set $1 "}
-  [[ $rhs != "$rl_variables" ]] && ret=${rhs%%$'\n'*}
+## @fn ble/util/rlvar#read name [default_value]
+function ble/util/rlvar#read {
+  [[ ${2+set} ]] && ret=$2
+  if [[ ! ${_ble_local_rlvars:-} ]]; then
+    local _ble_local_rlvars
+    ble/util/rlvar#load
+  fi
+  local rhs=${_ble_local_rlvars#*$'\n'"set $1 "}
+  [[ $rhs != "$_ble_local_rlvars" ]] && ret=${rhs%%$'\n'*}
+}
+
+## @fn ble/util/rlvar#bind-bleopt name bleopt [opts]
+function ble/util/rlvar#bind-bleopt {
+  local name=$1 bleopt=$2 opts=$3
+  if [[ ! ${_ble_local_rlvars:-} ]]; then
+    local _ble_local_rlvars
+    ble/util/rlvar#load
+  fi
+
+  # Bash が readlie 変数に対応している場合、bleopt に対する代入と合わせて
+  # readline 変数にも対応する値を設定する。
+  if ble/util/rlvar#has "$name"; then
+    # 値の同期
+    # Note (#D1148): ble.sh の側で Bash と異なる既定値を持っている物については
+    # (初期化時に --keep-rlvars を指定していない限りは) ble.sh の側に書き換えて
+    # しまう。多くのユーザは自分で設定しないので便利な機能が off になっている。
+    # 一方で設定するユーザは自分で off に戻すぐらいはできるだろう。
+    if [[ :$_ble_base_arguments_opts: == *:keep-rlvars:* ]]; then
+      local ret; ble/util/rlvar#read "$name"
+      [[ :$opts: == *:bool:* && $ret == off ]] && ret=
+      bleopt "$bleopt=$ret"
+    else
+      local var=bleopt_$bleopt val=off
+      [[ ${!var:-} ]] && val=on
+      builtin bind "set $name $val"
+    fi
+
+    local proc_original=
+    if ble/is-function "bleopt/check:$bleopt"; then
+      ble/function#push "bleopt/check:$bleopt"
+      proc_original='ble/function#push/call-top "$@" || return "$?"'
+    fi
+
+    local proc_set='builtin bind "set '$name' $value"'
+    if [[ :$opts: == *:bool:* ]]; then
+      proc_set='
+        if [[ $value ]]; then
+          builtin bind "set '$name' on"
+        else
+          builtin bind "set '$name' off"
+        fi'
+    fi
+
+    builtin eval -- "
+      function bleopt/check:$bleopt {
+        $proc_original
+        $proc_set
+        return 0
+      }"
+  fi
+
+  local proc_bleopt='bleopt '$bleopt'="$1"'
+  if [[ :$opts: == *:bool:* ]]; then
+    proc_bleopt='
+      local value; ble/string#split-words value "$1"
+      if [[ ${value-} == 1 || ${value-} == [Oo][Nn] ]]; then
+        bleopt '$bleopt'="$value"
+      else
+        bleopt '$bleopt'=
+      fi'
+  fi
+  builtin eval -- "
+    function ble/builtin/bind/set:$name {
+      $proc_bleopt
+      return 0
+    }"
 }
 
 #------------------------------------------------------------------------------
@@ -6230,11 +6320,40 @@ function ble/term/cursor-state/reveal {
 
 #---- DECSET(2004): bracketed paste mode --------------------------------------
 
+function ble/term/bracketed-paste-mode/.init {
+  local _ble_local_rlvars; ble/util/rlvar#load
+
+  bleopt/declare -v term_bracketed_paste_mode on
+  if ((_ble_bash>=50100)) && ! ble/util/rlvar#test enable-bracketed-paste; then
+    # Bash 5.1 以降では既定で on なのでもし無効になっていたら意図的にユーザーが
+    # off にしたという事。
+    bleopt term_bracketed_paste_mode=
+  fi
+  function bleopt/check:term_bracketed_paste_mode {
+    if [[ $_ble_term_bracketedPasteMode_internal ]]; then
+      if [[ $value ]]; then
+        [[ $bleopt_term_bracketed_paste_mode ]] || ble/util/buffer $'\e[?2004h'
+      else
+        [[ ! $bleopt_term_bracketed_paste_mode ]] || ble/util/buffer $'\e[?2004l'
+      fi
+    fi
+  }
+  ble/util/rlvar#bind-bleopt enable-bracketed-paste term_bracketed_paste_mode bool
+
+  unset -f "$FUNCNAME"
+}
+ble/term/bracketed-paste-mode/.init
+
+_ble_term_bracketedPasteMode_internal=
 function ble/term/bracketed-paste-mode/enter {
-  ble/util/buffer $'\e[?2004h'
+  _ble_term_bracketedPasteMode_internal=1
+  [[ ${bleopt_term_bracketed_paste_mode-} ]] &&
+    ble/util/buffer $'\e[?2004h'
 }
 function ble/term/bracketed-paste-mode/leave {
-  ble/util/buffer $'\e[?2004l'
+  _ble_term_bracketedPasteMode_internal=
+  [[ ${bleopt_term_bracketed_paste_mode-} ]] &&
+    ble/util/buffer $'\e[?2004l'
 }
 if [[ $TERM == minix ]]; then
   # Minix console は DECSET も使えない
@@ -6608,7 +6727,7 @@ function ble/term/rl-convert-meta/enter {
   [[ $_ble_term_rl_convert_meta_adjusted ]] && return 0
   _ble_term_rl_convert_meta_adjusted=1
 
-  if ble/util/test-rl-variable convert-meta; then
+  if ble/util/rlvar#test convert-meta; then
     _ble_term_rl_convert_meta_external=on
     builtin bind 'set convert-meta off'
   else

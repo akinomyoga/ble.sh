@@ -448,6 +448,13 @@
 
 #bleopt decode_macro_limit=1024
 
+
+## When a non-empty value is specified to this settings, the terminal's
+## Bracketed Paste Mode (DEC mode 2004) is enabled.  This setting is
+## synchronized with the readline variable "enable-bracketed-paste".
+
+#bleopt term_bracketed_paste_mode=on
+
 ##-----------------------------------------------------------------------------
 ## Settings for completion
 
@@ -562,6 +569,27 @@
 #bleopt complete_menu_style=align-nowrap
 
 
+## When a non-empty value is specified to this setting, the matching text on
+## the right of the cursor is removed on the insertion of the completion.  This
+## setting is synchronized with the readline variable "skip-completed-text".
+
+#bleopt complete_skip_matched=on
+
+
+## When a non-empty value is specified to this setting, the highlighting of the
+## menu items is enabled.  This setting is synchronized with the readline
+## variable "colored-stats".
+
+#bleopt complete_menu_color=on
+
+
+## When a non-empty value is specified to this setting, the part of the menu
+## items matching with the already input text is highlighted.  This setting is
+## synchronized with the readline variable "colored-completion-prefix".
+
+#bleopt complete_menu_color_match=on
+
+
 ## The following settings specify the maximal and minimal align widths for
 ## complete_menu_style="align" and "align-nowrap".
 
@@ -589,6 +617,43 @@
 
 #bleopt menu_desc_multicolumn_width=65
 
+
+## When this Readline setting is enabled, the cases of alphabets are ignored on
+## completion generation.
+
+#bind 'set completion-ignore-case off'
+
+
+## When this Readline setting is turned on, suffixes are added to the filename
+## completions in the menu.  The characters "@", "/" and "*" are added to
+## symbolic links, directories and executables, respectively.
+
+#bind 'set visible-stats off'
+
+
+## When this Readline setting is turned on, the suffix "/" is inserted after
+## the insertion of directory names.
+
+#bind 'set mark-directories on'
+
+
+## When this Readline setting is turned on, the suffix "/" is inserted after
+## symbolic links pointing to directories.
+
+#bind 'set mark-symlinked-directories on'
+
+
+## When this Readline setting is turned on, the filenames starting with "." is
+## also generated as possible completions.
+
+#bind 'set match-hidden-files on'
+
+
+## By default, when filenames of the form "dir/file*" is shown in the menu, the
+## part of the directory name "dir/" is omitted.  When this Readline setting is
+## turned on, the directory name of filename completions are not omitted.
+
+#bind 'set menu-complete-display-prefix off'
 
 ##-----------------------------------------------------------------------------
 ## Color settings

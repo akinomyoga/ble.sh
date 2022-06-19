@@ -1295,14 +1295,18 @@ function ble/prompt/.instantiate {
   fi
 
   if [[ :$opts: == *:show-mode-in-prompt:* ]]; then
-    if ble/util/test-rl-variable show-mode-in-prompt; then
+    if ble/util/rlvar#test show-mode-in-prompt; then
       local keymap; ble/prompt/.get-keymap-for-current-mode
 
+      # Note: plain bash-4.3 では *-mode-string という設定項目は未だなく、
+      #   vi-ins-mode-string は '+', vi-cmd-mode-string は ':',
+      #   emacs-mode-string は '@' に対応する表示になる。ble.sh では bash-4.4
+      #   以降と同じ既定値を用いる事にする。
       local ret=
       case $keymap in
-      (vi_imap) ble/util/read-rl-variable vi-ins-mode-string ;;
-      (vi_[noxs]map) ble/util/read-rl-variable vi-cmd-mode-string ;;
-      (emacs) ble/util/read-rl-variable emacs-mode-string ;;
+      (vi_imap)      ble/util/rlvar#read vi-ins-mode-string '(ins)' ;; # Note: bash-4.3 では '+'
+      (vi_[noxs]map) ble/util/rlvar#read vi-cmd-mode-string '(cmd)' ;; # Note: bash-4.3 では ':'
+      (emacs)        ble/util/rlvar#read emacs-mode-string  '@'     ;;
       esac
       [[ $ret ]] && expanded=$expanded$ret
     fi
@@ -7003,7 +7007,7 @@ function ble/widget/insert-comment/.remove-comment {
 }
 function ble/widget/insert-comment/.insert {
   local arg=$1
-  local ret='#'; ble/util/read-rl-variable comment-begin
+  local ret; ble/util/rlvar#read comment-begin '#'
   local comment_begin=${ret::1}
   local text=
   if [[ $arg ]] && ble/widget/insert-comment/.remove-comment "$comment_begin"; then

@@ -1725,8 +1725,8 @@ ble/util/msleep/.calibrate-loop &>/dev/null
 # ble/util/save-editing-mode
 # ble/util/restore-editing-mode
 # ble/util/reset-keymap-of-editing-mode
-# ble/util/test-rl-variable
-# ble/util/read-rl-variable
+# ble/util/rlvar#test
+# ble/util/rlvar#read
 # ble/util/invoke-hook
 # ble/util/autoload
 # ble-autoload

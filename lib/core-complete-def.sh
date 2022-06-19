@@ -84,6 +84,18 @@ bleopt/declare -v complete_menu_complete 1
 bleopt/declare -v complete_menu_filter 1
 bleopt/declare -v complete_menu_maxlines '-1'
 
+bleopt/declare -v complete_skip_matched     on
+bleopt/declare -v complete_menu_color       on
+bleopt/declare -v complete_menu_color_match on
+function ble/complete/.init-bind-readline-variables {
+  local _ble_local_rlvars; ble/util/rlvar#load
+  ble/util/rlvar#bind-bleopt skip-completed-text       complete_skip_matched     bool
+  ble/util/rlvar#bind-bleopt colored-stats             complete_menu_color       bool
+  ble/util/rlvar#bind-bleopt colored-completion-prefix complete_menu_color_match bool
+  unset -f "$FUNCNAME"
+}
+ble/complete/.init-bind-readline-variables
+
 bleopt/declare -n menu_align_min 4
 bleopt/declare -n menu_align_max 20
 bleopt/declare -o complete_menu_align menu_align_max

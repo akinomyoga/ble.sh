@@ -2087,17 +2087,6 @@ function ble/base/process-blesh-arguments {
     _ble_builtin_bind_inputrc_done=noinputrc
   fi
 
-  # rlvar (#D1148)
-  #   勝手だが ble.sh の参照する readline 変数を
-  #   便利だと思われる設定の方向に書き換えてしまう。
-  #   多くのユーザは自分で設定しないので ble.sh の便利な機能が off になっている。
-  #   一方で設定するユーザは自分で off に設定するぐらいはできるだろう。
-  if [[ :$opts: != *:keep-rlvar:* ]]; then
-    ((_ble_bash>=40100)) && builtin bind 'set skip-completed-text on'
-    ((_ble_bash>=40300)) && builtin bind 'set colored-stats on'
-    ((_ble_bash>=40400)) && builtin bind 'set colored-completion-prefix on'
-  fi
-
   _ble_base_rcfile=$_ble_base_arguments_rcfile
 #%if measure_load_time
 time {

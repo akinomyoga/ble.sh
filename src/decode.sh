@@ -3205,9 +3205,9 @@ function ble/decode/read-inputrc/test {
 
   (mode)
     if [[ -o emacs ]]; then
-      test emacs "$op" "$rhs"
+      builtin test emacs "$op" "$rhs"
     elif [[ -o vi ]]; then
-      test vi "$op" "$rhs"
+      builtin test vi "$op" "$rhs"
     else
       false
     fi
@@ -3215,9 +3215,9 @@ function ble/decode/read-inputrc/test {
 
   (term)
     if [[ $op == '!=' ]]; then
-      test "$TERM" "$op" "$rhs" && test "${TERM%%-*}" "$op" "$rhs"
+      builtin test "$TERM" "$op" "$rhs" && builtin test "${TERM%%-*}" "$op" "$rhs"
     else
-      test "$TERM" "$op" "$rhs" || test "${TERM%%-*}" "$op" "$rhs"
+      builtin test "$TERM" "$op" "$rhs" || builtin test "${TERM%%-*}" "$op" "$rhs"
     fi
     return "$?" ;;
 
@@ -3250,8 +3250,8 @@ function ble/decode/read-inputrc/test {
     return "$?" ;;
 
   (*)
-    if local ret; ble/util/read-rl-variable "$lhs"; then
-      test "$ret" "$op" "$rhs"
+    if local ret; ble/util/rlvar#read "$lhs"; then
+      builtin test "$ret" "$op" "$rhs"
       return "$?"
     else
       ble/util/print "ble.sh (bind):\$if: unknown readline variable '${lhs//$q/$Q}'." >&2
@@ -3614,6 +3614,7 @@ function ble/builtin/bind/option:- {
         _ble_builtin_bind_keymap= ;;
       esac
 
+      ble/function#try ble/builtin/bind/set:"$variable" "$value" && return 0
       builtin bind "$arg"
     fi
     return 0

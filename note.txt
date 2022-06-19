@@ -1809,6 +1809,47 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+* bump 時にする事
+  - note.txt に含まれるログの移動 -> done.txt
+  - version up in GNUmakefile, README
+  - Copyright
+  - Acknowledgments
+  - keymap の移動 (これは別 commit にする?)
+
+2022-06-19
+
+  * ble-bind -P の出力で -c binding が変だ。引用符が余分についている
+
+    ble-bind -m 'vi_nmap' -c C-z \'fg\'
+
+2022-06-18
+
+  * erasedups を制限する機能 (motivated by SuperSandro2000)
+    https://github.com/akinomyoga/ble.sh/issues/198
+
+2022-06-14
+
+  * cygwin: bash --norc, source すると C-xC-v 等の keybinding が動かない
+    bash_execute_unix_command のエラーが出る。
+
+    これは元々存在している inputrc か何かが悪さをしている可能性? 然しそうだとし
+    ても普通に attach したら問題は生じない。なのでやはり違うのだろうか。
+
+  * eterm: Emacs に実装されている M-x term 若しくは M-x ansi-term
+
+    端末実装が色々滅茶苦茶である。infocmp にて対応している事になっている機能で
+    も振る舞いが変である。
+
+    * 先ず、IL, DL は行の途中で実行するとおかしな事になる。IL はその位置に改行
+      を挿入して行を2つに分ける機能を持っている。DL は一方で emacs 内部で C-k
+      をするのと同じ機能である。即ちその位置以降の文字列を消去するか、行末にい
+      る場合には次の行と結合する。これは一応行頭に移動すれば問題ない気がする。
+
+    * RI に関しては端末の一番下にいる時に全体を scroll down し、端末の一番上に
+      いる時には何も実行しない。
+
+    未だちゃんと動かない。これは後でちゃんと調べる必要がある。
+
 2022-06-09
 
   * macOS の nawk の振る舞いが変だという事 (reported in killermoehre)
@@ -6387,6 +6428,32 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-06-19
+
+  * util: rlvar enable-bracketed-paste off に対応する (motivated by ArianaAsl) [#D1819]
+    https://github.com/akinomyoga/ble.sh/discussions/199
+
+    rlvar を直接使う事にすると古い bash で設定を保持できないので bleopt で管理
+    する事にして、bind enable-bracketed-paste は別名として取り扱う事にする。
+
+    * done: bleopt 変数は rlvar とは独立に既定の値を持つ。初期化時に rlvar が既
+      定と異なる値を持っている場合にはユーザーが設定したと見做してその設定を読
+      み取る。
+
+    * done: Bash が enable-bracketed-paste に対応している時には、bleopt の側の
+      変数への設定時に同時に enable-bracketed-paste の値を調整する。
+
+    * done: bind は既に上書きしているので enable-bracketed-paste に値を設定する
+      のに介入するのも実装できる。enable-bracketed-paste に対する値の設定は
+      bleopt への設定に読み替える事にする。rlvar は bleopt 経由で書き換える事に
+      する。
+
+    * done: この仕組を一般化して他の rlvar についても bleopt alias を作成できる
+      様にする。これは一旦 enable-bracketed-paste に対応した後で考えれば良い。
+
+    * done: wiki (skip-completed-text は更新)
+    * done: blerc
 
 2022-06-18
 

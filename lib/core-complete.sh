@@ -5668,17 +5668,17 @@ function ble/complete/candidates/generate-with-filter {
 }
 
 function ble/complete/candidates/comp_type#read-rl-variables {
-  ble/util/test-rl-variable completion-ignore-case 0 && comp_type=${comp_type}:i
-  ble/util/test-rl-variable visible-stats 0 && comp_type=${comp_type}:vstat
-  ble/util/test-rl-variable mark-directories 1 && comp_type=${comp_type}:markdir
-  ble/util/test-rl-variable mark-symlinked-directories 1 && comp_type=${comp_type}:marksymdir
-  ble/util/test-rl-variable match-hidden-files 1 && comp_type=${comp_type}:match-hidden
-  ble/util/test-rl-variable menu-complete-display-prefix 0 && comp_type=${comp_type}:menu-show-prefix
+  local _ble_local_rlvars; ble/util/rlvar#load
+  ble/util/rlvar#test completion-ignore-case 0 && comp_type=${comp_type}:i
+  ble/util/rlvar#test visible-stats 0 && comp_type=${comp_type}:vstat
+  ble/util/rlvar#test mark-directories 1 && comp_type=${comp_type}:markdir
+  ble/util/rlvar#test mark-symlinked-directories 1 && comp_type=${comp_type}:marksymdir
+  ble/util/rlvar#test match-hidden-files 1 && comp_type=${comp_type}:match-hidden
+  ble/util/rlvar#test menu-complete-display-prefix 0 && comp_type=${comp_type}:menu-show-prefix
 
   # color settings are always enabled
-  comp_type=$comp_type:menu-color:menu-color-match
-  # ble/util/test-rl-variable colored-stats 1 && comp_type=${comp_type}:menu-color
-  # ble/util/test-rl-variable colored-completion-prefix 1 && comp_type=${comp_type}:menu-color-match
+  comp_type=$comp_type${bleopt_complete_menu_color:+:menu-color}
+  comp_type=$comp_type${bleopt_complete_menu_color_match:+:menu-color-match}
 }
 
 ## @fn ble/complete/candidates/generate opts
@@ -6249,7 +6249,7 @@ function ble/complete/insert {
     fi
   fi
 
-  if ble/util/test-rl-variable skip-completed-text; then
+  if [[ $bleopt_complete_skip_matched ]]; then
     # カーソルの右のテキストの吸収
     if [[ $insert ]]; then
       local right_text=${_ble_edit_str:insert_end}
