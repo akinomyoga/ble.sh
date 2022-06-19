@@ -1816,10 +1816,10 @@ bash_tips
   - Acknowledgments
   - keymap の移動 (これは別 commit にする?)
 
-2022-06-18
+2022-06-19
 
-  * erasedups を制限する機能 (motivated by SuperSandro2000)
-    https://github.com/akinomyoga/ble.sh/issues/198
+  * 履歴番号を検索やプロンプトで表示しているが、これは history の最初が 1 でな
+    い時にはずれるのではないか。後で確認する必要がある気がする。
 
 2022-06-14
 
@@ -6424,6 +6424,22 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-06-19
+
+  * history: erasedups を制限する機能 (motivated by SuperSandro2000) [#D1822]
+    https://github.com/akinomyoga/ble.sh/issues/198
+
+    * done: 初期化時の履歴の個数を記録しておく。
+
+    うーん。これを実装する為には一時的な erasedups の除去がちゃんと history -s
+    の動作に反映されている必要がある。そして反映されないという変な事がある様に
+    は思われない→実際に動かして試してみたが特に変な振る舞いはしない。ちゃんと
+    その時の HISTCONTROL に従って動作していると見て良いだろう。
+
+    * done: history_erasedups_limit に従って探索の範囲を決定する。
+
+    実装した。動作確認した。ちゃんと動いている様な気がする。意外と高速に動作す
+    る。探索範囲が 20k/100k ぐらいになって漸く awk よりも遅くなる。現実的には一
+    つの session で 20k もコマンドを打つ事はないだろうから気にしなくて良いだろう。
 
   * decode: ble-bind -P の出力で -c binding が変だ。引用符が余分についている [#D1821]
 

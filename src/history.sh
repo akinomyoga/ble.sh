@@ -273,6 +273,7 @@ if ((_ble_bash>=40000)); then
           else
             builtin mapfile -O "$arg_offset" -t -d '' _ble_history < "$history_tmpfile"
           fi
+          ble/builtin/history/erasedups/update-base
           ((_ble_history_load_resume++)) ;;
 
       # 47ms _ble_history_edit 初期化 (37000項目)
@@ -289,7 +290,7 @@ if ((_ble_bash>=40000)); then
 
           if [[ $load_strategy != nlfix ]]; then
             ((_ble_history_load_resume+=3))
-            return 0
+            continue
           else
             ((_ble_history_load_resume++))
           fi ;;
@@ -308,6 +309,7 @@ if ((_ble_bash>=40000)); then
       (6) local -a indices_to_fix
           [[ ${indices_to_fix+set} ]] ||
             ble/util/mapfile indices_to_fix < "$history_indfile"
+          local i
           for i in "${indices_to_fix[@]}"; do
             [[ ${_ble_history_edit[i]} =~ $rex ]] &&
               builtin eval "_ble_history_edit[i]=${_ble_history_edit[i]:8}"
@@ -404,6 +406,7 @@ else
       builtin eval -- "_ble_history=($result)"
       _ble_history_edit=("${_ble_history[@]}")
     fi
+    ble/builtin/history/erasedups/update-base
     ble/util/unlocal IFS
 
     blehook/invoke history_message
@@ -1246,8 +1249,21 @@ function ble/builtin/history/option:p {
 
   builtin history -p -- "$@"
 }
-## @fn ble/builtin/history/option:s/erasedups cmd
-## @fn ble/builtin/history/option:s/erasedups.awk cmd
+
+bleopt/declare -v history_erasedups_limit 0
+: "${_ble_history_erasedups_base=}"
+
+function ble/builtin/history/erasedups/update-base {
+  if [[ ! ${_ble_history_erasedups_base:-} ]]; then
+    _ble_history_erasedups_base=${#_ble_history[@]}
+  else
+    local value=${#_ble_history[@]}
+    ((value<_ble_history_erasedups_base&&(_ble_history_erasedups_base=value)))
+  fi
+}
+## @fn ble/builtin/history/erasedups/.impl-for cmd
+## @fn ble/builtin/history/erasedups/.impl-awk cmd
+## @fn ble/builtin/history/erasedups/.impl-ranged cmd beg
 ##   @param[in] cmd
 ##   @var[in] N
 ##   @var[in] HISTINDEX_NEXT
@@ -1255,7 +1271,7 @@ function ble/builtin/history/option:p {
 ##   @arr[out] delete_indices
 ##   @var[out] shift_histindex_next
 ##   @var[out] shift_wskip
-function ble/builtin/history/option:s/erasedups {
+function ble/builtin/history/erasedups/.impl-for {
   local cmd=$1
   delete_indices=()
   shift_histindex_next=0
@@ -1276,7 +1292,7 @@ function ble/builtin/history/option:s/erasedups {
     _ble_history_edit=("${_ble_history_edit[@]}")
   fi
 }
-function ble/builtin/history/option:s/erasedups.awk {
+function ble/builtin/history/erasedups/.impl-awk {
   local cmd=$1
   delete_indices=()
   shift_histindex_next=0
@@ -1298,7 +1314,7 @@ function ble/builtin/history/option:s/erasedups.awk {
     elif ble/is-function ble/bin/gawk; then
       awk=ble/bin/gawk
     else
-      ble/builtin/history/option:s/erasedups
+      ble/builtin/history/erasedups
       return "$?"
     fi
   fi
@@ -1446,6 +1462,92 @@ function ble/builtin/history/option:s/erasedups.awk {
   _ble_local_tmpfile=$otmp2 ble/util/assign/.rmtmp
   _ble_local_tmpfile=$otmp1 ble/util/assign/.rmtmp
 }
+function ble/builtin/history/erasedups/.impl-ranged {
+  local cmd=$1 beg=$2
+  delete_indices=()
+  shift_histindex_next=0
+  shift_wskip=0
+
+  # Note: 自前で history -d を行って重複を削除するので erasedups は除去しておく。
+  # 但し、一番最後の一致する要素だけは自分では削除しないので、後のhistory -s で
+  # 余分な履歴項目が追加されない様に ignoredups を付加する。
+  ble/path#remove HISTCONTROL erasedups
+  HISTCONTROL=$HISTCONTROL:ignoredups
+
+  local i j=$beg
+  for ((i=beg;i<N;i++)); do
+    if ((i<N-1)) && [[ ${_ble_history[i]} == "$cmd" ]]; then
+      ble/array#push delete_indices "$i"
+      ((i<_ble_builtin_history_wskip&&shift_wskip++))
+      ((i<HISTINDEX_NEXT&&shift_histindex_next++))
+    else
+      if ((i!=j)); then
+        _ble_history[j]=${_ble_history[i]}
+        _ble_history_edit[j]=${_ble_history_edit[i]}
+      fi
+      ((j++))
+    fi
+  done
+  for ((;j<N;j++)); do
+    builtin unset -v '_ble_history[j]'
+    builtin unset -v '_ble_history_edit[j]'
+  done
+
+  if ((${#delete_indices[@]})); then
+    local max; ble/builtin/history/.get-max
+    local max_index=$((N-1))
+    for ((i=${#delete_indices[@]}-1;i>=0;i--)); do
+      builtin history -d "$((delete_indices[i]-max_index+max))"
+    done
+  fi
+}
+## @fn ble/builtin/history/erasedups cmd
+##   指定したコマンドに一致する履歴項目を削除します。この呼出の後に history -s
+##   を呼び出す事を想定しています。但し、一番最後の一致する要素は削除しません。
+##
+##   @var[in,out] HISTCONTROL
+##   @exit 9
+##     重複する要素が一番最後の要素のみの時に終了ステータス 9 を返します。この
+##     時、履歴追加を行っても履歴に変化は発生しないので、後続の history -s の呼
+##     び出しを省略してそのまま処理を終えても問題ありません。
+function ble/builtin/history/erasedups {
+  local cmd=$1
+
+  local beg=0 N=${#_ble_history[@]}
+  if [[ $bleopt_history_erasedups_limit ]]; then
+    local limit=$((bleopt_history_erasedups_limit))
+    if ((limit<=0)); then
+      ((beg=_ble_history_erasedups_base+limit))
+    else
+      ((beg=N-1-limit))
+    fi
+    ((beg<0)) && beg=0
+  fi
+
+  local delete_indices shift_histindex_next shift_wskip
+  if ((beg>=N)); then
+    ble/path#remove HISTCONTROL erasedups
+    return 0
+  elif ((beg>0)); then
+    ble/builtin/history/erasedups/.impl-ranged "$cmd" "$beg"
+  else
+    if ((_ble_bash>=40000&&N>=20000)); then
+      ble/builtin/history/erasedups/.impl-awk "$cmd"
+    else
+      ble/builtin/history/erasedups/.impl-for "$cmd"
+    fi
+  fi
+
+  if ((${#delete_indices[@]})); then
+    blehook/invoke history_delete "${delete_indices[@]}"
+    ((_ble_builtin_history_wskip-=shift_wskip))
+    [[ ${HISTINDEX_NEXT+set} ]] && ((HISTINDEX_NEXT-=shift_histindex_next))
+  else
+    # 単に今回の history/option:s を無視すれば良いだけの時
+    ((N)) && [[ ${_ble_history[N-1]} == "$cmd" ]] && return 9
+  fi
+}
+
 ## @fn ble/builtin/history/option:s
 function ble/builtin/history/option:s {
   ble/builtin/history/.initialize
@@ -1466,37 +1568,26 @@ function ble/builtin/history/option:s {
   local histfile=
   if [[ $_ble_history_load_done ]]; then
     if [[ $HISTCONTROL ]]; then
-      local ignorespace ignoredups erasedups spec
-      for spec in ${HISTCONTROL//:/ }; do
-        case "$spec" in
-        (ignorespace) ignorespace=1 ;;
-        (ignoredups)  ignoredups=1 ;;
-        (ignoreboth)  ignorespace=1 ignoredups=1 ;;
-        (erasedups)   erasedups=1 ;;
-        esac
-      done
+      # Note: ble/builtin/history/erasedups によって後の builtin history -s の為
+      # に時的に erasedups を除去する場合がある為ローカル変数に変えておく。また、
+      # ignoreboth の処理の便宜の為にも内部的に書き換える。
+      local HISTCONTROL=$HISTCONTROL
 
-      if [[ $ignorespace ]]; then
+      [[ :$HISTCONTROL: == *:ignoreboth:* ]] &&
+        HISTCONTROL=$HISTCONTROL:ignorespace:ignoredups
+
+      if [[ :$HISTCONTROL: == *:ignorespace:* ]]; then
         [[ $cmd == [' 	']* ]] && return 0
       fi
-      if [[ $ignoredups ]]; then
+      if [[ :$HISTCONTROL: == *:ignoredups:* ]]; then
+        # Note: plain Bash では ignoredups を検出した時には erasedups は発生し
+        # ない様なのでそれに倣う。
         local lastIndex=$((${#_ble_history[@]}-1))
         ((lastIndex>=0)) && [[ $cmd == "${_ble_history[lastIndex]}" ]] && return 0
       fi
-      if [[ $erasedups ]]; then
-        local N=${#_ble_history[@]}
-        local delete_indices shift_histindex_next shift_wskip
-        if ((_ble_bash>=40000&&N>=10000)); then
-          ble/builtin/history/option:s/erasedups.awk "$cmd"
-        else
-          ble/builtin/history/option:s/erasedups "$cmd"
-        fi
-        if ((${#delete_indices[@]})); then
-          blehook/invoke history_delete "${delete_indices[@]}"
-          ((_ble_builtin_history_wskip-=shift_wskip))
-          [[ ${HISTINDEX_NEXT+set} ]] && ((HISTINDEX_NEXT-=shift_histindex_next))
-        fi
-        ((N)) && [[ ${_ble_history[N-1]} == "$cmd" ]] && return 0
+      if [[ :$HISTCONTROL: == *:erasedups:* ]]; then
+        ble/builtin/history/erasedups "$cmd"
+        (($?==9)) && return 0
       fi
     fi
     local topIndex=${#_ble_history[@]}
