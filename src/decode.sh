@@ -3595,10 +3595,15 @@ function ble/builtin/bind/option:u/search-recursive {
 function ble/builtin/bind/option:- {
   local ret; ble/string#trim "$1"; local arg=$ret
 
-  # コメント除去 (quote されていない "空白+#" 以降はコメント)
-  local q=\' ifs=$_ble_term_IFS
-  local rex='^(([^\"'$q$ifs']|"([^\"]|\\.)*"|'$q'([^\'$q']|\\.)*'$q'|\\.|['$ifs']+[^#'$_ifs'])*)['$ifs']+#'
-  [[ $arg =~ $rex ]] && arg=${BASH_REMATCH[1]}
+  # Note (#D1820): これまで行の途中から始まるコメントを除去していたが、実際に
+  # inputrc 色々書き込んで調べると特に無視されている訳では無い事が分かった。
+  # なので、行頭に # がある場合にのみ処理を中断することにする。
+  [[ ! $arg || $arg == '#'* ]] && return 0
+
+  # # コメント除去 (quote されていない "空白+#" 以降はコメント)
+  # local q=\' ifs=$_ble_term_IFS
+  # local rex='^(([^\"'$q$ifs']|"([^\"]|\\.)*"|'$q'([^\'$q']|\\.)*'$q'|\\.|['$ifs']+[^#'$_ifs'])*)['$ifs']+#'
+  # [[ $arg =~ $rex ]] && arg=${BASH_REMATCH[1]}
 
   local ifs=$_ble_term_IFS
   if [[ $arg == 'set'["$ifs"]* ]]; then
