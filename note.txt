@@ -1816,12 +1816,6 @@ bash_tips
   - Acknowledgments
   - keymap の移動 (これは別 commit にする?)
 
-2022-06-19
-
-  * ble-bind -P の出力で -c binding が変だ。引用符が余分についている
-
-    ble-bind -m 'vi_nmap' -c C-z \'fg\'
-
 2022-06-18
 
   * erasedups を制限する機能 (motivated by SuperSandro2000)
@@ -6430,6 +6424,12 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-06-19
+
+  * decode: ble-bind -P の出力で -c binding が変だ。引用符が余分についている [#D1821]
+
+    ble-bind -m 'vi_nmap' -c C-z \'fg\'
+
+    v0.3 では特に問題はない様だ。修正した。
 
   * decode (bind): inputrc に含まれる # の処理 [#D1820]
 
