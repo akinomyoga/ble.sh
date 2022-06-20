@@ -6423,6 +6423,14 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-06-20
+
+  * history: bind のエラーメッセージ in 非対話シェル (reported by wukuan405) [#D1823]
+    https://github.com/akinomyoga/ble.sh/issues/200
+
+    これは単に bash が警告を出しているだけである。念の為、確認してみたが、bind
+    set 及び bind -v は共に動作している。
+
 2022-06-19
 
   * history: erasedups を制限する機能 (motivated by SuperSandro2000) [#D1822]

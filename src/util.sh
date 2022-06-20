@@ -4758,7 +4758,8 @@ function ble/util/reset-keymap-of-editing-mode {
 ## @fn ble/util/rlvar#load
 ##   @var[out] _ble_local_rlvars
 function ble/util/rlvar#load {
-  ble/util/assign _ble_local_rlvars 'builtin bind -v'
+  # Note (#D1823): suppress warnings in a non-interactive session
+  ble/util/assign _ble_local_rlvars 'builtin bind -v 2>/dev/null'
   _ble_local_rlvars=$'\n'$_ble_local_rlvars
 }
 
@@ -4823,7 +4824,8 @@ function ble/util/rlvar#bind-bleopt {
     else
       local var=bleopt_$bleopt val=off
       [[ ${!var:-} ]] && val=on
-      builtin bind "set $name $val"
+      # Note: #D1823 suppress stderr for non-interactive warning
+      builtin bind "set $name $val" 2>/dev/null
     fi
 
     local proc_original=
@@ -4832,13 +4834,14 @@ function ble/util/rlvar#bind-bleopt {
       proc_original='ble/function#push/call-top "$@" || return "$?"'
     fi
 
-    local proc_set='builtin bind "set '$name' $value"'
+    # Note: #D1823 suppress stderr for non-interactive warning
+    local proc_set='builtin bind "set '$name' $value" 2>/dev/null'
     if [[ :$opts: == *:bool:* ]]; then
       proc_set='
         if [[ $value ]]; then
-          builtin bind "set '$name' on"
+          builtin bind "set '$name' on" 2>/dev/null
         else
-          builtin bind "set '$name' off"
+          builtin bind "set '$name' off" 2>/dev/null
         fi'
     fi
 

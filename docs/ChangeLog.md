@@ -101,6 +101,7 @@
   - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` d340233
 - emacs: support `bleopt keymap_emacs_mode_string_multiline` (motivated by ArianaAsl) `#D1818` 8e9d273
 - util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` 6d20f51
+  - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` XXXXXXX
 - history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a XXXXXXX
 
 ## Changes
