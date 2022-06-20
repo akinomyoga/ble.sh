@@ -2153,7 +2153,7 @@ function ble/util/reset-keymap-of-editing-mode {
 
 ## 関数 ble/util/test-rl-variable name [default_exit]
 function ble/util/test-rl-variable {
-  local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
+  local rl_variables; ble/util/assign rl_variables 'builtin bind -v 2>/dev/null'
   if [[ $rl_variables == *"set $1 on"* ]]; then
     return 0
   elif [[ $rl_variables == *"set $1 off"* ]]; then
@@ -2168,7 +2168,7 @@ function ble/util/test-rl-variable {
 ## 関数 ble/util/read-rl-variable name [default_value]
 function ble/util/read-rl-variable {
   ret=$2
-  local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
+  local rl_variables; ble/util/assign rl_variables 'builtin bind -v 2>/dev/null'
   local rhs=${rl_variables#*$'\n'"set $1 "}
   [[ $rhs != "$rl_variables" ]] && ret=${rhs%%$'\n'*}
 }
