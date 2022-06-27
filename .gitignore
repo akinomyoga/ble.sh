@@ -11,6 +11,8 @@
 /[a-zA-Z0-9].sh
 /\*scratch\*
 
+/[A-Z]
+
 # test
 /test
 

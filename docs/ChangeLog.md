@@ -250,7 +250,7 @@
   - complete: fix a bug that the default progcomp does not work properly `#D1722` 01643fa
 - highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` b0a0b6f
 - util (visible-bell): erase visible-bell before running external commands `#D1723` 0da0c1c
-  - util(`ble/util/eval-pathname-expansion`): fix restoring shopt options in bash-4.0 `#D1825` XXXXXXX
+  - util(`ble/util/eval-pathname-expansion`): fix restoring shopt options in bash-4.0 `#D1825` 736f4da
 - util (`ble/function`): work around `shopt -u extglob` `#D1725` 952c388
 - syntax: fix uninitialized syntax-highlighting in bash-3.2 `#D1731` e3f5bf7
 - make: fix a bug that config update messages are removed on install `#D1736` 72d968f
@@ -389,7 +389,7 @@
 - test: clean up check failures by `make check` and `make scan` `#D1812` bb3e0a3
 - util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072
 - github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
-- debug: add `ble/debug/profiler` (motivated by SuperSandro2000) `#D1824` XXXXXXX
+- debug: add `ble/debug/profiler` (motivated by SuperSandro2000) `#D1824` f629698 XXXXXXX
 
 ## Contrib
 
