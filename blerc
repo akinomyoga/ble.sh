@@ -1042,12 +1042,15 @@ blehook/eval-after-load keymap_vi blerc/vim-load-hook
 #bleopt syntax_debug=
 
 
-## When a non-empty value is specified to this option, xtrace (set -x) is
-## enabled for the internal processing of ble.sh.  The value is used for the
+## When the option "debug_xtrace" contains a non-empty value, xtrace (set -x)
+## is enabled for the internal processing of ble.sh.  The value is used for the
 ## xtrace output log filename. [ Caution: The file size of the log file can
-## soon grow up to hundred megabytes or to gigabytes. ]
+## soon grow up to hundred megabytes or to gigabytes. ]  The option
+## "debug_xtrace_ps4" specifies the value of PS4 for xtrace enabled by
+## "debug_xtrace".
 
 #bleopt debug_xtrace=~/blesh.xtrace
+#bleopt debug_xtrace_ps4='+ '
 
 
 ## [The setting "openat_base" needs to be set before ble.sh is loaded or

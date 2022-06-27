@@ -2571,7 +2571,6 @@ function ble-edit/attach/.attach {
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
     _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
-    builtin unset -v LINENO; LINENO=$_ble_edit_LINENO
     _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
@@ -5957,7 +5956,7 @@ function ble/exec/time#start {
       _ble_exec_time_beg=$beg
       _ble_exec_time_end=$end
       _ble_exec_time_ata=$((end-beg))
-      _ble_exec_time_LINENO=$LINENO
+      _ble_exec_time_LINENO=$_ble_edit_LINENO
       ble/exec/time/times.end
     }
 
@@ -6020,7 +6019,7 @@ function ble/exec/time#start {
       else
         _ble_exec_time_beg=$((_ble_exec_time_end-_ble_exec_time_ata))
       fi
-      _ble_exec_time_LINENO=$LINENO
+      _ble_exec_time_LINENO=$_ble_edit_LINENO
     }
 
     function ble/exec/time#start {
@@ -6600,18 +6599,23 @@ function ble-edit/exec:gexec/.setup {
     local q=\' Q="'\''" cmd
     buff[ibuff++]=ble-edit/exec:gexec/.begin
     for cmd in "${_ble_edit_exec_lines[@]}"; do
-      # Note: restore-lastarg の $_ble_edit_exec_lastarg は $_ を設定するための
-      #   ものである。
+      buff[ibuff++]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}'"
+      # Note #D1823: LINENO を unset せずに上書きする為に tempenv を用いる。
+      # Note #D1823: Bash に "builtin eval" で tempenv が消滅するバグがあるので
+      #   builtin を付けずに eval を直接呼び出す。adjust-builtin-wrappers して
+      #   いる筈 (restore-builtin-wrappers は eval の中の .restore-lastarg で実
+      #   行している) なので、前回のコマンド実行後の状態調整に失敗したなどの事
+      #   がない限りは問題ない筈。
       # Note #D0465: restore-lastarg と実際のコマンドを同じ eval の中に入れるの
       #   は set -v の時の出力を抑える為である。prologue で set -v を復元した直
       #   後にそのままコマンドを実行しないと無駄な出力がされてしまう。
+      # Note: restore-lastarg の $_ble_edit_exec_lastarg は $_ を設定するための
+      #   ものである。
+      buff[ibuff++]='{ time LINENO=$_ble_edit_LINENO eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
+      buff[ibuff++]='$_ble_edit_exec_BASH_COMMAND'
       # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
       #   る時に eval の最終引数になってしまう)。
-      local prologue=""
-      buff[ibuff++]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}'"
-      buff[ibuff++]='{ time builtin eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
-      buff[ibuff++]='$_ble_edit_exec_BASH_COMMAND'
       buff[ibuff++]='{ ble-edit/exec:gexec/.save-lastarg; } &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
       buff[ibuff++]='" 2>&$_ble_util_fd_stderr; } 2>| "$_ble_exec_time_TIMEFILE"'
       buff[ibuff++]='{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null'
@@ -6761,7 +6765,6 @@ function ble/widget/.newline {
   # update LINENO
   local ret; ble/string#count-char "$_ble_edit_str" $'\n'
   ((_ble_edit_LINENO+=1+ret))
-  ((LINENO=_ble_edit_LINENO))
 
   ble/history/onleave.fire
   ble/widget/.newline/clear-content
@@ -6805,7 +6808,7 @@ function ble/widget/accept-line {
 function ble/widget/default/accept-line {
   # 文法的に不完全の時は改行挿入
   # Note: mc (midnight commander) が改行を含むコマンドを書き込んでくる #D1392
-  if [[ :$1: == *:syntax:* || $MC_SID == $$ && $LINENO == 0 ]]; then
+  if [[ :$1: == *:syntax:* || $MC_SID == $$ && $_ble_edit_LINENO == 0 ]]; then
     ble-edit/content/update-syntax
     if ! ble/syntax:bash/is-complete; then
       ble/widget/newline

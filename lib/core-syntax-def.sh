@@ -1,4 +1,4 @@
-#!/bin/bash
+# -*- mode: sh; mode: sh-bash -*-
 
 # 本体は lib/core-syntax.sh にある。遅延読み込みする。
 

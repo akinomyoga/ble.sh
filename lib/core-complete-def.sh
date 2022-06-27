@@ -92,7 +92,7 @@ function ble/complete/.init-bind-readline-variables {
   ble/util/rlvar#bind-bleopt skip-completed-text       complete_skip_matched     bool
   ble/util/rlvar#bind-bleopt colored-stats             complete_menu_color       bool
   ble/util/rlvar#bind-bleopt colored-completion-prefix complete_menu_color_match bool
-  unset -f "$FUNCNAME"
+  builtin unset -f "$FUNCNAME"
 }
 ble/complete/.init-bind-readline-variables
 

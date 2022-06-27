@@ -72,6 +72,7 @@ outfiles += $(OUTDIR)/lib/core-complete.sh
 outfiles += $(OUTDIR)/lib/core-syntax.sh
 outfiles += $(OUTDIR)/lib/core-test.sh
 outfiles += $(OUTDIR)/lib/core-cmdspec.sh
+outfiles += $(OUTDIR)/lib/core-debug.sh
 outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
 outfiles += $(OUTDIR)/lib/core-decode.emacs-rlfunc.txt
 outfiles += $(OUTDIR)/lib/core-decode.vi_imap-rlfunc.txt
@@ -205,4 +206,3 @@ $(eval $(call DeclareMakeCommand,scan,))
 $(eval $(call DeclareMakeCommand,check,build))
 $(eval $(call DeclareMakeCommand,check-all,build))
 $(eval $(call DeclareMakeCommand,list-functions,))
-

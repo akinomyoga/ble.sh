@@ -1318,6 +1318,7 @@ function sub:scan {
       \Zcmd '\''eval -- %q'\''Zd
       \Z\$\(eval \$\(call .*\)\)Zd
       \Z^[[:space:]]*local rex_[a-zA-Z0-9_]+='\''[^'\'']*'\''[[:space:]]*$Zd
+      \ZLINENO=\$_ble_edit_LINENO evalZd
       g'
   sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//

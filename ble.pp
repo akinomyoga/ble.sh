@@ -331,6 +331,7 @@ function ble/variable#copy-state {
   _ble_bash_XTRACEFD=
   _ble_bash_XTRACEFD_set=
   _ble_bash_XTRACEFD_dup=
+  _ble_bash_PS4=
 } 2>/dev/null # set -x 対策
 # From src/util.sh (ble/fd#is-open and ble/fd#alloc/.nextfd)
 function ble/base/xtrace/.fdcheck { builtin : >&"$1"; } 2>/dev/null
@@ -339,8 +340,17 @@ function ble/base/xtrace/.fdnext {
   for (($1=__init;$1<__init+1024;$1++)); do ble/base/xtrace/.fdcheck "${!1}" || break; done
   (($1<__init+1024)) || { (($1=__init,_ble_util_openat_nextfd++)); builtin eval "exec ${!1}>&-"; } || ((1))
 } 
+function ble/base/xtrace/.log {
+  local bash=${_ble_bash:-$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))}
+  local open=---- close=----
+  if ((bash>=40200)); then
+    builtin printf '%s [%(%F %T %Z)T] %s %s\n' "$open" -1 "$1" "$close"
+  else
+    builtin printf '%s [%s] %s %s\n' "$open" "$(date 2>/dev/null)" "$1" "$close"
+  fi >&${BASH_XTRACEFD:-2}
+}
 function ble/base/xtrace/adjust {
-  local level=${#_ble_bash_xtrace[@]}
+  local level=${#_ble_bash_xtrace[@]} IFS=$' \t\n'
   if [[ $- == *x* ]]; then
     _ble_bash_xtrace[level]=1
   else
@@ -375,12 +385,17 @@ function ble/base/xtrace/adjust {
       builtin eval "exec $newfd>&$_ble_bash_xtrace_debug_fd" || return 0
       BASH_XTRACEFD=$newfd
     fi
+
+    ble/variable#copy-state PS4 _ble_base_PS4
+    PS4=${bleopt_debug_xtrace_ps4:-'+ '}
+
     _ble_bash_xtrace_debug_enabled=1
+    ble/base/xtrace/.log "$FUNCNAME"
     set -x
   fi
 }
 function ble/base/xtrace/restore {
-  local level=$((${#_ble_bash_xtrace[@]}-1))
+  local level=$((${#_ble_bash_xtrace[@]}-1)) IFS=$' \t\n'
   ((level>=0)) || return 0
   if [[ ${_ble_bash_xtrace[level]-} ]]; then
     set -x
@@ -391,7 +406,13 @@ function ble/base/xtrace/restore {
 
   ((level==0)) || return 0
   if [[ $_ble_bash_xtrace_debug_enabled ]]; then
+    ble/base/xtrace/.log "$FUNCNAME"
     _ble_bash_xtrace_debug_enabled=
+
+    # Note: ユーザーの BASH_XTRACEFD にごみが混入しない様にする為、
+    # BASH_XTRACEFD を書き換える前に先に PS4 を戻す。
+    ble/variable#copy-state _ble_base_PS4 PS4
+
     if [[ $_ble_bash_XTRACEFD_dup ]]; then
       # BASH_XTRACEFD の fd を元の出力先に繋ぎ直す
       builtin eval "exec $BASH_XTRACEFD>&$_ble_bash_XTRACEFD_dup" &&
@@ -1715,6 +1736,7 @@ BLE_ATTACHED=
 #%x inc.r|@|src/util|
 
 bleopt/declare -v debug_xtrace ''
+bleopt/declare -v debug_xtrace_ps4 '+ '
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 ble/bin/.freeze-utility-path man
@@ -1734,6 +1756,7 @@ blehook ERR+='ble/function#try TRAPERR'
 #%x inc.r|@|lib/core-cmdspec-def|
 #%x inc.r|@|lib/core-syntax-def|
 #%x inc.r|@|lib/core-complete-def|
+#%x inc.r|@|lib/core-debug-def|
 #%x inc.r|@|contrib/bash-preexec-def|
 
 bleopt -I

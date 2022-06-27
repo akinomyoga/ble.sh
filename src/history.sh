@@ -1861,7 +1861,7 @@ function ble/history/.add-command-history {
   [[ -o history ]] || ((_ble_bash<30200)) || return 1
 
   # Note: mc (midnight commander) が初期化スクリプトを送ってくる #D1392
-  [[ $MC_SID == $$ && $LINENO -le 2 && ( $1 == *PROMPT_COMMAND=* || $1 == *PS1=* ) ]] && return 1
+  [[ $MC_SID == $$ && $_ble_edit_LINENO -le 2 && ( $1 == *PROMPT_COMMAND=* || $1 == *PS1=* ) ]] && return 1
 
   if [[ $_ble_history_load_done ]]; then
     # 登録・不登録に拘わらず取り敢えず初期化

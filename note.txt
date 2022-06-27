@@ -1318,6 +1318,11 @@ bash_tips
     bug-bash, third-party bugs & reviews
 -------------------------------------------------------------------------------
 
+2022-06-26
+
+  * またもや tempenv=... builtin eval ':;echo $tempenv' のバグに引っ掛かった。
+    これはやはり直して貰いたい。
+
 2022-02-15
 
   * tmpenv builtin eval vs DEBUG trap
@@ -6422,6 +6427,69 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-06-26
+
+  * debug: profiling 機能 (motivated by SuperSandro2000) [#D1824]
+
+    LINENO を先ず何とかする。LINENO=... eval '...' とすれば一時的に LINENO を置
+    き換える事が可能なのではないか。と考えたが、どうやら以前発見した bash の
+    bug である tempenv=... builtin eval -- 'echo;echo $tempenv' で tempenv が消
+    滅するバグの為に期待通りに動かない様だ。
+
+    うーん。workaround の方法はあるだろうか?
+
+    a ここの eval は builtin を使わずに呼び出す? → eval の上書きを現状では許可
+      しているがこの対応を除去する必要がある。これは避けたい。バージョンごとに
+      この対策を切り替えるのも面倒である。
+
+    b eval を二重にしたら回避できる可能性はあるだろうか → 駄目だ。うーん。駄目。
+
+      $ e=1234 builtin eval 'builtin eval ":;echo \$e"'
+      $ e=1234 builtin eval 'e=1234 builtin eval ":;echo \$e"'
+
+    c adjust-builtin の restore を遅延させて eval の内部で実行する可能性? → と
+      思ったら既にその様になっていた。なので builtin eval にしなくても良い。
+
+    時間を合計するプログラムを書いてみたが何だか振る舞いが変だ。そもそも関数呼
+    び出しをしているのに + の数が増えていない気がする。うーん。説明を見ると
+    levels of indirection と書いてあるがこれは何か確認する必要がある。→動作を
+    見たら関数呼び出しでは増えない様だ。つまり、eval 等の数しか数えないという事。
+    入れ子をちゃんと処理する為には + の数に加えて FUNCNAME の要素数も数える必要
+    がある? FUNCNAME は関数の内部でしか有効にならず関数内に入るとトップレベルコ
+    ンテクストの名前 (main) と共に要素数が2増えるので、代わりに常に存在している
+    BASH_LINENO の要素数を数える事にする。
+
+    * done: 関数毎の統計も取る
+    * done: 前回の記録を最初に読み出す
+    * done: % を表示する
+    * done: 前回の記録が複数の物を cat した物の場合にも対応
+    * done: PS4, bleopt の設定を待避・復元する → この為には ble/base/xtrace で
+      hook する必要がある →
+
+      a bleopt の設定については勝手に色々変わるのも変なので弄らない?
+
+        PS4 はユーザーが使いたいかもしれないので待避するのは確定。bleopt の設定
+        については xtrace/{adjust,restore} の度に動的に変わるのも変なので、やは
+        り ble/debug/profiler/start した時に設定してそのままにしておくのが良い
+        のではないか?
+
+        →然しそうすると profiling 中にユーザーが間違って debug_xtrace{,_ps4}
+        を設定した時に動作が変になるのでは。しかし、ble/debug/profiler を動かし
+        ている最中にこれらの設定を勝手に変更するのがおかしいとも言える。特に
+        ble/debug の同じ名前空間に属していると思えば ble/debug/profiler を介し
+        て debug_xtrace{,_ps4} を動かしていると思っても良いのかもしれない。
+
+      b 或いは profiler が設定されているかどうかの変数を ble/base/xtrace で見て
+        処理を切り替える?
+
+      c 或いは blehook xtrace_{adjust,restore} を追加する? →これは overhead が
+        増えるし、もしこれで実装するとしても bleopt をその場で切り替える様な実
+        装になって何だか変な気がする。其処までする必要もない。
+
+      ble/debug/profiler で bleopt debug_xtrace_{,_ps4} を書き換える実装で良い。
+
+    * done: blerc, wiki
 
 2022-06-20
 

@@ -424,106 +424,6 @@ function ble/util/restore-vars {
   done
 }
 
-#%if !release
-## @fn ble/debug/setdbg
-function ble/debug/setdbg {
-  ble/bin/rm -f "$_ble_base_run/dbgerr"
-  local ret
-  ble/util/readlink /proc/self/fd/3 3>&1
-  ln -s "$ret" "$_ble_base_run/dbgerr"
-}
-## @fn ble/debug/print text
-function ble/debug/print {
-  if [[ -e $_ble_base_run/dbgerr ]]; then
-    ble/util/print "$1" >> "$_ble_base_run/dbgerr"
-  else
-    ble/util/print "$1" >&2
-  fi
-}
-## @fn ble/debug/.check-leak-variable
-##   [デバグ用] 宣言忘れに依るグローバル変数の汚染位置を特定するための関数。
-##
-##   使い方
-##
-##   ```
-##   eval "${_ble_debug_check_leak_variable//@var/ret}"
-##   ...codes1...
-##   ble/debug/.check-leak-variable ret tag1
-##   ...codes2...
-##   ble/debug/.check-leak-variable ret tag2
-##   ...codes3...
-##   ble/debug/.check-leak-variable ret tag3
-##   ```
-_ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
-function ble/debug/.check-leak-variable {
-  if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
-    local IFS=$_ble_term_IFS
-    ble/util/print "$1=${!1}:${*:2}" >> a.txt # DEBUG_LEAKVAR
-    builtin eval "$1=__t1wJltaP9nmow__"
-  fi
-}
-function ble/debug/.list-leak-variable {
-  local _ble_local_exclude_file=${_ble_base_repository:-$_ble_base}/make/debug.leakvar.exclude-list.txt
-  if [[ ! -f $_ble_local_exclude_file ]]; then
-    ble/util/print "$_ble_local_exclude_file: not found." >&2
-    return 1
-  fi
-  set | ble/bin/grep -Eo '^[[:alnum:]_]+=' | ble/bin/grep -Evf "$_ble_local_exclude_file"
-}
-
-function ble/debug/print-variables/.append {
-  local q=\' Q="'\''"
-  _ble_local_out=$_ble_local_out"$1='${2//$q/$Q}'"
-}
-function ble/debug/print-variables/.append-array {
-  local ret; ble/string#quote-words "${@:2}"
-  _ble_local_out=$_ble_local_out"$1=($ret)"
-}
-function ble/debug/print-variables {
-  (($#)) || return 0
-
-  local flags= tag= arg
-  local -a _ble_local_vars=()
-  while (($#)); do
-    arg=$1; shift
-    case $arg in
-    (-t) tag=$1; shift ;;
-    (-*) ble/util/print "print-variables: unknown option '$arg'" >&2
-         flags=${flags}e ;;
-    (*) ble/array#push _ble_local_vars "$arg" ;;
-    esac
-  done
-  [[ $flags == *e* ]] && return 1
-
-  local _ble_local_out= _ble_local_var=
-  [[ $tag ]] && _ble_local_out="$tag: "
-  ble/util/unlocal flags tag arg
-  for _ble_local_var in "${_ble_local_vars[@]}"; do
-    if ble/is-array "$_ble_local_var"; then
-      builtin eval -- "ble/debug/print-variables/.append-array \"\$_ble_local_var\" \"\${$_ble_local_var[@]}\""
-    else
-      ble/debug/print-variables/.append "$_ble_local_var" "${!_ble_local_var}"
-    fi
-    _ble_local_out=$_ble_local_out' '
-  done
-  ble/debug/print "${_ble_local_out%' '}"
-}
-
-_ble_debug_stopwatch=()
-function ble/debug/stopwatch/start {
-  ble/array#push _ble_debug_stopwatch "${EPOCHREALTIME:-$SECONDS.000000}"
-}
-function ble/debug/stopwatch/stop {
-  local end=${EPOCHREALTIME:-$SECONDS.000000}
-  if local ret; ble/array#pop _ble_debug_stopwatch; then
-    local usec=$(((${end%%[.,]*}-${ret%%[,.]*})*1000000+(10#${end#*[.,]}-10#${ret#*[,.]})))
-    printf '[%3d.%06d sec] %s\n' "$((usec/1000000))" "$((usec%1000000))" "$1"
-  else
-    printf '[---.------ sec] %s\n' "$1"
-  fi
-}
-#%end
-
 #
 # variable, array and strings
 #
@@ -6343,7 +6243,7 @@ function ble/term/bracketed-paste-mode/.init {
   }
   ble/util/rlvar#bind-bleopt enable-bracketed-paste term_bracketed_paste_mode bool
 
-  unset -f "$FUNCNAME"
+  builtin unset -f "$FUNCNAME"
 }
 ble/term/bracketed-paste-mode/.init
 
