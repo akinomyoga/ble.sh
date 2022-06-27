@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1223
+ble/test/start-section 'ble/util' 1226
 
 # bleopt
 
@@ -1576,6 +1576,15 @@ ble/test ble/util/is-running-in-subshell exit=1
 
 # ble/util/is-cygwin-slow-glob
 # ble/util/eval-pathname-expansion
+(
+  shopt -s failglob
+  shopt -s nullglob
+  shopt -s extglob
+  ble/util/eval-pathname-expansion 'non-existent-*-file' canonical
+  ble/test 'shopt -q failglob'
+  ble/test 'shopt -q nullglob'
+  ble/test 'shopt -q extglob'
+)
 # ble/util/isprint+
 # ble/util/strftime
 

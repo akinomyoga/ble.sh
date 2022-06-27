@@ -3684,7 +3684,16 @@ function ble/util/eval-pathname-expansion {
   local canon=
   if [[ :$2: == *:canonical:* ]]; then
     canon=1
-    local set=$- shopt=$BASHOPTS gignore=$GLOBIGNORE
+    local set=$- shopt gignore=$GLOBIGNORE
+    if ((_ble_bash>=40100)); then
+      shopt=$BASHOPTS
+    else
+      shopt=
+      shopt -q failglob && shopt=$shopt:failglob
+      shopt -q nullglob && shopt=$shopt:nullglob
+      shopt -q extglob && shopt=$shopt:extglob
+      shopt -q dotglob && shopt=$shopt:dotglob
+    fi
     shopt -u failglob
     shopt -s nullglob
     shopt -s extglob

@@ -101,8 +101,8 @@
   - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` d340233
 - emacs: support `bleopt keymap_emacs_mode_string_multiline` (motivated by ArianaAsl) `#D1818` 8e9d273
 - util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` 6d20f51
-  - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` XXXXXXX
-- history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a XXXXXXX
+  - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` 1e19a67
+- history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a 3110967
 
 ## Changes
 
@@ -250,6 +250,7 @@
   - complete: fix a bug that the default progcomp does not work properly `#D1722` 01643fa
 - highlight: fix a bug that arrays without the element `0` is not highlighted `#D1721` b0a0b6f
 - util (visible-bell): erase visible-bell before running external commands `#D1723` 0da0c1c
+  - util(`ble/util/eval-pathname-expansion`): fix restoring shopt options in bash-4.0 `#D1825` XXXXXXX
 - util (`ble/function`): work around `shopt -u extglob` `#D1725` 952c388
 - syntax: fix uninitialized syntax-highlighting in bash-3.2 `#D1731` e3f5bf7
 - make: fix a bug that config update messages are removed on install `#D1736` 72d968f

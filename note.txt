@@ -6428,6 +6428,18 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-06-27
+
+  * util (eval-pathname-expansion): bash-4.0以下で shopt *glob がクリアされる [#D1825]
+
+    ble-0.3 backport で見ていたら気づいた。BASHOPTS (Bash 4.1+) を使って shopt
+    の状態を記録しているが、Bash 4.0 以下に対する分岐がない。0da0c1c で埋め込ま
+    れたバグである。visible-bell 消去時に glob 関連の shopt が全て unset されて
+    しまう事になる。修正した。
+
+    * 他の BASHOPTS 使用箇所は問題ないか → 他には ble.pp で使っているだけであ
+      る。そして ble.pp の使用箇所ではちゃんと分岐している。
+
 2022-06-26
 
   * debug: profiling 機能 (motivated by SuperSandro2000) [#D1824]
