@@ -256,21 +256,23 @@ function ble/string#common-suffix {
 ##   @param[in]  str 分割する文字列を指定します。
 ##
 function ble/string#split {
+  local IFS=$2
   if [[ -o noglob ]]; then
     # Note: 末尾の sep が無視されない様に、末尾に手で sep を 1 個追加している。
-    IFS=$2 builtin eval "$1=(\${*:3}\$2)"
+    builtin eval "$1=(\$3\$2)"
   else
     set -f
-    IFS=$2 builtin eval "$1=(\${*:3}\$2)"
+    builtin eval "$1=(\$3\$2)"
     set +f
   fi
 }
 function ble/string#split-words {
+  local IFS=$_ble_term_IFS
   if [[ -o noglob ]]; then
-    IFS=$' \t\n' builtin eval "$1=(\${*:2})"
+    builtin eval "$1=(\$2)"
   else
     set -f
-    IFS=$' \t\n' builtin eval "$1=(\${*:2})"
+    builtin eval "$1=(\$2)"
     set +f
   fi
 }
