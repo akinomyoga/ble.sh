@@ -96,9 +96,10 @@ function ble-measure {
     local nsec0=$_ble_measure_base
     local awk=ble/bin/awk
     type "$awk" &>/dev/null || awk=awk
-    "$awk" -v utot=$utot -v nsec0=$nsec0 -v n=$n -v title="$* (x$n)" \
-        ' function genround(x, mod) { return int(x / mod + 0.5) * mod; }
-            BEGIN { printf("%12.2f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, 100 / n), title); exit }'
+    local -x title="$* (x$n)"
+    "$awk" -v utot="$utot" -v nsec0="$nsec0" -v n="$n" '
+      function genround(x, mod) { return int(x / mod + 0.5) * mod; }
+      BEGIN { title = ENVIRON["title"]; printf("%12.2f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, 100 / n), title); exit }'
     ((ret=utot/n))
     if ((n>=1000)); then
       ((nsec=utot/(n/1000)))
