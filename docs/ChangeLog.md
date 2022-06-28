@@ -299,7 +299,9 @@
 - main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 115baec
 - util: optimize `ble/util/writearray` `#D1816` 96e9bf8
 - history: optimize processing of `erasedups` (motivated by SuperSandro2000) `#D1817` 944d48e
-- util (`ble/string#split`): optimize `#D1826` XXXXXXX
+- debug: add `ble/debug/profiler` (motivated by SuperSandro2000) `#D1824` f629698 XXXXXXX
+  - util (`ble/string#split`): optimize `#D1826` XXXXXXX
+  - global: avoid passing arbitrary strings through `awk -v var=value` `#D1827` XXXXXXX
 
 ## Compatibility
 
@@ -390,7 +392,6 @@
 - test: clean up check failures by `make check` and `make scan` `#D1812` bb3e0a3
 - util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072
 - github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
-- debug: add `ble/debug/profiler` (motivated by SuperSandro2000) `#D1824` f629698 XXXXXXX
 
 ## Contrib
 

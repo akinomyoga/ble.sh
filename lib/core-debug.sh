@@ -130,7 +130,7 @@ function ble/debug/profiler/stop {
 
   local f1=$prefix.xtrace
   local f2=$prefix.line.txt
-  local f3= #$prefix.line.html
+  local f3=$prefix.line.html
   local f4=$prefix.func.txt
 
   # count lines
@@ -144,8 +144,15 @@ function ble/debug/profiler/stop {
   [[ -s $f2 ]] && ble/array#push awk_args mode=line_stat "$f2"
   [[ -s $f4 ]] && ble/array#push awk_args mode=func_stat "$f4"
   ble/array#push awk_args mode=xtrace "$f1"
-  ble/bin/awk -v magic="$_ble_debug_profiler_magic" -v nline="$nline" -v file_line_html="$f3" -v file_func="$f4.part" '
+  local -x file_func=$f4.part
+  local -x file_line=$f2.part
+  local -x file_line_html= #$f3 # currently .html output is disabled
+  ble/bin/awk -v magic="$_ble_debug_profiler_magic" -v nline="$nline" '
     BEGIN {
+      file_func = ENVIRON["file_func"];
+      file_line = ENVIRON["file_line"];
+      file_line_html = ENVIRON["file_line_html"];
+
       xtrace_debug_enabled = 1;
       print "ble/debug/profiler: collecting information..." >"/dev/stderr";
       if (nline) progress_interval = int(nline / 100);
@@ -285,14 +292,14 @@ function ble/debug/profiler/stop {
       line = sprintf("# %6s %8s %8s", "count", "subcount", "allcount");
       line = line sprintf(" %10s %-6s %10s %-6s %10s", "total_msec", "TOTAL%", "self_msec", "SELF%", "child_msec");
       line = line sprintf(" %10s %10s %10s", "max_msec", "max_self", "max_child");
-      printf("%s %s%s\n", line, "\x1b[35mSOURCE\x1b[36m (FUNCNAME):\x1b[32mLINENO\x1b[36m:\x1b[m", "COMMAND");
+      printf("%s %s%s\n", line, "\x1b[35mSOURCE\x1b[36m (FUNCNAME):\x1b[32mLINENO\x1b[36m:\x1b[m", "COMMAND") > file_line;
     }
 
     function lines_text_print(info, _, line) {
       line = sprintf("%8d %8d %8d", info["count"], info["substep_count"], info["allstep_count"]);
       line = line sprintf(" %10.3f %-6s %10.3f %-6s %10.3f", info["total_time"], info["total_time_percentage"], info["total_self"], info["total_self_percentage"], info["total_child"]);
       line = line sprintf(" %10.3f %10.3f %10.3f", info["max_time"], info["max_self"], info["max_child"]);
-      printf("%s %s%s\n", line, info["label"], info["command"]);
+      printf("%s %s%s\n", line, info["label"], info["command"]) > file_line;
     }
 
     function lines_html_header(_, line) {
@@ -615,7 +622,7 @@ function ble/debug/profiler/stop {
       lines_save();
       funcs_save();
     }
-  ' "${awk_args[@]}" >| "$f2.part" &&
+  ' "${awk_args[@]}" &&
     {
       ble/bin/grep '^#' "$f2.part"
       ble/bin/grep -v '^#' "$f2.part" | ble/bin/sort -nrk4

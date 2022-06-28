@@ -2214,7 +2214,7 @@ function ble/complete/source:wordlist {
 
 function ble/complete/source:command/.contract-by-slashes {
   local slashes=${COMPV//[!'/']}
-  ble/bin/awk -F / -v baseNF=${#slashes} '
+  ble/bin/awk -F / -v baseNF="${#slashes}" '
     function initialize_common() {
       common_NF = NF;
       for (i = 1; i <= NF; i++) common[i] = $i;

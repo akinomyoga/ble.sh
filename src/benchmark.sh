@@ -310,9 +310,10 @@ function ble-measure {
       local reso=$_ble_measure_resolution
       local awk=ble/bin/awk
       type "$awk" &>/dev/null || awk=awk
-      "$awk" -v utot=$utot -v nsec0=$nsec0 -v n=$n -v reso=$reso -v title="$command (x$n)" \
-             ' function genround(x, mod) { return int(x / mod + 0.5) * mod; }
-          BEGIN { printf("%12.3f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, reso / 10.0 / n), title); exit }'
+      local -x title="$command (x$n)"
+      "$awk" -v utot="$utot" -v nsec0="$nsec0" -v n="$n" -v reso="$reso" '
+        function genround(x, mod) { return int(x / mod + 0.5) * mod; }
+        BEGIN { title = ENVIRON["title"]; printf("%12.3f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, reso / 10.0 / n), title); exit }'
     fi
     ((ret=utot/n))
     if ((n>=1000)); then

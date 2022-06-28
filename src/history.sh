@@ -930,7 +930,7 @@ function ble/builtin/history/.read {
   local file=$1 skip=${2:-0} fetch=$3
   local -x histnew=$_ble_base_run/$$.history.new
   if [[ -s $file ]]; then
-    local script=$(ble/bin/awk -v skip=$skip '
+    local script=$(ble/bin/awk -v skip="$skip" '
       BEGIN { histnew = ENVIRON["histnew"]; count = 0; }
       NR <= skip { next; }
       { print $0 >> histnew; count++; }
