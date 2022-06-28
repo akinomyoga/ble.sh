@@ -5090,8 +5090,7 @@ function ble/widget/vi-command:w {
     local file=${HISTFILE:-'~/.bash_history'}
   fi
   local wc
-  ble/util/assign wc 'ble/bin/wc "$file"'
-  ble/string#split-words wc "$wc"
+  ble/util/assign-words wc 'ble/bin/wc "$file"'
   ble/edit/info/show text "\"$file\" ${wc[0]}L, ${wc[2]}C written"
   ble/keymap:vi/adjust-command-mode
   return 0

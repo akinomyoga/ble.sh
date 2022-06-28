@@ -1,0 +1,384 @@
+注意: ここに載せるのはループで回した時の時間である。parse 等の時間は含まれないと考えるべき。
+注意: 何故か評価の順序によって時間が変わったりするので何度か試すのが良い。
+
+* commands
+
+  which -> type (関数 エイリアス 組込コマンドに注意)
+  date -> printf %()T
+  expr, bc -> 算術式
+  正規表現 -> [[ ... =~ ... ]]
+  enable (builtin を自分で作る)
+  cat, $(< ...) -> read
+
+  組込コマンドで実装する:
+    wc -l, tac, tee, cat, paste, ...
+    od, base64, wc -c, uuencode (ascii85)
+
+  裏機能
+    プロセス存在確認 -> kill -0
+    ポーリング -> read -t 0
+
+* test
+
+  [ よりは test, test よりは [[。
+
+    [[ a ]]
+      time   2.00 usec/eval
+    test a
+      time   5.40 usec/eval
+    [ a ]
+      time   6.10 usec/eval
+
+    "[ よりは test" というのは今迄の経験と一致する。
+    "test よりは [[" というのは当たり前の事である。
+    これに関しては単語分割が速度を支配している気がする。
+    [ は単語が余分に一個多い。[[ は毎回の実行時に単語分割はしない。
+
+  変数名の quote はしない。
+
+    [[ $dir == / ]]
+      time   5.00 usec/eval
+    [[ "$dir" == / ]]
+      time   7.40 usec/eval
+
+  変数名は長くても短くても殆ど違いはない。でも、微妙に短い方が良い?
+
+    [[ $d == / ]]
+      time   5.00 usec/eval
+    [[ $dir == / ]]
+      time   5.10 usec/eval
+    [[ $dirverylonglong == / ]]
+      time   5.50 usec/eval
+
+  右辺の glob パターンは特別な文字が含まれていなくても下手に quote しない方が速い。
+
+    [[ $dir == / ]]
+      time   5.10 usec/eval
+    [[ $dir == '/' ]]
+      time   5.90 usec/eval
+    [[ $dir == "/" ]]
+      time   6.90 usec/eval
+
+  startsWith
+
+    glob による一致が最も速い。というか単純な == / の比較と大して変わらない速度。
+    パラメータ展開を用いるのは多少時間が掛かる。新しい文字列インスタンスを作るからか。
+    正規表現を用いる方法はさすがに遅い。しかし思った程には悪くないようだ。
+
+    [[ $d == /* ]]
+      time   5.10 usec/eval
+    [[ ${d::1} == / ]]
+      time  10.30 usec/eval
+    [[ ! ${d##/*} ]]
+      time  10.50 usec/eval
+    [[ $d =~ ^/ ]]
+      time  26.40 usec/eval
+
+  contains
+
+    同じ傾向だ。
+
+    [[ $d == */* ]]
+      time   5.60 usec/eval
+    [[ ! ${d##*/*} ]]
+      time  11.00 usec/eval
+    [[ $d =~ / ]]
+      time  20.20 usec/eval
+
+
+* 代入
+
+  右辺の quote はない方が良い。
+
+    変数の代入の右辺は単語分割の対象ではないので、quote する必要はない。
+    (quote の必要があるのはチルダ展開ぐらいだろうか。)
+    これは declare a=$b の形式でも同様である。
+
+    d=$d
+      time   3.50 usec/eval
+    d="$d"
+      time   6.20 usec/eval
+
+  複数の変数の代入はまとめてした方が速い
+
+    a=$d b=$d
+      time   6.70 usec/eval
+    a=$d; b=$d
+      time   9.40 usec/eval
+
+* 算術式
+
+  代入は直接文字列として実行した方が速い。
+
+    a=0
+      time   1.40 usec/eval
+    ((a=0))
+      time   3.80 usec/eval
+
+    a=0 b=0
+      time   2.70 usec/eval
+    ((a=0,b=0))
+      time   5.80 usec/eval
+
+  呼出は (( )) が一番速い。
+
+    やはり単純な (( )) が一番速い。
+    意外にも let は変数の代入を用いる方法よりも遅い。やはり単語分割が遅い説?
+
+    ((a++))
+      time   4.20 usec/eval
+    (('a++'))
+      time   4.70 usec/eval
+    a=$((a+1))
+      time   7.20 usec/eval
+    let a++
+      time   7.70 usec/eval
+    let 'a++'
+      time   8.50 usec/eval
+
+  条件判定
+
+    表現が正規化されている事が前提で、かつ等値判定 (== !=) ならば文字列としての比較が最速だ。
+    それ以外の場合 (変数内に数式があるかもしれない or 不等判定(< > <= =>)) は算術式を使うのが良い。
+
+    [[ a == 0 ]] && x=1
+      time   5.30 usec/eval
+    ((a==0)) && x=1
+      time   8.40 usec/eval
+    [[ a -eq 0 ]] && x=1
+      time  11.10 usec/eval
+
+  条件分岐も算術式の内部でした方が速い
+
+    算術式 && vs コマンド && vs if (真)
+
+    ((a==0&&(x=1)))
+      time   6.50 usec/eval
+    ((a==0)) && x=1
+      time   8.20 usec/eval
+    ((a==0)) && ((x=1))
+      time  10.30 usec/eval
+    if ((a==0)); then ((x=1)); fi
+      time  10.40 usec/eval
+
+    算術式 && vs コマンド && vs if (偽)
+
+    →内部の式が評価されない場合には "コマンド &&" の方が速い様だ。
+
+    ((a==1&&(x=1)))
+      time   5.70 usec/eval
+    ((a==1)) && ((x=1))
+      time   4.60 usec/eval
+    if ((a==1)); then ((x=1)); fi
+      time   4.90 usec/eval
+
+    三項条件式 vs if-else (真)
+
+    ((a==0?(x=1):(y=1)))
+      time   9.00 usec/eval
+    if ((a==0)); then ((x=1)); else ((y=1)); fi
+      time  11.00 usec/eval
+
+    三項条件式 vs if-else (偽)
+
+    ((a==1?(x=1):(y=1)))
+      time   8.80 usec/eval
+    if ((a==1)); then ((x=1)); else ((y=1)); fi
+      time  10.70 usec/eval
+
+    複雑な条件分岐の場合
+    →条件を多少複雑にしても基本的に算術式が速い様である。
+
+    ((x=a==1?1:(a==2?8:(a==3?4:3))))
+      time  12.30 usec/eval
+    ((a==1?(x=1):(a==2?(x=8):(a==3?(x=4):(x=3)))))
+      time  18.30 usec/eval
+    if [[ a == 1 ]]; then x=1; elif [[ a == 2 ]]; then x=8; elif [[ a == 3 ]]; then x=4; else x=3; fi
+      time  21.80 usec/eval
+    if ((a==1)); then ((x=1)); elif ((a==2)); then ((x=8)); elif ((a==3)); then ((x=4)); else ((x=3)); fi
+      time  24.10 usec/eval
+
+* 関数呼出
+
+  関数呼出はそんなに遅くないという感覚でいたがまあ確かにそんなに遅くない。
+  しかしそうは言っても完全に無視できる速さという訳ではない。
+  が代替の場合は関数にしてもそんなに問題はない・効果はないだろう。
+  一応関数名が短い方が多少速い。
+
+  function _empty { :; }
+  function very_very_long_long_function_name { :; }
+
+  :
+    time   3.30 usec/eval
+  _empty
+    time  14.20 usec/eval
+  very_very_long_long_function_name
+    time  18.40 usec/eval
+
+* ループ
+
+  1 ずつ増える変数についての固定長のループならば、
+  ループのサイズに関係なくブレース展開の方が微妙に速い。
+  但しブレース展開は以下の制限がある。
+  + 上限と下限が変数の場合は使えない → ループが十分大きければ eval にすれば OK.
+  + set +o braceexpand (+B) としている時には利用できない.
+
+  a=0; for i in {0..10}; do ((a+=i)); done
+    time 132.80 usec/eval
+  a=0; for ((i=0;i<10;i++)); do ((a+=i)); done
+    time 187.80 usec/eval
+  a=0; for i in {0..10000}; do ((a+=i)); done
+    time 131972.70 usec/eval
+  a=0; for ((i=0;i<10000;i++)); do ((a+=i)); done
+    time 185972.70 usec/eval
+
+------------------------------------------------------------------------------
+  配列操作
+------------------------------------------------------------------------------
+
+push
+
+  j=0; for i in {0..1000}; do a[j++]=$i; done
+    time 15772.50 usec/eval
+  for i in {0..1000}; do a+=($i); done
+    time 16872.50 usec/eval
+  for i in {0..1000}; do a[${#a[@]}]=$i; done
+    time 19172.50 usec/eval
+  for i in {0..1000}; do a=("${a[@]}" $i); done
+    time 2470972.50 usec/eval
+
+巨大配列と他の配列を混ぜてループすると滅茶苦茶遅い O(N^2)
+
+  A a=(); ble-measure "for ((i=0;i<$n;i++)); do ((a[i]=i*i,b[i]=i)); done"
+  B a=({0..1000000}); ble-measure "for ((i=0;i<$n;i++)); do ((a[i]=i*i,b[i]=i)); done"
+  C a=({0..1000000}); ble-measure "for ((i=0;i<$n;i++)); do ((a[i]=i*i)); done; for ((i=0;i<$n;i++)); do ((b[i]=i)); done"
+
+            usec/eval A  usec/eval B   usec/eval C
+  n=10      300.20       302.00        453.90
+  n=20      598.20       595.00        889.90
+  n=50      1522.20      1522.00       2211.90
+  n=100     3072.20      3082.00       4471.90
+  n=200     6252.20      6222.00       8991.90
+  n=500     16772.20     16472.00      22271.90
+  n=1000    41072.20     38572.00      49571.90
+  n=2000    95472.20     89472.00      102171.90
+  n=5000    159972.20    240972.20     239971.90
+  n=10000   315972.20    631972.20     485971.90
+  n=20000   638972.20    2052972.00    971971.90
+  n=50000   1599972.20   13345972.20   2435972.20
+  n=100000  3231972.20   67832972.20   4969972.20
+  n=200000  6508972.20                 9975972.20
+  n=500000                             25708972.00
+  n=1000000                            53124972.00
+
+  予想:
+    bash は配列を双方向リストで実装している。
+    末尾または先頭へのアクセスは高速にできる。
+    シーケンシャルなアクセスも高速にできる様に、前回アクセスした配列と位置を記録している。
+    他の配列に触ると前回アクセスした位置は失われる。
+
+  別の変数に触る場合は遅くならない。
+
+  x=0; for ((i=0;i<200000;i++)); do ((a[i]=i*i,x=i)); done
+    time 5647972.00 usec/eval
+
+100k    21.978s 4
+200k    33.204s 16
+300k    50.981s 34
+1000k 6m56.349s
+
+
+globpat による配列要素のフィルタ
+
+  配列要素一つずつに対して [[ ]] で検索するのが素直な実装である。
+  一方で compgen にも同様の機能がある。
+  配列要素数が少ない内は compgen を用いた方が速いが、
+  配列要素が多くなってくると compgen を用いた方法は遅くなっていく。
+  (compgen 自体が悪いのか単語分割が遅いのかは分からない)。
+
+  | a=({0..99999})
+  | function filter1 { i=0 b=(); for x in "${a[@]}"; do [[ $x == *1?2 ]] && b[i++]=$x; done; }
+  | function filter2 { veval b 'compgen -X "!*1?2" -W "${a[*]}"'; b=($b); }
+  | ble-measure 'filter1'
+  | ble-measure 'filter2'
+  | function filter2base { veval b 'type filter2base'; }
+
+  a length  filter1     filter2     (usec/eval)
+  --------  ----------  ----------
+    1000      13171.50     4721.50
+   10000     139971.50    79671.50
+  100000    1529971.30  4670971.40
+
+  filter2base ... 343.50 usec
+
+------------------------------------------------------------------------------
+  コマンド起動
+------------------------------------------------------------------------------
+
+  * fork test
+
+    http://qiita.com/b4b4r07/items/726df1543fc48d2cb20b
+
+    printf -v A '%d + ' {1..10000}; echo $((${A}0))
+      time 40071.90 usec/eval
+    n=0; for i in {1..10000}; do ((n+=i)); done; echo $n
+      time 134971.90 usec/eval
+    for i in $(seq 10000); do printf "$i + "; [ $i -eq 10000 ] && printf "0\n"; done | bc
+      time 408971.90 usec/eval
+    n=0; for i in $(seq 10000); do n=$(echo $n + $i | bc); done; echo $n
+      time 29894971.90 usec/eval
+
+  * ... vs builtin ...
+
+    builtin を先頭につければパスを探索する必要がないと思ったが別に速くはならない。
+    というか良く考えたら builtin を検索するのにも同じだけ時間が掛かる。
+
+
+  * 間接代入 (ある変数に代入先の変数名が入っている場合)
+
+    こういう奴です: eval "$var=\"\$value\""
+
+    (($var=value)) ※値が整数値の場合限定
+      time   5.50 usec/eval
+    printf -v "$var" %s "$value"
+      time  16.00 usec/eval
+    eval "$var=\"\$value\""
+      time  31.30 usec/eval
+    IFS= read -r -d '' "$var" <<< "$value"
+      time 111.60 usec/eval
+
+  * コマンド置換
+
+------------------------------------------------------------------------------
+  Bash 状態
+------------------------------------------------------------------------------
+
+  * shopt -q optname
+
+    shopt -s/-u optname による設定の確認。
+    shopt -q はリダイレクトを伴うからか遅い。というか >/dev/null は不要っぽい。
+    また使いやすい様に関数を定義してみたりしたが関数呼出はやはり遅くなる様だ。
+
+    shopt -q extquote
+      time   8.40 usec/eval
+    [[ :$BASHOPTS: == *:extquote:* ]]
+      time  11.40 usec/eval
+    function ble/util/has-shopt { [[ :$BASHOPTS: == *:"$1":* ]]; }
+    ble/util/has-shopt extquote
+      time  29.00 usec/eval
+    shopt -q extquote &>/dev/null
+      time  32.40 usec/eval
+
+  * [[ -o option-name ]]
+
+    set -o/+o ... による設定の確認。
+    基本的には [[ -o name ]] で確認することが出来る (bash-3.0 以降確認済, 他未確認)。
+    一部の option-name に関してはシェル変数 $- を用いて確認する事も出来る。
+    しかし [[ -o name ]] を使うのが速い様である。
+
+    [[ -o hashall ]]
+      time   3.60 usec/eval
+    [[ $- == *h* ]]
+      time   5.60 usec/eval
+    [[ :$SHELLOPTS: == *:hashall:* ]]
+      time   8.90 usec/eval

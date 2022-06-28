@@ -299,6 +299,7 @@
 - main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 115baec
 - util: optimize `ble/util/writearray` `#D1816` 96e9bf8
 - history: optimize processing of `erasedups` (motivated by SuperSandro2000) `#D1817` 944d48e
+- util (`ble/string#split`): optimize `#D1826` XXXXXXX
 
 ## Compatibility
 

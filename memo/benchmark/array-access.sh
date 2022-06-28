@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-if [[ ! $_ble_bash ]]; then
-  echo 'benchmark: Please source from a ble session.' >&2
-  return 1
+if [[ ! ${BLE_VERSION-} ]]; then
+  source ../../src/benchmark.sh
 fi
 
 function measure-array.1 {

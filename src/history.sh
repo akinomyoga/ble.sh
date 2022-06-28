@@ -43,14 +43,12 @@ function ble/builtin/history/is-empty {
   ! ble/util/assign.has-output 'history 1'
 }
 function ble/builtin/history/.get-min {
-  ble/util/assign min 'builtin history | head -1'
+  ble/util/assign-words min 'builtin history | head -1'
   min=${min/'*'}
-  ble/string#split-words min "$min"
 }
 function ble/builtin/history/.get-max {
-  ble/util/assign max 'builtin history 1'
+  ble/util/assign-words max 'builtin history 1'
   max=${max/'*'}
-  ble/string#split-words max "$max"
 }
 
 #------------------------------------------------------------------------------

@@ -118,10 +118,10 @@ function ble/debug/profiler/start {
   bleopt debug_xtrace="$prefix.xtrace"
   bleopt debug_xtrace_ps4='+${#BASH_LINENO[@]} ${BASHPID:-$$} ${EPOCHREALTIME:-SECONDS} ${FUNCNAME:-(global)} ${LINENO:--} ${BASH_SOURCE:--} '"$_ble_debug_profiler_magic"' '
 
-  blehook EXIT!=ble/debug/profiler/end
+  blehook EXIT!=ble/debug/profiler/stop
 }
 
-function ble/debug/profiler/end {
+function ble/debug/profiler/stop {
   [[ $_ble_debug_profiler_prefix ]] || return 1
   local prefix=$_ble_debug_profiler_prefix
   _ble_debug_profiler_prefix=
@@ -134,16 +134,16 @@ function ble/debug/profiler/end {
   local f4=$prefix.func.txt
 
   # count lines
+  local nline
   ble/util/print "ble/debug/profiler: counting lines..."
-  ble/util/assign nline 'ble/bin/wc -l "$f1" 2>/dev/null'
-  ble/string#split-words nline "$nline"
+  ble/util/assign-words nline 'ble/bin/wc -l "$f1" 2>/dev/null'
   ble/util/print $'\e[A\rble/debug/profiler: counting lines... '"$nline"
 
   # awk
-  local -a awk_options=()
-  [[ -s $f2 ]] && ble/array#push awk_options mode=line_stat "$f2"
-  [[ -s $f4 ]] && ble/array#push awk_options mode=func_stat "$f4"
-  ble/array#push awk_options mode=xtrace "$f1"
+  local -a awk_args=()
+  [[ -s $f2 ]] && ble/array#push awk_args mode=line_stat "$f2"
+  [[ -s $f4 ]] && ble/array#push awk_args mode=func_stat "$f4"
+  ble/array#push awk_args mode=xtrace "$f1"
   ble/bin/awk -v magic="$_ble_debug_profiler_magic" -v nline="$nline" -v file_line_html="$f3" -v file_func="$f4.part" '
     BEGIN {
       xtrace_debug_enabled = 1;
@@ -206,7 +206,7 @@ function ble/debug/profiler/end {
       source = $6;
       for (i = 7; $i != magic && i <= NF; i++)
         source = source " " $i;
-      label = sprintf("\x1b[35m%s\x1b[36m (%s):\x1b[32m%s\x1b[36m:\x1b[m", source, fname, lineno);
+      label = sprintf("\x1b[35m%s\x1b[36m (%s:\x1b[32m%s\x1b[36m):\x1b[m", source, fname, lineno);
       command = "";
       if ($i == magic) {
         command = $(++i);
@@ -615,7 +615,7 @@ function ble/debug/profiler/end {
       lines_save();
       funcs_save();
     }
-  ' "${awk_options[@]}" >| "$f2.part" &&
+  ' "${awk_args[@]}" >| "$f2.part" &&
     {
       ble/bin/grep '^#' "$f2.part"
       ble/bin/grep -v '^#' "$f2.part" | ble/bin/sort -nrk4

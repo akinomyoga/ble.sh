@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-if [[ ! $_ble_bash ]]; then
-  echo 'benchmark: Please source from a ble session.' >&2
-  return 1
+if [[ ! ${BLE_VERSION-} ]]; then
+  source ../../src/benchmark.sh
 fi
 
 _ble_util_assign_base="/dev/shm/$UID.$$.read-stdout.tmp"
@@ -61,7 +60,7 @@ function ble/string#split-lines {
   split-lines.2 "$@"
 }
 
-data=$(< benchmark-array-reverse.sh)
+data=$(< array-reverse.sh)
 
 ble-measure 'split-lines.1 arr1 "$data"' # 532000.00 usec/eval (x1)
 ble-measure 'split-lines.2 arr1 "$data"' #   8945.00 usec/eval (x20)
@@ -102,5 +101,5 @@ function assign-array.2 {
   return "$_ble_local_ret"
 }
 
-ble-measure 'assign-array.1 arr1 "cat benchmark-array-reverse.sh"' # 11900.00 usec/eval (x10)
-ble-measure 'assign-array.2 arr1 "cat benchmark-array-reverse.sh"' #  4536.00 usec/eval (x50)
+ble-measure 'assign-array.1 arr1 "cat array-reverse.sh"' # 11900.00 usec/eval (x10)
+ble-measure 'assign-array.2 arr1 "cat array-reverse.sh"' #  4536.00 usec/eval (x50)

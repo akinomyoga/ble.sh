@@ -1,8 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-if [[ ! $_ble_bash ]]; then
-  echo 'benchmark: Please source from a ble session.' >&2
-  return 1
+if [[ ! ${BLE_VERSION-} ]]; then
+  printf '%s\r' 'loading ble.sh...'
+  source ../../out/ble.sh --lib
+  printf '%s\n' 'loading ble.sh... done'
 fi
 
 S=({1..10000})
@@ -332,7 +333,7 @@ fi
 #   C
 #   B
 #   A
-#   benchmark-array-reverse.sh <-- Broken
+#   array-reverse.sh <-- Broken
 #
 #   BASH_ARGV には呼び出し元で設定されていた引数が末尾に続くようである。
 #

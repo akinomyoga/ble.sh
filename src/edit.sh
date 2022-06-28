@@ -3593,8 +3593,7 @@ function ble/edit/display-version/git-hash-object {
     ble/string#split-words ret "$ret"
     ret="sha1:$ret, $size bytes"
   elif ble/bin#has cksum; then
-    ble/util/assign ret 'cksum "$file"'
-    ble/string#split-words ret "$ret"
+    ble/util/assign-words ret 'cksum "$file"'
     ble/util/sprintf ret 'cksum:%08x, %d bytes' "$ret" "$size"
   else
     ret=size:$size

@@ -786,21 +786,23 @@ function ble/string#common-suffix {
 ##   @param[in]  str 分割する文字列を指定します。
 ##
 function ble/string#split {
+  local IFS=$2
   if [[ -o noglob ]]; then
     # Note: 末尾の sep が無視されない様に、末尾に手で sep を 1 個追加している。
-    IFS=$2 builtin eval "$1=(\${*:3}\$2)"
+    builtin eval "$1=(\$3\$2)"
   else
     set -f
-    IFS=$2 builtin eval "$1=(\${*:3}\$2)"
+    builtin eval "$1=(\$3\$2)"
     set +f
   fi
 }
 function ble/string#split-words {
+  local IFS=$_ble_term_IFS
   if [[ -o noglob ]]; then
-    IFS=$_ble_term_IFS builtin eval "$1=(\${*:2})"
+    builtin eval "$1=(\$2)"
   else
     set -f
-    IFS=$_ble_term_IFS builtin eval "$1=(\${*:2})"
+    builtin eval "$1=(\$2)"
     set +f
   fi
 }
@@ -1900,8 +1902,7 @@ function ble/builtin/trap/.get-sig-index {
 function ble/builtin/trap/.initialize {
   function ble/builtin/trap/.initialize { :; }
   local ret i
-  ble/util/assign ret 'builtin trap -l' 2>/dev/null
-  ble/string#split-words ret "$ret"
+  ble/util/assign-words ret 'builtin trap -l' 2>/dev/null
   for ((i=0;i<${#ret[@]};i+=2)); do
     local index=${ret[i]%')'}
     local name=${ret[i+1]}
@@ -2880,6 +2881,11 @@ function ble/util/assign.has-output {
   local _ble_local_ret=$?
   ble/util/assign/.rmtmp
   return "$_ble_local_ret"
+}
+
+function ble/util/assign-words {
+  ble/util/assign "$1" "$2"
+  ble/string#split-words "$1" "${!1}"
 }
 
 
@@ -4307,38 +4313,32 @@ if ble/bin/.freeze-utility-path -n git; then
   }
 elif ble/bin/.freeze-utility-path -n openssl; then
   function ble/file#hash/.impl {
-    ble/util/assign ret 'ble/bin/openssl sha1 -r "$file"'
-    ble/string#split-words ret "$ret"
+    ble/util/assign-words ret 'ble/bin/openssl sha1 -r "$file"'
     ret="size:$size;sha1:$ret"
   }
 elif ble/bin/.freeze-utility-path -n sha1sum; then
   function ble/file#hash/.impl {
-    ble/util/assign ret 'ble/bin/sha1sum "$file"'
-    ble/string#split-words ret "$ret"
+    ble/util/assign-words ret 'ble/bin/sha1sum "$file"'
     ret="size:$size;sha1:$ret"
   }
 elif ble/bin/.freeze-utility-path -n sha1; then
   function ble/file#hash/.impl {
-    ble/util/assign ret 'ble/bin/sha1 -r "$file"'
-    ble/string#split-words ret "$ret"
+    ble/util/assign-words ret 'ble/bin/sha1 -r "$file"'
     ret="size:$size;sha1:$ret"
   }
 elif ble/bin/.freeze-utility-path -n md5sum; then
   function ble/file#hash/.impl {
-    ble/util/assign ret 'ble/bin/md5sum "$file"'
-    ble/string#split-words ret "$ret"
+    ble/util/assign-words ret 'ble/bin/md5sum "$file"'
     ret="size:$size;md5:$ret"
   }
 elif ble/bin/.freeze-utility-path -n md5; then
   function ble/file#hash/.impl {
-    ble/util/assign ret 'ble/bin/md5 -r "$file"'
-    ble/string#split-words ret "$ret"
+    ble/util/assign-words ret 'ble/bin/md5 -r "$file"'
     ret="size:$size;md5:$ret"
   }
 elif ble/bin/.freeze-utility-path -n cksum; then
   function ble/file#hash/.impl {
-    ble/util/assign ret 'ble/bin/cksum "$file"'
-    ble/string#split-words ret "$ret"
+    ble/util/assign-words ret 'ble/bin/cksum "$file"'
     ret="size:$size;cksum:$ret"
   }
 else

@@ -112,7 +112,7 @@ time {
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
              '' ;;
-    --test | --update | --clear-cache) _ble_init_command=1 ;;
+    --test | --update | --clear-cache | --lib) _ble_init_command=1 ;;
     esac
   done
   if [ -n "$_ble_init_exit" ]; then
@@ -769,7 +769,7 @@ function ble/base/read-blesh-arguments {
       opts=$opts:keep-rlvars ;;
     (--debug-bash-output)
       bleopt_internal_suppress_bash_output= ;;
-    (--test | --update | --clear-cache)
+    (--test | --update | --clear-cache | --lib)
       if [[ $_ble_init_command ]]; then
         ble/util/print "ble.sh ($arg): the option '--$_ble_init_command' has already been specified." >&2
         opts=$opts:E
@@ -2167,6 +2167,7 @@ function ble/base/sub:update { ble-update; }
 function ble/base/sub:clear-cache {
   (shopt -u failglob; ble/bin/rm -rf "$_ble_base_cache"/*)
 }
+function ble/base/sub:lib { :; } # do nothing
 
 #%if measure_load_time
 ble/debug/measure-set-timeformat ble.pp/epilogue; }
