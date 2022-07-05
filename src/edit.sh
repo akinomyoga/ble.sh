@@ -1267,8 +1267,9 @@ function ble/prompt/.instantiate {
   if ble/prompt/.uses-builtin-prompt-expansion "$ps"; then
     [[ $ps == *'\'[wW]* ]] && ble/prompt/unit/add-hash '$PWD'
     ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
-                builtin eval 'expanded=${ps@P}'
+    LINENO=$_ble_edit_LINENO \
+      BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+      builtin eval 'expanded=${ps@P}'
 
   else
     # 展開設定
@@ -1287,8 +1288,9 @@ function ble/prompt/.instantiate {
       ble/prompt/.escape "$processed"; local escaped=$ret
       expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
       ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-      BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
-                  builtin eval "expanded=\"$escaped\""
+      LINENO=$_ble_edit_LINENO \
+        BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+        builtin eval "expanded=\"$escaped\""
     else
       expanded=$processed
     fi
@@ -1601,7 +1603,8 @@ function _ble_prompt_update__eval_prompt_command_1 {
   # まう。仕方がないので local で _ble_edit_exec_TRAPDEBUG_enabled=1 を設定する。
   local _ble_edit_exec_TRAPDEBUG_enabled=1
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+  LINENO=$_ble_edit_LINENO \
+    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     builtin eval -- "$1"
 }
 ble/function#trace _ble_prompt_update__eval_prompt_command_1
@@ -6205,11 +6208,13 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
     ble/base/.adjust-bash-options __set __shopt
 
     # Run user DEBUG trap in the sandbox
+    [[ $_ble_attached ]] || local _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
     local _ble_builtin_trap_processing=$_ble_builtin_trap_DEBUG
     local _ble_builtin_trap_postproc
     ble/util/setexit "$__lastexit" "$__lastarg"
-    ble/builtin/trap/invoke DEBUG
+    LINENO=$_ble_edit_LINENO ble/builtin/trap/invoke DEBUG
     _ble_edit_exec_TRAPDEBUG_postproc=$_ble_builtin_trap_postproc # unused
+    [[ $_ble_attached ]] || ble/util/unlocal _ble_edit_LINENO
 
     # Handle INT
     local depth=${#FUNCNAME[*]}
@@ -6236,8 +6241,9 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
     _ble_edit_exec_TRAPDEBUG_lastexit=$__lastexit
     _ble_edit_exec_TRAPDEBUG_lastarg=$__lastarg
     _ble_edit_exec_TRAPDEBUG_postproc='ble/util/setexit "$_ble_edit_exec_TRAPDEBUG_lastexit" "$_ble_edit_exec_TRAPDEBUG_lastarg"'
-    local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]}
+    local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]} q=\' Q="'\''"
     if [[ $user_trap == *[![:space:]]* ]]; then
+      [[ $_ble_attached ]] && user_trap="LINENO=\$_ble_edit_LINENO builtin eval '${user_trap//$q/$Q}'"
       _ble_edit_exec_TRAPDEBUG_postproc="$_ble_edit_exec_TRAPDEBUG_postproc;$user_trap"
     fi
 
@@ -6343,7 +6349,8 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
   local -a BLE_PIPESTATUS
   BLE_PIPESTATUS=("${_ble_edit_exec_PIPESTATUS[@]}")
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+  LINENO=$_ble_edit_LINENO \
+    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     blehook/invoke "$@"
 } >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
 

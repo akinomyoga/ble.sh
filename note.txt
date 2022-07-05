@@ -1821,6 +1821,16 @@ bash_tips
   - Acknowledgments
   - keymap の移動 (これは別 commit にする?)
 
+2022-07-04
+
+  * ext: trueline と組み合わせた時に問題が起こるとのこと。
+    https://github.com/lecramyajiv/Emptydeeds/commit/b57e8354cc350d71c655d93c32112427ec8addda#diff-0a1c1083789380c5f4b4aaebd19b6a4b2431ae808f8b456cf865825cfb93b9dfR2527
+
+  * bash: history timestamp に問題がある時に history の初期化が正しくない
+
+    bash がエラーメッセージを出力する (bash-5.0+) または segfault する
+    (bash-4.4-)。現状ではエラーメッセージがそのまま履歴に混入してしまっている。
+
 2022-06-28
 
   * コマンド名の曖昧補完ができない。./adf[tab]
@@ -1828,6 +1838,9 @@ bash_tips
     これは . で始まるコマンド名を列挙してそれで補完を実行しようとしている為であ
     る。/ が含まれる場合には glob で一致させてその上で実行属性でフィルタする必
     要がある気がする。
+
+    引数の場合にはできている。うーん。/ が含まれる場合は別に生成するべきなので
+    はないか。
 
 2022-06-19
 
@@ -6436,7 +6449,21 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-07-05
+
+  * edit: プロンプト評価時に LINENO は一時的に現在の行番号に設定するべき [#D1830]
+
+    →これは DEBUG を PREEXEC に使っている設定でも重要になる。
+    うーん。DEBUG trap を呼び出す時にも設定するべきだろうか。
+    →DEBUG trap を呼び出す時にも LINENO を設定する事にした。
+
 2022-06-28
+
+  * contrib/prompt-git: untracked content は赤ではない色で表示する for submodule [#D1829]
+    →untracked files in submodule は単に無視するオプションがあったのでそれを使う事にする。
+
+  * contrib/config/execmark: 同じ行に errexit を表示していると気づきにくい [#D1828]
+    →分けて表示する様にした。
 
   * global: awk -v var=value を介して任意の文字列を渡さない [#D1827]
 

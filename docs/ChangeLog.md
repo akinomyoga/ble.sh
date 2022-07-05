@@ -302,6 +302,7 @@
 - debug: add `ble/debug/profiler` (motivated by SuperSandro2000) `#D1824` f629698 XXXXXXX
   - util (`ble/string#split`): optimize `#D1826` XXXXXXX
   - global: avoid passing arbitrary strings through `awk -v var=value` `#D1827` XXXXXXX
+  - edit: properly set `LINENO` for `PS1`, `PROMPT_COMMAND`, and `DEBUG` `#D1830` XXXXXXX
 
 ## Compatibility
 
@@ -397,6 +398,8 @@
 
 - prompt-git: detect staged changes `#D1718` 2b48e31
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
+- config/execmark: show exit status in a separate line `#D1828` XXXXXXX
+- prompt-git: ignore untracked files in submodules `#D1829` XXXXXXX
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
