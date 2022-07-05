@@ -359,6 +359,7 @@
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
 - complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13
+- history: work around broken timestamps in `HISTFILE` `#D1831` XXXXXXX
 
 ## Internal changes and fixes
 

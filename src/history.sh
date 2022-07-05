@@ -42,10 +42,91 @@ function ble/builtin/history/is-empty {
   #   わりに history 1 の出力を確認する実装に変更する事にした。
   ! ble/util/assign.has-output 'history 1'
 }
-function ble/builtin/history/.get-min {
-  ble/util/assign-words min 'builtin history | head -1'
-  min=${min/'*'}
-}
+
+## @fn ble/builtin/history/.check-timestamp-sigsegv status
+##   #D1831: Bash 4.4 以下では履歴ファイル (HISTFILE) に不正な timestamp
+##   (0x7FFFFFFF+1900年より後を指す巨大な unix time) が含まれていると segfault
+##   する。実際に SIGSEGV で終了した時に履歴ファイルを確認して問題の行番号を出
+##   力する。
+if ((_ble_bash>=50000)); then
+  function ble/builtin/history/.check-timestamp-sigsegv { :; }
+else
+  function ble/builtin/history/.check-timestamp-sigsegv {
+    local stat=$1
+    ((stat)) || return 0
+
+    local ret=11
+    ble/builtin/trap/.get-sig-index SIGSEGV
+    ((stat==128+ret)) || return 0
+
+    local msg="bash: SIGSEGV: suspicious timestamp in HISTFILE"
+
+    local histfile=${HISTFILE:-$HOME/.bash_history}
+    if [[ -s $histfile ]]; then
+      msg="$msg='${HISTFILE:-~/.bash_history}'"
+      local rex_broken_timestamp='^#[0-9]\{12\}'
+      ble/util/assign line 'ble/bin/grep -an "$rex_broken_timestamp" "$histfile"'
+      ble/string#split line : "$line"
+      [[ $line =~ ^[0-9]+$ ]] && msg="$msg (line $line)"
+    fi
+
+    if [[ ${_ble_edit_io_fname2-} ]]; then
+      ble/util/print $'\n'"$msg" >> "$_ble_edit_io_fname2"
+    else
+      ble/util/print "$msg" >&2
+    fi
+  }
+fi
+
+## @fn ble/builtin/history/.dump args...
+##   #D1831: timestamp に不正な値が含まれていた時のメッセージを検出する為、一時
+##   的に LC_MESSAGES を設定して builtin history を呼び出します。更にこの状況で、
+##   bash-3.2 以下で無限ループになる問題を回避する為に、bash-3.2 以下では
+##   conditional-sync 経由で呼び出します。
+if ((_ble_bash<40000)); then
+  # Note (#D1831): bash-3.2 以下では不正な timestamp が history に含まれている
+  #   と無限ループになるので timeout=3000 で強制終了する。然し、実際に確認して
+  #   みると、conditional-sync 経由で呼び出した時には無限ループにならずに
+  #   timeout する前に SIGSEGV になる様である
+  function ble/builtin/history/.dump.proc {
+    local LC_ALL= LC_MESSAGES=C 2>/dev/null
+    builtin history "${args[@]}"
+    ble/util/unlocal LC_ALL LC_MESSAGES 2>/dev/null
+  }
+  function ble/builtin/history/.dump {
+    local -a args; args=("$@")
+    ble/util/conditional-sync \
+      ble/builtin/history/.dump.proc \
+      true 100 progressive-weight:timeout=3000:SIGKILL
+    local ext=$?
+    if ((ext==142)); then
+      printf 'ble.sh: timeout: builtin history %s' "$*" >/dev/tty
+      local ret=11
+      ble/builtin/trap/.get-sig-index SIGSEGV
+      ((ext=128+ret))
+    fi
+    ble/builtin/history/.check-timestamp-sigsegv "$ext"
+    return "$ext"
+  }
+else
+  function ble/builtin/history/.dump {
+    local LC_ALL= LC_MESSAGES=C 2>/dev/null
+    builtin history "$@"
+    ble/util/unlocal LC_ALL LC_MESSAGES 2>/dev/null
+  }
+fi
+
+if ((_ble_bash<40000)); then
+  function ble/builtin/history/.get-min {
+    ble/util/assign-words min 'ble/builtin/history/.dump | head -1'
+    min=${min/'*'}
+  }
+else
+  function ble/builtin/history/.get-min {
+    ble/util/assign-words min 'builtin history | head -1'
+    min=${min/'*'}
+  }
+fi
 function ble/builtin/history/.get-max {
   ble/util/assign-words max 'builtin history 1'
   max=${max/'*'}
@@ -123,11 +204,12 @@ if ((_ble_bash>=40000)); then
       local IFS=$_ble_term_IFS __ble_tmp; __ble_tmp=('\'{2,3}{0..7}{0..7})
       builtin eval "local _ble_util_writearray_rawbytes=\$'${__ble_tmp[*]}'"
     fi
-    local -x __ble_rawbytes=$_ble_util_writearray_rawbytes
+    local -x __ble_rawbytes=$_ble_util_writearray_rawbytes # used by _ble_bin_awk_libES
+    local -x fname_stderr=${_ble_edit_io_fname2:-}
 
     local apos=\'
     # 482ms for 37002 entries
-    builtin history $arg_count | ble/bin/awk -v apos="$apos" -v arg_offset="$arg_offset" -v _ble_bash="$_ble_bash" '
+    ble/builtin/history/.dump ${arg_count:+"$arg_count"} | ble/bin/awk -v apos="$apos" -v arg_offset="$arg_offset" -v _ble_bash="$_ble_bash" '
       '"$_ble_bin_awk_libES"'
 
       BEGIN {
@@ -139,6 +221,9 @@ if ((_ble_bash>=40000)); then
         if (!opt_null && !opt_source)
           printf("") > INDEX_FILE; # create file
 
+        fname_stderr = ENVIRON["fname_stderr"];
+        fname_stderr_count = 0;
+
         n = 0;
         hindex = arg_offset;
       }
@@ -147,22 +232,22 @@ if ((_ble_bash>=40000)); then
         if (n < 1) return;
 
         if (opt_null) {
-          if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+          if (t ~ /^eval -- \$'"$apos"'([^'"$apos"'\\]|\\.)*'"$apos"'$/)
             t = es_unescape(substr(t, 11, length(t) - 11));
           printf("%s%c", t, 0);
 
         } else if (opt_source) {
-          if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+          if (t ~ /^eval -- \$'"$apos"'([^'"$apos"'\\]|\\.)*'"$apos"'$/)
             t = es_unescape(substr(t, 11, length(t) - 11));
-          gsub(/'$apos'/, "'$apos'\\'$apos$apos'", t);
+          gsub(/'"$apos"'/, "'"$apos"'\\'"$apos$apos"'", t);
           print "_ble_history[" hindex "]=" apos t apos;
 
         } else {
           if (n == 1) {
-            if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+            if (t ~ /^eval -- \$'"$apos"'([^'"$apos"'\\]|\\.)*'"$apos"'$/)
               print hindex > INDEX_FILE;
           } else {
-            gsub(/['$apos'\\]/, "\\\\&", t);
+            gsub(/['"$apos"'\\]/, "\\\\&", t);
             gsub(/\n/, "\\n", t);
             print hindex > INDEX_FILE;
             t = "eval -- $" apos t apos;
@@ -175,14 +260,28 @@ if ((_ble_bash>=40000)); then
         t = "";
       }
 
+      function check_invalid_timestamp(line) {
+        if (line ~ /^ *[0-9]+\*? +.+: invalid timestamp/ && fname_stderr != "") {
+          sub(/^ *0*/, "bash: history !", line);
+          sub(/: invalid timestamp.*$/, ": invalid timestamp", line);
+          if (fname_stderr_count++ == 0)
+            print "" >> fname_stderr;
+          print line >> fname_stderr;
+        }
+      }
+
       {
-        if (sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0))
+        # Note: In Bash 5.0+, the error message of "invalid timestamp"
+        # goes into "stdout" instead of "stderr".
+        check_invalid_timestamp($0);
+        if (sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?|.+: invalid timestamp)/, "", $0))
           flush_line();
         t = ++n == 1 ? $0 : t "\n" $0;
       }
 
       END { flush_line(); }
     ' >| "$history_tmpfile.part"
+    ble/builtin/history/.check-timestamp-sigsegv "${PIPESTATUS[0]}"
     ble/bin/mv -f "$history_tmpfile.part" "$history_tmpfile"
   }
 
@@ -335,35 +434,35 @@ else
 
     # 285ms for 16437 entries
     local apos="'"
-    builtin history $arg_count | ble/bin/awk -v apos="'" '
+    ble/builtin/history/.dump ${arg_count:+"$arg_count"} | ble/bin/awk -v apos="'" '
       BEGIN { n = ""; }
 
 #%    # 何故かタイムスタンプがコマンドとして読み込まれてしまう
       /^ *[0-9]+\*? +(__ble_ext__|\?\?)#[0-9]/ { next; }
 
 #%    # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
-      /^ *[0-9]+\*? +(__ble_ext__|\?\?)/ {
+      /^ *[0-9]+\*? +(__ble_ext__|\?\?|.+: invalid timestamp)/ {
         if (n != "") {
           n = "";
           print "  " apos t apos;
         }
 
         n = $1; t = "";
-        sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0);
+        sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?|.+: invalid timestamp)/, "", $0);
       }
       {
         line = $0;
-        if (line ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+        if (line ~ /^eval -- \$'"$apos"'([^'"$apos"'\\]|\\.)*'"$apos"'$/)
           line = apos substr(line, 9) apos;
         else
           gsub(apos, apos "\\" apos apos, line);
 
-        # 対策 #D1239: bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
-        gsub(/\001/, "'$apos'${_ble_term_SOH}'$apos'", line);
-        gsub(/\177/, "'$apos'${_ble_term_DEL}'$apos'", line);
+#%      # 対策 #D1239: bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
+        gsub(/\001/, "'"$apos"'${_ble_term_SOH}'"$apos"'", line);
+        gsub(/\177/, "'"$apos"'${_ble_term_DEL}'"$apos"'", line);
 
-        # 対策 #D1270: MSYS2 で ^M を代入すると消える
-        gsub(/\015/, "'$apos'${_ble_term_CR}'$apos'", line);
+#%      # 対策 #D1270: MSYS2 で ^M を代入すると消える
+        gsub(/\015/, "'"$apos"'${_ble_term_CR}'"$apos"'", line);
 
         t = t != "" ? t "\n" line : line;
       }
@@ -503,7 +602,7 @@ if ((_ble_bash>=30100)); then
         } else {
           for (i = 0; i < command_count; i++) {
             c = command_text[i];
-            gsub(/'$apos'/, Q, c);
+            gsub(/'"$apos"'/, Q, c);
             print "builtin history -s -- " q c q > filename_source;
           }
         }
@@ -521,14 +620,14 @@ if ((_ble_bash>=30100)); then
       }
 
       function is_escaped_command(cmd) {
-        return cmd ~ /^eval -- \$'$apos'([^'$apos'\\]|\\[\\'$apos'nt])*'$apos'$/;
+        return cmd ~ /^eval -- \$'"$apos"'([^'"$apos"'\\]|\\[\\'"$apos"'nt])*'"$apos"'$/;
       }
       function unescape_command(cmd) {
         cmd = substr(cmd, 11, length(cmd) - 11);
         gsub(/\\\\/, "\\q", cmd);
         gsub(/\\n/, "\n", cmd);
         gsub(/\\t/, "\t", cmd);
-        gsub(/\\'$apos'/, "'$apos'", cmd);
+        gsub(/\\'"$apos"'/, "'"$apos"'", cmd);
         gsub(/\\q/, "\\", cmd);
         return cmd;
       }
@@ -547,7 +646,7 @@ if ((_ble_bash>=30100)); then
         if (_ble_bash >= 40040) {
           register_command(cmd);
         } else {
-          gsub(/'$apos'/, Q, cmd);
+          gsub(/'"$apos"'/, Q, cmd);
           write_complex(q cmd q);
         }
       }
@@ -588,7 +687,7 @@ if ((_ble_bash>=30100)); then
       {
         if (is_resolve) {
           save_timestamp($0);
-          if (sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?)/, "", $0))
+          if (sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?|.+: invalid timestamp)/, "", $0))
             flush_entry();
           entry_text = ++entry_nline == 1 ? $0 : entry_text "\n" $0;
         } else {
@@ -623,7 +722,7 @@ if ((_ble_bash>=30100)); then
     local HISTTIMEFORMAT=__ble_time_%s__
     local -x TMPBASE=$_ble_base_run/$$.history.mlfix
     local multiline_count=0 modification_count=0
-    builtin eval -- "$(builtin history | ble/history:bash/resolve-multiline/.awk resolve 2>/dev/null)"
+    builtin eval -- "$(ble/builtin/history/.dump | ble/history:bash/resolve-multiline/.awk resolve 2>/dev/null)"
     if ((modification_count)); then
       ble/bin/mv -f "$TMPBASE.part" "$TMPBASE.sh"
     else
@@ -968,10 +1067,10 @@ function ble/builtin/history/.write {
   if ((delta>0)); then
     local HISTTIMEFORMAT=__ble_time_%s__
     if [[ :$opts: == *:append:* ]]; then
-      builtin history "$delta" >> "$histapp"
+      ble/builtin/history/.dump "$delta" >> "$histapp"
       ((_ble_builtin_history_histapp_count+=delta))
     else
-      builtin history "$delta" >| "$histapp"
+      ble/builtin/history/.dump "$delta" >| "$histapp"
       _ble_builtin_history_histapp_count=$delta
     fi
   fi
@@ -995,10 +1094,10 @@ function ble/builtin/history/.write {
         if (!mode) return;
         mode = 0;
         if (text ~ /\n/) {
-          gsub(/['$apos'\\]/, "\\\\&", text);
+          gsub(/['"$apos"'\\]/, "\\\\&", text);
           gsub(/\n/, "\\n", text);
           gsub(/\t/, "\\t", text);
-          text = "eval -- $'$apos'" text "'$apos'"
+          text = "eval -- $'"$apos"'" text "'"$apos"'"
         }
 
         if (timestamp != "")
@@ -1013,7 +1112,7 @@ function ble/builtin/history/.write {
         return "#" line;
       }
 
-      /^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?)?/ {
+      /^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?|.+: invalid timestamp)?/ {
         flush_line();
 
         mode = 1;
@@ -1021,7 +1120,7 @@ function ble/builtin/history/.write {
         if (flag_timestamp)
           timestamp = extract_timestamp($0);
 
-        sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?)?/, "", $0);
+        sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?|.+: invalid timestamp)?/, "", $0);
       }
       { text = text != "" ? text "\n" $0 : $0; }
       END { flush_line(); }
