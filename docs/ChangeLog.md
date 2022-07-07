@@ -219,6 +219,7 @@
 - main: fix the workaround for `set -e` `#D1564` ab2f70b
   - main: fix the workaround for `set -u` `#D1575` 76073a9
   - main: fix the workaround for `set -eu` and refactor `#D1743` 6a946f0
+  - decode: fix the workaround for `set -e` with `--prompt=attach` `#D1832` XXXXXXX
 - util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 24f79da
 - sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 5d85238
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133

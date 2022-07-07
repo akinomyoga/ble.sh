@@ -645,9 +645,14 @@ function ble-decode/.hook {
 
     local buflen=${#_ble_decode_input_buffer[@]}
     if ((buflen%257==0&&buflen>=2000)); then
-      # その場で標準入力を読み切る
+      [[ ! $_ble_bash_options_adjusted ]] || set +ev
+
       local IFS=$_ble_term_IFS
+      local _ble_decode_hook_Processing=prologue
       ble-decode/PROLOGUE
+      _ble_decode_hook_Processing=body
+
+      # その場で標準入力を読み切る
       local char=${_ble_decode_input_buffer[buflen-1]}
       if ((_ble_bash<40000||char==0xC0||char==0xDF)); then
         # Note: これらの文字は bind -s マクロの非終端文字。
@@ -662,7 +667,9 @@ function ble-decode/.hook {
           ble/array#push _ble_decode_input_buffer "${ret[@]}"
         done
       fi
+      _ble_decode_hook_Processing=epilogue
       ble-decode/EPILOGUE
+      ble/util/unlocal _ble_decode_hook_Processing
 
       ble/array#pop _ble_decode_input_buffer
       ble-decode/.hook "$ret"
@@ -673,7 +680,7 @@ function ble-decode/.hook {
 
   # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
   # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
-  [[ $_ble_bash_options_adjusted ]] && set +v || :
+  [[ ! $_ble_bash_options_adjusted ]] || set +ev
 
   local IFS=$_ble_term_IFS
   local _ble_decode_hook_Processing=prologue
