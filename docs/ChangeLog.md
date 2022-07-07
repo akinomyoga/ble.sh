@@ -352,11 +352,12 @@
   - main: force prompt-attach inside the nix-shell `rc` `#D1766` ceb2e7c
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
+  - main: fix the check of tty on stdin/stdout `#D1833` XXXXXXX
 - util: add identification of Windows Terminal `wt` `#D1758` e332dc5
 - complete: evaluate words for `noquote` (motivated by SuperSandro2000) `#D1767` 0a42299
 - edit (TRAPDEBUG): preserve original `DEBUG` trap and enabled it in `PROMPT_COMMAND` (motivated by ammarooo) `#D1772` `#D1773` ec2a67a
   - main, trap: fix initialization order of `{save,restore}-BASH_REMATCH` (reported by SuperSandro2000) `#D1780` 689534d
-- global: work around bash-3.0 bug that single quotas remains for `"${v-$''}"` `#D1774` 9b96578
+- global: work around bash-3.0 bug that single quotes remains for `"${v-$''}"` `#D1774` 9b96578
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
 - complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13

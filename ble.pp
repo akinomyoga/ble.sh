@@ -149,14 +149,14 @@ if [[ ! $_ble_init_command ]]; then
   elif [[ $- != *i* ]]; then
     case " ${BASH_SOURCE[*]##*/} " in
     (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
-    esac  &&
+    esac &&
       builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
     return 1 2>/dev/null || builtin exit 1
-  elif ! [[ -t 0 && -t 1 ]] && ! ((1)) >/dev/tty; then
+  elif ! [[ -t 4 && -t 5 ]] && ! ((1)) >/dev/tty; then
     builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
     return 1 2>/dev/null || builtin exit 1
   fi
-fi 3>&2 &>/dev/null # set -x 対策 #D0930
+fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
 
 {
   ## @var _ble_bash_POSIXLY_CORRECT_adjusted

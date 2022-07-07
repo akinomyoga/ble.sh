@@ -757,7 +757,7 @@ _ble_prompt_term_status_data=()
 ##   @var[out]  DRAW_BUFF[]
 ##     出力先の配列です。
 function ble/prompt/print {
-  local ret=$1 a b
+  local ret=$1
   [[ $prompt_noesc ]] ||
     ble/string#escape-characters "$ret" '\$"`'
   ble/canvas/put.draw "$ret"
