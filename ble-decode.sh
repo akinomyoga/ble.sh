@@ -333,6 +333,10 @@ function ble-decode/PROLOGUE { :; }
 function ble-decode/EPILOGUE { :; }
 
 function ble-decode/.hook {
+  # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
+  # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
+  [[ ! $_ble_bash_options_adjusted ]] || set +ev
+
   local IFS=$' \t\n'
   ble-decode/PROLOGUE
 
