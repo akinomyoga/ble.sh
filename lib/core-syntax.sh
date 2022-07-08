@@ -355,12 +355,12 @@ function ble/syntax/print-status/.graph {
     ble/util/s2c "$char"
     local code=$ret
     if ((code<32)); then
-      ble/util/c2s $((code+64))
+      ble/util/c2s "$((code+64))"
       graph="$_ble_term_rev^$ret$_ble_term_sgr0"
     elif ((code==127)); then
       graph="$_ble_term_rev^?$_ble_term_sgr0"
     elif ((128<=code&&code<160)); then
-      ble/util/c2s $((code-64))
+      ble/util/c2s "$((code-64))"
       graph="${_ble_term_rev}M-^$ret$_ble_term_sgr0"
     else
       graph="'$char' ($code)"
@@ -873,7 +873,7 @@ _ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
 _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
 _ble_syntax_word_defer_umin=-1 _ble_syntax_word_defer_umax=-1
 function ble/syntax/parse/touch-updated-attr {
-  ble/syntax/urange#update _ble_syntax_attr_ "$1" $(($1+1))
+  ble/syntax/urange#update _ble_syntax_attr_ "$1" "$(($1+1))"
 }
 function ble/syntax/parse/touch-updated-word {
 #%if !release
@@ -1727,10 +1727,10 @@ function ble/syntax:bash/simple-word/locate-filename {
   while [[ $tail =~ $rex ]]; do
     ((p+=${#BASH_REMATCH}))
     tail=${tail:${#BASH_REMATCH}}
-    ble/array#push seppos $((p-1))
+    ble/array#push seppos "$((p-1))"
   done
   ble/syntax:bash/simple-word/is-simple "$tail" &&
-    ble/array#push seppos $((p+${#tail}))
+    ble/array#push seppos "$((p+${#tail}))"
 
   local -a out=()
   for ((i=0;i<${#seppos[@]};i++)); do
@@ -1923,7 +1923,7 @@ function ble/syntax:bash/check-dollar {
     if
       [[ $tail =~ $rex1 ]] && {
         [[ ${BASH_REMATCH[2]} == *['[}'] || $BASH_REMATCH == "$tail" ]] ||
-          { ble/syntax/parse/set-lookahead $((${#BASH_REMATCH}+1)); false; } } ||
+          { ble/syntax/parse/set-lookahead "$((${#BASH_REMATCH}+1))"; false; } } ||
         [[ $tail =~ $rex2 ]]
     then
       # <parameter> = [-*@#?-$!0] | [1-9][0-9]* | <varname> | <varname> [ ... ] | <varname> [ <@> ]
@@ -3158,7 +3158,7 @@ function ble/syntax:bash/check-variable-assignment {
 
     # Note: + の次の文字が = でない時に此処に来るので、
     # + の次の文字まで先読みしたことになる。
-    ble/syntax/parse/set-lookahead $((${#rematch}+1))
+    ble/syntax/parse/set-lookahead "$((${#rematch}+1))"
 
     return 1
   fi
@@ -3360,7 +3360,7 @@ function ble/syntax:bash/ctx-coproc/.is-next-compound {
   fi
 
   # 先読みの設定
-  ble/syntax/parse/set-lookahead $((p+ahead-i))
+  ble/syntax/parse/set-lookahead "$((p+ahead-i))"
   [[ $is_compound ]]
 }
 function ble/syntax:bash/ctx-coproc/check-word-end {
@@ -3772,7 +3772,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
       ((_ble_syntax_attr[i]=ATTR_DEL))
       ((ctx=${#m}==1?CTX_CMDXE:CTX_ARGX0))
       [[ $_ble_syntax_bash_is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD0))
-      ble/syntax/parse/nest-push $((${#m}==1?CTX_CMDX1:CTX_EXPR)) "$m"
+      ble/syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
       ((i+=${#m}))
     else
       ble/syntax/parse/nest-push "$CTX_PATN"
@@ -4015,7 +4015,7 @@ function ble/syntax:bash/ctx-command-compound-expect {
 function ble/syntax:bash/ctx-command-expect/.match-word {
   local word=$1 len=${#1}
   if [[ $tail == "$word"* ]]; then
-    ble/syntax/parse/set-lookahead $((len+1))
+    ble/syntax/parse/set-lookahead "$((len+1))"
     if ((${#tail}==len)) || i=$((i+len)) ble/syntax:bash/check-word-end/is-delimiter; then
       return 0
     fi
@@ -4848,7 +4848,7 @@ function ble/syntax/parse/shift.impl2/.proc1 {
     return 0
   fi
 
-  ble/syntax/parse/shift.impl2/.shift-until $((TE_i+1))
+  ble/syntax/parse/shift.impl2/.shift-until "$((TE_i+1))"
   ble/syntax/parse/shift.tree "$TE_nofs"
 
   if ((tprev>end0&&wbegin>end0)) && [[ ${wtype//[0-9]} ]]; then
@@ -5092,7 +5092,7 @@ function ble/syntax/parse {
   builtin unset -v debug_p1
 #%end
 
-  ble/syntax/vanishing-word/register _tail_syntax_tree $((-i2)) $((i2+1)) "$i" 0 "$i"
+  ble/syntax/vanishing-word/register _tail_syntax_tree "$((-i2))" "$((i2+1))" "$i" 0 "$i"
 
   ble/syntax/urange#update _ble_syntax_attr_ "$i1" "$i"
 
@@ -5216,7 +5216,7 @@ function ble/syntax/completion-context/.check/parameter-expansion {
     elif ((ctx==CTX_BRACE1||ctx==CTX_BRACE2)); then
       source=variable:n # no suffix
     fi
-    ble/syntax/completion-context/.add "$source" $((istat+${#rematch1}))
+    ble/syntax/completion-context/.add "$source" "$((istat+${#rematch1}))"
   fi
 }
 
@@ -5275,7 +5275,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:inside-argument {
         local sub=${text:wbeg:index-wbeg}
         if [[ $sub == *[=:]* ]]; then
           sub=${sub##*[=:]}
-          ble/syntax/completion-context/.add "$source" $((index-${#sub}))
+          ble/syntax/completion-context/.add "$source" "$((index-${#sub}))"
         fi
       fi
     done
@@ -5387,7 +5387,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
       local rex="^([^='\"\$\\{}]|\\.)*="
       if [[ $word =~ $rex ]]; then
         word=${word:${#BASH_REMATCH}}
-        ble/syntax/completion-context/.add rhs $((index-${#word}))
+        ble/syntax/completion-context/.add rhs "$((index-${#word}))"
       fi
     fi
   elif ble/syntax/completion-context/.check-prefix/.test-redirection "$word"; then
@@ -5548,7 +5548,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:rhs {
           (']='*)  ((p=p2+2)) ;;
           (']+='*) ((p=p2+3)) ;;
           (']+')
-            ble/syntax/completion-context/.add wordlist:-rW:'+=' $((p2+1))
+            ble/syntax/completion-context/.add wordlist:-rW:'+=' "$((p2+1))"
             p= ;;
           esac
         fi
@@ -5601,9 +5601,9 @@ function ble/syntax/completion-context/.check-prefix/ctx:expr {
     if [[ $ntype == [ad]'[' ]]; then
       # arr[...]=@ or arr=([...]=@)
       if [[ $tail == ']' ]]; then
-        ble/syntax/completion-context/.add wordlist:-rW:'=' $((istat+1))
+        ble/syntax/completion-context/.add wordlist:-rW:'=' "$((istat+1))"
       elif ((_ble_bash>=30100)) && [[ $tail == ']+' ]]; then
-        ble/syntax/completion-context/.add wordlist:-rW:'+=' $((istat+1))
+        ble/syntax/completion-context/.add wordlist:-rW:'+=' "$((istat+1))"
       elif [[ $tail == ']=' || _ble_bash -ge 30100 && $tail == ']+=' ]]; then
         ble/syntax/completion-context/.add rhs "$index"
       fi
@@ -6909,7 +6909,7 @@ function ble/progcolor/highlight-filename.wattr {
       ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" "url:$highlight_eval_opts"
       (($?==148)) && return 148; ranges=("${ret[@]}")
       for ((i=0;i<${#ranges[@]};i+=2)); do
-        ble/progcolor/highlight-filename/.single.wattr $((p0+ranges[i])):$((p0+ranges[i+1]))
+        ble/progcolor/highlight-filename/.single.wattr "$((p0+ranges[i])):$((p0+ranges[i+1]))"
         (($?==148)) && return 148
       done
     elif ble/syntax:bash/simple-word/is-simple "$wtxt"; then
@@ -6979,7 +6979,7 @@ function ble/progcolor/word:default/impl.wattr {
       local rematch=$BASH_REMATCH rematch1=${BASH_REMATCH[1]}
       local ret; ble/color/face2g argument_option
       ble/progcolor/wattr#setg "$p0" "$ret"
-      ble/progcolor/wattr#setg $((p0+${#rematch1})) d
+      ble/progcolor/wattr#setg "$((p0+${#rematch1}))" d
       ((p0+=${#rematch}))
     fi
 
@@ -7297,7 +7297,7 @@ function ble/highlight/layer:syntax/update-error-table {
     local i inest
     if ((nlen>0)) || [[ $nparam ]]; then
       # 終端点の着色
-      ble/highlight/layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
+      ble/highlight/layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
 
       if ((nlen>0)); then
         ((inest=iN-nlen))
@@ -7320,7 +7320,7 @@ function ble/highlight/layer:syntax/update-error-table {
     # コマンド欠落・引数の欠落
     if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2||ctx==CTX_COARGX)); then
       # 終端点の着色
-      ble/highlight/layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
+      ble/highlight/layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
     fi
   fi
 }
@@ -7377,7 +7377,7 @@ function ble/highlight/layer:syntax/update {
 
   local i j g gprev=0
   if ((umin>0)); then
-    ble/highlight/layer:syntax/getg $((umin-1))
+    ble/highlight/layer:syntax/getg "$((umin-1))"
     gprev=$g
   fi
 

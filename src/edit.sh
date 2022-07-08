@@ -569,7 +569,7 @@ function ble/prompt/initialize {
         else
           local ret
           ble/util/s2c "$c"
-          ble/util/c2s $((ret+32))
+          ble/util/c2s "$((ret+32))"
           c=$ret
         fi
       fi
@@ -804,7 +804,7 @@ function ble/prompt/.process-backslash {
     (\!) # 編集行の履歴番号
       local count
       ble/history/get-count -v count
-      ble/canvas/put.draw $((count+1)) ;;
+      ble/canvas/put.draw "$((count+1))" ;;
     ('$') # # or $
       ble/prompt/print "$_ble_prompt_const_root" ;;
     (\\)
@@ -1018,7 +1018,7 @@ function ble/prompt/backslash:position {
   local fmt=${1:-'(%s,%s)'} pos
   ble/prompt/unit/add-hash '${_ble_textmap_pos[_ble_edit_ind]}'
   ble/string#split-words pos "${_ble_textmap_pos[_ble_edit_ind]}"
-  ble/util/sprintf pos "$fmt" $((pos[1]+1)) $((pos[0]+1))
+  ble/util/sprintf pos "$fmt" "$((pos[1]+1))" "$((pos[0]+1))"
   ble/prompt/print "$pos"
 }
 function ble/prompt/backslash:row {
@@ -1026,14 +1026,14 @@ function ble/prompt/backslash:row {
   local pos
   ble/prompt/unit/add-hash '${_ble_textmap_pos[_ble_edit_ind]}'
   ble/string#split-words pos "${_ble_textmap_pos[_ble_edit_ind]}"
-  ble/prompt/print $((pos[1]+1))
+  ble/prompt/print "$((pos[1]+1))"
 }
 function ble/prompt/backslash:column {
   ((_ble_textmap_dbeg>=0)) && ble/widget/.update-textmap
   local pos
   ble/prompt/unit/add-hash '${_ble_textmap_pos[_ble_edit_ind]}'
   ble/string#split-words pos "${_ble_textmap_pos[_ble_edit_ind]}"
-  ble/prompt/print $((pos[0]+1))
+  ble/prompt/print "$((pos[0]+1))"
 }
 function ble/prompt/backslash:point {
   ble/prompt/unit/add-hash '$_ble_edit_ind'
@@ -1045,7 +1045,7 @@ function ble/prompt/backslash:mark {
 }
 function ble/prompt/backslash:history-index {
   ble/prompt/unit/add-hash '$_ble_history_INDEX'
-  ble/canvas/put.draw $((_ble_history_INDEX+1))
+  ble/canvas/put.draw "$((_ble_history_INDEX+1))"
 }
 function ble/prompt/backslash:history-percentile {
   ble/prompt/unit/add-hash '$_ble_history_INDEX'
@@ -1582,7 +1582,7 @@ if ble/is-function ble/util/idle.push; then
         ble/util/idle.push -Z 'ble/prompt/timeout/process'
         _ble_prompt_timeout_task=$_ble_util_idle_lasttask
       fi
-      ble/util/idle#sleep "$_ble_prompt_timeout_task" $((BASH_REMATCH*1000))
+      ble/util/idle#sleep "$_ble_prompt_timeout_task" "$((BASH_REMATCH*1000))"
     elif [[ $_ble_prompt_timeout_task ]]; then
       ble/util/idle#suspend "$_ble_prompt_timeout_task"
     fi
@@ -1801,7 +1801,7 @@ function ble/prompt/print-ruler.draw {
     local repeat=$((cols/w))
     ble/string#repeat "${_ble_prompt_ruler[1]}" "$repeat"
     ble/canvas/put.draw "$ret"
-    ble/string#repeat ' ' $((cols-repeat*w))
+    ble/string#repeat ' ' "$((cols-repeat*w))"
     ble/canvas/put.draw "$ret"
     ((_ble_term_xenl)) && ble/canvas/put.draw $'\n'
   fi
@@ -2043,7 +2043,7 @@ function ble-edit/content/replace {
 
   # cf. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
-  ble-edit/content/.update-dirty-range "$beg" $((beg+${#ins})) "$end" "$reason"
+  ble-edit/content/.update-dirty-range "$beg" "$((beg+${#ins}))" "$end" "$reason"
 #%if !release
   # Note: 何処かのバグで _ble_edit_ind に変な値が入ってエラーになるので、
   #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
@@ -2562,7 +2562,7 @@ bleopt/declare -n canvas_winch_action redraw-here
 function ble-edit/attach/TRAPWINCH {
   # 現在前面に出ていなければ関係ない
   ((_ble_edit_attached)) && [[ $_ble_term_state == internal ]] || return 0
-  ble/application/onwinch 2>&$_ble_util_fd_stderr
+  ble/application/onwinch 2>&"$_ble_util_fd_stderr"
 }
 
 ## called by ble-edit/attach
@@ -2744,7 +2744,7 @@ function ble/textarea#update-left-char {
     # 前の文字
     lcs=${_ble_textmap_glyph[index-1]}
     ble/util/s2c "${lcs:${#lcs}-1}"
-    local g; ble/highlight/layer/getg $((index-1)); lg=$g
+    local g; ble/highlight/layer/getg "$((index-1))"; lg=$g
     ((lc=ret))
   fi
 }
@@ -2900,9 +2900,9 @@ function ble/textarea#render/.determine-scroll {
     #
     local wmin=0 wmax index
     if ((scroll)); then
-      ble/textmap#get-index-at 0 $((scroll+begy+1)); wmin=$index
+      ble/textmap#get-index-at 0 "$((scroll+begy+1))"; wmin=$index
     fi
-    ble/textmap#get-index-at "$cols" $((scroll+height-1)); wmax=$index
+    ble/textmap#get-index-at "$cols" "$((scroll+height-1))"; wmax=$index
     ((umin<umax)) &&
       ((umin<wmin&&(umin=wmin),
         umax>wmax&&(umax=wmax)))
@@ -2934,7 +2934,7 @@ function ble/textarea#render/.perform-scroll {
     if ((_ble_textarea_scroll>new_scroll)); then
       local shift=$((_ble_textarea_scroll-new_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$((height-draw_shift))"
       ble/canvas/put-dl.draw "$draw_shift" panel
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
       ble/canvas/put-il.draw "$draw_shift" panel
@@ -2942,19 +2942,19 @@ function ble/textarea#render/.perform-scroll {
       if ((new_scroll==0)); then
         fmin=0
       else
-        ble/textmap#get-index-at 0 $((scry+new_scroll)); fmin=$index
+        ble/textmap#get-index-at 0 "$((scry+new_scroll))"; fmin=$index
       fi
-      ble/textmap#get-index-at "$cols" $((scry+new_scroll+draw_shift-1)); fmax=$index
+      ble/textmap#get-index-at "$cols" "$((scry+new_scroll+draw_shift-1))"; fmax=$index
     else
       local shift=$((new_scroll-_ble_textarea_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
       ble/canvas/put-dl.draw "$draw_shift" panel
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$((height-draw_shift))"
       ble/canvas/put-il.draw "$draw_shift" panel
 
-      ble/textmap#get-index-at 0 $((new_scroll+height-draw_shift)); fmin=$index
-      ble/textmap#get-index-at "$cols" $((new_scroll+height-1)); fmax=$index
+      ble/textmap#get-index-at 0 "$((new_scroll+height-draw_shift))"; fmin=$index
+      ble/textmap#get-index-at "$cols" "$((new_scroll+height-1))"; fmax=$index
     fi
 
     # 新しく現れた範囲 [fmin, fmax] を埋める
@@ -2963,7 +2963,7 @@ function ble/textarea#render/.perform-scroll {
       ble/textmap#getxy.out --prefix=fmin "$fmin"
       ble/textmap#getxy.out --prefix=fmax "$fmax"
 
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$fminx" "$((fminy-new_scroll))"
       ((new_scroll==0)) &&
         x=$fminx ble/textarea#render/.erase-forward-line.draw # ... を消す
       local ret; ble/textarea#slice-text-buffer "$fmin" "$fmax"
@@ -3009,7 +3009,7 @@ function ble/textarea#render/.erase-rprompt {
   local -a DRAW_BUFF=()
   local y=0
   for ((y=0;y<rps1_height;y++)); do
-    ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) "$y" sgr0
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$((cols+1))" "$y" sgr0
     ble/canvas/put.draw "$_ble_term_el"
   done
   ble/canvas/bflush.draw
@@ -3175,7 +3175,7 @@ function ble/textarea#render {
 
   local gend gendx gendy
   if [[ $scroll ]]; then
-    ble/textmap#get-index-at "$cols" $((height+scroll-1)); gend=$index
+    ble/textmap#get-index-at "$cols" "$((height+scroll-1))"; gend=$index
     ble/textmap#getxy.out --prefix=gend "$gend"
     ((gendy-=scroll))
   else
@@ -3213,9 +3213,9 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=umin "$umin"
       ble/textmap#getxy.out --prefix=umax "$umax"
 
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$uminx" "$((uminy-_ble_textarea_scroll))"
       ble/textarea#slice-text-buffer "$umin" "$umax"
-      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$ret" "$umaxx" $((umaxy-_ble_textarea_scroll))
+      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$ret" "$umaxx" "$((umaxy-_ble_textarea_scroll))"
     fi
 
     if ((DMIN>=0)); then
@@ -3224,7 +3224,7 @@ function ble/textarea#render {
         if [[ :$render_opts: == *:relative:* ]]; then
           ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$endx" "$endY"
           x=$endx ble/textarea#render/.erase-forward-line.draw
-          ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" 0 $((endY+1))
+          ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" 0 "$((endY+1))"
         else
           ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
         fi
@@ -3256,7 +3256,7 @@ function ble/textarea#render {
 
       local gbeg=0
       if ((_ble_textarea_scroll)); then
-        ble/textmap#get-index-at 0 $((_ble_textarea_scroll+begy+1)); gbeg=$index
+        ble/textmap#get-index-at 0 "$((_ble_textarea_scroll+begy+1))"; gbeg=$index
       fi
 
       local gbegx gbegy
@@ -3294,7 +3294,7 @@ function ble/textarea#render {
 
         local gbeg=0
         if ((_ble_textarea_scroll)); then
-          ble/textmap#get-index-at 0 $((_ble_textarea_scroll+begy+1)); gbeg=$index
+          ble/textmap#get-index-at 0 "$((_ble_textarea_scroll+begy+1))"; gbeg=$index
         fi
         local gbegx gbegy
         ble/textmap#getxy.out --prefix=gbeg "$gbeg"
@@ -3493,7 +3493,7 @@ function ble/widget/do-lowercase-version {
   local char=$((KEYS[n]&_ble_decode_MaskChar))
   if ((65<=char&&char<=90)); then
     ble/decode/widget/skip-lastwidget
-    ble/decode/widget/redispatch-by-keys $((flag|char+32)) "${KEYS[@]:1}"
+    ble/decode/widget/redispatch-by-keys "$((flag|char+32))" "${KEYS[@]:1}"
   else
     return 125
   fi
@@ -3894,7 +3894,7 @@ function ble/widget/kill-forward-text {
   ble-edit/content/clear-arg
   ((_ble_edit_ind>=${#_ble_edit_str})) && return 0
   ble-edit/content/push-kill-ring "${_ble_edit_str:_ble_edit_ind}"
-  ble-edit/content/replace "$_ble_edit_ind" ${#_ble_edit_str} ''
+  ble-edit/content/replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {
@@ -4115,7 +4115,7 @@ function ble/widget/yankpop/next {
 }
 function ble/widget/yankpop/prev {
   local arg; ble-edit/content/get-arg 1
-  ble/edit/yankpop.impl $((-arg))
+  ble/edit/yankpop.impl "$((-arg))"
 }
 function ble/widget/yankpop/exit {
   ble/decode/keymap/pop
@@ -4657,7 +4657,7 @@ function ble/widget/.delete-backward-char {
     fi
   fi
 
-  ble-edit/content/replace $((_ble_edit_ind-a)) "$_ble_edit_ind" "$ins"
+  ble-edit/content/replace "$((_ble_edit_ind-a))" "$_ble_edit_ind" "$ins"
   ((_ble_edit_ind-=a,
     _ble_edit_ind+a<_ble_edit_mark?(_ble_edit_mark-=a):
     _ble_edit_ind<_ble_edit_mark&&(_ble_edit_mark=_ble_edit_ind)))
@@ -4671,17 +4671,17 @@ function ble/widget/.delete-char {
     if ((${#_ble_edit_str}<_ble_edit_ind+a)); then
       return 1
     else
-      ble-edit/content/replace "$_ble_edit_ind" $((_ble_edit_ind+a)) ''
+      ble-edit/content/replace "$_ble_edit_ind" "$((_ble_edit_ind+a))" ''
     fi
   elif ((a<0)); then
     # delete-backward-char
-    ble/widget/.delete-backward-char $((-a)); return "$?"
+    ble/widget/.delete-backward-char "$((-a))"; return "$?"
   else
     # delete-forward-backward-char
     if ((${#_ble_edit_str}==0)); then
       return 1
     elif ((_ble_edit_ind<${#_ble_edit_str})); then
-      ble-edit/content/replace "$_ble_edit_ind" $((_ble_edit_ind+1)) ''
+      ble-edit/content/replace "$_ble_edit_ind" "$((_ble_edit_ind+1))" ''
     else
       _ble_edit_ind=${#_ble_edit_str}
       ble/widget/.delete-backward-char 1; return "$?"
@@ -4703,7 +4703,7 @@ function ble/widget/delete-backward-char {
   # keymap/vi.sh (white widget)
   [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
 
-  ble/widget/.delete-char $((-arg)) || ble/widget/.bell
+  ble/widget/.delete-char "$((-arg))" || ble/widget/.bell
 
   # keymap/vi.sh (white widget)
   [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
@@ -4816,7 +4816,7 @@ function ble/widget/delete-horizontal-space {
   [[ ! $arg && ${_ble_edit_str:_ble_edit_ind} =~ $rex ]] &&
     a=${#BASH_REMATCH}
 
-  ble/widget/.delete-range $((_ble_edit_ind-b)) $((_ble_edit_ind+a))
+  ble/widget/.delete-range "$((_ble_edit_ind-b))" "$((_ble_edit_ind+a))"
 }
 
 # 
@@ -4840,7 +4840,7 @@ function ble/widget/forward-char {
 function ble/widget/backward-char {
   local arg; ble-edit/content/get-arg 1
   ((arg==0)) && return 0
-  ble/widget/.forward-char $((-arg)) || ble/widget/.bell
+  ble/widget/.forward-char "$((-arg))" || ble/widget/.bell
 }
 
 _ble_edit_character_search_arg=
@@ -4874,7 +4874,7 @@ function ble/widget/character-search.hook {
     fi
   elif ((arg<0)); then
     local left=${_ble_edit_str::_ble_edit_ind}
-    if ble/string#last-index-of "$left" "$c" $((-arg)); then
+    if ble/string#last-index-of "$left" "$c" "$((-arg))"; then
       _ble_edit_ind=$ret
     elif ble/string#index-of "$left" "$c"; then
       ble/widget/.bell "$((-arg))th last character not found"
@@ -4963,7 +4963,7 @@ function ble/widget/backward-byte {
   local arg; ble-edit/content/get-arg 1
   ((arg==0)) && return 0
   local index=$_ble_edit_ind
-  ble/widget/.locate-forward-byte $((-arg)) || ble/widget/.bell
+  ble/widget/.locate-forward-byte "$((-arg))" || ble/widget/.bell
   _ble_edit_ind=$index
 }
 
@@ -5000,12 +5000,12 @@ function ble/widget/beginning-of-text {
 
 function ble/widget/beginning-of-logical-line {
   local arg; ble-edit/content/get-arg 1
-  local ret; ble-edit/content/find-logical-bol "$_ble_edit_ind" $((arg-1))
+  local ret; ble-edit/content/find-logical-bol "$_ble_edit_ind" "$((arg-1))"
   _ble_edit_ind=$ret
 }
 function ble/widget/end-of-logical-line {
   local arg; ble-edit/content/get-arg 1
-  local ret; ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg-1))
+  local ret; ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"
   _ble_edit_ind=$ret
 }
 
@@ -5018,7 +5018,7 @@ function ble/widget/end-of-logical-line {
 function ble/widget/kill-backward-logical-line {
   local arg; ble-edit/content/get-arg ''
   if [[ $arg ]]; then
-    local ret; ble-edit/content/find-logical-eol "$_ble_edit_ind" $((-arg)); local index=$ret
+    local ret; ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((-arg))"; local index=$ret
     if ((arg>0)); then
       if ((_ble_edit_ind<=index)); then
         index=0
@@ -5108,7 +5108,7 @@ function ble/widget/forward-history-line.impl {
         if ((arg>0)); then
           ble-edit/content/find-logical-eol 0 "$rest"
         else
-          ble-edit/content/find-logical-eol ${#entry} $((-rest))
+          ble-edit/content/find-logical-eol "${#entry}" "$((-rest))"
         fi
         _ble_edit_ind=$ret
         return 0
@@ -5201,7 +5201,7 @@ function ble/widget/forward-logical-line {
 function ble/widget/backward-logical-line {
   local opts=$1
   local arg; ble-edit/content/get-arg 1
-  ble/widget/forward-logical-line.impl $((-arg)) "$opts"
+  ble/widget/forward-logical-line.impl "$((-arg))" "$opts"
 }
 
 ## @fn ble/keymap:emacs/find-graphical-eol [index [offset]]
@@ -5210,7 +5210,7 @@ function ble/keymap:emacs/find-graphical-eol {
   local axis=${1:-$_ble_edit_ind} arg=${2:-0}
   local x y index
   ble/textmap#getxy.cur "$axis"
-  ble/textmap#get-index-at 0 $((y+arg+1))
+  ble/textmap#get-index-at 0 "$((y+arg+1))"
   if ((index>0)); then
     local ax ay
     ble/textmap#getxy.cur --prefix=a "$index"
@@ -5224,13 +5224,13 @@ function ble/widget/beginning-of-graphical-line {
   local arg; ble-edit/content/get-arg 1
   local x y index
   ble/textmap#getxy.cur "$_ble_edit_ind"
-  ble/textmap#get-index-at 0 $((y+arg-1))
+  ble/textmap#get-index-at 0 "$((y+arg-1))"
   _ble_edit_ind=$index
 }
 function ble/widget/end-of-graphical-line {
   ble/textmap#is-up-to-date || ble/widget/.update-textmap
   local arg; ble-edit/content/get-arg 1
-  local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" $((arg-1))
+  local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" "$((arg-1))"
   _ble_edit_ind=$ret
 }
 
@@ -5248,7 +5248,7 @@ function ble/widget/kill-backward-graphical-line {
     ((index==_ble_edit_ind&&index>0&&index--))
     ble/widget/.kill-range "$index" "$_ble_edit_ind"
   else
-    local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" $((-arg))
+    local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" "$((-arg))"
     ble/widget/.kill-range "$ret" "$_ble_edit_ind"
   fi
 }
@@ -5261,7 +5261,7 @@ function ble/widget/kill-forward-graphical-line {
   local arg; ble-edit/content/get-arg ''
   local x y index ax ay
   ble/textmap#getxy.cur "$_ble_edit_ind"
-  ble/textmap#get-index-at 0 $((y+${arg:-1}))
+  ble/textmap#get-index-at 0 "$((y+${arg:-1}))"
   if [[ ! $arg ]] && ((_ble_edit_ind<index-1)); then
     # 無引数でかつ行末より前にいた時、
     # 行頭までではなくその前の行末までしか消さない。
@@ -5279,8 +5279,8 @@ function ble/widget/kill-graphical-line {
   ((arg>0?(eofs=arg-1):(arg<0&&(bofs=arg+1))))
   local x y index ax ay
   ble/textmap#getxy.cur "$_ble_edit_ind"
-  ble/textmap#get-index-at 0 $((y+bofs))  ; local bol=$index
-  ble/textmap#get-index-at 0 $((y+eofs+1)); local eol=$index
+  ble/textmap#get-index-at 0 "$((y+bofs))"  ; local bol=$index
+  ble/textmap#get-index-at 0 "$((y+eofs+1))"; local eol=$index
   ((bol<eol)) && ble/widget/.kill-range "$bol" "$eol"
 }
 
@@ -5291,7 +5291,7 @@ function ble/widget/forward-graphical-line.impl {
 
   local x y index ax ay
   ble/textmap#getxy.cur "$_ble_edit_ind"
-  ble/textmap#get-index-at "$x" $((y+arg))
+  ble/textmap#get-index-at "$x" "$((y+arg))"
   ble/textmap#getxy.cur --prefix=a "$index"
   ((arg-=ay-y))
   _ble_edit_ind=$index # 何れにしても移動は行う
@@ -5321,7 +5321,7 @@ function ble/widget/forward-graphical-line {
 function ble/widget/backward-graphical-line {
   local opts=$1
   local arg; ble-edit/content/get-arg 1
-  ble/widget/forward-graphical-line.impl $((-arg)) "$opts"
+  ble/widget/forward-graphical-line.impl "$((-arg))" "$opts"
 }
 
 function ble/widget/beginning-of-line {
@@ -5464,7 +5464,7 @@ function ble/edit/word/locate-forward {
 function ble/edit/word/forward-range {
   local arg=$1; ((arg)) || arg=1
   if ((arg<0)); then
-    ble/edit/word/backward-range $((-arg))
+    ble/edit/word/backward-range "$((-arg))"
     return "$?"
   fi
   local s t u; ble/edit/word/locate-forward "$x" "$arg"; y=$t
@@ -5472,7 +5472,7 @@ function ble/edit/word/forward-range {
 function ble/edit/word/backward-range {
   local arg=$1; ((arg)) || arg=1
   if ((arg<0)); then
-    ble/edit/word/forward-range $((-arg))
+    ble/edit/word/forward-range "$((-arg))"
     return "$?"
   fi
   local a b c; ble/edit/word/locate-backward "$x" "$arg"; y=$b
@@ -5485,7 +5485,7 @@ function ble/edit/word/current-range {
     ((y=a,x<t&&(x=t)))
   elif ((arg<0)); then
     local s t u; ble/edit/word/locate-forward "$x"
-    local a b c; ble/edit/word/locate-backward "$u" $((-arg))
+    local a b c; ble/edit/word/locate-backward "$u" "$((-arg))"
     ((b<x&&(x=b),y=u))
   fi
   return 0
@@ -5698,7 +5698,7 @@ function ble-edit/exec/.adjust-eol {
     #   cols列目またはcols+2列目以降は大丈夫である。
     #   仕方がないので少しずつ慎重に前進する事にする。
     while ((advance)); do
-      ble/canvas/put-cuf.draw $((advance-advance/2))
+      ble/canvas/put-cuf.draw "$((advance-advance/2))"
       ((advance/=2))
     done
   else
@@ -5989,7 +5989,7 @@ function ble/exec/time#start {
       local -a hist=()
       local i
       for i in {00..99}; do
-        { builtin eval -- "$script" 2>&$_ble_util_fd_stderr; } 2>| "$_ble_exec_time_TIMEFILE"
+        { builtin eval -- "$script" 2>&"$_ble_util_fd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"
         ble/exec/time#restore-TIMEFORMAT
         local beg=${_ble_exec_time_EPOCHREALTIME_beg//[!0-9]}
         local end=${_ble_exec_time_EPOCHREALTIME_end//[!0-9]}
@@ -6352,7 +6352,7 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
   LINENO=$_ble_edit_LINENO \
     BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     blehook/invoke "$@"
-} >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
+} >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
 
 # ble-edit/exec:gexec/TERM
 #
@@ -6447,7 +6447,7 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_TRAPDEBUG_INT=
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND"
-  ble-edit/exec/print-PS0 >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr
+  ble-edit/exec/print-PS0 >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
   ((++_ble_edit_CMD))
 
   ble/exec/time#start
@@ -6520,7 +6520,7 @@ function ble-edit/exec:gexec/.epilogue {
   ble-edit/exec/.adjust-eol
   _ble_edit_exec_inside_prologue=
 
-  ble/util/buffer.flush >&$_ble_util_fd_stderr
+  ble/util/buffer.flush >&"$_ble_util_fd_stderr"
   ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC
 
   local msg=
@@ -6623,7 +6623,7 @@ function ble-edit/exec:gexec/.setup {
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
       #   る時に eval の最終引数になってしまう)。
       buff[ibuff++]='{ ble-edit/exec:gexec/.save-lastarg; } &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
-      buff[ibuff++]='" 2>&$_ble_util_fd_stderr; } 2>| "$_ble_exec_time_TIMEFILE"'
+      buff[ibuff++]='" 2>&"$_ble_util_fd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"'
       buff[ibuff++]='{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null'
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
@@ -6670,7 +6670,7 @@ function ble/widget/.insert-newline/trim-prompt {
     local y=${_ble_prompt_ps1_data[4]}
     if ((y)); then
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
-      ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" $((-y)) shift
+      ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" "$((-y))" shift
       ((_ble_textarea_gendy-=y))
     fi
   fi
@@ -6886,9 +6886,9 @@ function ble/widget/accept-and-next {
 
     count=$_ble_history_COUNT
     if ((count)); then
-      local entry; ble/history/get-entry $((count-1))
+      local entry; ble/history/get-entry "$((count-1))"
       if [[ $entry == "$content" ]]; then
-        ble-edit/history/goto $((count-1))
+        ble-edit/history/goto "$((count-1))"
       fi
     fi
 
@@ -7041,7 +7041,7 @@ function ble/widget/alias-expand-line.proc {
     local ret; ble/alias#expand "$word"
     [[ $word == "$ret" ]] && return 0
     changed=1
-    ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$ret"
+    ble/widget/.replace-range "$wbegin" "$((wbegin+wlen))" "$ret"
   fi
 }
 function ble/widget/alias-expand-line {
@@ -7149,7 +7149,7 @@ function ble/widget/shell-expand-line.proc {
   done
 
   changed=1
-  ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$out"
+  ble/widget/.replace-range "$wbegin" "$((wbegin+wlen))" "$out"
 }
 ## @widget shell-expand-line opts
 ##   @param[in] opts
@@ -7448,7 +7448,7 @@ function ble-edit/history/goto {
       local histlen2=$_ble_history_COUNT
       if ((histlen!=histlen2)); then
         ble/textarea#invalidate
-        ble-edit/history/goto $((index1==histlen?histlen:index1))
+        ble-edit/history/goto "$((index1==histlen?histlen:index1))"
         return "$?"
       fi
     fi
@@ -7501,7 +7501,7 @@ function ble/widget/history-next {
   if [[ $_ble_history_prefix || $_ble_history_load_done ]]; then
     local arg; ble-edit/content/get-arg 1
     ble/history/initialize
-    ble-edit/history/goto $((_ble_history_INDEX+arg))
+    ble-edit/history/goto "$((_ble_history_INDEX+arg))"
   else
     ble-edit/content/clear-arg
     ble/widget/.bell
@@ -7510,7 +7510,7 @@ function ble/widget/history-next {
 function ble/widget/history-prev {
   local arg; ble-edit/content/get-arg 1
   ble/history/initialize
-  ble-edit/history/goto $((_ble_history_INDEX-arg))
+  ble-edit/history/goto "$((_ble_history_INDEX-arg))"
 }
 function ble/widget/history-beginning {
   ble-edit/content/clear-arg
@@ -9655,12 +9655,12 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr
 
   function ble-edit/bind/stdout.on {
-    exec 2>&$_ble_util_fd_stderr
+    exec 2>&"$_ble_util_fd_stderr"
   }
   function ble-edit/bind/stdout.off {
     ble/util/buffer.flush >&2
     ble-edit/io/check-stderr
-    exec 2>>$_ble_edit_io_fname2
+    exec 2>>"$_ble_edit_io_fname2"
   }
   function ble-edit/bind/stdout.finalize {
     ble-edit/bind/stdout.on
@@ -9764,7 +9764,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       function ble-edit/bind/stdout.off {
         ble/util/buffer.flush >&2
         ble-edit/io/check-stderr
-        exec 2>&$_ble_edit_io_fd2
+        exec 2>&"$_ble_edit_io_fd2"
       }
     elif . "$_ble_base/lib/init-msys1.sh"; ble-edit/io:msys1/start-background; then
       function ble-edit/bind/stdout.off {
@@ -9776,7 +9776,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
         #   ければならない。同じ exec でリダイレクトしようとするとメッセージ本
         #   体は表示されないが、エラーメッセージの改行だけは出力されてしなう。
         exec 2>/dev/null
-        exec 2>>$_ble_edit_io_fname2.buff
+        exec 2>>"$_ble_edit_io_fname2.buff"
       }
     fi
   fi

@@ -322,7 +322,7 @@ function ble/complete/menu-style:linewise/construct-page {
   local prefix_format=$bleopt_menu_linewise_prefix prefix_width=0
   if [[ $prefix_format ]]; then
     local prefix1
-    ble/util/sprintf prefix1 "$prefix_format" ${#menu_items[@]}
+    ble/util/sprintf prefix1 "$prefix_format" "${#menu_items[@]}"
     local x1 y1 x2 y2
     LINES=1 COLUMNS=$max_icon_width x=0 y=0 ble/canvas/trace "$prefix1" truncate:measure-bbox
     if ((x2<=max_icon_width/2)); then
@@ -338,7 +338,7 @@ function ble/complete/menu-style:linewise/construct-page {
 
     # prefix
     if ((prefix_width)); then
-      local prefix1; ble/util/sprintf prefix1 "$prefix_format" $((index+1))
+      local prefix1; ble/util/sprintf prefix1 "$prefix_format" "$((index+1))"
       LINES=1 COLUMNS=$max_icon_width y=0 ble/canvas/trace "$prefix1" truncate:relative:measure-bbox; esc1=$ret
       if ((x<prefix_width)); then
         x=$prefix_width
@@ -455,7 +455,7 @@ function ble/complete/menu-style:desc/construct-page {
       ble/canvas/put.draw "$esc1"
 
       # 余白
-      ble/canvas/put-spaces.draw $((pad=desc_x-x))
+      ble/canvas/put-spaces.draw "$((pad=desc_x-x))"
       ble/canvas/put.draw "$desc_prefix"
       ((x+=pad+${#desc_prefix}))
 
@@ -470,24 +470,24 @@ function ble/complete/menu-style:desc/construct-page {
       fi
       ble/canvas/put.draw "$_ble_term_sgr0"
       ((y+1>=nline)) && break
-      ble/canvas/put-move.draw $((-x)) 1
+      ble/canvas/put-move.draw "$((-x))" 1
       ((x=0,++y))
     done
     ((y>ymax)) && ymax=$y
 
     if ((icolumn+1<ncolumn)); then
       # カラム仕切りを出力 (最後に次のカラムの先頭に移動)
-      ble/canvas/put-move.draw $((wcolumn-x)) $((-y))
+      ble/canvas/put-move.draw "$((wcolumn-x))" "$((-y))"
       for ((y=0;y<=ymax;y++)); do
         ble/canvas/put.draw "$colsep"
         if ((y<ymax)); then
           ble/canvas/put-move.draw -${#colsep} 1
         else
-          ble/canvas/put-move-y.draw $((-y))
+          ble/canvas/put-move-y.draw "$((-y))"
         fi
       done
     else
-      ((y<ymax)) && ble/canvas/put-move-y.draw $((ymax-y))
+      ((y<ymax)) && ble/canvas/put-move-y.draw "$((ymax-y))"
       ((x+=xcolumn,y=ymax))
     fi
   done
@@ -941,7 +941,7 @@ function ble/widget/menu/backward-line {
 }
 function ble/widget/menu/backward-page {
   if ((_ble_complete_menu_offset>0)); then
-    ble/complete/menu#select $((_ble_complete_menu_offset-1)) goto-page-top
+    ble/complete/menu#select "$((_ble_complete_menu_offset-1))" goto-page-top
   else
     ble/widget/.bell "menu: this is the first page."
     return 1
@@ -961,7 +961,7 @@ function ble/widget/menu/beginning-of-page {
 }
 function ble/widget/menu/end-of-page {
   local nicon=${#_ble_complete_menu_icons[@]}
-  ((nicon)) && ble/complete/menu#select $((_ble_complete_menu_offset+nicon-1))
+  ((nicon)) && ble/complete/menu#select "$((_ble_complete_menu_offset+nicon-1))"
 }
 
 function ble/widget/menu/cancel {
@@ -2327,7 +2327,7 @@ function ble/complete/source:command/gen {
     local ret
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
     ble/complete/util/eval-pathname-expansion "$ret/"; (($?==148)) && return 148
-    ble/complete/source/test-limit ${#ret[@]} || return 1
+    ble/complete/source/test-limit "${#ret[@]}" || return 1
     ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
   fi
 
@@ -2391,7 +2391,7 @@ function ble/complete/source:command {
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
 
-  ble/complete/source/test-limit ${#arr[@]} || return 1
+  ble/complete/source/test-limit "${#arr[@]}" || return 1
 
   local action=command "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
@@ -2533,7 +2533,7 @@ function ble/complete/util/eval-pathname-expansion {
       return 148
     fi
     builtin eval -- "$def"
-  fi 2>&$_ble_util_fd_stderr
+  fi 2>&"$_ble_util_fd_stderr"
 
   ble/util/invoke-hook dtor
   return 0
@@ -2608,7 +2608,7 @@ function ble/complete/source:file/.impl {
   ble/complete/source:file/.construct-pathname-pattern "$COMPV"
   [[ :$opts: == *:directory:* ]] && ret=$ret/
   ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
-  ble/complete/source/test-limit ${#ret[@]} || return 1
+  ble/complete/source/test-limit "${#ret[@]}" || return 1
 
   if [[ :$opts: == *:directory:* ]]; then
     candidates=("${ret[@]%/}")
@@ -2704,7 +2704,7 @@ function ble/complete/source:tilde {
 
   local old_cand_count=$cand_count
   ble/complete/cand/yield-filenames tilde "${candidates[@]}"; local ext=$?
-  return $((ext?ext:cand_count>old_cand_count))
+  return "$((ext?ext:cand_count>old_cand_count))"
 }
 
 function ble/complete/source:fd {
@@ -2738,7 +2738,7 @@ function ble/complete/source:fd {
     done
   fi
 
-  return $((cand_count>old_cand_count))
+  return "$((cand_count>old_cand_count))"
 }
 
 #------------------------------------------------------------------------------
@@ -3097,9 +3097,9 @@ function ble/complete/progcomp/compopt {
 function ble/complete/progcomp/.check-limits {
   # user-input check
   ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
-    [[ ! -t 0 ]] && ble/complete/check-cancel <&$_ble_util_fd_stdin &&
+    [[ ! -t 0 ]] && ble/complete/check-cancel <&"$_ble_util_fd_stdin" &&
     return 148
-  ble/complete/source/test-limit $((progcomp_read_count++))
+  ble/complete/source/test-limit "$((progcomp_read_count++))"
   return "$?"
 }
 function ble/complete/progcomp/.compgen-helper-func {
@@ -3130,7 +3130,7 @@ function ble/complete/progcomp/.compgen-helper-func {
   #   completion functions
   ble/function#push command_not_found_handle
 
-  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&$_ble_util_fd_stdout 2>&$_ble_util_fd_stderr; local ret=$?
+  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"; local ret=$?
 
   ble/function#pop command_not_found_handle
   ble/function#pop ssh
@@ -3546,7 +3546,7 @@ function ble/complete/progcomp/.compgen {
   local cands flag_mandb=
   ble/complete/progcomp/.filter-and-split-compgen cands # compgen (comp_opts, etc) -> cands, flag_mandb
 
-  ble/complete/source/test-limit ${#cands[@]} || return 1
+  ble/complete/source/test-limit "${#cands[@]}" || return 1
 
   [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
 
@@ -5008,7 +5008,7 @@ function ble/complete/source:argument {
     local ret cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
     ble/complete/source:file/.construct-pathname-pattern "$value"
     ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
-    ble/complete/source/test-limit ${#ret[@]} || return 1
+    ble/complete/source/test-limit "${#ret[@]}" || return 1
     ble/complete/cand/yield.initialize file_rhs
     for cand in "${ret[@]}"; do
       [[ -e $cand || -h $cand ]] || continue
@@ -5036,7 +5036,7 @@ function ble/complete/source/compgen {
   local arr
   ble/util/assign-array arr 'builtin compgen -A "$compgen_action" -- "$compv_quoted"'
 
-  ble/complete/source/test-limit ${#arr[@]} || return 1
+  ble/complete/source/test-limit "${#arr[@]}" || return 1
 
   # 既に完全一致している場合は、より前の起点から補完させるために省略
   [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return 0
@@ -5488,10 +5488,10 @@ function ble/complete/candidates/filter:head/match {
   if [[ ! $needle || ! $text ]]; then
     ret=()
   elif [[ $text == "$needle"* ]]; then
-    ret=(0 ${#needle})
+    ret=(0 "${#needle}")
     return 0
   elif [[ $text == "${needle::${#text}}" ]]; then
-    ret=(0 ${#text})
+    ret=(0 "${#text}")
     return 0
   else
     ret=()
@@ -5594,7 +5594,7 @@ function ble/complete/candidates/filter:hsubseq/match {
   local prefix=${needle::fixlen}
   if [[ $text != "$prefix"* ]]; then
     if [[ $text && $text == "${prefix::${#text}}" ]]; then
-      ret=(0 ${#text})
+      ret=(0 "${#text}")
     else
       ret=()
     fi
@@ -7254,7 +7254,7 @@ function ble/complete/menu-complete/enter {
   ble/complete/menu/redraw
 
   if [[ :$opts: == *:backward:* ]]; then
-    ble/complete/menu#select $((${#_ble_complete_menu_items[@]}-1))
+    ble/complete/menu#select "$((${#_ble_complete_menu_items[@]}-1))"
   else
     ble/complete/menu#select 0
   fi
@@ -7605,7 +7605,7 @@ function ble/complete/auto-complete.idle {
   [[ $_ble_edit_str ]] || return 0
 
   # bleopt_complete_auto_delay だけ経過してから処理
-  ble/util/idle.sleep-until $((_idle_clock_start+bleopt_complete_auto_delay)) checked && return 0
+  ble/util/idle.sleep-until "$((_idle_clock_start+bleopt_complete_auto_delay))" checked && return 0
 
   ble/complete/auto-complete.impl
 }
@@ -8489,7 +8489,7 @@ function ble/cmdinfo/complete:cd/.impl {
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
     ble/complete/util/eval-pathname-expansion "$name$ret"; (($?==148)) && return 148
-    ble/complete/source/test-limit ${#ret[@]} || return 1
+    ble/complete/source/test-limit "${#ret[@]}" || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
         ble/complete/check-cancel && return 148
@@ -8518,7 +8518,7 @@ function ble/cmdinfo/complete:cd/.impl {
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
     ble/complete/util/eval-pathname-expansion "${ret%/}/"; (($?==148)) && return 148
-    ble/complete/source/test-limit ${#ret[@]} || return 1
+    ble/complete/source/test-limit "${#ret[@]}" || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
         ble/complete/check-cancel && return 148

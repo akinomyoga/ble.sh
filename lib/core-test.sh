@@ -30,7 +30,7 @@ function ble/test/rmdir {
 _ble_test_logfile_fd=
 function ble/test/log {
   if [[ $_ble_test_logfile_fd ]]; then
-    ble/util/print "$1" >&$_ble_test_logfile_fd
+    ble/util/print "$1" >&"$_ble_test_logfile_fd"
   fi
   ble/util/print "$1"
 }
@@ -39,13 +39,13 @@ function ble/test/log#open {
   if ble/fd#alloc _ble_test_logfile_fd '>>$file'; then
     local h10=----------
     [[ -s $file ]] &&
-      ble/util/print "$h10$h10$h10$h10$h10$h10$h10" >&$_ble_test_logfile_fd
-    ble/util/print "[$(date +'%F %T %Z')] test: start logging" >&$_ble_test_logfile_fd
+      ble/util/print "$h10$h10$h10$h10$h10$h10$h10" >&"$_ble_test_logfile_fd"
+    ble/util/print "[$(date +'%F %T %Z')] test: start logging" >&"$_ble_test_logfile_fd"
   fi
 }
 function ble/test/log#close {
   if [[ $_ble_test_logfile_fd ]]; then
-    ble/util/print "[$(date +'%F %T %Z')] test: end logging" >&$_ble_test_logfile_fd
+    ble/util/print "[$(date +'%F %T %Z')] test: end logging" >&"$_ble_test_logfile_fd"
     ble/fd#close _ble_test_logfile_fd
     _ble_test_logfile_fd=
   fi
@@ -126,13 +126,13 @@ function ble/test/end-section {
 function ble/test/section#incr {
   local title=$1
   [[ $_ble_test_section_fd ]] || return 1
-  ble/util/print "test $title" >&$_ble_test_section_fd
+  ble/util/print "test $title" >&"$_ble_test_section_fd"
 }
 function ble/test/section#report {
   local ext=$? title=$1
   [[ $_ble_test_section_fd ]] || return 1
   local code=fail; ((ext==0)) && code=pass
-  ble/util/print "$code $title" >&$_ble_test_section_fd
+  ble/util/print "$code $title" >&"$_ble_test_section_fd"
 }
 
 function ble/test/.read-arguments {

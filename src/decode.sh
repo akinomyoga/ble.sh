@@ -924,7 +924,7 @@ function ble-decode-char/csi/.decode {
         _ble_term_mouse_y=param3-1))
       local key=$_ble_decode_KCODE_MOUSE
       ((button&32)) && key=$_ble_decode_KCODE_MOUSE_MOVE
-      ble-decode-char/csi/.modify-key $((button>>2&0x07))
+      ble-decode-char/csi/.modify-key "$((button>>2&0x07))"
       csistat=$key
       return 0
     fi
@@ -1791,7 +1791,7 @@ function ble/decode/keymap/push {
 
     # set cursor-state
     local cursor; ble/decode/keymap#get-cursor "$1"
-    [[ $cursor ]] && ble/term/cursor-state/set-internal $((cursor))
+    [[ $cursor ]] && ble/term/cursor-state/set-internal "$((cursor))"
     return 0
   elif ble/decode/keymap#load "$1" && ble/decode/keymap#registered "$1"; then
     ble/decode/keymap/push "$1" # 再実行
@@ -1815,7 +1815,7 @@ function ble/decode/keymap/pop {
       ble/decode/keymap#get-cursor "${_ble_decode_keymap_stack[i]}"
       [[ $cursor ]] && break
     done
-    ble/term/cursor-state/set-internal $((${cursor:-0}))
+    ble/term/cursor-state/set-internal "$((${cursor:-0}))"
   fi
 
   local old_keymap=_ble_decode_keymap
@@ -2468,7 +2468,7 @@ function ble/decode/keylog#encode {
     if (((key&_ble_decode_MaskFlag)==_ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
       # Note: ^@ (NUL) は文字列にできないので除外
       if ((c!=64)); then
-        ble/util/c2s $((c&0x1F))
+        ble/util/c2s "$((c&0x1F))"
         ble/array#push buff "$ret"
         continue
       fi
@@ -2516,7 +2516,7 @@ function ble/widget/.MACRO {
   local -a chars=()
   local char
   for char; do
-    ble/array#push chars $((char|_ble_decode_Macr))
+    ble/array#push chars "$((char|_ble_decode_Macr))"
   done
   ble-decode-char "${chars[@]}"
 }
@@ -2541,7 +2541,7 @@ function ble/decode/c2dqs {
   if ((0<=i&&i<32)); then
     # C0 characters
     if ((1<=i&&i<=26)); then
-      ble/util/c2s $((i+96))
+      ble/util/c2s "$((i+96))"
       ret="\\C-$ret"
     elif ((i==27)); then
       ret="\\e"
@@ -2549,7 +2549,7 @@ function ble/decode/c2dqs {
       # Workaround \C-\\, \C-\ in Bash-3.0..5.0
       ret="\\x1c"
     else
-      ble/decode/c2dqs $((i+64))
+      ble/decode/c2dqs "$((i+64))"
       ret="\\C-$ret"
     fi
   elif ((32<=i&&i<127)); then
@@ -2597,7 +2597,7 @@ function ble/decode/cmap/.generate-binder-template {
     fi
 
     if [[ ${ent//[0-9]} == _ ]]; then
-      ble/decode/cmap/.generate-binder-template "${tseq}_$ccode" "$qseq1" "$nseq1" $((depth+1))
+      ble/decode/cmap/.generate-binder-template "${tseq}_$ccode" "$qseq1" "$nseq1" "$((depth+1))"
     fi
   done
 }
@@ -2986,7 +2986,7 @@ function ble-bind/option:csi {
 
     local IFS=$_ble_term_IFS
     if [[ $key ]]; then
-      ble-decode-char/bind "${cseq[*]}" $((key|_ble_decode_Shft))
+      ble-decode-char/bind "${cseq[*]}" "$((key|_ble_decode_Shft))"
     else
       ble-decode-char/unbind "${cseq[*]}"
     fi

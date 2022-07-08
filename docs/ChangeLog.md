@@ -397,6 +397,7 @@
 - test: clean up check failures by `make check` and `make scan` `#D1812` bb3e0a3
 - util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072
 - github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
+- global: quote numbers for unexpected `IFS` `#D1835` XXXXXXX
 
 ## Contrib
 

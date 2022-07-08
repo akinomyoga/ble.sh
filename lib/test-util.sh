@@ -122,7 +122,7 @@ ble/test ble/util/setexit 255 exit=255
   function f2 {
     local a=1
     local -a b=(2)
-    local -a result=($((a+b[0])) y z)
+    local -a result; result=("$((a+b[0]))" y z)
     local "$1" && ble/util/uparr "$1" "${result[@]}"
   }
   ble/test 'f2 x; ret="(${x[*]})"' ret='(3 y z)'
@@ -271,13 +271,13 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
 # _ble_array_prototype
 (
   _ble_array_prototype=()
-  ble/test 'echo ${#_ble_array_prototype[@]}' stdout=0
+  ble/test 'echo "${#_ble_array_prototype[@]}"' stdout=0
   ble/array#reserve-prototype 10
-  ble/test 'echo ${#_ble_array_prototype[@]}' stdout=10
-  ble/test 'x=("${_ble_array_prototype[@]::10}"); echo ${#x[@]}' stdout=10
+  ble/test 'echo "${#_ble_array_prototype[@]}"' stdout=10
+  ble/test 'x=("${_ble_array_prototype[@]::10}"); echo "${#x[@]}"' stdout=10
   ble/array#reserve-prototype 3
-  ble/test 'echo ${#_ble_array_prototype[@]}' stdout=10
-  ble/test 'x=("${_ble_array_prototype[@]::3}"); echo ${#x[@]}' stdout=3
+  ble/test 'echo "${#_ble_array_prototype[@]}"' stdout=10
+  ble/test 'x=("${_ble_array_prototype[@]::3}"); echo "${#x[@]}"' stdout=3
 )
 
 # ble/is-{array,assoc}
@@ -475,16 +475,16 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
 # ble/string#reserve-prototype
 (
   _ble_string_prototype='        '
-  ble/test 'echo ${#_ble_string_prototype}' stdout=8
+  ble/test 'echo "${#_ble_string_prototype}"' stdout=8
   ble/string#reserve-prototype 10
-  ble/test 'echo ${#_ble_string_prototype}' stdout=16
-  ble/test 'x=${_ble_string_prototype::10}; echo ${#x}' stdout=10
+  ble/test 'echo "${#_ble_string_prototype}"' stdout=16
+  ble/test 'x=${_ble_string_prototype::10}; echo "${#x}"' stdout=10
   ble/string#reserve-prototype 3
-  ble/test 'echo ${#_ble_string_prototype}' stdout=16
-  ble/test 'x=${_ble_string_prototype::3}; echo ${#x}' stdout=3
+  ble/test 'echo "${#_ble_string_prototype}"' stdout=16
+  ble/test 'x=${_ble_string_prototype::3}; echo "${#x}"' stdout=3
   ble/string#reserve-prototype 77
-  ble/test 'echo ${#_ble_string_prototype}' stdout=128
-  ble/test 'x=${_ble_string_prototype::77}; echo ${#x}' stdout=77
+  ble/test 'echo "${#_ble_string_prototype}"' stdout=128
+  ble/test 'x=${_ble_string_prototype::77}; echo "${#x}"' stdout=77
 )
 
 # ble/string#repeat
@@ -1471,11 +1471,11 @@ ble/test ble/util/is-running-in-subshell exit=1
 (
   ble/test/chdir
   ble/fd#alloc fd '> a.txt'
-  echo hello >&$fd
-  echo world >&$fd
+  echo hello >&"$fd"
+  echo world >&"$fd"
   if ((_ble_bash/100!=301)); then
     # bash-3.1 はバグがあって一度開いた fd を閉じれない。
-    ble/test 'ble/fd#close fd; echo test >&$fd' exit=1
+    ble/test 'ble/fd#close fd; echo test >&"$fd"' exit=1
     ble/test 'cat a.txt' stdout={hello,world}
   fi
   ble/test/rmdir

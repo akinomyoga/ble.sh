@@ -1260,13 +1260,27 @@ function sub:scan/command-layout {
   echo "--- $FUNCNAME ---"
   local esc='(\[[ -?]*[@-~])*'
 
-  # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
   grc '/(enter-command-layout|\.insert-newline|\.newline)([[:space:]]|$)' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[[:space:]]*#Zd
       \Z^[[:space:]]*function [^[:space:]]* \{$Zd
       \Z[: ]keep-infoZd
       \Z#D1800Zd
+      g'
+}
+
+function sub:scan/word-splitting-number {
+  echo "--- $FUNCNAME ---"
+  # #D1835 一般には IFS に整数が含まれるている場合もあるので ${#...} や
+  # $((...)) や >&$fd であってもちゃんと quote する必要がある。
+  grc '[<>]&\$|([[:space:]]|=\()\$(\(\(|\{#)' --exclude={docs,mwg_pp.awk} |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z^[^#]*(^|[[:space:]])#Zd
+      \Z^([^"]|"[^\#]*")*"[^"]*([& (]\$)Zd
+      \Z^[^][]*\[\[[^][]*([& (]\$)Zd
+      \Z\(\([a-zA-Z_0-9]+=\(\$Zd
+      \Z\$\{#[a-zA-Z_0-9]+\}[<>?&]Zd
+      \Z \$\{\#[a-zA-Z_0-9]+\[@\]\} -gt 0 \]\]Zd
       g'
 }
 
@@ -1363,6 +1377,8 @@ function sub:scan {
   sub:scan/eval-literal
   sub:scan/WA-localvar_inherit
   sub:scan/mistake-_ble_bash
+  sub:scan/command-layout
+  sub:scan/word-splitting-number
 
   sub:scan/memo-numbering
 }

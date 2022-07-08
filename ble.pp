@@ -347,7 +347,7 @@ function ble/base/xtrace/.log {
     builtin printf '%s [%(%F %T %Z)T] %s %s\n' "$open" -1 "$1" "$close"
   else
     builtin printf '%s [%s] %s %s\n' "$open" "$(date 2>/dev/null)" "$1" "$close"
-  fi >&${BASH_XTRACEFD:-2}
+  fi >&"${BASH_XTRACEFD:-2}"
 }
 function ble/base/xtrace/adjust {
   local level=${#_ble_bash_xtrace[@]} IFS=$' \t\n'
@@ -650,7 +650,7 @@ else
           rex=$rex'('
           break
         else
-          ble/base/adjust-BASH_REMATCH/increase $((end-i))
+          ble/base/adjust-BASH_REMATCH/increase "$((end-i))"
           rex=$rex')'
           builtin unset -v 'rparens[--count]'
         fi
@@ -670,12 +670,12 @@ else
 
     while ((count>=1)); do
       local end=${rparens[count-1]}
-      ble/base/adjust-BASH_REMATCH/increase $((end-i))
+      ble/base/adjust-BASH_REMATCH/increase "$((end-i))"
       rex=$rex')'
       builtin unset -v 'rparens[--count]'
     done
 
-    ble/base/adjust-BASH_REMATCH/increase $((${#text}-i))
+    ble/base/adjust-BASH_REMATCH/increase "$((${#text}-i))"
 
     _ble_bash_BASH_REMATCH=("${BASH_REMATCH[@]}")
     _ble_bash_BASH_REMATCH_rex=$rex

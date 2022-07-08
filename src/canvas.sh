@@ -433,19 +433,19 @@ function ble/util/c2w:auto/test.buff {
 
       local code index=0
       for code in "${codes[@]}"; do
-        ble/canvas/put-cup.draw 1 $((x0+1))
+        ble/canvas/put-cup.draw 1 "$((x0+1))"
         ble/canvas/put.draw "$_ble_term_el"
-        ble/util/c2s $((code))
+        ble/util/c2s "$((code))"
         ble/canvas/put.draw "$ret"
         ble/term/CPR/request.draw "ble/util/c2w/test.hook $((index++))"
       done
-      ble/canvas/put-cup.draw 1 $((x0+1))
+      ble/canvas/put-cup.draw 1 "$((x0+1))"
       ble/canvas/put.draw "$_ble_term_el"
     else
       _ble_util_c2w_auto_update_x0=2
       local code index=0
       for code in "${codes[@]}"; do
-        ble/util/c2s $((code))
+        ble/util/c2s "$((code))"
         ble/canvas/put.draw "$_ble_term_cr$_ble_term_el[$ret]"
         ble/term/CPR/request.draw "ble/util/c2w/test.hook $((index++))"
       done
@@ -652,12 +652,12 @@ function ble/unicode/GraphemeCluster/.get-ascii-rep {
   cs=${_ble_unicode_GraphemeCluster_ControlRepresentation[c]}
   if [[ ! $cs ]]; then
     if ((c<32)); then
-      ble/util/c2s $((c+64))
+      ble/util/c2s "$((c+64))"
       cs=^$ret
     elif ((c==127)); then
       cs=^?
     elif ((128<=c&&c<160)); then
-      ble/util/c2s $((c-64))
+      ble/util/c2s "$((c-64))"
       cs=M-^$ret
     else
       ble/util/sprintf cs 'U+%X' "$c"
@@ -917,7 +917,7 @@ function ble/canvas/put-move-x.draw {
   if ((dx>0)); then
     ble/canvas/put-cuf.draw "$dx"
   else
-    ble/canvas/put-cub.draw $((-dx))
+    ble/canvas/put-cub.draw "$((-dx))"
   fi
 }
 function ble/canvas/put-move-y.draw {
@@ -932,7 +932,7 @@ function ble/canvas/put-move-y.draw {
       ble/canvas/put-cud.draw "$dy"
     fi
   else
-    ble/canvas/put-cuu.draw $((-dy))
+    ble/canvas/put-cuu.draw "$((-dy))"
   fi
 }
 function ble/canvas/put-move.draw {
@@ -1124,9 +1124,9 @@ function ble/canvas/trace/.goto {
   local dstx=$1 dsty=$2
   if [[ ! $flag_clip ]]; then
     if [[ $trace_flags == *[RJ]* ]]; then
-      ble/canvas/put-move.draw $((dstx-x)) $((dsty-y))
+      ble/canvas/put-move.draw "$((dstx-x))" "$((dsty-y))"
     else
-      ble/canvas/put-cup.draw $((dsty+1)) $((dstx+1))
+      ble/canvas/put-cup.draw "$((dsty+1))" "$((dstx+1))"
     fi
   fi
   ((x=dstx,y=dsty))
@@ -1195,7 +1195,7 @@ function ble/canvas/trace/.put-atomic.draw {
       ble/canvas/trace/.put-sgr.draw "$g"
       cg=$g
     fi
-    ble/canvas/put-move.draw $((x-cx)) $((y-cy))
+    ble/canvas/put-move.draw "$((x-cx))" "$((y-cy))"
     ble/canvas/put.draw "$c"
     ((cx+=x+w,cy=y))
   else
@@ -1217,7 +1217,7 @@ function ble/canvas/trace/.put-ascii.draw {
     fi
     ((xL<cx1)) && value=${value:cx1-xL} xL=$cx1
     ((xR>cx2)) && value=${value::${#value}-(xR-cx2)} xR=$cx2
-    ble/canvas/put-move.draw $((x-cx)) $((y-cy))
+    ble/canvas/put-move.draw "$((x-cx))" "$((y-cy))"
     ble/canvas/put.draw "$value"
     ((cx=xR,cy=y))
   else
@@ -1239,7 +1239,7 @@ function ble/canvas/trace/.process-overflow {
     fi
 
     local ox=$x oy=$y
-    ble/canvas/trace/.goto $((wmax-w)) $((lines-1))
+    ble/canvas/trace/.goto "$((wmax-w))" "$((lines-1))"
     ble/canvas/trace/.put-atomic.draw "$ellipsis" "$w"
     ble/canvas/trace/.goto "$ox" "$oy"
   fi
@@ -1356,7 +1356,7 @@ function ble/canvas/trace/.justify/end-line {
     if [[ ! $x ]]; then
       x=$xI y=$yI
       if [[ $justify_align == right ]]; then
-        ble/canvas/put-move-x.draw $((cols-1-x))
+        ble/canvas/put-move-x.draw "$((cols-1-x))"
         ((x=cols-1))
       fi
     fi
@@ -1365,7 +1365,7 @@ function ble/canvas/trace/.justify/end-line {
       local delta=0
       ((vx+x1-xI<0)) && ((delta=-(vx+x1-xI)))
       ((vx+x2-xI>xlimit)) && ((delta=xlimit-(vx+x2-xI)))
-      ble/canvas/put-move-x.draw $((vx+delta-x))
+      ble/canvas/put-move-x.draw "$((vx+delta-x))"
       ((x=vx+delta))
       ble/canvas/put.draw "$esc"
       if [[ $trace_flags == *B* ]]; then
@@ -1429,7 +1429,7 @@ function ble/canvas/trace/.decrc {
   if [[ ! $flag_clip ]]; then
     ble/canvas/trace/.put-sgr.draw "${trace_decsc[2]}" # g を明示的に復元。
     if [[ :$opts: == *:noscrc:* ]]; then
-      ble/canvas/put-move.draw $((trace_decsc[0]-x)) $((trace_decsc[1]-y))
+      ble/canvas/put-move.draw "$((trace_decsc[0]-x))" "$((trace_decsc[1]-y))"
     else
       ble/canvas/put.draw "$_ble_term_rc"
     fi
@@ -1454,7 +1454,7 @@ function ble/canvas/trace/.scorc {
   if [[ ! $flag_clip ]]; then
     ble/canvas/trace/.put-sgr.draw "$g" # g は変わらない様に。
     if [[ :$opts: == *:noscrc:* ]]; then
-      ble/canvas/put-move.draw $((trace_scosc[0]-x)) $((trace_scosc[1]-y))
+      ble/canvas/put-move.draw "$((trace_scosc[0]-x))" "$((trace_scosc[1]-y))"
     else
       ble/canvas/put.draw "$_ble_term_rc"
     fi
@@ -1546,33 +1546,33 @@ function ble/canvas/trace/.process-csi-sequence {
       if [[ $char == A ]]; then
         # CUU "CSI A"
         ((y-=arg,y<0&&(y=0)))
-        ((!flag_clip&&y<oy)) && ble/canvas/put-cuu.draw $((oy-y))
+        ((!flag_clip&&y<oy)) && ble/canvas/put-cuu.draw "$((oy-y))"
       elif [[ $char == [Be] ]]; then
         # CUD "CSI B"
         # VPR "CSI e"
         ((y+=arg,y>=lines&&(y=lines-1)))
-        ((!flag_clip&&y>oy)) && ble/canvas/put-cud.draw $((y-oy))
+        ((!flag_clip&&y>oy)) && ble/canvas/put-cud.draw "$((y-oy))"
       elif [[ $char == [Ca] ]]; then
         # CUF "CSI C"
         # HPR "CSI a"
         ((x+=arg,x>=cols&&(x=cols-1)))
-        ((!flag_clip&&x>ox)) && ble/canvas/put-cuf.draw $((x-ox))
+        ((!flag_clip&&x>ox)) && ble/canvas/put-cuf.draw "$((x-ox))"
       elif [[ $char == D ]]; then
         # CUB "CSI D"
         ((x-=arg,x<0&&(x=0)))
-        ((!flag_clip&&x<ox)) && ble/canvas/put-cub.draw $((ox-x))
+        ((!flag_clip&&x<ox)) && ble/canvas/put-cub.draw "$((ox-x))"
       elif [[ $char == E ]]; then
         # CNL "CSI E"
         ((y+=arg,y>=lines&&(y=lines-1),x=0))
         if [[ ! $flag_clip ]]; then
-          ((y>oy)) && ble/canvas/put-cud.draw $((y-oy))
+          ((y>oy)) && ble/canvas/put-cud.draw "$((y-oy))"
           ble/canvas/put.draw "$_ble_term_cr"
         fi
       elif [[ $char == F ]]; then
         # CPL "CSI F"
         ((y-=arg,y<0&&(y=0),x=0))
         if [[ ! $flag_clip ]]; then
-          ((y<oy)) && ble/canvas/put-cuu.draw $((oy-y))
+          ((y<oy)) && ble/canvas/put-cuu.draw "$((oy-y))"
           ble/canvas/put.draw "$_ble_term_cr"
         fi
       elif [[ $char == [G\`] ]]; then
@@ -1581,9 +1581,9 @@ function ble/canvas/trace/.process-csi-sequence {
         ((x=arg-1,x<0&&(x=0),x>=cols&&(x=cols-1)))
         if [[ ! $flag_clip ]]; then
           if [[ $opt_relative ]]; then
-            ble/canvas/put-move-x.draw $((x-ox))
+            ble/canvas/put-move-x.draw "$((x-ox))"
           else
-            ble/canvas/put-hpa.draw $((x+1))
+            ble/canvas/put-hpa.draw "$((x+1))"
           fi
         fi
       elif [[ $char == d ]]; then
@@ -1591,9 +1591,9 @@ function ble/canvas/trace/.process-csi-sequence {
         ((y=arg-1,y<0&&(y=0),y>=lines&&(y=lines-1)))
         if [[ ! $flag_clip ]]; then
           if [[ $opt_relative ]]; then
-            ble/canvas/put-move-y.draw $((y-oy))
+            ble/canvas/put-move-y.draw "$((y-oy))"
           else
-            ble/canvas/put-vpa.draw $((y+1))
+            ble/canvas/put-vpa.draw "$((y+1))"
           fi
         fi
       elif [[ $char == I ]]; then
@@ -1602,7 +1602,7 @@ function ble/canvas/trace/.process-csi-sequence {
         ((_x=(x/it+arg)*it,
           _x>=cols&&(_x=cols-1)))
         if ((_x>x)); then
-          [[ $flag_clip ]] || ble/canvas/put-cuf.draw $((_x-x))
+          [[ $flag_clip ]] || ble/canvas/put-cuf.draw "$((_x-x))"
           ((x=_x))
         fi
       elif [[ $char == Z ]]; then
@@ -1611,7 +1611,7 @@ function ble/canvas/trace/.process-csi-sequence {
         ((_x=((x+it-1)/it-arg)*it,
           _x<0&&(_x=0)))
         if ((_x<x)); then
-          [[ $flag_clip ]] || ble/canvas/put-cub.draw $((x-_x))
+          [[ $flag_clip ]] || ble/canvas/put-cub.draw "$((x-_x))"
           ((x=_x))
         fi
       fi
@@ -1667,7 +1667,7 @@ function ble/canvas/trace/.process-esc-sequence {
       ((y++))
       ble/canvas/put.draw "$_ble_term_ind"
       [[ $_ble_term_ind != $'\eD' ]] &&
-        ble/canvas/put-hpa.draw $((x+1)) # tput ind が唯の改行の時がある
+        ble/canvas/put-hpa.draw "$((x+1))" # tput ind が唯の改行の時がある
     fi
     lc=-1 lg=0
     ble/canvas/trace/.measure-point
@@ -1907,7 +1907,7 @@ function ble/canvas/trace/.impl {
         ((x=0,lc=-1,lg=0))
         if [[ ! $flag_clip ]]; then
           if [[ $flag_justify ]]; then
-            ble/canvas/put-move-x.draw $((jx0-ox))
+            ble/canvas/put-move-x.draw "$((jx0-ox))"
             ((x=jx0))
           elif [[ $opt_relative ]]; then
             ble/canvas/put-cub.draw "$ox"
@@ -2076,7 +2076,7 @@ function ble/canvas/trace-text/.put-atomic {
   # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
   if ((x<cols&&cols<x+w)); then
     if [[ :$opts: == *:nonewline:* ]]; then
-      ble/string#reserve-prototype $((cols-x))
+      ble/string#reserve-prototype "$((cols-x))"
       out=$out${_ble_string_prototype::cols-x}
       ((x=cols))
     else
@@ -2091,7 +2091,7 @@ function ble/canvas/trace-text/.put-atomic {
   # 改行しても尚行内に収まらない時は ## で代用
   local limit=$((cols-(y+1==lines&&!_ble_term_xenl)))
   if ((x+w>limit)); then
-    ble/string#reserve-prototype $((limit-x))
+    ble/string#reserve-prototype "$((limit-x))"
     local pad=${_ble_string_prototype::limit-x}
     out=$out$sgr1${pad//?/'#'}$sgr0
     x=$limit
@@ -2587,7 +2587,7 @@ function ble/textmap#get-index-at {
     local _l=0 _u=$((_ble_textmap_length+1)) _m
     local _mx _my
     while ((_l+1<_u)); do
-      ble/textmap#getxy.cur --prefix=_m $((_m=(_l+_u)/2))
+      ble/textmap#getxy.cur --prefix=_m "$((_m=(_l+_u)/2))"
       (((_y<_my||_y==_my&&_x<_mx)?(_u=_m):(_l=_m)))
     done
     (($_var=_l))
@@ -2655,12 +2655,12 @@ function ble/textmap#hit {
     # 2分法
     local l=0 u=$((end+1)) m
     while ((l+1<u)); do
-      "$getxy" $((m=(l+u)/2))
+      "$getxy" "$((m=(l+u)/2))"
       (((yh<y||yh==y&&xh<x)?(u=m):(l=m)))
     done
-    "$getxy" $((index=l))
+    "$getxy" "$((index=l))"
     lx=$x ly=$y
-    (((ly<yh||ly==yh&&lx<xh)&&index<end)) && "$getxy" $((index+1))
+    (((ly<yh||ly==yh&&lx<xh)&&index<end)) && "$getxy" "$((index+1))"
     rx=$x ry=$y
   fi
 }
@@ -2692,7 +2692,7 @@ function ble/canvas/goto.draw {
 
   ble/canvas/put.draw "$_ble_term_sgr0"
 
-  ble/canvas/put-move-y.draw $((y-_ble_canvas_y))
+  ble/canvas/put-move-y.draw "$((y-_ble_canvas_y))"
 
   local dx=$((x-_ble_canvas_x))
   if ((dx!=0)); then
@@ -2957,7 +2957,7 @@ function ble/canvas/panel#goto.draw {
     ble/canvas/panel/goto-top-dock.draw
   fi
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
-  ble/canvas/goto.draw "$x" $((ret+y)) "$opts"
+  ble/canvas/goto.draw "$x" "$((ret+y))" "$opts"
 }
 ## @fn ble/canvas/panel#put.draw panel text x y
 function ble/canvas/panel#put.draw {
@@ -2983,8 +2983,8 @@ function ble/canvas/panel/increase-total-height.draw {
       ble/canvas/excursion-start.draw
       ble/canvas/put.draw $'\e[1;'$((LINES-bottom_height))'r'
       ble/canvas/excursion-end.draw
-      ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1)) sgr0
-      ble/canvas/put-ind.draw $((top_height-1+delta-_ble_canvas_y))
+      ble/canvas/goto.draw 0 "$((top_height==0?0:top_height-1))" sgr0
+      ble/canvas/put-ind.draw "$((top_height-1+delta-_ble_canvas_y))"
       ((_ble_canvas_y=top_height-1+delta))
       ble/canvas/excursion-start.draw
       ble/canvas/put.draw "$_ble_term_DECSTBM_reset"
@@ -2997,8 +2997,8 @@ function ble/canvas/panel/increase-total-height.draw {
 
   local old_height=$((top_height+bottom_height))
   local new_height=$((old_height+delta))
-  ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1)) sgr0
-  ble/canvas/put-ind.draw $((new_height-1-_ble_canvas_y)); ((_ble_canvas_y=new_height-1))
+  ble/canvas/goto.draw 0 "$((top_height==0?0:top_height-1))" sgr0
+  ble/canvas/put-ind.draw "$((new_height-1-_ble_canvas_y))"; ((_ble_canvas_y=new_height-1))
   ble/canvas/panel/goto-vfill.draw &&
     ble/canvas/put-il.draw "$delta" vfill
 }
@@ -3063,7 +3063,7 @@ function ble/canvas/panel#set-height.draw {
 }
 function ble/canvas/panel#increase-height.draw {
   local index=$1 delta=$2 opts=$3
-  ble/canvas/panel#set-height.draw "$index" $((_ble_canvas_panel_height[index]+delta)) "$opts"
+  ble/canvas/panel#set-height.draw "$index" "$((_ble_canvas_panel_height[index]+delta))" "$opts"
 }
 
 function ble/canvas/panel#set-height-and-clear.draw {
@@ -3090,7 +3090,7 @@ function ble/canvas/panel#clear-after.draw {
   if ((rest_lines)); then
     ble/canvas/put.draw "$_ble_term_ind"
     [[ $_ble_term_ind != $'\eD' ]] &&
-      ble/canvas/put-hpa.draw $((x+1))
+      ble/canvas/put-hpa.draw "$((x+1))"
     ble/canvas/put-clear-lines.draw "$rest_lines"
     ble/canvas/put-cuu.draw 1
   fi
@@ -3169,8 +3169,8 @@ function ble/canvas/panel/ensure-tmargin.draw {
         ble/canvas/put-cud.draw "$tmargin"
       else
         # RI がない時
-        ble/canvas/put-ind.draw $((top_height-1+tmargin))
-        ble/canvas/put-cuu.draw $((top_height-1+tmargin))
+        ble/canvas/put-ind.draw "$((top_height-1+tmargin))"
+        ble/canvas/put-cuu.draw "$((top_height-1+tmargin))"
         ble/canvas/excursion-start.draw
         ble/canvas/put-cup.draw 1 1
         ble/canvas/put-il.draw "$tmargin" no-lastline
@@ -3193,8 +3193,8 @@ function ble/canvas/panel/ensure-tmargin.draw {
   else
     # RI がない時
     local total_height=$((top_height+bottom_height))
-    ble/canvas/put-ind.draw $((total_height-1+tmargin))
-    ble/canvas/put-cuu.draw $((total_height-1+tmargin))
+    ble/canvas/put-ind.draw "$((total_height-1+tmargin))"
+    ble/canvas/put-cuu.draw "$((total_height-1+tmargin))"
     if [[ $_ble_term_rc ]]; then
       ble/canvas/excursion-start.draw
       ble/canvas/put-cup.draw 1 1

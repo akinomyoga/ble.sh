@@ -79,12 +79,12 @@ function ble-color-show {
   for ((bg0=0;bg0<256;bg0+=cols)); do
     ((bgN=bg0+cols,bgN<256||(bgN=256)))
     for ((bg=bg0;bg<bgN;bg++)); do
-      ble/color/g2sgr $((gflags|bg<<32))
+      ble/color/g2sgr "$((gflags|bg<<32))"
       printf '%s%03d ' "$ret" "$bg"
     done
     printf '%s\n' "$_ble_term_sgr0"
     for ((bg=bg0;bg<bgN;bg++)); do
-      ble/color/g2sgr $((gflags|bg<<32|15<<8))
+      ble/color/g2sgr "$((gflags|bg<<32|15<<8))"
       printf '%s%03d ' "$ret" "$bg"
     done
     printf '%s\n' "$_ble_term_sgr0"
@@ -449,7 +449,7 @@ function ble/color/.hxx2color {
   ((x=x*255/Unit,
     y=y*255/Unit,
     z=z*255/Unit))
-  case $((H/120)) in
+  case "$((H/120))" in
   (0) local R=$x G=$y B=$z ;;
   (1) local R=$z G=$x B=$y ;;
   (2) local R=$y G=$z B=$x ;;
@@ -542,7 +542,7 @@ function ble/color/.name2color {
 }
 function ble/color/.color2name {
   if (($1>=0x1000000)); then
-    ble/util/sprintf ret '#%06x' $(($1&0xFFFFFF))
+    ble/util/sprintf ret '#%06x' "$(($1&0xFFFFFF))"
     return 0
   fi
 
@@ -1002,8 +1002,8 @@ function ble/color/initialize-faces {
   }
   ## @fn ble/color/face2sgr face
   ##   @var[out] ret
-  function ble/color/face2sgr { ble/color/g2sgr $((_ble_faces[_ble_faces__$1])); }
-  function ble/color/face2sgr-ansi { ble/color/g2sgr-ansi $((_ble_faces[_ble_faces__$1])); }
+  function ble/color/face2sgr { ble/color/g2sgr "$((_ble_faces[_ble_faces__$1]))"; }
+  function ble/color/face2sgr-ansi { ble/color/g2sgr-ansi "$((_ble_faces[_ble_faces__$1]))"; }
   ## @fn ble/color/iface2g iface
   ##   @var[out] ret
   function ble/color/iface2g {
@@ -1012,7 +1012,7 @@ function ble/color/initialize-faces {
   ## @fn ble/color/iface2sgr iface
   ##   @var[out] ret
   function ble/color/iface2sgr {
-    ble/color/g2sgr $((_ble_faces[$1]))
+    ble/color/g2sgr "$((_ble_faces[$1]))"
   }
 
   ## @fn ble/color/setface/.spec2g spec
@@ -1266,10 +1266,10 @@ function ble-face/.print-face {
     cur=${cur%']'}
     cur=ref:${cur#_ble_faces__}
   else
-    ble/color/g2gspec $((cur)); cur=$ret
+    ble/color/g2gspec "$((cur))"; cur=$ret
   fi
   if [[ $flags == *c* ]]; then
-    ble/color/iface2sgr $((key))
+    ble/color/iface2sgr "$((key))"
     cur=$ret$cur$_ble_term_sgr0
   fi
   printf '%s %s=%s\n' "${sgr1}ble-face$sgr0" "$sgr2$name$sgr0" "$cur"
@@ -1408,7 +1408,7 @@ function ble/highlight/layer/update/shift {
   local __dstArray=$1
   local __srcArray=${2:-$__dstArray}
   if ((DMIN>=0)); then
-    ble/array#reserve-prototype $((DMAX-DMIN))
+    ble/array#reserve-prototype "$((DMAX-DMIN))"
     builtin eval "
     $__dstArray=(
       \"\${$__srcArray[@]::DMIN}\"
@@ -1535,11 +1535,11 @@ function ble/highlight/layer:plain/update/.getch {
     if [[ $cs ]]; then
       ch=$cs
     elif ((ret<0x20)); then
-      ble/util/c2s $((ret+64))
+      ble/util/c2s "$((ret+64))"
       ch="^$ret"
     elif ((0x80<=ret&&ret<=0x9F)); then
       # C1 characters
-      ble/util/c2s $((ret-64))
+      ble/util/c2s "$((ret-64))"
       ch="M-^$ret"
     fi
   fi
@@ -1849,7 +1849,7 @@ function ble/highlight/layer:overwrite_mode/update {
       ble/color/g2sgr "$ret"
       _ble_highlight_layer_overwrite_mode_buff[index]=$ret${_ble_highlight_layer_plain_buff[index]}
       if ((index+1<${#1})); then
-        ble/highlight/layer/update/getg $((index+1))
+        ble/highlight/layer/update/getg "$((index+1))"
         ble/color/g2sgr "$g"
         _ble_highlight_layer_overwrite_mode_buff[index+1]=$ret${_ble_highlight_layer_plain_buff[index+1]}
       fi
@@ -1863,8 +1863,8 @@ function ble/highlight/layer:overwrite_mode/update {
   fi
 
   if ((index!=oindex)); then
-    ((oindex>=0)) && ble/highlight/layer/update/add-urange "$oindex" $((oindex+1))
-    ((index>=0)) && ble/highlight/layer/update/add-urange "$index" $((index+1))
+    ((oindex>=0)) && ble/highlight/layer/update/add-urange "$oindex" "$((oindex+1))"
+    ((index>=0)) && ble/highlight/layer/update/add-urange "$index" "$((index+1))"
   fi
 
   _ble_highlight_layer_overwrite_mode_index=$index

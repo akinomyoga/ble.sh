@@ -667,7 +667,7 @@ function ble/array#remove-at {
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 function ble/array#fill-range {
-  ble/array#reserve-prototype $(($3-$2))
+  ble/array#reserve-prototype "$(($3-$2))"
   local _ble_script='
       local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
       ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
@@ -1136,12 +1136,12 @@ function ble/string#escape-for-display {
       ble/util/s2c "${tail::1}"
       local code=$ret
       if ((code<32)); then
-        ble/util/c2s $((code+64))
+        ble/util/c2s "$((code+64))"
         ret=$sgr1^$ret$sgr0
       elif ((code==127)); then
         ret=$sgr1^?$sgr0
       elif ((128<=code&&code<160)); then
-        ble/util/c2s $((code-64))
+        ble/util/c2s "$((code-64))"
         ret=${sgr1}M-^$ret$sgr0
       else
         ret=${tail::1}
@@ -1231,17 +1231,17 @@ function ble/string#match { [[ $1 =~ $2 ]]; }
 function ble/string#create-unicode-progress-bar/.block {
   local block=$1
   if ((block<=0)); then
-    ble/util/c2w $((0x2588))
+    ble/util/c2w "$((0x2588))"
     ble/string#repeat ' ' "$ret"
   elif ((block>=8)); then
-    ble/util/c2s $((0x2588))
+    ble/util/c2s "$((0x2588))"
     ((${#ret}==1)) || ret='*' # LC_CTYPE が非対応の文字の時
   else
-    ble/util/c2s $((0x2590-block))
+    ble/util/c2s "$((0x2590-block))"
     if ((${#ret}!=1)); then
       # LC_CTYPE が非対応の文字の時
-      ble/util/c2w $((0x2588))
-      ble/string#repeat ' ' $((ret-1))
+      ble/util/c2w "$((0x2588))"
+      ble/string#repeat ' ' "$((ret-1))"
       ret=$block$ret
     fi
   fi
@@ -1294,7 +1294,7 @@ function ble/string#create-unicode-progress-bar {
 
   if ((progress_integral<width)); then
     ble/string#create-unicode-progress-bar/.block 0
-    ble/string#repeat "$ret" $((width-progress_integral))
+    ble/string#repeat "$ret" "$((width-progress_integral))"
     out=$out$ret
   fi
 
@@ -3411,7 +3411,7 @@ function ble/fd#finalize {
 ## @fn ble/fd#close fd
 ##   指定した fd を閉じます。
 function ble/fd#close {
-  set -- $(($1))
+  set -- "$(($1))"
   (($1>=3)) || return 1
   builtin eval "exec $1>&-"
   ble/array#remove _ble_util_openat_fdlist "$1"
@@ -3787,7 +3787,7 @@ function ble/util/msleep/.core {
 function ble/util/msleep {
   local v=$((1000*$1-_ble_util_msleep_delay))
   ((v<=0)) && v=0
-  ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+  ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
   ble/util/msleep/.core "$v"
 }
 
@@ -3828,7 +3828,7 @@ function ble/util/msleep/.use-read-timeout {
     _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
     function ble/util/msleep/.core2 {
       ((v-=_ble_util_msleep_delay2))
-      ble/bin/sleep $((v/1000000))
+      ble/bin/sleep "$((v/1000000))"
       ((v%=1000000))
     }
     function ble/util/msleep {
@@ -3836,7 +3836,7 @@ function ble/util/msleep/.use-read-timeout {
       ((v<=0)) && v=100
       ((v>1000000+_ble_util_msleep_delay2)) &&
         ble/util/msleep/.core2
-      ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+      ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
       ! builtin read -t "$v" v < /dev/udp/0.0.0.0/80
     }
     function ble/util/msleep/.calibrate-loop {
@@ -3860,7 +3860,7 @@ function ble/util/msleep/.use-read-timeout {
     function ble/util/msleep {
       local v=$((1000*$1-_ble_util_msleep_delay))
       ((v<=0)) && v=100
-      ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+      ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
       ! builtin read -t "$v" -u "$_ble_util_msleep_fd" v
     } ;;
   (*.*)
@@ -3909,12 +3909,12 @@ function ble/util/msleep/.use-read-timeout {
           if (($1<_ble_util_msleep_switch)); then
             local v=$((1000*$1-_ble_util_msleep_delay1))
             ((v<=0)) && v=100
-            ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+            ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
             builtin eval -- "$_ble_util_msleep_read"
           else
             local v=$((1000*$1-_ble_util_msleep_delay2))
             ((v<=0)) && v=100
-            ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+            ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
             ble/bin/sleep "$v"
           fi
         }
@@ -3936,7 +3936,7 @@ function ble/util/msleep/.use-read-timeout {
         function ble/util/msleep {
           local v=$((1000*$1-_ble_util_msleep_delay))
           ((v<=0)) && v=100
-          ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+          ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
           builtin eval -- "$_ble_util_msleep_read"
         }
       fi
@@ -5754,7 +5754,7 @@ function ble/term:cygwin/initialize.hook {
   # Note: Cygwin console では何故か RI (ESC M) が
   #   1行スクロールアップとして実装されている。
   #   一方で CUU (CSI A) で上にスクロールできる。
-  printf '\eM\e[B' >&$_ble_util_fd_stderr
+  printf '\eM\e[B' >&"$_ble_util_fd_stderr"
   _ble_term_ri=$'\e[A'
 
   # DLの修正
@@ -5766,7 +5766,7 @@ function ble/term:cygwin/initialize.hook {
     DRAW_BUFF[${#DRAW_BUFF[*]}]=$'\e[2K'
     if ((value>1)); then
       local ret
-      ble/string#repeat $'\e[B\e[2K' $((value-1)); local a=$ret
+      ble/string#repeat $'\e[B\e[2K' "$((value-1))"; local a=$ret
       DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret$'\e['$((value-1))'A'
     fi
 
@@ -5912,17 +5912,17 @@ function ble/term/visible-bell:canvas/show {
     local ret=
     [[ :$opts: != *:update:* && $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock # WA #D1495
     ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+    ble/canvas/put-cup.draw "$((y0+1))" "$((x0+1))"
     ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
     ble/canvas/put.draw "$_ble_term_rc"
     ble/canvas/put-cud.draw 1
     [[ :$opts: != *:update:* && $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret" # WA #D1495
   else
     ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sgr0"
-    ble/canvas/put-hpa.draw $((1+x0))
+    ble/canvas/put-hpa.draw "$((1+x0))"
     ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
     ble/canvas/put-cud.draw 1
-    ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
+    ble/canvas/put-hpa.draw "$((1+_ble_canvas_x))"
   fi
   ble/canvas/bflush.draw
   ble/util/buffer.flush >&2
@@ -5942,7 +5942,7 @@ function ble/term/visible-bell:canvas/clear {
     local ret=
     #[[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock # WA #D1495
     ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+    ble/canvas/put-cup.draw "$((y0+1))" "$((x0+1))"
     ble/canvas/put.draw "$sgr"
     ble/canvas/put-spaces.draw "$x"
     #ble/canvas/put-ech.draw "$x"
@@ -5953,12 +5953,12 @@ function ble/term/visible-bell:canvas/clear {
     : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
     # ble/util/buffer.flush >&2
     # ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sgr0"
-    # ble/canvas/put-hpa.draw $((1+x0))
+    # ble/canvas/put-hpa.draw "$((1+x0))"
     # ble/canvas/put.draw "$sgr"
     # ble/canvas/put-spaces.draw "$x"
     # ble/canvas/put.draw "$_ble_term_sgr0"
     # ble/canvas/put-cud.draw 1
-    # ble/canvas/put-hpa.draw $((1+_ble_canvas_x)) # 親プロセスの _ble_canvas_x?
+    # ble/canvas/put-hpa.draw "$((1+_ble_canvas_x))" # 親プロセスの _ble_canvas_x?
   fi
   ble/canvas/flush.draw >&2
 }
@@ -6377,7 +6377,7 @@ function ble/term/DA2/notify {
       # 外側の端末にも DA2 要求を出す。[ Note: 最初の DA2 要求は
       # ble/decode/attach (decode.sh) から送信されている。 ]
       local ret
-      ble/term/quote-passthrough $'\e[>c' $((depth+1))
+      ble/term/quote-passthrough $'\e[>c' "$((depth+1))"
       ble/util/buffer "$ret" ;;
     (contra:*)
       if [[ ! ${_ble_term_Ss-} ]]; then
@@ -6783,7 +6783,7 @@ if ((_ble_bash>=40200)); then
   if ble/util/.has-bashbug-printf-uffff; then
     function ble/util/c2s.impl {
       if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_locale_encoding == UTF-8 ]]; then
-        builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))
+        builtin printf -v ret '\\x%02x' "$((0xE0|$1>>12&0x0F))" "$((0x80|$1>>6&0x3F))" "$((0x80|$1&0x3F))"
       else
         builtin printf -v ret '\\U%08x' "$1"
       fi
@@ -6967,9 +6967,9 @@ function ble/util/c2keyseq {
     if ((char<32||128<=char&&char<160)); then
       local char7=$((char&0x7F))
       if ((1<=char7&&char7<=26)); then
-        ble/util/c2s $((char7+96))
+        ble/util/c2s "$((char7+96))"
       else
-        ble/util/c2s $((char7+64))
+        ble/util/c2s "$((char7+64))"
       fi
       ret='\C-'$ret
       ((char&0x80)) && ret='\M-'$ret
@@ -7088,7 +7088,7 @@ function ble/encoding:C/b2c {
 ##   @arr[out] bytes
 function ble/encoding:C/c2b {
   local code=$1
-  bytes=($((code&0xFF)))
+  bytes=("$((code&0xFF))")
 }
 
 function ble/util/is-unicode-output {
