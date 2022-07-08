@@ -6476,6 +6476,53 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-07-08
+
+  * complete: command_not_found_handle が自動補完で呼び出されて操作不能になる (reported by telometto, wisnoskij) [#D1834]
+    https://github.com/akinomyoga/ble.sh/issues/203
+    https://github.com/akinomyoga/ble.sh/issues/192
+
+    stdin に [y/n] を要求するが ble.sh が stdin をブロックしている為に補完が終
+    了できず操作不能になる。
+
+    ? というか入力が受け付けられなくなったとしても C-c だけは効く様にして良いの
+      ではないか。
+
+      x 一方で、C-c をそのまま有効にすると ble.sh の処理自体がその場で止まって
+        しまう事になる。C-c を trap で捕まえて適切な stack frame まで戻るにして
+        も再び DEBUG トラップで複雑な事をしなければならない。
+
+      x そもそも外部コマンドの C-c を正しく検出できるのかという問題もある。C-c
+        で外部コマンドだけが終了したとして、その後補完スクリプトがそのまま走っ
+        た時に変な事にならないかというのは非自明である。
+
+      x 更に補完の度に stty を呼び出して C-c の状態を変えなければならない。失敗
+        すると次に stty を調整する迄 C-c を ble.sh で受信できなくなる。
+
+      うーん。色々考えると C-c を一時的に有効にするというのも余り良い選択肢では
+      ない様に思われる。取り敢えずは command_not_found_handle を一時的に無効に
+      するしかない。
+
+    * bash-completion の側でも修正するべきか。もし plain Bash では progcomp の
+      最中には command_not_found_handle が無効化されるという事であれば
+      bash-completion の側で修正は必要にはならない。
+
+      command_not_found_handle() { echo "$FUNCNAME is called"; }
+
+
+      既に bash-completion で報告されていないか確認する。
+
+      https://github.com/scop/bash-completion/pull/390
+
+      ここで既に議論されている。scop は upstream bash に request できないかとい
+      う事を提案している。他にも色々の箇所でそういうのがあるとも述べている。
+
+      と言っても将来的に Bash の側で off にする機能ができるとしても、古い Bash
+      は依然として存在するので取り敢えず個別に対応していくべきなのではないかと
+      いう気がする。
+
+    取り敢えず command_not_found_handle は function#push する事にする。
+
 2022-07-07
 
   * main: fd 0, 1 が TTY かどうかのチェックが常に偽になっている [#D1833]
