@@ -4920,12 +4920,16 @@ function ble/widget/vi-command/commandline.hook {
 }
 
 function ble/widget/vi-command:w {
+  local file=
   if [[ $1 ]]; then
     builtin history -a "$1"
-    local file=$1
-  else
+    file=$1
+  elif [[ ${HISTFILE-} ]]; then
     builtin history -a
-    local file=${HISTFILE:-'~/.bash_history'}
+    file=$HISTFILE
+  else
+    ble/widget/vi-command/bell 'w: the history filename is empty or not specified'
+    return 1
   fi
   local wc
   ble/util/assign wc 'wc "$file"'
