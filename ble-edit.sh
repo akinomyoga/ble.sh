@@ -3447,8 +3447,7 @@ function .ble-edit.history-add {
     done
   fi
 
-  local histfile=
-
+  local use_bash300wa=
   if [[ $_ble_edit_history_loaded ]]; then
     if [[ $HISTCONTROL ]]; then
       local lastIndex=$((${#_ble_edit_history[@]}-1)) spec
@@ -3486,7 +3485,7 @@ function .ble-edit.history-add {
 
     # _ble_bash<30100 の時は必ずここを通る。
     # 始めに _ble_edit_history_loaded=1 になるので。
-    ((_ble_bash<30100)) && histfile="${HISTFILE:-$HOME/.bash_history}"
+    ((_ble_bash<30100)) && use_bash300wa=1
   else
     if [[ $HISTCONTROL ]]; then
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
@@ -3506,8 +3505,8 @@ function .ble-edit.history-add {
     ble/util/sprintf cmd 'eval -- %q' "$cmd"
   fi
 
-  if [[ $histfile ]]; then
-    builtin printf '%s\n' "$cmd" >> "$histfile"
+  if [[ $use_bash300wa ]]; then
+    [[ ${HISTFILE-} ]] && builtin printf '%s\n' "$cmd" >> "${HISTFILE-}"
   else
     history -s -- "$cmd"
   fi
