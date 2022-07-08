@@ -162,7 +162,8 @@
   - util (`blehook`): fix a bug that the the hook arguments are lost (reported by SuperSandro2000) `#D1804` 479795d
 - complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
-- decode (bind): do not treat non-beginning `#` as comments `#D1820` 65c4138
+- decode (`bind`): do not treat non-beginning `#` as comments `#D1820` 65c4138
+- history: disable the history file when `HISTFILE` is empty `#D1836` XXXXXXX
 
 ## Fixes
 
@@ -219,7 +220,7 @@
 - main: fix the workaround for `set -e` `#D1564` ab2f70b
   - main: fix the workaround for `set -u` `#D1575` 76073a9
   - main: fix the workaround for `set -eu` and refactor `#D1743` 6a946f0
-  - decode: fix the workaround for `set -e` with `--prompt=attach` `#D1832` XXXXXXX
+  - decode: fix the workaround for `set -e` with `--prompt=attach` `#D1832` 5111323
 - util: work around bash-3.0 bug `"${scal[@]/xxx}"` `#D1570` 24f79da
 - sabbrev (`ble-sabbrev`): fix delayed output before the initialization `#D1573` 5d85238
 - history: fix the workaround for bash-3.0 bug of reducing histories `#D1576` 15c9133
@@ -300,10 +301,10 @@
 - main: run `ble/base/unload` directly at the end of `EXIT` handler `#D1797` 115baec
 - util: optimize `ble/util/writearray` `#D1816` 96e9bf8
 - history: optimize processing of `erasedups` (motivated by SuperSandro2000) `#D1817` 944d48e
-- debug: add `ble/debug/profiler` (motivated by SuperSandro2000) `#D1824` f629698 XXXXXXX
-  - util (`ble/string#split`): optimize `#D1826` XXXXXXX
-  - global: avoid passing arbitrary strings through `awk -v var=value` `#D1827` XXXXXXX
-  - edit: properly set `LINENO` for `PS1`, `PROMPT_COMMAND`, and `DEBUG` `#D1830` XXXXXXX
+- debug: add `ble/debug/profiler` (motivated by SuperSandro2000) `#D1824` f629698 11aa4ab 7bb10a7
+  - util (`ble/string#split`): optimize `#D1826` 7bb10a7
+  - global: avoid passing arbitrary strings through `awk -v var=value` `#D1827` 82232de
+  - edit: properly set `LINENO` for `PS1`, `PROMPT_COMMAND`, and `DEBUG` `#D1830` 4d24f84
 
 ## Compatibility
 
@@ -352,7 +353,7 @@
   - main: force prompt-attach inside the nix-shell `rc` `#D1766` ceb2e7c
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d
 - main: check `/dev/tty` on startup (reported by andychu) `#D1749` 711c69f
-  - main: fix the check of tty on stdin/stdout `#D1833` XXXXXXX
+  - main: fix the check of tty on stdin/stdout `#D1833` 80f09c9
 - util: add identification of Windows Terminal `wt` `#D1758` e332dc5
 - complete: evaluate words for `noquote` (motivated by SuperSandro2000) `#D1767` 0a42299
 - edit (TRAPDEBUG): preserve original `DEBUG` trap and enabled it in `PROMPT_COMMAND` (motivated by ammarooo) `#D1772` `#D1773` ec2a67a
@@ -361,8 +362,8 @@
 - util: work around old `vte` not supporting `DECSCUSR` yet setting `TERM=xterm` (reported by dongxi8) `#D1785` 70277d0
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
 - complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13
-- history: work around broken timestamps in `HISTFILE` `#D1831` XXXXXXX
-- progcomp: disable `command_not_found_handle` `#D1834` XXXXXXX
+- history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
+- progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a
 
 ## Internal changes and fixes
 
@@ -403,8 +404,8 @@
 
 - prompt-git: detect staged changes `#D1718` 2b48e31
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
-- config/execmark: show exit status in a separate line `#D1828` XXXXXXX
-- prompt-git: ignore untracked files in submodules `#D1829` XXXXXXX
+- config/execmark: show exit status in a separate line `#D1828` 4d24f84
+- prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

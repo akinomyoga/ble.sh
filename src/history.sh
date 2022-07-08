@@ -61,9 +61,9 @@ else
 
     local msg="bash: SIGSEGV: suspicious timestamp in HISTFILE"
 
-    local histfile=${HISTFILE:-$HOME/.bash_history}
+    local histfile=${HISTFILE-}
     if [[ -s $histfile ]]; then
-      msg="$msg='${HISTFILE:-~/.bash_history}'"
+      msg="$msg='$histfile'"
       local rex_broken_timestamp='^#[0-9]\{12\}'
       ble/util/assign line 'ble/bin/grep -an "$rex_broken_timestamp" "$histfile"'
       ble/string#split line : "$line"
@@ -953,8 +953,8 @@ function ble/builtin/history/.initialize {
     ble/builtin/history/option:r
   fi
 
-  local histfile=${HISTFILE:-$HOME/.bash_history}
-  local rskip=$(ble/bin/wc -l "$histfile" 2>/dev/null)
+  local histfile=${HISTFILE-} rskip=0
+  [[ -e $histfile ]] && rskip=$(ble/bin/wc -l "$histfile" 2>/dev/null)
   ble/string#split-words rskip "$rskip"
   local min; ble/builtin/history/.get-min
   local max; ble/builtin/history/.get-max
@@ -1261,49 +1261,57 @@ function ble/builtin/history/option:d {
   local max; ble/builtin/history/.get-max
   _ble_builtin_history_prevmax=$max
 }
+function ble/builtin/history/.get-histfile {
+  histfile=${1:-${HISTFILE-}}
+  if [[ ! $histfile ]]; then
+    if [[ ${1+set} ]]; then
+      ble/util/print 'ble/builtin/history -a: the history filename is empty.' >&2
+    else
+      ble/util/print 'ble/builtin/history -a: the history file is not specified.' >&2
+    fi
+    return 1
+  fi
+  [[ $histfile ]]
+}
 ## @fn ble/builtin/history/option:a [filename]
 function ble/builtin/history/option:a {
   ble/builtin/history/.initialize skip0 || return "$?"
-  local histfile=${HISTFILE:-$HOME/.bash_history}
-  local filename=${1:-$histfile}
-  ble/builtin/history/.check-uncontrolled-change "$filename" append
-  local rskip; ble/builtin/history/.get-rskip "$filename"
-  ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append:fetch
-  [[ -r $filename ]] && ble/builtin/history/.read "$filename" "$rskip" fetch
-  ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append
+  local histfile; ble/builtin/history/.get-histfile "$@" || return "$?"
+  ble/builtin/history/.check-uncontrolled-change "$histfile" append
+  local rskip; ble/builtin/history/.get-rskip "$histfile"
+  ble/builtin/history/.write "$histfile" "$_ble_builtin_history_wskip" append:fetch
+  [[ -r $histfile ]] && ble/builtin/history/.read "$histfile" "$rskip" fetch
+  ble/builtin/history/.write "$histfile" "$_ble_builtin_history_wskip" append
   builtin history -a /dev/null # Bash 終了時に書き込まない
 }
 ## @fn ble/builtin/history/option:n [filename]
 function ble/builtin/history/option:n {
   # HISTFILE が更新されていなければスキップ
-  local histfile=${HISTFILE:-$HOME/.bash_history}
-  local filename=${1:-$histfile}
-  if [[ $filename == $histfile ]]; then
+  local histfile; ble/builtin/history/.get-histfile "$@" || return "$?"
+  if [[ $histfile == ${HISTFILE-} ]]; then
     local touch=$_ble_base_run/$$.history.touch
-    [[ $touch -nt $histfile ]] && return 0
+    [[ $touch -nt ${HISTFILE-} ]] && return 0
     : >| "$touch"
   fi
 
   ble/builtin/history/.initialize
-  local rskip; ble/builtin/history/.get-rskip "$filename"
-  ble/builtin/history/.read "$filename" "$rskip"
+  local rskip; ble/builtin/history/.get-rskip "$histfile"
+  ble/builtin/history/.read "$histfile" "$rskip"
 }
 ## @fn ble/builtin/history/option:w [filename]
 function ble/builtin/history/option:w {
   ble/builtin/history/.initialize skip0 || return "$?"
-  local histfile=${HISTFILE:-$HOME/.bash_history}
-  local filename=${1:-$histfile}
-  local rskip; ble/builtin/history/.get-rskip "$filename"
-  [[ -r $filename ]] && ble/builtin/history/.read "$filename" "$rskip" fetch
-  ble/builtin/history/.write "$filename" 0
+  local histfile; ble/builtin/history/.get-histfile "$@" || return "$?"
+  local rskip; ble/builtin/history/.get-rskip "$histfile"
+  [[ -r $histfile ]] && ble/builtin/history/.read "$histfile" "$rskip" fetch
+  ble/builtin/history/.write "$histfile" 0
   builtin history -a /dev/null # Bash 終了時に書き込まない
 }
-## @fn ble/builtin/history/option:r [filename]
+## @fn ble/builtin/history/option:r [histfile]
 function ble/builtin/history/option:r {
-  local histfile=${HISTFILE:-$HOME/.bash_history}
-  local filename=${1:-$histfile}
+  local histfile; ble/builtin/history/.get-histfile "$@" || return "$?"
   ble/builtin/history/.initialize
-  ble/builtin/history/.read "$filename" 0
+  ble/builtin/history/.read "$histfile" 0
 }
 ## @fn ble/builtin/history/option:p
 ##   Workaround for bash-3.0 -- 5.0 bug
@@ -1662,7 +1670,7 @@ function ble/builtin/history/option:s {
     done
   fi
 
-  local histfile=
+  local use_bash300wa=
   if [[ $_ble_history_load_done ]]; then
     if [[ $HISTCONTROL ]]; then
       # Note: ble/builtin/history/erasedups によって後の builtin history -s の為
@@ -1695,7 +1703,7 @@ function ble/builtin/history/option:s {
 
     # _ble_bash<30100 の時は必ずここを通る。
     # 初期化時に _ble_history_load_done=1 になるので。
-    ((_ble_bash<30100)) && histfile=${HISTFILE:-$HOME/.bash_history}
+    ((_ble_bash<30100)) && use_bash300wa=1
   else
     if [[ $HISTCONTROL ]]; then
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
@@ -1712,15 +1720,15 @@ function ble/builtin/history/option:s {
   fi
   ble/history/.update-position
 
-  if [[ $histfile ]]; then
+  if [[ $use_bash300wa ]]; then
     # bash < 3.1 workaround
     if [[ $cmd == *$'\n'* ]]; then
       # Note: 改行を含む場合は %q は常に $'' の形式になる。
       ble/util/sprintf cmd 'eval -- %q' "$cmd"
     fi
     local tmp=$_ble_base_run/$$.history.tmp
-    [[ $bleopt_history_share ]] ||
-      ble/util/print "$cmd" >> "$histfile"
+    [[ ${HISTFILE-} && ! $bleopt_history_share ]] &&
+      ble/util/print "$cmd" >> "${HISTFILE-}"
     ble/util/print "$cmd" >| "$tmp"
     builtin history -r "$tmp"
   else
@@ -1806,7 +1814,7 @@ function ble/builtin/history {
     ble/builtin/history/option:d "$opt_d"
     flag_processed=1
   elif [[ $opt_a ]]; then
-    ble/builtin/history/option:"$opt_a" "$1"
+    ble/builtin/history/option:"$opt_a" "$@"
     flag_processed=1
   fi
   if [[ $flag_processed ]]; then

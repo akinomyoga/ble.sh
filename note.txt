@@ -1821,11 +1821,6 @@ bash_tips
   - Acknowledgments
   - keymap の移動 (これは別 commit にする?)
 
-2022-07-08
-
-  * HISTFILE が設定されていない時は既定の位置に書き込むのではなくそもそも履歴ファ
-    イルが無効化される様だ。
-
 2022-07-06
 
   * syntax: "function word1 word2 word3 word4()"
@@ -6468,6 +6463,12 @@ bash_tips
 
 2022-07-08
 
+  * history: HISTFILE が空の時は履歴ファイルは無効化する [#D1836]
+
+    HISTFILE が設定されていない時は既定の位置 (.bash_history) に書き込むのでは
+    なくそもそも履歴ファイルが無効化される様だ。今まで .bash_history に対して読
+    み書きしていたのを修正する。
+
   * 整数が IFS に含まれている可能性もあるので ${#...} や $((...)) や >&$fd も quote する [#D1835]
 
     redirection も word-splitting の対象である。今まで数字は空白でないから大丈
@@ -6577,7 +6578,7 @@ bash_tips
 
 2022-07-05
 
-  * bash: history timestamp に問題がある時に history の初期化が正しくない [#D1831]
+  * bash: history timestamp に問題がある時に history の初期化が正しくない (reported by johnyaku) [#D1831]
     https://github.com/akinomyoga/ble.sh/issues/202
 
     bash がエラーメッセージを出力する (bash-5.0+) または segfault する
