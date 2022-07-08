@@ -5455,8 +5455,7 @@ function ble-edit/history/add/.command-history {
     done
   fi
 
-  local histfile=
-
+  local use_bash300wa=
   if [[ $_ble_edit_history_loaded ]]; then
     if [[ $HISTCONTROL ]]; then
       local ignorespace ignoredups erasedups spec
@@ -5504,7 +5503,7 @@ function ble-edit/history/add/.command-history {
 
     # _ble_bash<30100 の時は必ずここを通る。
     # 初期化時に _ble_edit_history_loaded=1 になるので。
-    ((_ble_bash<30100)) && histfile=${HISTFILE:-$HOME/.bash_history}
+    ((_ble_bash<30100)) && use_bash300wa=1
   else
     if [[ $HISTCONTROL ]]; then
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
@@ -5525,10 +5524,10 @@ function ble-edit/history/add/.command-history {
     ble/util/sprintf cmd 'eval -- %q' "$cmd"
   fi
 
-  if [[ $histfile ]]; then
+  if [[ $use_bash300wa ]]; then
     # bash-3.1 workaround
     local tmp=$_ble_base_run/$$.ble_edit_history_add.txt
-    builtin printf '%s\n' "$cmd" >> "$histfile"
+    [[ ${HISTFILE-} ]] && builtin printf '%s\n' "$cmd" >> "${HISTFILE-}"
     builtin printf '%s\n' "$cmd" >| "$tmp"
     builtin history -r "$tmp"
   else
