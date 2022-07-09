@@ -406,6 +406,7 @@
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
+- contrib/fzf-completion: fix integration (reported by ferdinandyb) `#D1837` XXXXXXX
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
