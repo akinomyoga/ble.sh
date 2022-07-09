@@ -3490,6 +3490,12 @@ function ble/complete/progcomp/.compgen {
       ble/util/conditional-sync \
         ble/function#advice/do \
         "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall' 2>/dev/null
+
+    # WA for zoxide TAB
+    if [[ $comp_func == _z ]]; then
+      ble-import -f contrib/integration/zoxide
+      ble/contrib:integration/zoxide/adjust
+    fi
   fi
   if [[ $comp_prog ]]; then
     # aws

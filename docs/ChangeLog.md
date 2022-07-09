@@ -364,7 +364,8 @@
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
 - complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
-- progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 XXXXXXX
+- progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 973ae8c
+- complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` XXXXXXX
 
 ## Internal changes and fixes
 
