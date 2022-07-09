@@ -6595,6 +6595,11 @@ bash_tips
       おける変更である。この時に一応 function#pop に対しても対応する変更がなさ
       れているが、それが不完全だったという事。
 
+    * 2022-07-10 "bash: return: echo: numeric argument required"
+      https://github.com/akinomyoga/ble.sh/issues/208
+
+      これはミスだ。修正する。
+
 2022-07-07
 
   * main: fd 0, 1 が TTY かどうかのチェックが常に偽になっている [#D1833]

@@ -3671,7 +3671,7 @@ function ble/complete/progcomp/.try-load-completion {
   ble/function#push command_not_found_handle
   __load_completion "$1" < /dev/null &>/dev/null; local ext=$?
   ble/function#pop command_not_found_handle
-  ((ext==0)) || return "$1"
+  ((ext==0)) || return "$ext"
 
   builtin complete -p -- "$1" &>/dev/null
 }
