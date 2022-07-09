@@ -1881,7 +1881,7 @@ function ble/util/.cache/update-locale {
         enc=UTF-8
       fi
 
-      ble/is-function "ble-text-b2c+$enc" &&
+      ble/util/isfunction "ble-text-b2c+$enc" &&
         _ble_util_locale_encoding=$enc
     fi
   fi

@@ -6853,7 +6853,7 @@ function ble/widget/command-help.core {
     LESS="$LESS -r" builtin eval -- "$pager" <<< "$def" && return
   fi
 
-  if ble/is-function ble/bin/man; then
+  if ble/util/isfunction ble/bin/man; then
     MANOPT= ble/bin/man "${command##*/}" 2>/dev/null && return
     # Note: $(man "${command##*/}") と (特に日本語で) 正しい結果が得られない。
     # if local content=$(MANOPT= ble/bin/man "${command##*/}" 2>&1) && [[ $content ]]; then
