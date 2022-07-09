@@ -3663,6 +3663,19 @@ function ble/complete/progcomp/.split-alias-words {
   ret=("${words[@]:i}")
 }
 
+## @fn ble/complete/progcomp/.try-load-completion cmd
+##   bash-completion の loader を呼び出して遅延補完設定をチェックする。
+function ble/complete/progcomp/.try-load-completion {
+  ble/is-function __load_completion || return 1
+
+  ble/function#push command_not_found_handle
+  __load_completion "$1" < /dev/null &>/dev/null; local ext=$?
+  ble/function#pop command_not_found_handle
+  ((ext==0)) || return "$1"
+
+  builtin complete -p -- "$1" &>/dev/null
+}
+
 ## @fn ble/complete/progcomp cmd opts
 ##   補完指定を検索して対応する補完関数を呼び出します。
 ##   @var[in] comp_line comp_words comp_point comp_cword
@@ -3723,11 +3736,7 @@ function ble/complete/progcomp {
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
-    elif
-      # bash-completion の loader を呼び出して遅延補完設定をチェックする。
-      ble/function#try __load_completion "${ucmd##*/}" &>/dev/null &&
-        builtin complete -p -- "${ucmd##*/}" &>/dev/null
-    then
+    elif ble/complete/progcomp/.try-load-completion "${ucmd##*/}"; then
       ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"

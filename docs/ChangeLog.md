@@ -163,7 +163,7 @@
 - complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
 - decode (`bind`): do not treat non-beginning `#` as comments `#D1820` 65c4138
-- history: disable the history file when `HISTFILE` is empty `#D1836` XXXXXXX
+- history: disable the history file when `HISTFILE` is empty `#D1836` 9549e83
 
 ## Fixes
 
@@ -363,7 +363,7 @@
 - progcomp: work around the cobra V2 description hack (reported by SuperSandro2000) `#D1803` 71d0736
 - complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
-- progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a
+- progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a XXXXXXX
 
 ## Internal changes and fixes
 
@@ -398,7 +398,7 @@
 - test: clean up check failures by `make check` and `make scan` `#D1812` bb3e0a3
 - util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072
 - github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
-- global: quote numbers for unexpected `IFS` `#D1835` XXXXXXX
+- global: quote numbers for unexpected `IFS` `#D1835` 0179afc
 
 ## Contrib
 
@@ -406,7 +406,7 @@
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
-- contrib/fzf-completion: fix integration (reported by ferdinandyb) `#D1837` XXXXXXX
+- contrib/fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

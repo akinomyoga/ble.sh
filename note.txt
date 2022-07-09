@@ -6566,6 +6566,26 @@ bash_tips
 
     取り敢えず command_not_found_handle は function#push する事にする。
 
+    * 2022-07-09 未だ直っていないという (reported by telometto)
+      https://github.com/akinomyoga/ble.sh/issues/192#issuecomment-1179191747
+
+      先ずは PackageKit をインストールして動作を確認しようと思ったら既にインス
+      トールされている。然し /etc/profile.d/PackageKit.sh を確認してみても存在
+      していない。dnf search で検索してみると PackageKit-command-not-found とい
+      うのがあったのでそれを入れてみると入った。再現した。
+
+      確かに command_not_found が呼び出されて固まっている。然し、
+      command_not_found は一時的に無効化している筈。command_not_found_handle の
+      中から呼び出しの構造を調べてみた所、どうやら ble.sh が独自に
+      __load_completion を呼び出していてその時に command_not_found_handle が走っ
+      ている様だ。つまり、__load_completion を呼び出す時にも workaround で
+      command_not_found_handle を無効化する必要があるという事。
+
+      ? __load_completion を呼び出す時には別に tty を封じてはいなかった様な気が
+        するが固まるのは何故だろうか。うーん。不思議だ。確認した所、&>/dev/null
+        で寧ろ入力ではなくて出力の方を組み替えている。なのに出力は出来て入力は
+        できないというのも変な事である。
+
 2022-07-07
 
   * main: fd 0, 1 が TTY かどうかのチェックが常に偽になっている [#D1833]
