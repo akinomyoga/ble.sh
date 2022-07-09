@@ -6463,6 +6463,13 @@ bash_tips
 
 2022-07-10
 
+  * encoding:C: 初期化出来ない。大量のエラーメッセージ [#D1839]
+
+    0.2 backport 中に気づいたのだが encoding:C で既に削除された関数
+    ble/init:bind/bind-s が使われている。実際に input_encoding=C にして開始して
+    みると大量のエラーメッセージが表示されて変な文字列が入力される。
+    これは単に改めて関数を追加する事にした。
+
   * complete: zoxide completion が動かない (reported by ferdinandyb) [#D1838]
     https://github.com/akinomyoga/ble.sh/issues/207
 

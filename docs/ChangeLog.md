@@ -200,6 +200,7 @@
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
   - global: use a better workaround of bash-4.2 `declare -gA` by separating assignment `#D1567` 2408a20
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
+  - decode (`encoding:C`): fix initialization for isolated ESC `#D1839` XXXXXXX
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
 - main: fix a bug that unset `IFS` is not correctly restored `#D1489` 808f6f7

@@ -23,6 +23,10 @@ function ble/init:bind/append-macro {
   ble/util/print "${condition}builtin bind    '${sarg//$q/$Q}'" >> "$fbind1"
   ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >> "$fbind2"
 }
+function ble/init:bind/bind-s {
+  local sarg=$1
+  ble/util/print "builtin bind '${sarg//$q/$Q}'" >> "$fbind1"
+}
 
 function ble/init:bind/generate-binder {
   local fbind1=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.bind
