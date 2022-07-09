@@ -3141,9 +3141,11 @@ function ble/function#pop {
     if ble/is-function "$name"; then
       builtin unset -f "$name"
       return 0
-    else
-      ble/util/print "ble/function#push: $name is not a function." >&2
+    elif ble/bin#has "$name"; then
+      ble/util/print "ble/function#pop: $name is not a function." >&2
       return 1
+    else
+      return 0
     fi
   else
     local def; ble/function#getdef "ble/function#push/$index:$name"
