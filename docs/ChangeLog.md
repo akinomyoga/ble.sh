@@ -269,6 +269,7 @@
 - history: work around possible dirty prefix `*` in the history output `#D1808` 64a740d
 - decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
 - command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` XXXXXXX
+- complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` XXXXXXX
 
 ## Documentation
 

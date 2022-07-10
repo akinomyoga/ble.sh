@@ -3689,9 +3689,12 @@ function ble/complete/progcomp {
   local cmd=${1-${comp_words[0]}} opts=$2
 
   # copy compline variables
-  local -a orig_comp_words; orig_comp_words=("${comp_words[@]}")
-  local comp_words comp_line=$comp_line comp_point=$comp_point comp_cword=$comp_cword
-  comp_words=("$cmd" "${orig_comp_words[@]:1}")
+  local orig_comp_words orig_comp_cword=$comp_cword orig_comp_line=$comp_line orig_comp_point=$comp_point
+  orig_comp_words=("${comp_words[@]}")
+  local comp_words comp_cword=$comp_cword comp_line=$comp_line comp_point=$comp_point
+  comp_words=("${orig_comp_words[@]}")
+  [[ $cmd == "${orig_comp_words[0]}" ]] ||
+    ble/complete/progcomp/.compline-rewrite-command "$cmd"
 
   local orig_qcmds_set=
   local -a orig_qcmds=()
@@ -3778,6 +3781,9 @@ function ble/complete/progcomp {
 
   # comp_words の再構築
   comp_words=("${orig_comp_words[@]}")
+  comp_cword=$orig_comp_cword
+  comp_line=$orig_comp_line
+  comp_point=$orig_comp_point
   [[ $orig_qcmds_set ]] &&
     ble/complete/progcomp/.compline-rewrite-command "${orig_qcmds[@]}"
   ble/complete/progcomp/.compgen "default:$opts"

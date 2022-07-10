@@ -6463,6 +6463,43 @@ bash_tips
 
 2022-07-10
 
+  * complete: "g add newdir/z[TAB]" とするとファイル名が消える [#D1841]
+
+    % 既に登録されているファイルの場合には問題は起こらない様だ。既に登録されて
+    % いるファイルがあるディレクトリの中の新しいファイルであっても、そのファイ
+    % ルが登録されていない場合にはやはりファイル名が消える→というか改めて試し
+    % た所既に登録されているファイルでもやはりファイル名が消える。
+
+    "git add newdir/z[TAB] " の時には問題は生じない。
+
+    これは分かった。COMP_POINT が正しく更新されていない。
+
+      declare -- COMP_LINE="git add lib/i"
+      declare -- COMP_POINT="11"
+      declare -a COMP_WORDS=([0]="git" [1]="add" [2]="lib/i")
+      declare -- COMP_CWORD="2"
+
+    そしてこれは comp_line,comp_point の更新が正しく出来ていない事によると思わ
+    れる。と思ったがそうでもない様だ。comp_line, comp_point の時点では変な事に
+    はなっていない。つまり最初のコマンドを差し替える時点で COMP_POINT を更新す
+    るのを忘れているという事。うーん。と思ったが
+
+      declare -- comp_line="g add lib/i"
+      declare -- comp_point="11"
+      declare -a comp_words=([0]="git" [1]="add" [2]="lib/i")
+      declare -- comp_cword="2"
+
+    となっていて comp_words と comp_line で不整合が生じている。コマンド名を置き
+    換える時にちゃんと comp_line, comp_point も置き換える様に修正した。
+
+      declare -- comp_line="git add lib/i"
+      declare -- comp_point="13"
+      declare -a comp_words=([0]="git" [1]="add" [2]="lib/i")
+      declare -- comp_cword="2"
+
+    * 実装してから思ったが単に .compline-rewrite-command を呼び出せば良いだけで
+      は。→その様に書き換えた。ちゃんと動作しているのでOK。
+
   * command-help (ble/widget/command-help/.read-man): ble/util/assign/.rmtmp を忘れている [#D1840]
 
     0.2 backport 中に気づいた。これは単純に追加すれば良い。
