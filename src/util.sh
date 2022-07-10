@@ -3413,7 +3413,7 @@ function ble/term/modifyOtherKeys/.update {
         ((_ble_term_modifyOtherKeys_current>=2)) &&
           ble/util/buffer $'\e[<u' ;;
       (2) # push keyboard mode
-        ((_ble_term_modifyOtherKeys_current>=2)) &&
+        ((_ble_term_modifyOtherKeys_current>=2)) ||
           ble/util/buffer $'\e[>1u' ;;
       esac
     else
