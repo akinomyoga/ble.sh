@@ -9427,6 +9427,7 @@ function ble/widget/command-help/.read-man {
   local pager="sh -c 'cat >| \"\$_ble_local_tmpfile\"'"
   MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
   ble/util/readfile man_content "$_ble_local_tmpfile" # 80ms
+  ble/util/assign/.rmtmp
   return "$ext"
 }
 

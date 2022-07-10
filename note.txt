@@ -6463,6 +6463,10 @@ bash_tips
 
 2022-07-10
 
+  * command-help (ble/widget/command-help/.read-man): ble/util/assign/.rmtmp を忘れている [#D1840]
+
+    0.2 backport 中に気づいた。これは単純に追加すれば良い。
+
   * encoding:C: 初期化出来ない。大量のエラーメッセージ [#D1839]
 
     0.2 backport 中に気づいたのだが encoding:C で既に削除された関数

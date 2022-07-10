@@ -877,7 +877,7 @@ function ble/string#last-index-of {
 }
 
 ## @fn ble/string#toggle-case text
-## @fn ble/string#touppwer text
+## @fn ble/string#toupper text
 ## @fn ble/string#tolower text
 ##   @param[in] text
 ##   @var[out] ret

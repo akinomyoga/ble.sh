@@ -268,6 +268,7 @@
 - edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
 - history: work around possible dirty prefix `*` in the history output `#D1808` 64a740d
 - decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
+- command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` XXXXXXX
 
 ## Documentation
 
@@ -366,7 +367,7 @@
 - complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
 - progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 973ae8c
-- complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` XXXXXXX
+- complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
 
 ## Internal changes and fixes
 
