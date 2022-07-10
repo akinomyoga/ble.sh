@@ -103,7 +103,7 @@
 - util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` 6d20f51
   - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` 1e19a67
 - history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a 3110967
-- prompt: support `bleopt prompt_{emacs,vi}_mode_indicator` (motivated by ferdinandyb) `#D1843` XXXXXXX
+- prompt: support `bleopt prompt_{emacs,vi}_mode_indicator` (motivated by ferdinandyb) `#D1843` 2b905f8
 
 ## Changes
 
@@ -166,7 +166,8 @@
 - decode (`bind`): do not treat non-beginning `#` as comments `#D1820` 65c4138
 - history: disable the history file when `HISTFILE` is empty `#D1836` 9549e83
 - complete: generate options by empty-word copmletion after filenames (reported by geekscrapy) `#D1846` 6954b13
-  - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` XXXXXXX
+  - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` 1c7f7a1
+- syntax (`extract-command`): extract unexpected command names as commands `#D1848` XXXXXXX
 
 ## Fixes
 
@@ -375,7 +376,7 @@
 - complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
-- util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` XXXXXXX
+- util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
 
 ## Internal changes and fixes
 

@@ -3217,6 +3217,7 @@ function ble/syntax:bash/check-variable-assignment {
 _BLE_SYNTAX_FCTX[CTX_ARGX]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGX0]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX]=ble/syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDX0]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX1]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXT]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXC]=ble/syntax:bash/ctx-command
@@ -3426,6 +3427,7 @@ _ble_syntax_bash_command_EndWtype[CTX_ARGX0]=$CTX_ARGI
 _ble_syntax_bash_command_EndWtype[CTX_ARGVX]=$CTX_ARGVI
 _ble_syntax_bash_command_EndWtype[CTX_ARGEX]=$CTX_ARGEI
 _ble_syntax_bash_command_EndWtype[CTX_CMDX]=$CTX_CMDI
+_ble_syntax_bash_command_EndWtype[CTX_CMDX0]=$CTX_CMDX0
 _ble_syntax_bash_command_EndWtype[CTX_CMDX1]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXT]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXC]=$CTX_CMDI
@@ -3478,19 +3480,21 @@ function ble/syntax:bash/ctx-command/check-word-end {
 
   local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
   local word=${text:wbegin:wlen}
-  local wt=$wtype
+  local stat_wt=$wtype # 単語解析中の wtype
 
-  [[ ${_ble_syntax_bash_command_EndWtype[wt]} ]] &&
-    wtype=${_ble_syntax_bash_command_EndWtype[wt]}
-  local rex_expect_command=${_ble_syntax_bash_command_Expect[wt]}
+  [[ ${_ble_syntax_bash_command_EndWtype[stat_wt]} ]] &&
+    wtype=${_ble_syntax_bash_command_EndWtype[stat_wt]}
+  local rex_expect_command=${_ble_syntax_bash_command_Expect[stat_wt]}
   if [[ $rex_expect_command ]]; then
     # 特定のコマンドのみを受け付ける文脈
-    [[ $word =~ $rex_expect_command ]] || ((wtype=ATTR_ERR))
-  fi
-  if ((wt==CTX_CMDX1)); then
+    [[ $word =~ $rex_expect_command ]] || ((wtype=CTX_CMDX0))
+  elif ((stat_wt==CTX_ARGX0||stat_wt==CTX_CPATX0)); then
+    ((wtype=ATTR_ERR))
+  elif ((stat_wt==CTX_CMDX1)); then
     local rex='^(then|elif|else|do|\}|done|fi|esac)$'
-    [[ $word =~ $rex ]] && ((wtype=ATTR_ERR))
+    [[ $word =~ $rex ]] && ((wtype=CTX_CMDX0))
   fi
+  local tree_wt=$wtype # 実際に単語として登録された wtype
   ble/syntax/parse/word-pop
 
   if ((ctx==CTX_CMDI)); then
@@ -3498,7 +3502,10 @@ function ble/syntax:bash/ctx-command/check-word-end {
     ble/alias#expand "$word"; local word_expanded=$ret
 
     # キーワードの処理
-    if ((wt!=CTX_CMDXV)); then # Note: 変数代入の直後はキーワードは処理しない
+    if ((tree_wt==CTX_CMDX0)); then
+      ((_ble_syntax_attr[wbeg]=ATTR_ERR,ctx=CTX_ARGX))
+      return 0
+    elif ((stat_wt!=CTX_CMDXV)); then # Note: 変数代入の直後はキーワードは処理しない
       local processed=
       case "$word_expanded" in
       ('[[')
@@ -3527,7 +3534,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
       ('case')               ((ctx=CTX_CARGX1)); processed=begin ;;
       ('{')
         ((ctx=CTX_CMDX1))
-        if ((wt==CTX_CMDXD||wt==CTX_CMDXD0)); then
+        if ((stat_wt==CTX_CMDXD||stat_wt==CTX_CMDXD0)); then
           processed=middle # "for ...; {" などの時
         else
           processed=begin
@@ -3599,9 +3606,11 @@ function ble/syntax:bash/ctx-command/check-word-end {
       local rematch2=${BASH_REMATCH[2]}
 
       if [[ $rematch2 == '('*')' ]]; then
-        # case: /hoge ( *)/ 関数定義 (単語の種類を変更)
+        # case: /hoge ( *)/ 関数定義 (単語の種類 wtype を変更)
         #   上方の ble/syntax/parse/word-pop で設定した値を書き換え。
-        _ble_syntax_tree[i-1]="$ATTR_FUNCDEF ${_ble_syntax_tree[i-1]#* }"
+        # Note: 単語の種類が CTX_CMDX0 の時はそのままにする。
+        ((tree_wt==CTX_CMDX0)) ||
+          _ble_syntax_tree[i-1]="$ATTR_FUNCDEF ${_ble_syntax_tree[i-1]#* }"
 
         ((_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch1},
           _ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch2},
@@ -3663,6 +3672,7 @@ _ble_syntax_bash_command_Opt[CTX_ARGX]=1
 _ble_syntax_bash_command_Opt[CTX_ARGX0]=1
 _ble_syntax_bash_command_Opt[CTX_ARGVX]=1
 _ble_syntax_bash_command_Opt[CTX_ARGEX]=1
+_ble_syntax_bash_command_Opt[CTX_CMDX0]=1
 _ble_syntax_bash_command_Opt[CTX_CMDXV]=1
 _ble_syntax_bash_command_Opt[CTX_CMDXE]=1
 _ble_syntax_bash_command_Opt[CTX_CMDXD0]=1
@@ -3680,7 +3690,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
     elif [[ $spaces == *$'\n'* ]]; then
       # 改行がある場合: ヒアドキュメントの確認 / 改行による文脈更新
       ble/syntax:bash/check-here-document-from "$spaces" && return 0
-      if ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_CMDXV||ctx==CTX_CMDXT||ctx==CTX_CMDXE)); then
+      if ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_CMDX0||ctx==CTX_CMDXV||ctx==CTX_CMDXT||ctx==CTX_CMDXE)); then
         ((ctx=CTX_CMDX))
       elif ((ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_CMDXD0)); then
         ((ctx=CTX_CMDXD))
@@ -3706,7 +3716,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
       ((ctx=CTX_CMDXV,
         _ble_syntax_attr[i]=ATTR_ERR))
     elif ((ctx==CTX_CMDXE)); then
-      ((ctx=CTX_ARGX0))
+      ((ctx=CTX_CMDX0))
     elif ((ctx==CTX_FARGX3)); then
       ((_ble_syntax_attr[i]=ATTR_ERR))
     fi
@@ -3797,7 +3807,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
     fi
 
     if [[ $attr ]]; then
-      ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDXE||ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX)?attr:ATTR_ERR,
+      ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_CMDX0||ctx==CTX_CMDXV||ctx==CTX_CMDXE||ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX)?attr:ATTR_ERR,
         i+=1))
       ble/syntax/parse/nest-pop
       return 0
@@ -3817,6 +3827,7 @@ _ble_syntax_bash_command_BeginCtx[CTX_ARGX0]=$CTX_ARGI
 _ble_syntax_bash_command_BeginCtx[CTX_ARGVX]=$CTX_ARGVI
 _ble_syntax_bash_command_BeginCtx[CTX_ARGEX]=$CTX_ARGEI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDX]=$CTX_CMDI
+_ble_syntax_bash_command_BeginCtx[CTX_CMDX0]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDX1]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDXT]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDXC]=$CTX_CMDI
@@ -3894,7 +3905,7 @@ function ble/syntax:bash/ctx-command {
     ble/util/assert '
       ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||
           ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_COARGX||
-          ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
+          ctx==CTX_CMDX||ctx==CTX_CMDX0||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
           ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV))'  "invalid ctx=$ctx @ i=$i"
     ble/util/assert '((wbegin<0&&wtype<0))' "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
     ble/syntax:bash/ctx-command/.check-delimiter-or-redirect; return "$?"
@@ -4596,7 +4607,7 @@ function ble/syntax:bash/is-complete {
     # (4) 完結している文脈値の時以外
     local ctx=${stat[0]}
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||
-        ctx==CTX_CMDX||ctx==CTX_CMDXT||ctx==CTX_CMDXE||ctx==CTX_CMDXV||
+        ctx==CTX_CMDX||ctx==CTX_CMDX0||ctx==CTX_CMDXT||ctx==CTX_CMDXE||ctx==CTX_CMDXV||
         ctx==CTX_TARGX1||ctx==CTX_TARGX2)) || return 1
   fi
 
@@ -5429,6 +5440,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-identifier {
   fi
 }
 _ble_syntax_bash_complete_check_prefix[CTX_ARGX0]="next-word sabbrev"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDX0]="next-word sabbrev"
 _ble_syntax_bash_complete_check_prefix[CTX_CPATX0]="next-word sabbrev"
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-word wordlist:-rs:';:{:do'"
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-word wordlist:-rs:'{:do'"
@@ -5720,7 +5732,7 @@ function ble/syntax/completion-context/.check-here {
       ble/syntax/completion-context/.add wordlist:-rs:';:{:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
       ble/syntax/completion-context/.add wordlist:-rs:'{:do' "$index"
-    elif ((ctx==CTX_ARGX0||ctx==CTX_CPATX0)); then
+    elif ((ctx==CTX_ARGX0||ctx==CTX_CPATX0||ctx==CTX_CMDX0)); then
       ble/syntax/completion-context/.add sabbrev "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
       ble/syntax/completion-context/.add argument "$index"
@@ -5818,7 +5830,7 @@ function ble/syntax:bash/extract-command/.register-word {
 
 function ble/syntax:bash/extract-command/.construct-proc {
   if [[ $wtype =~ ^[0-9]+$ ]]; then
-    if ((wtype==CTX_CMDI)); then
+    if ((wtype==CTX_CMDI||wtype==CTX_CMDX0)); then
       if ((EC_pos<wbegin)); then
         comp_line= comp_point= comp_cword= comp_words=()
       else
@@ -6072,6 +6084,7 @@ function ble/syntax/attr2iface/color_defface.onload {
   ble/syntax/attr2iface/.define CTX_ARGEI    syntax_default
   ble/syntax/attr2iface/.define CTX_ARGER    syntax_default
   ble/syntax/attr2iface/.define CTX_CMDX     syntax_default
+  ble/syntax/attr2iface/.define CTX_CMDX0    syntax_default
   ble/syntax/attr2iface/.define CTX_CMDX1    syntax_default
   ble/syntax/attr2iface/.define CTX_CMDXT    syntax_default
   ble/syntax/attr2iface/.define CTX_CMDXC    syntax_default

@@ -3475,6 +3475,9 @@ function ble/complete/progcomp/.compgen {
       # https://github.com/scop/bash-completion/pull/556 (fixed in bash-completion 2.12)
       ble/function#suppress-stderr _scp_remote_files 2>/dev/null
 
+      # https://github.com/scop/bash-completion/pull/773 (fixed in bash-completion 2.12)
+      ble/function#suppress-stderr _function 2>/dev/null
+
       ble/complete/mandb:_parse_help/inject
     fi
 
