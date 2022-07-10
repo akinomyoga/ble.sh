@@ -6461,6 +6461,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-07-11
+
+  * kitty の keyboard protocol が有効になっていなかった [#D1842]
+    https://github.com/akinomyoga/ble.sh/issues/209
+
+    返信を書いている時に kitty の振る舞いを確認していて気づいたのだがちゃんと
+    kitty Keyboard Protocol が有効になっていなかった。"push keyboard mode" の分
+    岐の条件が反転していた。
+
 2022-07-10
 
   * complete: "g add newdir/z[TAB]" とするとファイル名が消える [#D1841]

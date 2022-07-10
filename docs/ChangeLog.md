@@ -369,6 +369,8 @@
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
 - progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 973ae8c
 - complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
+- util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` XXXXXXX
+  - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` XXXXXXX
 
 ## Internal changes and fixes
 
