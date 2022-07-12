@@ -4917,7 +4917,7 @@ function ble/complete/source:option {
     [[ $entry == *"$fs"*"$fs"*"$fs"?* ]] && has_desc=1
   done
 
-  [[ $has_desc ]] && bleopt complete_menu_style=desc
+  [[ $has_desc && :$opts: != *:empty:* ]] && bleopt complete_menu_style=desc
 }
 
 #------------------------------------------------------------------------------

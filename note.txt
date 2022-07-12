@@ -6477,6 +6477,13 @@ bash_tips
     補完の時にはオプションを先に表示して、空文字列に対する補完の時にはファイル
     名よりも後にオプションを生成する様に変更した。
 
+    * 2022-07-12 空文字列からの補完によるオプション生成の時は説明を表示しない。
+      https://github.com/akinomyoga/ble.sh/issues/204#issuecomment-1181743592
+
+      これは本当はその内に詳細に設定できる様にしたいが、色々考えてから実装した
+      い。然し、今回の場合は確かにその方が良さそうな気がするので既定の動作とし
+      て採用してしまって良い。
+
   * kitty の keyboard protocol を terminal multiplexer 越しに有効化する (motivated by ferdinandyb) [#D1845]
     https://github.com/akinomyoga/ble.sh/issues/209#issuecomment-1179994203
 
