@@ -4862,9 +4862,15 @@ function ble/complete/source:option/.is-option-context {
 }
 
 function ble/complete/source:option {
-  # 空文字列もしくは /^[-+].*/ の時にだけ候補生成 (曖昧補完で最初の /^[-+]/ は補わない)
-  local rex='^-[-+'$_ble_complete_option_chars']*$|^\+[_'$_ble_complete_option_chars']*$'
-  [[ ! $COMPV || $COMPV =~ $rex ]] || return 0
+  local opts=$1
+  if [[ :$opts: == *:empty:* ]]; then
+    # 空文字列に対する補完を明示的に実行
+    [[ ! $COMPV ]] || return 0
+  else
+    # /^[-+].*/ の時にだけ候補生成 (曖昧補完で最初の /^[-+]/ は補わない)
+    local rex='^-[-+'$_ble_complete_option_chars']*$|^\+[_'$_ble_complete_option_chars']*$'
+    [[ $COMPV =~ $rex ]] || return 0
+  fi
 
   local COMPS=$COMPS COMPV=$COMPV
   ble/complete/source/reduce-compv-for-ambiguous-match
@@ -5001,14 +5007,18 @@ function ble/complete/source:argument {
 
   local old_cand_count=$cand_count
 
-  # try complete&compgen
+  #----------------------------------------------------------------------------
+  # 1. Attempt user-defined completion
   ble/complete/source:argument/.generate-user-defined-completion; local ext=$?
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
   [[ $comp_opts == *:ble/no-default:* ]] && return "$ext"
 
+  #----------------------------------------------------------------------------
+  # 2. Attempt built-in argument completion
+
   # "-option" の時は complete options based on mandb
   ble/complete/source:option; local ext=$?
-  ((ext==148||cand_count>old_cand_count&&${#COMPV})) && return "$ext"
+  ((ext==148)) && return "$ext"
 
   # 候補が見付からない場合 (または曖昧補完で COMPV に / が含まれる場合)
   if [[ $comp_opts == *:dirnames:* ]]; then
@@ -5017,7 +5027,14 @@ function ble/complete/source:argument {
     # filenames, default, bashdefault
     ble/complete/source:file
   fi; local ext=$?
+  ((ext==148)) && return "$ext"
+
+  # 空文字列に対するオプション生成はファイル名よりも後で試みる
+  ble/complete/source:option empty; local ext=$?
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
+
+  #----------------------------------------------------------------------------
+  # 3. Attempt rhs completion
 
   if local rex='^/?[-_a-zA-Z0-9.]+[:=]|^-[^-/=:]'; [[ $COMPV =~ $rex ]]; then
     # var=filename --option=filename /I:filename など。

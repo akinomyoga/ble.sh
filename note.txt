@@ -6463,6 +6463,20 @@ bash_tips
 
 2022-07-12
 
+  * ble.sh built-in completion で既定でオプションを補完するが他の候補よりも前に来るので邪魔 (reported by geekscrapy) [#D1846]
+    https://github.com/rsteube/carapace-bin/issues/1219
+    https://github.com/akinomyoga/ble.sh/issues/204
+
+    % と思ったが、よく考えるとそもそも空文字列でオプションも含める様にしたのは
+    % ちゃんと絞り込みで候補を絞った時にオプションも表示する様にする為だった。
+    % 空文字列での補完に対してオプションを生成しなかった時に何が起こるのか改め
+    % て確認する必要がある。
+
+    改めて確認したが別にオプション名はソートによってファイル名よりも先に来てい
+    るのではなく、単に生成する順序に従って先に来ているだけだった。"-" で始まる
+    補完の時にはオプションを先に表示して、空文字列に対する補完の時にはファイル
+    名よりも後にオプションを生成する様に変更した。
+
   * kitty の keyboard protocol を terminal multiplexer 越しに有効化する (motivated by ferdinandyb) [#D1845]
     https://github.com/akinomyoga/ble.sh/issues/209#issuecomment-1179994203
 

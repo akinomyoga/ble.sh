@@ -165,6 +165,7 @@
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
 - decode (`bind`): do not treat non-beginning `#` as comments `#D1820` 65c4138
 - history: disable the history file when `HISTFILE` is empty `#D1836` 9549e83
+- complete: generate options by empty-word copmletion after filenames (reported by geekscrapy) `#D1846` XXXXXXX
 
 ## Fixes
 
