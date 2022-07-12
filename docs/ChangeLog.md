@@ -17,7 +17,7 @@
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
   - canvas (panel): always call `panel::render` to update height `#D1472` 51d2c05
   - util (visible-bell): work around coordinate mismatches in subshells `#D1495` 01cfb10
-  - canvas: work around Kitty's quirk not recognizing <kbd>DECSTBM</kbd> (<kbd>CSI ; r</kbd>) `#D1503` eca2976
+  - canvas: work around kitty's quirk not recognizing <kbd>DECSTBM</kbd> (<kbd>CSI ; r</kbd>) `#D1503` eca2976
 - prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` cca1cbc
   - prompt: fix missing height allocation for status line `#D1487` b424fa5
   - prompt: support `bleopt prompt_status_align=justify` `#D1494` c30a0db
@@ -319,7 +319,7 @@
 - complete: work around `fzf` completion settings loaded automatically `#D1508` 4fc51ae
 - complete: work around `bash-completion` bugs (reported by oc1024) `#D1533` 9d4ad56
 - main: work around MSYS2 .inputrc (reported by n1kk) `#D1534` 9e786ae
-- util (`modifyOtherKeys`): work around a quirk of Kitty (reported by NoahGorny) `#D1549` f599525
+- util (`modifyOtherKeys`): work around a quirk of kitty (reported by NoahGorny) `#D1549` f599525
   - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
   - util (`modifyOtherKeys`): use the kitty protocol for kitty 0.23+ which removes the support of `modifyOtherKeys` (reported by kovidgoyal) `#D1681` ec91574
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
@@ -372,6 +372,7 @@
 - complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
+- util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` XXXXXXX
 
 ## Internal changes and fixes
 

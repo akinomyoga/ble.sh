@@ -6374,11 +6374,13 @@ function ble/term/DA2/notify {
   if ((depth==0)) || ble/string#match "${_ble_term_TERM[depth-1]}" '^(screen|tmux):'; then
     _ble_term_DA2R[depth]=$1
     ble/term/DA2/initialize-term "$depth"
+
+    local is_outermost=1
     case ${_ble_term_TERM[depth]} in
     (screen:*|tmux:*)
       # 外側の端末にも DA2 要求を出す。[ Note: 最初の DA2 要求は
       # ble/decode/attach (decode.sh) から送信されている。 ]
-      local ret
+      local ret is_outermost=
       ble/term/quote-passthrough $'\e[>c' "$((depth+1))"
       ble/util/buffer "$ret" ;;
     (contra:*)
@@ -6387,10 +6389,11 @@ function ble/term/DA2/notify {
       fi ;;
     esac
 
+    [[ $is_outermost ]] &&
+      ble/term/modifyOtherKeys/reset
+
     # 外側の端末情報は以降では処理しない
     ((depth)) && return 0
-
-    ble/term/modifyOtherKeys/reset
   fi
 
   blehook/invoke DA2R
@@ -6503,13 +6506,15 @@ function ble/term/CPR/notify {
 
 bleopt/declare -v term_modifyOtherKeys_external auto
 bleopt/declare -v term_modifyOtherKeys_internal auto
+bleopt/declare -v term_modifyOtherKeys_passthrough_kitty_protocol ''
 
 _ble_term_modifyOtherKeys_current=
 _ble_term_modifyOtherKeys_current_method=
 _ble_term_modifyOtherKeys_current_TERM=
 function ble/term/modifyOtherKeys/.update {
+  local IFS=$_ble_term_IFS
   [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] &&
-    [[ $1 != 2 || $_ble_term_TERM == "$_ble_term_modifyOtherKeys_current_TERM" ]] &&
+    [[ $1 != 2 || "${_ble_term_TERM[*]}" == "$_ble_term_modifyOtherKeys_current_TERM" ]] &&
     return 0
 
   # Note: RLogin では modifyStringKeys (\e[>5m) も指定しないと駄目。
@@ -6527,6 +6532,19 @@ function ble/term/modifyOtherKeys/.update {
       else
         method=kitty_modifyOtherKeys
       fi ;;
+    (screen:*|tmux:*)
+      method=modifyOtherKeys
+
+      if [[ $bleopt_term_modifyOtherKeys_passthrough_kitty_protocol ]]; then
+        # Note (#D1843): if the outermost terminal is kitty-0.23+, we directly
+        #   send keyboard-protocol sequences to the outermost kitty.
+        local index=$((${#_ble_term_TERM[*]}-1))
+        if [[ ${_ble_term_TERM[index]} == kitty:* ]]; then
+          local da2r
+          ble/string#split da2r ';' "${_ble_term_DA2R[index]}"
+          ((da2r[2]>=23)) && method=kitty_keyboard_protocol
+        fi
+      fi ;;
     (*)
       method=modifyOtherKeys ;;
     esac
@@ -6543,7 +6561,7 @@ function ble/term/modifyOtherKeys/.update {
   fi
   _ble_term_modifyOtherKeys_current=$1
   _ble_term_modifyOtherKeys_current_method=$method
-  _ble_term_modifyOtherKeys_current_TERM=$_ble_term_TERM
+  _ble_term_modifyOtherKeys_current_TERM="${_ble_term_TERM[*]}"
 
   case $method in
   (RLogin_modifyStringKeys)
@@ -6559,25 +6577,46 @@ function ble/term/modifyOtherKeys/.update {
     # Note #D1626: 更に最近の kitty では \e[>4;0m でも駄目で \e[>4m としなければならない様だ。
     case $1 in
     (0|1) ble/util/buffer $'\e[>4;0m\e[>4m' ;;
-    (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
+    (2)   ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
     esac
     return 0 ;;
   (kitty_keyboard_protocol)
     # Note: Kovid removed the support for modifyOtherKeys in kitty 0.24 after
     #   vim has pointed out the quirk of kitty.  The kitty keyboard mode only
     #   has push/pop operations so that their numbers need to be balanced.
+    local seq=
     case $1 in
     (0|1) # pop keyboard mode
       # When this is empty, ble.sh has not yet pushed any keyboard modes, so
       # we just ignore the keyboard mode change.
       [[ $previous ]] || return 0
 
-      ((previous>=2)) &&
-        ble/util/buffer $'\e[<u' ;;
+      ((previous>=2)) && seq=$'\e[<u' ;;
     (2) # push keyboard mode
-      ((previous>=2)) ||
-        ble/util/buffer $'\e[>1u' ;;
+      ((previous>=2)) || seq=$'\e[>1u' ;;
     esac
+    if [[ $seq ]]; then
+      # Note (#D1843): we directly send kitty-keyboard-protocol sequences to
+      #   the outermost terminal.
+      local ret
+      ble/term/quote-passthrough "$seq"
+      ble/util/buffer "$ret"
+
+      # find innermost tmux and adjust its modifyOtherKeys state (do not care
+      # about screen which is transparent for the user input keys)
+      local level
+      for ((level=1;level<${#_ble_term_TERM[@]}-1;level++)); do
+        [[ ${_ble_term_TERM[level]} == tmux:* ]] || continue
+        case $1 in
+        (0) seq=$'\e[>4;0m\e[m' ;;
+        (1) seq=$'\e[>4;1m\e[m' ;;
+        (2) seq=$'\e[>4;1m\e[>4;2m\e[m' ;;
+        esac
+        ble/term/quote-passthrough "$seq" "$level"
+        ble/util/buffer "$ret"
+        break
+      done
+    fi
     return 0 ;;
   esac
 

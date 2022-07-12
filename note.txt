@@ -6463,6 +6463,133 @@ bash_tips
 
 2022-07-12
 
+  * kitty の keyboard protocol を terminal multiplexer 越しに有効化する (motivated by ferdinandyb) [#D1845]
+    https://github.com/akinomyoga/ble.sh/issues/209#issuecomment-1179994203
+
+    取り敢えず一番外側の kitty に送るのは実装した。
+
+    ? pane を切り替えた時に kitty の keybaord protocol が有効になったままになる
+      事によって問題が発生するのではないか。更に途中で detach した時にも問題に
+      なるのではないか。
+
+      % →これに関しては kitty keyboard protocol は普通のキー操作 (C-b など) に
+      % ついては通常通りに送信して、C-S-a 等の従来のシーケンスで区別できなかっ
+      % た物だけについて異なるシーケンスを送る物の筈だから問題ないのではないか。
+      % 一方で通常の modifyOtherKeys に関しては深刻な問題が起こるのでこの方法は
+      % 使えない。
+      %
+      % これは本当にそうなのか確認する必要がある。一応試した感じではそうだった様
+      % な気がする。改めて確認する。
+      %
+      % →これは確かめて見た所駄目だった。
+
+      つまり、中途半端な状態で抜けると外に抜けた時にまともに操作できないという
+      事になる。特に kitty は keyboard protocol に関して push/pop を数えている
+      ので外側が ble.sh だったとしても駄目な事になってしまう気がする。
+
+    ? 端末マルチプレクサにも modifyOtherKeys を送るべきだろうか。これについては
+      端末マルチプレクサの振る舞いによる。もし tmux が受信したキーシーケンスを
+      翻訳して単純なキーシーケンスしか送らない様にしてしまうのであれば tmux に
+      もちゃんと modifyOtherKeys を送る必要がある。一方でもしそのまま通過させる
+      のであれば特に設定は必要ない。
+
+      これについても tmux, screen の両方について振る舞いを確認する必要がある。
+
+      * うーん。tmux について ble.sh なしで直接 printf して振る舞いを確かめよう
+        としたが tmux 自体が何かを送信しているせいか kitty の設定が解除されてし
+        まっている? よく分からないので ble.sh つきで確認する事にする。
+
+        と思ったがどうやら tmux は extended-keys を on にしても always にしても
+        kitty の送ってくるキーを正しく認識する事ができない様だ。kitty は余分に
+        flag 128 を加算している為に tmux が解釈できない function key
+        modification と判断して裸の文字にしてしまう。例えば C-r を入力すると
+        133=128+4+1 という function key modification になるが tmux はこれを解釈
+        不能として 0 にしてしまう。結果として唯の文字である "r" が入力される事
+        になってしまう。
+
+      * screen に関しては完全に透過してしまうので modifyOtherKeys 的な入力を
+        ble.sh で受け取るのには問題ない。然し、逆に screen が modifyOtherKeys
+        に全く対応していないので、外側の kitty の設定が全ての window に対して適
+        用される事になる。つまり window を切り替えた時に ble.sh の外側と内側の
+        齟齬があると全く動かないという事になる。
+
+        うーん。これは実験的機能として封じて置く必要があるだろうか。
+
+    * tmux に伺いを立ててみる必要があるのではないか。
+
+      * 一方で kitty に関してはどの version からこういう事をするようになったの
+        かの確認もしておきたい。或いはずっと前からこの様にしていたのだろうか。
+        過去の version をコンパイルするのは面倒なのでソースコードの変更履歴を追
+        う必要がある。
+
+      取り敢えず tmux のソースコードを確認してみる。一体何処でこれを処理してい
+      るのか。これは意外と簡単に見つかった。然し疑問点が幾つかある。
+
+      * 7 の時だけ IMPLIED_META を付加していないのは何故か。
+        https://github.com/tmux/tmux/blob/dc6bc0e95acc04cdf43e869294ecba897a11d850/tty-keys.c#L954
+
+        うーん。IMPLIED_META の説明を読むとどうも ESC による Meta と function
+        key modification Alt による Meta を区別する為という様に見える。という事
+        を考えると、modifiers 7 で IMPLIED_META が抜けているのは単なるミスでは
+        ないか。
+        https://github.com/tmux/tmux/blob/dc6bc0e95acc04cdf43e869294ecba897a11d850/tty-keys.c#L114-L118
+
+        更にこちらの配列ではちゃんと IMPLIED_META が付加されている。
+        https://github.com/tmux/tmux/blob/dc6bc0e95acc04cdf43e869294ecba897a11d850/tty-keys.c#L258
+
+      * 9 に対しても Meta を付加しているが元からそういう物だったか? 9 は super
+        なのではないか。これはもしかすると古い DEC のマニュアルの間違いを引きずっ
+        ているのかもしれない。後で調べる必要がある。
+
+        →恐らく問題の変な割当をしているのは xterm のマニュアルだったと思ったが
+        今確認すると 8 しかない。という事は 9 は一体何処から出てきたのだろうか。
+        他の端末でこの辺りをもっと aggressive に parse していた物がある筈。例え
+        ば iTerm2 か vte だった様に思う。それらの実装も確認する必要がある。
+
+        うーん。然し他にもこの様な変な事をしている端末がある様な気がする。
+
+        * vte について調べてみたがこれは 0,2-8 を hardcode していた。
+          super/hyper も認識していない。
+
+        * iterm2 については以下の部分で flag を生成している?
+          https://github.com/gnachman/iTerm2/blob/698b83ec79d882ee5acb25b7e358680f9db47e01/sources/iTermRawKeyMapper.m#L48-L83
+
+          と思ったが色々と様子がおかしい。lshift, rshift, loption, roption,
+          lcontrol, rcontrol,... という具合に bit を割り当てている。これだと滅
+          茶苦茶にずれるのではないか。
+
+        * xterm について確認するのが良い気がする。と思ったらここにちゃんと表が
+          ある。そして 8 は Meta という事になっている。
+          https://github.com/ThomasDickey/xterm-snapshots/blob/13e30fcb98357d456660fdfc74fc86725a49934f/input.c#L358-L373
+
+          向こうにはこの表を提示しておけば良いだろう。
+
+      * kitty の実装について確認を取る。ソースコードが滅茶苦茶なので何処に何が
+        あるのかよく分からないがようやく見つけた。どうやら 128 は NumLock だった様だ。
+        https://github.com/kovidgoyal/kitty/blob/4c2800b294a4b1189a6f0dfaa236f52d5380bb70/kitty/key_encoding.py#L290
+        https://github.com/kovidgoyal/kitty/blob/4c2800b294a4b1189a6f0dfaa236f52d5380bb70/kitty/key_encoding.c#L55-L61
+
+        * done: numlock を解除したらちゃんと普通の数字の範囲で値を返してくれるという事が分かった。
+
+        さてこの numlock がいつ実装されたのかというのを調べてみると 2021-04 で割合最近だ。
+        https://github.com/kovidgoyal/kitty/commit/4c644b855649f9de29be4feac89cfeae1b981541
+
+      * mintty で modifier の割当をどうしているのかも確認しておく
+        https://github.com/mintty/mintty/blob/b939fa6231ab7f9b5606821135e63d0d22ee3b2e/src/config.h#L7-L8
+
+        | vte    | S, M, C                             |
+        | xterm  | S, A, C, M                          |
+        | mintty | S, A, C, Win, s, H                  |
+        | kitty  | S, A, C, s, H, M, CapsLock, NumLock |
+
+        これについて contra の escseq.html にも追記しておく事にする。
+
+      取り敢えず tmux に変更を提出しておいた。好感触なので何れ merge されるだろう。
+
+    * done: wiki: set -g extended-keys について記述する
+    * done: wiki: 新しいオプションについて記述する。注意事項も含める必要がある。
+    * done: blerc: 新しいオプションについて記述する。
+
   * wiki: named prompt sequences についても記述するべきなのではないか [#D1844]
 
     ./keymap/emacs.sh:138:function ble/prompt/backslash:keymap:emacs/mode-indicator {
