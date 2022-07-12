@@ -7361,7 +7361,7 @@ function ble/widget/start-keyboard-macro {
 
   _ble_edit_kbdmacro_record=1
   if [[ $_ble_decode_keymap == emacs ]]; then
-    ble/keymap:emacs/update-mode-name
+    ble/keymap:emacs/update-mode-indicator
   elif [[ $_ble_decode_keymap == vi_nmap ]]; then
     ble/keymap:vi/adjust-command-mode
   fi
@@ -7379,7 +7379,7 @@ function ble/widget/end-keyboard-macro {
   ble/decode/charlog#end-exclusive-depth1
   _ble_edit_kbdmacro_last=("${ret[@]}")
   if [[ $_ble_decode_keymap == emacs ]]; then
-    ble/keymap:emacs/update-mode-name
+    ble/keymap:emacs/update-mode-indicator
   elif [[ $_ble_decode_keymap == vi_nmap ]]; then
     ble/keymap:vi/adjust-command-mode
   fi

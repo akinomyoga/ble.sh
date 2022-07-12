@@ -77,45 +77,86 @@ function ble/widget/emacs/revert {
 #   mode name の更新は基本的に __after_widget__ で行う。
 #   但し、_ble_decode_{char,key}__hook 経由で実行されると、
 #   __after_widget__ は実行されないので、
-#   その様な編集コマンドについてだけは個別に update-mode-name を呼び出す。
+#   その様な編集コマンドについてだけは個別に update-mode-indicator を呼び出す。
 #
 
-## @var _ble_keymap_emacs_mode
-##   複数行モードかどうか。
-_ble_keymap_emacs_modeline=::
-ble/array#push _ble_textarea_local_VARNAMES \
-               _ble_keymap_emacs_modeline
-function ble/keymap:emacs/update-mode-name {
-  local opt_multiline=
-  [[ $bleopt_keymap_emacs_mode_string_multiline && $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
-  local footprint=$opt_multiline:$_ble_edit_arg:$_ble_edit_kbdmacro_record
+function ble/keymap:emacs/.get-emacs-keymap {
+  ble/prompt/unit/add-hash '$_ble_decode_keymap,${_ble_decode_keymap_stack[*]}'
+  local i=${#_ble_decode_keymap_stack[@]}
+  keymap=$_ble_decode_keymap
+  while [[ $keymap != vi_?map && $keymap != emacs ]]; do
+    ((i--)) || return 1
+    keymap=${_ble_decode_keymap_stack[i]}
+  done
+  [[ $keymap == emacs ]]
+}
 
+bleopt/declare -v prompt_emacs_mode_indicator '\q{keymap:emacs/mode-indicator}'
+function bleopt/check:prompt_emacs_mode_indicator {
+  local bleopt_prompt_emacs_mode_indicator=$value
+  [[ $_ble_attached ]] && ble/keymap:emacs/update-mode-indicator
+  return 0
+}
+
+_ble_keymap_emacs_mode_indicator_data=()
+function ble/prompt/unit:_ble_keymap_emacs_mode_indicator/update {
+  local trace_opts=truncate:relative:noscrc:ansi
+  local prompt_rows=1
+  local prompt_cols=${COLUMNS:-80}
+  ((prompt_cols&&prompt_cols--))
+  local "${_ble_prompt_cache_vars[@]/%/=}" # WA #D1570 checked
+  ble/prompt/unit:{section}/update _ble_keymap_emacs_mode_indicator "$bleopt_prompt_emacs_mode_indicator" "$trace_opts"
+}
+
+function ble/keymap:emacs/update-mode-indicator {
+  local keymap
+  ble/keymap:emacs/.get-emacs-keymap || return 0
+
+  # prefilter by _ble_edit_str/_ble_edit_arg/_ble_edit_kbdmacro_record
+  local opt_multiline=
+  [[ $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
+  local footprint=$opt_multiline:$_ble_edit_arg:$_ble_edit_kbdmacro_record
   [[ $footprint == "$_ble_keymap_emacs_modeline" ]] && return 0
   _ble_keymap_emacs_modeline=$footprint
 
-  local name=
-  [[ $opt_multiline ]] && name=$bleopt_keymap_emacs_mode_string_multiline
+  # prompt_emacs_mode_indicator
+  local version=$COLUMNS,$_ble_edit_lineno,$_ble_history_count,$_ble_edit_CMD
+  local prompt_hashref_base='$version'
+  ble/prompt/unit#update _ble_keymap_emacs_mode_indicator
+  ble/prompt/unit:{section}/get _ble_keymap_emacs_mode_indicator; local str=$ret
 
-  local info=
   [[ $_ble_edit_arg ]] &&
-    info=$info$' (arg: \e[1;34m'$_ble_edit_arg$'\e[m)'
+    str=${str:+"$str "}$'(arg: \e[1;34m'$_ble_edit_arg$'\e[m)'
   [[ $_ble_edit_kbdmacro_record ]] &&
-    info=$info$' \e[1;31mREC\e[m'
-  if [[ ! $info && $opt_multiline ]]; then
+    str=${str:+"$str "}$'\e[1;31mREC\e[m'
+
+  ble/edit/info/default ansi "$str"
+}
+blehook PRECMD+=ble/keymap:emacs/update-mode-indicator
+
+## @fn ble/prompt/backslash:keymap:emacs/mode-indicator
+function ble/prompt/backslash:keymap:emacs/mode-indicator {
+  ble/prompt/unit/add-hash '$_ble_edit_str'
+  [[ $_ble_edit_str == *$'\n'* ]] || return 0
+
+  ble/prompt/unit/add-hash '$bleopt_keymap_emacs_mode_string_multiline'
+  local str=$bleopt_keymap_emacs_mode_string_multiline
+
+  # 他の付加情報がない時にだけ keybinding のヒントを出す
+  ble/prompt/unit/add-hash '${_ble_edit_arg:+1}${_ble_edit_kbdmacro_record:+1}'
+  if [[ ! ${_ble_edit_arg:+1}${_ble_edit_kbdmacro_record:+1} ]]; then
     local keybinding_C_m=${_ble_decode_emacs_kmap_[_ble_decode_Ctrl|0x6d]}
     local keybinding_C_j=${_ble_decode_emacs_kmap_[_ble_decode_Ctrl|0x6a]}
     [[ $keybinding_C_m == *:ble/widget/accept-single-line-or-newline ]] &&
       [[ $keybinding_C_j == *:ble/widget/accept-line ]] &&
-      info=$' (\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
+      str=${str:+"$str "}$'(\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
   fi
 
-  [[ $name ]] || info=${info#' '}
-  name=$name$info
-  ble/edit/info/default ansi "$name"
+  [[ ! $str ]] || ble/prompt/print "$str"
 }
 
 function ble/widget/emacs/__after_widget__ {
-  ble/keymap:emacs/update-mode-name
+  ble/keymap:emacs/update-mode-indicator
 }
 
 # quoted-insert
@@ -126,7 +167,7 @@ function ble/widget/emacs/quoted-insert-char {
 }
 function ble/widget/emacs/quoted-insert-char.hook {
   ble/widget/quoted-insert-char.hook
-  ble/keymap:emacs/update-mode-name
+  ble/keymap:emacs/update-mode-indicator
 }
 function ble/widget/emacs/quoted-insert {
   _ble_edit_mark_active=
@@ -135,7 +176,7 @@ function ble/widget/emacs/quoted-insert {
 }
 function ble/widget/emacs/quoted-insert.hook {
   ble/widget/quoted-insert.hook
-  ble/keymap:emacs/update-mode-name
+  ble/keymap:emacs/update-mode-indicator
 }
 
 function ble/widget/emacs/bracketed-paste {
@@ -145,7 +186,7 @@ function ble/widget/emacs/bracketed-paste {
 }
 function ble/widget/emacs/bracketed-paste.proc {
   ble/widget/bracketed-paste.proc "$@"
-  ble/keymap:emacs/update-mode-name
+  ble/keymap:emacs/update-mode-indicator
 }
 
 #------------------------------------------------------------------------------

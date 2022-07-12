@@ -360,7 +360,7 @@ bleopt/declare -v keymap_vi_mode_show 1
 function bleopt/check:keymap_vi_mode_show {
   local bleopt_keymap_vi_mode_show=$value
   [[ $_ble_attached ]] &&
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
   return 0
 }
 
@@ -372,13 +372,13 @@ bleopt/declare -v keymap_vi_mode_name_visual    'VISUAL'
 bleopt/declare -v keymap_vi_mode_name_select    'SELECT'
 bleopt/declare -v keymap_vi_mode_name_linewise  'LINE'
 bleopt/declare -v keymap_vi_mode_name_blockwise 'BLOCK'
-function bleopt/check:keymap_vi_mode_name_insert    { ble/keymap:vi/update-mode-name; }
-function bleopt/check:keymap_vi_mode_name_replace   { ble/keymap:vi/update-mode-name; }
-function bleopt/check:keymap_vi_mode_name_vreplace  { ble/keymap:vi/update-mode-name; }
-function bleopt/check:keymap_vi_mode_name_visual    { ble/keymap:vi/update-mode-name; }
-function bleopt/check:keymap_vi_mode_name_select    { ble/keymap:vi/update-mode-name; }
-function bleopt/check:keymap_vi_mode_name_linewise  { ble/keymap:vi/update-mode-name; }
-function bleopt/check:keymap_vi_mode_name_blockwise { ble/keymap:vi/update-mode-name; }
+function bleopt/check:keymap_vi_mode_name_insert    { ble/keymap:vi/update-mode-indicator; }
+function bleopt/check:keymap_vi_mode_name_replace   { ble/keymap:vi/update-mode-indicator; }
+function bleopt/check:keymap_vi_mode_name_vreplace  { ble/keymap:vi/update-mode-indicator; }
+function bleopt/check:keymap_vi_mode_name_visual    { ble/keymap:vi/update-mode-indicator; }
+function bleopt/check:keymap_vi_mode_name_select    { ble/keymap:vi/update-mode-indicator; }
+function bleopt/check:keymap_vi_mode_name_linewise  { ble/keymap:vi/update-mode-indicator; }
+function bleopt/check:keymap_vi_mode_name_blockwise { ble/keymap:vi/update-mode-indicator; }
 
 
 ## @fn ble/keymap:vi/script/get-vi-keymap
@@ -389,7 +389,7 @@ function ble/keymap:vi/script/get-vi-keymap {
   local i=${#_ble_decode_keymap_stack[@]}
 
   keymap=$_ble_decode_keymap
-  while [[ $keymap != vi_?map || $keymap == emacs ]]; do
+  while [[ $keymap != vi_?map && $keymap != emacs ]]; do
     ((i--)) || return 1
     keymap=${_ble_decode_keymap_stack[i]}
   done
@@ -440,11 +440,28 @@ _ble_keymap_vi_mode_name_dirty=
 function ble/keymap:vi/info_reveal.hook {
   [[ $_ble_keymap_vi_mode_name_dirty ]] || return 0
   _ble_keymap_vi_mode_name_dirty=
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
 }
 blehook info_reveal+=ble/keymap:vi/info_reveal.hook
 
-function ble/keymap:vi/update-mode-name {
+bleopt/declare -v prompt_vi_mode_indicator '\q{keymap:vi/mode-indicator}'
+function bleopt/check:prompt_vi_mode_indicator {
+  local bleopt_prompt_vi_mode_indicator=$value
+  [[ $_ble_attached ]] && ble/keymap:vi/update-mode-indicator
+  return 0
+}
+
+_ble_keymap_vi_mode_indicator_data=()
+function ble/prompt/unit:_ble_keymap_vi_mode_indicator/update {
+  local trace_opts=truncate:relative:noscrc:ansi
+  local prompt_rows=1
+  local prompt_cols=${COLUMNS:-80}
+  ((prompt_cols&&prompt_cols--))
+  local "${_ble_prompt_cache_vars[@]/%/=}" # WA #D1570 checked
+  ble/prompt/unit:{section}/update _ble_keymap_vi_mode_indicator "$bleopt_prompt_vi_mode_indicator" "$trace_opts"
+}
+
+function ble/keymap:vi/update-mode-indicator {
   if [[ ! $_ble_attached ]] || ble/edit/is-command-layout; then
     _ble_keymap_vi_mode_name_dirty=1
     return 0
@@ -471,18 +488,47 @@ function ble/keymap:vi/update-mode-name {
 
   [[ $bleopt_keymap_vi_mode_update_prompt ]] && ble/prompt/clear
 
-  local name=
-  if [[ $bleopt_keymap_vi_mode_show ]]; then
-    local show= overwrite=
-    if [[ $keymap == vi_imap ]]; then
-      show=1 overwrite=$_ble_edit_overwrite_mode
-    elif [[ $_ble_keymap_vi_single_command && ( $keymap == vi_nmap || $keymap == vi_omap ) ]]; then
-      show=1 overwrite=$_ble_keymap_vi_single_command_overwrite
-    elif [[ $keymap == vi_[xs]map ]]; then
-      show=x overwrite=$_ble_keymap_vi_single_command_overwrite
-    else
-      name=$bleopt_keymap_vi_mode_string_nmap
-    fi
+  # prompt_vi_mode_indicator
+  local prompt_vi_keymap=$keymap
+  local version=$COLUMNS,$_ble_edit_lineno,$_ble_history_count,$_ble_edit_CMD
+  local prompt_hashref_base='$version'
+  ble/prompt/unit#update _ble_keymap_vi_mode_indicator
+  ble/prompt/unit:{section}/get _ble_keymap_vi_mode_indicator; local mode=$ret
+
+  local str=$mode
+  if [[ $_ble_keymap_vi_reg_record ]]; then
+    str=$str${str:+' '}$'\e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
+  elif [[ $_ble_edit_kbdmacro_record ]]; then
+    str=$str${str:+' '}$'\e[1;31mREC\e[m'
+  fi
+
+  ble/edit/info/default ansi "$str" # 6ms
+}
+blehook PRECMD+=ble/keymap:vi/update-mode-indicator
+
+## @fn ble/prompt/backslash:keymap:vi/mode-indicator
+##   @var[in,opt] prompt_vi_keymap
+##     ble/keymap:vi/script/get-vi-keymap のキャッシュ
+function ble/prompt/backslash:keymap:vi/mode-indicator {
+  [[ $bleopt_keymap_vi_mode_show ]] || return 0
+
+  local keymap=${prompt_vi_keymap-}
+  if [[ $keymap ]]; then
+    ble/prompt/unit/add-hash '$_ble_decode_keymap,${_ble_decode_keymap_stack[*]}'
+  else
+    ble/keymap:vi/script/get-vi-keymap || return 0
+  fi
+
+  local name= show= overwrite=
+  ble/prompt/unit/add-hash '$_ble_edit_overwrite_mode,$_ble_keymap_vi_single_command,$_ble_keymap_vi_single_command_overwrite'
+  if [[ $keymap == vi_imap ]]; then
+    show=1 overwrite=$_ble_edit_overwrite_mode
+  elif [[ $_ble_keymap_vi_single_command && ( $keymap == vi_nmap || $keymap == vi_omap ) ]]; then
+    show=1 overwrite=$_ble_keymap_vi_single_command_overwrite
+  elif [[ $keymap == vi_[xs]map ]]; then
+    show=x overwrite=$_ble_keymap_vi_single_command_overwrite
+  else
+    name=$bleopt_keymap_vi_mode_string_nmap
   fi
 
   if [[ $show ]]; then
@@ -499,6 +545,7 @@ function ble/keymap:vi/update-mode-name {
     fi
 
     if [[ $show == x ]]; then
+      ble/prompt/unit/add-hash '${_ble_edit_mark_active%+}'
       local mark_type=${_ble_edit_mark_active%+}
       local visual_name=$bleopt_keymap_vi_mode_name_visual
       [[ $keymap == vi_smap ]] && visual_name=$bleopt_keymap_vi_mode_name_select
@@ -518,12 +565,7 @@ function ble/keymap:vi/update-mode-name {
     name=$'\e[1m-- '$name$' --\e[m'
   fi
 
-  if [[ $_ble_keymap_vi_reg_record ]]; then
-    name=$name${name:+' '}$'\e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
-  elif [[ $_ble_edit_kbdmacro_record ]]; then
-    name=$name${name:+' '}$'\e[1;31mREC\e[m'
-  fi
-  ble/edit/info/default ansi "$name" # 6ms
+  [[ ! $name ]] || ble/prompt/print "$name"
 }
 
 function ble/widget/vi_imap/normal-mode.impl {
@@ -549,7 +591,7 @@ function ble/widget/vi_imap/normal-mode {
   ble/keymap:vi/imap-repeat/process
   ble/keymap:vi/repeat/record-insert
   ble/widget/vi_imap/normal-mode.impl InsertLeave
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   return 0
 }
 function ble/widget/vi_imap/normal-mode-without-insert-leave {
@@ -557,7 +599,7 @@ function ble/widget/vi_imap/normal-mode-without-insert-leave {
   ble/keymap:vi/imap-repeat/pop
   ble/keymap:vi/repeat/record-insert
   ble/widget/vi_imap/normal-mode.impl
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   return 0
 }
 function ble/widget/vi_imap/single-command-mode {
@@ -570,7 +612,7 @@ function ble/widget/vi_imap/single-command-mode {
   ble/widget/vi_imap/normal-mode.impl
   _ble_keymap_vi_single_command=$single_command
   _ble_keymap_vi_single_command_overwrite=$single_command_overwrite
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   return 0
 }
 
@@ -618,7 +660,7 @@ function ble/keymap:vi/adjust-command-mode {
     ble/widget/vi_nmap/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite" resume
     ble/keymap:vi/repeat/clear-insert
   elif [[ $kmap_popped ]]; then
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
   fi
 
   return 0
@@ -646,7 +688,7 @@ function ble/widget/vi_nmap/.insert-mode {
   _ble_keymap_vi_single_command_overwrite=
   ble/keymap:vi/search/clear-matched
   ble/decode/keymap/pop
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
 
   ble/keymap:vi/mark/start-edit-area
   if [[ :$opts: != *:resume:* ]]; then
@@ -1094,7 +1136,7 @@ function ble/widget/vi_nmap/record-register {
     ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$ret"
 
     _ble_keymap_vi_reg_record=
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
   else
     _ble_decode_key__hook="ble/widget/vi_nmap/record-register.hook"
   fi
@@ -1129,7 +1171,7 @@ function ble/widget/vi_nmap/record-register.hook {
   ble/util/c2s "$c"
   _ble_keymap_vi_reg_record=$reg
   _ble_keymap_vi_reg_record_char=$ret
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   return 0
 }
 # nmap @
@@ -1191,7 +1233,7 @@ function ble/widget/vi-command/operator {
     _ble_keymap_vi_oparg=$_ble_edit_arg
     _ble_keymap_vi_opfunc=$opname
     _ble_edit_arg=
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
 
   elif [[ $_ble_decode_keymap == vi_omap ]]; then
     local opname1=${_ble_keymap_vi_opfunc%%:*}
@@ -5721,7 +5763,7 @@ function ble/widget/vi-command/cancel {
   if [[ $_ble_keymap_vi_single_command ]]; then
     _ble_keymap_vi_single_command=
     _ble_keymap_vi_single_command_overwrite=
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
   else
     local joblist; ble/util/joblist
     if ((${#joblist[*]})); then
@@ -6712,7 +6754,7 @@ function ble/widget/vi-command/previous-visual-area {
     _ble_edit_ind=$end
     _ble_edit_mark=$beg
     _ble_edit_mark_active=$mark
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
   else
     ble/keymap:vi/clear-arg
     ble/widget/vi-command/visual-mode.impl vi_xmap "$mark"
@@ -6741,7 +6783,7 @@ function ble/widget/vi-command/visual-mode.impl {
   ((ARG)) && ble/widget/vi_xmap/.restore-visual-state "$ARG"
 
   ble/decode/keymap/push "$keymap"
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   return 0
 }
 function ble/widget/vi_nmap/charwise-visual-mode {
@@ -6772,7 +6814,7 @@ function ble/widget/vi_xmap/exit {
     ble/keymap:vi/xmap/set-previous-visual-area
     _ble_edit_mark_active=
     ble/decode/keymap/pop
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
     ble/keymap:vi/adjust-command-mode
   fi
   return 0
@@ -6797,7 +6839,7 @@ function ble/widget/vi_xmap/switch-visual-mode.impl {
     ble/widget/vi_xmap/cancel
   else
     ble/keymap:vi/xmap/switch-type "$visual_type"
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
     return 0
   fi
 
@@ -6819,7 +6861,7 @@ function ble/widget/vi_xmap/switch-to-select {
   if [[ $_ble_decode_keymap == vi_xmap ]]; then
     ble/decode/keymap/pop
     ble/decode/keymap/push vi_smap
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
   fi
 }
 # smap <C-g>
@@ -6827,7 +6869,7 @@ function ble/widget/vi_xmap/switch-to-visual {
   if [[ $_ble_decode_keymap == vi_smap ]]; then
     ble/decode/keymap/pop
     ble/decode/keymap/push vi_xmap
-    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/update-mode-indicator
   fi
 }
 # smap <C-v>
@@ -6839,7 +6881,7 @@ function ble/widget/vi_xmap/switch-to-visual-blockwise {
   if [[ ${_ble_edit_mark_active%+} != vi_block ]]; then
     ble/widget/vi_xmap/switch-to-blockwise
   else
-    xble/keymap:vi/update-mode-name
+    xble/keymap:vi/update-mode-indicator
   fi
 }
 
@@ -7653,7 +7695,7 @@ function ble-decode/keymap:vi_smap/define {
 # vi_imap
 
 function ble/widget/vi_imap/__attach__ {
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   return 0
 }
 function ble/widget/vi_imap/__detach__ {
@@ -7689,7 +7731,7 @@ function ble/widget/vi_imap/overwrite-mode {
   else
     _ble_edit_overwrite_mode=${_ble_keymap_vi_insert_overwrite:-R}
   fi
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   return 0
 }
 
@@ -8018,7 +8060,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # 初期化
   ble/decode/keymap/push vi_cmap
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
 
   # textarea
   _ble_textarea_panel=1
@@ -8069,7 +8111,7 @@ function ble/widget/vi_cmap/accept {
   ble/history/set-prefix "$_ble_keymap_vi_cmap_history_prefix"
 
   ble/decode/keymap/pop
-  ble/keymap:vi/update-mode-name
+  ble/keymap:vi/update-mode-indicator
   if [[ $hook ]]; then
     builtin eval -- "$hook \"\$result\""
   else

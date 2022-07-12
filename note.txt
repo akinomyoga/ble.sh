@@ -6461,9 +6461,40 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-07-12
+
+  * wiki: named prompt sequences についても記述するべきなのではないか [#D1844]
+
+    ./keymap/emacs.sh:138:function ble/prompt/backslash:keymap:emacs/mode-indicator {
+    ./keymap/vi.sh:512:function ble/prompt/backslash:keymap:vi/mode-indicator {
+    ./src/edit.sh:1016:function ble/prompt/backslash:position {
+    ./src/edit.sh:1024:function ble/prompt/backslash:row {
+    ./src/edit.sh:1031:function ble/prompt/backslash:column {
+    ./src/edit.sh:1038:function ble/prompt/backslash:point {
+    ./src/edit.sh:1042:function ble/prompt/backslash:mark {
+    ./src/edit.sh:1046:function ble/prompt/backslash:history-index {
+    ./src/edit.sh:1050:function ble/prompt/backslash:history-percentile {
+
+    取り敢えずユーザーも使える事を想定したものは記述した。vim-airline の物は本
+    来内部使用を意図して実装された物なので省略。
+
+  * vi: status_line ではなく mode indicator 自体を変更する方法を与える (motivated by ferdinandyb) [#D1843]
+
+    mode indicator の部分をプロンプト設定として提供する事にした。
+
+    * done: うーん。vi のモードが変わった時にしか更新されないので、モード以外の
+      情報を表示しようとしても次にモードが変更される時にしか更新が走らない。
+      仕方がないので PRECMD に update-mode-indicator を登録する事にした。
+    * done: emacs の方も同様に設定できる様にするべきの気がする。
+
+    * done: blerc, wiki に記述
+      * done: wiki: prompt_emacs_mode_indicator
+      * done: wiki: prompt_vi_mode_indicator
+      * done: wiki: pointers to prompt_*_mode_indicator in §Edit
+
 2022-07-11
 
-  * kitty の keyboard protocol が有効になっていなかった [#D1842]
+  * term: kitty の keyboard protocol が有効になっていなかった [#D1842]
     https://github.com/akinomyoga/ble.sh/issues/209
 
     返信を書いている時に kitty の振る舞いを確認していて気づいたのだがちゃんと

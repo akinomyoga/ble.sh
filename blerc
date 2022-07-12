@@ -840,15 +840,25 @@
 ## Settings for Emacs mode
 
 function blerc/emacs-load-hook {
-  ## This option specifies the mode string shown in the information line in the
-  ## multiline editing mode.  When an empty string is specified, the mode
-  ## string is not shown in the multiline editing mode.
+  #----------------------------------------------------------------------------
+  # Settings for the mode indicator
+
+  ## The following option specifies the content of the mode indicator shown in
+  ## the info line as a prompt sequence.
+
+  #bleopt prompt_emacs_mode_indicator='\q{keymap:emacs/mode-indicator}'
+
+
+  ## The following option specifies the multiline mode name used in the prompt
+  ## sequence \q{keymap:emacs/mode-indicator} in the multiline editing mode.
 
   # default
   #bleopt keymap_emacs_mode_string_multiline=$'\e[1m-- MULTILINE --\e[m'
-  # do not show mode string
+  # do not show the mode name
   #bleopt keymap_emacs_mode_string_multiline=
 
+  #----------------------------------------------------------------------------
+  # Keybindings
 
   ## With the following setting, RET and C-m always causes the execution of the
   ## command even in the multiline mode or when the command is not
@@ -868,15 +878,25 @@ function blerc/vim-load-hook {
   ((_ble_bash>=40300)) && builtin bind 'set keyseq-timeout 1'
 
   #----------------------------------------------------------------------------
-  # Settings for the mode name
+  # Settings for the mode indicator
 
-  ## The option "keymap_vi_mode_show" controls if the mode line is shown.  When
-  ## this option has a non-empty value, the mode line is shown.
+  ## The following option specifies the content of the mode indicator shown in
+  ## the info line as a prompt sequence.
+
+  #bleopt prompt_vi_mode_indicator='\q{keymap:vi/mode-indicator}'
+
+
+  ## The following option controls whether the prompt sequence
+  ## \q{keymap:vi/mode-indicator} is activated.  When this option has a
+  ## non-empty value, \q{keymap:vi/mode-indicator} is expanded to the mode
+  ## indicator. Otherwise, \q{keymap:vi/mode-indicator} is expanded to the
+  ## empty string.
 
   #bleopt keymap_vi_mode_show=1
 
 
-  ## The following settings specify the name of modes in the mode line.
+  ## The following options specify the name of modes in
+  ## \q{keymap:vi/mode-indicator}.
 
   #bleopt keymap_vi_mode_name_insert=INSERT
   #bleopt keymap_vi_mode_name_replace=REPLACE
@@ -887,26 +907,29 @@ function blerc/vim-load-hook {
   #bleopt keymap_vi_mode_name_blockwise=BLOCK
 
 
-  ## This option specifies the string shown below the edited line in normal
-  ## mode.  For example, if you want to show an explicit name of the mode like
-  ## in other modes, please use the following setting:
+  ## This option specifies the result of \q{keymap:vi/mode-indicator} in the
+  ## normal mode.  For example, if you want to show an explicit name of the
+  ## normal mode like in other modes, please use the following setting:
 
-  #bleopt keymap_vi_mode_string_nmap:=$'\e[1m~\e[m'
+  #bleopt keymap_vi_mode_string_nmap:=$'\e[1m-- NORMAL --\e[m'
 
 
-  ## The setting "keymap_vi_mode_update_prompt" specifies that the prompt
-  ## should be recalculated on the mode change.  When this option has a
-  ## non-empty value, the prompt will be recalculated.
+  ## This option specifies that all the prompts should be recalculated on the
+  ## mode change.  When this option has a non-empty value, the prompt will be
+  ## recalculated.
 
   #bleopt keymap_vi_mode_update_prompt=
 
   #----------------------------------------------------------------------------
   # Keybindings
 
-
-  ## The following setting sets up the keymap settings with Meta modifiers
+  ## The following setting sets up the keymap settings with Meta modifiers.
+  ## With this setting, M-RET can be used to insert a newline in the
+  ## commandline.  In this case, C-RET can be optionally configured so that it
+  ## forcibly executes the command.
 
   #ble-decode/keymap:vi_imap/define-meta-bindings
+  #ble-bind -m vi_imap -f 'C-RET' 'accept-line'
 
 
   ## The default mapping of C-o is vi_imap/single-command-mode.  If you want to

@@ -103,6 +103,7 @@
 - util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` 6d20f51
   - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` 1e19a67
 - history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a 3110967
+- prompt: support `bleopt prompt_{emacs,vi}_mode_indicator` (motivated by ferdinandyb) `#D1843` XXXXXXX
 
 ## Changes
 
@@ -200,7 +201,7 @@
   - global: fix declaration of associative arrays for `ble-reload` (reported by 0xC0ncord) `#D1471` 3cae6e4
   - global: use a better workaround of bash-4.2 `declare -gA` by separating assignment `#D1567` 2408a20
 - bind: work around broken `cmd_xmap` after switching the editing mode `#D1478` 8d354c1
-  - decode (`encoding:C`): fix initialization for isolated ESC `#D1839` XXXXXXX
+  - decode (`encoding:C`): fix initialization for isolated ESC `#D1839` c3bba5b
 - edit: clear graphic rendition on newlines and external commands `#D1479` 18bb2d5
 - decode (rlfunc): work around incomplete bytes in keyseq (reported by onelittlehope) `#D1483` 3559658 beb0383 37363be
 - main: fix a bug that unset `IFS` is not correctly restored `#D1489` 808f6f7
@@ -268,8 +269,8 @@
 - edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
 - history: work around possible dirty prefix `*` in the history output `#D1808` 64a740d
 - decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
-- command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` XXXXXXX
-- complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` XXXXXXX
+- command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` 937a164
+- complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
 
 ## Documentation
 
@@ -369,8 +370,8 @@
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
 - progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 973ae8c
 - complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
-- util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` XXXXXXX
-  - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` XXXXXXX
+- util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
+  - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 
 ## Internal changes and fixes
 
