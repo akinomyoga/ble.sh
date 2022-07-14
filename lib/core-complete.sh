@@ -4309,6 +4309,7 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
     #--------------------------------------------------------------------------
     # Format #1: [.TP \n key \n desc]
+    # Format #1: [.TP \n key   desc \n desc...]
     # This is the typical format in "man".
     type == "man" && REQ == "TP" {
       if (g_keys_count && g_desc != "") flush_topic();
@@ -4317,7 +4318,18 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
     mode == "key1" {
       if (/^\.PD[[:space:]]*([0-9]+[[:space:]]*)?$/) next;
-      register_key($0);
+
+      # In Japanese version of "man ls", key and desc is separated by multiple
+      # spaces, where the number of spaces seem to vary from 5 to more than 10
+      # spaces.
+      if (match($0, /[[:space:]][[:space:]][[:space:]]/) > 0) {
+        register_key(substr($0, 1, RSTART - 1));
+        g_desc = substr($0, RSTART);
+        sub(/^[[:space:]]+/, "", g_desc);
+      } else {
+        register_key($0);
+      }
+
       mode = "desc";
       next;
     }
@@ -4344,6 +4356,9 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
 
     function process_key(line, _, n, specs, i, spec, option, optarg, suffix) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line);
+      if (line == "") return;
+
       gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
       gsub(/\x1b[ -\/]*[0-~]/, "", line); # ESC seq
       gsub(/.\x08/, "", line); # CHAR BS
@@ -4409,35 +4424,45 @@ function ble/complete/mandb/.generate-cache-from-man {
 
     function process_desc(line) {
       gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
-      gsub(/[[:space:]][[:space:]]+/, " ", line);
       if (line == "") {
         if (g_desc != "") return 0;
         return 1;
       }
+
+      gsub(/[[:space:]][[:space:]]+/, " ", line);
       if (g_desc != "") g_desc = g_desc " ";
       g_desc = g_desc line;
       return 1;
     }
 
-    sub(/^[[:space:]]*__ble_key__/, "", $0) {
-      flush_pair();
-      mode = "key";
-      if (match($0, /__ble_desc__/) > 0) {
-        s_key = substr($0, 1, RSTART - 1);
-        s_desc = substr($0, RSTART + RLENGTH);
-        process_key(s_key);
-        mode = "desc";
-        if (!process_desc(s_desc)) mode = "";
-        next;
+    function process_string_fragment(str) {
+      if (mode == "key") {
+        process_key(str);
+      } else if (mode == "desc") {
+        if (!process_desc(str)) mode = "";
       }
     }
-    sub(/^[[:space:]]*__ble_desc__/, "", $0) {
-      mode = "desc";
+
+    function process_line(line, _, head, m0) {
+      while (match(line, /__ble_(key|desc)__/) > 0) {
+        head = substr(line, 1, RSTART - 1);
+        m0 = substr(line, RSTART, RLENGTH);
+        line = substr(line, RSTART + RLENGTH);
+
+        process_string_fragment(head);
+
+        if (m0 == "__ble_key__") {
+          flush_pair();
+          mode = "key";
+        } else {
+          mode = "desc";
+        }
+      }
+
+      process_string_fragment(line);
     }
 
-    mode == "key" { process_key($0); }
-    mode == "desc" { if (!process_desc($0)) mode = ""; }
-
+    { process_line($0); }
     END { flush_pair(); }
   ' | ble/bin/sort -t "$_ble_term_FS" -k 1
 }
@@ -4453,7 +4478,7 @@ function ble/complete/mandb:help/generate-cache {
 
   local space=$' \t' # for #D1709 (WA gawk 4.0.2)
   local rex_argsep='(\[?[:=]|  ?|\[)'
-  local rex_option='[-+](,|[^]:='$space',[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|[^-[:space:]])[^[:space:]]*)?'
+  local rex_option='[-+](,|[^]:='$space',[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|\[[^][]+\]|[^-[:space:]、。][^[:space:]、。]*))?([,[:space:]]|$)'
   ble/bin/awk -F "$_ble_term_FS" '
     BEGIN {
       cfg_help = ENVIRON["cfg_help"];
@@ -4466,7 +4491,43 @@ function ble/complete/mandb:help/generate-cache {
 
       cfg_plus_generate = ENVIRON["cfg_plus_generate"];
       cfg_plus = ENVIRON["cfg_plus"] cfg_plus_generate;
+
+      entries_init();
     }
+
+    #--------------------------------------------------------------------------
+    # entries
+
+    function entries_init() {
+      entries_count = 0;
+    }
+
+    function entries_register(entry, score, _, name, ientry) {
+      name = entry;
+      sub(/'"$_ble_term_FS"'.*$/, "", name);
+      if (name ~ /^\+/ && !cfg_plus) return;
+
+      if (entries_index[name] != "") {
+        ientry = entries_index[name];
+        if (score >= entries_score[name]) return;
+      } else {
+        ientry = entries_count++;
+        entries_keys[ientry] = name;
+      }
+
+      entries_index[name] = ientry;
+      entries_entry[name] = entry;
+      entries_score[name] = score;
+    }
+
+    function entries_dump(_, ientry, name) {
+      for (ientry = 0; ientry < entries_count; ientry++) {
+        name = entries_keys[ientry];
+        print entries_entry[name];
+      }
+    }
+
+    #--------------------------------------------------------------------------
 
     function split_option_optarg_suffix(optspec, _, key, suffix, optarg) {
       # Note: Skip options that contain FS (due to the limitation by the cache format)
@@ -4488,13 +4549,6 @@ function ble/complete/mandb:help/generate-cache {
 
       return key FS optarg FS suffix;
     }
-    function print_entry(entry, _, name) {
-      name = entry;
-      sub(/'"$_ble_term_FS"'.*$/, "", name);
-      if (name ~ /^\+/ && !cfg_plus) return;
-      if (!g_hash[name]++) # uniq
-        print entry;
-    }
 
     {
       gsub(/\x1b\[[ -?]*[@-~]/, ""); # CSI seq
@@ -4509,13 +4563,13 @@ function ble/complete/mandb:help/generate-cache {
       if (!cfg_plus_generate) return;
       n = length(cfg_plus_generate);
       for (i = 1; i <= n; i++)
-        print_entry("+" substr(cfg_plus_generate, i, 1) FS FS FS);
+        entries_register("+" substr(cfg_plus_generate, i, 1) FS FS FS, 999);
     }
 
     #--------------------------------------------------------------------------
     # Extract usage [-DEI] [-f[helo] | --prefix=PATH]
 
-    function parse_usage(line, _, optspec, optspec1, option, optarg, n, i, o) {
+    function usage_parse(line, _, optspec, optspec1, option, optarg, n, i, o) {
       while (match(line, /\[[[:space:]]*([^][]|\[[^][]*\])+[[:space:]]*\]/)) {
         optspec = substr(line, RSTART + 1, RLENGTH - 2);
         line = substr(line, RSTART + RLENGTH);
@@ -4544,15 +4598,15 @@ function ble/complete/mandb:help/generate-cache {
         }
       }
     }
-    function print_usage(_, i) {
+    function usage_generate(_, i) {
       for (i = 0; i < g_usage_count; i++)
-        print_entry(g_usage[i] FS);
+        entries_register(g_usage[i] FS, 999);
     }
 
     cfg_usage {
       if (NR <= 20 && (g_usage_start || $0 ~ /^[a-zA-Z_0-9]|^[^-[:space:]][^[:space:]]*(: |：)/) ) {
         g_usage_start = 1;
-        parse_usage($0);
+        usage_parse($0);
       } else if (/^[[:space:]]*$/)
         cfg_usage = 0;
     }
@@ -4577,7 +4631,7 @@ function ble/complete/mandb:help/generate-cache {
     function flush_data(_, i) {
       if (g_indent < 0) return;
       for (i = 0; i < g_keys_count; i++)
-        print_entry(g_keys[i] FS g_desc);
+        entries_register(g_keys[i] FS g_desc, g_indent);
       g_indent = -1;
       g_keys_count = 0;
       g_desc = "";
@@ -4594,7 +4648,7 @@ function ble/complete/mandb:help/generate-cache {
         key = substr(keydef, 1, RLENGTH);
         keydef = substr(keydef, RLENGTH + 1);
 
-        sub(/,$/, "", key);
+        sub(/[,[:space:]]$/, "", key);
         keys[nkey++] = key;
       }
 
@@ -4638,7 +4692,10 @@ function ble/complete/mandb:help/generate-cache {
         g_desc = g_desc " " desc;
     }
 
-    cfg_help && match($0, /^[[:space:]]*'"$rex_option"'(,?[[:space:]]+'"$rex_option"')*/) {
+    # Note (#D1847): We here restrict the number of spaces between synonymous
+    # options within 2 or 3.  Note that "rex_option" already contains the
+    # trailing comma or space.
+    cfg_help && match($0, /^[[:space:]]*'"$rex_option"'(([[:space:]][[:space:]]?)?'"$rex_option"')*/) {
       key = substr($0, 1, RLENGTH);
       desc = substr($0, RLENGTH + 1);
       if (desc ~ /^,/) next;
@@ -4659,8 +4716,9 @@ function ble/complete/mandb:help/generate-cache {
 
     END {
       flush_data();
-      print_usage();
+      usage_generate();
       generate_plus();
+      entries_dump();
     }
   ' | ble/bin/sort -t "$_ble_term_FS" -k 1
 }
