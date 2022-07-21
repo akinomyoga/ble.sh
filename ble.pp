@@ -1491,11 +1491,11 @@ function ble-reload { source "$_ble_base/ble.sh"; }
 _ble_base_repository_url=https://github.com/akinomyoga/ble.sh
 function ble-update/.check-install-directory-ownership {
   if [[ ! -O $_ble_base ]]; then
-    ble/uti/print 'ble-update: install directory is owned by another user:' >&2
+    ble/util/print 'ble-update: install directory is owned by another user:' >&2
     ls -ld "$_ble_base"
     return 1
   elif [[ ! -r $_ble_base || ! -w $_ble_base || ! -x $_ble_base ]]; then
-    ble/uti/print 'ble-update: install directory permission denied:' >&2
+    ble/util/print 'ble-update: install directory permission denied:' >&2
     ls -ld "$_ble_base"
     return 1
   fi
