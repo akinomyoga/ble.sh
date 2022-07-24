@@ -1434,7 +1434,7 @@ ble/test ble/util/is-running-in-subshell exit=1
 (
   ble/test/chdir
   function getpid {
-    sh -c 'echo -n $PPID' >| a.txt
+    sh -c 'printf %s $PPID' >| a.txt
     ble/util/readfile ppid a.txt
   }
 

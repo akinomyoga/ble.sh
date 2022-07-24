@@ -1126,15 +1126,23 @@ function ble/util/readlink/.readlink {
 function ble/util/readlink/.resolve-physical-directory {
   [[ $path == */?* ]] || return 0
   local PWD=$PWD OLDPWD=$OLDPWD CDPATH=
-  builtin cd -L . &&
-    local pwd=$PWD &&
+  if builtin cd -L .; then
+    local pwd=$PWD
     builtin cd -P "${path%/*}/" &&
-    path=${PWD%/}/${path##*/}
-  builtin cd -L "$pwd"
+      path=${PWD%/}/${path##*/}
+
+    # Note #D1849: 現在ディレクトリが他者により改名されている場合や PWD がユー
+    #   ザーに書き換えられている場合にも元のディレクトリに戻る為、cd -L . した
+    #   後のパスに cd する。但し pwd の結果はこの関数の呼び出し前と変わってしま
+    #   う (が実際にはこの方が良いだろう)。PWD は local にして元の値に戻すので
+    #   変わらない。
+    builtin cd "$pwd"
+  fi
   return 0
 }
 function ble/util/readlink/.resolve-loop {
   local path=$ret
+  while [[ $path == ?*/ ]]; do path=${path%/}; done
   builtin eval -- "$_ble_util_readlink_visited_init"
   while [[ -h $path ]]; do
     local link
@@ -1145,7 +1153,7 @@ function ble/util/readlink/.resolve-loop {
     else
       # 相対パス ../ は物理ディレクトリ構造に従って遡る。
       ble/util/readlink/.resolve-physical-directory
-      path=${path%/}/$link
+      path=${path%/*}/$link
     fi
     while [[ $path == ?*/ ]]; do path=${path%/}; done
   done
@@ -2146,6 +2154,13 @@ function ble/base/sub:test {
     ble/test/log "BLE_VERSION: $BLE_VERSION"
   fi
   ble/test/log "BASH_VERSION: $BASH_VERSION"
+  local line='locale:' var ret
+  for var in LANG "${!LC_@}"; do
+    ble/string#quote-word "${!var}"
+    line="$line $var=$ret"
+  done
+  ble/test/log "$line"
+
   local section
   for section; do
     local file=$_ble_base/lib/test-$section.sh

@@ -16,7 +16,7 @@ function ble/test/chdir {
   _ble_test_dir=$dir/$BASHPID.d
   [[ -d $_ble_test_dir ]] ||
     ble/bin/mkdir -p "$_ble_test_dir"
-  cd "$_ble_test_dir"
+  cd -L "$_ble_test_dir"
 }
 function ble/test/rmdir {
   [[ -d $_ble_test_dir ]] &&

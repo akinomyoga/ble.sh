@@ -275,6 +275,7 @@
 - decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
 - command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` 937a164
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
+- main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` XXXXXXX
 
 ## Documentation
 
