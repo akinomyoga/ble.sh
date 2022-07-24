@@ -1492,7 +1492,17 @@ function ble/base/print-usage-for-no-argument-command {
   [[ $1 != --help ]] && return 2
   return 0
 }
-function ble-reload { source "$_ble_base/ble.sh"; }
+function ble-reload {
+  local -a options=()
+  ble/array#push options --rcfile="${_ble_base_arguments_rcfile:-/dev/null}"
+  local name
+  for name in keep-rlvars noinputrc; do
+    if [[ :$_ble_base_arguments_opts: == *:"$name":* ]]; then
+      ble/array#push options "--$name"
+    fi
+  done
+  source "$_ble_base/ble.sh" "${options[@]}"
+}
 
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 #%$ echo "_ble_base_branch=$(git rev-parse --abbrev-ref HEAD)"

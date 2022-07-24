@@ -1843,6 +1843,16 @@ bash_tips
   - Acknowledgments
   - keymap の移動 (これは別 commit にする?)
 
+2022-07-20
+
+  * konsole drag&drop
+    https://github.com/akinomyoga/ble.sh/issues/211
+    https://invent.kde.org/utilities/konsole/-/merge_requests/714
+
+    konsole に PR を出したが返事がない。この2日の間に別の PR はマージされている。
+    暫く待っても何も反応がなかったら Bugzilla の方にも提出する事にする。もしく
+    はメーリングリストに直接問い合わせる。
+
 2022-07-13
 
   * blehook: blehook の出力結果を init.sh にそのまま載せている人がいる。+= なの
@@ -6529,6 +6539,20 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-07-24
+
+  * ble-reload の時に最初に指定した rcfile, norc を反映するべきではないか [#D1852]
+
+    --norc を指定して起動したセッションでも ble-reload をした時に ~/.blerc を読
+    み込んでしまっている。
+
+    元の引数を全て保持する様にしようと考えたが微妙かもしれない。というのも、元
+    の引数には --norc 等の引数も指定されているかもしれない。これは bashrc の中
+    で別に ble-attach を呼び出す事を前提としている物なので ble-reload の時にま
+    で継承するべきではない。更に --test や --lib 等の別の引数が指定されていた時
+    にもどの様に取り扱うのか微妙である。
+
+    という事を考えると、特定の予め選んだオプションについてだけ記録して再指定す
+    るべきである。というか特に blerc だけ復元すれば良い気がする。
 
   * starship ble-reload で無限ループ (reported by tars0x9752) [#D1851]
     https://github.com/akinomyoga/ble.sh/discussions/212#discussioncomment-3205291

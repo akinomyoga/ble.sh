@@ -169,6 +169,7 @@
 - complete: generate options by empty-word copmletion after filenames (reported by geekscrapy) `#D1846` 6954b13
   - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` 1c7f7a1
 - syntax (`extract-command`): extract unexpected command names as commands `#D1848` XXXXXXX
+- main (`ble-reload`): preserve the original initialization options `#D1852` XXXXXXX
 
 ## Fixes
 
@@ -2320,8 +2321,8 @@
 
 ## 2015-08-13
 * ble-syntax.sh: clenup, print-status/dump-tree.
-* ble-sytanx.sh (_ble_syntax_stat): 解析状態に tchild, tprev (兄・子へのoffset情報) を追加。
-* ble-sytanx.sh (_ble_syntax_word): 形式変更。兄・子へのoffset情報はその場で計算する暫定方式。
+* ble-syntax.sh (_ble_syntax_stat): 解析状態に tchild, tprev (兄・子へのoffset情報) を追加。
+* ble-syntax.sh (_ble_syntax_word): 形式変更。兄・子へのoffset情報はその場で計算する暫定方式。
 
 ## 2015-08-12
 * memo.txt: _ble_syntax_word 形式変更の計画, ble-syntax.sh: clean up
