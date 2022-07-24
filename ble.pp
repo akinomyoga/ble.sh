@@ -2001,8 +2001,19 @@ function ble/base/unload {
   return 0
 }
 
+## @var _ble_base_attach_from_prompt
+##   非空文字列の時、PROMPT_COMMAND 経由の ble-attach を現在試みている最中です。
+##
+## @arr _ble_base_attach_PROMPT_COMMAND
+##   PROMPT_COMMAND 経由の ble-attach をする時、元々の PROMPT_COMMAND の値を保
+##   持する配列です。複数回 ble.sh をロードした時に、各ロード時に待避した
+##   PROMPT_COMMAND の値を配列の各要素に保持します。
+##
+##   Note #D1851: 以前の ble.sh ロード時に設定された値を保持したいので、既に要
+##   素がある場合にはクリアしない。
 _ble_base_attach_from_prompt=
-_ble_base_attach_PROMPT_COMMAND=()
+((${#_ble_base_attach_PROMPT_COMMAND[@]})) ||
+  _ble_base_attach_PROMPT_COMMAND=()
 ## @fn ble/base/install-prompt-attach
 function ble/base/install-prompt-attach {
   [[ ! $_ble_base_attach_from_prompt ]] || return 0
@@ -2061,15 +2072,20 @@ function ble/base/attach-from-PROMPT_COMMAND {
       local save_index=$1 lambda=$2
 
       # 待避していた内容を復元・実行
-      local PROMPT_COMMAND_local=
-      [[ $PROMPT_COMMAND == "$lambda" ]] || local PROMPT_COMMAND is_last_PROMPT_COMMAND=
-      PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
+      local PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
       local ble_base_attach_from_prompt_command=processing
       ble/prompt/update/.eval-prompt_command 2>&3
       ble/util/unlocal ble_base_attach_from_prompt_command
       _ble_base_attach_PROMPT_COMMAND[save_index]=$PROMPT_COMMAND
-      [[ $is_last_PROMPT_COMMAND ]] || ble/util/unlocal PROMPT_COMMAND
+      ble/util/unlocal PROMPT_COMMAND
+
+      # 可能なら自身を各 hook から除去
       blehook PRECMD-="$lambda" || ((1)) # set -e 対策
+      if [[ $PROMPT_COMMAND == "$lambda" ]]; then
+        PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
+      else
+        is_last_PROMPT_COMMAND=
+      fi
 
       # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
       #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ

@@ -6530,6 +6530,145 @@ bash_tips
 
 2022-07-24
 
+  * starship ble-reload で無限ループ (reported by tars0x9752) [#D1851]
+    https://github.com/akinomyoga/ble.sh/discussions/212#discussioncomment-3205291
+
+    自分の手許でやってみた範囲では発生していない。starship を先に初期化してから
+    ble.sh を有効にしている時に発生する。ble.sh を先に初期化してから starship
+    を初期化しても再現しない。source ble.sh --noattach, eval starship init,
+    ble-attach, ble-reload の順番で実行しても再現しない。
+
+    nightly を使っているそうなので ble.sh の version の違いではないだろう。
+
+    問題のファイルを開きすぎですのエラーが出ている箇所で関数呼び出しスタックを
+    確認してもらった所、以下の様な結果になった。
+
+    | ble/function#advice/before:ble/util/assign
+    | ble/function#try
+    | ble/function#advice/.proc
+    | ble/util/assign
+    | ble/builtin/trap/install-hook
+    | ble-edit/attach/.attach ble-edit/attach
+    | {
+    |   ble/base/attach-from-PROMPT_COMMAND
+    |   ble/function#lambda/0 starship_precmd
+    |   _ble_prompt_update__eval_prompt_command_1
+    |   ble/prompt/update/.eval-prompt_command
+    | } * 沢山繰り返し
+    | ble/base/attach-from-PROMPT_COMMAND
+    | ble/function#lambda/1
+    | blehook/invoke.sandbox blehook/invoke
+    | ble-edit/exec:gexec/invoke-hook-with-setexit
+    | ble/prompt/update ble/application/render
+    | ble-edit/bind/.tail
+    | ble-edit/exec:gexec/.end
+
+    うーん。再帰呼び出しを防ぐ様な仕組みがあった様な気がするがそれはどうなった
+    のだったか。改めて確認してみる事にする。うーん。確かにその仕組はあるが、再
+    帰的に呼び出した際には再帰的に実行される様である。
+
+    % 自分の手元で改めて再現を試みているが再現しない。starship の他にも更に別の
+    % PROMPT_COMMAND を触る設定も読み込んだ時には発生するという事なのではないか。
+    %
+    % * 再現はしないが何が起こっているかは分かっている。此処での疑問は何故毎回
+    %   eval-prompt_command を実行する必要があったのかという事である。
+    %
+    %   入れ子で呼び出す時に…うーん。これは以前の PROMPT_COMMAND を利用した開始
+    %   時刻の判定などの為の可能性もある。改めて過去の議論を確認する。
+    %
+    % * #D1778 が多少関係しているのではないか。そもそも eval prompt_command を此
+    %   処で実行する必要性がよく分からない。
+    %
+    %   →もし PROMPT_COMMAND 経由で attach が呼び出されるのだとしたら、ここで
+    %     eval prompt_command を実行しなくても更に外側で PROMPT_COMMAND の続きの
+    %     処理が実行された時に必要な処理が行われるのではないか。然し、これは
+    %     PROMPT_COMMAND の後続の設定で PS1 の設定などが行われている時に問題であ
+    %     る。更に、PROMPT_COMMAND の中から様々の出力や端末に対する問い合わせの
+    %     seq 等を送出するという場合にも問題になるかもしれない。
+    %
+    %   なので、やはり少なくとも一回は eval prompt_command を此処で実行する必要が
+    %   ある。一方で、入れ子で呼び出された回数だけ実行する必要性は謎である。うー
+    %   ん。普通に考えて不要に思われる。
+    %
+    % * 然し改めて再帰呼び出しのコードを見ると save_index を指定して
+    %   PROMPT_COMMAND を呼び出している。つまり、save_index による無限ループが発
+    %   生しない限りはこの様な事にはならない筈なのである。うーん。不思議だ。
+    %
+    %   とここまで来て分かった様な気がする。save_index を使っている時は
+    %   PROMPT_COMMAND に値を設定して古い PROMPT_COMMAND の実行を行っている。もし
+    %   この時に他の PROMPT_COMMAND[] 要素にも値が設定されていたらどうなるか。そ
+    %   れらも一緒に呼び出されてしまう。特に starship がそこから既存の
+    %   PROMPT_COMMAND を呼び出そうとした時に其処に attach-from-PROMPT_COMMAND が
+    %   入っていると無限ループが発生する。
+    %
+    %   然し、そもそも save_index を使うのは array PROMPT_COMMAND が使えない時で
+    %   はなかったか。つまり、bash 5.0 以下。然し一方で starship がもし bash-5.0
+    %   以下であるにも拘らずに PROMPT_COMMAND 配列に何か設定した場合には何が起こ
+    %   るか? Fedora 36 の starship (1.2.1 2022-02) で
+    %
+    %     $ starship init bash --print-full-init
+    %
+    %   の結果を見ても PROMPT_COMMAND は scalar だと思っている様だ。或いは最近の
+    %   starship で配列 PROMPT_COMMAND に対応する様になったのかもしれない。
+    %
+    %   実際に報告によると使っている bash は bash 5.0 の様だ。
+
+    うーん。ここまで来て bash 5.0 で試したら再現した。starship の出力を見る限り
+    は別に PROMPT_COMMAND に配列で設定を行っている訳でもない。具体的に何が起こっ
+    ているのか確認する。
+
+    何が起こっているのか何となく分かった。最初に
+
+      starship_precmd -> attach-from-PROMPT_COMMAND 0 -> empty
+
+    が設定される。然し、ble-reload の際に
+
+      attach-from-PROMPT_COMMAND 0 -> starship_precmd
+
+    が設定されるが、以前の attach-from-PROMPT_COMMAND 0 が starshop_precmd の中
+    に保存されているので starship_precmd がそれを呼び出して、その事によって無限
+    ループになっている。
+
+    うーん。unload する時に starship_precmd の中に記録されている前回の attach
+    用のコードを除去しなければならないが、それができていないという事。この時に
+    どうすれば良いか。。うーん。
+
+    ? そもそも入れ子で attach-from-PROMPT_COMMAND を呼び出す事を許可しているの
+      は何故だったか。また入れ子になった呼び出しの各階層における PROMPT_COMMAND
+      の書き換えをちゃんと追跡しているのは何故だったか。そもそも複数回の
+      install-prompt-attach を実行していなければ複数の
+      attach-from-PROMPT_COMMAND が起こる事はないのではないかという気がするが、
+      何故その様な事を考慮に入れていたのだったか。
+
+      或いはそれこそ ble-reload をした時に前に設定されていた内容が消滅してしま
+      わない様にする為だったかもしれない。つまり、
+      _ble_base_attach_PROMPT_COMMAND に格納された元の PROMPT_COMMAND が
+      ble-reload した後に使えなくなってしまうと行けないが、PROMPT_COMMAND は既
+      に更に別の物によって上書きされてしまっている為に単純に復元できない。その
+      時は unload するとしても attach-from-PROMPT_COMMAND はそのままにして、昔
+      の _ble_base_attach_PROMPT_COMMAND を引き続き呼び出させる。という具合になっ
+      ているのではないか。
+
+      なのだとすると、初期化の際に _ble_base_attach_PROMPT_COMMAND を上書きして
+      クリアしてしまうという実装が誤っているという事。
+
+    * check: 元々この仕組は #D1650 (39ebf533) で導入された。然しこの時から既に
+      記録用の配列はロード時に空に初期化してしまっていた。本当に当初の意図は複
+      数回の ble.sh のロードだったのだろうか。
+
+      →この時の記録を見てみると別に複数回のロードの事を考慮した訳ではなくて、
+      単に念の為に「何らかの要因」で複数回設定された時に無限ループを防ぐという
+      物だった様に読める。然しその何らかの要因として ble.sh の複数回ロードは想
+      定していなかったし、従って複数回のロードに跨って記録配列を保持するという
+      事は考えていなかったという事である。
+
+    * done: PROMPT_COMMAND 配列が bash 5.0 以下で設定されている時の対策をする。
+
+      これは報告にあった物とは関係ないがこれも対策しておくべきである。これは
+      PROMPT_COMMAND と lambda が一致している場合でも横着せずに毎回
+      PROMPT_COMMAND を local 変数として設定して処理する様にした。一致している
+      場合には unlocal した後に改めて値を設定し直す事によって処理する。
+
   * util: starship で ble-reload した後に C-d で抜けると滅茶苦茶沢山のログが出る [#D1850]
 
     declare が無引数で呼び出されているという事だろうか。ble-reload していない時

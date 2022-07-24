@@ -338,6 +338,7 @@
 - cmap: distinguish <kbd>find</kbd>/<kbd>select</kbd> from <kbd>home</kbd>/<kbd>end</kbd> for openSUSE `inputrc.keys` (reported by cornfeedhobo) `#D1648` c4d28f4
   - cmap: freeze the internal codes of <kbd>find</kbd>/<kbd>select</kbd> and kitty special keys `#D1674` fdfe62a
 - main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
+  - main: fix an infinite loop on `ble-reload` with externally saved `PROMPT_COMMAND` (reported by tars0x9752) `#D1851` XXXXXXX
 - decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
 - decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680` a6b4e2c
 - complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` f985b9a
