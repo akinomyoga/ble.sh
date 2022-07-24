@@ -6114,7 +6114,7 @@ function ble-edit/exec:gexec/.TRAPDEBUG/trap {
   #   る事にする。もし FUNCNAME, BASH_SOURCE 等を DEBUG trap から参照したいユー
   #   ザーがいれば、コマンド実行の時には既定で user trap を直接 trap する様にし
   #   ても良い。
-  builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc"' DEBUG
+  builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc" \# "${_ble_edit_exec_TRAPDEBUG_lastarg%%$_ble_term_nl*}"' DEBUG
 
   # Note: 以下は条件付きで user trap を直接 trap するコード。
   # if [[ $_ble_attached && _ble_edit_exec_TRAPDEBUG_INT || :$1: == *:filter:* ]]; then
@@ -6144,6 +6144,7 @@ function ble-edit/exec:gexec/.TRAPDEBUG/restore {
 function ble-edit/exec:gexec/.TRAPDEBUG {
   local __lastexit=$? __lastarg=$_ bash_command=$BASH_COMMAND # Note XXXX: bash-3.0 では BASH_COMMAND が異なる。
   _ble_edit_exec_TRAPDEBUG_postproc=
+  _ble_edit_exec_TRAPDEBUG_lastarg=$__lastarg
   [[ $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ]] || return 0
   [[ $bash_command != *ble-edit/exec:gexec/.* ]] || return 0
   [[ ! ( ${FUNCNAME[1]-} == _ble_prompt_update__eval_prompt_command_1 && ( $bash_command == 'ble-edit/exec/.setexit '* || $bash_command == 'BASH_COMMAND='*' builtin eval -- '* ) ) ]] || return 0
@@ -6239,7 +6240,6 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
   elif [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]]; then
     # ユーザートラップだけの場合は、ユーザートラップを外で実行
     _ble_edit_exec_TRAPDEBUG_lastexit=$__lastexit
-    _ble_edit_exec_TRAPDEBUG_lastarg=$__lastarg
     _ble_edit_exec_TRAPDEBUG_postproc='ble/util/setexit "$_ble_edit_exec_TRAPDEBUG_lastexit" "$_ble_edit_exec_TRAPDEBUG_lastarg"'
     local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]} q=\' Q="'\''"
     if [[ $user_trap == *[![:space:]]* ]]; then

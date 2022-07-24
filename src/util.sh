@@ -2177,7 +2177,7 @@ function ble/builtin/trap/install-hook {
   local sig=$ret name=${_ble_builtin_trap_signames[ret]}
   ble/builtin/trap/reserve "$sig"
 
-  local handler="ble/builtin/trap/.handler $sig ${name#SIG}; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\$_ble_builtin_trap_lastarg\""
+  local handler="ble/builtin/trap/.handler $sig ${name#SIG}; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
   local trap_command="trap -- '$handler' $name"
   local trap_string; ble/util/assign trap_string "builtin trap -p $name"
 
