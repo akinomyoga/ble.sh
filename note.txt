@@ -6530,6 +6530,38 @@ bash_tips
 
 2022-07-24
 
+  * util: starship で ble-reload した後に C-d で抜けると滅茶苦茶沢山のログが出る [#D1850]
+
+    declare が無引数で呼び出されているという事だろうか。ble-reload していない時
+    には関係ない。EXIT trap を先ず確認するのが良いだろう → blehook EXIT= とし
+    ても同様に問題が生じる。trap - EXIT とすると問題は発生せずに exit する事が
+    できる。
+
+    どうも trap handler に "set" という文字列が登録されている様だ。何故? 実際に
+    trap handler の配列を見てみると以下の様になっている。
+
+      declare -a _ble_builtin_trap_handlers=([0]="set")
+
+    因みに starship init bash の出力には trap も set も含まれてはいない。うーん。
+    実際に値を設定している箇所は一箇所しかない様な気がする。確認する。確認して
+    みた所、実際に ble/builtin/trap -- set EXIT という呼び出しが行われている。
+
+    これは元々設定されていたtrapを再設定する時に、元々設定されていたtrapの抽出
+    に失敗しているという事だろうか。ble/builtin/trap の呼び出し元を確認すると
+
+      ble/builtin/trap/install-hook
+
+    であった。やはり既存設定の抽出に失敗しているという事だろう → うーん。何故
+    か builtin trap -p EXIT の結果が本当に trap -- set EXIT になっている様だ。
+    何事だろうか。unload の差異に set を設定する様になっている可能性? というの
+    も変な気がする。だとしたら starship と関係ないはず。
+
+    どうも ble/base/unload-for-reload に於いて trap -- set EXIT が設定されてい
+    る様である。つまり、元々の trap を設定する際に誤って set を設定してしまって
+    いる。
+
+    これは結局単純なミスだった。
+
   * main, util: make check が nix-build @ macOS で失敗する (reported by aiotter) [#D1849]
     https://github.com/NixOS/nixpkgs/pull/181963#issuecomment-1193125126
 

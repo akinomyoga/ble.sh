@@ -94,6 +94,7 @@
   - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 3de751e e61dbaa
   - edit (`exec_elapsed_mark`): show hours and days `#D1793` 699dabb
 - util: preserve original traps and restore them on unload `#D1775` `#D1776` `#D1777` 398e404
+  - util (trap): fix a bug of restoring original traps `#D1850` XXXXXXX
 - progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 7b70a0e
 - sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 29b8be3
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097

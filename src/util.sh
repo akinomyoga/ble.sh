@@ -1927,7 +1927,7 @@ function ble/builtin/trap/finalize {
     local name=${_ble_builtin_trap_signames[index]}
     [[ $name && ${_ble_builtin_trap_reserved[sig]} ]] || continue
     if [[ ${_ble_builtin_trap_handlers[sig]+set} ]]; then
-      builtin trap -- "${_ble_builtin_trap_handlers[sig]+set}" "$name"
+      builtin trap -- "${_ble_builtin_trap_handlers[sig]-}" "$name"
     else
       builtin trap -- - "$name"
     fi
