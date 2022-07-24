@@ -700,7 +700,7 @@ function ble/base/print-usage-for-no-argument-command {
   [[ $1 != --help ]] && return 2
   return 0
 }
-function ble-reload { source "$_ble_base/ble.sh" --attach=prompt; }
+function ble-reload { source "$_ble_base/ble.sh" --attach=prompt --rcfile="${_ble_base_rcfile:-/dev/null}"; }
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 function ble-update {
   if (($#)); then
