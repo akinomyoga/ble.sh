@@ -6540,6 +6540,34 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-07-29
+
+  * edit: display-shell-version (C-x C-v) で /etc/os-release も参照する [#D1854]
+
+    /etc/os-release の中の NAME= と VERSION= を見れば良さそう?
+
+    OpenSUSE は VERSION が何故かコメントアウトされている。PRETTY_NAME はある。
+    VoidLinux は NAME=void である。VERSION は存在しない。PRETTY_NAME はある。
+    Arch も VoidLinux と似たような物である。
+    FreeBSD も実は /etc/os-release を持っている。
+
+    - Solaris は /etc/release を持っているが中身はシェルスクリプトではなくテキ
+      ストファイルである。一番最初の行を抜き出して trim したら OS の名称になる
+      だろう。
+
+    - Minix にも /etc/release があってこれはやはりテキストファイルだった。然し
+      何故か NetBSD 3.3 と書かれている。もしかして Minix は Minix kernel の上に
+      NetBSD のパッケージを載せているという事なのか? 調べてみたら Minix 3.2 以
+      降では NetBSD technology を導入するという様な記事があった。
+
+      逆に言えば NetBSD でも /etc/release があって一行目にその情報が書かれてい
+      るという事だろうか。
+
+    * 取り敢えず OS 名は抽出する様にした。
+
+    * done: 更に待避した locale 変数も元の状態をできるだけ再現する様にして表示
+      する事にする。
+
 2022-07-24
 
   * edit: starship (DEBUG trap) がある時に $_ が正しく復元されない [#D1853]

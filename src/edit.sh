@@ -3809,7 +3809,21 @@ function ble/widget/display-shell-version {
   local label_noarch=" (${sgrA}noarch$sgr0)"
   local label_integration=" $_ble_term_bold(integration: on)$sgr0"
 
-  local lines="${sgrC}GNU bash$sgr0, version $sgrV$BASH_VERSION$sgr0 ($sgrA$MACHTYPE$sgr0)" iline=1
+  local os_release=
+  if [[ -s /etc/os-release ]]; then
+    ble/util/assign os_release '(
+      builtin unset -v PRETTY_NAME NAME VERSION
+      source /etc/os-release
+      echo "${PRETTY_NAME:-${NAME:+$NAME${VERSION:+ $VERSION}}}")' 2>/dev/null
+  fi
+  if [[ ! $os_release && -s /etc/release ]]; then
+    local ret
+    ble/util/mapfile ret < /etc/release
+    ble/string#trim "$ret"
+    os_release=$ret
+  fi
+
+  local lines="${sgrC}GNU bash$sgr0, version $sgrV$BASH_VERSION$sgr0 ($sgrA$MACHTYPE$sgr0)${os_release:+ [$os_release]}" iline=1
   lines[iline++]="${sgrF}ble.sh$sgr0, version $sgrV$BLE_VERSION$sgr0$label_noarch"
 
   ble/edit/display-version/check:bash-completion
@@ -3824,11 +3838,16 @@ function ble/widget/display-shell-version {
   # locale
   local q=\'
   local ret='(unset)'
-  [[ ${LANG+set} ]] && ble/string#quote-word "$LANG" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
-  local var line="${_ble_term_bold}locale$sgr0: ${sgr2}LANG$sgrV=$sgr0$ret"
-  for var in "${!LC_@}"; do
+  local var line=${_ble_term_bold}locale$sgr0:
+  for var in _ble_bash_LANG "${!_ble_bash_LC_@}" LANG "${!LC_@}"; do
+    case $var in
+    (LC_ALL|LC_COLLATE) continue ;;
+    (LANG|LC_CTYPE|LC_MESSAGES|LC_NUMERIC|LC_TIME)
+      [[ ${_ble_bash_LC_ALL-} ]] && continue ;;
+    esac
+    [[ ${!var+set} ]] || continue
     ble/string#quote-word "${!var}" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
-    line="$line $sgr2$var$sgrV=$sgr0$ret"
+    line="$line $sgr2${var#_ble_bash_}$sgrV=$sgr0$ret"
   done
   lines[iline++]=$line
 

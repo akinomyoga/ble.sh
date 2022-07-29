@@ -94,7 +94,7 @@
   - edit: work around a bash-4.4..5.1 bug of `exit` outputting time to stderr of exit context `#D1765` 3de751e e61dbaa
   - edit (`exec_elapsed_mark`): show hours and days `#D1793` 699dabb
 - util: preserve original traps and restore them on unload `#D1775` `#D1776` `#D1777` 398e404
-  - util (trap): fix a bug of restoring original traps `#D1850` XXXXXXX
+  - util (trap): fix a bug of restoring original traps `#D1850` 8d918b6
 - progcomp: support `compopt -o ble/no-default` to suppress default completions `#D1789` 7b70a0e
 - sabbrev: support options `-r` and `--reset` to remove entries `#D1790` 29b8be3
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097
@@ -131,6 +131,8 @@
 - prompt: adjust behavior of `LINENO` and prompt sequence `\#` (reported by tycho-kirchner) `#D1542` 8b0257e
   - prompt: update `PS0` between multiple commands (motivated by tycho-kirchner) `#D1560` 8f29203
 - edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
+  - edit (`display-shell-version`): detect configurations and print details `#D1781` 5015cb56
+  - edit (`display-shell-version`): show information of the OS distribution and properly handle saved locales `#D1854` XXXXXXX
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
@@ -168,8 +170,8 @@
 - history: disable the history file when `HISTFILE` is empty `#D1836` 9549e83
 - complete: generate options by empty-word copmletion after filenames (reported by geekscrapy) `#D1846` 6954b13
   - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` 1c7f7a1
-- syntax (`extract-command`): extract unexpected command names as commands `#D1848` XXXXXXX
-- main (`ble-reload`): preserve the original initialization options `#D1852` XXXXXXX
+- syntax (`extract-command`): extract unexpected command names as commands `#D1848` 5b63459
+- main (`ble-reload`): preserve the original initialization options `#D1852` d8c92cc
 
 ## Fixes
 
@@ -193,7 +195,7 @@
   - mandb: support man-page format of `rsync` `#D1733` 7900144
   - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 88614b8
   - mandb: fix a bug that the man page is not correctly searched (fixup 2365e09) `#D1794` 65ffe70
-  - mandb: support the man-page formats of `man ls` in coreutils/Japanese and in macOS `#D1847` XXXXXXX
+  - mandb: support the man-page formats of `man ls` in coreutils/Japanese and in macOS `#D1847` fa32829
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -277,6 +279,7 @@
 - decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
 - command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` 937a164
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
+- main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` XXXXXXX
 
 ## Documentation
@@ -339,7 +342,7 @@
 - cmap: distinguish <kbd>find</kbd>/<kbd>select</kbd> from <kbd>home</kbd>/<kbd>end</kbd> for openSUSE `inputrc.keys` (reported by cornfeedhobo) `#D1648` c4d28f4
   - cmap: freeze the internal codes of <kbd>find</kbd>/<kbd>select</kbd> and kitty special keys `#D1674` fdfe62a
 - main: work around self-modifying `PROMPT_COMMAND` by `bash-preexec` (reported by cornfeedhobo) `#D1650` 39ebf53
-  - main: fix an infinite loop on `ble-reload` with externally saved `PROMPT_COMMAND` (reported by tars0x9752) `#D1851` XXXXXXX
+  - main: fix an infinite loop on `ble-reload` with externally saved `PROMPT_COMMAND` (reported by tars0x9752) `#D1851` 53af663
 - decode: work around openSUSE broken `/etc/inputrc` `#D1662` e5b0c86
 - decode: work around the overwritten builtin `set` (reported by eadmaster) `#D1680` a6b4e2c
 - complete: work around the variable leaks by `virsh` completion from `libvirt` (reported by telometto) `#D1682` f985b9a
@@ -362,7 +365,7 @@
 - util, edit, contrib: add support for `bash-preexec` (motivated by SuperSandro2000) `#D1744` e85f52c
   - util (`ble/builtin/trap`): fix resetting `$?` and `$_` (reported by SuperSandro2000) `#D1757` dfc6221
   - util (`ble/builtin/trap`): fix a failure of setting the trap-handler exit status (reported by SuperSandro2000) `#D1771` c513ed4
-  - edit (`TRAPDEBUG`): partially restore `$_` after `DEBUG` trap (reported by aiotter) `#D1853` XXXXXXX
+  - edit (`TRAPDEBUG`): partially restore `$_` after `DEBUG` trap (reported by aiotter) `#D1853` 0b95d5d
 - main: check `IN_NIX_SHELL` to inactivate ble.sh in nix-shell (suggested by SuperSandro2000) `#D1747` b4bd955
   - main: force prompt-attach inside the nix-shell `rc` `#D1766` ceb2e7c
 - canvas: test the terminal for the sequence of clearing `DECSTBM` `#D1748` 4b1601d

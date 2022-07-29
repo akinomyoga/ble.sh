@@ -480,6 +480,9 @@ function ble/base/adjust-bash-options {
     _ble_bash_expand_aliases=1
 
   # locale 待避
+  # Note #D1854: ble/widget/display-shell-version で此処で待避した変数を参照す
+  #   る事に注意する。此処に新しい変数を追加する時は display-shell-version の方
+  #   にも処理スキップを追加する必要がある。
   ble/variable#copy-state LC_ALL _ble_bash_LC_ALL
   if [[ ${LC_ALL-} ]]; then
     ble/variable#copy-state LC_CTYPE    _ble_bash_LC_CTYPE
