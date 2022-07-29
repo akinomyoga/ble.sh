@@ -90,11 +90,12 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>
 
-<details open><summary><b>Install a package using a package manager</b> (currently only AUR packages)</summary>
+<details open><summary><b>Install a package using a package manager</b> (currently only a few packages)</summary>
 
 This only requires the corresponding package manager.
 
 - [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+- [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
 </details>
 
 <details open><summary><b>Update an existing copy of <code>ble.sh</code></b></summary>

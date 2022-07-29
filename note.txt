@@ -6542,6 +6542,19 @@ bash_tips
 
 2022-07-29
 
+  * test: cd -P . / README からリンク for nixpkgs (reported by aiotter) [#D1855]
+
+    - blesh-share を実行するとスクリプトのファイル名が返される。実際に動かそう
+      と思うと色々他にも変な所がある。修正するべき。
+
+    - LC_ALL が設定されている…。これは大丈夫なのだろうか→調べてみたが ble.sh
+      の関数は全て LC_ALL に対する対策が個別に為されている様なので気にしなくて
+      良い。
+
+    取り敢えず cd -P . だけは追加して後は nixpkgs 側は変更を依頼する。所で
+    nixpkgs の各パッケージについての問い合わせ方法・問い合わせ先はあるのだろう
+    か。maintainer の情報は埋め込まれているが連絡先は書かれていない。
+
   * edit: display-shell-version (C-x C-v) で /etc/os-release も参照する [#D1854]
 
     /etc/os-release の中の NAME= と VERSION= を見れば良さそう?

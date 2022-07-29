@@ -87,11 +87,12 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>
 
-<details open><summary><b>パッケージ管理システムを通じてパッケージをインストール</b> (現在 AUR のみ)</summary>
+<details open><summary><b>パッケージ管理システムを通じてパッケージをインストール</b> (現在限られたパッケージのみ)</summary>
 
 この方法では対応するパッケージ管理ツールのみが必要です。
 
 - [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+- [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
 </details>
 
 <details open><summary><b>既存の <code>ble.sh</code> を更新</b></summary>

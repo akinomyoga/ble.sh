@@ -280,7 +280,7 @@
 - command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` 937a164
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
 - main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
-- main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` XXXXXXX
+- main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` XXXXXXX
 
 ## Documentation
 

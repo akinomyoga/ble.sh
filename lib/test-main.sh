@@ -43,6 +43,7 @@ ble/test/start-section 'ble/main' 19
   }
 
   ble/test/chdir
+  cd -P .
 
   mkdir -p ab/cd/ef
   touch ab/cd/ef/file.txt
