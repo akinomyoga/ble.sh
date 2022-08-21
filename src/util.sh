@@ -1611,10 +1611,12 @@ function blehook/.print {
     Q=$q$sgr0"\'"$sgr3$q
   fi
 
-  local elem code='
+  local elem op_assign code='
     if ((${#_ble_hook_h_NAME[@]})); then
+      op_assign==
       for elem in "${_ble_hook_h_NAME[@]}"; do
-        out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0+=${sgr3}$q${elem//$q/$Q}$q$sgr0$nl"
+        out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0$op_assign${sgr3}$q${elem//$q/$Q}$q$sgr0$nl"
+        op_assign=+=
       done
     else
       out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0=$nl"
@@ -2141,6 +2143,8 @@ function ble/builtin/trap/.handler {
 
   # ble.sh hook
   ble/util/joblist.check
+  ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+  blehook/invoke "internal_$_ble_trap_name"
   ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
   blehook/invoke "$_ble_trap_name"
   ble/util/joblist.check ignore-volatile-jobs
@@ -5777,7 +5781,7 @@ function ble/term:cygwin/initialize.hook {
 }
 
 function ble/term/DA2R.hook {
-  blehook DA2R-=ble/term/DA2R.hook
+  blehook term_DA2R-=ble/term/DA2R.hook
   case $_ble_term_TERM in
   (contra:*)
     _ble_term_cuu=$'\e[%dk'
@@ -5797,7 +5801,7 @@ function ble/term/.initialize {
   fi
 
   ble/string#reserve-prototype "$_ble_term_it"
-  blehook DA2R+=ble/term/DA2R.hook
+  blehook term_DA2R+=ble/term/DA2R.hook
 }
 ble/term/.initialize
 
@@ -6365,7 +6369,7 @@ function ble/term/DA2/initialize-term {
   return 0
 }
 
-function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke DA1R; }
+function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke term_DA1R; }
 function ble/term/DA2/notify {
   # Note #D1485: screen で attach した時に外側の端末の DA2R が混入する
   # 事がある。2回目以降に受信した内容は ble.sh の内部では使用しない事
@@ -6396,7 +6400,7 @@ function ble/term/DA2/notify {
     ((depth)) && return 0
   fi
 
-  blehook/invoke DA2R
+  blehook/invoke term_DA2R
 }
 
 ## @fn ble/term/quote-passthrough seq [level] [opts]

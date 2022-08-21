@@ -172,6 +172,8 @@
   - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` 1c7f7a1
 - syntax (`extract-command`): extract unexpected command names as commands `#D1848` 5b63459
 - main (`ble-reload`): preserve the original initialization options `#D1852` d8c92cc
+- blehook: print reusable code to restore the user hooks `#D1857` XXXXXXX
+  - blehook: separate internal and user hooks `#D1856` XXXXXXX
 
 ## Fixes
 
@@ -280,7 +282,7 @@
 - command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` 937a164
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
 - main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
-- main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` XXXXXXX
+- main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
 
 ## Documentation
 

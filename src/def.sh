@@ -19,14 +19,17 @@ function blehook/declare {
 blehook/declare EXIT
 blehook/declare INT
 blehook/declare ERR
+blehook/declare internal_EXIT
+blehook/declare internal_INT
+blehook/declare internal_ERR
 blehook/declare unload
 blehook/declare ATTACH
 blehook/declare DETACH
 
 # util.sh
 
-blehook/declare DA1R
-blehook/declare DA2R
+blehook/declare term_DA1R
+blehook/declare term_DA2R
 
 # color.sh
 
@@ -46,8 +49,10 @@ blehook/declare history_message
 # edit.sh
 
 blehook/declare WINCH
+blehook/declare internal_WINCH
 blehook/declare CHPWD
 blehook/declare PRECMD
+blehook/declare internal_PRECMD
 blehook/declare PREEXEC
 blehook/declare POSTEXEC
 blehook/declare widget_bell

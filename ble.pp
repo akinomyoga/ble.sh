@@ -1766,7 +1766,7 @@ ble/bin/.freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by
 ble/builtin/trap/install-hook EXIT
 ble/builtin/trap/install-hook INT
 
-blehook ERR+='ble/builtin/trap/invoke ERR'
+blehook internal_ERR+='ble/builtin/trap/invoke ERR'
 blehook ERR+='ble/function#try TRAPERR'
 
 #%x inc.r|@|src/decode|
@@ -2036,7 +2036,7 @@ function ble/base/install-prompt-attach {
     ble/array#push PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
     if [[ $_ble_edit_detach_flag == reload ]]; then
       _ble_edit_detach_flag=prompt-attach
-      blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
+      blehook internal_PRECMD+=ble/base/attach-from-PROMPT_COMMAND
     fi
   else
     local save_index=${#_ble_base_attach_PROMPT_COMMAND[@]}
@@ -2046,7 +2046,7 @@ function ble/base/install-prompt-attach {
     ble/function#trace "$PROMPT_COMMAND"
     if [[ $_ble_edit_detach_flag == reload ]]; then
       _ble_edit_detach_flag=prompt-attach
-      blehook PRECMD+="$PROMPT_COMMAND"
+      blehook internal_PRECMD+="$PROMPT_COMMAND"
     fi
   fi
 }
@@ -2080,7 +2080,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
         ((ret==keys[${#keys[@]}-1])) || is_last_PROMPT_COMMAND=
         ble/idict#replace PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
       fi
-      blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND || ((1)) # set -e 対策
+      blehook internal_PRECMD-=ble/base/attach-from-PROMPT_COMMAND || ((1)) # set -e 対策
     else
       local save_index=$1 lambda=$2
 
@@ -2093,7 +2093,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
       ble/util/unlocal PROMPT_COMMAND
 
       # 可能なら自身を各 hook から除去
-      blehook PRECMD-="$lambda" || ((1)) # set -e 対策
+      blehook internal_PRECMD-="$lambda" || ((1)) # set -e 対策
       if [[ $PROMPT_COMMAND == "$lambda" ]]; then
         PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
       else
@@ -2120,6 +2120,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
     #   るので PRECMD も発火しておく (PROMPT_COMMAND と PRECMD の順序
     #   が逆になるが仕方がない。問題になれば後で考える)。
     if [[ $is_last_PROMPT_COMMAND ]]; then
+      ble-edit/exec:gexec/invoke-hook-with-setexit internal_PRECMD
       ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
       _ble_prompt_hash=$COLUMNS:$_ble_edit_lineno:prompt_attach
     fi

@@ -132,7 +132,7 @@ function ble/keymap:emacs/update-mode-indicator {
 
   ble/edit/info/default ansi "$str"
 }
-blehook PRECMD+=ble/keymap:emacs/update-mode-indicator
+blehook internal_PRECMD+=ble/keymap:emacs/update-mode-indicator
 
 ## @fn ble/prompt/backslash:keymap:emacs/mode-indicator
 function ble/prompt/backslash:keymap:emacs/mode-indicator {

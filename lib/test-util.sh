@@ -1041,16 +1041,16 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   # add/remove hook
   blehook FOO+='echo hello'
   ble/test 'blehook --color=never FOO' \
-           stdout="blehook FOO+='echo hello'"
+           stdout="blehook FOO='echo hello'"
   ble/test 'blehook/has-hook FOO'
   blehook FOO+='echo world'
   ble/test 'blehook --color=never FOO' \
-           stdout="blehook FOO+='echo hello'" \
+           stdout="blehook FOO='echo hello'" \
            stdout="blehook FOO+='echo world'"
   ble/test 'blehook/has-hook FOO'
   blehook FOO-='echo hello'
   ble/test 'blehook --color=never FOO' \
-           stdout="blehook FOO+='echo world'"
+           stdout="blehook FOO='echo world'"
   ble/test 'blehook/has-hook FOO'
   blehook FOO-='echo world'
   ble/test 'blehook --color=never FOO' \
@@ -1062,7 +1062,7 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   blehook FOO+='echo world'
   blehook FOO='echo empty'
   ble/test 'blehook --color=never FOO' \
-           stdout="blehook FOO+='echo empty'"
+           stdout="blehook FOO='echo empty'"
   ble/test 'blehook/has-hook FOO'
 
   # clear hook
@@ -1078,15 +1078,15 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   blehook FOO+='echo world'
   blehook FOO!='echo hello'
   ble/test 'blehook --color=never FOO' \
-           stdout="blehook FOO+='echo hello'${_ble_term_nl}blehook FOO+='echo world'"
+           stdout="blehook FOO='echo hello'${_ble_term_nl}blehook FOO+='echo world'"
   # uniq append
   blehook FOO-+='echo hello'
   ble/test 'blehook --color=never FOO' \
-           stdout="blehook FOO+='echo world'${_ble_term_nl}blehook FOO+='echo hello'"
+           stdout="blehook FOO='echo world'${_ble_term_nl}blehook FOO+='echo hello'"
   # uniq prepend
   blehook FOO+-='echo hello'
   ble/test 'blehook --color=never FOO' \
-           stdout="blehook FOO+='echo hello'${_ble_term_nl}blehook FOO+='echo world'"
+           stdout="blehook FOO='echo hello'${_ble_term_nl}blehook FOO+='echo world'"
 
   # invoke hook
   blehook FOO=

@@ -504,7 +504,7 @@ function ble/keymap:vi/update-mode-indicator {
 
   ble/edit/info/default ansi "$str" # 6ms
 }
-blehook PRECMD+=ble/keymap:vi/update-mode-indicator
+blehook internal_PRECMD+=ble/keymap:vi/update-mode-indicator
 
 ## @fn ble/prompt/backslash:keymap:vi/mode-indicator
 ##   @var[in,opt] prompt_vi_keymap

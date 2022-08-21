@@ -65,7 +65,7 @@ function ble/color/initialize-term-colors {
       bleopt term_true_colors="$value"
   fi
 }
-blehook DA2R+=ble/color/initialize-term-colors
+blehook term_DA2R+=ble/color/initialize-term-colors
 
 
 function ble-color-show {

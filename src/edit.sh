@@ -1657,6 +1657,7 @@ function ble/prompt/update {
   if ((_ble_textarea_panel==0)); then # 補助プロンプトに対しては PROMPT_COMMAND は実行しない
     # Note #D1778: version の内の history count は PROMPT_COMMAND の更新には使わない。
     if [[ ${_ble_prompt_hash%:*} != "${version%:*}" && $opts != *:leave:* ]]; then
+      ble-edit/exec:gexec/invoke-hook-with-setexit internal_PRECMD
       if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
         # #D1750 PROMPT_COMMAND 及び PRECMD が何か出力する時は表示が乱れるので
         # クリアする。点滅などを避ける為、既定では off にしておく。
@@ -2578,7 +2579,7 @@ function ble-edit/attach/.attach {
   fi
 
   ble/builtin/trap/install-hook WINCH readline
-  blehook WINCH-+=ble-edit/attach/TRAPWINCH
+  blehook internal_WINCH-+=ble-edit/attach/TRAPWINCH
 
   ble-edit/adjust-PS1
   ble-edit/adjust-READLINE
@@ -6362,7 +6363,7 @@ function ble-edit/exec:gexec/.TRAPINT {
   fi
 }
 function ble-edit/exec:gexec/.TRAPINT/reset {
-  blehook INT-='ble-edit/exec:gexec/.TRAPINT'
+  blehook internal_INT-='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
   local -a BLE_PIPESTATUS
@@ -6428,7 +6429,7 @@ function ble-edit/exec:gexec/.begin {
 
   # C-c に対して
   ble/builtin/trap/install-hook INT # 何故か改めて実行しないと有効にならない
-  blehook INT+='ble-edit/exec:gexec/.TRAPINT'
+  blehook internal_INT+='ble-edit/exec:gexec/.TRAPINT'
   ble-edit/exec:gexec/.TRAPDEBUG/restore
 }
 function ble-edit/exec:gexec/.end {
@@ -6545,6 +6546,7 @@ function ble-edit/exec:gexec/.epilogue {
   local msg=
   if ((_ble_edit_exec_lastexit)); then
     # SIGERR処理
+    ble-edit/exec:gexec/invoke-hook-with-setexit internal_ERR
     ble-edit/exec:gexec/invoke-hook-with-setexit ERR
     if [[ $bleopt_exec_errexit_mark ]]; then
       local ret
@@ -9232,7 +9234,7 @@ function ble/builtin/read/.loop {
   local ret; ble/canvas/panel/save-position; local pos0=$ret
   ble/builtin/read/.set-up-textarea || return 1
   ble/builtin/trap/install-hook WINCH readline
-  blehook WINCH=ble/builtin/read/TRAPWINCH
+  blehook internal_WINCH=ble/builtin/read/TRAPWINCH
 
   local ret= timeout=
   if [[ $opt_timeout ]]; then

@@ -849,7 +849,7 @@ function ble/history:bash/TRAPEXIT {
     ble/builtin/history -w
   fi
 }
-blehook EXIT+=ble/history:bash/TRAPEXIT
+blehook internal_EXIT+=ble/history:bash/TRAPEXIT
 
 function ble/history:bash/reset {
   if ((_ble_bash>=40000)); then
