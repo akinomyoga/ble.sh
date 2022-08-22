@@ -7241,23 +7241,23 @@ function ble-edit/undo/clear-all {
   _ble_edit_undo_history=()
   _ble_edit_undo_hindex=
 }
-function ble-edit/undo/history-delete.hook {
-  ble/builtin/history/array#delete-hindex _ble_edit_undo_history "$@"
-  _ble_edit_undo_hindex=
+function ble-edit/undo/history-change.hook {
+  local kind=$1; shift
+  case $kind in
+  (delete)
+    ble/builtin/history/array#delete-hindex _ble_edit_undo_history "$@"
+    _ble_edit_undo_hindex= ;;
+  (clear)
+    ble-edit/undo/clear-all ;;
+  (insert)
+    ble/builtin/history/array#insert-range _ble_edit_undo_history "$@"
+    local beg=$1 len=$2
+    [[ $_ble_edit_undo_hindex ]] &&
+      ((_ble_edit_undo_hindex>=beg)) &&
+      ((_ble_edit_undo_hindex+=len)) ;;
+  esac
 }
-function ble-edit/undo/history-clear.hook {
-  ble-edit/undo/clear-all
-}
-function ble-edit/undo/history-insert.hook {
-  ble/builtin/history/array#insert-range _ble_edit_undo_history "$@"
-  local beg=$1 len=$2
-  [[ $_ble_edit_undo_hindex ]] &&
-    ((_ble_edit_undo_hindex>=beg)) &&
-    ((_ble_edit_undo_hindex+=len))
-}
-blehook history_delete+=ble-edit/undo/history-delete.hook
-blehook history_clear+=ble-edit/undo/history-clear.hook
-blehook history_insert+=ble-edit/undo/history-insert.hook
+blehook history_change+=ble-edit/undo/history-change.hook
 
 ## @fn ble-edit/undo/.get-current-state
 ##   @var[out] str ind

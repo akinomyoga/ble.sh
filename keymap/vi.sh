@@ -2416,7 +2416,7 @@ ble/array#push _ble_textarea_local_VARNAMES \
 #
 
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
-blehook history_onleave+=ble/keymap:vi/mark/history-onleave.hook
+blehook history_leave+=ble/keymap:vi/mark/history-onleave.hook
 
 ## @fn ble/keymap:vi/mark/history-onleave.hook
 function ble/keymap:vi/mark/history-onleave.hook {
@@ -2454,63 +2454,69 @@ function ble/keymap:vi/mark/update-mark-history {
     _ble_keymap_vi_mark_hindex=$h
   fi
 }
-blehook history_clear+=ble/keymap:vi/mark/history-clear.hook
-blehook history_delete+=ble/keymap:vi/mark/history-delete.hook
-blehook history_insert+=ble/keymap:vi/mark/history-insert.hook
-function ble/keymap:vi/mark/history-clear.hook {
-  _ble_keymap_vi_mark_global=()
-  _ble_keymap_vi_mark_history=()
-  _ble_keymap_vi_mark_hindex=
-}
-## @fn ble/keymap:vi/mark/history-delete.hook index...
+blehook history_change+=ble/keymap:vi/mark/history-change.hook
+## @fn ble/keymap:vi/mark/history-change.hook 'delete' index...
+## @fn ble/keymap:vi/mark/history-change.hook 'clear'
+## @fn ble/keymap:vi/mark/history-change.hook 'insert' beg len
 ##   @param[in] index...
-##     昇順に並んでいる事と重複がない事を仮定する。
-function ble/keymap:vi/mark/history-delete.hook {
-  # update _ble_keymap_vi_mark_global
-  for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
-    local value=${_ble_keymap_vi_mark_global[imark]}
-    local h=${value%%:*} v=${value#*:}
-    local idel shift=0
-    for idel; do
-      if [[ $idel == *-* ]]; then
-        local b=${idel%-*} e=${idel#*-}
-        ((b<=h&&h<e)) && shift= # delete
-        ((h<e)) && break
-        ((shift+=e-b))
-      else
-        ((idel==h)) && shift= # delete
-        ((idel>=h)) && break
-        ((shift++))
-      fi
-    done
-    [[ $shift ]] &&
-      _ble_keymap_vi_mark_global[imark]=$((h-shift)):$v
-  done
-
-  # update _ble_keymap_vi_mark_history
-  ble/builtin/history/array#delete-hindex _ble_keymap_vi_mark_history "$@"
-
-  # reset _ble_keymap_vi_mark_hindex
-  _ble_keymap_vi_mark_hindex=
-}
-## @fn ble/keymap:vi/mark/history-insert.hook beg len
+##     削除する項目の番号を指定します。昇順に並んでいる事と重複がない事を仮定します。
 ##   @param[in] beg len
-function ble/keymap:vi/mark/history-insert.hook {
-  local beg=$1 len=$2
+##     挿入位置と挿入項目の個数を指定します。
+function ble/keymap:vi/mark/history-change.hook {
+  local kind=$1; shift
+  case $kind in
+  (delete)
+    # update _ble_keymap_vi_mark_global
+    local imark
+    for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
+      local value=${_ble_keymap_vi_mark_global[imark]}
+      local h=${value%%:*} v=${value#*:}
+      local idel shift=0
+      for idel; do
+        if [[ $idel == *-* ]]; then
+          local b=${idel%-*} e=${idel#*-}
+          ((b<=h&&h<e)) && shift= # delete
+          ((h<e)) && break
+          ((shift+=e-b))
+        else
+          ((idel==h)) && shift= # delete
+          ((idel>=h)) && break
+          ((shift++))
+        fi
+      done
+      [[ $shift ]] &&
+        _ble_keymap_vi_mark_global[imark]=$((h-shift)):$v
+    done
 
-  # update _ble_keymap_vi_mark_global
-  for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
-    local value=${_ble_keymap_vi_mark_global[imark]}
+    # update _ble_keymap_vi_mark_history
+    ble/builtin/history/array#delete-hindex _ble_keymap_vi_mark_history "$@"
 
-    local h=${value%%:*} v=${value#*:}
-    ((h>=beg)) && _ble_keymap_vi_mark_global[imark]=$((h+len)):$v
-  done
+    # reset _ble_keymap_vi_mark_hindex
+    _ble_keymap_vi_mark_hindex= ;;
 
-  # update _ble_keymap_vi_mark_history
-  ble/builtin/history/array#insert-range _ble_keymap_vi_mark_history "$@"
+  (clear)
+    _ble_keymap_vi_mark_global=()
+    _ble_keymap_vi_mark_history=()
+    _ble_keymap_vi_mark_hindex= ;;
 
-  # reset _ble_keymap_vi_mark_hindex
-  _ble_keymap_vi_mark_hindex=
+  (insert)
+    local beg=$1 len=$2
+
+    # update _ble_keymap_vi_mark_global
+    local imark
+    for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
+      local value=${_ble_keymap_vi_mark_global[imark]}
+
+      local h=${value%%:*} v=${value#*:}
+      ((h>=beg)) && _ble_keymap_vi_mark_global[imark]=$((h+len)):$v
+    done
+
+    # update _ble_keymap_vi_mark_history
+    ble/builtin/history/array#insert-range _ble_keymap_vi_mark_history "$@"
+
+    # reset _ble_keymap_vi_mark_hindex
+    _ble_keymap_vi_mark_hindex= ;;
+  esac
 }
 
 function ble/keymap:vi/mark/shift-by-dirty-range {
@@ -3448,7 +3454,7 @@ function ble/widget/vi_nmap/pagedown {
     ble/widget/vi-command/bell
     return 1
   fi
-  
+
   # 行き先を決定
   local vheight=$((height-_ble_textmap_begy-1))
   local ybase=$((_ble_textarea_scroll_new+height-1))
@@ -8082,7 +8088,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # edit/undo
   ble-edit/undo/clear-all
-  
+
   # edit/history
   ble/history/set-prefix _ble_keymap_vi_cmap
 

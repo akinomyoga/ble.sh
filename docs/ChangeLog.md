@@ -427,6 +427,8 @@
 - util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072
 - github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
 - global: quote numbers for unexpected `IFS` `#D1835` 0179afc
+- history: refactor hooks `history_{{delete,clear,insert} => change}` `#D1860` XXXXXXX
+- history: rename the hook `history_{on => }leave` `#D1860` XXXXXXX
 
 ## Contrib
 

@@ -523,7 +523,7 @@ function ble/history:bash/initialize {
 
   # Note: 追加読み込みをした際に対応するデータを shift (history_share)
   local delta=$((new_count-old_count))
-  ((delta>0)) && blehook/invoke history_insert "$old_count" "$delta"
+  ((delta>0)) && blehook/invoke history_change insert "$old_count" "$delta"
 }
 
 #------------------------------------------------------------------------------
@@ -879,9 +879,7 @@ function ble/builtin/history/.touch-histfile {
 }
 
 # in def.sh
-# @hook history_delete
-# @hook history_clear
-# @hook history_message
+# @hook history_change
 
 # Note: #D1126 一度置き換えたら戻せない。二回は初期化しない。
 if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
@@ -1022,7 +1020,7 @@ function ble/builtin/history/.load-recent-entries {
   ((_ble_history_index==_ble_history_count)) && _ble_history_index=$ncount
   _ble_history_count=$ncount
   ble/history/.update-position
-  blehook/invoke history_insert "$ocount" "$delta"
+  blehook/invoke history_change insert "$ocount" "$delta"
 }
 ## @fn ble/builtin/history/.read file [skip [fetch]]
 function ble/builtin/history/.read {
@@ -1181,18 +1179,18 @@ function ble/builtin/history/array#insert-range {
     for i in "${!out[@]}"; do ARR[i]=${out[i]}; done'
   builtin eval -- "${script//ARR/$array_name}"
 }
-blehook history_delete+=ble/builtin/history/delete.hook
-blehook history_clear+=ble/builtin/history/clear.hook
-blehook history_insert+=ble/builtin/history/insert.hook
-function ble/builtin/history/delete.hook {
-  ble/builtin/history/array#delete-hindex _ble_history_dirt "$@"
-}
-function ble/builtin/history/clear.hook {
-  _ble_history_dirt=()
-}
-function ble/builtin/history/insert.hook {
-  # Note: _ble_history, _ble_history_edit は別に更新される
-  ble/builtin/history/array#insert-range _ble_history_dirt "$@"
+blehook history_change+=ble/builtin/history/change.hook
+function ble/builtin/history/change.hook {
+  local kind=$1; shift
+  case $kind in
+  (delete)
+    ble/builtin/history/array#delete-hindex _ble_history_dirt "$@" ;;
+  (clear)
+    _ble_history_dirt=() ;;
+  (insert)
+    # Note: _ble_history, _ble_history_edit は別に更新される
+    ble/builtin/history/array#insert-range _ble_history_dirt "$@" ;;
+  esac
 }
 ## @fn ble/builtin/history/option:c
 function ble/builtin/history/option:c {
@@ -1212,7 +1210,7 @@ function ble/builtin/history/option:c {
       _ble_history_count=
     fi
     ble/history/.update-position
-    blehook/invoke history_clear
+    blehook/invoke history_change clear
   fi
 }
 ## @fn ble/builtin/history/option:d index
@@ -1242,7 +1240,7 @@ function ble/builtin/history/option:d {
     if [[ $_ble_history_load_done ]]; then
       local N=${#_ble_history[@]}
       local b=$((beg-1+N-max)) e=$((end+N-max))
-      blehook/invoke history_delete "$b-$e"
+      blehook/invoke history_change delete "$b-$e"
       if ((_ble_history_index>=e)); then
         ((_ble_history_index-=e-b))
       elif ((_ble_history_index>=b)); then
@@ -1644,7 +1642,7 @@ function ble/builtin/history/erasedups {
   fi
 
   if ((${#delete_indices[@]})); then
-    blehook/invoke history_delete "${delete_indices[@]}"
+    blehook/invoke history_change delete "${delete_indices[@]}"
     ((_ble_builtin_history_wskip-=shift_wskip))
     [[ ${HISTINDEX_NEXT+set} ]] && ((HISTINDEX_NEXT-=shift_histindex_next))
   else
@@ -1900,10 +1898,10 @@ function ble/history/update-position {
     ble/history/.update-position
 }
 
-## @hook history_onleave (defined in def.sh)
+## @hook history_leave (defined in def.sh)
 
 function ble/history/onleave.fire {
-  blehook/invoke history_onleave "$@"
+  blehook/invoke history_leave "$@"
 }
 
 ## called by ble-edit/initialize in Bash 3

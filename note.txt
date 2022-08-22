@@ -6636,6 +6636,16 @@ bash_tips
 
 2022-08-21
 
+  * history: blehook history_* を blehook history_onchange に統合する [#D1860]
+
+    history_{delete,insert,clear} は何れも同じ箇所でセットで登録している。だと
+    したらわざわざ別の hook にしている意味もない。逆に一貫性を考えたら一つの登
+    録で全てを一貫した方法で処理しなければならない。
+
+    統合した hook の名前については結局 history_change にする事にした。結局 on
+    をつけ始めたら殆ど全てに on を付けなければならなく成るので余り付けても意味
+    がない。同様に history_onleave も history_leave に改名する事にする。
+
   * util (ble-import): 調整する [#D1859]
 
     * done: source 時の引数の継承についてチェックする
