@@ -5064,15 +5064,15 @@ function ble/util/import/finalize {
   _ble_util_import_files=()
 }
 ## @fn ble/util/import/.read-arguments args...
-##   @var[out] files
+##   @var[out] files not_found
 ##   @var[out] flags
-##     d delay
-##     h help
-##     f force
 ##     E error
+##     h help
+##     d delay
+##     f force
+##     q query
 function ble/util/import/.read-arguments {
-  flags= files=()
-  local -a not_found=()
+  flags= files=() not_found=()
   while (($#)); do
     local arg=$1; shift
     if [[ $flags != *-* ]]; then
@@ -5085,6 +5085,7 @@ function ble/util/import/.read-arguments {
         (--delay) flags=d$flags ;;
         (--help)  flags=h$flags ;;
         (--force) flags=f$flags ;;
+        (--query) flags=q$flags ;;
         (*)
           ble/util/print "ble-import: unrecognized option '$arg'" >&2
           flags=E$flags ;;
@@ -5095,7 +5096,7 @@ function ble/util/import/.read-arguments {
         for ((i=1;i<${#arg};i++)); do
           c=${arg:i:1}
           case $c in
-          ([df]) flags=$c$flags ;;
+          ([dfq]) flags=$c$flags ;;
           (*)
             ble/util/print "ble-import: unrecognized option '-$c'" >&2
             flags=E$flags ;;
@@ -5114,7 +5115,7 @@ function ble/util/import/.read-arguments {
   done
 
   # 存在しないファイルがあった時
-  if [[ $flags != *f* ]] && ((${#not_found[@]})); then
+  if [[ $flags != *[fq]* ]] && ((${#not_found[@]})); then
     local file
     for file in "${not_found[@]}"; do
       ble/util/print "ble-import: file '$file' not found" >&2
@@ -5125,8 +5126,10 @@ function ble/util/import/.read-arguments {
   return 0
 }
 function ble/util/import {
-  local file ext=0 ret enc
-  for file; do
+  local files file ext=0 ret enc
+  files=("$@")
+  set -- # Note #D: source によって引数が継承されるのを防ぐ
+  for file in "${files[@]}"; do
     ble/util/import/encode-filename "$file"; enc=$ret
     local guard=ble/util/import/guard:$enc
     ble/is-function "$guard" && return 0
@@ -5140,18 +5143,52 @@ function ble/util/import {
   done
   return "$ext"
 }
+## @fn ble/util/import/option:query
+##   @var[in] files not_found
+function ble/util/import/option:query {
+  if ((${#not_found[@]})); then
+    return 127
+  elif ((${#files[@]})); then
+    local file
+    for file in "${files[@]}"; do
+      ble/util/import/is-loaded "$file" || return 1
+    done
+    return 0
+  else
+    ble/util/print-lines "${_ble_util_import_files[@]}"
+    return "$?"
+  fi
+}
+
 function ble-import {
-  local files flags
+  local files flags not_found
   ble/util/import/.read-arguments "$@"
   if [[ $flags == *[Eh]* ]]; then
     [[ $flags == *E* ]] && ble/util/print
-    {
-      ble/util/print 'usage: ble-import [-df] SCRIPTFILE...'
-      ble/util/print '  Search and source script files that have not yet been loaded.'
-    } >&2
+    ble/util/print-lines \
+      'usage: ble-import [-dfq|--delay|--force|--query] [--] [SCRIPTFILE...]' \
+      'usage: ble-import --help' \
+      '    Search and source script files that have not yet been loaded.' \
+      '' \
+      '  OPTIONS' \
+      '    --help        Show this help.' \
+      '    -d, --delay   Delay actual loading of the files if possible.' \
+      '    -f, --force   Ignore non-existent files without errors.' \
+      '    -q, --query   When SCRIPTFILEs are specified, test if all of these files' \
+      '                  are already loaded.  Without SCRIPTFILEs, print the list of' \
+      '                  already imported files.' \
+      '' \
+      >&2
     [[ $flags == *E* ]] && return 2
     return 0
-  elif ((!${#files[@]})); then
+  fi
+
+  if [[ $flags == *q* ]]; then
+    ble/util/import/option:query
+    return "$?"
+  fi
+
+  if ((!${#files[@]})); then
     [[ $flags == *f* ]] && return 0
     ble/util/print 'ble-import: files are not specified.' >&2
     return 2

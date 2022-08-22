@@ -6636,6 +6636,14 @@ bash_tips
 
 2022-08-21
 
+  * util (ble-import): 調整する [#D1859]
+
+    * done: source 時の引数の継承についてチェックする
+    * done: 既にロード済みのファイル一覧 --list, --list-imported → これは -q,
+      --query という名前で登録した。
+    * done: ble-import --help でもっとちゃんとした説明を表示する (wiki も参考)
+    * done: wiki update. -f の説明がない。-q の説明も追加する。
+
   * blehook: ERR 関連の動作が怪しい [#D1858]
 
     x fixed: 更に ble/builtin/trap 経由で設定した通常の trap が
