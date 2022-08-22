@@ -1636,7 +1636,7 @@ function blehook/.print-help {
     '' \
     '  Options:' \
     '    --help      Print this help.' \
-    '    -a, --all   Print all including internal hooks.' \
+    '    -a, --all   Print all hooks including the internal ones.' \
     '    --color[=always|never|auto]' \
     '                  Change color settings.' \
     '' \
@@ -1648,6 +1648,9 @@ function blehook/.print-help {
     '    NAME!=COMMAND   Add hook if the command is not registered.' \
     '    NAME-+=COMMAND  Append the hook and remove the duplicates.' \
     '    NAME+-=COMMAND  Prepend the hook and remove the duplicates.' \
+    '' \
+    '  NAME:' \
+    '    The hook name.  The character `@'\'' may be used as a wildcard.' \
     ''
 }
 
@@ -1688,22 +1691,29 @@ function blehook/.read-arguments {
         done ;;
       esac
     elif [[ $arg =~ $rex1 ]]; then
-      local hookvar=_ble_hook_h_$arg
-      if ble/is-array "$hookvar"; then
-        ble/array#push print "$hookvar"
+      if [[ $arg == *@* ]] || ble/is-array "_ble_hook_h_$arg"; then
+        ble/array#push print "$arg"
       else
         ble/util/print "blehook: undefined hook '$arg'." >&2
-        flags=E$flags
       fi
     elif [[ $arg =~ $rex2 ]]; then
       local name=${BASH_REMATCH[1]}
-      local var_counter=_ble_hook_c_$name
-      if [[ ! ${!var_counter+set} ]]; then
+      if [[ $name == *@* ]]; then
         if [[ ${BASH_REMATCH[2]} == :* ]]; then
-          (($var_counter=0))
-        else
-          ble/util/print "blehook: hook \"$name\" is not defined." >&2
+          ble/util/print "blehook: hook pattern cannot be combined with '${BASH_REMATCH[2]}'." >&2
           flags=E$flags
+          continue
+        fi
+      else
+        local var_counter=_ble_hook_c_$name
+        if [[ ! ${!var_counter+set} ]]; then
+          if [[ ${BASH_REMATCH[2]} == :* ]]; then
+            (($var_counter=0))
+          else
+            ble/util/print "blehook: hook \"$name\" is not defined." >&2
+            flags=E$flags
+            continue
+          fi
         fi
       fi
       ble/array#push process "$arg"
@@ -1712,6 +1722,56 @@ function blehook/.read-arguments {
       flags=E$flags
     fi
   done
+
+  # resolve patterns
+  local pat ret out; out=()
+  for pat in "${print[@]}"; do
+    if [[ $pat == *@* ]]; then
+      bleopt/expand-variable-pattern "_ble_hook_h_$pat"
+      ble/array#filter ret ble/is-array
+      [[ $pat == *[a-z]* || $flags == *a* ]] ||
+        ble/array#remove-by-glob ret '_ble_hook_h_*[a-z]*'
+      if ((!${#ret[@]})); then
+        ble/util/print "blehook: '$pat': matching hook not found." >&2
+        flags=E$flags
+        continue
+      fi
+    else
+      ret=("_ble_hook_h_$pat")
+    fi
+    ble/array#push out "${ret[@]}"
+  done
+  print=("${out[@]}")
+
+  out=()
+  for pat in "${process[@]}"; do
+    [[ $pat =~ $rex2 ]]
+    local name=${BASH_REMATCH[1]}
+    if [[ $name == *@* ]]; then
+      local type=${BASH_REMATCH[3]}
+      local value=${BASH_REMATCH[4]}
+
+      bleopt/expand-variable-pattern "_ble_hook_h_$pat"
+      ble/array#filter ret ble/is-array
+      [[ $pat == *[a-z]* || $flags == *a* ]] ||
+        ble/array#remove-by-glob ret '_ble_hook_h_*[a-z]*'
+      if ((!${#ret[@]})); then
+        ble/util/print "blehook: '$pat': matching hook not found." >&2
+        flags=E$flags
+        continue
+      fi
+      if ((_ble_bash>=40300)) && ! shopt -q compat42; then
+        ret=("${ret[@]/%/"$type$value"}") # WA #D1570 #D1751 checked
+      else
+        ret=("${ret[@]/%/$type$value}") # WA #D1570 #D1738 checked
+      fi
+    else
+      ret=("_ble_hook_h_$pat")
+    fi
+    ble/array#push out "${ret[@]}"
+  done
+  process=("${out[@]}")
+
   [[ $opt_color == always || $opt_color == auto && -t 1 ]] && flags=c$flags
 }
 
@@ -1721,8 +1781,8 @@ function blehook {
   ble/base/.adjust-bash-options set shopt
 
   local flags print process
-  local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
-  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?([-+!]|-\+|\+-)?=)(.*)$'
+  local rex1='^([a-zA-Z_@][a-zA-Z_0-9@]*)$'
+  local rex2='^([a-zA-Z_@][a-zA-Z_0-9@]*)(:?([-+!]|-\+|\+-)?=)(.*)$'
   blehook/.read-arguments "$@"
   if [[ $flags == *[HE]* ]]; then
     if [[ $flags == *H* ]]; then
@@ -1752,9 +1812,9 @@ function blehook {
     case $type in
     (*-*) # -=, -+=, +-=
       local ret
-      ble/array#last-index "_ble_hook_h_$name" "$value"
+      ble/array#last-index "$name" "$value"
       if ((ret>=0)); then
-        ble/array#remove-at "_ble_hook_h_$name" "$ret"
+        ble/array#remove-at "$name" "$ret"
       elif [[ ${type#:} == '-=' ]]; then
         ext=1
       fi
@@ -1762,18 +1822,18 @@ function blehook {
       if [[ $type != -+ ]]; then
         append=
         [[ $type == +- ]] &&
-          ble/array#unshift "_ble_hook_h_$name" "$value"
+          ble/array#unshift "$name" "$value"
       fi ;;
 
     ('!') # !=
       local ret
-      ble/array#last-index "_ble_hook_h_$name" "$value"
+      ble/array#last-index "$name" "$value"
       ((ret>=0)) && append= ;;
 
-    ('') builtin eval "_ble_hook_h_$name=()" ;; # =
+    ('') builtin eval "$name=()" ;; # =
     ('+'|*) ;; # +=
     esac
-    [[ $append ]] && ble/array#push "_ble_hook_h_$name" "$append"
+    [[ $append ]] && ble/array#push "$name" "$append"
   done
 
   if ((${#print[@]})); then

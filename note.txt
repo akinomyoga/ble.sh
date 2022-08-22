@@ -6636,6 +6636,11 @@ bash_tips
 
 2022-08-21
 
+  * blehook: wildcard @ に対応する [#D1861]
+
+    bleopt, ble-face が対応しているのに blehook が対応していないのは混乱の元。
+    実際に使いたくなるので対応する。
+
   * history: blehook history_* を blehook history_onchange に統合する [#D1860]
 
     history_{delete,insert,clear} は何れも同じ箇所でセットで登録している。だと
