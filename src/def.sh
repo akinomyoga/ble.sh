@@ -18,7 +18,7 @@ function blehook/declare {
 
 blehook/declare EXIT
 blehook/declare INT
-blehook/declare ERR
+# blehook/declare ERR # inactive
 blehook/declare internal_EXIT
 blehook/declare internal_INT
 blehook/declare internal_ERR
@@ -55,6 +55,7 @@ blehook/declare PRECMD
 blehook/declare internal_PRECMD
 blehook/declare PREEXEC
 blehook/declare POSTEXEC
+blehook/declare ERREXEC
 blehook/declare widget_bell
 blehook/declare textarea_render_defer
 blehook/declare info_reveal

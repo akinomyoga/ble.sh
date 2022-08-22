@@ -1154,31 +1154,34 @@ bash_tips
 
   * ble 関数の典型的な終了ステータスについて [#M0008]
 
-    127 適切な widget が見つからなかった
+    127 適切な widget が見つからなかった:
       (由来: Bash でコマンドが見つからなかった時の値)
 
-    126 widget を呼び出すことができなかった
-      未使用
+    126 処理をキャンセルするとき:
 
-    125 widget を呼び出したが適切な処理が見つからなかった
+      install-hook した trap に関して、blehook internal_NAME 経由で trap の発火
+      をキャンセルする時に返す値。
+
+      廃止: widget を呼び出すことができなかった (未使用)
+
+    125 widget を呼び出したが適切な処理が見つからなかった:
+
       __defchar__ に登録した widget がこれを返したとき
       次のハンドラを用いる。具体的には __default__ の呼び出しを試みる。
 
-    147 ble/util/idle の処理に於いて条件待ち状態に入る時や、
-      widget に於いてユーザの入力を待つ為に、
-      自発的に一時中断した時に返す値。
+    147 ユーザの入力を非同期に待つ為に一時停止した:
 
-      ユーザの入力を非同期に待つ為に一時停止した
-      vi-mode のオペレータが 148 を返したとき
-      後処理を実行せずにそのまま抜ける (由来: 128+SIGTSTP)
+      ble/util/idle の処理に於いて条件待ち状態に入る時や、widget に於いてユーザ
+      の入力を待つ為に、自発的に一時中断した時に返す値。
 
-    148 ble/util/idle や isearch や complete に於いて、
-      ユーザ入力を処理する為に一旦現在の処理を中断する時に返す値。
+    148 ble/util/idle や isearch や complete に於いて、ユーザ入力を処理する為に
+      一旦現在の処理を中断する時に返す値。vi-mode のオペレータが 148 を返したと
+      き後処理を実行せずにそのまま抜ける (由来: 128+SIGTSTP)
 
     124 プログラム補完において補完の再実行を要求する
       (由来: これは Bash の仕様に倣った)
 
-    27 widget の動作がユーザによってキャンセルされた (由来: ESC = 27))
+    27 widget の動作がユーザによってキャンセルされた (由来: ESC = 27)
 
     6 ble-update で更新の必要がなかった時に内部的に使用 (由来: ACK = 6)
 
@@ -6632,6 +6635,108 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-08-21
+
+  * blehook: ERR 関連の動作が怪しい [#D1858]
+
+    x fixed: 更に ble/builtin/trap 経由で設定した通常の trap が
+      ble/builtin/trap 経由で削除できていない気がする。USR2 等、他の通常シグナ
+      ルに対してはちゃんと削除できているので、これは EXIT 等の特別 trap に特有
+      のバグの気がする。
+
+      取り敢えずこれを最初に修正する事にする。
+
+      振る舞いを調べてみた所、どうやら関数内部から外側の trap ERR を削除する事
+      ができない様である。
+
+        $ function trapERR { builtin trap "${1--}" ERR; trap -p; }; declare -ft trapERR
+        $ trapERR 'echo trap ERR'; trap -p
+        trap -- 'echo trap ERR' ERR
+        trap -- 'echo trap ERR' ERR
+        $ trapERR; echo x; trap -p
+        x
+        trap -- 'echo trap ERR' ERR
+        $ declare -pf trapERR
+        trapERR ()
+        {
+            builtin trap "${1--}" ERR;
+            trap -p
+        }
+        declare -ft trapERR
+
+      declare -ft をしても駄目だった。set -T でも駄目。bash-dev でも駄目。
+      bash-3.0 でも駄目。set -E を設定していれば OK。但し、trap - ERR を実行す
+      る瞬間だけ set -E をしていても意味はない。
+
+        $ function trapERR { set -E; builtin trap "${1--}" ERR; set +E; trap -p; }
+        $ trapERR 'echo trap ERR'; trap -p
+        trap -- 'echo trap ERR' ERR
+        trap -- 'echo trap ERR' ERR
+        $ trapERR; echo x; trap -p
+        x
+        trap -- 'echo trap ERR' ERR
+
+      仕方がないので ERR を削除したい時に限っては代わりに空文字列を
+      trap string として設定する事にする。
+
+    ? trap ERR を設定すると ble.sh の内部処理に対しても trap が呼び出される。特
+      にコマンドが失敗した後の何らかの処理に対して複数回呼び出されている。成功
+      したコマンドの後では呼び出されていない様なので、これはちゃんと実装すれば
+      回避可能な物なのではないだろうか。或いは ERR の実装を誤っているか。
+
+      また失敗したコマンドに対して重複して ERR trap が実行されているのも気にな
+      る。これは調べる必要がある。
+
+      ? というよりそもそもこの ERR は SIGERR と同じ物を意図して追加した物なのだ
+        ろうか。zsh の hooks を確認してみると、その下に TRAPERR と TRAPZERR が
+        言及されていて、これらは trap の物と大体同一である様だ。つまり各リスト
+        に対して実行される。
+
+      うーん。然し、改めて考えて見るにコマンド実行後の ERR の場合に使う ERRと、
+      各トップレベルコマンドの設定に使う ERR は区別するべきの様な気がする。どち
+      らもあった方が良い様な気がするのは難しいところではある。
+
+      取り敢えず現状の実装では blehook ERR に登録しても SIGERR に対しては発火し
+      ない実装になっている。一方で、blehook ERR は SIGERR を誘導する様になって
+      いる。
+
+      * done: うーん。ERR がユーザーによって設定されている時に限って builtin
+        trap を設定する仕組みを整えたい。install-hook だと強制的に必ず設定を行
+        う様になっているが → 実装した。動いている。
+
+      * done: エラーが起こった時に呼び出される hook は ERREXEC に改名する事にする。
+
+      * done: internal_NAME から通常のシグナルの実行をキャンセルする仕組みを整
+        える。ble.sh 内部の ERR に対しては user ERR trap を発火しない様にする。
+
+        取り敢えず実装したが bash-3.2 で無限ループになっている。何故だろう。
+        と思ったが発火しない処理を追加したら問題は発生しなくなった。
+
+      * done: trap に対して BASH_COMMAND を伝播する。bash-3.0,3.1 はそもそも
+        trap による BASH_COMMAND には対応していない様なので設定しなくて良い
+        →代わりに _ble_edit_exec_BASH_COMMAND を設定する事にした。
+
+      ? ok: 無限ループの最中に発生した ble/builtin/history: unknown option --
+        は何だったのか? 少なくとも history -- 1 等はちゃんと動いている。うーん。
+        もしかすると history -xx-yy の様な引数が渡されたという事なのかもしれな
+        い。何れにしても今は発生していない問題なので気にしない。
+
+      * done: wiki: blehook ERR を ERREXEC に改名。
+
+        * reject: 改名に関する枠組みを整える必要はあるだろうか? うーん。ble-0.4
+          は開発版だし、特に ERR に関しては trap ERR を意図して設定した物と
+          ERREXEC を意図して設定した物が混ざって混乱の元なので、改名についての
+          提案はしない事にする。
+
+    ? done: history の呼び出しを確認した所 history 1 を builtin なしで直接呼び
+      出している箇所があるようだ。確認して修正が必要なら修正する。→これは単純
+      な builtin つけ忘れだったので修正した。
+
+    変更点
+
+    * TRAPERR は廃止した。以下の場所で言及があるが廃止された旨をコメントする。
+      https://superuser.com/questions/1512618/autocompletion-background-colour-in-ble-sh
+
+    * blehook ERR は trap ERR と分離して ERREXEC に改名した
 
   * 2022-07-13 blehook: blehook の出力結果を init.sh にそのまま載せている人がいる [#D1857]
 

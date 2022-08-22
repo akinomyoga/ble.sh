@@ -6374,6 +6374,15 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
     blehook/invoke "$@"
 } >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
 
+function ble-edit/exec:gexec/.TRAPERR {
+  if [[ $_ble_attached ]]; then
+    [[ $_ble_edit_exec_inside_userspace ]] || return 126
+    [[ $_ble_trap_bash_command != *'return "$_ble_edit_exec_lastexit"'* ]] || return 126
+  fi
+  return 0
+}
+blehook internal_ERR+='ble-edit/exec:gexec/.TRAPERR'
+
 # ble-edit/exec:gexec/TERM
 #
 # Note #D1287: Bash は途中で TERM が変更されると勝手に TERM 固有のキー
@@ -6545,9 +6554,8 @@ function ble-edit/exec:gexec/.epilogue {
 
   local msg=
   if ((_ble_edit_exec_lastexit)); then
-    # SIGERR処理
-    ble-edit/exec:gexec/invoke-hook-with-setexit internal_ERR
-    ble-edit/exec:gexec/invoke-hook-with-setexit ERR
+    # ERREXEC処理
+    ble-edit/exec:gexec/invoke-hook-with-setexit ERREXEC
     if [[ $bleopt_exec_errexit_mark ]]; then
       local ret
       ble/util/sprintf ret "$bleopt_exec_errexit_mark" "$_ble_edit_exec_lastexit"

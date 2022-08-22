@@ -1765,9 +1765,7 @@ ble/bin/.freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by
 
 ble/builtin/trap/install-hook EXIT
 ble/builtin/trap/install-hook INT
-
-blehook internal_ERR+='ble/builtin/trap/invoke ERR'
-blehook ERR+='ble/function#try TRAPERR'
+ble/builtin/trap/install-hook ERR inactive
 
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|

@@ -1,4 +1,4 @@
-# -*- mode:sh;mode:sh-bash -*-
+# -*- mode: sh; mode: sh-bash -*-
 # bash script to be sourced from interactive shell
 
 #------------------------------------------------------------------------------
@@ -1921,7 +1921,7 @@ function ble/builtin/trap/reserve {
   local ret
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1" || return 1
-  _ble_builtin_trap_reserved[ret]=1
+  _ble_builtin_trap_reserved[ret]=${2:-1}
 }
 function ble/builtin/trap/finalize {
   local sig
@@ -1989,17 +1989,35 @@ function ble/builtin/trap {
         ble/util/print "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
         continue
       fi
+      local isig=$ret
 
       if [[ $command == - ]]; then
-        builtin unset -v "_ble_builtin_trap_handlers[ret]"
+        builtin unset -v "_ble_builtin_trap_handlers[isig]"
       else
-        _ble_builtin_trap_handlers[ret]=$command
+        _ble_builtin_trap_handlers[isig]=$command
       fi
 
-      if [[ ${_ble_builtin_trap_reserved[ret]} ]]; then
-        ble/function#try ble/builtin/trap:"${_ble_builtin_trap_signames[ret]}" "$command" "$spec"
-      else
-        builtin trap -- "$command" "$spec"
+      local trap_command='trap -- "$command" "$spec"'
+      if [[ :${_ble_builtin_trap_reserved[isig]}: == *:inactive:* ]]; then
+        # Note #D1858: ble/builtin/trap/.handler 経由で処理する
+        [[ $command == - ]] ||
+          ble/builtin/trap/install-hook/.compose-trap_command "$isig"
+      elif [[ ${_ble_builtin_trap_reserved[isig]} ]]; then
+        # Note #D1858: 内部処理の為に trap は既に常設しているので、builtin trap
+        # 処理は省略する。
+        trap_command=
+        ble/function#try ble/builtin/trap:"${_ble_builtin_trap_signames[isig]}" "$command" "$spec"
+      fi
+
+      if [[ $trap_command ]]; then
+        # Note #D1858: set -E (-o errtrace) が設定されていない限り、関数の中か
+        # ら trap ERR を削除する事はできない。仕方がないので空の command を
+        # trap として設定する事にする。元々 trap ERR が設定されていない時の動作
+        # は「何もしない」なので空文字列で問題ないはず。
+        if [[ ${_ble_builtin_trap_signames[isig]} == ERR && $command == - && $- != *E* ]]; then
+          command=
+        fi
+        builtin eval "builtin $trap_command"
       fi
     done
   fi
@@ -2111,7 +2129,7 @@ function ble/builtin/trap/invoke {
   return 0
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 
-## @fn ble/builtin/trap/.handler sig signame
+## @fn ble/builtin/trap/.handler sig signame bash_command
 ##   @var[out] _ble_builtin_trap_postproc
 ##   @var[out] _ble_builtin_trap_lastarg
 function ble/builtin/trap/.handler {
@@ -2121,6 +2139,19 @@ function ble/builtin/trap/.handler {
   local set shopt; ble/base/.adjust-bash-options set shopt
 
   local _ble_builtin_trap_processing=$_ble_trap_sig
+
+  local _ble_trap_bash_command=$3
+  if [[ ! $_ble_trap_bash_command ]] || ((_ble_bash<30200)); then
+    # Note: Bash 3.0, 3.1 は trap 中でも BASH_COMMAND は trap 発動対象ではなく
+    # て現在実行中のコマンドになっている。_ble_trap_bash_command には単に
+    # ble/builtin/trap/.handler が入っているので別の適当な値で置き換える。
+    if [[ $_ble_attached ]]; then
+      _ble_trap_bash_command=$_ble_edit_exec_BASH_COMMAND
+    else
+      ble/util/assign _ble_trap_bash_command 'HISTTIMEFORMAT=__ble_ext__ builtin history 1'
+      _ble_trap_bash_command=${_ble_trap_bash_command#*__ble_ext__}
+    fi
+  fi
 
   # 透過 _ble_builtin_trap_postproc を設定
   local _ble_local_q=\' _ble_local_Q="'\''"
@@ -2141,17 +2172,24 @@ function ble/builtin/trap/.handler {
     exec 2>&- 2>&"$_ble_builtin_exit_stderr"
   fi
 
-  # ble.sh hook
+  # ble.sh internal hook
   ble/util/joblist.check
   ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
-  blehook/invoke "internal_$_ble_trap_name"
-  ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
-  blehook/invoke "$_ble_trap_name"
+  blehook/invoke "internal_$_ble_trap_name"; local internal_ext=$?
   ble/util/joblist.check ignore-volatile-jobs
 
-  # user hook
-  ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
-  ble/builtin/trap/invoke "$_ble_trap_sig"
+  if ((internal_ext!=126)); then
+    # blehook
+    ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+    BASH_COMMAND=$_ble_trap_bash_command \
+      blehook/invoke "$_ble_trap_name"
+    ble/util/joblist.check ignore-volatile-jobs
+
+    # user hook
+    ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+    BASH_COMMAND=$_ble_trap_bash_command \
+      ble/builtin/trap/invoke "$_ble_trap_sig"
+  fi
 
   # 何処かの時点で exit が要求された場合
   if [[ $_ble_builtin_trap_processing == exit:* && $_ble_builtin_trap_postproc != 'ble/builtin/exit '* ]]; then
@@ -2174,18 +2212,32 @@ function ble/builtin/trap/.handler {
   ble/base/.restore-bash-options set shopt
 }
 
+function ble/builtin/trap/install-hook/.compose-trap_command {
+  local sig=$1 name=${_ble_builtin_trap_signames[$1]}
+  local handler="ble/builtin/trap/.handler $sig ${name#SIG} \"\$BASH_COMMAND\"; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
+  trap_command="trap -- '$handler' $name"
+}
+
+## @fn ble/builtin/trap/install-hook sig [opts]
+##   @param[in] sig
+##     シグナル名、もしくは番号
+##   @param[in,opt] opts
+##     readline readline による処理が追加されることが期待される trap handler で
+##              ある事を示します。既に設定済みのハンドラーが存在している場合に
+##              はハンドラーの再設定を行いません。
+##     inactive ユーザートラップが設定されていない時は builtin trap からハンド
+##              ラの登録を削除します。
 function ble/builtin/trap/install-hook {
-  local ret opts=:${2-}:
+  local ret opts=${2-}
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1"
   local sig=$ret name=${_ble_builtin_trap_signames[ret]}
-  ble/builtin/trap/reserve "$sig"
+  ble/builtin/trap/reserve "$sig" "$opts"
 
-  local handler="ble/builtin/trap/.handler $sig ${name#SIG}; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
-  local trap_command="trap -- '$handler' $name"
+  local trap_command; ble/builtin/trap/install-hook/.compose-trap_command "$sig"
   local trap_string; ble/util/assign trap_string "builtin trap -p $name"
 
-  if [[ $opts == *:readline:* ]] && ! ble/util/is-running-in-subshell; then
+  if [[ :$opts: == *:readline:* ]] && ! ble/util/is-running-in-subshell; then
     # Note #D1345: ble.sh の内部で "builtin trap -- WINCH" 等とすると
     # readline の処理が行われなくなってしまう (COLUMNS, LINES が更新さ
     # れない)。
@@ -2208,7 +2260,8 @@ function ble/builtin/trap/install-hook {
     [[ $trap_command == "$trap_string" ]] && return 0
   fi
 
-  builtin eval "builtin $trap_command"; local ext=$?
+  [[ :$opts: == *:inactive:* && ! $trap_string ]] ||
+    builtin eval "builtin $trap_command"; local ext=$?
 
   case $trap_string in
   ("trap -- 'ble/builtin/trap/"*) ;; # ble-0.4

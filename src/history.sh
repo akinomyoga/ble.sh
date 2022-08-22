@@ -40,7 +40,7 @@ function ble/builtin/history/is-empty {
   #   考えていたが、サブシェルの中にいる場合でも後で履歴を使う為に履歴項目が変
   #   化すると困るので、結局この手法だと常にサブシェルを起動する必要がある。代
   #   わりに history 1 の出力を確認する実装に変更する事にした。
-  ! ble/util/assign.has-output 'history 1'
+  ! ble/util/assign.has-output 'builtin history 1'
 }
 
 ## @fn ble/builtin/history/.check-timestamp-sigsegv status

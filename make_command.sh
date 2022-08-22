@@ -1351,7 +1351,7 @@ function sub:scan {
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zble/util/print "trap -- '\''\$\{h//\$q/\$Q}'\'' \$nZd
       \Zline = "bind"Zd
-      \Zlocal trap_command="trap -- Zd
+      \Ztrap_command=["'\'']trap -- Zd
       \Zlocal trap$Zd
       \Z\$\{content#"trap -- '\''"\}Zd
       \Z\("trap -- '\''.*"\*\)Zd

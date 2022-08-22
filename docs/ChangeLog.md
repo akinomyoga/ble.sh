@@ -174,6 +174,10 @@
 - main (`ble-reload`): preserve the original initialization options `#D1852` d8c92cc
 - blehook: print reusable code to restore the user hooks `#D1857` XXXXXXX
   - blehook: separate internal and user hooks `#D1856` XXXXXXX
+- trap,hook: refactor `ERR` `#D1858` XXXXXXX
+  - blehook: rename `ERR{ => EXEC}` and separate from the `ERR` trap
+  - trap: remove the support for the shell function `TRAPERR`
+  - trap: preserve `BASH_COMMAND` in trap handlers
 
 ## Fixes
 
