@@ -1,8 +1,5 @@
 name: test
 on:
-  push:
-    branches:
-      - master
   pull_request:
     branches:
       - '*'
@@ -11,14 +8,14 @@ jobs:
   test:
     strategy:
       matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.platform }}
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
+      - name: Check out
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Prerequisites
+      - name: Install dependencies
         if: runner.os == 'macOs'
         run: brew install gawk
       - name: Build
