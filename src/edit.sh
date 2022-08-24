@@ -9749,8 +9749,8 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       fi
       ble/builtin/trap/invoke USR1
     }
-    blehook/declare USR1
-    blehook USR1+=ble-edit/io/TRAPUSR1
+    blehook/declare internal_USR1
+    blehook internal_USR1+=ble-edit/io/TRAPUSR1
     ble/builtin/trap/install-hook USR1
 
     function ble-edit/io/check-ignoreeof-message {

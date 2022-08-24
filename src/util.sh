@@ -2057,16 +2057,39 @@ function ble/builtin/trap {
         _ble_builtin_trap_handlers[isig]=$command
       fi
 
-      local trap_command='trap -- "$command" "$spec"'
-      if [[ :${_ble_builtin_trap_reserved[isig]}: == *:inactive:* ]]; then
-        # Note #D1858: ble/builtin/trap/.handler 経由で処理する
-        [[ $command == - ]] ||
+      local trap_command='builtin trap -- "$command" "$spec"'
+      local install_opts=${_ble_builtin_trap_reserved[isig]}
+      if [[ $install_opts ]]; then
+        local custom_trap=ble/builtin/trap:${_ble_builtin_trap_signames[isig]}
+        if ble/is-function "$custom_trap"; then
+          trap_command='"$custom_trap" "$command" "$spec"'
+        elif [[ :$install_opts: == *:readline:* ]] && ! ble/util/is-running-in-subshell; then
+          # Note (#D1345 #D1862): readline 介入を破壊しない為に親シェル内部では
+          # builtin trap 再設定はしない。
+          trap_command=
+        elif [[ $command == - ]]; then
+          if [[ :$install_opts: == *:inactive:* ]]; then
+            # Note #D1858: 単に ble/builtin/trap/.handler 経由で処理する trap の場合。
+            # trap を解除する時にはそのまま解除して良い。
+            trap_command='builtin trap - "$spec"'
+          else
+            # Note #D1858: 内部処理の為に trap は常設しているので、trap の削除
+            # はしない。だからと言って改めて内部処理の為のコマンドを登録する訳
+            # でもない (特に subshell の中で改めて実行したい訳でもなければ)。
+            trap_command=
+          fi
+        elif [[ :$install_opts: == *:install-hook:* ]]; then
+          # Note #D1862: 内部処理の為に trap を常設していたとしても EXIT 等の
+          # 様に subshell に継承されない trap があるので毎回明示的に builtin
+          # trap を実行する。
           ble/builtin/trap/install-hook/.compose-trap_command "$isig"
-      elif [[ ${_ble_builtin_trap_reserved[isig]} ]]; then
-        # Note #D1858: 内部処理の為に trap は既に常設しているので、builtin trap
-        # 処理は省略する。
-        trap_command=
-        ble/function#try ble/builtin/trap:"${_ble_builtin_trap_signames[isig]}" "$command" "$spec"
+          trap_command="builtin $trap_command"
+        else
+          # ble/builtin/trap/{.register,reserve} で登録したカスタム trap の場合
+          # は builtin trap 関係の操作は何もしない。発火の制御に関しては
+          # ble/builtin/trap/invoke を適切な場所で呼び出す様に実装するべき。
+          trap_command=
+        fi
       fi
 
       if [[ $trap_command ]]; then
@@ -2077,7 +2100,7 @@ function ble/builtin/trap {
         if [[ ${_ble_builtin_trap_signames[isig]} == ERR && $command == - && $- != *E* ]]; then
           command=
         fi
-        builtin eval "builtin $trap_command"
+        builtin eval -- "$trap_command"
       fi
     done
   fi
@@ -2239,11 +2262,13 @@ function ble/builtin/trap/.handler {
   ble/util/joblist.check ignore-volatile-jobs
 
   if ((internal_ext!=126)); then
-    # blehook
-    ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
-    BASH_COMMAND=$_ble_trap_bash_command \
-      blehook/invoke "$_ble_trap_name"
-    ble/util/joblist.check ignore-volatile-jobs
+    if ! ble/util/is-running-in-subshell; then
+      # blehook (only activated in parent shells)
+      ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+      BASH_COMMAND=$_ble_trap_bash_command \
+        blehook/invoke "$_ble_trap_name"
+      ble/util/joblist.check ignore-volatile-jobs
+    fi
 
     # user hook
     ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
@@ -2292,7 +2317,7 @@ function ble/builtin/trap/install-hook {
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1"
   local sig=$ret name=${_ble_builtin_trap_signames[ret]}
-  ble/builtin/trap/reserve "$sig" "$opts"
+  ble/builtin/trap/reserve "$sig" "install-hook:$opts"
 
   local trap_command; ble/builtin/trap/install-hook/.compose-trap_command "$sig"
   local trap_string; ble/util/assign trap_string "builtin trap -p $name"

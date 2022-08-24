@@ -841,7 +841,7 @@ fi
 
 # Note: 複数行コマンドは eval -- $'' の形に変換して
 #   書き込みたいので自前で処理する。
-function ble/history:bash/TRAPEXIT {
+function ble/history:bash/unload.hook {
   ble/util/is-running-in-subshell && return 0
   if shopt -q histappend &>/dev/null; then
     ble/builtin/history -a
@@ -849,7 +849,7 @@ function ble/history:bash/TRAPEXIT {
     ble/builtin/history -w
   fi
 }
-blehook internal_EXIT+=ble/history:bash/TRAPEXIT
+blehook unload!=ble/history:bash/unload.hook
 
 function ble/history:bash/reset {
   if ((_ble_bash>=40000)); then

@@ -6634,6 +6634,247 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-08-24
+
+  * trap: EXIT trap が subshell で発火しない [#D1862]
+
+    これは恐らく subshell の中で改めて trap を実行しないと有効にならないのが原
+    因である。
+
+    a subshell の中で初めて trap を実行した場合には改めて同じ trap で trap を実
+      行する。
+
+    b 現在は trap -p の結果と設定しようとしている trap が同一の場合には trap を
+      スキップしようとしているが、そうではなく毎回ちゃんと実行する様にする。
+
+      そもそも同じ trap_command を用いていたからと言って builtin trap の実行を
+      省略したとしても、そもそも trap 処理自体そんなに思い処理という訳では無い。
+      なので実行を省略せずに単に毎回実行すれば良いのである。
+
+      * done: と思ったが builtin/trap の処理を custom で処理している
+        ble/builtin/trap:DEBUG 等の関数についてはどうすれば良いのか。うーん。こ
+        れは ble/builtin/trap:DEBUG 等の関数が存在する時に限ってはちゃんと設定
+        するという事にすれば良い。
+
+      * ok: 然し、その時に疑問なのは DEBUG や ERR や RETURN の様な関数の外側に
+        対して効果を持たないものがどう振る舞うかという事。うーん。これは落ち着
+        いて考えたら実は気にしなくても良いかもしれない。
+
+        うーん。trap を関数内で実行した時に外に設定が反映されないかもしれないと
+        いうのが以前の問題だった。一方で、今回は余分に trap を実行した時に外に
+        影響を与えないかという事である。これは外に影響を与えたとしても与えなかっ
+        たとしても結局振る舞いは同じ筈なので問題にならない筈である。
+
+      * done: WINCH 等の様に readline が介入する物についてどうするのか。これに
+        関しては subshell で実行している限りは、元々の bash の時点で readline
+        の hook が設定されないと思われるので気にしなくて良いのではないか。
+
+        * done: 確認してみたらそもそもそのような trap/hook に対しては subshell
+          かどうかの判定を install-hook の時点で行っている。今、新しく trap の
+          中でも builtin trap を再設置するという様に変更した時、同様の判定が必
+          要になるのではないだろうか。つまり、subshell の外で実行している時には
+          readline の介入を破壊しない為に再設置を抑制する。
+
+          subshell の中では元々 readline の介入を期待できない (恐らく) ので気に
+          しなくて良い。
+
+    c subshell の中で実行する trap の場合には実は ble.sh による介入は不要になる
+      のでは。だとすれば単にそのまま builtin trap すれば良い。
+
+      EXIT は後述の様に EXIT で ble.sh の終了処理をする為に用いている。
+
+      INT はコマンド実行時に ble.sh の処理までキャンセルしてしまわない為に用い
+      ている。問題の処理は親シェルで行う物なので subshell の中では特に特別な事
+      はしなくて良い。
+
+      % WINCH についても read の中で subshell で使ってはいるが、~~中で改めて設
+      % 定を行うので~~ trap は自分では実行しないので問題ない。結局設置済みの
+      % trap WINCH から blehook internal_WINCH 経由で処理を行っている。と思った
+      % が本当だろうか。本当に read の中で WINCH は呼び出されるのだろうか…と思っ
+      % たが、やはり確認してみたところちゃんと read の中で install-hook を呼び
+      % 出しているのでやはり改めて設定はしているのだろう。
+
+      WINCH についても親シェルで設定している WINCH への介入を ble.sh でもすると
+      いう事はない気がする
+
+      ? 但し、子プロセスが WINCH を受け取って親シェルがそれを逃した場合には何が
+        起こるのだろうか?)。
+
+        ble-bind -x C-t 'x=$(sleep 5);echo hello;sleep 1'
+
+        試してみた所、ちゃんと再配置計算が subshell の外で呼び出される様である。
+        中で WINCH が呼び出されている気がする。なので子プロセスが受け取ったもの
+        を更に自分で親シェルに伝達する等という処理は必要ない気がする。
+
+    上記は b を採用した。
+
+    * そもそも blehook EXIT は親シェルの終了時に呼び出される事を想定して作って
+      いた。なので、今 subshell の中でも EXIT trap が走る様に変更すると変な事に
+      なってしまう。
+
+      Note: ble/base/unload は ble/builtin/trap/.handler から直接呼び出されてい
+      る (#D1797)。他に ble/history:bash/TRAPEXIT が登録されている。逆に言えば
+      subshell EXIT では ble.sh による介入は不要である。
+
+      ? blehook EXIT を subshell で使おうと思っても、trap EXIT をユーザーが
+        subshell で実行しなければ、そもそも subshell の中では有効ではないのでは
+        ないか。なので blehook EXIT は subshell の中で使えない様にするべきでは
+        ないのか。
+
+        a うーん。この様に微妙な振る舞いになるのだとしたら EXIT は元よりユーザー
+          には提供しないという事にするべきか。でもそれだとユーザーは trap EXIT
+          を使わなければならず、一個しか登録できないので自前で色々管理しなけれ
+          ばならない。blehook はその管理の煩雑さを解決する為に導入した物なので
+          やはり機能として保持したい。
+
+        b 或いは BASHPID 毎に blehook EXIT の内容を記録する事にするか。blehook
+          に変更があった場合には改めて builtin trap を実行する。
+
+        c 或いは開き直って blehook SIGNAL は親シェルのみで発火するという事にし
+          ても良い。一方で internal_EXIT 等の方については subshell でも実行する
+          というので良い。そうでないと WINCH 等の処理ができなくなってしまう。
+
+          ユーザーが subshell で WINCH を受信したいという状況はあるだろうか? と
+          思ったが、そもそも subshell に WINCH は元から継承されないし、改めて
+          trap WINCH をする事になっている。代わりに、"改めて blehook WINCH を設
+          定する" 方式にしたとしても元から存在している hook をどうしたら良いの
+          かなど、色々と面倒な事が存在する。という事を考えると、やはり WINCH で
+          あっても subshell 内では blehook WINCH を一括で呼び出すという様な事は
+          しない事にする。
+
+        うーん。blehook EXIT や blehook INT については c が現実的な気がしてきた。
+        もしそうだとすればやはり UNLOAD は不要なのではないかという疑惑。と思っ
+        たが物事は単純ではない。
+
+        実際にユーザーに需要がありそうな物は EXIT である (親シェルでしか呼び出
+        されないとしても)。一方で、ble.sh の内部処理はユーザーの blehook と分離
+        しておきたい。だとすれば internal_EXIT に登録すれば良いのかというとそう
+        でもない。何故なら 1) internal_EXIT は EXIT の前に実行されるが、処理の
+        順序でユーザーの EXIT を実行する前に ble.sh の終了処理をする訳には行か
+        ない。 2) internal_EXIT は今迄の議論だと subshell かどうかに関係なく実
+        行するという事になっている。これは blehook EXIT だけでなく通常の trap
+        EXIT の処理の前処理でもあるからである。という事を考えると内部処理用の
+        unload hook を用意するのが良い。
+
+        →c で実装することにした。
+
+      ? ok: 更に上記の事は INT など他の trap でも同様でないか確認しておきたい →
+        うーん。INT の場合に試してみたがどうも C-c を送ると親シェルがそれを受け
+        取って処理するのでサブシェルの trap INT は元々呼び出されない様だ。
+
+        つまり個別に考えるべきの気がしてきた。
+
+      * EXIT の代わりに unload という blehook を導入する事にした。今までの終了
+        処理は unload で実行する事にして blehook EXIT は trap EXIT と等価な物と
+        いう事にする。また ble/base/unload は親シェルの中にいる時だけ
+        trap/.handler から呼び出す。
+
+        →と思ったら既に unload は存在していた。しかし誰も使っていない。今まで
+        history が unload を使わずに EXIT を使っていたのは何か理由があったのだ
+        ろうか。特に理由もないし寧ろ unload で実行するべき気がしたので単にそれ
+        を使う様に変更した。
+
+        更に、ble/base/unload の subshell かどうかの判定も、既に
+        ble/base/unload の中に存在していた。
+
+    * reject: wiki: EXIT や INT などの blehook は親シェル (main shell) でしか呼
+      び出されない。WINCH についても → 改めて確認してみたがそもそも INT や
+      WINCH は wiki に記述されていなかった。EXIT は既に記述として Bash が終了す
+      る時に呼び出されるとしているので変更しなくて良い。
+
+    ? subshell で本当に INT は継承されないのか?
+
+      % 先程試した時はコマンド置換 $() でしか試していない。
+      %
+      % $ (trap 'echo INT2' INT; echo do;sleep 5;echo done)
+      % do
+      % ^CINT2
+      % done
+      % $ trap 'echo INT1' INT; (trap 'echo INT2' INT; echo do;sleep 5;echo done)
+      % do
+      % ^CINT2
+      % done
+      % $ trap 'echo INT1' INT; (echo do;sleep 5;echo done)
+      % do
+      % ^C
+      %
+      % →やはり外側の INT は継承されない様だ。
+      %
+      % 一方で subshell 内部で改めて設定した trap は有効になる。これはコマンド置
+      % 換の時とは違う。コマンド置換の時には内側の INT の前に外側の trap が INT
+      % を捉えてしまい、コマンド置換自体を別の方法で強制的に終了してしまう。或い
+      % は SIGPIPE か SIGTERM が呼ばれていたのかもしれない。と思って色々試したが
+      % どうもいかなるシグナルも受信していない様だ。もしかすると単純に sleep 5 が
+      % 中断されるだけで続きの物も実行されるのかと思ったらそうだった。
+      %
+      % $ echo $(for sig in INT QUIT TRAP ABRT PIPE ALRM TERM; do trap "echo $sig >/dev/tty" "$sig";done;echo do >/dev/tty; sleep 5; echo done >/dev/tty)
+      %
+      % というかその振る舞いは通常の subshell も同じだった。subshell ではなくて一
+      % 番上で実行しても同じなのであった。というか sleep を実行中に受信した INT
+      % は結局 bash 側では全く処理されないのであった。
+
+      sleep 5 だと sleep が INT を食ってしまって bash の trap INT が呼び出され
+      ない事があるのでので正しく振る舞いを調べられない事が判明した。改めて busy
+      wait 等を用いてそれに対して INT を送信して試す必要がある。
+
+        # see memo/D1862.INT-in-subshell.sh
+
+        $ set_trap;process_something
+        do
+        ^CINT
+
+        $ (set_trap;process_something)
+        do
+        ^CINT
+
+        $ echo $(set_trap;process_something)
+        do
+        ^CINT
+        done
+        $ set_trap;(process_something)
+        do
+        ^C
+        $ set_trap;echo $(process_something)
+        do
+        ^C
+        INT (これは単に外側のシェルで発生した trap INT である)
+
+      うーん。直接・サブシェル() の場合には INT で中断する事ができる。コマンド
+      置換の時には trap は発動するが kill -INT $BASHPID によって自身を中断でき
+      ていない。そして、外部で設定された trap は何れにしても subshell の中では
+      発火しない。
+
+        # see memo/D1862.INT-in-subshell.sh
+
+        $ echo $(set_trap; process_something)
+        start
+        ^CINT
+        end
+
+        $ echo $(set_trap; process_something)
+        start
+        ^CINT
+        end
+
+        $ (set_trap; process_something)
+        start
+        ^CINT
+
+        $ echo $(process_something)
+        start
+        ^C
+
+      うーん。コマンド置換の内部で INT に処理を追加しつつ自身を中断させる方法が
+      謎。trap を設定していなければその場で INT で終了する。trap INT を単に設定
+      しただけだと当然 INT による中断は発生しない。一方で trap - INT して kill
+      -INT $BASHPID しても何故か何の効果も発生しない。
+
+      これは bash-dev 特有の問題だろうか。調べてみた所、先ずスクリプトでは発生
+      せず interactive session で発生する。4.3 まではちゃんとその場で終了する。
+      4.4 と 5.0 では何故かコマンド置換はその場で終了するが、裏でプロセスが走っ
+      ていて後になって "end" が出力される。5.1 と dev ではコマンド置換の実行が
+      待たされる。変な振る舞いだが仕方がない。
+
 2022-08-21
 
   * blehook: wildcard @ に対応する [#D1861]
