@@ -1843,6 +1843,114 @@ bash_tips
   - Acknowledgments
   - keymap の移動 (これは別 commit にする?)
 
+2022-08-14
+
+  * nix develop が保存された EPOCHREALTIME を復元しようとしている
+    https://discourse.nixos.org/t/nix-print-dev-env-command-shows-some-assinments-to-readonly-variables/20916
+    https://github.com/NixOS/nix/pull/6800
+
+    一方で ble.sh は EPOCHREALTIME が勝手に別の機能に置き換えられると動作が全く
+    おかしくなるので (そしてはそれは他の EPOCHREALTIME を参照しているスクリプト
+    も同様であろう)、勝手に EPOCHREALTIME の機能を消去させられてしまっては困る。
+
+    * そもそも Bash では EPOCHREALTIME をそのまま上書きしても意味がない。一旦
+      unset しなければならない。実際に上書きしている箇所で unset をしているのか
+      どうかまでは明言されていないが、報告されているエラーメッセージを観察する
+      限りは unset は試みられていない。unset が最初に試みられていたのであれば、
+
+      bash: unset: EPOCHREALTIME: cannot unset: readonly variable
+
+      というエラーメッセージになっていた筈である。
+
+    * もし unset してまで固定した時刻にしたかったのだとすれば、そして実際にそれ
+      をやったとしたら ble.sh の内部の時刻関連の制御が滅茶苦茶になる。場合によっ
+      ては固まってしまうかもしれない。
+
+      というかもし対話シェルで使っているなのだとしたら
+
+    ? というかそもそも何故対話シェルの設定と print-dev-env 的なコマンド的な設定
+      が混ざり合っているのだろうか。
+
+      % ? 会話を見ると print-dev-env は単に現在のシェル変数を出力するのに使って
+      %   いるだけの様に見える。sed でフィルタ等するという話をしている。なので、
+      %   対話シェルとして動作するとも思えない。
+      %
+      % ? nix develop でエラーメッセージが表示されると書いている。nix develop
+      %   を調べてみると、 nix shell + 開発用のコマンドという環境に入るらしい。
+      %   なので bashrc を読み込む。問題は print-dev-env が何故同じシェルで呼び
+      %   出されるのかという事である。特に直接 print-dev-env を自分で明示的に呼
+      %   び出しているのではなくて、nix develop を実行した時に自動で実行される
+      %   のだという事を書いている。謎だ。
+      %
+      % ? 仮に ble.sh が --lib で読み込まれるのだとしても、それを bashrc から読
+      %   み込むというのも変な話である。もし ble.sh の関数を個別のシェルスクリ
+      %   プトで使いたかったとしても、それは使うシェルスクリプトの中で個別に
+      %   source するべきなのであって、bashrc で一括して読み込むという使い方は
+      %   想定していない。
+      %
+      % ? 或いは print-dev-env というのはシェル関数なのだろうか。
+
+      % https://github.com/NixOS/nix/blob/master/src/nix/develop.cc を見ると、
+      % どうも print-dev-env と develop は内部のコードを共有しているという事の
+      % 様だ。つまり、develop の中で呼び出された print-dev-env が EPOCHREALTIME
+      % を触ってのではなくて、nix develop のコード自体が EPOCHREALTIME に触ろう
+      % としているのである。更に、print-dev-env も develop も単に現在の値を出力
+      % しているだけであって、明示的に EPOCHREALTIME に値を設定するコードが含ま
+      % れているという訳では無い様な気がする。
+      %
+      % そういう事を考えると、そもそもこの現在の値を出力するコードの時点で、
+      % EPOCHREALTIME, EPOCHSECONDS, SECONDS, LINENO, BASH_LINENO, FUNCNAME,
+      % BASH_SOURCE, BASH_VERSION, BASH_VERSINFO, BASH_COMMAND 等の変数に値を代
+      % 入しようとしているのが間違っている。
+
+      develop.cc のコードを確認した。先ず、print-dev-env は、実質的に nix
+      develop を中で呼び出してその環境における変数を出力するという様な処理を行っ
+      ている。そして、正にそれが目的なのだろうという気がする。
+
+      nix develop は何処かに .json で保存されている変数を読み取ってそれを bash
+      に設定しようとしている様に見える。その .json に EPOCHREALTIME が記録され
+      ているのは恐らく何か別の用途にも使われる事を想定しての物だろう。一方で、
+      nix develop で使う時には幾ら何でも全ての変数を復元するのは変である。
+      BASH_* は避けるべきだし (もしかするとこれらは既に保存する時点で除外されて
+      いるのかもしれない)、その他の FUNCNAME や LINENO 等も復元を試みるのは滅茶
+      苦茶である。
+
+      BASH_VERSINFO は bash が readonly にしていてこれに関しては警告が出ていな
+      いというのは BASH_* は除外しているという事なのだろうという気がする。
+
+    ? NixOS/nix #6800 も謎である。error ではなく warning だったと言って閉じてい
+      るのも謎だし、zsh では readonly だからと言って bash で動く nix develop の
+      上でスキップするというのもよく分からない。
+
+    * 色々 develop.cc を読んだりして思った事は TLATER の 99% sure と言っている
+      内容はかなり怪しいという事だ。恐らくこの TLATER は何も分かっていなくて出
+      鱈目な事を書いている。
+
+      或いは実際に何処か別の箇所で EPOCHREALTIME も明示的に保存しているのだろう
+      か。でもコードを見る限りは ignoreVars でブラックリスト式にしているし、恐
+      らく全ての変数を出力しているのだろうという気がする。
+
+      やはり TLATER は出鱈目を書いている。もし本当にそうなのだというのであれば
+      わざわざ 99% sure などと書かないし、というか 100% sure とも書かずに、断定
+      で書くはずである。I'm sure なんとかとか書いている時点で勝手に推測をしてい
+      るのに過ぎない。
+
+      そもそも本当に build environment を同一にしたいのであれば、単に変数の値を
+      変更したとしても意味がない。システムの時刻自体を固定しなければならないの
+      ではないか。そもそも最近の bash の機能である EPOCHREALTIME を参照してビル
+      ドを行うシステムがどれだけ存在するのかというのも謎である。そしてシステム
+      の時刻を固定しているのであれば、わざわざこの様な処理は必要がない筈である。
+
+
+      →と思ったがこの json はもしかすると各 derivation の作者が手書きで用意す
+      る物なのだろうか。なのだとしたら EPOCHREALTIME を誤って設定している人がい
+      ても不思議ではないのかもしれない。然し検索してみてもその様な物は見つから
+      ない (とは言いつつ GitHub の検索は余り当てにならない。経験上最近検索され
+      たページに含まれている文字列しか検索対象になっていないような気がする)。
+
+      https://github.com/NixOS/nix/search?q=EPOCHREALTIME
+      https://github.com/NixOS/nixpkgs/search?q=EPOCHREALTIME
+
 2022-07-20
 
   * konsole drag&drop

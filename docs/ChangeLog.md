@@ -132,7 +132,7 @@
   - prompt: update `PS0` between multiple commands (motivated by tycho-kirchner) `#D1560` 8f29203
 - edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
   - edit (`display-shell-version`): detect configurations and print details `#D1781` 5015cb56
-  - edit (`display-shell-version`): show information of the OS distribution and properly handle saved locales `#D1854` XXXXXXX
+  - edit (`display-shell-version`): show information of the OS distribution and properly handle saved locales `#D1854` 066ec63 XXXXXXX
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a

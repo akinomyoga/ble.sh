@@ -3814,7 +3814,7 @@ function ble/widget/display-shell-version {
     ble/util/assign os_release '(
       builtin unset -v PRETTY_NAME NAME VERSION
       source /etc/os-release
-      echo "${PRETTY_NAME:-${NAME:+$NAME${VERSION:+ $VERSION}}}")' 2>/dev/null
+      ble/util/print "${PRETTY_NAME:-${NAME:+$NAME${VERSION:+ $VERSION}}}")' 2>/dev/null
   fi
   if [[ ! $os_release && -s /etc/release ]]; then
     local ret
