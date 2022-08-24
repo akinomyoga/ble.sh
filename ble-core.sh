@@ -201,7 +201,9 @@ function ble/util/array-fill-range {
   _ble_util_array_prototype.reserve $(($2-$1))
   local _ble_script='
     local -a sARR; sARR=("${_ble_util_array_prototype[@]::$3-$2}")
-    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
+    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
+  ((_ble_bash>=40300)) && ! shopt -q compat42 &&
+    _ble_script=${_ble_script//'$4'/'"$4"'}
   builtin eval -- "${_ble_script//ARR/$1}"
 }
 
@@ -320,7 +322,7 @@ function _ble_util_string_prototype.reserve {
 function ble/string#repeat {
   _ble_util_string_prototype.reserve "$2"
   ret=${_ble_util_string_prototype::$2}
-  ret="${ret// /$1}"
+  ret=${ret// /"$1"}
 }
 
 function ble/string#common-prefix {
