@@ -3475,7 +3475,6 @@ _ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 function ble-edit/exec/register {
-  local BASH_COMMAND=$1
   ble/array#push _ble_edit_exec_lines "$1"
 }
 function ble-edit/exec/has-pending-commands {
@@ -6909,6 +6908,7 @@ function ble/widget/command-help/.read-man {
   local pager="sh -c 'cat >| \"\$_ble_local_tmpfile\"'"
   MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
   ble/util/readfile man_content "$_ble_local_tmpfile" # 80ms
+  ble/util/assign/.rmtmp
   return "$ext"
 }
 
@@ -7283,7 +7283,7 @@ function ble-edit/bind/.check-detach {
         "Please run \`stty sane' to recover the correct TTY state."
 
       if ((_ble_bash>=40000)); then
-        READLINE_LINE=' stty sane;' READLINE_POINT=10
+        READLINE_LINE=' stty sane;' READLINE_POINT=11
         printf %s "$READLINE_LINE"
       fi
     fi

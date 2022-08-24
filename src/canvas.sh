@@ -732,7 +732,7 @@ function ble/canvas/trace/.process-csi-sequence {
       # HVP "CSI f"
       local -a params
       ble/string#split-words params "${param//[^0-9]/ }"
-      params=("${params[@]/#/10#}")
+      params=("${params[@]/#/10#0}")
       local x1 y1
       ((x1=params[1]-1))
       ((y1=params[0]-1))

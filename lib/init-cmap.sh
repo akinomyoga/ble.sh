@@ -93,6 +93,7 @@ function ble/init:cmap/initialize {
   # ble-bind --csi '6~' next
 
   # 順番を固定
+  local ret
   ble-decode-kbd/generate-keycode insert
   ble-decode-kbd/generate-keycode home
   ble-decode-kbd/generate-keycode prior
