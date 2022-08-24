@@ -52,7 +52,7 @@ fi
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 if [ "$_ble_bash" -lt 30000 ]; then
-  unset _ble_bash
+  unset -v _ble_bash
   echo "ble.sh: bash with a version under 3.0 is not supported." >&2
   return 1 2>/dev/null || exit 1
 fi
@@ -67,21 +67,24 @@ case ${BASH_VERSINFO[4]} in
 esac
 
 if ((BASH_SUBSHELL)); then
+  unset -v _ble_bash
   builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&2
   return 1 2>/dev/null || builtin exit 1
 elif [[ $- != *i* ]]; then
+  unset -v _ble_bash
   case " ${BASH_SOURCE[*]##*/} " in
   (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
   esac  &&
     builtin echo "ble.sh: This is not an interactive session." >&2 || ((1))
   return 1 2>/dev/null || builtin exit 1
 elif ! [[ -t 0 && -t 1 ]]; then
+  unset -v _ble_bash
   builtin echo "ble.sh: cannot find the correct TTY/PTY in this session." >&2
   return 1 2>/dev/null || builtin exit 1
 fi
 
 if [[ -o posix ]]; then
-  unset _ble_bash
+  unset -v _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
   return 1 2>/dev/null || exit 1
 fi
@@ -117,13 +120,13 @@ ble/adjust-bash-options
 
 bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
-  unset _ble_bash
+  unset -v _ble_bash
   echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
   return 1
 fi
 
 if shopt -q restricted_shell; then
-  unset _ble_bash
+  unset -v _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
   return 1
 fi

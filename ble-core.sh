@@ -523,8 +523,6 @@ fi
 ##   @param[in] command...
 ##     実行するコマンドを指定します。
 ##
-_ble_util_read_stdout_tmp="$_ble_base_run/$$.ble_util_assign.tmp"
-
 _ble_util_assign_base=$_ble_base_run/$$.util.assign.tmp
 _ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
@@ -568,7 +566,7 @@ else
     local _ble_local_ret=$?
     TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
-    builtin eval "$1=\${$1%$_ble_term_nl}"
+    builtin eval "$1=\${$1%\$_ble_term_nl}"
     return "$_ble_local_ret"
   }
 fi

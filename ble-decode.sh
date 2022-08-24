@@ -1743,7 +1743,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 
 function ble-decode/bind {
   local file=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
-  [[ -s $file &&  $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+  [[ -s $file && $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
 
   # * 一時的に 'set convert-meta off' にする。
   #

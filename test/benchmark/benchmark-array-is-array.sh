@@ -35,8 +35,8 @@ ble-measure 'ble/is-array2 arr'  # 1439.90 usec/eval
 # 3 compgen -A arrayvar を用いる方法 (完全)
 
 function ble/is-array3 {
-  compgen -A arrayvar "$1" >| "$_ble_util_read_stdout_tmp" 2>/dev/null || return 1
-  local REPLY; read -r < "$_ble_util_read_stdout_tmp"
+  compgen -A arrayvar "$1" >| "$_ble_util_assign_base" 2>/dev/null || return 1
+  local REPLY; read -r < "$_ble_util_assign_base"
   [[ $REPLY == "$1" ]]
 }
 

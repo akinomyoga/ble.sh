@@ -723,7 +723,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       # HVP "CSI f"
       local -a params
       ble/string#split-words params "${param//[^0-9]/ }"
-      params=("${params[@]/#/10#}")
+      params=("${params[@]/#/10#0}")
       ((x=params[1]-1))
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),
@@ -7194,7 +7194,7 @@ function ble-edit/bind/.check-detach {
       ble/textarea#render
       ble/util/buffer.flush >&2
       if ((_ble_bash>=40000)); then
-        READLINE_LINE=' stty sane;' READLINE_POINT=10
+        READLINE_LINE=' stty sane;' READLINE_POINT=11
         printf %s "$READLINE_LINE"
       fi
     fi

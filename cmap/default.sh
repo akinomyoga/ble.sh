@@ -81,6 +81,7 @@ function ble-bind-function-key+default {
   # ble-bind --csi '6~' next
 
   # 順番を固定
+  local ret
   ble-decode-kbd/.gen-keycode insert
   ble-decode-kbd/.gen-keycode home
   ble-decode-kbd/.gen-keycode prior
