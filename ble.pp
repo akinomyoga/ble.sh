@@ -187,7 +187,7 @@ if [[ ! $_ble_init_command ]]; then
     return 1 2>/dev/null || builtin exit 1
   elif [[ $- != *i* ]]; then
     case " ${BASH_SOURCE[*]##*/} " in
-    (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) false ;;
+    (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) ((0)) ;;
     esac &&
       builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
     return 1 2>/dev/null || builtin exit 1
@@ -1009,7 +1009,7 @@ function ble/init/check-environment {
 
   if [[ ! $USER ]]; then
     ble/util/print "ble.sh: insane environment: \$USER is empty." >&2
-    if USER=$(id -un) && [[ $USER ]]; then
+    if USER=$(id -un 2>/dev/null) && [[ $USER ]]; then
       export USER
       ble/util/print "ble.sh: modified USER=$USER" >&2
     fi

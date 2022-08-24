@@ -2210,7 +2210,7 @@ else
     local _ble_local_ret=$? TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
-    builtin eval "$1=\${$1%$_ble_term_nl}"
+    builtin eval "$1=\${$1%\$_ble_term_nl}"
     return "$_ble_local_ret"
   }
 fi
@@ -2644,8 +2644,7 @@ fi
 ##   @param[in] command
 ##     種類を判定するコマンド名を指定します。
 function ble/util/type {
-  ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"; local ext=$?
-  return "$ext"
+  ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"
 }
 
 if ((_ble_bash>=40000)); then
