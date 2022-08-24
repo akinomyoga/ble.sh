@@ -6636,6 +6636,169 @@ bash_tips
 
 2022-08-24
 
+  * RETURN trap はちゃんと動くのだろうか [#D1863]
+
+    現在の trap の実装で RETURN はちゃんと設定できるのだろうか? → 試してみた所、
+    ちゃんと意図した箇所で RETURN trap が呼び出されているが、関係ない場所でも
+    RETURN が呼び出されてしまっている。更に、設定した関数を抜けた後でも RETURN
+    が呼び出されている。
+
+    本来の Bash の実装を見ると trap RETURN を設定した関数 (追記: とその呼び出し
+    元) のみで trap RETURN が発火する様である。但し、trap -p / trap -p RETURN
+    すると何故か関数が抜けた後でも関数内部で使用した RETURN trap が出力される。
+    然し、trap -p で出力されていてもこれは決して呼び出される事はない様だ。
+
+      bash$ function a { trap 'echo RETURN a' RETURN; a2; echo a; }; function a2 { echo a2; }; a; trap -p
+      a2
+      a
+      RETURN a
+      trap -- 'echo RETURN a' RETURN
+      ble.sh$ function a { trap 'echo RETURN a' RETURN; a2; echo a; }; function a2 { echo a2; }; a; trap -p
+      RETURN a
+      RETURN a
+      a2
+      a
+      RETURN a
+      trap -- 'echo RETURN a' RETURN
+      RETURN a
+
+    と思ったが、RETURN a が発火している関数を調べてみた
+    所、_ble_edit_exec_gexec__TRAPDEBUG_adjustだった。そしてこれは declare -ft
+    を設定している関数なのであった。
+
+    % * というか試してみたが実は RETURN は元からそんなに賢い実装ではない様だ。
+    %
+    %   bash$ function a0 { echo a0; a1; }
+    %   bash$ function a1 { trap 'echo "RETURN:a1"' RETURN; echo a1; a2; }
+    %   bash$ function a2 { trap 'echo "RETURN:a2"' RETURN; echo a2; }
+    %   bash$ a0
+    %   a0
+    %   a1
+    %   a2
+    %   RETURN:a2
+    %   RETURN:a2
+    %   RETURN:a2
+    %
+    %   先ず、内側の関数で設定された trap が外側の関数で定義された trap を上書き
+    %   してしまって、関数を抜けた後でもそれが復元される事がない。次に、内側の関
+    %   数で設定された trap が外側の RETURN を設定しなかった関数でも実行される。
+    %
+    % * RETURN trap が ble/builtin/trap に対しても呼び出されてしまう問題に関して
+    %   は、単に RETURN trap の側で上手に処理してもらうべきなのではないか。という
+    %   のも、元から設定した関数とは別の関数で呼び出される可能性があるのだから、
+    %   ちゃんと関数を判定してから実際の処理を行う様に実装してあるべきだからであ
+    %   る。
+    %
+    %   と思ったが本当だろうか。trap - RETURN をちゃんと実行するようにしていれば
+    %   RETURN が復元されるのではないか。そうでなかったとしても trap - RETURN と
+    %   だけしておけば本来ちゃんと動いたのではないか。
+    %
+    % →試してみたらそうだった。RETURN trap の中でちゃんと trap を解除している
+    %   限りは各関数の RETURN trap が各関数で呼び出されるという形になる様だ。
+    %
+    %   bash$ function a0 { echo a0; a1; }
+    %   bash$ function a1 { trap 'echo "RETURN:a1"; trap - RETURN' RETURN; echo a1; a2; }
+    %   bash$ function a2 { trap 'echo "RETURN:a2"; trap - RETURN' RETURN; echo a2; }
+    %   bash$ a0
+    %   a0
+    %   a1
+    %   a2
+    %   RETURN:a2
+    %   RETURN:a1
+
+    RETURN trap の中でちゃんと 'trap - RETURN' で trap を解除している限りは、
+    RETURN trap はちゃんと設定した関数の中だけで実行する振る舞いになる。これは
+    明らかに ble.sh の中では壊れてしまう。
+
+    "trap - RETURN" を関数内で実行してもちゃんとその効果は外に持続するだろうか?
+
+      $ st() { trap "echo '[RETURN:$1]'" RETURN; }
+      $ us() { trap - RETURN; }
+      $ f1() { st f1; echo f1; us; }
+      $ f1; trap -p
+      [RETURN:f1]
+      f1
+      [RETURN:f1]
+      trap -- 'echo '\''[RETURN:f1]'\''' RETURN
+      $ trap - RETURN; trap -p
+      $ st() { trap "echo '[RETURN:$1]'" RETURN; }
+      $ us() { trap - RETURN; }; declare -ft us
+      $ f1() { st f1; echo f1; us; }
+      $ f1; trap -p
+      [RETURN:f1]
+      f1
+
+    うーん。駄目持続しない。逆に declare -ft を実行すると削除されるがうーん。もっ
+    と現実的な設定で実験しないと分からない。
+
+    * memo/D1863.RETURN-recursive.sh
+
+      意外と簡単にちゃんと動く様にできた。interactive でもスクリプトでも両方と
+      も期待どおりに動く事を確認した。これと同じ様に実装する事を考える。
+
+    うーん。install-hook 等の枠組みを通じて修正するのではなくて RETURN は
+    RETURN で特別に実装するのが良い気がする。RETURN を設置する時には既存の user
+    trap を気にする必要もない。単に trap, ble/builtin/trap 内部で発生する
+    RETURN をスキップするだけで良いのでは? と思ったがスキップする為には結局
+    trap/.handler の様な複雑な仕組みが必要になる。
+
+    実は単に install-hook RETURN inactive にすれば良いという可能性もある? → そ
+    の様にして見たら各関数ごとに記録されている trap が消滅して駄目だった。trap
+    を各関数呼び出し階層に対して記録する必要があるのだった。
+
+    * どの様に記録してどの様に取り出すかについて落ち着いて考える必要がある。
+
+
+      取り敢えず trap - RETURN されない限りは内側で設定された trap はずっと残る
+      という事。全ての階層について記録しておいて一番深い階層で記録した物をいつ
+      も取り出しておくという実装で良いのだろうか。
+
+      ? しかし A->B->C1 と呼び出して C1 で設定した trap は A->B では有効である
+        が、A->B->C2 と更に呼び出した別の関数の中では (C2 が -t を持っていない
+        限り) 無効の筈である。なので B に戻った時点で C1 のレベルに設定した
+        handler を除去して B のレベルに再設定するべきではないだろうか。
+
+        x と思ったが B に戻った時点を特定する手段がない。結局そのように実装した
+        としても C2 で有効になってしまうのではないか。
+
+        o と思ったが、もし本当に継承されないのだとしたら C2 の中でそもそも
+          trap/.handler は呼び出されないので気にしなくても良いのではないか。も
+          し C2 の中で trap/.handler が呼び出されるのだとしたらそれは別の
+          handler が明示的に設定されたという事であり、その時点で handler が上書
+          きされてなくなっていると期待して良いのではないか。
+
+        ? C2 が -t を持っている場合 (C2/t) や、extdebug/-T が設定されている場合
+          はどうだろうか。この場合には結局 C1 が設定した handler を呼び出すのが
+          期待される振る舞いなので handler が C1 のレベルに残留していても特に問
+          題はない。
+
+      ? trap - RETURN した時に別の文脈で設定された handler をどう処理するべきだ
+        ろうか。基本的には自身のレベルよりも高いレベルの物は全て削除するという
+        ので良い気がする。然し、別の子関数で設定された物も一緒に削除してしまっ
+        ては駄目である。
+
+        例えば A->B->C1 で設定された handler を A->B->C2/t で trap - RETURN し
+        た時には
+
+      ? というかそもそも A->B->C1 で handler を設定して、その後で A->B->C2 でも
+        handler を設定して最後に trap - RETURN する場合を考えたら、元々
+        A->B->C1 に設定した handler は A->B の階層に移動して置かないと問題にな
+        るのではないか。
+
+        と思ったがこれに関しては C2 で handler を新しく設定する時に C2 の階層に
+        ある handler を B に移動すれば良い? とも思ったがそれだと同じ C2 の呼び
+        出しで設定した物と区別が付かない。
+
+      * extdebug や -T についても確認しておく必要がある → 対応した。
+
+    実装した。動いている気がする。FUNCNAME 等が色々面倒な事になるので
+    BASH_TRAP_{FUNCNAME,SOURCE,LINENO} という変数も提供する事にした。本当はもっ
+    と色々なパターンでテストするべきの気がするが、
+
+      source memo/D1863.RETURN-recursive.sh
+
+    が取り敢えず plain Bash と同様に動くのでそれで良い事にする。
+
   * trap: EXIT trap が subshell で発火しない [#D1862]
 
     これは恐らく subshell の中で改めて trap を実行しないと有効にならないのが原

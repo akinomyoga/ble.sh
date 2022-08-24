@@ -19,9 +19,11 @@ function blehook/declare {
 blehook/declare EXIT
 blehook/declare INT
 # blehook/declare ERR # inactive
+# blehook/declare RETURN # inactive
 blehook/declare internal_EXIT
 blehook/declare internal_INT
 blehook/declare internal_ERR
+blehook/declare internal_RETURN
 blehook/declare unload
 blehook/declare ATTACH
 blehook/declare DETACH

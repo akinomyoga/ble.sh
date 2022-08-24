@@ -1349,12 +1349,14 @@ function sub:scan {
   #sub:scan/assign
   sub:scan/builtin trap |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zble/util/print "trap -- '\''\$\{h//\$q/\$Q}'\'' \$nZd
+      \Zble/util/print "trap -- '\''\$\{_ble_trap_handler//\$q/\$Q}'\'' \$nZd
       \Zline = "bind"Zd
       \Ztrap_command=["'\'']trap -- Zd
       \Zlocal trap$Zd
       \Z\$\{content#"trap -- '\''"\}Zd
       \Z\("trap -- '\''.*"\*\)Zd
+      \Z\(trap \| ble/builtin/trap\) .*;;Zd
+      \Zble/function#trace trap Zd
       \Z# EXIT trapZd
       g'
 

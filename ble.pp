@@ -1763,9 +1763,12 @@ ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses
 ble/bin/.freeze-utility-path man
 ble/bin/.freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
 
+ble/function#trace trap ble/builtin/trap ble/builtin/trap/finalize
+ble/function#trace ble/builtin/trap/.handler ble/builtin/trap/invoke ble/builtin/trap/invoke.sandbox
 ble/builtin/trap/install-hook EXIT
 ble/builtin/trap/install-hook INT
 ble/builtin/trap/install-hook ERR inactive
+ble/builtin/trap/install-hook RETURN inactive
 
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|
@@ -2225,10 +2228,11 @@ ble/function#trace ble
 ble/function#trace ble/dispatch
 ble/function#trace ble/base/attach-from-PROMPT_COMMAND
 
-# Note #D1775: 以下は ble/base/unload 時に元の trap または ble.sh 有効
-#   時にユーザーが設定した trap を復元する為に用いる物。
+# Note #D1775: 以下は ble/base/unload 時に元の trap または ble.sh 有効時にユー
+#   ザーが設定した trap を復元する為に用いる物。ble/base/unload は中で
+#   ble/builtin/trap/finalize を呼び出す。ble/builtin/trap/finalize は別の箇所
+#   で ble/function#trace されている。
 ble/function#trace ble/base/unload
-ble/function#trace ble/builtin/trap/finalize
 
 ble-import -f lib/_package
 if [[ $_ble_init_command ]]; then
