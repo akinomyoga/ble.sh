@@ -6636,6 +6636,11 @@ bash_tips
 
 2022-08-25
 
+  * trap: user trap handler 内で $@ を復元する [#D1865]
+
+    2022-08-29 テストが動かなくなった。何故→これは単純なミスだった。shift を実
+    行したが、それよりも後で $1 を参照している箇所があった。修正した。
+
   * trap: refactor and fix ble/builtin/trap [#D1864]
 
     * ble/builtin/trap 及び blehook 関連のコードが util.sh の中で肥大化して、他

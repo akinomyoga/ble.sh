@@ -710,7 +710,8 @@ blehook internal_RETURN+=ble/builtin/trap/.TRAPRETURN
 _ble_builtin_trap_user_lastcmd=
 _ble_builtin_trap_user_lastarg=
 _ble_builtin_trap_user_lastexit=
-## @fn ble/builtin/trap/invoke.sandbox
+## @fn ble/builtin/trap/invoke.sandbox params...
+##   @param[in] params...
 ##   @var[in] _ble_trap_handler
 ##   @var[out] _ble_trap_done
 ##   @var[in,out] _ble_trap_lastexit _ble_trap_lastarg
@@ -736,15 +737,16 @@ function ble/builtin/trap/invoke.sandbox {
   fi
   return 0
 }
-## @fn ble/builtin/trap/invoke sig
+## @fn ble/builtin/trap/invoke sig params...
 ##   @param[in] sig
+##   @param[in] params...
 ##   @var[in] ? _
 ##   @var[in,out] _ble_builtin_trap_postproc
 function ble/builtin/trap/invoke {
-  local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ _ble_trap_sig=$1
+  local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ _ble_trap_sig=$1; shift
   if [[ ${_ble_trap_sig//[0-9]} ]]; then
     local ret
-    ble/builtin/trap/sig#resolve "$1" || return 1
+    ble/builtin/trap/sig#resolve "$_ble_trap_sig" || return 1
     _ble_trap_sig=$ret
     ble/util/unlocal ret
   fi
@@ -765,7 +767,7 @@ function ble/builtin/trap/invoke {
   fi
 
   local _ble_trap_done=
-  ble/builtin/trap/invoke.sandbox; local ext=$?
+  ble/builtin/trap/invoke.sandbox "$@"; local ext=$?
   case $_ble_trap_done in
   (done)
     _ble_builtin_trap_lastarg=$_ble_trap_lastarg
@@ -807,18 +809,22 @@ function ble/builtin/trap/invoke {
   return 0
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 
-## @fn ble/builtin/trap/.handler sig signame bash_command
+## @fn ble/builtin/trap/.handler sig bash_command params...
+##   @param[in] sig
+##     Specifies the signal number
+##   @param[in] bash_command
+##     Specifies the value of BASH_COMMAND in the original context
+##   @param[in] params...
+##     Specifies the positional parameters in the original context
 ##   @var[out] _ble_builtin_trap_postproc
 ##   @var[out] _ble_builtin_trap_lastarg
 function ble/builtin/trap/.handler {
-  local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ FUNCNEST=
-  local _ble_trap_sig=$1 _ble_trap_name=$2
-  local FUNCNEST= IFS=$_ble_term_IFS
+  local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ FUNCNEST= IFS=$_ble_term_IFS
   local set shopt; ble/base/.adjust-bash-options set shopt
 
-  local _ble_builtin_trap_processing=$_ble_trap_sig
-
-  local _ble_trap_bash_command=$3
+  local _ble_trap_sig=$1
+  local _ble_trap_name=${_ble_builtin_trap_sig_name[_ble_trap_sig]#SIG}
+  local _ble_trap_bash_command=$2
   if [[ ! $_ble_trap_bash_command ]] || ((_ble_bash<30200)); then
     # Note: Bash 3.0, 3.1 は trap 中でも BASH_COMMAND は trap 発動対象ではなく
     # て現在実行中のコマンドになっている。_ble_trap_bash_command には単に
@@ -830,6 +836,9 @@ function ble/builtin/trap/.handler {
       _ble_trap_bash_command=${_ble_trap_bash_command#*__ble_ext__}
     fi
   fi
+  shift 2
+
+  local _ble_builtin_trap_processing=$_ble_trap_sig
 
   # 透過 _ble_builtin_trap_postproc を設定
   local _ble_local_q=\' _ble_local_Q="'\''"
@@ -873,7 +882,7 @@ function ble/builtin/trap/.handler {
     # user hook
     ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
     BASH_COMMAND=$_ble_trap_bash_command \
-      ble/builtin/trap/invoke "$_ble_trap_sig"
+      ble/builtin/trap/invoke "$_ble_trap_sig" "$@"
   fi
 
   # 何処かの時点で exit が要求された場合
@@ -904,7 +913,7 @@ function ble/builtin/trap/.handler {
 
 function ble/builtin/trap/install-hook/.compose-trap_command {
   local sig=$1 name=${_ble_builtin_trap_sig_name[$1]}
-  local handler="ble/builtin/trap/.handler $sig ${name#SIG} \"\$BASH_COMMAND\"; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
+  local handler="ble/builtin/trap/.handler $sig \"\$BASH_COMMAND\" \"\$@\"; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
   trap_command="trap -- '$handler' $name"
 }
 
