@@ -1158,8 +1158,7 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'ble/builtin/trap/invoke HUP' stdout=
 
   # 9999 / CUSTOM (custom trap)
-  ble/builtin/trap/.register 9999 CUSTOM
-  ble/builtin/trap/reserve CUSTOM
+  ble/builtin/trap/sig#new CUSTOM
   ble/builtin/trap 'echo custom trap' CUSTOM
   ble/test 'ble/builtin/trap/invoke CUSTOM' stdout='custom trap'
   function ble/builtin/trap:CUSTOM { echo "__set_handler__ ($2) $1"; }

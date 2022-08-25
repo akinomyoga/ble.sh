@@ -6116,7 +6116,7 @@ _ble_edit_exec_TRAPDEBUG_EXIT=
 _ble_edit_exec_inside_begin=
 _ble_edit_exec_inside_prologue=
 _ble_edit_exec_inside_userspace=
-ble/builtin/trap/reserve DEBUG
+ble/builtin/trap/sig#reserve DEBUG override-builtin-signal
 
 ## @fn ble-edit/exec:gexec/.TRAPDEBUG/trap [opts]
 ##   @param[in] opts
@@ -6155,7 +6155,7 @@ ble/function#trace _ble_edit_exec_gexec__TRAPDEBUG_adjust
 function ble-edit/exec:gexec/.TRAPDEBUG/restore {
   _ble_edit_exec_TRAPDEBUG_adjusted=
   local opts=$1
-  ble/builtin/trap/.initialize
+  ble/builtin/trap/sig#init
   if [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]} ]]; then
     ble-edit/exec:gexec/.TRAPDEBUG/trap "$opts"
   fi

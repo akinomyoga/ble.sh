@@ -56,7 +56,7 @@ else
     ((stat)) || return 0
 
     local ret=11
-    ble/builtin/trap/.get-sig-index SIGSEGV
+    ble/builtin/trap/sig#resolve SIGSEGV
     ((stat==128+ret)) || return 0
 
     local msg="bash: SIGSEGV: suspicious timestamp in HISTFILE"
@@ -102,7 +102,7 @@ if ((_ble_bash<40000)); then
     if ((ext==142)); then
       printf 'ble.sh: timeout: builtin history %s' "$*" >/dev/tty
       local ret=11
-      ble/builtin/trap/.get-sig-index SIGSEGV
+      ble/builtin/trap/sig#resolve SIGSEGV
       ((ext=128+ret))
     fi
     ble/builtin/history/.check-timestamp-sigsegv "$ext"

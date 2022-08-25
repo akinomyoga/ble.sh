@@ -56,7 +56,7 @@
   - util (`bleopt`): do no select obsoleted options by wildcards `#D1595` f4312df
   - util (`bleopt`): fix error messages for unknown options `#D1610` 66df3e2
   - util (`bleopt`, `bind`): fix error message and exit status, respectively `#D1640` b663cee
-  - util (`blehook`): support wildcards `#D1861` XXXXXXX
+  - util (`blehook`): support wildcards `#D1861` 480b7b3
 - progcomp: support quoted commands and better `progcomp_alias` `#D1581` `#D1583` dbe87c3
   - progcomp: fix a bug that command names may stray into completer function names `#D1611` 1f2d45f
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
@@ -106,7 +106,7 @@
   - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` 1e19a67
 - history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a 3110967
 - prompt: support `bleopt prompt_{emacs,vi}_mode_indicator` (motivated by ferdinandyb) `#D1843` 2b905f8
-- util (`ble-import`): support option `-q` `#D1859` XXXXXXX
+- util (`ble-import`): support option `-q` `#D1859` 1ca87a9
 
 ## Changes
 
@@ -134,7 +134,7 @@
   - prompt: update `PS0` between multiple commands (motivated by tycho-kirchner) `#D1560` 8f29203
 - edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
   - edit (`display-shell-version`): detect configurations and print details `#D1781` 5015cb56
-  - edit (`display-shell-version`): show information of the OS distribution and properly handle saved locales `#D1854` 066ec63 XXXXXXX
+  - edit (`display-shell-version`): show information of the OS distribution and properly handle saved locales `#D1854` 066ec63 bdb7dd6
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
@@ -174,12 +174,16 @@
   - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` 1c7f7a1
 - syntax (`extract-command`): extract unexpected command names as commands `#D1848` 5b63459
 - main (`ble-reload`): preserve the original initialization options `#D1852` d8c92cc
-- blehook: print reusable code to restore the user hooks `#D1857` XXXXXXX
-  - blehook: separate internal and user hooks `#D1856` XXXXXXX
-- trap,hook: refactor `ERR` `#D1858` XXXXXXX
-  - blehook: rename `ERR{ => EXEC}` and separate from the `ERR` trap
-  - trap: remove the support for the shell function `TRAPERR`
-  - trap: preserve `BASH_COMMAND` in trap handlers
+- blehook: print reusable code to restore the user hooks `#D1857` b763677
+  - blehook: separate internal and user hooks `#D1856` b763677
+- trap: refactor
+  - trap,blehook: rename `ERR{ => EXEC}` and separate from the `ERR` trap `#D1858` 94d1371
+  - trap: remove the support for the shell function `TRAPERR` `#D1858` 94d1371
+  - trap: preserve `BASH_COMMAND` in trap handlers `#D1858` 94d1371
+  - trap,blehook: move to a new file `util.hook.sh` `#D1864` XXXXXXX
+  - trap (`trap -p`): fix unprinted existing user traps `#D1864` XXXXXXX
+  - trap (`ble/builtin/trap/finalize`): fix a failure of restoring the original trap `#D1864` XXXXXXX
+  - trap (`trap -p`): print also custom traps `#D1864` XXXXXXX
 
 ## Fixes
 
@@ -289,8 +293,8 @@
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
 - main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
-- util (`ble/builtin/trap`): run EXIT trap in subshells `#D1862` XXXXXXX
-- util (`ble/builtin/trap`): fix the RETURN trap `#D1863` XXXXXXX
+- util (`ble/builtin/trap`): run EXIT trap in subshells `#D1862` 5b351e8
+- util (`ble/builtin/trap`): fix the RETURN trap `#D1863` 793dfad
 
 ## Documentation
 
@@ -430,8 +434,8 @@
 - util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072
 - github/workflows: define an action for the nightly builds (contributed by uyha) `#D1814` a3082a0
 - global: quote numbers for unexpected `IFS` `#D1835` 0179afc
-- history: refactor hooks `history_{{delete,clear,insert} => change}` `#D1860` XXXXXXX
-- history: rename the hook `history_{on => }leave` `#D1860` XXXXXXX
+- history: refactor hooks `history_{{delete,clear,insert} => change}` `#D1860` c393c93
+- history: rename the hook `history_{on => }leave` `#D1860` c393c93
 
 ## Contrib
 

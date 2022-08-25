@@ -292,6 +292,9 @@ function blehook/eval-after-load {
 #------------------------------------------------------------------------------
 # blehook
 
+_ble_builtin_trap_inside=  # ble/builtin/trap 処理中かどうか
+_ble_builtin_trap_processing= # ble/buitlin/trap/.handler 実行中かどうか
+
 ## @fn ble/builtin/trap/.read-arguments args...
 ##   @var[out] flags
 function ble/builtin/trap/.read-arguments {
@@ -343,69 +346,88 @@ function ble/builtin/trap/.read-arguments {
     fi
   fi
 }
-_ble_builtin_trap_signames=()
-_ble_builtin_trap_reserved=()
-_ble_builtin_trap_handlers=()
-_ble_builtin_trap_handlers_RETURN=()
+
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_trap_name2sig}"
+_ble_builtin_trap_sig_name=()
+_ble_builtin_trap_sig_opts=()
+_ble_builtin_trap_sig_base=1000
+_ble_builtin_trap_EXIT=
 _ble_builtin_trap_DEBUG=
-_ble_builtin_trap_inside=  # ble/builtin/trap 処理中かどうか
-_ble_builtin_trap_processing= # ble/buitlin/trap/.handler 実行中かどうか
-builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_trap_n2i}"
-function ble/builtin/trap/.register {
-  local index=$1 name=$2
-  _ble_builtin_trap_signames[index]=$name
-  ble/gdict#set _ble_builtin_trap_n2i "$name" "$index"
+_ble_builtin_trap_RETURN=
+_ble_builtin_trap_ERR=
+function ble/builtin/trap/sig#register {
+  local sig=$1 name=$2
+  _ble_builtin_trap_sig_name[sig]=$name
+  ble/gdict#set _ble_builtin_trap_name2sig "$name" "$sig"
 }
-function ble/builtin/trap/.get-sig-index {
+function ble/builtin/trap/sig#reserve {
+  local ret
+  ble/builtin/trap/sig#resolve "$1" || return 1
+  _ble_builtin_trap_sig_opts[ret]=${2:-1}
+}
+## @fn ble/builtin/trap/sig#resolve sigspec
+##   @var[out] ret
+function ble/builtin/trap/sig#resolve {
+  ble/builtin/trap/sig#init
   if [[ $1 && ! ${1//[0-9]} ]]; then
     ret=$1
     return 0
   else
-    ble/gdict#get _ble_builtin_trap_n2i "$1"
+    ble/gdict#get _ble_builtin_trap_name2sig "$1"
     [[ $ret ]] && return 0
 
     ble/string#toupper "$1"; local upper=$ret
-    ble/gdict#get _ble_builtin_trap_n2i "$upper" ||
-      ble/gdict#get _ble_builtin_trap_n2i "SIG$upper" ||
+    ble/gdict#get _ble_builtin_trap_name2sig "$upper" ||
+      ble/gdict#get _ble_builtin_trap_name2sig "SIG$upper" ||
       return 1
-    ble/gdict#set _ble_builtin_trap_n2i "$1" "$ret"
+    ble/gdict#set _ble_builtin_trap_name2sig "$1" "$ret"
     return 0
   fi
 }
-function ble/builtin/trap/.initialize {
-  function ble/builtin/trap/.initialize { :; }
+function ble/builtin/trap/sig#new {
+  local name=$1 opts=$2
+  local sig=$((_ble_builtin_trap_$name=_ble_builtin_trap_sig_base++))
+  ble/builtin/trap/sig#register "$sig" "$name"
+  if [[ :$opts: != *:builtin:* ]]; then
+    ble/builtin/trap/sig#reserve "$sig" "$opts"
+  fi
+}
+function ble/builtin/trap/sig#init {
+  function ble/builtin/trap/sig#init { :; }
   local ret i
   ble/util/assign-words ret 'builtin trap -l' 2>/dev/null
   for ((i=0;i<${#ret[@]};i+=2)); do
     local index=${ret[i]%')'}
     local name=${ret[i+1]}
-    ble/builtin/trap/.register "$index" "$name"
+    ble/builtin/trap/sig#register "$index" "$name"
   done
-  ble/builtin/trap/.register 0 EXIT
-  ble/builtin/trap/.register 1000 DEBUG
-  ble/builtin/trap/.register 1001 RETURN
-  ble/builtin/trap/.register 1002 ERR
 
-  _ble_builtin_trap_DEBUG=1000
+  _ble_builtin_trap_EXIT=0
+  ble/builtin/trap/sig#register "$_ble_builtin_trap_EXIT" EXIT
+  ble/builtin/trap/sig#new DEBUG  builtin
+  ble/builtin/trap/sig#new RETURN builtin
+  ble/builtin/trap/sig#new ERR    builtin
 }
 
-## @fn ble/builtin/trap/.load-user-handler sig
+_ble_builtin_trap_handlers=()
+_ble_builtin_trap_handlers_RETURN=()
+## @fn ble/builtin/trap/user-handler#load sig
 ##   @param[in] sig
 ##     トラップ番号を指定します。
 ##   @var[out] _ble_trap_handler
 ##     ユーザートラップを格納します。
 ##   @exit
 ##     ユーザートラップが設定されている時に 0 を返します。
-function ble/builtin/trap/.load-user-handler {
-  local sig=$1 name=${_ble_builtin_trap_signames[$1]}
+function ble/builtin/trap/user-handler#load {
+  local sig=$1 name=${_ble_builtin_trap_sig_name[$1]}
   if [[ $name == RETURN ]]; then
-    ble/builtin/trap/.load-user-handler:RETURN
+    ble/builtin/trap/user-handler#load:RETURN
   else
     _ble_trap_handler=${_ble_builtin_trap_handlers[sig]-}
     [[ ${_ble_builtin_trap_handlers[sig]+set} ]]
   fi
 }
-## @fn ble/builtin/trap/.save-user-handler sig handler
+## @fn ble/builtin/trap/user-handler#save sig handler
 ##   指定したトラップに対するハンドラーを記録します。
 ##   @param[in] sig handler
 ##     トラップ番号を指定します。
@@ -413,10 +435,10 @@ function ble/builtin/trap/.load-user-handler {
 ##     ユーザートラップを格納します。
 ##   @exit
 ##     ユーザートラップが設定されている時に 0 を返します。
-function ble/builtin/trap/.save-user-handler {
-  local sig=$1 name=${_ble_builtin_trap_signames[$1]} handler=$2
+function ble/builtin/trap/user-handler#save {
+  local sig=$1 name=${_ble_builtin_trap_sig_name[$1]} handler=$2
   if [[ $name == RETURN ]]; then
-    ble/builtin/trap/.save-user-handler:RETURN "$handler"
+    ble/builtin/trap/user-handler#save:RETURN "$handler"
   else
     if [[ $handler == - ]]; then
       builtin unset -v '_ble_builtin_trap_handlers[sig]'
@@ -426,14 +448,14 @@ function ble/builtin/trap/.save-user-handler {
   fi
   return 0
 }
-function ble/builtin/trap/.save-user-handler:RETURN {
+function ble/builtin/trap/user-handler#save:RETURN {
   local handler=$1
 
   local offset=
   for ((offset=1;offset<${#FUNCNAME[@]};offset++)); do
     case ${FUNCNAME[offset]} in
     (trap | ble/builtin/trap) ;;
-    (ble/builtin/trap/.save-user-handler) ;;
+    (ble/builtin/trap/user-handler#save) ;;
     (*) break ;;
     esac
   done
@@ -462,14 +484,15 @@ function ble/builtin/trap/.save-user-handler:RETURN {
   fi
   return 0
 }
-function ble/builtin/trap/.load-user-handler:RETURN {
+function ble/builtin/trap/user-handler#load:RETURN {
   # この関数の呼び出し文脈・handler 探索開始関数レベルの決定
   local offset= in_trap=
   for ((offset=1;offset<${#FUNCNAME[@]};offset++)); do
     case ${FUNCNAME[offset]} in
     (trap | ble/builtin/trap) ;;
     (ble/builtin/trap/.handler) ;;
-    (ble/builtin/trap/.load-user-handler) ;;
+    (ble/builtin/trap/user-handler#load) ;;
+    (ble/builtin/trap/user-handler#has) ;;
     (ble/builtin/trap/finalize) ;;
     (ble/builtin/trap/install-hook) ;;
     (ble/builtin/trap/invoke) ;;
@@ -496,10 +519,10 @@ function ble/builtin/trap/.load-user-handler:RETURN {
   _ble_trap_handler=$handler
   [[ $found ]]
 }
-## @fn ble/builtin/trap/.update-user-handler:RETURN
+## @fn ble/builtin/trap/user-handler#update:RETURN
 ##   関数が戻る時に呼び出して RETURN トラップの呼び出し元への継承を実行します。
 ##   この関数は ble/builtin/trap/.handler から呼び出される事を想定しています。
-function ble/builtin/trap/.update-user-handler:RETURN {
+function ble/builtin/trap/user-handler#update:RETURN {
   # この関数の呼び出し文脈の取得
   local offset=2 # ... ble/builtin/trap/.handler から直接呼び出されると仮定
   local current_level=$((${#FUNCNAME[@]}-offset))
@@ -521,27 +544,36 @@ function ble/builtin/trap/.update-user-handler:RETURN {
     _ble_builtin_trap_handlers_RETURN[current_level-1]=$handler
   fi
 }
-
-function ble/builtin/trap/reserve {
-  local ret
-  ble/builtin/trap/.initialize
-  ble/builtin/trap/.get-sig-index "$1" || return 1
-  _ble_builtin_trap_reserved[ret]=${2:-1}
+function ble/builtin/trap/user-handler#has {
+  local _ble_trap_handler
+  ble/builtin/trap/user-handler#load "$1"
 }
+function ble/builtin/trap/user-handler#init {
+  local script _ble_builtin_trap_user_handler_init=1
+  ble/util/assign script 'builtin trap -p'
+  builtin eval -- "$script"
+}
+function ble/builtin/trap/user-handler/is-internal {
+  case $1 in
+  ('ble/builtin/trap/'*) return 0 ;; # ble-0.4
+  ('ble/base/unload'*|'ble-edit/'*) return 0 ;; # bash-0.3 以前
+  (*) return 1 ;;
+  esac
+}
+
 function ble/builtin/trap/finalize {
   local sig
-  for sig in "${!_ble_builtin_trap_reserved[@]}"; do
-    local name=${_ble_builtin_trap_signames[index]}
-    [[ $name && ${_ble_builtin_trap_reserved[sig]} ]] || continue
-    local _ble_trap_handler
-    if ble/builtin/trap/.load-user-handler "$sig"; then
+  for sig in "${!_ble_builtin_trap_sig_opts[@]}"; do
+    local name=${_ble_builtin_trap_sig_name[sig]}
+    local opts=${_ble_builtin_trap_sig_opts[sig]}
+    [[ $name && :$opts: == *:override-builtin-signal:* ]] || continue
+    if local _ble_trap_handler; ble/builtin/trap/user-handler#load "$sig"; then
       builtin trap -- "$_ble_trap_handler" "$name"
     else
       builtin trap -- - "$name"
     fi
   done
 }
-
 function ble/builtin/trap {
   local set shopt; ble/base/.adjust-bash-options set shopt
   local flags command sigspecs
@@ -563,45 +595,48 @@ function ble/builtin/trap {
     ble/base/adjust-BASH_REMATCH
 
   if [[ $flags == *p* ]]; then
-  ble/builtin/trap/.initialize
 
     local -a indices=()
     if ((${#sigspecs[@]})); then
       local spec ret
       for spec in "${sigspecs[@]}"; do
-        if ! ble/builtin/trap/.get-sig-index "$spec"; then
+        if ! ble/builtin/trap/sig#resolve "$spec"; then
           ble/util/print "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
           continue
         fi
         ble/array#push indices "$ret"
       done
     else
-      # Note: 1001 は RETURN
-      indices=("${!_ble_builtin_trap_handlers[@]}" 1001)
+      indices=("${!_ble_builtin_trap_handlers[@]}" "$_ble_builtin_trap_RETURN")
     fi
 
     local q=\' Q="'\''" index _ble_trap_handler
     for index in "${indices[@]}"; do
-      if ble/builtin/trap/.load-user-handler "$index"; then
-        local n=${_ble_builtin_trap_signames[index]}
+      if ble/builtin/trap/user-handler#load "$index"; then
+        local n=${_ble_builtin_trap_sig_name[index]}
         ble/util/print "trap -- '${_ble_trap_handler//$q/$Q}' $n"
       fi
     done
   else
+    # Ignore ble.sh handlers of the previous session
+    [[ $_ble_builtin_trap_user_handler_init ]] &&
+      ble/builtin/trap/user-handler/is-internal "$command" &&
+      return 0
+
     local _ble_builtin_trap_inside=1
     local spec ret
     for spec in "${sigspecs[@]}"; do
-      if ! ble/builtin/trap/.get-sig-index "$spec"; then
+      if ! ble/builtin/trap/sig#resolve "$spec"; then
         ble/util/print "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
         continue
       fi
-      local isig=$ret
-      local name=${_ble_builtin_trap_signames[isig]}
-
-      ble/builtin/trap/.save-user-handler "$isig" "$command"
+      local sig=$ret
+      local name=${_ble_builtin_trap_sig_name[sig]}
+      ble/builtin/trap/user-handler#save "$sig" "$command"
+      [[ $_ble_builtin_trap_user_handler_init ]] && continue
 
       local trap_command='builtin trap -- "$command" "$spec"'
-      local install_opts=${_ble_builtin_trap_reserved[isig]}
+      local install_opts=${_ble_builtin_trap_sig_opts[sig]}
       if [[ $install_opts ]]; then
         local custom_trap=ble/builtin/trap:$name
         if ble/is-function "$custom_trap"; then
@@ -621,11 +656,11 @@ function ble/builtin/trap {
             # でもない (特に subshell の中で改めて実行したい訳でもなければ)。
             trap_command=
           fi
-        elif [[ :$install_opts: == *:install-hook:* ]]; then
+        elif [[ :$install_opts: == *:override-builtin-signal:* ]]; then
           # Note #D1862: 内部処理の為に trap を常設していたとしても EXIT 等の
           # 様に subshell に継承されない trap があるので毎回明示的に builtin
           # trap を実行する。
-          ble/builtin/trap/install-hook/.compose-trap_command "$isig"
+          ble/builtin/trap/install-hook/.compose-trap_command "$sig"
           trap_command="builtin $trap_command"
         else
           # ble/builtin/trap/{.register,reserve} で登録したカスタム trap の場合
@@ -654,6 +689,7 @@ function ble/builtin/trap {
   return 0
 }
 function trap { ble/builtin/trap "$@"; }
+ble/builtin/trap/user-handler#init
 
 function ble/builtin/trap/.TRAPRETURN {
   local i=1
@@ -708,14 +744,13 @@ function ble/builtin/trap/invoke {
   local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ _ble_trap_sig=$1
   if [[ ${_ble_trap_sig//[0-9]} ]]; then
     local ret
-    ble/builtin/trap/.initialize
-    ble/builtin/trap/.get-sig-index "$1" || return 1
+    ble/builtin/trap/sig#resolve "$1" || return 1
     _ble_trap_sig=$ret
     ble/util/unlocal ret
   fi
 
   local _ble_trap_handler
-  ble/builtin/trap/.load-user-handler "$_ble_trap_sig"
+  ble/builtin/trap/user-handler#load "$_ble_trap_sig"
   [[ $_ble_trap_handler ]] || return 0
 
   # restore $_ and $? for user trap handlers
@@ -854,21 +889,21 @@ function ble/builtin/trap/.handler {
   [[ $_ble_builtin_trap_lastarg == *$'\n'* ]] &&
     _ble_builtin_trap_lastarg=
 
-  if ((_ble_trap_sig==0)); then
+  if ((_ble_trap_sig==_ble_builtin_trap_EXIT)); then
     # Note #D1797: EXIT に対する ble/base/unload は trap handler のできるだけ最
     # 後に実行する。勝手に削除されても困るし、他の handler が ble.sh の機能を使っ
     # た時に問題が起こらない様にする為。
     ble/base/unload
-  elif ((_ble_trap_sig==1001)); then
+  elif ((_ble_trap_sig==_ble_builtin_trap_RETURN)); then
     # Note #D1863: RETURN trap の呼び出し元への継承処理を実行する。
-    ble/builtin/trap/.update-user-handler:RETURN
+    ble/builtin/trap/user-handler#update:RETURN
   fi
 
   ble/base/.restore-bash-options set shopt
 }
 
 function ble/builtin/trap/install-hook/.compose-trap_command {
-  local sig=$1 name=${_ble_builtin_trap_signames[$1]}
+  local sig=$1 name=${_ble_builtin_trap_sig_name[$1]}
   local handler="ble/builtin/trap/.handler $sig ${name#SIG} \"\$BASH_COMMAND\"; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
   trap_command="trap -- '$handler' $name"
 }
@@ -884,10 +919,9 @@ function ble/builtin/trap/install-hook/.compose-trap_command {
 ##              ラの登録を削除します。
 function ble/builtin/trap/install-hook {
   local ret opts=${2-}
-  ble/builtin/trap/.initialize
-  ble/builtin/trap/.get-sig-index "$1"
-  local sig=$ret name=${_ble_builtin_trap_signames[ret]}
-  ble/builtin/trap/reserve "$sig" "install-hook:$opts"
+  ble/builtin/trap/sig#resolve "$1"
+  local sig=$ret name=${_ble_builtin_trap_sig_name[ret]}
+  ble/builtin/trap/sig#reserve "$sig" "override-builtin-signal:$opts"
 
   local trap_command; ble/builtin/trap/install-hook/.compose-trap_command "$sig"
   local trap_string; ble/util/assign trap_string "builtin trap -p $name"
@@ -918,23 +952,19 @@ function ble/builtin/trap/install-hook {
   [[ :$opts: == *:inactive:* && ! $trap_string ]] ||
     builtin eval "builtin $trap_command"; local ext=$?
 
-  case $trap_string in
-  ("trap -- 'ble/builtin/trap/"*) ;; # ble-0.4
-  ("trap -- 'ble/base/unload"*|"trap -- 'ble-edit/"*) ;; # bash-0.3 以前
-  ("trap -- '"*)
-    # Note: 既存の handler がない時のみ設定を読み取る。既存の設定がある時は
-    # ble.sh をロードしてから trap が実行された事を意味する。一方で、ble.sh が
-    # ロードされて以降に builtin trap の設定がユーザーによって直接変更される事
-    # は想定していないので、builtin trap から読み取った結果は ble.sh ロード前と
-    # 想定して良い。
-    local _ble_trap_handler
-    ! ble/builtin/trap/.load-user-handler "$sig" &&
-      # Note: 1000 以上はデバグ用の trap (DEBUG, RETURN, EXIT) で既定では trap
-      # が関数呼び出しで継承されないので、trap_string の内容は信用できない。
-      ((sig<1000)) &&
-      builtin eval -- "ble/builtin/$trap_string" ;;
-  esac
+  local q=\'
+  if [[ $trap_string == "trap -- '"* ]] && ! ble/builtin/trap/user-handler/is-internal "${trap_string#*$q}"; then
+    # Note: 1000 以上はデバグ用の trap (DEBUG, RETURN, EXIT) で既定では trapが
+    # 関数呼び出しで継承されないので、trap_string の内容は信用できない。
+    ((sig<1000)) &&
+      # Note: 既存の handler がない時のみ設定を読み取る。既存の設定がある時は
+      # ble.sh をロードしてから trap が実行された事を意味する。一方で、ble.sh
+      # がロードされて以降に builtin trap の設定がユーザーによって直接変更され
+      # る事は想定していないので、builtin trap から読み取った結果は ble.sh ロー
+      # ド前と想定して良い。
+      ! ble/builtin/trap/user-handler#has "$sig" &&
+      builtin eval -- "ble/builtin/$trap_string"
+  fi
 
   return "$ext"
 }
-
