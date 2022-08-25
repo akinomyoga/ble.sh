@@ -6352,14 +6352,18 @@ ble/function#trace _ble_builtin_trap_DEBUG__initialize
 _ble_builtin_trap_DEBUG__initialize
 
 function ble-edit/exec:gexec/.TRAPINT {
-  local sig=130
-  ((_ble_bash>=40300)) || sig=128 # bash-4.2 以下は 128
+  # ユーザートラップがある時は中断処理は実行しない
+  local ret; ble/builtin/trap/sig#resolve INT
+  ble/builtin/trap/user-handler#has "$ret" && return 0
+
+  local ext=130
+  ((_ble_bash>=40300)) || ext=128 # bash-4.2 以下は 128
   if [[ $_ble_attached ]]; then
     ble/util/print "$_ble_term_bold^C$_ble_term_sgr0" >&2
-    _ble_edit_exec_TRAPDEBUG_INT=$sig
+    _ble_edit_exec_TRAPDEBUG_INT=$ext
     ble-edit/exec:gexec/.TRAPDEBUG/trap
   else
-    _ble_builtin_trap_postproc="{ return $sig || break; } &>/dev/tty"
+    _ble_builtin_trap_postproc="{ return $ext || break; } &>/dev/tty"
   fi
 }
 function ble-edit/exec:gexec/.TRAPINT/reset {

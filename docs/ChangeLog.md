@@ -185,6 +185,7 @@
   - trap (`ble/builtin/trap/finalize`): fix a failure of restoring the original trap `#D1864` XXXXXXX
   - trap (`trap -p`): print also custom traps `#D1864` XXXXXXX
   - trap: preserve positional parameters for user trap handlers `#D1865` XXXXXXX
+  - trap: suppress `INT` processing with user traps `#D1866` XXXXXXX
 
 ## Fixes
 
