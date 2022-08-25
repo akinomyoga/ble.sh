@@ -1599,6 +1599,32 @@ function sub:scan-varnames {
     sort | uniq -c | sort -n | less
 }
 
+function sub:check-dependency/identify-funcdef {
+  local funcname=$1
+  grep -En "\bfunction $funcname +\{" ble.pp src/*.sh | awk -F : -v funcname="$funcname" '
+    {
+      if ($1 == "ble.pp") {
+        if (funcname ~ /^ble\/util\/assign$|^ble\/bin\/grep$/) next;
+        if (funcname == "ble/util/print" && $2 < 30) next;
+      } else if ($1 == "src/benchmark.sh") {
+        if (funcname ~ /^ble\/util\/(unlocal|print|print-lines)$/) next;
+      }
+      print $1 ":" $2;
+      exit
+    }
+  '
+}
+
+function sub:check-dependency {
+  local file=$1
+  grep -Eo '\bble(hook|opt|-[[:alnum:]]+)?/[^();&|[:space:]'\''"]+' "$file" | sort -u |
+    grep -Fvx "$(grep -Eo '\bfunction [^();&|[:space:]'\''"]+ +\{' "$file" | sed -E 's/^function | +\{$//g' | sort -u)" |
+    while read -r funcname; do
+      location=$(sub:check-dependency/identify-funcdef "$funcname")
+      echo "${location:-unknown:0}:$funcname"
+    done | sort -t : -Vk 1,2 | less -FSXR
+}
+
 #------------------------------------------------------------------------------
 # sub:check-readline-bindable
 
