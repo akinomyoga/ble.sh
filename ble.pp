@@ -3,6 +3,7 @@
 #%[release = 0]
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
+#%[leakvar = ""]
 #%#----------------------------------------------------------------------------
 #%if measure_load_time
 _ble_debug_measure_fork_count=$(echo $BASHPID)
@@ -17,6 +18,14 @@ function ble/debug/measure-set-timeformat {
     TIMEFORMAT=$TIMEFORMAT" ($fork forks)"
 }
 #%end
+#%if leakvar
+#%%expand
+$"leakvar"=__t1wJltaP9nmow__
+#%%end.i
+function ble/bin/grep { command grep "$@"; }
+function ble/util/print { printf '%s\n' "$*"; }
+source "${BASH_SOURCE%/*}/lib/core-debug.sh"
+#%end
 #%define inc
 #%%[guard_name = "@_included".replace("[^_a-zA-Z0-9]", "_")]
 #%%expand
@@ -25,6 +34,9 @@ function ble/debug/measure-set-timeformat {
 ###############################################################################
 # Included from @.sh
 
+#%%%%if leakvar
+ble/debug/leakvar#check $"leakvar" "[before include @.sh]"
+#%%%%end.i
 #%%%%if measure_load_time
 time {
 #%%%%%include @.sh
@@ -33,6 +45,9 @@ ble/debug/measure-set-timeformat '@.sh'
 #%%%%else
 #%%%%%include @.sh
 #%%%%end
+#%%%%if leakvar
+ble/debug/leakvar#check $"leakvar" "[after include @.sh]"
+#%%%%end.i
 #%%%end
 #%%end.i
 #%end
@@ -2002,6 +2017,9 @@ function ble/base/load-rcfile {
 
 ## @fn ble-attach [opts]
 function ble-attach {
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A1-begin
+#%end.i
   if (($# >= 2)); then
     ble/util/print-lines \
       'usage: ble-attach [opts]' \
@@ -2010,6 +2028,9 @@ function ble-attach {
     return 0
   fi
 
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A2-arg
+#%end.i
   # when detach flag is present
   if [[ $_ble_edit_detach_flag ]]; then
     case $_ble_edit_detach_flag in
@@ -2022,6 +2043,9 @@ function ble-attach {
   _ble_attached=1
   BLE_ATTACHED=1
 
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A3-guard
+#%end.i
   # 特殊シェル設定を待避
   builtin eval -- "$_ble_bash_FUNCNEST_adjust"
   ble/base/adjust-builtin-wrappers-1
@@ -2030,6 +2054,9 @@ function ble-attach {
   ble/base/adjust-builtin-wrappers-2
   ble/base/adjust-BASH_REMATCH
 
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A4-adjust
+#%end.i
   if [[ ${IN_NIX_SHELL-} ]]; then
     # nix-shell rc の中から実行している時は強制的に prompt-attach にする
     if [[ "${BASH_SOURCE[*]}" == */rc && $1 != *:force:* ]]; then
@@ -2040,6 +2067,9 @@ function ble-attach {
       ble/base/restore-bash-options
       ble/base/restore-POSIXLY_CORRECT
       ble/base/restore-builtin-wrappers
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A4b1
+#%end.i
       builtin eval -- "$_ble_bash_FUNCNEST_restore"
       return 0
     fi
@@ -2048,10 +2078,16 @@ function ble-attach {
     local ret
     ble/util/readlink "/proc/$$/exe"
     [[ -x $ret ]] && BASH=$ret
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A4b2
+#%end.i
   fi
 
   # char_width_mode=auto
   ble/canvas/attach
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A5-canvas
+#%end.i
 
   # 取り敢えずプロンプトを表示する
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
@@ -2059,11 +2095,17 @@ function ble-attach {
   ble-edit/attach     # 0ms (_ble_edit_PS1 他の初期化)
   ble/canvas/panel/render # 37ms
   ble/util/buffer.flush >&2
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A6-term/edit
+#%end.i
 
   # keymap 初期化
   local IFS=$_ble_term_IFS
   ble/decode/initialize # 7ms
   ble/decode/reset-default-keymap # 264ms (keymap/vi.sh)
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A7-decode
+#%end.i
   if ! ble/decode/attach; then # 53ms
     _ble_attached=
     BLE_ATTACHED=
@@ -2074,20 +2116,38 @@ function ble-attach {
     ble/base/restore-POSIXLY_CORRECT
     ble/base/restore-builtin-wrappers
     builtin eval -- "$_ble_bash_FUNCNEST_restore"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A7b1
+#%end.i
     return 1
   fi
 
   ble/history:bash/reset # 27s for bash-3.0
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A8-history
+#%end.i
 
   blehook/invoke ATTACH
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A9-ATTACH
+#%end.i
 
   # Note: 再描画 (初期化中のエラーメッセージ・プロンプト変更等の為)
   ble/textarea#redraw
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A10-redraw
+#%end.i
 
   # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。
   ble/edit/info/default
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A11-info
+#%end.i
   ble-edit/bind/.tail
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" A12-tail
+#%end.i
 }
 
 function ble-detach {

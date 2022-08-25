@@ -1113,6 +1113,7 @@ function ble/string#escape-for-bash-specialchars {
 
   # 上の処理で extglob の ( も quote されてしまうので G の時には戻す。
   if [[ $2 == *G* ]] && shopt -q extglob; then
+    local a b
     a='!\(' b='!(' ret=${ret//"$a"/"$b"}
     a='@\(' b='@(' ret=${ret//"$a"/"$b"}
     a='?\(' b='?(' ret=${ret//"$a"/"$b"}
@@ -6594,7 +6595,7 @@ function ble/util/keyseq2chars {
   local mods=
   local rex='^([^\]+)|^\\([CM]-|[0-7]{1,3}|x[0-9a-fA-F]{1,2}|.)?'
   while [[ $keyseq ]]; do
-    local text=${keyseq::1}
+    local text=${keyseq::1} esc
     [[ $keyseq =~ $rex ]] &&
       text=${BASH_REMATCH[1]} esc=${BASH_REMATCH[2]}
 

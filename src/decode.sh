@@ -652,6 +652,9 @@ function ble-decode/.hook/adjust-volatile-options {
 
 _ble_decode_hook_Processing=
 function ble-decode/.hook {
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H0-begin
+#%end.i
   if ble/util/is-stdin-ready; then
     ble/array#push _ble_decode_input_buffer "$@"
 
@@ -682,10 +685,20 @@ function ble-decode/.hook {
       _ble_decode_hook_Processing=epilogue
       ble-decode/EPILOGUE
       ble/util/unlocal _ble_decode_hook_Processing
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H0b1-1
+#%end.i
 
+      local ret
       ble/array#pop _ble_decode_input_buffer
       ble-decode/.hook "$ret"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H0b1-2
+#%end.i
     fi
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H0b2
+#%end.i
 
     return 0
   fi
@@ -696,6 +709,9 @@ function ble-decode/.hook {
   local _ble_decode_hook_Processing=prologue
   ble-decode/PROLOGUE
   _ble_decode_hook_Processing=body
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H1-PROLOGUE
+#%end.i
 
   # abort #D0998
   if ble-decode/.check-abort "$1"; then
@@ -707,6 +723,9 @@ function ble-decode/.hook {
     # 何れにしても EPILOGUE を実行する必要があるので下に流れる。
     # ble/term/visible-bell を表示する為には PROLOGUE の後でなければならない事にも注意する。
   fi
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H2-abort
+#%end.i
 
   local chars
   # Note: Bash-4.4 で遅いので ble/array#set 経由で設定する
@@ -715,7 +734,6 @@ function ble-decode/.hook {
   _ble_decode_input_count=${#chars[@]}
 
   if ((_ble_decode_input_count>=200)); then
-    local decode=ble/encoding:$bleopt_input_encoding/decode
     local i N=${#chars[@]}
     local B=$((N/100))
     ((B<100)) && B=100 || ((B>1000)) && B=1000
@@ -726,7 +744,13 @@ function ble-decode/.hook {
 #%if debug_keylogger
       ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_bytes "${chars[@]:i:B}"
 #%end
-      "$decode" "${chars[@]:i:B}"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "[H3b1: before decode $chars...]"
+#%end.i
+      "ble/encoding:$bleopt_input_encoding/decode" "${chars[@]:i:B}"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "[H3b1: after decode $chars...]"
+#%end.i
     done
   else
     local c
@@ -735,15 +759,30 @@ function ble-decode/.hook {
 #%if debug_keylogger
       ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_bytes "$c"
 #%end
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "[H3b2: before decode $c]"
+#%end.i
       "ble/encoding:$bleopt_input_encoding/decode" "$c"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "[H3b2: after decode $c]"
+#%end.i
     done
   fi
 
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H4
+#%end.i
   ble/decode/has-input || ble-decode-key/batch/flush
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H4-batch
+#%end.i
 
   builtin eval -- "$_ble_decode_erase_progress_hook"
   _ble_decode_hook_Processing=epilogue
   ble-decode/EPILOGUE
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" H4-EPILOGUE
+#%end.i
 }
 
 ## @fn ble-decode-byte bytes...
@@ -2599,8 +2638,8 @@ function ble/decode/cmap/.generate-binder-template {
   for ccode in "${ccodes[@]}"; do
     local ret
     ble/decode/c2dqs "$ccode"
-    qseq1=$qseq$ret
-    nseq1="$nseq $ccode"
+    local qseq1=$qseq$ret
+    local nseq1="$nseq $ccode"
 
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[ccode]}"
     if [[ ${ent%_} ]]; then

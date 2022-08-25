@@ -104,6 +104,23 @@
 ^COMPREPLY=
 ^MAPFILE=
 --------------------------------------------------------------------------------
+^READLINE_LINE=
+^READLINE_POINT=
+^READLINE_MARK=
+^READLINE_ARGUMENT=
+--------------------------------------------------------------------------------
+# XDG Base Directories
+^XDG_DATA_DIRS=
+^XDG_CONFIG_DIRS=
+^XDG_CACHE_HOME=
+^XDG_CONFIG_HOME=
+^XDG_DATA_HOME=
+^XDG_STATE_HOME=
+^XDG_RUNTIME_DIR=
+^XDG_SESSION_CLASS=
+^XDG_SESSION_ID=
+^XDG_SESSION_TYPE=
+--------------------------------------------------------------------------------
 # others
 ^BASHRCSOURCED=
 ^CVS_RSH=
@@ -115,8 +132,6 @@
 ^LESSOPEN=
 ^LOGNAME=
 ^LS_COLORS=
-^READLINE_LINE=
-^READLINE_POINT=
 ^SOURCE_HIGHLIGHT_DATADIR=
 ^S_COLORS=
 ^TERM=
@@ -124,10 +139,6 @@
 ^TEXMFHOME=
 ^TIME_STYLE=
 ^USER=
-^XDG_RUNTIME_DIR=
-^XDG_SESSION_CLASS=
-^XDG_SESSION_ID=
-^XDG_SESSION_TYPE=
 --------------------------------------------------------------------------------
 # /usr/share/lmod
 ^LMOD_CMD=
@@ -140,6 +151,18 @@
 ^MODULEPATH=
 ^MODULEPATH_ROOT=
 ^MODULESHOME=
+^LMOD_SHELL_PRGM=
+# pam_motd.so
+^MOTD_SHOWN=
+--------------------------------------------------------------------------------
+# /etc/profile.d/debuginfod.sh
+^DEBUGINFOD_URLS=
+# /etc/profile.d/gmpopenh264.sh
+^MOZ_GMP_PATH=
+# /etc/profile.d/flatpak.sh
+^new_dirs=
+# /etc/profile.d/nano-default-editor.sh
+^EDITOR=
 --------------------------------------------------------------------------------
 # dev
 ^CPLUS_INCLUDE_PATH=
@@ -163,6 +186,7 @@
 # external completions
 ^__(git|dnf|gitcomp)_[[:alnum:]_]+=
 ^_scp_path_esc=
+^_comp_[[:alnum:]_]+=
 --------------------------------------------------------------------------------
 # dotfiles
 ^_dotfiles_[[:alnum:]_]+=
@@ -179,3 +203,8 @@
 --------------------------------------------------------------------------------
 # ble.sh internal variables
 ^_?(BLE|ble)[[:alnum:]_]+=
+--------------------------------------------------------------------------------
+# leakvar checks
+=__t1wJltaP9nmow__$
+# これは ble-measure/fit の heredocs に含まれる物
+^b=4500;a=100$

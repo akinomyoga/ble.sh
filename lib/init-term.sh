@@ -48,7 +48,6 @@ function ble/init:term/define-cap.2 {
 }
 
 _ble_term_sgr_term2ansi=()
-ble/init:term/register-varname _ble_term_sgr_term2ansi
 _ble_term_rex_sgr=$'\e''\[([0-9;:]+)m'
 function ble/init:term/define-sgr-param {
   local name=$1 seq=$2 ansi=$3
@@ -74,6 +73,7 @@ function ble/init:term/define-sgr-param {
 
 function ble/init:term/initialize {
   local -a varnames=()
+  ble/init:term/register-varname _ble_term_sgr_term2ansi
 
   # xenl (end of line behavior)
   _ble_term_xenl=1

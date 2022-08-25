@@ -15,7 +15,7 @@ function ble/debug/print {
     ble/util/print "$1" >&2
   fi
 }
-## @fn ble/debug/.check-leak-variable
+## @fn ble/debug/leakvar#check
 ##   [デバグ用] 宣言忘れに依るグローバル変数の汚染位置を特定するための関数。
 ##
 ##   使い方
@@ -23,27 +23,31 @@ function ble/debug/print {
 ##   ```
 ##   eval "${_ble_debug_check_leak_variable//@var/ret}"
 ##   ...codes1...
-##   ble/debug/.check-leak-variable ret tag1
+##   ble/debug/leakvar#check ret tag1
 ##   ...codes2...
-##   ble/debug/.check-leak-variable ret tag2
+##   ble/debug/leakvar#check ret tag2
 ##   ...codes3...
-##   ble/debug/.check-leak-variable ret tag3
+##   ble/debug/leakvar#check ret tag3
 ##   ```
 _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
-function ble/debug/.check-leak-variable {
+function ble/debug/leakvar#reset {
+  builtin eval "$1=__t1wJltaP9nmow__"
+}
+function ble/debug/leakvar#check {
   if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
     local IFS=$_ble_term_IFS
-    ble/util/print "$1=${!1}:${*:2}" >> a.txt # DEBUG_LEAKVAR
+    ble/util/print "$1=${!1}:${*:2} [${FUNCNAME[*]:1:5}]" >> ~/a.txt # DEBUG_LEAKVAR
     builtin eval "$1=__t1wJltaP9nmow__"
   fi
 }
-function ble/debug/.list-leak-variable {
+function ble/debug/leakvar#list {
   local _ble_local_exclude_file=${_ble_base_repository:-$_ble_base}/make/debug.leakvar.exclude-list.txt
   if [[ ! -f $_ble_local_exclude_file ]]; then
     ble/util/print "$_ble_local_exclude_file: not found." >&2
     return 1
   fi
-  set | ble/bin/grep -Eo '^[[:alnum:]_]+=' | ble/bin/grep -Evf "$_ble_local_exclude_file"
+  set | ble/bin/grep -Eavf "$_ble_local_exclude_file" | ble/bin/grep -Eao '^[[:alnum:]_]+='
+  return 0
 }
 
 function ble/debug/print-variables/.append {

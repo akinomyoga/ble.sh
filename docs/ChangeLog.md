@@ -524,6 +524,7 @@
 - benchmark: support for ksh as `benchmark.ksh` `#D1886` 5dae4da
 - github/workflows (build): rename directory in `ble-nightly.tar.xz` to `ble-nightly` (reported by Harduex) `#D1891` f20854f 4ea2e23 43c6d4b
 - edit: update prompts on g2sgr change `#D1906` 40625ac
+- util, decode, vi: fix leak variables `#D1933` xxxxxxx
 
 ## Contrib
 

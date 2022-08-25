@@ -1332,7 +1332,13 @@ bash_tips
 
   * [memo] leak variables check [#M0002]
 
-    ble/debug/.list-leak-variable を実行する。
+    ble/debug/leakvar#list を実行する。
+
+    ble/debug/leakvar#reset var
+    ...
+    ble/debug/leakvar#check var tag1
+    ...
+    ble/debug/leakvar#check var tag2
 
   * [memo] 解析(ble-syntax/parse)の際の原則 [#M0001]
 
@@ -1981,6 +1987,8 @@ bash_tips
 
     これができなければそもそも実装する意味がない。例えば auto-complete で単語を
     表示する等。
+
+    * done: wiki: BLE_SESSION_ID, BLE_COMMAND_ID
 
   * histdb: backup機能。sqlite3 データベースが破壊される事が実際起こるのか分か
     らないが、消えるとショックなのでバックアップは時々したい。".backup ファイル
@@ -6847,6 +6855,14 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-02-02
+
+  * leakvar: いい加減に pending な leakvar fix を入れる [#D1933]
+
+    最近の profile.d 変数たちも除外リストに追加する。
+
+    * done: key という変数が mshex によって leak している → これは修正した。
+
+    j という変数が確率的に leak している。
 
   * ble/syntax/highlight/vartype: ローカル変数を拾っている [#D1932]
 

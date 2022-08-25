@@ -31,3 +31,4 @@
 # make
 /make/*.exe
 /make/canvas.c2w.wcwidth.txt
+/make/*.o

@@ -493,7 +493,7 @@ function ble/keymap:vi/update-mode-indicator {
   local version=$COLUMNS,$_ble_edit_lineno,$_ble_history_count,$_ble_edit_CMD
   local prompt_hashref_base='$version'
   ble/prompt/unit#update _ble_keymap_vi_mode_indicator
-  ble/prompt/unit:{section}/get _ble_keymap_vi_mode_indicator; local mode=$ret
+  local ret; ble/prompt/unit:{section}/get _ble_keymap_vi_mode_indicator; local mode=$ret
 
   local str=$mode
   if [[ $_ble_keymap_vi_reg_record ]]; then
