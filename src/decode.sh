@@ -2042,8 +2042,8 @@ function ble-decode-bind/cmap/.generate-binder-template {
   for ccode in "${ccodes[@]}"; do
     local ret
     ble-decode-bind/c2dqs "$ccode"
-    qseq1=$qseq$ret
-    nseq1="$nseq $ccode"
+    local qseq1=$qseq$ret
+    local nseq1="$nseq $ccode"
 
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[ccode]}"
     if [[ ${ent%_} ]]; then
