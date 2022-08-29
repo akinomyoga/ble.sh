@@ -1878,8 +1878,6 @@ bash_tips
 
   * complete: progcomp 引数について https://github.com/scop/bash-completion/issues/790
 
-  * blehook HOOK+= を HOOK!= に統一する。
-
 2022-07-20
 
   * konsole drag&drop
@@ -6561,6 +6559,8 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-08-29
+
+  * 2022-08-23 blehook HOOK+= を HOOK!= に統一する [#D1871]
 
   * 2022-08-14 nix develop が保存された EPOCHREALTIME を復元しようとしている [#D1870]
     https://discourse.nixos.org/t/nix-print-dev-env-command-shows-some-assinments-to-readonly-variables/20916

@@ -7464,7 +7464,7 @@ function ble/highlight/layer:syntax/textarea_render_defer.hook {
   _ble_syntax_word_defer_umin=-1
   _ble_syntax_word_defer_umax=-1
 }
-blehook textarea_render_defer+=ble/highlight/layer:syntax/textarea_render_defer.hook
+blehook textarea_render_defer!=ble/highlight/layer:syntax/textarea_render_defer.hook
 
 #%#----------------------------------------------------------------------------
 #%# old test samples

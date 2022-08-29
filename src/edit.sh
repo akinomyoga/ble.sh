@@ -2579,7 +2579,7 @@ function ble-edit/attach/.attach {
   fi
 
   ble/builtin/trap/install-hook WINCH readline
-  blehook internal_WINCH-+=ble-edit/attach/TRAPWINCH
+  blehook internal_WINCH!=ble-edit/attach/TRAPWINCH
 
   ble-edit/adjust-PS1
   ble-edit/adjust-READLINE
@@ -6403,7 +6403,7 @@ function ble-edit/exec:gexec/.TRAPERR {
   fi
   return 0
 }
-blehook internal_ERR+='ble-edit/exec:gexec/.TRAPERR'
+blehook internal_ERR!='ble-edit/exec:gexec/.TRAPERR'
 
 # ble-edit/exec:gexec/TERM
 #
@@ -6460,7 +6460,7 @@ function ble-edit/exec:gexec/.begin {
 
   # C-c に対して
   ble/builtin/trap/install-hook INT # 何故か改めて実行しないと有効にならない
-  blehook internal_INT+='ble-edit/exec:gexec/.TRAPINT'
+  blehook internal_INT!='ble-edit/exec:gexec/.TRAPINT'
   ble-edit/exec:gexec/.TRAPDEBUG/restore
 }
 function ble-edit/exec:gexec/.end {
@@ -7279,7 +7279,7 @@ function ble-edit/undo/history-change.hook {
       ((_ble_edit_undo_hindex+=len)) ;;
   esac
 }
-blehook history_change+=ble-edit/undo/history-change.hook
+blehook history_change!=ble-edit/undo/history-change.hook
 
 ## @fn ble-edit/undo/.get-current-state
 ##   @var[out] str ind
@@ -7542,7 +7542,7 @@ function ble-edit/history/history-message.hook {
     ble/edit/info/immediate-default
   fi
 }
-blehook history_message+=ble-edit/history/history-message.hook
+blehook history_message!=ble-edit/history/history-message.hook
 
 # 
 #------------------------------------------------------------------------------
@@ -9772,7 +9772,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       ble/builtin/trap/invoke USR1
     }
     blehook/declare internal_USR1
-    blehook internal_USR1+=ble-edit/io/TRAPUSR1
+    blehook internal_USR1!=ble-edit/io/TRAPUSR1
     ble/builtin/trap/install-hook USR1
 
     function ble-edit/io/check-ignoreeof-message {

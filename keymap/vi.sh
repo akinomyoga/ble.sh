@@ -270,7 +270,7 @@ function ble/keymap:vi/complete/insert.hook {
   [[ $_ble_decode_keymap == vi_imap ]] &&
     ble/keymap:vi/undo/add more
 }
-blehook complete_insert+=ble/keymap:vi/complete/insert.hook
+blehook complete_insert!=ble/keymap:vi/complete/insert.hook
 
 function ble-decode/keymap:vi_imap/bind-complete {
   ble-bind -f 'C-i'                 'vi_imap/complete'
@@ -442,7 +442,7 @@ function ble/keymap:vi/info_reveal.hook {
   _ble_keymap_vi_mode_name_dirty=
   ble/keymap:vi/update-mode-indicator
 }
-blehook info_reveal+=ble/keymap:vi/info_reveal.hook
+blehook info_reveal!=ble/keymap:vi/info_reveal.hook
 
 bleopt/declare -v prompt_vi_mode_indicator '\q{keymap:vi/mode-indicator}'
 function bleopt/check:prompt_vi_mode_indicator {
@@ -504,7 +504,7 @@ function ble/keymap:vi/update-mode-indicator {
 
   ble/edit/info/default ansi "$str" # 6ms
 }
-blehook internal_PRECMD+=ble/keymap:vi/update-mode-indicator
+blehook internal_PRECMD!=ble/keymap:vi/update-mode-indicator
 
 ## @fn ble/prompt/backslash:keymap:vi/mode-indicator
 ##   @var[in,opt] prompt_vi_keymap
@@ -2416,7 +2416,7 @@ ble/array#push _ble_textarea_local_VARNAMES \
 #
 
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
-blehook history_leave+=ble/keymap:vi/mark/history-onleave.hook
+blehook history_leave!=ble/keymap:vi/mark/history-onleave.hook
 
 ## @fn ble/keymap:vi/mark/history-onleave.hook
 function ble/keymap:vi/mark/history-onleave.hook {
@@ -2454,7 +2454,7 @@ function ble/keymap:vi/mark/update-mark-history {
     _ble_keymap_vi_mark_hindex=$h
   fi
 }
-blehook history_change+=ble/keymap:vi/mark/history-change.hook
+blehook history_change!=ble/keymap:vi/mark/history-change.hook
 ## @fn ble/keymap:vi/mark/history-change.hook 'delete' index...
 ## @fn ble/keymap:vi/mark/history-change.hook 'clear'
 ## @fn ble/keymap:vi/mark/history-change.hook 'insert' beg len

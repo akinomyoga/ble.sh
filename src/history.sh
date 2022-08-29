@@ -423,7 +423,7 @@ if ((_ble_bash>=40000)); then
       [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
     done
   }
-  blehook history_reset_background+=_ble_history_load_resume=0
+  blehook history_reset_background!=_ble_history_load_resume=0
 else
   function ble/history:bash/load/.generate-source {
     if ble/builtin/history/is-empty; then
@@ -828,7 +828,7 @@ if ((_ble_bash>=30100)); then
   ((_ble_bash>=40000)) &&
     ble/util/idle.push 'ble/history:bash/resolve-multiline async'
 
-  blehook history_reset_background+=_ble_history_mlfix_resume=0
+  blehook history_reset_background!=_ble_history_mlfix_resume=0
 
   function ble/history:bash/resolve-multiline/readfile {
     local filename=$1
@@ -1179,7 +1179,7 @@ function ble/builtin/history/array#insert-range {
     for i in "${!out[@]}"; do ARR[i]=${out[i]}; done'
   builtin eval -- "${script//ARR/$array_name}"
 }
-blehook history_change+=ble/builtin/history/change.hook
+blehook history_change!=ble/builtin/history/change.hook
 function ble/builtin/history/change.hook {
   local kind=$1; shift
   case $kind in

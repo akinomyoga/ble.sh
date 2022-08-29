@@ -726,7 +726,7 @@ function ble/builtin/trap/.TRAPRETURN {
   esac
   return 0
 }
-blehook internal_RETURN+=ble/builtin/trap/.TRAPRETURN
+blehook internal_RETURN!=ble/builtin/trap/.TRAPRETURN
 
 # user trap handler 専用の $?, $_ の記録。
 _ble_builtin_trap_user_lastcmd=

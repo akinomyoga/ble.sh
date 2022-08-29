@@ -5215,7 +5215,7 @@ function ble/term/.initialize {
   fi
 
   ble/string#reserve-prototype "$_ble_term_it"
-  blehook term_DA2R+=ble/term/DA2R.hook
+  blehook term_DA2R!=ble/term/DA2R.hook
 }
 ble/term/.initialize
 

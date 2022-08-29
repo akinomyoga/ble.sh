@@ -6167,8 +6167,8 @@ function ble/complete/menu/clear {
   fi
   return 0
 }
-blehook widget_bell+=ble/complete/menu/clear
-blehook history_leave+=ble/complete/menu/clear
+blehook widget_bell!=ble/complete/menu/clear
+blehook history_leave!=ble/complete/menu/clear
 
 ## @fn ble/complete/menu/get-footprint
 ##   @var[out] footprint

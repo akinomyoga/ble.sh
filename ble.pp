@@ -2037,7 +2037,7 @@ function ble/base/install-prompt-attach {
     ble/array#push PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
     if [[ $_ble_edit_detach_flag == reload ]]; then
       _ble_edit_detach_flag=prompt-attach
-      blehook internal_PRECMD+=ble/base/attach-from-PROMPT_COMMAND
+      blehook internal_PRECMD!=ble/base/attach-from-PROMPT_COMMAND
     fi
   else
     local save_index=${#_ble_base_attach_PROMPT_COMMAND[@]}
@@ -2047,7 +2047,7 @@ function ble/base/install-prompt-attach {
     ble/function#trace "$PROMPT_COMMAND"
     if [[ $_ble_edit_detach_flag == reload ]]; then
       _ble_edit_detach_flag=prompt-attach
-      blehook internal_PRECMD+="$PROMPT_COMMAND"
+      blehook internal_PRECMD!="$PROMPT_COMMAND"
     fi
   fi
 }

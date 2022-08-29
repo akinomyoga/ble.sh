@@ -24,5 +24,5 @@ function ble/util/msleep/.load-compiled-builtin {
     ble/bin/cp "$builtin_path" "$builtin_runpath" || return 1
 
   enable -f "$builtin_runpath" msleep || return 1
-  blehook unload+='enable -d ble/builtin/msleep &>/dev/null'
+  blehook unload!='enable -d ble/builtin/msleep &>/dev/null'
 }

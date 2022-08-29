@@ -85,10 +85,10 @@ blehook/declare complete_insert
 
 # for compatibility:
 function blehook/.compatibility-ble-0.3 {
-  blehook keymap_load+='ble/util/invoke-hook _ble_keymap_default_load_hook'
-  blehook keymap_emacs_load+='ble/util/invoke-hook _ble_keymap_emacs_load_hook'
-  blehook keymap_vi_load+='ble/util/invoke-hook _ble_keymap_vi_load_hook'
-  blehook complete_load+='ble/util/invoke-hook _ble_complete_load_hook'
+  blehook keymap_load!='ble/util/invoke-hook _ble_keymap_default_load_hook'
+  blehook keymap_emacs_load!='ble/util/invoke-hook _ble_keymap_emacs_load_hook'
+  blehook keymap_vi_load!='ble/util/invoke-hook _ble_keymap_vi_load_hook'
+  blehook complete_load!='ble/util/invoke-hook _ble_complete_load_hook'
 }
 function blehook/.compatibility-ble-0.3/check {
   if ble/is-array _ble_keymap_default_load_hook ||
