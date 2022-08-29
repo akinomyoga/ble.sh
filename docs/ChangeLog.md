@@ -180,12 +180,18 @@
   - trap,blehook: rename `ERR{ => EXEC}` and separate from the `ERR` trap `#D1858` 94d1371
   - trap: remove the support for the shell function `TRAPERR` `#D1858` 94d1371
   - trap: preserve `BASH_COMMAND` in trap handlers `#D1858` 94d1371
+  - util (`ble/builtin/trap`): run EXIT trap in subshells `#D1862` 5b351e8
+  - util (`ble/builtin/trap`): fix the RETURN trap `#D1863` 793dfad
   - trap,blehook: move to a new file `util.hook.sh` `#D1864` XXXXXXX
   - trap (`trap -p`): fix unprinted existing user traps `#D1864` XXXXXXX
   - trap (`ble/builtin/trap/finalize`): fix a failure of restoring the original trap `#D1864` XXXXXXX
   - trap (`trap -p`): print also custom traps `#D1864` XXXXXXX
   - trap: preserve positional parameters for user trap handlers `#D1865` XXXXXXX
   - trap: suppress `INT` processing with user traps `#D1866` XXXXXXX
+  - trap: unify handling of `DEBUG` and the other traps `#D1867` XXXXXXX
+  - trap: work around possible interferences by recursive traps `#D1867` XXXXXXX
+  - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` XXXXXXX
+  - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` XXXXXXX
 
 ## Fixes
 
@@ -295,8 +301,6 @@
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
 - main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
-- util (`ble/builtin/trap`): run EXIT trap in subshells `#D1862` 5b351e8
-- util (`ble/builtin/trap`): fix the RETURN trap `#D1863` 793dfad
 
 ## Documentation
 

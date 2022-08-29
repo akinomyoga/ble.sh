@@ -1354,6 +1354,7 @@ function sub:scan {
       \Ztrap_command=["'\'']trap -- Zd
       \Zlocal trap$Zd
       \Z"trap -- '\''"Zd
+      \Z\('\'' trap '\''\*Zd
       \Z\(trap \| ble/builtin/trap\) .*;;Zd
       \Zble/function#trace trap Zd
       \Z# EXIT trapZd

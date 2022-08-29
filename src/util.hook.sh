@@ -293,7 +293,6 @@ function blehook/eval-after-load {
 # blehook
 
 _ble_builtin_trap_inside=  # ble/builtin/trap 処理中かどうか
-_ble_builtin_trap_processing= # ble/buitlin/trap/.handler 実行中かどうか
 
 ## @fn ble/builtin/trap/.read-arguments args...
 ##   @var[out] flags
@@ -384,6 +383,22 @@ function ble/builtin/trap/sig#resolve {
     return 0
   fi
 }
+## @fn ble/builtin/trap/sig#new sig [opts]
+##   @param[in,opt] opts
+##
+##     builtin (internal use)
+##       reserve the special handling of the corresponding builtin trap.  Used
+##       for DEBUG, RETURN, and ERR.
+##
+##     override-builtin-signal (internal use)
+##       indicates that the builtin trap handler is overridden by ble.sh.  The
+##       user traps should be restored on ble-unload.
+##
+##     user-trap-in-postproc
+##       evaluate user traps outside the trap-handler function.  When this is
+##       enabled, the last argument $_ is not modified by the user trap
+##       handlers because of the limitation of the implementation.
+##
 function ble/builtin/trap/sig#new {
   local name=$1 opts=$2
   local sig=$((_ble_builtin_trap_$name=_ble_builtin_trap_sig_base++))
@@ -692,16 +707,23 @@ function trap { ble/builtin/trap "$@"; }
 ble/builtin/trap/user-handler#init
 
 function ble/builtin/trap/.TRAPRETURN {
-  local i=1
-  for ((i=1;i<${#FUNCNAME[@]};i++)); do
-    case ${FUNCNAME[i]} in
-    # これらは単に blehook internal_RETURN の呼び出し処理なのでスキップする。
-    (blehook/invoke.sandbox | blehook/invoke | ble/builtin/trap/.handler) ;;
-    # 呼び出し元が RETURN trap の設置に用いた trap の時は RETURN は無視する
-    (trap | ble/builtin/trap) return 126 ;;
-    (*) break ;;
-    esac
-  done
+  local IFS=$_ble_term_IFS
+  local backtrace=" ${BLE_TRAP_FUNCNAME[*]-} "
+  case $backtrace in
+  # 呼び出し元が RETURN trap の設置に用いた trap の時は RETURN は無視する。それ
+  # 以外の trap 呼び出しについても無視して良い。
+  (' trap '* | ' ble/builtin/trap '*) return 126 ;;
+  # ble/builtin/trap/.handler 内部処理に対する RETURN は無視するが、
+  # ble/builtin/trap/.handler から更に呼び出された blehook / trap_string の中で
+  # 呼び出されている関数については RETURN を発火させる。
+  (*' ble/builtin/trap/.handler '*)
+    case ${backtrace%%' ble/builtin/trap/.handler '*}' ' in
+    (' '*' blehook/invoke.sandbox '* | ' '*' ble/builtin/trap/invoke.sandbox '*) ;;
+    (*) return 126 ;;
+    esac ;;
+  # 待避処理をしていないユーザーコマンド実行後に呼び出される関数達。
+  (*' ble-edit/exec:gexec/.save-lastarg ' | ' _ble_edit_exec_gexec__TRAPDEBUG_adjust ') return 126 ;;
+  esac
   return 0
 }
 blehook internal_RETURN+=ble/builtin/trap/.TRAPRETURN
@@ -741,7 +763,8 @@ function ble/builtin/trap/invoke.sandbox {
 ##   @param[in] sig
 ##   @param[in] params...
 ##   @var[in] ? _
-##   @var[in,out] _ble_builtin_trap_postproc
+##   @var[in,out] _ble_builtin_trap_postproc[sig]
+##   @var[in,out] _ble_builtin_trap_lastarg[sig]
 function ble/builtin/trap/invoke {
   local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ _ble_trap_sig=$1; shift
   if [[ ${_ble_trap_sig//[0-9]} ]]; then
@@ -770,14 +793,14 @@ function ble/builtin/trap/invoke {
   ble/builtin/trap/invoke.sandbox "$@"; local ext=$?
   case $_ble_trap_done in
   (done)
-    _ble_builtin_trap_lastarg=$_ble_trap_lastarg
-    _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastexit" ;;
+    _ble_builtin_trap_lastarg[_ble_trap_sig]=$_ble_trap_lastarg
+    _ble_builtin_trap_postproc[_ble_trap_sig]="ble/util/setexit $_ble_trap_lastexit" ;;
   (break | continue)
-    _ble_builtin_trap_lastarg=$_ble_trap_lastarg
+    _ble_builtin_trap_lastarg[_ble_trap_sig]=$_ble_trap_lastarg
     if ble/string#match "$_ble_trap_lastarg" '^-?[0-9]+$'; then
-      _ble_builtin_trap_postproc="$_ble_trap_done $_ble_trap_lastarg"
+      _ble_builtin_trap_postproc[_ble_trap_sig]="$_ble_trap_done $_ble_trap_lastarg"
     else
-      _ble_builtin_trap_postproc=$_ble_trap_done
+      _ble_builtin_trap_postproc[_ble_trap_sig]=$_ble_trap_done
     fi ;;
   (return)
     # Note #D1757: return 自体の lastarg は最早取得できないが、もし
@@ -785,8 +808,8 @@ function ble/builtin/trap/invoke {
     # けた時に lastarg は書き換えられるので取得できない。精々関数を
     # 呼び出す前の lastarg を設定して置いて return が失敗した時に前
     # の状態を keep するぐらいしかない気がする。
-    _ble_builtin_trap_lastarg=$ext
-    _ble_builtin_trap_postproc="return $ext" ;;
+    _ble_builtin_trap_lastarg[_ble_trap_sig]=$ext
+    _ble_builtin_trap_postproc[_ble_trap_sig]="return $ext" ;;
   (exit)
     # Note #D1782: trap handler の中で ble/builtin/exit (edit.sh) を呼
     #   び出した時は、即座に bash を終了せずに取り敢えずは trap の処理
@@ -796,8 +819,8 @@ function ble/builtin/trap/invoke {
     # Note #D1782: 他の trap の中で更にまた DEBUG trap が起動している
     #   時などの為に、builtin exit ではなく ble/builtin/exit を再度呼
     #   び出し直す。
-    _ble_builtin_trap_lastarg=$_ble_trap_lastarg
-    _ble_builtin_trap_postproc="ble/builtin/exit $_ble_trap_lastarg" ;;
+    _ble_builtin_trap_lastarg[_ble_trap_sig]=$_ble_trap_lastarg
+    _ble_builtin_trap_postproc[_ble_trap_sig]="ble/builtin/exit $_ble_trap_lastarg" ;;
   esac
 
   # save $_ and $? for user trap handlers
@@ -809,6 +832,17 @@ function ble/builtin/trap/invoke {
   return 0
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 
+_ble_builtin_trap_processing= # ble/builtin/trap/.handler 実行中かどうか
+_ble_builtin_trap_postproc=()
+_ble_builtin_trap_lastarg=()
+function ble/builtin/trap/install-hook/.compose-trap_command {
+  local sig=$1 name=${_ble_builtin_trap_sig_name[$1]}
+  local handler='ble/builtin/trap/.handler SIGNUM "$BASH_COMMAND" "$@"; builtin eval -- "${_ble_builtin_trap_postproc[SIGNUM]}" \# "${_ble_builtin_trap_lastarg[SIGNUM]}"'
+  trap_command="trap -- '${handler//SIGNUM/$sig}' $name" # WA #D1738 checked (sig is integer)
+}
+
+_ble_trap_builtin_handler_DEBUG_filter=
+
 ## @fn ble/builtin/trap/.handler sig bash_command params...
 ##   @param[in] sig
 ##     Specifies the signal number
@@ -816,15 +850,26 @@ function ble/builtin/trap/invoke {
 ##     Specifies the value of BASH_COMMAND in the original context
 ##   @param[in] params...
 ##     Specifies the positional parameters in the original context
-##   @var[out] _ble_builtin_trap_postproc
-##   @var[out] _ble_builtin_trap_lastarg
+##   @var[in] _ble_builtin_trap_depth
+##   @var[out] _ble_builtin_trap_xlastarg[_ble_builtin_trap_depth]
+##   @var[out] _ble_builtin_trap_xpostproc[_ble_builtin_trap_depth]
 function ble/builtin/trap/.handler {
   local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ FUNCNEST= IFS=$_ble_term_IFS
-  local set shopt; ble/base/.adjust-bash-options set shopt
+  local _ble_trap_sig=$1 _ble_trap_bash_command=$2
+  shift 2
 
-  local _ble_trap_sig=$1
+  # Early filter for frequently called DEBUG (set by edit.sh)
+  if ((_ble_trap_sig==_ble_builtin_trap_DEBUG)) &&
+       ! builtin eval -- "$_ble_trap_builtin_handler_DEBUG_filter"; then
+    _ble_builtin_trap_lastarg[_ble_trap_sig]=${_ble_trap_lastarg//*$_ble_term_nl*}
+    _ble_builtin_trap_postproc[_ble_trap_sig]="ble/util/setexit $_ble_trap_lastexit"
+    return 0
+  fi
+
+  # Adjust trap context
+  local _ble_trap_set _ble_trap_shopt; ble/base/.adjust-bash-options _ble_trap_set _ble_trap_shopt
   local _ble_trap_name=${_ble_builtin_trap_sig_name[_ble_trap_sig]#SIG}
-  local _ble_trap_bash_command=$2
+  local -a _ble_trap_args; _ble_trap_args=("$@")
   if [[ ! $_ble_trap_bash_command ]] || ((_ble_bash<30200)); then
     # Note: Bash 3.0, 3.1 は trap 中でも BASH_COMMAND は trap 発動対象ではなく
     # て現在実行中のコマンドになっている。_ble_trap_bash_command には単に
@@ -836,14 +881,10 @@ function ble/builtin/trap/.handler {
       _ble_trap_bash_command=${_ble_trap_bash_command#*__ble_ext__}
     fi
   fi
-  shift 2
 
   local _ble_builtin_trap_processing=$_ble_trap_sig
-
-  # 透過 _ble_builtin_trap_postproc を設定
-  local _ble_local_q=\' _ble_local_Q="'\''"
-  _ble_builtin_trap_lastarg=$_ble_trap_lastarg
-  _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastexit"
+  _ble_builtin_trap_lastarg[_ble_trap_sig]=$_ble_trap_lastarg
+  _ble_builtin_trap_postproc[_ble_trap_sig]="ble/util/setexit $_ble_trap_lastexit"
 
   # Note #D1782: ble/builtin/exit で "builtin exit ... &>/dev/null" と
   #   したリダイレクションを元に戻す。元々 builtin exit が出力するエラー
@@ -863,6 +904,8 @@ function ble/builtin/trap/.handler {
   BLE_TRAP_FUNCNAME=("${FUNCNAME[@]:1}")
   BLE_TRAP_SOURCE=("${BASH_SOURCE[@]:1}")
   BLE_TRAP_LINENO=("${BASH_LINENO[@]}")
+  [[ $_ble_attached ]] &&
+    BLE_TRAP_LINENO[${#BASH_LINENO[@]}-1]=$_ble_edit_LINENO
 
   # ble.sh internal hook
   ble/util/joblist.check
@@ -880,14 +923,27 @@ function ble/builtin/trap/.handler {
     fi
 
     # user hook
-    ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
-    BASH_COMMAND=$_ble_trap_bash_command \
-      ble/builtin/trap/invoke "$_ble_trap_sig" "$@"
+    if [[ :$_ble_tra_opts: == *:user-trap-in-postproc:* ]]; then
+      # ユーザートラップを外で実行 (Note: user-trap lastarg は反映されず)
+      local q=\' Q="'\''" _ble_trap_handler postproc=
+      ble/builtin/trap/user-handler#load "$_ble_trap_sig"
+      if [[ $_ble_trap_handler == *[![:space:]]* ]]; then
+        postproc="ble/util/setexit $_ble_trap_lastexit '${_ble_trap_lastarg//$q/$Q}'"
+        postproc=$postproc";LINENO=$BLE_TRAP_LINENO builtin eval -- '${_ble_trap_handler//$q/$Q}'"
+      else
+        postproc="ble/util/setexit $_ble_trap_lastexit"
+      fi
+      _ble_builtin_trap_postproc[_ble_trap_sig]=$postproc
+    else
+      ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+      BASH_COMMAND=$_ble_trap_bash_command LINENO=$BLE_TRAP_LINENO \
+        ble/builtin/trap/invoke "$_ble_trap_sig" "${_ble_trap_args[@]}"
+    fi
   fi
 
   # 何処かの時点で exit が要求された場合
-  if [[ $_ble_builtin_trap_processing == exit:* && $_ble_builtin_trap_postproc != 'ble/builtin/exit '* ]]; then
-    _ble_builtin_trap_postproc="ble/builtin/exit ${_ble_builtin_trap_processing#exit:}"
+  if [[ $_ble_builtin_trap_processing == exit:* && ${_ble_builtin_trap_postproc[_ble_trap_sig]} != 'ble/builtin/exit '* ]]; then
+    _ble_builtin_trap_postproc[_ble_trap_sig]="ble/builtin/exit ${_ble_builtin_trap_processing#exit:}"
   fi
 
   # Note #D1757: 現在 eval が終わった後の $_ を設定する為には eval に
@@ -895,8 +951,8 @@ function ble/builtin/trap/.handler {
   # 中途半端な値を設定するよりは最初から何も設定しない事にする。ここ設
   # 定する lastarg は一見して誰も使わない様な気がするが、裸で設定され
   # た user trap が参照するかもしれないので一応設定する。
-  [[ $_ble_builtin_trap_lastarg == *$'\n'* ]] &&
-    _ble_builtin_trap_lastarg=
+  [[ ${_ble_builtin_trap_lastarg[_ble_trap_sig]} == *$'\n'* ]] &&
+    _ble_builtin_trap_lastarg[_ble_trap_sig]=
 
   if ((_ble_trap_sig==_ble_builtin_trap_EXIT)); then
     # Note #D1797: EXIT に対する ble/base/unload は trap handler のできるだけ最
@@ -908,13 +964,7 @@ function ble/builtin/trap/.handler {
     ble/builtin/trap/user-handler#update:RETURN
   fi
 
-  ble/base/.restore-bash-options set shopt
-}
-
-function ble/builtin/trap/install-hook/.compose-trap_command {
-  local sig=$1 name=${_ble_builtin_trap_sig_name[$1]}
-  local handler="ble/builtin/trap/.handler $sig \"\$BASH_COMMAND\" \"\$@\"; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
-  trap_command="trap -- '$handler' $name"
+  ble/base/.restore-bash-options _ble_trap_set _ble_trap_shopt
 }
 
 ## @fn ble/builtin/trap/install-hook sig [opts]

@@ -1,0 +1,82 @@
+From d644e30a2024f729494cdff00891797576f03801 Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Mon, 29 Aug 2022 11:34:53 +0900
+Subject: [PATCH] [stub] recursive trap wa: (implA) array postproc
+
+---
+ src/util.hook.sh | 31 +++++++++++++++++--------------
+ 1 file changed, 17 insertions(+), 14 deletions(-)
+
+diff --git a/src/util.hook.sh b/src/util.hook.sh
+index b88d004..be80b29 100644
+--- a/src/util.hook.sh
++++ b/src/util.hook.sh
+@@ -293,7 +293,6 @@ function blehook/eval-after-load {
+ # blehook
+ 
+ _ble_builtin_trap_inside=  # ble/builtin/trap 処理中かどうか
+-_ble_builtin_trap_processing= # ble/buitlin/trap/.handler 実行中かどうか
+ 
+ ## @fn ble/builtin/trap/.read-arguments args...
+ ##   @var[out] flags
+@@ -815,6 +814,15 @@ function ble/builtin/trap/invoke {
+   return 0
+ } 3>&2 2>/dev/null # set -x 対策 #D0930
+ 
++_ble_builtin_trap_processing= # ble/buitlin/trap/.handler 実行中かどうか
++_ble_builtin_trap_depth=0
++_ble_builtin_trap_postproc=()
++_ble_builtin_trap_lastarg=()
++function ble/builtin/trap/install-hook/.compose-trap_command {
++  local sig=$1 name=${_ble_builtin_trap_sig_name[$1]}
++  local handler='ble/builtin/trap/.handler SIGNUM "$BASH_COMMAND" "$@"; builtin eval -- "${_ble_builtin_trap_xpostproc[_ble_builtin_trap_depth]}" \# "${_ble_builtin_trap_xlastarg[_ble_builtin_trap_depth]}"'
++  trap_command="trap -- '${handler/SIGNUM/$sig}' $name"
++}
+ ## @fn ble/builtin/trap/.handler sig bash_command params...
+ ##   @param[in] sig
+ ##     Specifies the signal number
+@@ -822,8 +830,9 @@ function ble/builtin/trap/invoke {
+ ##     Specifies the value of BASH_COMMAND in the original context
+ ##   @param[in] params...
+ ##     Specifies the positional parameters in the original context
+-##   @var[out] _ble_builtin_trap_postproc
+-##   @var[out] _ble_builtin_trap_lastarg
++##   @var[in] _ble_builtin_trap_depth
++##   @var[out] _ble_builtin_trap_xlastarg[_ble_builtin_trap_depth]
++##   @var[out] _ble_builtin_trap_xpostproc[_ble_builtin_trap_depth]
+ function ble/builtin/trap/.handler {
+   local _ble_trap_lastexit=$? _ble_trap_lastarg=$_ FUNCNEST= IFS=$_ble_term_IFS
+   local set shopt; ble/base/.adjust-bash-options set shopt
+@@ -845,11 +854,8 @@ function ble/builtin/trap/.handler {
+   shift 2
+ 
+   local _ble_builtin_trap_processing=$_ble_trap_sig
+-
+-  # 透過 _ble_builtin_trap_postproc を設定
+-  local _ble_local_q=\' _ble_local_Q="'\''"
+-  _ble_builtin_trap_lastarg=$_ble_trap_lastarg
+-  _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastexit"
++  local _ble_builtin_trap_lastarg=$_ble_trap_lastarg
++  local _ble_builtin_trap_postproc="ble/util/setexit $_ble_trap_lastexit"
+ 
+   # Note #D1782: ble/builtin/exit で "builtin exit ... &>/dev/null" と
+   #   したリダイレクションを元に戻す。元々 builtin exit が出力するエラー
+@@ -915,12 +921,9 @@ function ble/builtin/trap/.handler {
+   fi
+ 
+   ble/base/.restore-bash-options set shopt
+-}
+-
+-function ble/builtin/trap/install-hook/.compose-trap_command {
+-  local sig=$1 name=${_ble_builtin_trap_sig_name[$1]}
+-  local handler="ble/builtin/trap/.handler $sig \"\$BASH_COMMAND\" \"\$@\"; builtin eval -- \"\$_ble_builtin_trap_postproc\" \\# \"\${_ble_builtin_trap_lastarg%%\$_ble_term_nl*}\""
+-  trap_command="trap -- '$handler' $name"
++  local _ble_builtin_trap_depth=$((_ble_builtin_trap_depth+1))
++  _ble_builtin_trap_xlastarg[_ble_builtin_trap_depth-1]=$_ble_builtin_trap_lastarg
++  _ble_builtin_trap_xpostproc[_ble_builtin_trap_depth-1]=${_ble_builtin_trap_postproc%%$_ble_term_nl*}
+ }
+ 
+ ## @fn ble/builtin/trap/install-hook sig [opts]
+-- 
+2.37.2
+

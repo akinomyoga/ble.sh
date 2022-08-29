@@ -6108,15 +6108,12 @@ function ble/exec/time#start {
 #--------------------------------------
 
 _ble_edit_exec_TRAPDEBUG_enabled=
-_ble_edit_exec_TRAPDEBUG_lastexit=
-_ble_edit_exec_TRAPDEBUG_lastarg=
-_ble_edit_exec_TRAPDEBUG_postproc=
 _ble_edit_exec_TRAPDEBUG_INT=
 _ble_edit_exec_TRAPDEBUG_EXIT=
 _ble_edit_exec_inside_begin=
 _ble_edit_exec_inside_prologue=
 _ble_edit_exec_inside_userspace=
-ble/builtin/trap/sig#reserve DEBUG override-builtin-signal
+ble/builtin/trap/sig#reserve DEBUG override-builtin-signal:user-trap-in-postproc
 
 ## @fn ble-edit/exec:gexec/.TRAPDEBUG/trap [opts]
 ##   @param[in] opts
@@ -6134,11 +6131,13 @@ function ble-edit/exec:gexec/.TRAPDEBUG/trap {
   #   る事にする。もし FUNCNAME, BASH_SOURCE 等を DEBUG trap から参照したいユー
   #   ザーがいれば、コマンド実行の時には既定で user trap を直接 trap する様にし
   #   ても良い。
-  builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc" \# "${_ble_edit_exec_TRAPDEBUG_lastarg%%$_ble_term_nl*}"' DEBUG
+  local trap_command
+  ble/builtin/trap/install-hook/.compose-trap_command "$_ble_builtin_trap_DEBUG"
+  builtin eval -- "builtin $trap_command"
 
   # Note: 以下は条件付きで user trap を直接 trap するコード。
   # if [[ $_ble_attached && _ble_edit_exec_TRAPDEBUG_INT || :$1: == *:filter:* ]]; then
-  #   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "$_ble_edit_exec_TRAPDEBUG_postproc"' DEBUG
+  #   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*"; builtin eval -- "${_ble_builtin_trap_postproc[1000]}"' DEBUG
   # else
   #   local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]}
   #   builtin trap -- "$user_trap" DEBUG
@@ -6155,30 +6154,51 @@ ble/function#trace _ble_edit_exec_gexec__TRAPDEBUG_adjust
 function ble-edit/exec:gexec/.TRAPDEBUG/restore {
   _ble_edit_exec_TRAPDEBUG_adjusted=
   local opts=$1
-  ble/builtin/trap/sig#init
-  if [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]} ]]; then
+  if ble/builtin/trap/user-handler#has "$_ble_builtin_trap_DEBUG"; then
     ble-edit/exec:gexec/.TRAPDEBUG/trap "$opts"
   fi
 }
 
-function ble-edit/exec:gexec/.TRAPDEBUG {
-  local __lastexit=$? __lastarg=$_ bash_command=$BASH_COMMAND # Note XXXX: bash-3.0 では BASH_COMMAND が異なる。
-  _ble_edit_exec_TRAPDEBUG_postproc=
-  _ble_edit_exec_TRAPDEBUG_lastarg=$__lastarg
-  [[ $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ]] || return 0
-  [[ $bash_command != *ble-edit/exec:gexec/.* ]] || return 0
-  [[ ! ( ${FUNCNAME[1]-} == _ble_prompt_update__eval_prompt_command_1 && ( $bash_command == 'ble-edit/exec/.setexit '* || $bash_command == 'BASH_COMMAND='*' builtin eval -- '* ) ) ]] || return 0
-  [[ ! ${_ble_builtin_trap_inside-} ]] || return 0
+function ble-edit/exec:gexec/.TRAPDEBUG/.filter {
+  [[ $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ]] || return 1
+  [[ $_ble_trap_bash_command != *ble-edit/exec:gexec/.* ]] || return 1
+  [[ ! ( ${FUNCNAME[1]-} == _ble_prompt_update__eval_prompt_command_1 && ( $_ble_trap_bash_command == 'ble-edit/exec/.setexit '* || $_ble_trap_bash_command == 'BASH_COMMAND='*' builtin eval -- '* ) ) ]] || return 1
+  [[ ! ${_ble_builtin_trap_inside-} ]] || return 1
+  return 0
+}
+_ble_trap_builtin_handler_DEBUG_filter=ble-edit/exec:gexec/.TRAPDEBUG/.filter
 
-  # Handle EXIT (#D1782)
-  #
-  # 前提: _ble_edit_exec_TRAPDEBUG_EXIT が設定される時には extdebug も設定され
-  # ていると仮定する。
+## @fn ble-edit/exec:gexec/.TRAPDEBUG
+##   @var[in] BLE_TRAP_FUNCNAME
+##   @var[in] BLE_TRAP_LINENO
+##   @var[in] _ble_trap_args
+##   @var[in] _ble_trap_bash_command
+##   @var[in] _ble_trap_lastarg
+##   @var[in] _ble_trap_lastexit
+##   @var[in] _ble_trap_sig
+##   @var[in,out] _ble_builtin_trap_postproc[_ble_trap_sig]
+function ble-edit/exec:gexec/.TRAPDEBUG {
   if [[ $_ble_edit_exec_TRAPDEBUG_EXIT ]]; then
+    # Handle EXIT (#D1782)
+    #   他の trap を ble/builtin/trap/.handler で処理中に exit を呼び出した時の
+    #   処理を DEBUG trap を用いて調整している。元々の trap の動作に干渉する為
+    #   に元々の trap に対する _ble_builtin_trap_processing や _ble_trap_done,
+    #   _ble_trap_lastarg (ble/builtin/trap/invoke) や_ble_local_ext
+    #   (blehook/invoke) などをを書き換える。
+    #
+    #   前提: _ble_edit_exec_TRAPDEBUG_EXIT が設定される時には extdebug も設定
+    #   されていると仮定する。
+
     # 或る特定のレベルまでは素通りする (そもそも exit なのでユーザーの DEBUG
     # trap も処理しなくて良い)。
     local flag_clear= flag_exit= postproc=
-    if [[ ! $_ble_builtin_trap_processing ]] || ((${#FUNCNAME[*]}<=1)); then
+
+    # Note: Here, we want to read and rewrite the one-upper-level
+    # "_ble_builtin_trap_processing".  We remove the slot in
+    # ble/builtin/trap/.handler for DEBUG and reveal the slot defined in the
+    # upper call of ble/builtin/trap/.handler for another signal.
+    ble/util/unlocal _ble_builtin_trap_processing
+    if [[ ! $_ble_builtin_trap_processing ]] || ((${#BLE_TRAP_FUNCNAME[*]}==0)); then
       # 本来は此処に来る事はない筈
       flag_clear=2
       flag_exit=$_ble_edit_exec_TRAPDEBUG_EXIT
@@ -6186,15 +6206,23 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
       # 本来は extdebug が設定されている筈なので extdebug が設定されていない時
       # の対処は不要だが、念の為 extdebug が設定されていない時の動作も定義して
       # おく。
-      case " ${FUNCNAME[*]:1} " in
+      case " ${BLE_TRAP_FUNCNAME[*]} " in
       (' ble/builtin/trap/invoke.sandbox ble/builtin/trap/invoke '*)
-        _ble_trap_done=exit
-        _ble_trap_lastarg=$_ble_edit_exec_TRAPDEBUG_EXIT
+
+        # Rewrite variables declared for the other signal
+        ble/util/unlocal _ble_trap_lastarg               # declared in ble/builtin/trap/.handler for DEBUG
+        _ble_trap_done=exit                              # declared in ble/builtin/trap/invoke for the other signal
+        _ble_trap_lastarg=$_ble_edit_exec_TRAPDEBUG_EXIT # declared in ble/builtin/trap/invoke for the other signal
+
         postproc='ble/util/setexit 2'
         shopt -q extdebug || postproc='return 0' ;;
       (' blehook/invoke.sandbox blehook/invoke ble/builtin/trap/.handler '*)
-        _ble_local_ext=$_ble_edit_exec_TRAPDEBUG_EXIT
-        _ble_builtin_trap_processing=exit:$_ble_edit_exec_TRAPDEBUG_EXIT
+
+        # Rewrite variables declared for the other signal
+        # (_ble_builtin_trap_processing is already removed above).
+        _ble_local_ext=$_ble_edit_exec_TRAPDEBUG_EXIT                    # declared in blehook/invoke for the other signal
+        _ble_builtin_trap_processing=exit:$_ble_edit_exec_TRAPDEBUG_EXIT # declared in ble/builtin/trap/.handler for the other signal
+
         postproc='ble/util/setexit 2'
         shopt -q extdebug || postproc='return 0' ;;
       (' ble/builtin/trap/invoke '* | ' blehook/invoke '*)
@@ -6215,66 +6243,56 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
     if [[ $flag_clear ]]; then
       [[ $flag_clear == 2 ]] || shopt -u extdebug
       _ble_edit_exec_TRAPDEBUG_EXIT=
-      [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]] ||
+      if ! ble/builtin/trap/user-handler#has "$_ble_trap_sig"; then
         postproc="builtin trap - DEBUG${postproc:+;$postproc}"
+      fi
       if [[ $flag_exit ]]; then
         builtin exit "$flag_exit"
       fi
     fi
 
-    _ble_edit_exec_TRAPDEBUG_postproc=$postproc
+    _ble_builtin_trap_postproc[_ble_trap_sig]=$postproc
+    return 126 # skip user hooks/traps
 
   elif [[ $_ble_edit_exec_TRAPDEBUG_INT ]]; then
-    local IFS=$_ble_term_IFS __set __shopt
-    ble/base/.adjust-bash-options __set __shopt
+    # Handle INT
 
     # Run user DEBUG trap in the sandbox
-    [[ $_ble_attached ]] || local _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
-    local _ble_builtin_trap_processing=$_ble_builtin_trap_DEBUG
-    local _ble_builtin_trap_postproc
-    ble/util/setexit "$__lastexit" "$__lastarg"
-    LINENO=$_ble_edit_LINENO ble/builtin/trap/invoke DEBUG
-    _ble_edit_exec_TRAPDEBUG_postproc=$_ble_builtin_trap_postproc # unused
-    [[ $_ble_attached ]] || ble/util/unlocal _ble_edit_LINENO
+    ble/util/setexit "$_ble_trap_lastexit" "$_ble_trap_lastarg"
+    BASH_COMMAND=$_ble_trap_bash_command LINENO=$BLE_TRAP_LINENO \
+      ble/builtin/trap/invoke "$_ble_trap_sig" "${_ble_trap_args[@]}"
 
     # Handle INT
-    local depth=${#FUNCNAME[*]}
-    if ((depth>=2)) && ! ble/string#match "${FUNCNAME[*]:1}" '^ble-edit/exec:gexec/\.|(^| )ble/builtin/trap/\.handler'; then
+    local depth=${#BLE_TRAP_FUNCNAME[*]}
+    if ((depth>=1)) && ! ble/string#match "${BLE_TRAP_FUNCNAME[*]}" '^ble-edit/exec:gexec/\.|(^| )ble/builtin/trap/\.handler'; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
-      local source=${_ble_term_setaf[5]}${BASH_SOURCE[1]}
+      local source=${_ble_term_setaf[5]}${BLE_TRAP_SOURCE[0]}
       local sep=${_ble_term_setaf[6]}:
-      local lineno=${_ble_term_setaf[2]}${BASH_LINENO[0]}
-      local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${FUNCNAME[1]}${1:+ $1}${_ble_term_setaf[6]}')'
+      local lineno=${_ble_term_setaf[2]}${BLE_TRAP_LINENO[0]}
+      local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${BLE_TRAP_FUNCNAME[0]}${1:+ $1}${_ble_term_setaf[6]}')'
       ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >/dev/tty
-      _ble_edit_exec_TRAPDEBUG_postproc="{ return $_ble_edit_exec_TRAPDEBUG_INT || break; } &>/dev/null"
-    elif ((depth==1)) && ! ble/string#match "$bash_command" '^ble-edit/exec:gexec/\.'; then
+      _ble_builtin_trap_postproc[_ble_trap_sig]="{ return $_ble_edit_exec_TRAPDEBUG_INT || break; } &>/dev/null"
+    elif ((depth==0)) && ! ble/string#match "$_ble_trap_bash_command" '^ble-edit/exec:gexec/\.'; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
       local source=${_ble_term_setaf[5]}global
       local sep=${_ble_term_setaf[6]}:
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $bash_command" >/dev/tty
-      _ble_edit_exec_TRAPDEBUG_postproc="break &>/dev/null"
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $_ble_trap_bash_command" >/dev/tty
+      _ble_builtin_trap_postproc[_ble_trap_sig]="break &>/dev/null"
     fi
 
-    ble/base/.restore-bash-options __set __shopt
+    return 126 # skip user hooks/traps
 
-  elif [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]+set} ]]; then
-    # ユーザートラップだけの場合は、ユーザートラップを外で実行
-    _ble_edit_exec_TRAPDEBUG_lastexit=$__lastexit
-    _ble_edit_exec_TRAPDEBUG_postproc='ble/util/setexit "$_ble_edit_exec_TRAPDEBUG_lastexit" "$_ble_edit_exec_TRAPDEBUG_lastarg"'
-    local user_trap=${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]} q=\' Q="'\''"
-    if [[ $user_trap == *[![:space:]]* ]]; then
-      [[ $_ble_attached ]] && user_trap="LINENO=\$_ble_edit_LINENO builtin eval '${user_trap//$q/$Q}'"
-      _ble_edit_exec_TRAPDEBUG_postproc="$_ble_edit_exec_TRAPDEBUG_postproc;$user_trap"
-    fi
-
-  else
+  elif ! ble/builtin/trap/user-handler#has "$_ble_trap_sig"; then
     # ユーザー DEBUG trap がなくかつ INT 処理中でもない場合は DEBUG は削除して
     # 良い [ Note: builtin trap - DEBUG は此処では効かない ]
-    _ble_edit_exec_TRAPDEBUG_postproc='builtin trap -- - DEBUG'
+    _ble_builtin_trap_postproc[_ble_trap_sig]='builtin trap -- - DEBUG'
+    return 126 # skip user hooks/traps
   fi
 
   return 0
 }
+blehook internal_DEBUG!=ble-edit/exec:gexec/.TRAPDEBUG
+
 _ble_builtin_trap_DEBUG_userTrapInitialized=
 function ble/builtin/trap:DEBUG {
   _ble_builtin_trap_DEBUG_userTrapInitialized=1
@@ -6340,7 +6358,7 @@ function _ble_builtin_trap_DEBUG__initialize {
 
     # ble.sh の設定した DEBUG trap は無視する。
     case ${content#"trap -- '"} in
-    (ble-edit/exec:gexec/.TRAPDEBUG*) ;; # ble-0.4
+    (ble-edit/exec:gexec/.TRAPDEBUG*|ble/builtin/trap/.handler*) ;; # ble-0.4
     (ble-edit/exec:exec/.eval-TRAPDEBUG*|ble-edit/exec:gexec/.eval-TRAPDEBUG*) ;; # ble-0.2
     (.ble-edit/exec:exec/eval-TRAPDEBUG*|.ble-edit/exec:gexec/eval-TRAPDEBUG*) ;; # ble-0.1
     (*) builtin eval -- "$content" ;; # ble/builtin/trap に処理させる

@@ -208,6 +208,13 @@
 
 bash 実装上で注意するべき事
 
+  * 3.0以上 [Note: これは regcomp の問題かもしれない]:
+    正規表現 '.^' や $'\n^' は文字列の先頭ではなく行頭に一致する。
+
+    その他の場合 (.*^ など) にはちゃんと文字列の先頭にしか一致しない様だ。
+
+    Ref. #D1869
+
   * bash-5.2 以上の patsub_replacement に注意する。
 
     任意の文字列に置換する場合は & が勝手に解釈されない様に "${var/x/"$s"}" の
@@ -1845,114 +1852,33 @@ bash_tips
   - Copyright
   - Acknowledgments
   - keymap の移動 (これは別 commit にする?)
+  - leakvars
 
-2022-08-14
+2022-08-29
 
-  * nix develop が保存された EPOCHREALTIME を復元しようとしている
-    https://discourse.nixos.org/t/nix-print-dev-env-command-shows-some-assinments-to-readonly-variables/20916
-    https://github.com/NixOS/nix/pull/6800
+  * DEBUG trap についても関数呼び出しの階層を再現する?
 
-    一方で ble.sh は EPOCHREALTIME が勝手に別の機能に置き換えられると動作が全く
-    おかしくなるので (そしてはそれは他の EPOCHREALTIME を参照しているスクリプト
-    も同様であろう)、勝手に EPOCHREALTIME の機能を消去させられてしまっては困る。
+    user-handler#{load,has} がそれぞれの文脈で "現在の文脈での handler" を取得
+    しようとしているのか、或いは "何れかの文脈で handler があるか" を取得しよう
+    としているかをちゃんと区別する必要がある (というか関数を二種類作るべき?)
 
-    * そもそも Bash では EPOCHREALTIME をそのまま上書きしても意味がない。一旦
-      unset しなければならない。実際に上書きしている箇所で unset をしているのか
-      どうかまでは明言されていないが、報告されているエラーメッセージを観察する
-      限りは unset は試みられていない。unset が最初に試みられていたのであれば、
+    また "現在の文脈" を正しく取得できているかどうかについてもちゃんと確認する。
 
-      bash: unset: EPOCHREALTIME: cannot unset: readonly variable
+    install-hook については top-level での hook があるかどうかを確認したい。結
+    局 trap - DEBUG されない限りは何処かの stackframe で定義されている DEBUG
+    trap が top-level に適用されると考えると、何れかの階層の handler があればそ
+    れで判定していると思って良い。但し、install-hook については、初期化時に
+    user が builtin trap で既に設定しているかどうかを判定する為に用いていて使い
+    方が特別である。何れにしても、何処かの階層で既に定義があればユーザーの設定
+    した builtin trap は無視するというので良い。[ しかし実はそもそも DEBUG は
+    install-hook 内に継承されないので extdebug/functrace が設定されていない限り
+    判定できないしその様に条件で弾いている ]
 
-      というエラーメッセージになっていた筈である。
+2022-08-23
 
-    * もし unset してまで固定した時刻にしたかったのだとすれば、そして実際にそれ
-      をやったとしたら ble.sh の内部の時刻関連の制御が滅茶苦茶になる。場合によっ
-      ては固まってしまうかもしれない。
+  * complete: progcomp 引数について https://github.com/scop/bash-completion/issues/790
 
-      というかもし対話シェルで使っているなのだとしたら
-
-    ? というかそもそも何故対話シェルの設定と print-dev-env 的なコマンド的な設定
-      が混ざり合っているのだろうか。
-
-      % ? 会話を見ると print-dev-env は単に現在のシェル変数を出力するのに使って
-      %   いるだけの様に見える。sed でフィルタ等するという話をしている。なので、
-      %   対話シェルとして動作するとも思えない。
-      %
-      % ? nix develop でエラーメッセージが表示されると書いている。nix develop
-      %   を調べてみると、 nix shell + 開発用のコマンドという環境に入るらしい。
-      %   なので bashrc を読み込む。問題は print-dev-env が何故同じシェルで呼び
-      %   出されるのかという事である。特に直接 print-dev-env を自分で明示的に呼
-      %   び出しているのではなくて、nix develop を実行した時に自動で実行される
-      %   のだという事を書いている。謎だ。
-      %
-      % ? 仮に ble.sh が --lib で読み込まれるのだとしても、それを bashrc から読
-      %   み込むというのも変な話である。もし ble.sh の関数を個別のシェルスクリ
-      %   プトで使いたかったとしても、それは使うシェルスクリプトの中で個別に
-      %   source するべきなのであって、bashrc で一括して読み込むという使い方は
-      %   想定していない。
-      %
-      % ? 或いは print-dev-env というのはシェル関数なのだろうか。
-
-      % https://github.com/NixOS/nix/blob/master/src/nix/develop.cc を見ると、
-      % どうも print-dev-env と develop は内部のコードを共有しているという事の
-      % 様だ。つまり、develop の中で呼び出された print-dev-env が EPOCHREALTIME
-      % を触ってのではなくて、nix develop のコード自体が EPOCHREALTIME に触ろう
-      % としているのである。更に、print-dev-env も develop も単に現在の値を出力
-      % しているだけであって、明示的に EPOCHREALTIME に値を設定するコードが含ま
-      % れているという訳では無い様な気がする。
-      %
-      % そういう事を考えると、そもそもこの現在の値を出力するコードの時点で、
-      % EPOCHREALTIME, EPOCHSECONDS, SECONDS, LINENO, BASH_LINENO, FUNCNAME,
-      % BASH_SOURCE, BASH_VERSION, BASH_VERSINFO, BASH_COMMAND 等の変数に値を代
-      % 入しようとしているのが間違っている。
-
-      develop.cc のコードを確認した。先ず、print-dev-env は、実質的に nix
-      develop を中で呼び出してその環境における変数を出力するという様な処理を行っ
-      ている。そして、正にそれが目的なのだろうという気がする。
-
-      nix develop は何処かに .json で保存されている変数を読み取ってそれを bash
-      に設定しようとしている様に見える。その .json に EPOCHREALTIME が記録され
-      ているのは恐らく何か別の用途にも使われる事を想定しての物だろう。一方で、
-      nix develop で使う時には幾ら何でも全ての変数を復元するのは変である。
-      BASH_* は避けるべきだし (もしかするとこれらは既に保存する時点で除外されて
-      いるのかもしれない)、その他の FUNCNAME や LINENO 等も復元を試みるのは滅茶
-      苦茶である。
-
-      BASH_VERSINFO は bash が readonly にしていてこれに関しては警告が出ていな
-      いというのは BASH_* は除外しているという事なのだろうという気がする。
-
-    ? NixOS/nix #6800 も謎である。error ではなく warning だったと言って閉じてい
-      るのも謎だし、zsh では readonly だからと言って bash で動く nix develop の
-      上でスキップするというのもよく分からない。
-
-    * 色々 develop.cc を読んだりして思った事は TLATER の 99% sure と言っている
-      内容はかなり怪しいという事だ。恐らくこの TLATER は何も分かっていなくて出
-      鱈目な事を書いている。
-
-      或いは実際に何処か別の箇所で EPOCHREALTIME も明示的に保存しているのだろう
-      か。でもコードを見る限りは ignoreVars でブラックリスト式にしているし、恐
-      らく全ての変数を出力しているのだろうという気がする。
-
-      やはり TLATER は出鱈目を書いている。もし本当にそうなのだというのであれば
-      わざわざ 99% sure などと書かないし、というか 100% sure とも書かずに、断定
-      で書くはずである。I'm sure なんとかとか書いている時点で勝手に推測をしてい
-      るのに過ぎない。
-
-      そもそも本当に build environment を同一にしたいのであれば、単に変数の値を
-      変更したとしても意味がない。システムの時刻自体を固定しなければならないの
-      ではないか。そもそも最近の bash の機能である EPOCHREALTIME を参照してビル
-      ドを行うシステムがどれだけ存在するのかというのも謎である。そしてシステム
-      の時刻を固定しているのであれば、わざわざこの様な処理は必要がない筈である。
-
-
-      →と思ったがこの json はもしかすると各 derivation の作者が手書きで用意す
-      る物なのだろうか。なのだとしたら EPOCHREALTIME を誤って設定している人がい
-      ても不思議ではないのかもしれない。然し検索してみてもその様な物は見つから
-      ない (とは言いつつ GitHub の検索は余り当てにならない。経験上最近検索され
-      たページに含まれている文字列しか検索対象になっていないような気がする)。
-
-      https://github.com/NixOS/nix/search?q=EPOCHREALTIME
-      https://github.com/NixOS/nixpkgs/search?q=EPOCHREALTIME
+  * blehook HOOK+= を HOOK!= に統一する。
 
 2022-07-20
 
@@ -6633,6 +6559,370 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-08-29
+
+  * 2022-08-14 nix develop が保存された EPOCHREALTIME を復元しようとしている [#D1870]
+    https://discourse.nixos.org/t/nix-print-dev-env-command-shows-some-assinments-to-readonly-variables/20916
+    https://github.com/NixOS/nix/pull/6800
+
+    一方で ble.sh は EPOCHREALTIME が勝手に別の機能に置き換えられると動作が全く
+    おかしくなるので (そしてはそれは他の EPOCHREALTIME を参照しているスクリプト
+    も同様であろう)、勝手に EPOCHREALTIME の機能を消去させられてしまっては困る。
+
+    * そもそも Bash では EPOCHREALTIME をそのまま上書きしても意味がない。一旦
+      unset しなければならない。実際に上書きしている箇所で unset をしているのか
+      どうかまでは明言されていないが、報告されているエラーメッセージを観察する
+      限りは unset は試みられていない。unset が最初に試みられていたのであれば、
+
+      bash: unset: EPOCHREALTIME: cannot unset: readonly variable
+
+      というエラーメッセージになっていた筈である。
+
+    * もし unset してまで固定した時刻にしたかったのだとすれば、そして実際にそれ
+      をやったとしたら ble.sh の内部の時刻関連の制御が滅茶苦茶になる。場合によっ
+      ては固まってしまうかもしれない。
+
+      というかもし対話シェルで使っているなのだとしたら
+
+    ? というかそもそも何故対話シェルの設定と print-dev-env 的なコマンド的な設定
+      が混ざり合っているのだろうか。
+
+      % ? 会話を見ると print-dev-env は単に現在のシェル変数を出力するのに使って
+      %   いるだけの様に見える。sed でフィルタ等するという話をしている。なので、
+      %   対話シェルとして動作するとも思えない。
+      %
+      % ? nix develop でエラーメッセージが表示されると書いている。nix develop
+      %   を調べてみると、 nix shell + 開発用のコマンドという環境に入るらしい。
+      %   なので bashrc を読み込む。問題は print-dev-env が何故同じシェルで呼び
+      %   出されるのかという事である。特に直接 print-dev-env を自分で明示的に呼
+      %   び出しているのではなくて、nix develop を実行した時に自動で実行される
+      %   のだという事を書いている。謎だ。
+      %
+      % ? 仮に ble.sh が --lib で読み込まれるのだとしても、それを bashrc から読
+      %   み込むというのも変な話である。もし ble.sh の関数を個別のシェルスクリ
+      %   プトで使いたかったとしても、それは使うシェルスクリプトの中で個別に
+      %   source するべきなのであって、bashrc で一括して読み込むという使い方は
+      %   想定していない。
+      %
+      % ? 或いは print-dev-env というのはシェル関数なのだろうか。
+
+      % https://github.com/NixOS/nix/blob/master/src/nix/develop.cc を見ると、
+      % どうも print-dev-env と develop は内部のコードを共有しているという事の
+      % 様だ。つまり、develop の中で呼び出された print-dev-env が EPOCHREALTIME
+      % を触ってのではなくて、nix develop のコード自体が EPOCHREALTIME に触ろう
+      % としているのである。更に、print-dev-env も develop も単に現在の値を出力
+      % しているだけであって、明示的に EPOCHREALTIME に値を設定するコードが含ま
+      % れているという訳では無い様な気がする。
+      %
+      % そういう事を考えると、そもそもこの現在の値を出力するコードの時点で、
+      % EPOCHREALTIME, EPOCHSECONDS, SECONDS, LINENO, BASH_LINENO, FUNCNAME,
+      % BASH_SOURCE, BASH_VERSION, BASH_VERSINFO, BASH_COMMAND 等の変数に値を代
+      % 入しようとしているのが間違っている。
+
+      develop.cc のコードを確認した。先ず、print-dev-env は、実質的に nix
+      develop を中で呼び出してその環境における変数を出力するという様な処理を行っ
+      ている。そして、正にそれが目的なのだろうという気がする。
+
+      nix develop は何処かに .json で保存されている変数を読み取ってそれを bash
+      に設定しようとしている様に見える。その .json に EPOCHREALTIME が記録され
+      ているのは恐らく何か別の用途にも使われる事を想定しての物だろう。一方で、
+      nix develop で使う時には幾ら何でも全ての変数を復元するのは変である。
+      BASH_* は避けるべきだし (もしかするとこれらは既に保存する時点で除外されて
+      いるのかもしれない)、その他の FUNCNAME や LINENO 等も復元を試みるのは滅茶
+      苦茶である。
+
+      BASH_VERSINFO は bash が readonly にしていてこれに関しては警告が出ていな
+      いというのは BASH_* は除外しているという事なのだろうという気がする。
+
+    ? NixOS/nix #6800 も謎である。error ではなく warning だったと言って閉じてい
+      るのも謎だし、zsh では readonly だからと言って bash で動く nix develop の
+      上でスキップするというのもよく分からない。
+
+    * 色々 develop.cc を読んだりして思った事は TLATER の 99% sure と言っている
+      内容はかなり怪しいという事だ。恐らくこの TLATER は何も分かっていなくて出
+      鱈目な事を書いている。
+
+      或いは実際に何処か別の箇所で EPOCHREALTIME も明示的に保存しているのだろう
+      か。でもコードを見る限りは ignoreVars でブラックリスト式にしているし、恐
+      らく全ての変数を出力しているのだろうという気がする。
+
+      やはり TLATER は出鱈目を書いている。もし本当にそうなのだというのであれば
+      わざわざ 99% sure などと書かないし、というか 100% sure とも書かずに、断定
+      で書くはずである。I'm sure なんとかとか書いている時点で勝手に推測をしてい
+      るのに過ぎない。
+
+      そもそも本当に build environment を同一にしたいのであれば、単に変数の値を
+      変更したとしても意味がない。システムの時刻自体を固定しなければならないの
+      ではないか。そもそも最近の bash の機能である EPOCHREALTIME を参照してビル
+      ドを行うシステムがどれだけ存在するのかというのも謎である。そしてシステム
+      の時刻を固定しているのであれば、わざわざこの様な処理は必要がない筈である。
+
+
+      →と思ったがこの json はもしかすると各 derivation の作者が手書きで用意す
+      る物なのだろうか。なのだとしたら EPOCHREALTIME を誤って設定している人がい
+      ても不思議ではないのかもしれない。然し検索してみてもその様な物は見つから
+      ない (とは言いつつ GitHub の検索は余り当てにならない。経験上最近検索され
+      たページに含まれている文字列しか検索対象になっていないような気がする)。
+
+      https://github.com/NixOS/nix/search?q=EPOCHREALTIME
+      https://github.com/NixOS/nixpkgs/search?q=EPOCHREALTIME
+
+    2022-08-29 これは結局 nix の側で修正されたので OK
+    https://github.com/NixOS/nixpkgs/pull/185866
+    https://github.com/NixOS/nix/pull/6944
+
+  * ok: 2022-08-26 何と bash の regex は ^ で文字列の戦闘ではなくて行頭に一致してしまう? [#D1869]
+
+    と思ったがそうでもないようだ。特別な条件で発生する。
+
+    rex='^b'; [[ $'a\nb' =~ $rex ]]; echo $?    ... 一致しない (OK)
+    rex='^[^a]'; [[ $'a\nb' =~ $rex ]]; echo $? ... 一致しない (OK)
+    rex='a^'; [[ $'a\nb' =~ $rex ]]; echo $?    ... 一致しない (OK)
+    rex='.^'; [[ $'a\nb' =~ $rex ]]; echo $?    ... 何故か一致してしまう?????
+    rex='.^'; [[ $'ab' =~ $rex ]]; echo $?      ... 一致しない (OK)
+    rex='^.^'; [[ $'a\nb' =~ $rex ]]; echo $?     ... 一致しない (OK)
+    rex=$'\n^'; [[ $'a\nb' =~ $rex ]]; echo $?     ... 一致する!
+    rex=$'a\n^b'; [[ $'a\nb' =~ $rex ]]; echo $?     ... 一致する!
+    rex=$'^..^b'; [[ $'a\nb' =~ $rex ]]; echo $?     ... 一致する!
+
+    この変な振る舞いは 3.0..5.2 まで全てで再現する。或いは Linux/glibc 側の問題
+    の可能性もある。
+
+    何れにしても .^ や \n^ の様な (single line regex では) 意味のない正規表現で
+    しか問題が起こっていないので取り敢えずは何もしなくて良い。うーん。例えば ^
+    より前に何かが存在する時に限り ^ は multiline mode に変更されるなど? もしか
+    すると関連して現実的な正規表現でも問題が起こる可能性があるかもしれないが。
+
+    だとしたら ^$ で空文字列にしか一致しない様にしているのは不味いのではないか?
+
+    $ a='x\n\ny' r='.*^$'; [[ $a =~ $r ]]; echo $? ... 一致しない (OK)
+    $ a='x\n\ny' r='.+^$'; [[ $a =~ $r ]]; echo $? ... 一致しない (OK)
+    $ a='x\n\ny' r='.*(^$)'; [[ $a =~ $r ]]; echo $? ... 一致しない (OK)
+    $ a='x\n\ny' r='.+(^$)'; [[ $a =~ $r ]]; echo $? ... 一致しない (OK)
+
+    と思ったがこの場合には問題は起こらない様だ。不思議だ。
+
+    取り敢えず問題にはならないとは思われるが、一応注意点として記録はしておく。
+
+  * [自然解消] refactor: TRAPRETURN の中に余分な i=1 が残っている [#D1868]
+
+    結局関連するコードは #D1867 の際に消滅した。
+
+  * trap: gexec による DEBUG の処理を ble/builtin/trap に統合する [#D1867]
+    * trap DEBUG, ERR についても関数呼び出しに従った構造を記録する。
+
+    x 統合する上での問題は trap の中で trap が走った時に
+      _ble_builtin_trap_postproc 等の変数が混ざって問題にならないかという事。
+      (そもそも trap の実行中に trap が走るのかどうかもよく分かっていない) →
+      実際に試してみた所、やはり trap の中で DEBUG trap は走る様だ。
+
+      Ref. memo/D1867.recursiveTrapWA-stub.patch (試験的な実装)
+
+      これは実は RETURN でも同様なのではないか。trap handler の中で RETURN が発
+      生するのでは?
+
+      a 混ざらない様にするには trap 毎に別の変数に trap_postproc を保存する?
+        と思ったが RETURN の中で呼び出される RETURN などの状況を考えると単に
+        trap 毎に変数名を変える方法では対応できない。
+
+        % * 以前 RETURN の中で RETURN が呼び出されるというので無限ループ
+        %   になった事がある気がする
+        %
+        %   →と思って今試してみたらやはりそういう事は起こらない様である。だとす
+        %   れば単に trap 毎に保存すれば良いだけなのではないか。
+        %
+        %   以前の議論を探してみた所、実際に以前これについて調べていた (#D1350)
+        %   がその時調べた結果は RETURN は RETURN 以外の trap では発生するという
+        %   事。RETURN 内部で RETURN は発生しないという事。この時調べたのは、無限
+        %   ループにならないかというのが心配になったからだったという記憶が微妙に
+        %   残っていただけだろう。
+
+      b というか単に trap の nest level を変数に入れておけば良いのでは? そして
+        _ble_builtin_postproc[_ble_builtin_trap_depth] を参照する。
+
+        と思ったが全てを handler に入れておく必要もない気がする。要するに
+        .handler を呼び出した直後に postproc を評価するのだから、.handler の最後
+        で postproc を設定すれば良いだけなのでは? と思ったがやはりそう簡単でもな
+        い。.handler を呼び出した後に eval "${postproc}" を実行する間に別の trap
+        が走る可能性もあるのである。
+
+      c という事を考えると、
+
+        depth++; .handler; eval postproc; depth--
+
+        の様な具合にしなければならないのではないか? 然し depth-- を保証する方法
+        がない。
+
+      d 或いは
+
+        depth=depth+1 eval '.handler; eval postproc'
+
+        という具合にするしかないのだろうか。と思ったがこれも駄目な気がする? 否、
+        例え .handler と eval の間に別の handler が入ったとしてもその handler
+        が中途半端に終了しない限りは大丈夫の筈。
+
+
+        _ble_builtin_trap_depth=$((_ble_builtin_trap_depth+1)) builtin eval -- "${_ble_builtin_trap_handler/SIGNUM/1}"
+        _ble_builtin_trap_handler='ble/builtin/trap/.handler SIGNUM "$BASH_COMMAND" "$@"; builtin eval -- "..." \# "..."'
+
+        うーん。これで行けると思ったがやはり駄目だ。eval を入れ子にすると $_ が
+        変わってしまうので駄目。なので eval を入れ子にしない方法を考えたいが…
+        或いは trap によって lastarg が変わらないという事にしてしまって一番外側
+        の eval に \# "${_%%$_ble_term_nl*}" を渡すという手もあるかもしれない。
+
+
+      e 或いは handler の中で local inc したらどうなるだろうか。
+
+        handler() { local depth=$((depth+1)); postproc[depth-1]=設定; }
+
+        問題が起こるとしたら
+
+        ? handler が呼び出されて local depth を実行する間に DEBUG が走った場合?
+          然しこの場合には実のところ DEBUG の処理が終わったらまた元の状態に戻る
+          筈なので気にしなくて良い。とにかく postproc を触る前までに depth を
+          inc して置けば良い筈。
+
+        ? 或いは handler が終了してから eval postproc[depth] する間に DEBUG が
+          走った場合? 実はこれについても特に問題は発生しない様に思われる。
+
+          →うーん。やっぱり駄目だ。handler が終了した時に postproc[depth] には
+          handler が設定した物が入っているが、この時に別の trap が走るとそれが
+          上書きされてしまう。
+
+          代わりに push/pop 方式にするとしても pop せずに抜けてしまった時に、よ
+          り外側の handler が誤って内側の物が設定した postproc を実行してしまう
+          事になる。
+
+      f 或いは別の方法で trap の入れ子レベルを知る事ができれば良い。と思ったが
+        難しい。FUNCNAME の中に含まれる ble/builtin/trap/.handler を数える方法
+        を考えたが、これだと結局 handler ... eval の間に走る trap に対して対処
+        できない。というか eval の入れ子レベルを取得する方法はないにだろうか。
+        PS4 の最初の文字を複製する回数でもあるが、これをもっと普通の方法で取得
+        する方法がないのは何故だろうか。
+
+      g うーん。或いは postproc を設定してからそれを評価する迄の間に発生した
+        trap は全て無効化するという可能性?
+
+        x しかしこれも何らかの拍子で postproc が実行されずに終わってしまうとそ
+          れ以降の全ての trap が実行されなくなってしまう。
+
+          然し、実際にそれが発生する事はあるのだろうか。先ず INT は塞いでいる。そ
+          もそも trap の内部で INT は発生しない気がする。trap の内部で発生する可
+          能性があるのは DEBUG, RETURN ぐらいの物である。errtrace が設定されてい
+          れば ERR も発生するかもしれない。
+
+          * DEBUG と RETURN には介入している。一方で、ERR には介入していない。
+            DEBUG と RETURN に関しては無効化すれば良い。ERR で return などが実
+            行されて trap 終端処理がスキップされた時に問題になる。
+
+          その他の理由で実行がキャンセルされる事はあるだろうか。
+
+          * 外部からのシグナルの場合には trap handler の実行中には何も起こらな
+            い。trap handler の実行が終わった後に実行される筈である。
+          * readline の timeout (TMOUT) に関しては ble.sh は無効化して自前で実
+            装しているので問題にならない筈。
+          * KILL を受け取ったら何れにしても終了するので関係ない。
+          * exit で trap の中から終了する場合…と思ったがこれは起こり得ない。今
+            ble.sh の trap string を実行しているのだからその他のコマンドが実行
+            される余地はない。
+
+          うーん。別の方法で trap を実行している事を検知する方法はあるだろうか。
+
+          * reject: 例えば bash-4.4 以降では trap 実行中に return の戻り値が変
+            わる事を以て現在 trap の内部かどうかを判定できると思ったが、入れ子
+            の trap の場合には 2 重か1重かを判定しなければならないのでこの方法
+            は使えない。そもそも使えたとしても、この振る舞いは議論の対象であり
+            将来的に変更されるかもしれないし古い bash では使えない。
+
+        恐らくこれで基本的に問題ない。
+
+        1 DEBUG に対しては postproc 直前の発火に対しては無視する。
+
+        2 RETURN に対しては trap/.handler RETURN について無視する。
+
+          うーん。これは元からそうなっているのでは? と思ったがそうでもない様
+          だ。現在は trap 内部の RETURN しか無視していない。これに加えて
+          blehook/invoke.sandbox | blehook/invoke | ble/builtin/trap/.handler
+          に対して発火した RETURN も無視したい。
+
+        3 ERR に関しては trap/.handler が失敗しない限りは大丈夫の筈。
+
+        但し、何らかの拍子に postproc が設定された儘になってしまった時の為に、
+        随時 postproc をクリアする。例えばトップレベルで呼び出された
+        ble-decode/.hook でクリアすれば良いのではないか。少なくとも trap
+        handler の中でトップレベルで ble-decode/.hook が呼び出される事はない。
+
+    改めて考え直してみたが同じ trap が入れ子で呼び出される事はやはりないと仮定
+    して良い気がする。だとすれば a の方法で実装すれば良い。一方で g.2 の
+    [RETURN 以外の trap についての trap/.handler に対する RETURN] の発火は無視
+    する事については対処したい。
+
+    * RETURN 以外の trap/.handler に対する RETURN を無視する事について。
+
+      というか現在の実装の blehook/invoke.sandbox | blehook/invoke |
+      ble/builtin/trap/.handler のスキップは全て無視して単に BLE_TRAP_FUNCNAME
+      を参照すれば良いのではないか?
+
+      と思ったがそれだけだと駄目である。先ず trap/.handler は内部で色々な関数を
+      呼び出している。RETURN を extdebug で設定しているとこれらの全ての関数に対
+      して RETURN が発火して面倒な事になる。
+
+      うーん。exit 時に RETURNが呼び出されると思ったが、これは unload で元の
+      RETURN を復元した後に発生している物である。
+
+    * _ble_builtin_trap_{postproc,lastarg} を trap 毎に記録する様に変更する。
+
+      _ble_builtin_trap_lastarg については基本的に2つの関数でしか使われていなかっ
+      たのですぐに修正できた。_ble_builtin_trap_postproc も殆ど同様だったが、但
+      し edit.sh で DEBUG trap の postproc/lastarg 抽出に使用されていた。これは
+      _ble_edit_exec_TRAPDEBUG_postproc の代わりに
+      _ble_builtin_trap_postproc[_ble_builtin_trap_DEBUG] を使う様にすれば良い
+      だけである。
+
+    * #D1853 で最近行った修正について気付いたのだが、実は既に lastarg に改行が
+      含まれる場合については既に trap/.handler の内側で対処済みであった
+      (#D1757)。trap string 内の無駄な $_ble_term_nl に関係する消去は除いた。
+
+    * _ble_edit_exec_TRAPDEBUG_lastarg も同様に処理する様に変更するべきなのでは
+      ないか。というか今はどの様に処理しているのだったか→取り敢えず似た様に修
+      正する事にした。
+
+    x fixed: TRAPDEBUG を early return する時に lastexit を復元していなかった。
+      これは問題である。修正した。
+
+    以降は少しずつ TRAPDEBUG の機能を trap/.handler に移植して行く事にする。
+
+    * TRAPDEBUG では通常であればユーザートラップは関数の外で postproc を用いて
+      実行している。一方でこの機能は現在の trap/.handler には存在していない。
+
+      この手法の問題はユーザートラップによって設定される lastarg が失われてしま
+      う事。と考えるとやはり handler の中で実行した方が良いのだろうか。然し、意
+      図的に trap によって $_ を書き換える事も考えにくいので、やはりこの様にし
+      て $_ が変わらない様に評価するというのの方が良いのかもしれない。或いはこ
+      れはオプションで切り替えられる様にする。
+
+    * user trap を呼び出す時に ble-attach している時には LINENO を設定している
+      がどういう事か。これは恐らく LINENO を以前 unset していた為に、trap の中
+      で LINENO が変な値になってしまう問題があったのだろう。然し現在は LINENO
+      の機能を上書きしない様にしている。とは言いつつ ble.sh の内部で LINENO を
+      実行すると関数内部でも一番外側における LINENO が表示されてしまうという問
+      題がある。
+
+      この振る舞いと consistent にする為に今までの様に一番外側の LINENO を設定
+      していたと考える事もできるが…うーん。どう振る舞わせるのが良いだろうか。
+
+      本来の bash における LINENO at trap string は trap/.handler の中では
+      BASH_LINENO[1] を参照すれば取得できる。但し、これが top-level context の
+      場合には、 _ble_edit_LINENO を代わりに参照する必要がある。というか、単に
+      BLE_TRAP_LINENO を修正すれば良いだけなのでは。
+
+    * DEBUG も install-hook する? →但し inactive にて。と、思ったが DEBUG の場
+      合には inactive ともまた微妙に振る舞いが異なる。現状の edit.sh でやってい
+      る処理のままで良い。
+
+      もしかすると DEBUG でやっている様な trap の仕掛け方についても将来的には
+      ble/builtin/trap に組み込んでも良いかもしれないが今ではない。
 
 2022-08-25
 
