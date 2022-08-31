@@ -192,6 +192,7 @@
   - trap: work around possible interferences by recursive traps `#D1867` XXXXXXX
   - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` XXXXXXX
   - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` XXXXXXX
+- progcomp: reproduce arguments of completion functions passed by Bash `#D1872` XXXXXXX
 
 ## Fixes
 
@@ -301,6 +302,7 @@
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
 - main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
+- progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` XXXXXXX
 
 ## Documentation
 

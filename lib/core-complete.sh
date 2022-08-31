@@ -2828,7 +2828,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
   # 単語毎に評価 (前半)
   local eval_opts=noglob
   ((${#ret[@]}==1)) && eval_opts=
-  ble/syntax:bash/simple-word#break-word "$left"
+  ble/syntax:bash/simple-word#break-word "$left" "$wordbreaks"
   local subword
   for subword in "${ret[@]}"; do
     ble/complete/progcomp/.compvar-eval-word "$subword" "$eval_opts"
@@ -2838,7 +2838,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
 
   # 単語毎に評価 (後半)
   if [[ $right ]]; then
-    ble/syntax:bash/simple-word#break-word "$right"
+    ble/syntax:bash/simple-word#break-word "$right" "$wordbreaks"
     local subword isfirst=1
     for subword in "${ret[@]}"; do
       ble/complete/progcomp/.compvar-eval-word "$subword" noglob
@@ -2893,7 +2893,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl2 {
 ##       各単語片に対して単純単語 eval を試みる。
 ##
 ##     Q が含まれている時、後続の処理における展開・クォートを抑制し、
-##       補完間関数に対してそのままの形で単語を渡す事を示す。
+##       補完関数に対してそのままの形で単語を渡す事を示す。
 ##       これはチルダ ~ に対してユーザ名を補完させるのに使う。
 ##
 ##   @var[in,out] point
@@ -2967,10 +2967,49 @@ function ble/complete/progcomp/.compvar-quote-subword {
   ret=$word
 }
 
+## @fn ble/complete/progcomp/.compvar-reduce-cur current_subword
+##   @param[in] current_subword
+##   @var[out] cur
+builtin unset -v _ble_complete_progcomp_cur_wordbreaks
+_ble_complete_progcomp_cur_rex_simple=
+_ble_complete_progcomp_cur_rex_break=
+function ble/complete/progcomp/.compvar-reduce-cur {
+  # 正規表現の更新
+  if [[ ! ${_ble_complete_progcomp_cur_wordbreaks+set} || $COMP_WORDBREAKS != "$_ble_complete_progcomp_cur_wordbreaks" ]]; then
+    _ble_complete_progcomp_cur_wordbreaks=$COMP_WORDBREAKS
+    _ble_complete_progcomp_cur_rex_simple='^([^\"'\'']|\\.|"([^\"]|\\.)*"|'\''[^'\'']*'\'')*'
+    local chars=${COMP_WORDBREAKS//[\'\"]/} rex_break=
+    [[ $chars == *\\* ]] && chars=${chars//\\/} rex_break='\\(.|$)'
+    [[ $chars == *\$* ]] && chars=${chars//\$/} rex_break+=${rex_break:+'|'}'\$([^$'\'${rex_break:+\\}']|$)'
+    if [[ $chars == '^' ]]; then
+      rex_break+=${rex_break:+'|'}'\^'
+    elif [[ $chars ]]; then
+      [[ $chars == ?*']'* ]] && chars=']'${chars//']'/}
+      [[ $chars == '^'* ]] && chars=${chars:1}${chars::1}
+      [[ $chars == *'-'*? ]] && chars=${chars//'-'/}'-'
+      rex_break+=${rex_break:+'|'}[$chars]
+    fi
+    _ble_complete_progcomp_cur_rex_break='^([^\"'\''$]|\$*\\.|\$*"([^\"]|\\.)*"|'\''[^'\'']*'\''|\$+'\''([^'\''\]|\\.)*'\''|\$+([^'\'']|$))*\$*('${rex_break:-'^$'}')'
+  fi
+
+  cur=$1
+  if [[ $cur =~ $_ble_complete_progcomp_cur_rex_simple && ${cur:${#BASH_REMATCH}} == [\'\"]* ]]; then
+    cur=${cur:${#BASH_REMATCH}+1}
+  elif [[ $cur =~ $_ble_complete_progcomp_cur_rex_break ]]; then
+    cur=${cur:${#BASH_REMATCH}}
+    [[ ${BASH_REMATCH[5]} == @(\$*|@|\\?) ]] && cur=${BASH_REMATCH[5]#\\}$cur
+  fi
+}
+
 ## @fn ble/complete/progcomp/.compvar-initialize
 ##   プログラム補完で提供される変数を構築します。
 ##   @var[in]  comp_words comp_cword comp_line comp_point
 ##   @var[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
+##   @var[out] cmd cur prev
+##     補完関数に渡す引数を格納します。cmd は COMP_WORDBREAKS による分割前のコ
+##     マンド名を保持します。cur は現在の単語のカーソル前の部分を保持します。但
+##     し、閉じていない引用符がある時は引用符の中身を、COMP_WORDBREAKS の文字が
+##     含まれる場合にはそれによって分割された後の最後の単語を返します。
 ##   @var[out] progcomp_prefix
 function ble/complete/progcomp/.compvar-initialize {
   COMP_TYPE=9
@@ -2991,9 +3030,14 @@ function ble/complete/progcomp/.compvar-initialize {
   COMP_POINT=
   COMP_LINE=
   COMP_WORDS=()
+  cmd=${comp_words[0]}
+  cur= prev=
   local ret simple_flags simple_ibrace
   local word1 index=0 offset=0 sep=
   for word1 in "${comp_words[@]}"; do
+    # @var offset_dst
+    #   現在の単語の COMP_LINE 内部に於ける開始位置
+    local offset_dst=${#COMP_LINE}
     # @var point
     #   word が現在の単語の時、word 内のカーソル位置を保持する。
     #   それ以外の時は空文字列。
@@ -3022,12 +3066,15 @@ function ble/complete/progcomp/.compvar-initialize {
       [[ $p ]] && point=
       [[ $point ]] && progcomp_prefix=$progcomp_prefix$w
 
+      # Note: w -> wq の修正に伴ってここで p も修正される。
       ble/complete/progcomp/.compvar-quote-subword "$w"; local wq=$ret
 
       # 単語登録
       if [[ $p ]]; then
         COMP_CWORD=${#COMP_WORDS[*]}
         ((COMP_POINT=${#COMP_LINE}+${#sep}+p))
+        ble/complete/progcomp/.compvar-reduce-cur "${COMP_LINE:offset_dst}${wq::p}"
+        prev=${COMP_WORDS[COMP_CWORD-1]}
       fi
       ble/array#push COMP_WORDS "$wq"
       COMP_LINE=$COMP_LINE$sep$wq
@@ -3041,10 +3088,9 @@ function ble/complete/progcomp/.compvar-initialize {
 }
 function ble/complete/progcomp/.compgen-helper-prog {
   if [[ $comp_prog ]]; then
-    local COMP_WORDS COMP_CWORD
+    local COMP_WORDS COMP_CWORD cmd cur prev
     local -x COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
     ble/complete/progcomp/.compvar-initialize
-    local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
 
     if [[ $comp_opts == *:ble/prog-trim:* ]]; then
       # WA: aws_completer
@@ -3105,14 +3151,13 @@ function ble/complete/progcomp/.check-limits {
 function ble/complete/progcomp/.compgen-helper-func {
   [[ $comp_func ]] || return 1
   local -a COMP_WORDS
-  local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
+  local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY cmd cur prev
   ble/complete/progcomp/.compvar-initialize
 
   local progcomp_read_count=0
   local _ble_builtin_read_hook='ble/complete/progcomp/.check-limits || { builtin read "$@" < /dev/null; return 148; }'
 
   local fDefault=
-  local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
   ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
 
   # WA (#D1807): A workaround for blocking scp/ssh
