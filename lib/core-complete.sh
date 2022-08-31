@@ -1135,10 +1135,49 @@ function ble/complete/source:argument/.compvar-quote-subword {
   ret=$word
 }
 
+## @fn ble/complete/progcomp/.compvar-reduce-cur current_subword
+##   @param[in] current_subword
+##   @var[out] cur
+builtin unset -v _ble_complete_progcomp_cur_wordbreaks
+_ble_complete_progcomp_cur_rex_simple=
+_ble_complete_progcomp_cur_rex_break=
+function ble/complete/progcomp/.compvar-reduce-cur {
+  # 正規表現の更新
+  if [[ ! ${_ble_complete_progcomp_cur_wordbreaks+set} || $COMP_WORDBREAKS != "$_ble_complete_progcomp_cur_wordbreaks" ]]; then
+    _ble_complete_progcomp_cur_wordbreaks=$COMP_WORDBREAKS
+    _ble_complete_progcomp_cur_rex_simple='^([^\"'\'']|\\.|"([^\"]|\\.)*"|'\''[^'\'']*'\'')*'
+    local chars=${COMP_WORDBREAKS//[\'\"]/} rex_break=
+    [[ $chars == *\\* ]] && chars=${chars//\\/} rex_break='\\(.|$)'
+    [[ $chars == *\$* ]] && chars=${chars//\$/} rex_break+=${rex_break:+'|'}'\$([^$'\'${rex_break:+\\}']|$)'
+    if [[ $chars == '^' ]]; then
+      rex_break+=${rex_break:+'|'}'\^'
+    elif [[ $chars ]]; then
+      [[ $chars == ?*']'* ]] && chars=']'${chars//']'/}
+      [[ $chars == '^'* ]] && chars=${chars:1}${chars::1}
+      [[ $chars == *'-'*? ]] && chars=${chars//'-'/}'-'
+      rex_break+=${rex_break:+'|'}[$chars]
+    fi
+    _ble_complete_progcomp_cur_rex_break='^([^\"'\''$]|\$*\\.|\$*"([^\"]|\\.)*"|'\''[^'\'']*'\''|\$+'\''([^'\''\]|\\.)*'\''|\$+([^'\'']|$))*\$*('${rex_break:-'^$'}')'
+  fi
+
+  cur=$1
+  if [[ $cur =~ $_ble_complete_progcomp_cur_rex_simple && ${cur:${#BASH_REMATCH}} == [\'\"]* ]]; then
+    cur=${cur:${#BASH_REMATCH}+1}
+  elif [[ $cur =~ $_ble_complete_progcomp_cur_rex_break ]]; then
+    cur=${cur:${#BASH_REMATCH}}
+    [[ ${BASH_REMATCH[5]} == @(\$*|@|\\?) ]] && cur=${BASH_REMATCH[5]#\\}$cur
+  fi
+}
+
 ## 関数 ble/complete/source:argument/.compvar-initialize
 ##   プログラム補完で提供される変数を構築します。
 ##   @var[in]  comp_words comp_cword comp_line comp_point
 ##   @var[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
+##   @var[out] cmd cur prev
+##     補完関数に渡す引数を格納します。cmd は COMP_WORDBREAKS による分割前のコ
+##     マンド名を保持します。cur は現在の単語のカーソル前の部分を保持します。但
+##     し、閉じていない引用符がある時は引用符の中身を、COMP_WORDBREAKS の文字が
+##     含まれる場合にはそれによって分割された後の最後の単語を返します。
 ##   @var[out] progcomp_prefix
 function ble/complete/source:argument/.compvar-initialize {
   COMP_TYPE=9
@@ -1158,9 +1197,14 @@ function ble/complete/source:argument/.compvar-initialize {
   COMP_POINT=
   COMP_LINE=
   COMP_WORDS=()
+  cmd=${comp_words[0]}
+  cur= prev=
   local ret simple_flags simple_ibrace
   local word1 index=0 offset=0 sep=
   for word1 in "${comp_words[@]}"; do
+    # @var offset_dst
+    #   現在の単語の COMP_LINE 内部に於ける開始位置
+    local offset_dst=${#COMP_LINE}
     # @var point
     #   word が現在の単語の時、word 内のカーソル位置を保持する。
     #   それ以外の時は空文字列。
@@ -1193,6 +1237,8 @@ function ble/complete/source:argument/.compvar-initialize {
       if [[ $p ]]; then
         COMP_CWORD=${#COMP_WORDS[*]}
         ((COMP_POINT=${#COMP_LINE}+${#sep}+p))
+        ble/complete/progcomp/.compvar-reduce-cur "${COMP_LINE:offset_dst}${wq::p}"
+        prev=${COMP_WORDS[COMP_CWORD-1]}
       fi
       ble/array#push COMP_WORDS "$wq"
       COMP_LINE=$COMP_LINE$sep$wq
@@ -1206,10 +1252,9 @@ function ble/complete/source:argument/.compvar-initialize {
 }
 function ble/complete/source:argument/.progcomp-helper-prog {
   if [[ $comp_prog ]]; then
-    local COMP_WORDS COMP_CWORD
+    local COMP_WORDS COMP_CWORD cmd cur prev
     local -x COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
     ble/complete/source:argument/.compvar-initialize
-    local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
 
     if [[ $comp_opts == *:prog-trim:* ]]; then
       # WA: aws_completer
@@ -1224,7 +1269,7 @@ function ble/complete/source:argument/.progcomp-helper-prog {
 function ble/complete/source:argument/.progcomp-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
-  local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
+  local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY cmd cur prev
   ble/complete/source:argument/.compvar-initialize
 
   # compopt に介入して -o/+o option を読み取る。
@@ -1267,7 +1312,6 @@ function ble/complete/source:argument/.progcomp-helper-func {
     return "$ext"
   }
 
-  local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
   eval '"$comp_func" "$cmd" "$cur" "$prev"' </dev/null; local ret=$?
   unset -f compopt
 
