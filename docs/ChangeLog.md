@@ -27,6 +27,7 @@
   - canvas: fix wrong coordinate calculation on linefolding (reported by telometto) `#D1602` 9badb5f
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
+  - decode: reflect changes after `ble-bind --cursor` `#D1873` XXXXXXX
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
   - edit: support `nsearch` opts `empty=emulate-readline` (motivated by jainpratik163) `#D1661` d68ba61
   - edit: support bash-5.2 binding of `prior/next` to `history-search-{for,back}ward` `#D1661` d26a6e1

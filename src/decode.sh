@@ -1704,6 +1704,9 @@ function ble/decode/keymap#set-cursor {
     return 0
   fi
   builtin eval "_ble_decode_${keymap}_kmap_cursor=\$cursor"
+  if [[ $keymap == "$_ble_decode_keymap" && $cursor ]]; then
+    ble/term/cursor-state/set-internal "$((cursor))"
+  fi
 }
 
 ## @fn ble/decode/keymap#print keymap [tseq nseq]
@@ -4016,6 +4019,10 @@ function ble/decode/reset-default-keymap {
     [[ $old_base_keymap ]] &&
       _ble_decode_keymap=$old_base_keymap ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_DETACH"
     ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
+
+    # update cursor
+    local cursor; ble/decode/keymap#get-cursor "$_ble_decode_keymap"
+    [[ $cursor ]] && ble/term/cursor-state/set-internal "$((cursor))"
   fi
 }
 

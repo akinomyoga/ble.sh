@@ -5595,14 +5595,20 @@ _ble_term_cursor_internal=0
 _ble_term_cursor_hidden_current=unknown
 _ble_term_cursor_hidden_internal=reveal
 
-# #D1516 今迄にカーソル変更がなく、且つ既定値に戻そうとしている時は
-#   何もしない。xterm.js で DECSCUSR(0) がユーザー既定値でない事への
-#   対策。外部コマンドがカーソル形状を復元するという事を前提にしている。
-_ble_term_cursor_current=0
+# #D1516 今迄にカーソル変更がなく、且つ既定値に戻そうとしている時は何
+#   もしない為、初めから 0 にしておく事にする。xterm.js で DECSCUSR(0)
+#   がユーザー既定値でない事への対策。外部コマンドがカーソル形状を復元
+#   するという事を前提にしている。
+# #D1873 単に 0 を指定しているだけだと cursor をユーザー設定していなく
+#   ても、コマンド実行後の term/enter の時に結局 unknown が設定されて、
+#   DECSCUSR(0) が送信されて問題になる。未だ一度も ble.sh として変更し
+#   ていない事を表す値として default という物を導入する事にした。
+#   default の時には term/enter 時のクリアをしない。
+_ble_term_cursor_current=default
 
 function ble/term/cursor-state/.update {
   local state=$(($1))
-  [[ $_ble_term_cursor_current == "$state" ]] && return 0
+  [[ ${_ble_term_cursor_current/default/0} == "$state" ]] && return 0
 
   if [[ ! $_ble_term_Ss ]]; then
     case $_ble_term_TERM in
@@ -6177,7 +6183,8 @@ function ble/term/leave {
   ble/term/stty/leave
   ble/term/rl-convert-meta/leave
   ble/term/leave-for-widget
-  _ble_term_cursor_current=unknown # vim は復元してくれない
+  [[ $_ble_term_cursor_current == default ]] ||
+    _ble_term_cursor_current=unknown # vim は復元してくれない
   _ble_term_cursor_hidden_current=unknown
   _ble_term_state=external
 }

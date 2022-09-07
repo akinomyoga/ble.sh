@@ -6554,6 +6554,50 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-09-06
+
+  * decode: ble-bind --cursor で設定したカーソルが反映されない [#D1873]
+
+    vi のモードを遷移した時にしか反映されない。set -o emacs や set -o vi を実行
+    してもそのままである。調べたら keymap#{push,pop} の時にしか cursor を設定し
+    ていない気がする。base を変更した時や ble-bind で cursor を設定した時にも設
+    定を反映するべきではないか。
+
+    * 現在キーを受け付けている状態かどうかをどうやって判定するか。現在表に出て
+      いる時にだけ cursor 設定をその場で変更する。それ以外の時には記録してある
+      状態を書き換える、という具合にすれば良いだろうか。
+
+      →これは ble/term/cursor-state/set-internal を指定すれば良いだろうか。
+      実際、keymap/{push,pop} ではこの set-internal を指定している。
+
+      他の箇所で一時的に cursor を書き換えていたりはしないか。つまり、同じ
+      keymap であっても別の要因で別の cursor を表示しているという事はあるだろう
+      か。→調べたがその場所はない。基本的に keymap/{push,pop} でしか cursor
+      shape は変更していない様だ。
+
+    * base map を設定している箇所を確認する。恐らく reset-default-keymap だけだ
+      ろう。他は ble-bind -P で INITIALIZE_DEFMAP をしているがここでは
+      _ble_decode_keymap はしていない。改めて確認したが _ble_decode_keymap を変
+      更しているのはやはり decode.sh の中では keymap/{push,pop} と
+      reset-default-keymap だけである。
+
+    * ble-bind で cursor を設定した時にもその場で反映したい→対応した。動作も確
+      認した。
+
+    また、以前の xterm.js の為に指定した workaround が動いていないのではないか。
+    結局 term enter する時に unknown を設定してしまっている。そして、コメントを
+    見る限りはこれは vim がカーソルの状態を残したまま終了してしまう事に対する対
+    策の様である。
+
+    うーん。これに対してはどの様に対処するべきだろうか。vim の設定が悪いのだと
+    思えばわざわざ直さなくても良い。と思ったが元々これは ble.sh の中で keymap
+    の cursor を設定しているのにも拘らず vim の実行後にその設定が変わってしまう
+    というのが問題なのであった。
+
+    default と unknown という値を区別する事にして、ble.sh が cursor 設定を変更
+    していない時は default という事にしてユーザーコマンドが変更した cursor につ
+    いては関知しない事にする。
+
 2022-08-31
 
   * 2022-08-23 complete: progcomp 引数について [#D1872]
