@@ -6554,6 +6554,17 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-09-13
+
+  * HISTCONTROL に trim 的な物を追加しても良いのではないか [#D1874]
+    https://github.com/akinomyoga/ble.sh/issues/226#issuecomment-1243759012
+
+    bash のソースを見たら stringlib.c に strip_{leading,trailing} というのがあ
+    るので trim ではなく strip を名前として使う事にする。
+
+    取り敢えず bash の patch も作ってみる事にする。
+    https://gitlab.com/akinomyoga/bash/-/commit/d43c167e9ec150d1fe4a730475a590d48a4cc9cd
+
 2022-09-06
 
   * decode: ble-bind --cursor で設定したカーソルが反映されない [#D1873]

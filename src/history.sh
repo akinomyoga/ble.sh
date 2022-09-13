@@ -1666,22 +1666,38 @@ function ble/builtin/history/option:s {
     for pat in "${pats[@]}"; do
       [[ $cmd == $pat ]] && return 0
     done
+    # Note: 以降の処理では HISTIGNORE は無視する。trim した後のコマンドに対して
+    # 改めて作用するのを防ぐ為。
+    local HISTIGNORE=
+  fi
+
+  # Note: ble/builtin/history/erasedups によって後の builtin history -s の為に
+  # 時的に erasedups を除去する場合がある為ローカル変数に変えておく。また、
+  # ignoreboth の処理の便宜の為にも内部的に書き換える。
+  local HISTCONTROL=$HISTCONTROL
+
+  # Note: HISTIGNORE 及び ignorespace は trim 前に処理する。何故なら行頭の空白
+  # などに意味を持たせたいから。ignoredups 及び erasedups は trim 後に作用させ
+  # る。何故なら実際に履歴に登録されたコマンドと比較したいから。
+  if [[ $HISTCONTROL ]]; then
+    [[ :$HISTCONTROL: == *:ignoreboth:* ]] &&
+      HISTCONTROL=$HISTCONTROL:ignorespace:ignoredups
+    if [[ :$HISTCONTROL: == *:ignorespace:* ]]; then
+      [[ $cmd == [' 	']* ]] && return 0
+    fi
+
+    if [[ :$HISTCONTROL: == *:strip:* ]]; then
+      local ret
+      ble/string#rtrim "$cmd"
+      ble/string#match "$ret" $'^[ \t]*(\n([ \t]*\n)*)?'
+      cmd=${ret:${#BASH_REMATCH}}
+      [[ $BASH_REMATCH == *$'\n'* && $cmd == *$'\n'* ]] && cmd=$'\n'$cmd
+    fi
   fi
 
   local use_bash300wa=
   if [[ $_ble_history_load_done ]]; then
     if [[ $HISTCONTROL ]]; then
-      # Note: ble/builtin/history/erasedups によって後の builtin history -s の為
-      # に時的に erasedups を除去する場合がある為ローカル変数に変えておく。また、
-      # ignoreboth の処理の便宜の為にも内部的に書き換える。
-      local HISTCONTROL=$HISTCONTROL
-
-      [[ :$HISTCONTROL: == *:ignoreboth:* ]] &&
-        HISTCONTROL=$HISTCONTROL:ignorespace:ignoredups
-
-      if [[ :$HISTCONTROL: == *:ignorespace:* ]]; then
-        [[ $cmd == [' 	']* ]] && return 0
-      fi
       if [[ :$HISTCONTROL: == *:ignoredups:* ]]; then
         # Note: plain Bash では ignoredups を検出した時には erasedups は発生し
         # ない様なのでそれに倣う。

@@ -108,6 +108,7 @@
 - history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a 3110967
 - prompt: support `bleopt prompt_{emacs,vi}_mode_indicator` (motivated by ferdinandyb) `#D1843` 2b905f8
 - util (`ble-import`): support option `-q` `#D1859` 1ca87a9
+- history: support extension `HISTCONTROL=strip` `#D1874` xxxxxxx
 
 ## Changes
 
