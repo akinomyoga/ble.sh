@@ -3178,7 +3178,7 @@ _ble_util_msleep_calibrate_count=0
 function ble/util/msleep/.calibrate-loop {
   local _ble_measure_threshold=10000
   local ret nsec _ble_measure_count=1 v=0
-  _ble_util_msleep_delay=0 ble-measure 'ble/util/msleep 1'
+  _ble_util_msleep_delay=0 ble-measure -q 'ble/util/msleep 1'
   local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
   ((count<=0||delay<_ble_util_msleep_delay)) && _ble_util_msleep_delay=$delay # 最小値
   # ((_ble_util_msleep_delay=(count*_ble_util_msleep_delay+delay)/(count+1))) # 平均値
