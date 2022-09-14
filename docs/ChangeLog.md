@@ -27,7 +27,7 @@
   - canvas: fix wrong coordinate calculation on linefolding (reported by telometto) `#D1602` 9badb5f
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
-  - decode: reflect changes after `ble-bind --cursor` `#D1873` XXXXXXX
+  - decode: reflect changes after `ble-bind --cursor` `#D1873` 39efcf9
 - edit: support `nsearch` options (motivated by Alyetama, rashil2000, carv-silva) `#D1517` 9125795
   - edit: support `nsearch` opts `empty=emulate-readline` (motivated by jainpratik163) `#D1661` d68ba61
   - edit: support bash-5.2 binding of `prior/next` to `history-search-{for,back}ward` `#D1661` d26a6e1
@@ -178,23 +178,25 @@
 - main (`ble-reload`): preserve the original initialization options `#D1852` d8c92cc
 - blehook: print reusable code to restore the user hooks `#D1857` b763677
   - blehook: separate internal and user hooks `#D1856` b763677
+  - blehook: prefer the uniq  `!=` to the addition `+=` `#D1871` fe7abd4
+  - blehook: print hooks with `--color=auto` by default `#D1875` xxxxxxx
 - util (`ble/builtin/trap`): refactor
   - trap,blehook: rename `ERR{ => EXEC}` and separate from the `ERR` trap `#D1858` 94d1371
   - trap: remove the support for the shell function `TRAPERR` `#D1858` 94d1371
   - trap: preserve `BASH_COMMAND` in trap handlers `#D1858` 94d1371
   - util (`ble/builtin/trap`): run EXIT trap in subshells `#D1862` 5b351e8
   - util (`ble/builtin/trap`): fix the RETURN trap `#D1863` 793dfad
-  - trap,blehook: move to a new file `util.hook.sh` `#D1864` XXXXXXX
-  - trap (`trap -p`): fix unprinted existing user traps `#D1864` XXXXXXX
-  - trap (`ble/builtin/trap/finalize`): fix a failure of restoring the original trap `#D1864` XXXXXXX
-  - trap (`trap -p`): print also custom traps `#D1864` XXXXXXX
-  - trap: preserve positional parameters for user trap handlers `#D1865` XXXXXXX
-  - trap: suppress `INT` processing with user traps `#D1866` XXXXXXX
-  - trap: unify handling of `DEBUG` and the other traps `#D1867` XXXXXXX
-  - trap: work around possible interferences by recursive traps `#D1867` XXXXXXX
-  - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` XXXXXXX
-  - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` XXXXXXX
-- progcomp: reproduce arguments of completion functions passed by Bash `#D1872` XXXXXXX
+  - trap,blehook: move to a new file `util.hook.sh` `#D1864` 55a182b
+  - trap (`trap -p`): fix unprinted existing user traps `#D1864` 55a182b
+  - trap (`ble/builtin/trap/finalize`): fix a failure of restoring the original trap `#D1864` 55a182b
+  - trap (`trap -p`): print also custom traps `#D1864` 55a182b
+  - trap: preserve positional parameters for user trap handlers `#D1865` 9e2963c
+  - trap: suppress `INT` processing with user traps `#D1866` 5c28387
+  - trap: unify handling of `DEBUG` and the other traps `#D1867` a22c25b
+  - trap: work around possible interferences by recursive traps `#D1867` a22c25b
+  - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` a22c25b
+  - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` a22c25b
+- progcomp: reproduce arguments of completion functions passed by Bash `#D1872` 4d2dd35
 
 ## Fixes
 
@@ -304,7 +306,7 @@
 - complete: fix wrong `COMP_POINT` with `progcomp_alias` `#D1841` 369f7c0
 - main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
-- progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` XXXXXXX
+- progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` 4d2dd35
 
 ## Documentation
 

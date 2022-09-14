@@ -66,7 +66,7 @@ function blehook/.print-help {
 ##   @var[out] flags
 function blehook/.read-arguments {
   flags= print=() process=()
-  local opt_color=always
+  local opt_color=auto
   while (($#)); do
     local arg=$1; shift
     if [[ $arg == -* ]]; then

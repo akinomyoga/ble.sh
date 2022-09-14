@@ -6554,6 +6554,13 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-09-14
+
+  * hook: blehook | cat がデフォルトで着色になっている [#D1875]
+
+    bleopt ble-bind ble-face ble-sabbrev 等は問題ない。常に auto の振る舞いである。
+    これは blehook の read-argument が悪い。修正した。
+
 2022-09-13
 
   * HISTCONTROL に trim 的な物を追加しても良いのではないか [#D1874]
