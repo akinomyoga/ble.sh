@@ -197,6 +197,7 @@
   - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` a22c25b
   - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` a22c25b
 - progcomp: reproduce arguments of completion functions passed by Bash `#D1872` 4d2dd35
+- prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` xxxxxxx
 
 ## Fixes
 

@@ -337,6 +337,7 @@ function ble/application/onwinch {
       case $bleopt_canvas_winch_action in
       (clear)
         # 全消去して一番上から再描画
+        _ble_prompt_trim_opwd=
         ble/util/buffer "$_ble_term_clear" ;;
       (redraw-here)
         # 現在位置から再描画 (幅が減った時は前のコマンドの出力結果を破壊しな
@@ -1688,7 +1689,7 @@ function ble/prompt/update {
     local ps1f=$bleopt_prompt_ps1_final
     local rps1f=$bleopt_prompt_rps1_final
     local ps1t=$bleopt_prompt_ps1_transient
-    [[ :$ps1t: == *:trim:* || :$ps1t: == *:same-dir:* && $PWD != $_ble_edit_line_opwd ]] && ps1t=
+    [[ :$ps1t: == *:trim:* || :$ps1t: == *:same-dir:* && $PWD != $_ble_prompt_trim_opwd ]] && ps1t=
     if [[ $ps1f || $rps1f || $ps1t ]]; then
       prompt_opts=$prompt_opts:leave-rewrite
       [[ $ps1f || $ps1t ]] && prompt_ps1=$ps1f
@@ -3510,6 +3511,7 @@ function ble/widget/redraw-line {
 function ble/widget/clear-screen {
   ble-edit/content/clear-arg
   ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
+  _ble_prompt_trim_opwd=
   ble/textarea#invalidate
   local -a DRAW_BUFF=()
   ble/canvas/panel/goto-top-dock.draw
@@ -6709,7 +6711,7 @@ function ble-edit/exec:gexec/restore-state {
 # **** accept-line ****                                            @edit.accept
 
 : ${_ble_edit_lineno:=0}
-_ble_edit_line_opwd=
+_ble_prompt_trim_opwd=
 
 ## @fn ble/widget/.insert-newline/trim-prompt
 ##   @var[ref] DRAW_BUFF
@@ -6717,7 +6719,7 @@ function ble/widget/.insert-newline/trim-prompt {
   local ps1f=$bleopt_prompt_ps1_final
   local ps1t=$bleopt_prompt_ps1_transient
   if [[ ! $ps1f && :$ps1t: == *:trim:* ]]; then
-    [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_edit_line_opwd ]] && return
+    [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_prompt_trim_opwd ]] && return
     local y=${_ble_prompt_ps1_data[4]}
     if ((y)); then
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
@@ -6756,7 +6758,7 @@ function ble/widget/.insert-newline {
 
   # 描画領域情報の初期化
   ((_ble_edit_lineno++))
-  _ble_edit_line_opwd=$PWD
+  _ble_prompt_trim_opwd=$PWD
   ble/textarea#invalidate
   _ble_canvas_x=0 _ble_canvas_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
