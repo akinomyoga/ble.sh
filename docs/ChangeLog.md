@@ -199,6 +199,7 @@
 - progcomp: reproduce arguments of completion functions passed by Bash `#D1872` 4d2dd35
 - prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` xxxxxxx
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` xxxxxxx
+- canvas: update Unicode version 15.0.0 `#D1880` xxxxxxx
 
 ## Fixes
 

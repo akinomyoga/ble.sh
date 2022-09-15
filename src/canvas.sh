@@ -411,17 +411,17 @@ function ble/util/c2w:auto/test.buff {
   if ble/util/is-unicode-output; then
 
     local -a codes=(
-      # index=0 [EastAsianWidth=A 判定]
+      # index=0,1 [EastAsianWidth=A 判定]
       0x25bd 0x25b6
 
-      # index=1..15 [Unicode version 判定] #D1645 #D1668
+      # index=2..15 [Unicode version 判定] #D1645 #D1668
       #   判定用の文字コードは "source
       #   make/canvas.c2w.list-ucsver-detection-codes.sh" を用いて生
       #   成されたリストから選択した。新しい Unicode version が出たら
       #   再びこれを実行して判定コードを書く事になる。
       0x9FBC 0x9FC4 0x31B8 0xD7B0 0x3099
       0x9FCD 0x1F93B 0x312E 0x312F 0x16FE2
-      0x32FF 0x31BB 0x9FFD)
+      0x32FF 0x31BB 0x9FFD 0x1B132)
 
     _ble_util_c2w_auto_update_processing=${#codes[@]}
     _ble_util_c2w_auto_update_result=()
@@ -476,7 +476,9 @@ function ble/util/c2w/test.hook {
 
   if [[ $bleopt_char_width_version == auto ]]; then
     ws=("${_ble_util_c2w_auto_update_result[@]:2}")
-    if ((ws[11]==2)); then
+    if ((ws[13]==2)); then
+      bleopt char_width_version=15.0
+    elif ((ws[11]==2)); then
       if ((ws[12]==2)); then
         bleopt char_width_version=14.0
       else

@@ -102,7 +102,7 @@ function sub:ignoreeof-messages {
 function sub:generate-emoji-table {
   local -x name=${1:-_ble_unicode_EmojiStatus}
 
-  local unicode_version=14.0
+  local unicode_version=15.0
   local cache=out/data/unicode-emoji-$unicode_version.txt
   download "https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt" "$cache"
 
@@ -248,22 +248,25 @@ function sub:generate-emoji-table {
 }
 
 function sub:generate-grapheme-cluster-table {
-  local url=http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakProperty.txt
-  local cache=out/data/unicode-GraphemeBreakProperty-latest.txt
+  #local unicode_version=latest base_url=http://www.unicode.org/Public/UCD/latest/ucd
+  local unicode_version=15.0.0 base_url=https://www.unicode.org/Public/15.0.0/ucd
+
+  local url=$base_url/auxiliary/GraphemeBreakProperty.txt
+  local cache=out/data/unicode-GraphemeBreakProperty-$unicode_version.txt
   if [[ ! -s $cache ]]; then
     mkd out/data
     wget "$url" -O "$cache.part" && mv "$cache.part" "$cache"
   fi
 
-  local url2=https://www.unicode.org/Public/UCD/latest/ucd/emoji/emoji-data.txt
-  local cache2=out/data/unicode-emoji-data-latest.txt
+  local url2=$base_url/emoji/emoji-data.txt
+  local cache2=out/data/unicode-emoji-data-$unicode_version.txt
   if [[ ! -s $cache2 ]]; then
     mkd out/data
     wget "$url2" -O "$cache2.part" && mv "$cache2.part" "$cache2"
   fi
 
-  local url3=http://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt
-  local cache3=out/data/unicode-GraphemeBreakTest-latest.txt
+  local url3=$base_url/auxiliary/GraphemeBreakTest.txt
+  local cache3=out/data/unicode-GraphemeBreakTest-$unicode_version.txt
   if [[ ! -s $cache3 ]]; then
     mkd out/data
     wget "$url3" -O "$cache3.part" && mv "$cache3.part" "$cache3"
@@ -527,12 +530,12 @@ function sub:generate-grapheme-cluster-table {
       rule_initialize();
       rule_print();
     }
-  ' > src/canvas.GraphemeClusterBreak.sh
+  ' | sed 's/[[:space:]]\{1,\}$//' > src/canvas.GraphemeClusterBreak.sh
 }
 
 function sub:update-EastAsianWidth {
   local version
-  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0}.0; do
+  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0,15.0}.0; do
     local data=out/data/unicode-EastAsianWidth-$version.txt
     download http://www.unicode.org/Public/$version/ucd/EastAsianWidth.txt "$data"
     gawk '
@@ -750,7 +753,7 @@ function sub:update-EastAsianWidth {
 
 function sub:generate-c2w-table {
   local version
-  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0}.0; do
+  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0,15.0}.0; do
     local data=out/data/unicode-EastAsianWidth-$version.txt
     download http://www.unicode.org/Public/$version/ucd/EastAsianWidth.txt "$data"
     echo "__unicode_version__ $version"
