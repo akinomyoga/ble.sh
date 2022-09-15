@@ -223,6 +223,7 @@
   - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 88614b8
   - mandb: fix a bug that the man page is not correctly searched (fixup 2365e09) `#D1794` 65ffe70
   - mandb: support the man-page formats of `man ls` in coreutils/Japanese and in macOS `#D1847` fa32829
+  - mandb: include short name in the longname description `#D1879` xxxxxxx
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595

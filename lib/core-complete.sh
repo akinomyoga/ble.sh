@@ -4391,13 +4391,24 @@ function ble/complete/mandb/.generate-cache-from-man {
 
     END { flush_topic(); }
   ' | ble/complete/mandb/convert-mandoc 2>/dev/null | ble/bin/awk -F "$_ble_term_FS" '
-    function flush_pair(_, i) {
+    function flush_pair(_, i, desc, prev_opt) {
       if (g_option_count) {
         gsub(/\034/, "\x1b[7m^\\\x1b[27m", g_desc);
         sub(/(\.  |; ).*/, ".", g_desc); # Long descriptions are truncated.
 
-        for (i = 0; i < g_option_count; i++)
-          print g_options[i] FS g_desc;
+        for (i = 0; i < g_option_count; i++) {
+          desc = g_desc;
+
+          # show a short option
+          if (i > 0 && g_options[i] ~ /^--/) {
+            prev_opt = g_options[i - 1];
+            sub(/\034.*/, "", prev_opt);
+            if (prev_opt ~ /^-[^-]$/)
+              desc = "\033[1m[\033[0;36m" prev_opt "\033[0;1m]\033[m " desc;
+          }
+
+          print g_options[i] FS desc;
+        }
       }
       g_option_count = 0;
       g_desc = "";
@@ -4676,10 +4687,21 @@ function ble/complete/mandb:help/generate-cache {
       }
       return ret;
     }
-    function flush_data(_, i) {
+    function flush_data(_, i, desc, prev_opt) {
       if (g_indent < 0) return;
-      for (i = 0; i < g_keys_count; i++)
-        entries_register(g_keys[i] FS g_desc, g_indent);
+      for (i = 0; i < g_keys_count; i++) {
+        desc = g_desc;
+
+        # show a short option
+        if (i > 0 && g_keys[i] ~ /^--/) {
+          prev_opt = g_keys[i - 1];
+          sub(/\034.*/, "", prev_opt);
+          if (prev_opt ~ /^-[^-]$/)
+            desc = "\033[1m[\033[0;36m" prev_opt "\033[0;1m]\033[m " desc;
+        }
+
+        entries_register(g_keys[i] FS desc, g_indent);
+      }
       g_indent = -1;
       g_keys_count = 0;
       g_desc = "";

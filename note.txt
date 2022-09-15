@@ -6599,6 +6599,13 @@ bash_tips
 
 2022-09-16
 
+  * mandb: longname の説明に対応する short option 名を併記するう (suggested by bbyfacekiller) [#D1879]
+    https://github.com/akinomyoga/ble.sh/issues/231
+
+    これはもしかすると実際に short flag も選択できる様にして欲しいという要求か
+    もしれないとも思ったがよく分からないので、取り敢えず作ってみて見た目だけ見
+    せたらそれで良いというのでそのまま採用する事にする。
+
   * color: term_index_colors を優先する様に変更 (motivated by StavromulaBeta) [#D1878]
 
     これで強制的に減色したい時にユーザーが term_index_colors を設定できる。
