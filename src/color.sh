@@ -16,17 +16,15 @@ _ble_color_gflags_BgMask=0x00FFFFFF00000000
 _ble_color_gflags_FgIndexed=0x0100000000000000
 _ble_color_gflags_BgIndexed=0x0200000000000000
 
-function ble/color/define-options {
-  local ncolor=0
-  if [[ $TERM == xterm* || $TERM == *-256color || $TERM == kterm* ]]; then
-    ncolor=256
-  elif [[ $TERM == *-88color ]]; then
-    ncolor=88
-  fi
-  bleopt/declare -v term_true_colors semicolon
-  bleopt/declare -v term_index_colors "$ncolor"
-}
-ble/color/define-options
+_ble_color_index_colors_default=$_ble_term_colors
+if [[ $TERM == xterm* || $TERM == *-256color || $TERM == kterm* ]]; then
+  _ble_color_index_colors_default=256
+elif [[ $TERM == *-88color ]]; then
+  _ble_color_index_colors_default=88
+fi
+
+bleopt/declare -v term_true_colors semicolon
+bleopt/declare -v term_index_colors auto
 
 function bleopt/check:term_true_colors {
   ble/color/g2sgr/.clear-cache
@@ -679,12 +677,14 @@ function ble/color/.color2sgr-impl {
       ret=${_ble_term_sgr_af[ccode]}
     fi
   elif ((ccode<256)); then
-    if ((_ble_term_colors>=256||bleopt_term_index_colors==256)); then
+    local index_colors=$_ble_color_index_colors_default
+    [[ $bleopt_term_index_colors == auto ]] || ((index_colors=bleopt_term_index_colors))
+    if ((index_colors>=256)); then
       ret="${prefix}8;5;$ccode"
-    elif ((_ble_term_colors>=88||bleopt_term_index_colors==88)); then
+    elif ((index_colors>=88)); then
       ble/color/convert-color256-to-color88 "$ccode"
       ret="${prefix}8;5;$ret"
-    elif ((ccode<_ble_term_colors||ccode<bleopt_term_index_colors)); then
+    elif ((ccode<index_colors)); then
       ret="${prefix}8;5;$ccode"
     elif ((_ble_term_colors>=16||_ble_term_colors==8)); then
       if ((ccode>=16)); then
@@ -726,15 +726,25 @@ function ble/color/.color2sgr-impl {
       ret="${prefix}8;2;$R;$G;$B"
     elif [[ $bleopt_term_true_colors == colon ]]; then
       ret="${prefix}8:2:$R:$G:$B"
-    elif ((_ble_term_colors>=256||bleopt_term_index_colors==256)); then
-      ble/color/convert-rgb24-to-color256 "$R" "$G" "$B"
-      ret="${prefix}8;5;$ret"
-    elif ((_ble_term_colors>=88||bleopt_term_index_colors==88)); then
-      ble/color/convert-rgb24-to-color88 "$R" "$G" "$B"
-      ret="${prefix}8;5;$ret"
     else
-      ble/color/convert-rgb24-to-color256 "$R" "$G" "$B"
-      ble/color/.color2sgr-impl "$ret" "$prefix"
+      local index_colors=$_ble_color_index_colors_default
+      [[ $bleopt_term_index_colors == auto ]] || ((index_colors=bleopt_term_index_colors))
+      local index=
+      if ((index_colors>=256)); then
+        ble/color/convert-rgb24-to-color256 "$R" "$G" "$B"
+        index=$ret
+      elif ((index_colors>=88)); then
+        ble/color/convert-rgb24-to-color88 "$R" "$G" "$B"
+        index=$ret
+      else
+        ble/color/convert-rgb24-to-color256 "$R" "$G" "$B"
+        if ((ret<index_colors)); then
+          index=$ret
+        else
+          ble/color/.color2sgr-impl "$ret" "$prefix"
+        fi
+      fi
+      [[ $index ]] && ret="${prefix}8;5;$index"
     fi
   else
     ret=${prefix}9

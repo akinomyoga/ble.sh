@@ -692,12 +692,17 @@
 ##-----------------------------------------------------------------------------
 ## Color settings
 
-## The setting "term_index_colors" specifies the number of index colors
-## supported by you terminal.  The value 256 is treated as xterm 256-color
-## palette (16 basic + 6x6x6 color cube + 24 gray scale). The value 88 is
-## treated as xterm 88-color palette (16 basic + 4x4x4 color cube + 8 gray
-## scale).  The value 0 means that the terminal does not support extra colors
-## other than basic colors.
+## The setting "term_index_colors" specifies the number of index colors used to
+## specify colors in the terminal.  The value "auto" means that the use of
+## index colors are determined based on the terminfo database and the value of
+## TERM shell variable.  Otherwise, the value is evaluated as an arithmetic
+## expression.  When it is evaluated to 256, the index colors are assumed to be
+## xterm 256-color palette (16 basic + 6x6x6 color cube + 24 gray scale).  When
+## it is evaluated to 88, the index colors are assumed to be xterm 88-color
+## palette (16 basic + 4x4x4 color cube + 8 gray scale).  When it is evaluated
+## to 0, ble.sh will never use the index colors to set colors.  When it is
+## evaluated to other integers, the value specifies the maximum available
+## index.
 
 #bleopt term_index_colors=256
 

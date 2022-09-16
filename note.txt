@@ -1855,6 +1855,12 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
+2022-09-15
+
+  * vim terminal や neovim terminal における keymap-timeout に対応する設定は何
+    か。調べてみると ttimeoutlen や timeoutlen という物がある様だが、これの設定
+    を変更しても振る舞いに変化はない気がする。後でちゃんと調べる必要がある。
+
 2022-09-11
 
   * 何らかの拍子に P[0 q の様な謎の文字列がユーザーコマンドの実行後に出力される
@@ -6590,6 +6596,78 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-09-16
+
+  * color: term_index_colors を優先する様に変更 (motivated by StavromulaBeta) [#D1878]
+
+    これで強制的に減色したい時にユーザーが term_index_colors を設定できる。
+
+  * [棄却] neovim terminal / vim-autocomplpop で i/a を入力した時の問題 [#D1877]
+    https://github.com/akinomyoga/ble.sh/issues/232
+
+    変な文字列が挿入・実行される
+
+    # これは報告者が使っている AutoComplPop というプラグインが古いのが原因だった
+
+    neovim は nvim というコマンドで起動する様だ。
+
+    再現しない。nvim-0.7.2, bash-5.2-rc2, としても再現しない。
+
+    * plain vimrc? .vimrc をコメントアウトして試したが再現しない。
+
+    * reject: 或いは i, a に対する delay が関係している可能性? 実際に操作してい
+      てい ESC がちゃんと即座に処理されていない気がする。
+      https://vi.stackexchange.com/questions/16148/slow-vim-escape-from-insert-mode
+      と思って ttimeoutlen や timeoutlen を短い値に変えてみたが振る舞い(遅延)に
+      変化は見られない。これらの設定は関係ないという事か?
+
+    * 27_feedPopup() という文字列が挿入されている。9_feedPopup で検索すると vim
+      の中にある自動補完の仕組みが関係している様な気がするが詳細はよく分からな
+      い。これでエラーが出ているという事は、実際に ble.sh がこの文字列を受信し
+      ているということである。vim の保管機能が意図しない形で ble.sh に対して送
+      信されて、変な文字列が挿入されると共に実行まで開始されている。
+
+      https://askubuntu.com/questions/382407/vim-autocomplpop-issues
+
+      このページを見る限り AutoComplPop という何かが関係している?
+      元々のページ at bitbucket は消滅している?
+
+      https://github.com/vim-scripts/AutoComplPop
+
+      ここを見ると最後に更新されているのは12年前。runtime path 以下にファイルを
+      コピーしろと書かれているが runtime path が何か分からない。検索すると
+      runtimepath という変数に入っているみたいだが、今度は runtimepath という変
+      数の値を取得する方法が分からない。と思ったら ":set runtimepath^M" で良い
+      様だ。set で右辺を指定しなければ現在の値が表示される。実際に表示してみる
+      と以下の様になっている。
+
+      # runtimepath=~/.config/nvim,/etc/xdg/nvim,~/.local/share/nvim/site,
+      # ~/.local/share/flatpak/exports/share/nvim/site,
+      # /var/lib/flatpak/exports/share/nvim/site,
+      # /usr/local/share/nvim/site,/usr/share/nvim/site,/usr/share/nvim/runtime,
+      # /usr/share/nvim/runtime/pack/dist/opt/matchit,/usr/lib/nvim,
+      # /usr/share/nvim/site/after,/usr/local/share/nvim/site/after,
+      # /var/lib/flatpak/exports/share/nvim/site/after,
+      # ~/.local/share/flatpak/exports/share/nvim/site/after,
+      # ~/.local/share/nvim/site/after,/etc/xdg/nvim/after,~/.config/nvim/after,
+      # /usr/share/vim/vimfiles/
+
+      取り敢えず .config/nvim に入れる。
+
+      OK 再現した。うーん。何故これが発生しているのだろうか。
+
+      うーん。然し、そもそも ble.sh をロードしていなかったとしても i または a
+      を押すと最後に実行したコマンドが強制的に実行される様である。これは変であ
+      る。そもそも ble.sh だけの問題ではない気がする。
+
+      検索すると https://github.com/othree/vim-autocomplpop/issues/9 で同じ現象
+      が報告されている。というかこれが acp の最新版なのではないか。これを入れて
+      みたところ、今度は ***** L9 library must be installed! ***** というメッセー
+      ジが表示される。検索してみたらこれは行番号ではなくて "L9" という名前のラ
+      イブラリらしい。同じエラーメッセージについての質問があった。
+
+      https://stackoverflow.com/questions/22902141/l9-library-must-be-installed-error-occurred
 
 2022-09-14
 
