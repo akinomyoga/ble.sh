@@ -16,15 +16,13 @@ _ble_color_gflags_ShiftBg=16
 _ble_color_gflags_ForeColor=0x1000000
 _ble_color_gflags_BackColor=0x2000000
 
-if [[ ! ${bleopt_term_index_colors+set} ]]; then
-  if [[ $TERM == xterm* || $TERM == *-256color || $TERM == kterm* ]]; then
-    bleopt_term_index_colors=256
-  elif [[ $TERM == *-88color ]]; then
-    bleopt_term_index_colors=88
-  else
-    bleopt_term_index_colors=0
-  fi
+_ble_color_index_colors_default=$_ble_term_colors
+if [[ $TERM == xterm* || $TERM == *-256color || $TERM == kterm* ]]; then
+  _ble_color_index_colors_default=256
+elif [[ $TERM == *-88color ]]; then
+  _ble_color_index_colors_default=88
 fi
+bleopt/declare -v term_index_colors auto
 
 function ble-color-show {
   if (($#)); then
@@ -288,12 +286,14 @@ function ble/color/.color2sgr-impl {
       ret=${_ble_term_sgr_af[ccode]}
     fi
   elif ((ccode<256)); then
-    if ((ccode<_ble_term_colors||bleopt_term_index_colors==256)); then
+    local index_colors=$_ble_color_index_colors_default
+    [[ $bleopt_term_index_colors == auto ]] || ((index_colors=bleopt_term_index_colors))
+    if ((index_colors>=256)); then
       ret="${prefix}8;5;$ccode"
-    elif ((bleopt_term_index_colors==88)); then
+    elif ((index_colors>=88)); then
       ble/color/convert-color256-to-color88 "$ccode"
       ret="${prefix}8;5;$ret"
-    elif ((ccode<bleopt_term_index_colors)); then
+    elif ((ccode<index_colors)); then
       ret="${prefix}8;5;$ccode"
     elif ((_ble_term_colors>=16||_ble_term_colors==8)); then
       if ((ccode>=16)); then
@@ -328,6 +328,8 @@ function ble/color/.color2sgr-impl {
     else
       ret=${prefix}9
     fi
+  else
+    ret=${prefix}9
   fi
 }
 
