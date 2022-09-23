@@ -1414,7 +1414,8 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
 if ((_ble_bash>=40000)); then
   (
     ble/test 'echo 1 | { sleep 0.01; ble/util/is-stdin-ready; }'
-    ble/test 'sleep 0.01 | ble/util/is-stdin-ready' exit=1
+    [[ ${CI-} == true && ${GITHUB_ACTION-} && $OSTYPE == msys* ]] ||
+      ble/test 'sleep 0.01 | ble/util/is-stdin-ready' exit=1
     ble/test 'ble/util/is-stdin-ready <<< a'
     ble/test 'ble/util/is-stdin-ready <<< ""'
 
@@ -1515,6 +1516,10 @@ ble/test ble/util/is-running-in-subshell exit=1
     ble/util/declare-print-definitions a0 a1 a{2..8} 2>/dev/null)"
 
   for name in a0 a1 a{2..8}; do
+    # WA: msys bash では何故か配列代入形式 arr2=("${arr1[@]}") で要素に含まれる
+    # \r が全て消滅する。仕方がないのでスキップする。
+    [[ $name == a5 && $OSTYPE == msys* ]] && continue
+
     stdout_var=s$name
     ble/test "status $name" ret="${!stdout_var}"
   done

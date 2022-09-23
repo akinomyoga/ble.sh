@@ -541,8 +541,8 @@ builtin bind &>/dev/null # force to load .inputrc
 
 # WA #D1534 workaround for msys2 .inputrc
 if [[ $OSTYPE == msys* ]]; then
-  [[ $(builtin bind -m emacs -p | grep '"\\C-?"') == '"\C-?": backward-kill-line' ]] &&
-    builtin bind -m emacs '"\C-?": backward-delete-char'
+  [[ $(builtin bind -m emacs -p 2>/dev/null | grep '"\\C-?"') == '"\C-?": backward-kill-line' ]] &&
+    builtin bind -m emacs '"\C-?": backward-delete-char' 2>/dev/null
 fi
 
 if [[ ! -o emacs && ! -o vi && ! $_ble_init_command ]]; then
@@ -2170,6 +2170,8 @@ ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
 
 function ble/base/sub:test {
   local error= logfile=
+
+  [[ ${LANG-} ]] || local LANG=en_US.UTF-8
 
   ble-import lib/core-test
 

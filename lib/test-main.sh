@@ -30,6 +30,11 @@ ble/test/start-section 'ble/main' 19
 
 # ble/util/readlink
 (
+  if [[ $OSTYPE == msys* ]]; then
+    ble/path#append MSYS winsymlinks
+    export MSYS
+  fi
+
   ble/bin/.freeze-utility-path readlink ls
   function ble/test:readlink.impl1 {
     ret=$1
@@ -56,10 +61,12 @@ ble/test/start-section 'ble/main' 19
     ret="${PWD%/}/ab/cd/ef/file.txt"
 
   # loop symbolic links
+  touch loop1.sh
   ln -s loop1.sh loop0.sh
-  ln -s loop2.sh loop1.sh
-  ln -s loop3.sh loop2.sh
   ln -s loop1.sh loop3.sh
+  rm loop1.sh
+  ln -s loop3.sh loop2.sh
+  ln -s loop2.sh loop1.sh
   for impl in impl1 impl2; do
     ble/test "ble/test:readlink.$impl loop0.sh" ret='loop1.sh'
   done
