@@ -1165,7 +1165,7 @@ function ble/complete/progcomp/.compvar-reduce-cur {
     cur=${cur:${#BASH_REMATCH}+1}
   elif [[ $cur =~ $_ble_complete_progcomp_cur_rex_break ]]; then
     cur=${cur:${#BASH_REMATCH}}
-    [[ ${BASH_REMATCH[5]} == @(\$*|@|\\?) ]] && cur=${BASH_REMATCH[5]#\\}$cur
+    case ${BASH_REMATCH[5]} in (\$*|@|\\?) cur=${BASH_REMATCH[5]#\\}$cur ;; esac
   fi
 }
 
