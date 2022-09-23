@@ -1588,13 +1588,15 @@ ble/test ble/util/is-running-in-subshell exit=1
 # ble/util/strftime
 
 # ble/util/{msleep,sleep}
-ble/util/msleep/.calibrate-loop &>/dev/null
-ble/util/msleep/.calibrate-loop &>/dev/null
-ble/util/msleep/.calibrate-loop &>/dev/null
-(
-  ble/test 'ble-measure -q "ble/util/msleep 100"; echo "$ret usec" >&2; ((msec=ret/1000,90<=msec&&msec<=110))'
-  ble/test 'ble-measure -q "ble/util/sleep 0.1"; echo "$ret usec" >&2; ((msec=ret/1000,90<=msec&&msec<=110))'
-)
+if ! [[ ${CI-} == true && ${GITHUB_ACTION-} ]]; then
+  ble/util/msleep/.calibrate-loop &>/dev/null
+  ble/util/msleep/.calibrate-loop &>/dev/null
+  ble/util/msleep/.calibrate-loop &>/dev/null
+  (
+    ble/test 'ble-measure -q "ble/util/msleep 100"; echo "$ret usec" >&2; ((msec=ret/1000,90<=msec&&msec<=120))'
+    ble/test 'ble-measure -q "ble/util/sleep 0.1"; echo "$ret usec" >&2; ((msec=ret/1000,90<=msec&&msec<=120))'
+  )
+fi
 
 # ble/util/conditional-sync
 (
@@ -1822,7 +1824,7 @@ ble/util/msleep/.calibrate-loop &>/dev/null
   ble/test 'ble/util/c2s.cached 956' ret=μ
   ble/test 'ble/util/c2s.cached 12354' ret=あ
 
-  LANG=C
+  LC_ALL=C
   ble/test 'ble/util/c2s 97' ret=a
   ble/test 'ble/util/c2s 956; [[ $ret != μ ]]'
   ble/test 'ble/util/c2s 12354; [[ $ret != あ ]]'
