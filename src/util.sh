@@ -3563,10 +3563,21 @@ _ble_util_s2c_table_enabled=
 ##   @param[in] text
 ##   @param[in,opt] index
 ##   @var[out] ret
-if ((_ble_bash>=40100)); then
-  # - printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
+if ((_ble_bash>=50300)); then
+  # printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
   function ble/util/s2c {
     builtin printf -v ret '%d' "'${1:$2:1}"
+  }
+elif ((_ble_bash>=40100)); then
+  function ble/util/s2c {
+    # Note #D1881: bash-5.2 以前では printf %d "'x" に対して mbstate_t 状態が
+    # 残ってしまう。なので一旦 clear を試みる。
+    if ble/util/is-unicode-output; then
+      builtin printf -v ret %d "'μ"
+    else
+      builtin printf -v ret %d "'x"
+    fi
+    builtin printf -v ret %d "'$1"
   }
 elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # - 連想配列にキャッシュできる
@@ -3627,7 +3638,7 @@ if ((_ble_bash>=40200)); then
   # workarounds of bashbug that printf '\uFFFF' results in a broken surrogate
   # pair in systems where sizeof(wchar_t) == 2.
   function ble/util/.has-bashbug-printf-uffff {
-    ((40200<=_ble_bash&&_ble_bash<40500)) || return 1
+    ((40200<=_ble_bash&&_ble_bash<50000)) || return 1
     local LC_ALL=C.UTF-8 2>/dev/null # Workaround: CentOS 7 に C.UTF-8 がなかった
     local ret
     builtin printf -v ret '\uFFFF'
@@ -3730,6 +3741,12 @@ function ble/util/.cache/update-locale {
         _ble_util_locale_encoding=$enc
     fi
   fi
+}
+
+function ble/util/is-unicode-output {
+  [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    ble/util/.cache/update-locale
+  [[ $_ble_util_locale_encoding == UTF-8 ]]
 }
 
 #------------------------------------------------------------------------------
@@ -3849,9 +3866,9 @@ function ble/encoding:UTF-8/b2c {
   bytes=("$@")
   ret=0
   ((b0=bytes[0]&0xFF))
-  ((n=b0>0xF0
-    ?(b0>0xFC?5:(b0>0xF8?4:3))
-    :(b0>0xE0?2:(b0>0xC0?1:0)),
+  ((n=b0>=0xF0
+    ?(b0>=0xFC?5:(b0>=0xF8?4:3))
+    :(b0>=0xE0?2:(b0>=0xC0?1:0)),
     ret=n?b0&0x7F>>n:b0))
   for ((i=1;i<=n;i++)); do
     ((ret=ret<<6|0x3F&bytes[i]))
@@ -3891,10 +3908,4 @@ function ble/encoding:C/b2c {
 function ble/encoding:C/c2b {
   local code=$1
   bytes=($((code&0xFF)))
-}
-
-function ble/util/is-unicode-output {
-  [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
-    ble/util/.cache/update-locale
-  [[ $_ble_util_locale_encoding == UTF-8 ]]
 }
