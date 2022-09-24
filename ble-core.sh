@@ -386,6 +386,25 @@ function ble/string#split {
   fi
 }
 
+if ((_ble_bash>=40000)); then
+  function ble/string#tolower { ret=${1,,}; }
+else
+  function ble/string#tolower {
+    local LC_ALL= LC_COLLATE=C
+    local i text=$1 ch
+    local -a buff=()
+    for ((i=0;i<${#text};i++)); do
+      ch=${text:i:1}
+      if [[ $ch == [A-Z] ]]; then
+        ch=${_ble_util_string_upper_list%%"$ch"*}
+        ch=${_ble_util_string_lower_list:${#ch}:1}
+      fi
+      ble/util/array-push buff "$ch"
+    done
+    IFS= eval 'ret="${buff[*]-}"'
+  } 2>/dev/null
+fi
+
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
 function ble/util/isprint+ {
@@ -633,15 +652,27 @@ function .ble-term.visible-bell.cancel-erasure {
 #------------------------------------------------------------------------------
 # String manipulations
 
-if ((_ble_bash>=40100)); then
+if ((_ble_bash>=50300)); then
   # - printf "'c" で unicode が読める
   function .ble-text.s2c {
+    builtin printf -v ret '%d' "'${1:$2:1}"
+  }
+elif ((_ble_bash>=40100)); then
+  function .ble-text.s2c {
+    # Note #D1881: bash-5.2 以前では printf %d "'x" に対して mbstate_t 状態が
+    # 残ってしまう。なので一旦 clear を試みる。
+    if ble/util/is-unicode-output; then
+      builtin printf -v ret %d "'μ"
+    else
+      builtin printf -v ret %d "'x"
+    fi
     builtin printf -v ret '%d' "'${1:$2:1}"
   }
 elif ((_ble_bash>=40000)); then
   # - 連想配列にキャッシュできる
   # - printf "'c" で unicode が読める
   declare -A _ble_text_s2c_table
+  _ble_text_s2c_table_enabled=1
   function .ble-text.s2c {
     local s="${1:$2:1}"
     ret="${_ble_text_s2c_table[x$s]}"
@@ -731,6 +762,46 @@ function ble-text-c2bc {
   "ble-text-c2bc+$bleopt_input_encoding" "$1"
 }
 
+## 関数 ble/util/.cache/update-locale
+##
+##  使い方
+##
+##    [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+##      ble/util/.cache/update-locale
+##
+_ble_util_locale_triple=
+_ble_util_locale_ctype=
+_ble_util_locale_encoding=UTF-8
+function ble/util/.cache/update-locale {
+  _ble_util_locale_triple=$LC_ALL:$LC_CTYPE:$LANG
+
+  # clear cache if LC_CTYPE is changed
+  local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
+  if [[ $_ble_util_locale_ctype != $ret ]]; then
+    _ble_util_locale_ctype=$ret
+    _ble_text_c2s_table=()
+    [[ $_ble_text_s2c_table_enabled ]] &&
+      _ble_text_s2c_table=()
+
+    _ble_util_locale_encoding=C
+    if local rex='\.([^@]+)'; [[ $_ble_util_locale_ctype =~ $rex ]]; then
+      local enc=${BASH_REMATCH[1]}
+      if [[ $enc == utf-8 || $enc == utf8 ]]; then
+        enc=UTF-8
+      fi
+
+      ble/util/isfunction "ble-text-b2c+$enc" &&
+        _ble_util_locale_encoding=$enc
+    fi
+  fi
+}
+
+function ble/util/is-unicode-output {
+  [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    ble/util/.cache/update-locale
+  [[ $_ble_util_locale_encoding == UTF-8 ]]
+}
+
 #------------------------------------------------------------------------------
 
 ## @var[out] ret
@@ -739,9 +810,9 @@ function ble-text-b2c+UTF-8 {
   bytes=("$@")
   ret=0
   ((b0=bytes[0]&0xFF))
-  ((n=b0>0xF0
-    ?(b0>0xFC?5:(b0>0xF8?4:3))
-    :(b0>0xE0?2:(b0>0xC0?1:0)),
+  ((n=b0>=0xF0
+    ?(b0>=0xFC?5:(b0>=0xF8?4:3))
+    :(b0>=0xE0?2:(b0>=0xC0?1:0)),
     ret=n?b0&0x7F>>n:b0))
   for ((i=1;i<=n;i++)); do
     ((ret=ret<<6|0x3F&bytes[i]))
