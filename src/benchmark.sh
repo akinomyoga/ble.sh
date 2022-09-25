@@ -162,6 +162,7 @@ function ble-measure/.read-arguments {
     case $arg in
     (--) break ;;
     (--help) flags=h$flags ;;
+    (--no-print-progress) flags=V$flags ;;
     (--*)
       ble/util/print "ble-measure: unrecognized option '$arg'."
       flags=E$flags ;;
@@ -170,7 +171,7 @@ function ble-measure/.read-arguments {
       for ((i=1;i<${#arg};i++)); do
         c=${arg:i:1}
         case $c in
-        (q) flags=q$flags ;;
+        (q) flags=qV$flags ;;
         ([ca])
           [[ $c == a ]] && flags=a$flags
           ble-measure/.read-arguments.get-optarg && count=$optarg ;;
@@ -266,9 +267,9 @@ function ble-measure {
     [[ $prev_n ]] && ((n/prev_n<=10 && prev_utot*n/prev_n<measure_threshold*2/5 && n!=50000)) && continue
 
     local utot=0 usec=0
-    [[ $flags != *q* ]] && printf '%s (x%d)...' "$command" "$n" >&2
+    [[ $flags != *V* ]] && printf '%s (x%d)...' "$command" "$n" >&2
     ble-measure/.time "$command" || return 1
-    [[ $flags != *q* ]] && printf '\r\e[2K' >&2
+    [[ $flags != *V* ]] && printf '\r\e[2K' >&2
     ((utot >= measure_threshold)) || continue
 
     prev_n=$n prev_utot=$utot
@@ -278,12 +279,12 @@ function ble-measure {
     if [[ $count ]]; then
       local sum_utot=$utot sum_count=1 i
       for ((i=2;i<=count;i++)); do
-        [[ $flags != *q* ]] && printf '%s' "$command (x$n $i/$count)..." >&2
+        [[ $flags != *V* ]] && printf '%s' "$command (x$n $i/$count)..." >&2
         if ble-measure/.time "$command"; then
           ((utot<min_utot)) && min_utot=$utot
           ((sum_utot+=utot,sum_count++))
         fi
-        [[ $flags != *q* ]] && printf '\r\e[2K' >&2
+        [[ $flags != *V* ]] && printf '\r\e[2K' >&2
       done
       if [[ $flags == *a* ]]; then
         ((utot=sum_utot/sum_count))

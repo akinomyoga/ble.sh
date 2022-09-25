@@ -543,6 +543,180 @@ function ble/unicode/GraphemeCluster/c2break {
   return 0
 }
 
+_ble_unicode_GraphemeCluster_bomlen=1
+_ble_unicode_GraphemeCluster_ucs4len=1
+function ble/unicode/GraphemeCluster/s2break/.initialize {
+  local LC_ALL=C.UTF-8
+  builtin eval "local v1=\$'\\uFE0F' v2=\$'\\U1F6D1'"
+  _ble_unicode_GraphemeCluster_bomlen=${#v1}
+  _ble_unicode_GraphemeCluster_ucs4len=${#v2}
+  ble/util/unlocal LC_ALL
+  builtin unset -f "$FUNCNAME"
+} 2>/dev/null # suppress locale error #D1440
+ble/unicode/GraphemeCluster/s2break/.initialize
+
+## @fn ble/unicode/GraphemeCluster/s2break/.combine-surrogate code1 code2 str
+##   @var[out] c
+function ble/unicode/GraphemeCluster/s2break/.combine-surrogate {
+  local code1=$1 code2=$2 s=$3
+  if ((0xDC00<=code2&&code2<=0xDFFF)); then
+    ((c=0x10000+(code1-0xD800)*1024+(code2&0x3FF)))
+  else
+    local ret
+    ble/util/s2bytes "$s"
+    ble/encoding:UTF-8/b2c "${ret[@]}"
+    c=$ret
+  fi
+}
+## @fn ble/unicode/GraphemeCluster/s2break/.wa-bash43bug-uFFFF code
+##   (#D1881) Bash 4.3, 4.4 [sizeof(wchar_t) == 2] で $'\uE000'.. $'\uFFFF' が
+##   壊れたサロゲートになるバグに対する対策。この時、前半サロゲートは不正な値
+##   U+D7F8..D7FF になるが、これはハングル字母などと被る。U+D7F8..D7FF の時は、
+##   次の文字が後半サロゲートの時に限り前半サロゲートとして取り扱う。
+##
+##   @param[in] code
+##     壊れた前半サロゲータの可能性がある文字コード
+##   @var[in,out] ret
+##     調整前後の GraphemeClusterBreak 値
+##   @exit
+##     調整が行われた時に成功です (0)。それ以外の時は失敗 (1) です。
+##
+if ((_ble_unicode_GraphemeCluster_bomlen==2&&40300<=_ble_bash&&_ble_bash<50000)); then
+  function ble/unicode/GraphemeCluster/s2break/.wa-bash43bug-uFFFF {
+    local code=$1
+    ((0xD7F8<=code&&code<0xD800)) && ble/util/is-unicode-output &&
+      ret=$_ble_unicode_GraphemeClusterBreak_HighSurrogate
+  }
+else
+  function ble/unicode/GraphemeCluster/s2break/.wa-bash43bug-uFFFF { ((0)); }
+fi
+## @fn ble/unicode/GraphemeCluster/s2break/.wa-cygwin-LSG code
+##   (#D1881) Cygwin では UCS-2 に入らないコードポイントの後半サロゲートをs2cで
+##   取ろうとしても 0 になってしまう (Bash 5.0 以降では 4-byte UTF-8 の最後のバ
+##   イト値) ので、後半について code == 0 の場合も前半サロゲートをチェックする。
+##
+##   @param[in] code
+##     UCS-4 の後半サロゲートの可能性がある文字コード
+##   @var[in,out] ret
+##     調整前後の GraphemeClusterBreak 値
+##   @exit
+##     調整が行われた時に成功です (0)。それ以外の時は失敗 (1) です。
+##
+if ((_ble_unicode_GraphemeCluster_ucs4len==2)); then
+  if ((_ble_bash<50000)); then
+    function ble/unicode/GraphemeCluster/s2break/.wa-cygwin-LSG {
+      local code=$1
+      ((code==0)) && ble/util/is-unicode-output &&
+        ret=$_ble_unicode_GraphemeClusterBreak_LowSurrogate
+    }
+  else
+    function ble/unicode/GraphemeCluster/s2break/.wa-cygwin-LSG {
+      local code=$1
+      ((0x80<=code&&code<0xC0)) && ble/util/is-unicode-output &&
+        ret=$_ble_unicode_GraphemeClusterBreak_LowSurrogate
+    }
+  fi
+else
+  function ble/unicode/GraphemeCluster/s2break/.wa-cygwin-LSG { ((0)); }
+fi
+
+## @fn ble/unicode/GraphemeCluster/s2break-left str index [opts]
+## @fn ble/unicode/GraphemeCluster/s2break-right str index [opts]
+##   指定した文字列の指定した境界の左右の code point の GraphemeCulsterBreak 値
+##   を求めます。単に bash の文字単位ではなく、サロゲートペアも考慮に入れたコー
+##   ドポイント単位で処理を行います。
+##
+##   @param str
+##   @param index
+##   @param[opt] opts
+##   @var[out] ret
+##     GraphemeCulsterBreak 値を返します。
+##   @var[out,opt] shift
+##     opts に shift が指定された時に対象の code point の文字数を返します。
+##     surrogate pair の時に 2 になります。それ以外の時は 1 です。
+##   @var[out,opt] code
+##     opts に code が指定された時に対象の code point を返します。
+##
+## * Note2 (#D1881): ${s:i-1:2} 等として 2 文字切り出すのは、Cygwin では
+##   ${s:i-1:1} として最初の文字を切り出そうとすると UCS-2 に入らない code
+##   point の文字が破壊されてしまって surrogate 前半すら取り出せなくなる為。少
+##   なくとも wchar_t*2 の分だけ渡せば printf %d '$1 で surrogate 前半の code
+##   point を取り出す事ができる。
+function ble/unicode/GraphemeCluster/s2break-left {
+  ret=0
+  local s=$1 N=${#1} i=$2 opts=$3 sh=1
+  ((i>0)) && ble/util/s2c "${s:i-1:2}"; local c=$ret code2=$ret # Note2 (上述)
+  ble/unicode/GraphemeCluster/c2break "$code2"; local break=$ret
+
+  # process surrogate pairs
+  ((i-1<N)) && ble/unicode/GraphemeCluster/s2break/.wa-cygwin-LSG "$code2"
+  if ((i-2>=0&&ret==_ble_unicode_GraphemeClusterBreak_LowSurrogate)); then
+    ble/util/s2c "${s:i-2:2}"; local code1=$ret # Note2 (上述)
+    ble/unicode/GraphemeCluster/c2break "$code1"
+    ble/unicode/GraphemeCluster/s2break/.wa-bash43bug-uFFFF "$code1"
+    if ((ret==_ble_unicode_GraphemeClusterBreak_HighSurrogate)); then
+      ble/unicode/GraphemeCluster/s2break/.combine-surrogate "$code1" "$code2" "${s:i-2:2}"
+      ble/unicode/GraphemeCluster/c2break "$c"
+      break=$ret
+      sh=2
+    fi
+  elif ((i<N)) && ble/unicode/GraphemeCluster/s2break/.wa-bash43bug-uFFFF "$code2"; then
+    # 壊れた前半サロゲートの可能性があるので次の文字を確認して break を確定する。
+    # (Note: 壊れたサロゲートペアの場合には UTF-8 4B 表現になる事はないので
+    # Cygwin で code_next==0 になる可能性は考えなくて良い。)
+    ble/util/s2c "${s:i:1}"; local code_next=$ret
+    ble/unicode/GraphemeCluster/c2break "$code_next"
+    ((ret==_ble_unicode_GraphemeClusterBreak_LowSurrogate)) &&
+      break=$_ble_unicode_GraphemeClusterBreak_HighSurrogate
+  fi
+
+  [[ :$opts: == *:shift:* ]] && shift=$sh
+  [[ :$opts: == *:code:* ]] && code=$c
+  ret=$break
+}
+function ble/unicode/GraphemeCluster/s2break-right {
+  ret=0
+  local s=$1 N=${#1} i=$2 opts=$3 sh=1
+  ble/util/s2c "${s:i:2}"; local c=$ret code1=$ret # Note2 (上述)
+  ble/unicode/GraphemeCluster/c2break "$code1"; local break=$ret
+
+  # process surrogate pairs
+  ble/unicode/GraphemeCluster/s2break/.wa-bash43bug-uFFFF "$code1"
+  if ((i+1<N&&ret==_ble_unicode_GraphemeClusterBreak_HighSurrogate)); then
+    ble/util/s2c "${s:i+1:1}"; local code2=$ret
+    ble/unicode/GraphemeCluster/s2break/.wa-cygwin-LSG "$code2" ||
+      ble/unicode/GraphemeCluster/c2break "$code2"
+
+    if ((ret==_ble_unicode_GraphemeClusterBreak_LowSurrogate)); then
+      ble/unicode/GraphemeCluster/s2break/.combine-surrogate "$code1" "$code2" "${s:i:2}"
+      ble/unicode/GraphemeCluster/c2break "$c"
+      break=$ret
+      sh=2
+    fi
+  elif ((0<i&&i<N)) && ble/unicode/GraphemeCluster/s2break/.wa-cygwin-LSG "$code1"; then
+    # Note #D1881: Cygwin では UCS-2 に入らない code point の surrogate 後半を
+    # s2c で取ろうとしても 0 になってしまうので code1==0 の時は念入りに調べる。
+    # 前に HighSurrogate がない時は通常文字と同様に取り扱って問題ない。
+    ble/util/s2c "${s:i-1:1}"; local code_prev=$ret
+    ble/unicode/GraphemeCluster/c2break "$code_prev"
+    ble/unicode/GraphemeCluster/s2break/.wa-bash43bug-uFFFF "$code_prev"
+    if ((ret==_ble_unicode_GraphemeClusterBreak_HighSurrogate)); then
+      break=$_ble_unicode_GraphemeClusterBreak_LowSurrogate
+      if [[ :$opts: == *:code:* ]]; then
+        ble/util/s2bytes "${s:i-1:2}"
+        ble/encoding:UTF-8/b2c "${ret[@]}"
+        ((c=0xDC00|ret&0x3FF))
+      else
+        c=0
+      fi
+    fi
+  fi
+
+  [[ :$opts: == *:shift:* ]] && shift=$sh
+  [[ :$opts: == *:code:* ]] && code=$c
+  ret=$break
+}
+
 ## @fn ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ
 ##   @var[in] text i
 ##   @var[out] ret
@@ -552,10 +726,9 @@ function ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ {
     return 0
   fi
 
-  local j=$((i-1))
-  for ((j=i-1;j>0;j--)); do
-    ble/util/s2c "${text:j-1:1}"
-    ble/unicode/GraphemeCluster/c2break "$ret"
+  local j=$((i-1)) shift=1
+  for ((j=i-1;j>0;j-=shift)); do
+    ble/unicode/GraphemeCluster/s2break-left "$text" "$j" shift
     ((ret==_ble_unicode_GraphemeClusterBreak_Extend)) || break
   done
 
@@ -568,49 +741,50 @@ function ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ {
   else
     #    Pictographic | Extend* ZWJ | Pictographic
     #                 ^--- j        ^--- i
-    ((i=j-1,b1=ret))
+    ((i=j-shift,b1=ret))
     return 1
   fi
 }
 ## @fn ble/unicode/GraphemeCluster/find-previous-boundary/.RI
-##   @var[in] text i
+##   @var[in] text i shift
 ##   @var[out] ret
 function ble/unicode/GraphemeCluster/find-previous-boundary/.RI {
   if [[ :$bleopt_emoji_opts: != *:ri:* ]]; then
     ((ret=i))
     return 0
   fi
-
-  local j=$((i-1))
-  for ((j=i-1;j>0;j--)); do
-    ble/util/s2c "${text:j-1:1}"
-    ble/unicode/GraphemeCluster/c2break "$ret"
+  local j1=$((i-shift))
+  local j shift=1 countRI=1
+  for ((j=j1;j>0;j-=shift,countRI++)); do
+    ble/unicode/GraphemeCluster/s2break-left "$text" "$j" shift
     ((ret==_ble_unicode_GraphemeClusterBreak_Regional_Indicator)) || break
   done
 
-  if ((i-j==1)); then
+  if ((j==j1)); then
     ((i=j,b1=_ble_unicode_GraphemeClusterBreak_Regional_Indicator))
     return 1
   else
-    ((ret=(i-j)%2==1?i-1:i))
+    ((ret=countRI%2==1?j1:i))
     return 0
   fi
 }
 function ble/unicode/GraphemeCluster/find-previous-boundary {
-  local text=$1 i=$2
+  local text=$1 i=$2 shift
   if [[ $bleopt_grapheme_cluster ]] && ((i&&--i)); then
-    ble/util/s2c "${text:i:1}"
-    ble/unicode/GraphemeCluster/c2break "$ret"; local b1=$ret
+    ble/unicode/GraphemeCluster/s2break-right "$text" "$i" shift; local b1=$ret
     while ((i>0)); do
       local b2=$b1
-      ble/util/s2c "${text:i-1:1}"
-      ble/unicode/GraphemeCluster/c2break "$ret"; local b1=$ret
+      ble/unicode/GraphemeCluster/s2break-left "$text" "$i" shift; local b1=$ret
       case ${_ble_unicode_GraphemeClusterBreak_rule[b1*_ble_unicode_GraphemeClusterBreak_Count+b2]} in
       (0) break ;;
-      (1) ((i--)) ;;
-      (2) [[ $bleopt_grapheme_cluster != extended ]] && break; ((i--)) ;;
+      (1) ((i-=shift)) ;;
+      (2) [[ $bleopt_grapheme_cluster != extended ]] && break; ((i-=shift)) ;;
       (3) ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ && return 0 ;;
       (4) ble/unicode/GraphemeCluster/find-previous-boundary/.RI && return 0 ;;
+      (5)
+        # surrogate pair の間にいた時は GraphemeClusterBreak を取得し直す
+        ((i-=shift))
+        ble/unicode/GraphemeCluster/s2break-right "$text" "$i"; b1=$ret ;;
       esac
     done
   fi
@@ -628,16 +802,16 @@ _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_T]=1
 _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_LV]=1
 _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_LVT]=1
 _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_Pictographic]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_HighSurrogate]=1
 
 ## @fn ble/unicode/GraphemeCluster/extend-ascii text i
 ##   @var[out] extend
 function ble/unicode/GraphemeCluster/extend-ascii {
   extend=0
   [[ $_ble_util_locale_encoding != UTF-8 || ! $bleopt_grapheme_cluster ]] && return 1
-  local text=$1 iN=${#1} i=$2 ret
-  for ((;i<iN;i++,extend++)); do
-    ble/util/s2c "${text:i:1}"
-    ble/unicode/GraphemeCluster/c2break "$ret"
+  local text=$1 iN=${#1} i=$2 ret shift=1
+  for ((;i<iN;i+=shift,extend+=shift)); do
+    ble/unicode/GraphemeCluster/s2break-right "$text" "$i" shift
     case $ret in
     ("$_ble_unicode_GraphemeClusterBreak_Extend"|"$_ble_unicode_GraphemeClusterBreak_ZWJ") ;;
     ("$_ble_unicode_GraphemeClusterBreak_SpacingMark")
@@ -679,7 +853,7 @@ function ble/unicode/GraphemeCluster/match {
   if ((i>=iN)); then
     c=0 w=0 cs= cb= extend=0
     return 1
-  elif [[ $_ble_util_locale_encoding != UTF-8 || ! $bleopt_grapheme_cluster ]]; then
+  elif ! ble/util/is-unicode-output || [[ ! $bleopt_grapheme_cluster ]]; then
     cs=${text:i:1}
     ble/util/s2c "$cs"; c=$ret
     if [[ $flags != *R* ]] && {
@@ -694,9 +868,8 @@ function ble/unicode/GraphemeCluster/match {
     return 0
   fi
 
-  local b0 b1 b2 c0 c2
-  ble/util/s2c "${text:i:1}"; c0=$ret
-  ble/unicode/GraphemeCluster/c2break "$c0"; b0=$ret
+  local b0 b1 b2 c0 c2 shift code
+  ble/unicode/GraphemeCluster/s2break-right "$text" "$i" code:shift; c0=$code b0=$ret
 
   local coreb= corec= npre=0 vs= ri=
   c2=$c0 b2=$b0
@@ -711,10 +884,9 @@ function ble/unicode/GraphemeCluster/match {
       vs=epvs
     fi
 
-    ((j++))
+    ((j+=shift))
     b1=$b2
-    ble/util/s2c "${text:j:1}"; c2=$ret
-    ble/unicode/GraphemeCluster/c2break "$c2"; b2=$ret
+    ble/unicode/GraphemeCluster/s2break-right "$text" "$j" code:shift; c2=$code b2=$ret
     case ${_ble_unicode_GraphemeClusterBreak_rule[b1*_ble_unicode_GraphemeClusterBreak_Count+b2]} in
     (0) break ;;
     (1) continue ;;
@@ -722,6 +894,9 @@ function ble/unicode/GraphemeCluster/match {
     (3) [[ :$bleopt_emoji_opts: == *:zwj:* ]] &&
           ((coreb==_ble_unicode_GraphemeClusterBreak_Pictographic)) || break ;;
     (4) [[ :$bleopt_emoji_opts: == *:ri:* && ! $ri ]] || break; ri=1 ;;
+    (5)
+      # surrogate pair の間にいた時は GraphemeClusterBreak を取得し直す
+      ble/unicode/GraphemeCluster/s2break-left "$text" "$((j+shift))" code; c2=$code b2=$ret ;;
     esac
   done
 
@@ -733,8 +908,9 @@ function ble/unicode/GraphemeCluster/match {
       ble/util/c2s "$corec"
       cs=${text:i:npre}$ret${text:i+npre:j-i-npre}
     else
-      ble/util/s2c "$cs"; c=$ret corec=$ret
-      ble/unicode/GraphemeCluster/c2break "$c"; cb=$ret
+      local code
+      ble/unicode/GraphemeCluster/s2break-right "$cs" 0 code
+      c=$code corec=$code cb=$ret
     fi
   fi
 

@@ -352,7 +352,22 @@ function ble/test:canvas/textmap {
 #------------------------------------------------------------------------------
 # Grapheme_Cluster_Break
 
-ble/test/start-section 'ble/unicode/GraphemeCluster/c2break' 72
+ble/test/start-section 'ble/unicode/GraphemeCluster/c2break' 77
+
+if (LC_ALL=C.UTF-8 builtin eval "s=\$'\\U1F6D1'"; ((${#s}==2))) 2>/dev/null; then
+  function ble/test:canvas/GraphemeCluster/.locate-code-point {
+    local s=$1 k=$2 len=${#1} i=0 shift
+    while ((k-->=1&&i<len)); do
+      ble/unicode/GraphemeCluster/s2break-right "$s" "$i" shift
+      ((i+=shift))
+    done
+    ret=$i
+  }
+else
+  function ble/test:canvas/GraphemeCluster/.locate-code-point {
+    ret=$2
+  }
+fi
 
 (
   bleopt emoji_opts=ri:tpvs:epvs:zwj
@@ -396,44 +411,60 @@ ble/test/start-section 'ble/unicode/GraphemeCluster/c2break' 72
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x1F32B))"' ret="$_ble_unicode_GraphemeClusterBreak_Pictographic"
 
   if ((_ble_bash>=40200)); then
+    function ble/test:canvas/GraphemeClusterBreak/find-previous-boundary {
+      local str=$1 index=$2 ans=$3 ret=
+      ble/test:canvas/GraphemeCluster/.locate-code-point "$str." "$index"; index=$ret
+      ble/test:canvas/GraphemeCluster/.locate-code-point "$str" "$ans"; ans=$ret
+      ble/test "ble/unicode/GraphemeCluster/find-previous-boundary '$str' $index" ret="$ans"
+    }
+
     # Regional_Indicator
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F1E6\U1F1FF\U1F1E6\U1F1FF" 1' ret="0"
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F1E6\U1F1FF\U1F1E6\U1F1FF" 2' ret="0"
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F1E6\U1F1FF\U1F1E6\U1F1FF" 3' ret="2"
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F1E6\U1F1FF\U1F1E6\U1F1FF" 4' ret="2"
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F1E6\U1F1FF\U1F1E6\U1F1FF" 5' ret="4"
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6" 2' ret=1
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6" 3' ret=1
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6" 4' ret=3
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6" 5' ret=3
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6" 6' ret=5
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6" 7' ret=6
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6Z" 7' ret=6
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\u600\u600\u600\u600\U1F1E6\U1F1FF" 7' ret=1
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "A\u600\u600\u600\u600\U1F1E6\U1F1FF" 6' ret=1
-    ble/test $'bleopt_grapheme_cluster=legacy ble/unicode/GraphemeCluster/find-previous-boundary "A\u600\u600\u600\u600\U1F1E6\U1F1FF" 7' ret=5
-    ble/test $'bleopt_grapheme_cluster=legacy ble/unicode/GraphemeCluster/find-previous-boundary "A\u600\u600\u600\u600\U1F1E6\U1F1FF" 6' ret=5
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F1E6\U1F1FF\U1F1E6\U1F1FF' 1 0
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F1E6\U1F1FF\U1F1E6\U1F1FF' 2 0
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F1E6\U1F1FF\U1F1E6\U1F1FF' 3 2
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F1E6\U1F1FF\U1F1E6\U1F1FF' 4 2
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F1E6\U1F1FF\U1F1E6\U1F1FF' 5 4
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'A\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6' 2 1
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'B\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6' 3 1
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'C\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6' 4 3
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'D\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6' 5 3
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'E\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6' 6 5
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'F\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6' 7 6
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'G\U1F1E6\U1F1FF\U1F1E6\U1F1FF\U1F1E6Z' 7 6
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'H\u600\u600\u600\u600\U1F1E6\U1F1FF' 7 1
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'I\u600\u600\u600\u600\U1F1E6\U1F1FF' 6 1
+    bleopt_grapheme_cluster=legacy ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'J\u600\u600\u600\u600\U1F1E6\U1F1FF' 7 5
+    bleopt_grapheme_cluster=legacy ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'K\u600\u600\u600\u600\U1F1E6\U1F1FF' 6 5
 
     # ZWJ sequence
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F636\U200D\U1F32B\UFE0F" 1' ret=0
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F636\U200D\U1F32B\UFE0F" 2' ret=0
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F636\U200D\U1F32B\UFE0F" 3' ret=0
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F636\U200D\U1F32B\UFE0F" 4' ret=0
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "\U1F636\U200D\U1F32B\UFE0F" 5' ret=4
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U1F636\U200D\U1F32B\UFE0F" 2' ret=1
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U1F636\U200D\U1F32B\UFE0F" 3' ret=1
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U1F636\U200D\U1F32B\UFE0F" 4' ret=1
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U1F636\U200D\U1F32B\UFE0F" 5' ret=1
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U1F636\U200D\U1F32B\UFE0F" 6' ret=5
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U200D\U1F32B\UFE0F" 2' ret=0
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U200D\U1F32B\UFE0F" 3' ret=2
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U200D\U1F32B\UFE0F" 4' ret=2
-    ble/test $'ble/unicode/GraphemeCluster/find-previous-boundary "a\U200D\U1F32B\UFE0F" 5' ret=4
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F636\U200D\U1F32B\UFE0F' 1 0
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F636\U200D\U1F32B\UFE0F' 2 0
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F636\U200D\U1F32B\UFE0F' 3 0
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F636\U200D\U1F32B\UFE0F' 4 0
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'\U1F636\U200D\U1F32B\UFE0F' 5 4
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'a\U1F636\U200D\U1F32B\UFE0F' 2 1
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'b\U1F636\U200D\U1F32B\UFE0F' 3 1
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'c\U1F636\U200D\U1F32B\UFE0F' 4 1
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'d\U1F636\U200D\U1F32B\UFE0F' 5 1
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'e\U1F636\U200D\U1F32B\UFE0F' 6 5
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'f\U200D\U1F32B\UFE0F' 2 0
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'g\U200D\U1F32B\UFE0F' 3 2
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'h\U200D\U1F32B\UFE0F' 4 2
+    ble/test:canvas/GraphemeClusterBreak/find-previous-boundary $'i\U200D\U1F32B\UFE0F' 5 4
 
     ble/test "ble/test:canvas/textmap \$'@@'                   stderr; ble/textmap#get-index-at -v ret 1 0" ret=1
     ble/test "ble/test:canvas/textmap \$'@\u0308@'             stderr; ble/textmap#get-index-at -v ret 1 0" ret=2
     ble/test "ble/test:canvas/textmap \$'@\u0308\u0308@'       stderr; ble/textmap#get-index-at -v ret 1 0" ret=3
     ble/test "ble/test:canvas/textmap \$'@\u0308\u0308\u0308@' stderr; ble/textmap#get-index-at -v ret 1 0" ret=4
+
+    # s2break-{right,left}
+    ble/test 'ble/util/is-unicode-output'
+    c1=$'\uFE0F'
+    ble/test code:'code=; ble/unicode/GraphemeCluster/s2break-right "$c1" 0 code; ret=$code' ret="$((0xFE0F))"
+    ble/test code:'code=; ble/unicode/GraphemeCluster/s2break-left "$c1" "${#c1}" code; ret=$code' ret="$((0xFE0F))"
+    c2=$'\U1F6D1'
+    ble/test code:'code=; ble/unicode/GraphemeCluster/s2break-right "$c2" 0 code; ret=$code' ret="$((0x1F6D1))"
+    ble/test code:'code=; ble/unicode/GraphemeCluster/s2break-left "$c2" "${#c2}" code; ret=$code' ret="$((0x1F6D1))"
   fi
 )
 
@@ -446,17 +477,21 @@ ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.t
 
   function ble/test:canvas/GraphemeClusterBreak/find-previous-boundary {
     local ans=${1%%:*} str=${1#*:}
+    eval "local s=\$'$str'"
     ble/string#split ans , "$ans"
-    local i=0 b=0
+    local k=0 b=0
     for k in "${!ans[@]}"; do
-      ble/test "ble/unicode/GraphemeCluster/find-previous-boundary \$'$str' $((k+1))" ret=${ans[k]}
-      if ((ans[k]>b)); then
+      ble/test:canvas/GraphemeCluster/.locate-code-point "$s." "$((k+1))"; local i=$ret
+      ble/test:canvas/GraphemeCluster/.locate-code-point "$s" "${ans[k]}"; local a=$ret
+      ble/test "ble/unicode/GraphemeCluster/find-previous-boundary \$'$str' $i" ret="$a"
+      if ((a>b)); then
         local ret= c= w= cs= extend=
-        ble/test "ble/unicode/GraphemeCluster/match \$'$str' $b && ((ret=b+1+extend))" ret=${ans[k]}
-        ((b=ans[k]))
+        ble/test "ble/unicode/GraphemeCluster/match \$'$str' $b && ((ret=b+1+extend))" ret="$a"
+        ((b=a))
       fi
     done
   }
+
   if ((_ble_bash>=40200)); then
     for spec in "${tests_cases[@]}"; do
       ble/test:canvas/GraphemeClusterBreak/find-previous-boundary "$spec"

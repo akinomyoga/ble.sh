@@ -364,15 +364,22 @@ function sub:generate-grapheme-cluster-table {
       v2c[10] = "v";
       v2c[11] = "t";
       v2c[12] = "G";
+
+      # [blesh extension] surrogate pair
+      PropertyCount += 2;
+      prop2v["HighSurrogate"] = HSG = 13;
+      prop2v["LowSurrogate"]  = LSG = 14;
+      v2c[13] = "<";
+      v2c[14] = ">";
     }
 
-    function process_GraphemeClusterBreak(_, v, m, b, e, i) {
-      v = prop2v[$3];
-      if (match($1, /([[:xdigit:]]+)\.\.([[:xdigit:]]+)/, m) > 0) {
+    function process_GraphemeClusterBreak(code, prop, _, v, m, b, e, i) {
+      v = prop2v[prop];
+      if (match(code, /([[:xdigit:]]+)\.\.([[:xdigit:]]+)/, m) > 0) {
         b = strtonum("0x" m[1]);
         e = strtonum("0x" m[2]);
       } else {
-        b = e = strtonum("0x" $1);
+        b = e = strtonum("0x" code);
       }
 
       for (i = b; i <= e; i++)
@@ -401,38 +408,41 @@ function sub:generate-grapheme-cluster-table {
     /__Grapheme_Cluster_Break__/ {mode = "break";}
     /__Extended_Pictographic__/ {mode = "picto";}
     /^[[:space:]]*(#|$)/ {next;}
-    mode == "break" && $2 == ";" { process_GraphemeClusterBreak(); }
+    mode == "break" && $2 == ";" { process_GraphemeClusterBreak($1, $3); }
     mode == "picto" && /Extended_Pictographic/ { process_ExtendedPictographic(); }
 
     function rule_add(i, j, value) {
-       if (rule[i, j] != "") return;
-       rule[i, j] = value;
+      if (rule[i, j] != "") return;
+      rule[i, j] = value;
     }
     function rule_initialize() {
-       for (i = 0; i < PropertyCount; i++) {
-         rule_add(Control, i, 0);
-         rule_add(i, Control, 0);
-       }
-       rule_add(L, L, 1);
-       rule_add(L, V, 1);
-       rule_add(L, LV, 1);
-       rule_add(L, LVT, 1);
-       rule_add(LV, V, 1);
-       rule_add(LV, T, 1);
-       rule_add(V, V, 1);
-       rule_add(V, T, 1);
-       rule_add(LVT, T, 1);
-       rule_add(T, T, 1);
-       for (i = 0; i < PropertyCount; i++) {
-         rule_add(i, Extend, 1);
-         rule_add(i, ZWJ, 1);
-       }
-       for (i = 0; i < PropertyCount; i++) {
-         rule_add(i, SpacingMark, 2);
-         rule_add(Prepend, i, 2);
-       }
-       rule_add(ZWJ, Pictographic, 3);
-       rule_add(Regional_Indicator, Regional_Indicator, 4);
+      for (i = 0; i < PropertyCount; i++) {
+        rule_add(Control, i, 0);
+        rule_add(i, Control, 0);
+      }
+      rule_add(L, L, 1);
+      rule_add(L, V, 1);
+      rule_add(L, LV, 1);
+      rule_add(L, LVT, 1);
+      rule_add(LV, V, 1);
+      rule_add(LV, T, 1);
+      rule_add(V, V, 1);
+      rule_add(V, T, 1);
+      rule_add(LVT, T, 1);
+      rule_add(T, T, 1);
+      for (i = 0; i < PropertyCount; i++) {
+        rule_add(i, Extend, 1);
+        rule_add(i, ZWJ, 1);
+      }
+      for (i = 0; i < PropertyCount; i++) {
+        rule_add(i, SpacingMark, 2);
+        rule_add(Prepend, i, 2);
+      }
+      rule_add(ZWJ, Pictographic, 3);
+      rule_add(Regional_Indicator, Regional_Indicator, 4);
+
+      # [blesh extension] surrogate pair
+      rule_add(HSG, LSG, 5);
     }
     function rule_print(_, i, j, t, out) {
       out = "";
@@ -519,8 +529,10 @@ function sub:generate-grapheme-cluster-table {
     }
 
     END {
-      #print_table();
+      process_GraphemeClusterBreak("D800..DBFF", "HighSurrogate");
+      process_GraphemeClusterBreak("DC00..DFFF", "LowSurrogate");
 
+      #print_table();
       prop_print();
 
       print "_ble_unicode_GraphemeClusterBreak_MaxCode=" (max_code + 1);

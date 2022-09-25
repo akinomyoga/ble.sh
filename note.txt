@@ -6604,6 +6604,112 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-09-25
+
+  * github: GitHub#227 CI tests in macOS/Windows (reported by aiotter) [#D1881]
+    https://github.com/akinomyoga/ble.sh/pull/227
+
+    * macOS の sleep の実装は此処にある。特に変な事をしている訳でもない。
+      https://github.com/apple-oss-distributions/shell_cmds/blob/main/sleep/sleep.c
+
+    * macOS の CI ではテストをスキップする様にする方法について模索する。
+
+      https://docs.github.com/ja/actions/learn-github-actions/environment-variables
+
+      の環境変数 RUNNER_OS を参照すれば良い。github workflow の中で動いている事
+      を確認する為に、CI == true 及び GITHUB_ACTION についても確認する。
+
+    * macOS で問題が発生した時に誰が解決するのかという問題が生じる気がする。修
+      正に時間が掛かるし実際の macOS で試してみないと分からない事もある。誰かを
+      頼ろうと思っても誰に頼んだら良いのかも分からないしすぐ応答してくれるとは
+      限らない。
+
+      その間 nightly が全くビルドされなくなる。という事を考えるとやはり nightly
+      と macOS のテストは少なくとも分離するべきである。
+
+      また直る迄の間ずっと X がならぶ事になる。直す事ができないとずっと失敗する
+      という事になる。うーん。一方で時々確認しておくという事はしたい気もする。
+      確認する時だけ macOS をテストに含めるという使い方もあるだろうか??
+
+    * PR に対しては一応実行しておきたい気はする。と言っても minor change や
+      rebase に対して毎回テストを実行していたら clone stat が大変な事になる。テ
+      ストを実行する時に approve をする機能があるみたいなので、それをどの様にす
+      れば良いか確認する。
+
+    * msys のテストで色々失敗している。GraphemeCluster に関して調べてみようとし
+      たが、そもそも msys2 bash の上では $'\U1F6D1' が1文字ではなく2文字とカウ
+      ントされる様である。
+
+      $ a=$'\U1F6D1'
+      $ echo "${#a}"
+      2
+
+      確認してみた所、実は Cygwin でも同様の問題があるという事が判明した。うー
+      ん。これは Bash の側で修正するべき事の気がする。或いは Cygwin の側で修正
+      するべき事の可能性もある。後で調べる事にする。
+
+      うーん subst.c:8046 の MB_STRLEN を呼び出している。そしてこの MB_STRLEN
+      は include/shmbutil.h で
+
+      #define MBSLEN(s)       (((s) && (s)[0]) ? ((s)[1] ? mbstrlen (s) : 1) : 0)
+      #define MB_STRLEN(s)    ((MB_CUR_MAX > 1) ? MBSLEN (s) : STRLEN (s))
+
+      の様にして定義されている。mbstrlen は lib/sh/shmbchar.c で定義されている
+      関数である。中では mbrlen を呼び出している。これは標準ライブラリから来て
+      いる。
+
+      -------------------------------------------------------------------------
+
+      cygwin の上で mbrlen を呼び出すコードで再現した。newlib-cygwin の
+      newlib/libc/stdlib/mbrlen.c (mbrlen) は単に mbrtowc を呼び出している。
+      newlib/libc/stdlib/mbrtowc.c (mbrtowc) は wchar_t に変換する関数である。
+      一方で windows では wchar_t は 16bit である。なので surrogate を読み取る
+      しかないという事。うーん。この状況だとどのように直すのが正しいのか不明である。
+
+      * mbrlen の実装を弄って mbrtowc ではなくて Unicode code point を読み取っ
+        た時のバイト数を返す様に変更すると、今度は他の箇所で mbrtowc との不整合
+        が問題になる可能性もある。
+
+        そもそも bash ですら途中で wchar_t に変換して行う処理があった筈なので問
+        題が起こる可能性が高い。
+
+      * 或いは mbrtowc に変わる mbrtoc32 的な物があれば良いのだが。然し
+        char32_t は C++ の物だし、もし一連の関数を提供するとしても bash の側で
+        も大幅な変更と検証が必要になるので色々難しい気がする。
+
+      だとすると ble.sh の側で上手に surrogate も処理できる様にする? 然し、
+      UTF-8 で表されている文字列を bash でちゃんと切り取る事ができるのかも謎で
+      ある。切り取る事ができたとしてもちゃんと処理できるのだろうか。。。
+
+      -------------------------------------------------------------------------
+
+      一つの手は Grapheme Cluster の判定に Surrogate pair も考慮に入れるという
+      事。或いは既に考慮に入っている? →確認してみたが考慮には入っていない様だ。
+
+      GraphemeClusterTable を確認すると surrogate pair U*D800..U+DFFF は全て 0
+      になっている。つまり通常文字として取り扱われている。これを取り敢えず新し
+      いカテゴリとして登録する事にする。
+
+      取り敢えず実装したが、実際に Cygwin の上で動かすと動かない。どうも
+      surrogate pair の後半に対して ble/util/s2c を実行しようとしても常に 0 に
+      なってしまう。これは printf '%s' に渡す前に文字を切断する必要があるが、文
+      字を切断する時点で空文字列になってしまうから? 調べてみると ${s:i} で切断
+      した時点で 4byte 中の 3byte が処理された状態になっていて UTF-8 の最後の文
+      字が切り出されるという事態になっている。
+
+      -------------------------------------------------------------------------
+
+      うーん。また変な振る舞いを見つけてしまった。これは bash の側で修正した。
+
+      s=$'\U1F6D1'
+      printf '%d ' "'$s" "'$s" "'$s"
+      printf '%d ' "'$s" "'x" "'$s" "'x" "'$s"
+      echo
+
+      https://lists.gnu.org/archive/html/bug-bash/2022-09/msg00055.html
+
+      他にも色々振る舞いについて修正などが必要だったが取り敢えず通る様になった。
+
 2022-09-16
 
   * canvas: Unicode version 更新 [#D1880]

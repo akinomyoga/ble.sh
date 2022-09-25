@@ -1,0 +1,24 @@
+name: test
+on:
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        if: runner.os == 'macOs'
+        run: brew install gawk
+      - name: Build
+        run: make
+      - name: Test
+        run: make check
