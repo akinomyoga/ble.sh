@@ -3024,7 +3024,7 @@ function .ble-edit/exec:exec {
 function .ble-edit+accept-line/process+exec {
   .ble-edit/exec:exec
   .ble-decode-byte:bind/check-detach
-  return $?
+  return "$?"
 }
 
 #--------------------------------------
@@ -3152,7 +3152,7 @@ function .ble-edit/exec:gexec/setup {
 
 function .ble-edit+accept-line/process+gexec {
   .ble-edit/exec:gexec/setup
-  return $?
+  return "$?"
 }
 
 # **** accept-line ****                                            @edit.accept
