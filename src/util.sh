@@ -5704,6 +5704,7 @@ fi
 _ble_term_TERM=()
 _ble_term_DA1R=()
 _ble_term_DA2R=()
+_ble_term_TERM_done=
 
 ## @fn ble/term/DA2/initialize-term [depth]
 ##   @var[out] _ble_term_TERM
@@ -5813,8 +5814,10 @@ function ble/term/DA2/notify {
       fi ;;
     esac
 
-    [[ $is_outermost ]] &&
+    if [[ $is_outermost ]]; then
+      _ble_term_TERM_done=1
       ble/term/modifyOtherKeys/reset
+    fi
 
     # 外側の端末情報は以降では処理しない
     ((depth)) && return 0
@@ -5936,16 +5939,16 @@ _ble_term_modifyOtherKeys_current=
 _ble_term_modifyOtherKeys_current_method=
 _ble_term_modifyOtherKeys_current_TERM=
 function ble/term/modifyOtherKeys/.update {
-  local IFS=$_ble_term_IFS
+  local IFS=$_ble_term_IFS state=${1%%:*}
   [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] &&
-    [[ $1 != 2 || "${_ble_term_TERM[*]}" == "$_ble_term_modifyOtherKeys_current_TERM" ]] &&
+    [[ $state != 2 || "${_ble_term_TERM[*]}" == "$_ble_term_modifyOtherKeys_current_TERM" ]] &&
     return 0
 
   # Note: RLogin では modifyStringKeys (\e[>5m) も指定しないと駄目。
   #   また、RLogin は modifyStringKeys にすると S-数字 を
   #   記号に翻訳してくれないので注意。
-  local previous=$_ble_term_modifyOtherKeys_current method
-  if [[ $1 == 2 ]]; then
+  local previous=${_ble_term_modifyOtherKeys_current%%:*} method
+  if [[ $state == 2 ]]; then
     case $_ble_term_TERM in
     (RLogin:*) method=RLogin_modifyStringKeys ;;
     (kitty:*)
@@ -5970,11 +5973,15 @@ function ble/term/modifyOtherKeys/.update {
         fi
       fi ;;
     (*)
-      method=modifyOtherKeys ;;
+      method=modifyOtherKeys
+      if [[ $1 == *:auto ]]; then
+        # 問題を起こす端末で無効化。
+        ble/term/modifyOtherKeys/.supported || method=disabled
+      fi ;;
     esac
 
     # 別の方式で有効化されている時は先に解除しておく。
-    if ((_ble_term_modifyOtherKeys_current>=2)) &&
+    if ((previous>=2)) &&
       [[ $method != "$_ble_term_modifyOtherKeys_current_method" ]]
     then
       ble/term/modifyOtherKeys/.update 1
@@ -5989,7 +5996,7 @@ function ble/term/modifyOtherKeys/.update {
 
   case $method in
   (RLogin_modifyStringKeys)
-    case $1 in
+    case $state in
     (0) ble/util/buffer $'\e[>5;0m' ;;
     (1) ble/util/buffer $'\e[>5;1m' ;;
     (2) ble/util/buffer $'\e[>5;1m\e[>5;2m' ;;
@@ -5999,7 +6006,7 @@ function ble/term/modifyOtherKeys/.update {
     # Note: kitty has quirks in its implementation of modifyOtherKeys.
     # Note #D1549: 1 では無効にならない。変な振る舞い。
     # Note #D1626: 更に最近の kitty では \e[>4;0m でも駄目で \e[>4m としなければならない様だ。
-    case $1 in
+    case $state in
     (0|1) ble/util/buffer $'\e[>4;0m\e[>4m' ;;
     (2)   ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
     esac
@@ -6009,7 +6016,7 @@ function ble/term/modifyOtherKeys/.update {
     #   vim has pointed out the quirk of kitty.  The kitty keyboard mode only
     #   has push/pop operations so that their numbers need to be balanced.
     local seq=
-    case $1 in
+    case $state in
     (0|1) # pop keyboard mode
       # When this is empty, ble.sh has not yet pushed any keyboard modes, so
       # we just ignore the keyboard mode change.
@@ -6031,7 +6038,7 @@ function ble/term/modifyOtherKeys/.update {
       local level
       for ((level=1;level<${#_ble_term_TERM[@]}-1;level++)); do
         [[ ${_ble_term_TERM[level]} == tmux:* ]] || continue
-        case $1 in
+        case $state in
         (0) seq=$'\e[>4;0m\e[m' ;;
         (1) seq=$'\e[>4;1m\e[m' ;;
         (2) seq=$'\e[>4;1m\e[>4;2m\e[m' ;;
@@ -6042,19 +6049,23 @@ function ble/term/modifyOtherKeys/.update {
       done
     fi
     return 0 ;;
+  (disabled)
+    return 0 ;;
   esac
 
   # Note: 対応していない端末が SGR と勘違いしても
   #  大丈夫な様に SGR を最後にクリアしておく。
   # Note: \e[>4;2m の時は、対応していない端末のため
   #   一端 \e[>4;1m にしてから \e[>4;2m にする。
-  case $1 in
+  case $state in
   (0) ble/util/buffer $'\e[>4;0m\e[m' ;;
   (1) ble/util/buffer $'\e[>4;1m\e[m' ;;
   (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
   esac
 }
 function ble/term/modifyOtherKeys/.supported {
+  [[ $_ble_term_TERM_done ]] || return 1
+
   # libvte は SGR(>4) を直接画面に表示してしまう。
   [[ $_ble_term_TERM == vte:* ]] && return 1
 
@@ -6080,18 +6091,14 @@ function ble/term/modifyOtherKeys/.supported {
 function ble/term/modifyOtherKeys/enter {
   local value=$bleopt_term_modifyOtherKeys_internal
   if [[ $value == auto ]]; then
-    value=2
-    # 問題を起こす端末で無効化。
-    ble/term/modifyOtherKeys/.supported || value=
+    value=2:auto
   fi
   ble/term/modifyOtherKeys/.update "$value"
 }
 function ble/term/modifyOtherKeys/leave {
   local value=$bleopt_term_modifyOtherKeys_external
   if [[ $value == auto ]]; then
-    value=1
-    # 問題を起こす端末で無効化。
-    ble/term/modifyOtherKeys/.supported || value=
+    value=1:auto
   fi
   ble/term/modifyOtherKeys/.update "$value"
 }

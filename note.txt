@@ -6606,6 +6606,58 @@ bash_tips
 
 2022-09-26
 
+  * vte で unsupported modifyOtherKeys のシーケンスが画面に表示されてしまう (reported by dongxi8) [#D1885]
+    https://github.com/ohmybash/oh-my-bash/issues/360#issuecomment-1256927443
+
+    一旦は解決したと思ったが駄目の様だ。調べてみると vte:* の時には無効化してい
+    る。実際に Ubuntu 16 LTS で GNOME terminal で試してみると再現した。どうも起
+    動時に表示される様だ。それ以降は特に何も表示されない。つまり、端末情報を未
+    だ取得し終わっていない段階で表示されてしまうのが問題という事。
+
+    これに対してはどの様に対策したら良いだろうか。例えば端末情報が初期化される
+    までは modifyOtherKeys は設定しない? 端末情報が出揃った段階で改めて
+    modifyOtherKeys を設定する。しかし、そうすると端末情報を返答しない端末に於
+    いて modifyOtherKeys が決して有効化されないという状況になるのではないか。と
+    思ったが、modifyOtherKeys に応答する現代的な端末では常に DA2 に対しても反応
+    すると仮定して良いのではないか。
+
+    x と思ったが本当だろうか。例えば alacritty は DA2 に対応していなかった気が
+      する。現在は対応している様だ (v0.11.0)。
+
+      https://github.com/alacritty/alacritty/blob/1df32309fe69d4e8113813a3e9049a7039650f44/alacritty_terminal/src/term/mod.rs#L1170
+      https://github.com/alacritty/alacritty/commit/0dfd8601c92666c45d0c2e056bd68f600a4cbe47
+      https://github.com/alacritty/alacritty/issues/3100
+
+      然し、実は alacritty は modifyOtherKeys の方に対応していない。
+
+      https://github.com/alacritty/alacritty/issues/3101
+
+    ? DA2 の後に modifyOtherKeys を有効にするというアプローチで問題ないだろうか。
+      kitty では DA2 を受け取った後に再度 modifyOtherKeys を設定している。なの
+      で、それが動いているのであれば他の端末についても問題ない筈。
+
+      唯、現在の実装だと有効・無効の判定と端末の判定が別々になっている。ユーザー
+      が internal/external を指定している時には端末のサポートに関係なく強制的に
+      modifyOtherKeys を出力している。auto の時にのみ端末判定を行っている。これ
+      で正しく端末状態を設定するにはどうしたら良いだろうか。
+
+    うーん。取り敢えず DA2 を受け取る迄は modifyOtherKeys を設定しないように変
+    更したが本当にこれを実行するのか。或いは bleopt で無効化する様にお願いすれ
+    ば良いだけなのではないか。そもそも古い vte を使っているのが悪いのであって、
+    その vte のバグの為にその他の端末についても制限を課すのは変な気がする。一方
+    で、現実的に DA2 に対応していないが modifyOtherKeys に対応している端末とい
+    う物が存在するのかというのはまた別の疑問である。うーん。正直 bleopt で各自
+    無効化してもらうので良い様な気もするが、面倒なのでやはり ble.sh の側で対策
+    するという事にする。
+
+    2022-10-02 テスト: Ubuntu 16 LTS の上での gnome-terminal では問題が直る事を
+    確認した。Fedora 35 の上の gnome-terminal, kitty, alacritty で問題がない事
+    を確認した。そもそも gnome-terminal と alacritty は modifyOtherKeys に対応
+    していないので余りテストの意味はない。chatoyancy (Fedora 36) の上では
+    terminology, terminator はそもそも modifyOtherKeys に対応していない。xterm,
+    mlterm は modifyOtherKeys に対応していて問題はない。mintty も問題ない。
+    恐らく特に問題はないだろうと思われる。
+
   * 2022-09-23 prompt-git: rebase や  merge 等の状態を表示したい [#D1884]
 
     色々方法は考えられるがどうやら git-prompt.sh の __git_ps1 で使われている判定方法を用いれば良いらしい。

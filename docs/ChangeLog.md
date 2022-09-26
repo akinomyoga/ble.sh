@@ -364,6 +364,7 @@
 - util (`modifyOtherKeys`): work around a quirk of kitty (reported by NoahGorny) `#D1549` f599525
   - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
   - util (`modifyOtherKeys`): use the kitty protocol for kitty 0.23+ which removes the support of `modifyOtherKeys` (reported by kovidgoyal) `#D1681` ec91574
+  - util (`modifyOtherKeys`): set up `modifyOtherKeys` only after `DA2` (reported by dongxi8) `#D1885` xxxxxxx
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
