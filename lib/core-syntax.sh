@@ -6644,7 +6644,7 @@ function ble/progcolor/is-option-context {
   if [[ ${progcolor_optctx[1]} ]]; then
     # Note: 等号は停止を引き起こした引数 -- 自体の時 (オプションとして有効)
     ((progcolor_optctx[1]<0?1:(progcolor_iword<=progcolor_optctx[1])))
-    return $?
+    return "$?"
   fi
 
   local rexrej rexreq stopat
@@ -6656,7 +6656,7 @@ function ble/progcolor/is-option-context {
     if [[ ! $rexrej$rexreq ]]; then
       progcolor_optctx[1]=${stopat:--1}
       ((progcolor_optctx[1]<0?1:(progcolor_iword<=progcolor_optctx[1])))
-      return $?
+      return "$?"
     fi
     progcolor_optctx[2]=$rexrej
     progcolor_optctx[3]=$rexreq

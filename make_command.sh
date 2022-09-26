@@ -1288,7 +1288,7 @@ function sub:scan/word-splitting-number {
   echo "--- $FUNCNAME ---"
   # #D1835 一般には IFS に整数が含まれるている場合もあるので ${#...} や
   # $((...)) や >&$fd であってもちゃんと quote する必要がある。
-  grc '[<>]&\$|([[:space:]]|=\()\$(\(\(|\{#)' --exclude={docs,mwg_pp.awk} |
+  grc '[<>]&\$|([[:space:]]|=\()\$(\(\(|\{#|\?)' --exclude={docs,mwg_pp.awk} |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[^#]*(^|[[:space:]])#Zd
       \Z^([^"]|"[^\#]*")*"[^"]*([& (]\$)Zd
@@ -1296,6 +1296,7 @@ function sub:scan/word-splitting-number {
       \Z\(\([a-zA-Z_0-9]+=\(\$Zd
       \Z\$\{#[a-zA-Z_0-9]+\}[<>?&]Zd
       \Z \$\{\#[a-zA-Z_0-9]+\[@\]\} -gt 0 \]\]Zd
+      \Zcase \$\? inZd
       g'
 }
 

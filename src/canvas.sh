@@ -2240,7 +2240,7 @@ function ble/canvas/trace-text/.put-simple {
   out=$out${2::nput}
   ((x+=nput,y+=x/cols,x%=cols))
   ((_ble_term_xenl&&x==0&&(y--,x=cols)))
-  ((nput==nchar)); return $?
+  ((nput==nchar)); return "$?"
 }
 ## @fn x y cols out ; ble/canvas/trace-text/.put-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
@@ -2273,7 +2273,7 @@ function ble/canvas/trace-text/.put-atomic {
     local pad=${_ble_string_prototype::limit-x}
     out=$out$sgr1${pad//?/'#'}$sgr0
     x=$limit
-    ((y+1<lines)); return $?
+    ((y+1<lines)); return "$?"
   fi
 
   out=$out$c
@@ -3193,7 +3193,7 @@ function ble/canvas/panel#set-height.draw {
   if ((delta==0)); then
     if [[ :$opts: == *:clear:* ]]; then
       ble/canvas/panel#clear.draw "$index"
-      return $?
+      return "$?"
     else
       return 1
     fi

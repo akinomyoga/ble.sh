@@ -1552,7 +1552,7 @@ function ble-update/.reload {
     elif [[ $- == *i* && $_ble_attached ]] && ! ble/util/is-running-in-subshell; then
       ble-reload
     fi
-    return $?
+    return "$?"
   fi
   ((ext==6)) && ext=0
   return "$ext"
@@ -1571,7 +1571,7 @@ function ble-update/.download-nightly-build {
     # _ble_base が自分の物でない時は sudo でやり直す
     sudo "$BASH" "$_ble_base/ble.sh" --update &&
       ble-update/.reload 6
-    return $?
+    return "$?"
   fi
 
   local tarname=ble-nightly.tar.xz
@@ -1660,7 +1660,7 @@ function ble-update {
       ble/util/print 'ble-update: fallback to the default update process.' >&2
     else
       ble-update/.reload "$ext"
-      return $?
+      return "$?"
     fi
   fi
 
@@ -1721,8 +1721,8 @@ function ble-update {
           else
             ble-update/.make INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
           fi )
-      ble-update/.reload $?
-      return $?
+      ble-update/.reload "$?"
+      return "$?"
     fi
   fi
   
@@ -1730,7 +1730,7 @@ function ble-update {
     # _ble_base が自分の物でない時は sudo でやり直す
     sudo "$BASH" "$_ble_base/ble.sh" --update &&
       ble-update/.reload 6
-    return $?
+    return "$?"
   else
     # _ble_base/src 内部に clone して make install
     local branch=${_ble_base_branch:-master}
@@ -1819,7 +1819,7 @@ function ble/dispatch/.help {
 function ble/dispatch {
   if (($#==0)); then
     [[ $_ble_attached && ! $_ble_edit_exec_inside_userspace ]]
-    return $?
+    return "$?"
   fi
 
   # import autoload measure assert stackdump color-show decode-{byte,char,key}

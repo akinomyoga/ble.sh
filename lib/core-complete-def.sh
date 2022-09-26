@@ -23,7 +23,7 @@ function ble-sabbrev {
   done
   if (($#==0)) || [[ $print ]]; then
     ble-import lib/core-complete && ble-sabbrev "$@"
-    return $?
+    return "$?"
   fi
 
   local ret; ble/string#quote-command "$FUNCNAME" "$@"

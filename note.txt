@@ -6604,6 +6604,23 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-09-26
+
+  * 2022-09-23 prompt-git: rebase や  merge 等の状態を表示したい [#D1884]
+
+    色々方法は考えられるがどうやら git-prompt.sh の __git_ps1 で使われている判定方法を用いれば良いらしい。
+    https://stackoverflow.com/questions/30733415/how-to-determine-if-git-merge-is-in-process
+    https://stackoverflow.com/questions/3921409/how-to-know-if-there-is-a-git-rebase-in-progress
+    https://stackoverflow.com/a/3922581/4908404
+
+    取り敢えず以下を元にした実装にする。
+    https://github.com/git/git/blob/4fd6c5e44459e6444c2cd93383660134c95aabd1/contrib/completion/git-prompt.sh#L452-L475
+
+  * global: return $? IFS [#D1883]
+
+    未だ残っている? もしくは新しく増えた物かもしれない。修正する。
+    make scan でも $? を検索する様に変更する。
+
 2022-09-25
 
   * test: sha256sum がないというエラー @ macOS [#D1882]

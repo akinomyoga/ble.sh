@@ -1639,7 +1639,7 @@ fi
 
 function ble/util/copyfile {
   local src=$1 dst=$2 content
-  ble/util/readfile content "$1" || return $?
+  ble/util/readfile content "$1" || return "$?"
   ble/util/put "$content" >| "$dst"
 }
 

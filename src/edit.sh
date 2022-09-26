@@ -1713,10 +1713,10 @@ function ble/prompt/update {
   ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
 
   # Note #D1392: mc (midnight commander) の中では補助プロンプトは全て off
-  [[ $MC_SID == $$ ]] && { [[ $dirty ]]; return $?; }
+  [[ $MC_SID == $$ ]] && { [[ $dirty ]]; return "$?"; }
 
   # Note: 補助プロンプトは _ble_textarea_panel==0 の時だけ有効 #D1027
-  ((_ble_textarea_panel==0)) || { [[ $dirty ]]; return $?; }
+  ((_ble_textarea_panel==0)) || { [[ $dirty ]]; return "$?"; }
 
   # bleopt prompt_rps1
   if [[ :$opts: == *:leave:* && ! $rps1f && $bleopt_prompt_rps1_transient ]]; then
@@ -3575,7 +3575,7 @@ function ble/edit/display-version/git-rev-parse {
     fi
     ret=$content
     [[ $ret ]]
-    return $?
+    return "$?"
   fi
   return 1
 }
@@ -5779,7 +5779,7 @@ function ble/builtin/exit {
   if [[ ! $_ble_builtin_trap_processing ]] && { ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; }; then
     (($#)) || set -- "$ext"
     builtin exit "$@"
-    return $? # オプションの指定間違いなどで失敗する可能性がある。
+    return "$?" # オプションの指定間違いなどで失敗する可能性がある。
   fi
 
   local set shopt; ble/base/.adjust-bash-options set shopt
@@ -6695,12 +6695,12 @@ function ble-edit/exec:gexec/.setup {
   fi
 
   # コマンド実行をする場合は ble-edit/bind/.tail は遅延する
-  ((count>=1)); return $?
+  ((count>=1)); return "$?"
 }
 
 function ble-edit/exec:gexec/process {
   ble-edit/exec:gexec/.setup
-  return $?
+  return "$?"
 }
 function ble-edit/exec:gexec/restore-state {
   # 構文エラー等で epilogue/end が呼び出されなかった時の為 #D1170
@@ -8629,7 +8629,7 @@ function ble/widget/history-search {
       else
         ble/widget/history-prev
       fi && _ble_edit_ind=0
-      return $? ;;
+      return "$?" ;;
     (hide-status)
       opts=$opts:hide-status ;;
     (emulate-readline)
@@ -9916,7 +9916,7 @@ function ble-edit/bind/.check-detach {
       if ! ble/decode/attach; then
         ble-detach
         ble-edit/bind/.check-detach # 改めて終了処理
-        return $?
+        return "$?"
       fi
     fi
 

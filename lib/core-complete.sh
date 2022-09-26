@@ -1519,7 +1519,7 @@ function ble/complete/action/quote-insert.batch {
   else
     ble/util/assign-array inserts ble/complete/action/quote-insert.batch/proc
   fi
-  return $?
+  return "$?"
 }
 
 function ble/complete/action/requote-final-insert {
@@ -3818,7 +3818,7 @@ function ble/complete/progcomp {
           ble/complete/progcomp "${comp_words[0]}" "__recursive__:$opts"
         fi
       fi
-      return $?
+      return "$?"
     fi
 
     [[ $alias_checked != *" $ret "* ]] || break
