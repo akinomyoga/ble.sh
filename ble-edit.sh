@@ -4512,7 +4512,7 @@ function ble-edit/exec:exec {
 function ble-edit/exec:exec/process {
   ble-edit/exec:exec
   ble-edit/bind/.check-detach
-  return $?
+  return "$?"
 }
 
 #--------------------------------------
@@ -4664,7 +4664,7 @@ function ble-edit/exec:gexec/.setup {
 
 function ble-edit/exec:gexec/process {
   ble-edit/exec:gexec/.setup
-  return $?
+  return "$?"
 }
 
 # **** accept-line ****                                            @edit.accept
@@ -7210,7 +7210,7 @@ function ble-edit/bind/.check-detach {
       if ! ble-decode-attach; then
         ble-detach
         ble-edit/bind/.check-detach # 改めて終了処理
-        return $?
+        return "$?"
       fi
     fi
 
