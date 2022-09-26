@@ -108,7 +108,8 @@
 - history: support `bleopt history_erasedups_limit` (motivated by SuperSandro2000) `#D1822` e4afb5a 3110967
 - prompt: support `bleopt prompt_{emacs,vi}_mode_indicator` (motivated by ferdinandyb) `#D1843` 2b905f8
 - util (`ble-import`): support option `-q` `#D1859` 1ca87a9
-- history: support extension `HISTCONTROL=strip` `#D1874` xxxxxxx
+- history: support extension `HISTCONTROL=strip` (motivated by aiotter) `#D1874` 021e033
+- benchmark (ble-measure): support an option `-V` `#D1881` 571ecec
 
 ## Changes
 
@@ -179,7 +180,7 @@
 - blehook: print reusable code to restore the user hooks `#D1857` b763677
   - blehook: separate internal and user hooks `#D1856` b763677
   - blehook: prefer the uniq  `!=` to the addition `+=` `#D1871` fe7abd4
-  - blehook: print hooks with `--color=auto` by default `#D1875` xxxxxxx
+  - blehook: print hooks with `--color=auto` by default `#D1875` 3953afe
 - util (`ble/builtin/trap`): refactor
   - trap,blehook: rename `ERR{ => EXEC}` and separate from the `ERR` trap `#D1858` 94d1371
   - trap: remove the support for the shell function `TRAPERR` `#D1858` 94d1371
@@ -197,9 +198,9 @@
   - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` a22c25b
   - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` a22c25b
 - progcomp: reproduce arguments of completion functions passed by Bash `#D1872` 4d2dd35
-- prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` xxxxxxx
-- color: let `bleopt term_index_colors` override the default if specified `#D1878` xxxxxxx
-- canvas: update Unicode version 15.0.0 `#D1880` xxxxxxx
+- prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` 69013d9
+- color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
+- canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
 
 ## Fixes
 
@@ -224,7 +225,7 @@
   - mandb: fix a bug that the description is inserted for `--no-OPTION` `#D1761` 88614b8
   - mandb: fix a bug that the man page is not correctly searched (fixup 2365e09) `#D1794` 65ffe70
   - mandb: support the man-page formats of `man ls` in coreutils/Japanese and in macOS `#D1847` fa32829
-  - mandb: include short name in the longname description `#D1879` xxxxxxx
+  - mandb: include short name in the longname description `#D1879` 60b6989
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
@@ -415,6 +416,30 @@
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
+
+
+## Test
+
+- github/workflows: add CI checks in macOS and msys2 (requested by aiotter) `##D1881` c5ddacc
+  - github/workflows (nightly): add check for macOS (contributed by aiotter) `#D1881` 4cb0baa
+  - github/workflows (nightly, test): interchange setup `#D1881` 4cb0baa
+  - github/workflows: add `test.yml` `#D1881` 824dc53
+  - fix for macOS tests
+    - test (ble/util/c2s): fix locale settings in tests `#D1881` 26ed622
+    - test (ble/util/msleep): loosen the condition `#D1881` 26ed622
+    - test (ble/util/msleep): skip test in CI `#D1881` 26ed622
+  - fix for msys2 tests
+    - test: ensure a non-empty locale `#D1881` c5d1b82
+    - test (ble/util/readlink): work around msys symlinks `#D1881` c5d1b82
+    - test (ble/util/declare-print-definitions): skip array assignments involing CR in msys `#D1881` c5d1b82
+    - test (ble/util/is-stdin-ready): skip test in the CI msys `#D1881` c5d1b82
+    - main (bind): suppress non-interactive warning in msys `#D1881` c5d1b82
+    - canvas (GraphemeClusterBreak): handle surrogate pairs for UCS-2 `wchar_t` `#D1881` 18bf121
+    - util (ble/encoding:UTF-8/b2c): fix interpretation of leading byte `#D1881` 2e1a7c1
+    - util (ble/util/s2c): work around intermediate mbstate of bash <= 5.2 `#D1881` 2e1a7c1
+    - util (ble/util/s2bytes): clear locale cache `#D1881` 2e1a7c1
+  - complete: fix syntax error for bash-3.0 `#D1881` 0b3e611
+- test (ble/util/writearray): use `ble/file#hash` instead of `sha256sum` `#D1882` xxxxxxx
 
 ## Internal changes and fixes
 

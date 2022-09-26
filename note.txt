@@ -6606,6 +6606,12 @@ bash_tips
 
 2022-09-25
 
+  * test: sha256sum がないというエラー @ macOS [#D1882]
+
+    元々 Linux の上で動かす事を想定していたので色々問題が出てくる。
+
+    test-util.sh の関数一覧 ToDo も序でに更新する。
+
   * github: GitHub#227 CI tests in macOS/Windows (reported by aiotter) [#D1881]
     https://github.com/akinomyoga/ble.sh/pull/227
 
@@ -6837,7 +6843,7 @@ bash_tips
 
 2022-09-13
 
-  * HISTCONTROL に trim 的な物を追加しても良いのではないか [#D1874]
+  * HISTCONTROL に trim 的な物を追加しても良いのではないか (motivated by aiotter) [#D1874]
     https://github.com/akinomyoga/ble.sh/issues/226#issuecomment-1243759012
 
     bash のソースを見たら stringlib.c に strip_{leading,trailing} というのがあ

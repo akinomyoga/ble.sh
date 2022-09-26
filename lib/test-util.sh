@@ -52,6 +52,10 @@ ble/test/start-section 'ble/util' 1226
   ble/test bleopt e stdout="bleopt e=9"
 )
 
+# ToDo
+# bleopt/expand-variable-pattern
+# bleopt/reinitialize
+
 # ble/test
 
 ble/test ble/util/setexit 0   exit=0
@@ -267,6 +271,8 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   f1
 )
 
+# ToDo
+# ble/variable#copy-state
 
 # _ble_array_prototype
 (
@@ -511,6 +517,18 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'ble/string#repeat ";&|<>" 5' ret=';&|<>;&|<>;&|<>;&|<>;&|<>'
 )
 
+# ToDo
+# ble/array#shift
+# ble/array#filter
+# ble/array#remove-if
+# ble/array#filter-by-regex
+# ble/array#remove-by-regex
+# ble/array#filter-by-glob
+# ble/array#remove-by-glob
+# ble/array#fill-range
+# ble/idict#replace
+# ble/idict#copy
+
 # ble/string#common-prefix
 (
   ble/test 'ble/string#common-prefix' ret=
@@ -752,6 +770,11 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
            ret=$'a\\\tb\\\tc'
 )
 
+# ToDo
+# ble/string#escape-for-display
+# ble/string#quote-words
+# ble/string#match
+
 # ble/string#quote-command, ble/util/print-quoted-command
 (
   ble/test 'ble/string#quote-command' ret=
@@ -940,7 +963,34 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test code:'ret=xyz; ! ble/path#contains ret "???"'
 )
 
-# ble/dict#set
+# ToDo
+# ble/path#contains
+# ble/opts#has
+# ble/opts#extract-first-optarg
+# ble/opts#extract-last-optarg
+# ble/opts#extract-all-optargs
+# ble/set#add
+# ble/set#remove
+# ble/set#contains
+# ble/set#add
+# ble/set#remove
+# ble/set#contains
+
+# ToDo
+# ble/dict#clear
+# ble/dict#cp
+# ble/dict#keys
+# ble/dict#print
+# ble/gdict#clear
+# ble/gdict#cp
+# ble/gdict#keys
+# ble/gdict#print
+# ble/adict#clear
+# ble/adict#cp
+# ble/adict#keys
+# ble/adict#print
+
+# ble/dict#{set,get,has,unset}
 (
   builtin eval -- "${_ble_util_dict_declare//NAME/dict1}"
   builtin eval -- "${_ble_util_gdict_declare//NAME/dict2}"
@@ -1213,6 +1263,13 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'ble/util/assign-array a "echo 1; echo; echo 2"; status' stdout='3:(1  2)'
 )
 
+# ToDo
+# ble/util/copyfile
+# ble/util/readarray
+# ble/util/assign-array0
+# ble/util/assign.has-output
+# ble/util/assign-words
+
 # ble/util/writearray
 (
   # Note: Bash-3.x で arr=() の形式には ^A 及び ^? を変化させるバグが
@@ -1221,11 +1278,19 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   x[0]=$'\177'
   x[1]=$'\1'
 
-  ble/test "ble/util/writearray -d '' x | sha256sum | awk '{print \$1}'" stdout=$(printf '%s\0' "${x[@]}" | sha256sum | awk '{print $1}')
+  function ble/test/hash {
+    local tmpfile=$_ble_base_run/$$.test.$RANDOM ret
+    ble/bin/cat >| "$tmpfile"
+    ble/file#hash "$tmpfile"
+    >| "$tmpfile"
+    ble/util/print "$ret"
+  }
+
+  ble/test "ble/util/writearray -d '' x | ble/test/hash" stdout=$(printf '%s\0' "${x[@]}" | ble/test/hash)
 
   # gawk では $'\302\203' という文字列を unescape する上で注意が必要
   x=($'\302\203' alpha)
-  ble/test "ble/util/writearray -d '' x | sha256sum | awk '{print \$1}'" stdout=$(printf '%s\0' "${x[@]}" | sha256sum | awk '{print $1}')
+  ble/test "ble/util/writearray -d '' x | ble/test/hash" stdout=$(printf '%s\0' "${x[@]}" | ble/test/hash)
 
   for pair in $'\a:007' $'\b:010' $'\t:011' $'\v:013' $'\f:014' $'\r:015'; do
     for awk in awk nawk mawk gawk; do
@@ -1341,6 +1406,16 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'echo 1 2 3' stdout='1 2 3'
 )
 
+# ToDo
+# ble/function#evaldef
+# ble/function#trace
+# ble/function#has-trace
+# ble/function#has-attr
+# ble/function/is-global-trace-context
+# ble/function#get-source-and-lineno
+# ble/function#lambda
+# ble/function#suppress-stderr
+
 # ble/util/set
 (
   ble/test 'ble/util/set ret hello' ret='hello'
@@ -1388,6 +1463,11 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'ble/util/type ret ble/fun1:type' ret=
   ble/test 'ble/util/type ret ble/fun1#meth' ret=
 )
+
+# ToDo
+# ble/is-alias
+# ble/alias/list
+# ble/alias#active
 
 # ble/alias#expand
 (
@@ -1727,7 +1807,8 @@ fi
   ble/test 'echo "$ubeg:$uend:$uend0"' stdout=3:12:11
 )
 
-# ToDo
+# ToDo (update 2022-09-26)
+# ble/file#hash
 # ble/urange#{clear,update}
 # ble/urange#shift
 # ble/util/joblist
@@ -1740,14 +1821,20 @@ fi
 # ble/util/save-editing-mode
 # ble/util/restore-editing-mode
 # ble/util/reset-keymap-of-editing-mode
+# ble/util/rlvar#load
+# ble/util/rlvar#has
 # ble/util/rlvar#test
 # ble/util/rlvar#read
+# ble/util/rlvar#bind-bleopt
 # ble/util/invoke-hook
 # ble/util/autoload
 # ble-autoload
 # ble/util/import/search
+# ble/util/import/encode-filename
 # ble/util/import/is-loaded
 # ble/util/import/finalize
+# ble/util/import/option:query
+# ble/util/import/eval-after-load
 # ble/util/import
 # ble-import
 # ble/util/stackdump
@@ -1761,11 +1848,15 @@ fi
 # ble/util/idle.push-background
 # ble/util/idle.sleep
 # ble/util/idle.isleep
+# ble/util/idle.sleep-until
+# ble/util/idle.isleep-until
 # ble/util/idle.wait-user-input
 # ble/util/idle.wait-file-content
 # ble/util/idle.wait-filename
 # ble/util/idle.wait-condition
 # ble/util/idle.continue
+# ble/util/idle.cancel
+# ble/util/idle.suspend
 # ble/util/is-running-in-idle
 # ble/util/fiberchain#initialize
 # ble/util/fiberchain#resume
@@ -1776,7 +1867,16 @@ fi
 # ble/term/flush
 # ble/term/audible-bell
 # ble/term/visible-bell
+# ble/term/visible-bell:term/init
+# ble/term/visible-bell:term/show
+# ble/term/visible-bell:term/update
+# ble/term/visible-bell:term/clear
+# ble/term/visible-bell:canvas/init
+# ble/term/visible-bell:canvas/show
+# ble/term/visible-bell:canvas/update
+# ble/term/visible-bell:canvas/clear
 # ble/term/visible-bell/cancel-erasure
+# ble/term/visible-bell/erase
 # ble/term/stty/initialize
 # ble/term/stty/leave
 # ble/term/stty/enter
@@ -1793,8 +1893,13 @@ fi
 # ble/term/CPR/notify
 # ble/term/modifyOtherKeys/enter
 # ble/term/modifyOtherKeys/leave
+# ble/term/modifyOtherKeys/reset
+# ble/term/enter-altscr
+# ble/term/leave-altscr
 # ble/term/rl-convert-meta/enter
 # ble/term/rl-convert-meta/leave
+# ble/term/enter-for-widget
+# ble/term/leave-for-widget
 # ble/term/enter
 # ble/term/leave
 # ble/term/initialize
@@ -1868,6 +1973,8 @@ fi
   ble/test 'ble/util/chars2s 956' ret=μ
   ble/test 'ble/util/chars2s 12354' ret=あ
 )
+
+# ToDo: ble/util/s2bytes
 
 # ble/util/{c2keyseq,chars2keyseq,keyseq2chars}
 (

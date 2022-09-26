@@ -2207,7 +2207,7 @@ function ble/base/sub:test {
 
   if [[ $logfile ]]; then
     ble/test/log#close
-    ble/util/print "ble: The test log was saved to '${_ble_term_setaf[4]}$logfile$_ble_term_sgr0'."
+    ble/util/print "ble.sh: The test log was saved to '${_ble_term_setaf[4]}$logfile$_ble_term_sgr0'."
   fi
   [[ ! $error ]]
 }
