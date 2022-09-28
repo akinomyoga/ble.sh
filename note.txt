@@ -6604,6 +6604,12 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-09-28
+
+  * benchmark: -o KSH_ARRAY の中のコードが外と同じの気がする [#D1886]
+    これは fe751acb の最初に benchmark.sh を追加した時からそのままである。
+    実際 zsh の振る舞いを調べてみると KSH_ARRAYS を設定していると match の中身はずれる 。
+
 2022-09-26
 
   * vte で unsupported modifyOtherKeys のシーケンスが画面に表示されてしまう (reported by dongxi8) [#D1885]

@@ -18,8 +18,6 @@ function ble-measure/.loop {
 ##   @var[in]  n
 ##   @var[out] utot
 ##     計測にかかった総時間を返します。
-##   @var[out] usec
-##     1評価当たりの時間を返します。
 if [[ ${ZSH_VERSION-} ]]; then
   _ble_measure_resolution=1000 # [usec]
   function ble-measure/.time {
@@ -30,18 +28,17 @@ if [[ ${ZSH_VERSION-} ]]; then
     local rex='(([0-9]+):)?([0-9]+)\.([0-9]+) total$'
     if [[ $result =~ $rex ]]; then
       if [[ -o KSH_ARRAYS ]]; then
-        local m=${match[1]} s=${match[2]} ms=${match[3]}
+        local m=${match[0]} s=${match[1]} ms=${match[2]}
       else
         local m=${match[1]} s=${match[2]} ms=${match[3]}
       fi
       m=${m:-0} ms=${ms}000; ms=${ms:0:3}
      
-      ((utot=((10#0$m*60+10#0$s)*1000+10#0$ms)*1000,
-        usec=utot/n))
+      ((utot=((10#0$m*60+10#0$s)*1000+10#0$ms)*1000))
       return 0
     else
       builtin echo "ble-measure: failed to read the result of \`time': $result." >&2
-      utot=0 usec=0
+      utot=0
       return 1
     fi
   }
@@ -57,13 +54,13 @@ elif ((BASH_VERSINFO[0]>=5)); then
     ble-measure/.get-realtime 2>/dev/null; local time1=${time//.}
     ble-measure/.loop "$n" "$command" &>/dev/null
     ble-measure/.get-realtime 2>/dev/null; local time2=${time//.}
-    ((utot=time2-time1,usec=utot/n))
+    ((utot=time2-time1))
     ((utot>0))
   }
 else
   _ble_measure_resolution=1000 # [usec]
   function ble-measure/.time {
-    utot=0 usec=0
+    utot=0
 
     local result TIMEFORMAT='[%R]' command=$1
     if declare -f ble/util/assign &>/dev/null; then
@@ -76,7 +73,7 @@ else
     [[ $result =~  $rex ]] || return 1
     local s=${BASH_REMATCH[1]}
     local ms=${BASH_REMATCH[3]}000; ms=${ms::3}
-    ((utot=(10#0$s*1000+10#0$ms)*1000,usec=utot1/n))
+    ((utot=(10#0$s*1000+10#0$ms)*1000))
     return 0
   }
 fi
@@ -243,8 +240,8 @@ function ble-measure {
       if [[ ! $ble_measure_calibrate && ! ${_ble_measure_base[__level]} ]]; then
         if [[ ! ${_ble_measure_base_real[__level+1]} ]]; then
           local ble_measure_calibrate=1
-          local a; ble-measure -qc3 -B 0 ''
-          ble/util/unlocal ble_measure_calibrate a
+          ble-measure -qc3 -B 0 ''
+          ble/util/unlocal ble_measure_calibrate
           _ble_measure_base_real[__level+1]=$nsec
           _ble_measure_base[__level+1]=$nsec
         fi
@@ -266,7 +263,7 @@ function ble-measure {
   for n in {1,10,100,1000,10000}\*{1,2,5}; do
     [[ $prev_n ]] && ((n/prev_n<=10 && prev_utot*n/prev_n<measure_threshold*2/5 && n!=50000)) && continue
 
-    local utot=0 usec=0
+    local utot=0
     [[ $flags != *V* ]] && printf '%s (x%d)...' "$command" "$n" >&2
     ble-measure/.time "$command" || return 1
     [[ $flags != *V* ]] && printf '\r\e[2K' >&2
