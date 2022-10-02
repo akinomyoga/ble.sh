@@ -312,8 +312,8 @@
 - main (`ble-update`): fix error message with system-wide installation of `ble.sh` (fixed by tars0x9752) 1d2a9c1 a450775
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
 - progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` 4d2dd35
-- global: quote `return $?` `#D1884` xxxxxxx
-- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` xxxxxxx
+- global: quote `return $?` `#D1884` 801d14a
+- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa
 
 ## Documentation
 
@@ -321,6 +321,7 @@
 - blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 26aaf87
 - README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 6123551
 - README: add links to `bash-it` and `oh-my-bash` `#D1724` 4a2575f
+- README: mention the Guix package (motivated by kiasoc5) `#D1888` xxxxxxx
 
 ## Optimization
 
@@ -365,7 +366,7 @@
 - util (`modifyOtherKeys`): work around a quirk of kitty (reported by NoahGorny) `#D1549` f599525
   - util (`modifyOtherKeys`): update the workaround for a new quiark of kitty `#D1627` 3e4ecf5
   - util (`modifyOtherKeys`): use the kitty protocol for kitty 0.23+ which removes the support of `modifyOtherKeys` (reported by kovidgoyal) `#D1681` ec91574
-  - util (`modifyOtherKeys`): set up `modifyOtherKeys` only after `DA2` (reported by dongxi8) `#D1885` xxxxxxx
+  - util (`modifyOtherKeys`): set up `modifyOtherKeys` only after `DA2` (reported by dongxi8) `#D1885` 149eee9
 - global: work around empty `vi_imap` cache by `tmux-resurrect` `#D1562` 560160b
 - decode: identify `kitty` and treat `\e[27u` as isolated ESC (reported by lyiriyah) `#D1585` c2a84a2
 - complete: suppress known error messages of `bash-completion` (reported by oc1024, Lun4m) `#D1622` d117973
@@ -442,7 +443,7 @@
     - util (ble/util/s2c): work around intermediate mbstate of bash <= 5.2 `#D1881` 2e1a7c1
     - util (ble/util/s2bytes): clear locale cache `#D1881` 2e1a7c1
   - complete: fix syntax error for bash-3.0 `#D1881` 0b3e611
-- test (ble/util/writearray): use `ble/file#hash` instead of `sha256sum` `#D1882` xxxxxxx
+- test (ble/util/writearray): use `ble/file#hash` instead of `sha256sum` `#D1882` b76e21e
 
 ## Internal changes and fixes
 
@@ -480,6 +481,7 @@
 - global: quote numbers for unexpected `IFS` `#D1835` 0179afc
 - history: refactor hooks `history_{{delete,clear,insert} => change}` `#D1860` c393c93
 - history: rename the hook `history_{on => }leave` `#D1860` c393c93
+- make: check necessary `.git` `#D1887` xxxxxxx
 
 ## Contrib
 

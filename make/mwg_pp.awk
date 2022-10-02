@@ -592,7 +592,7 @@ function ev2_memcall(dDict, dName, oDict, oName, memname, aDict, aName, _a, _i, 
   dDict[dName, "M"] = MOD_NUL;
 }
 
-function ev2_funcall(dDict, dName, funcname, aDict, aName, _a, _i, _c, _result, _resultT, _x, _y, _l) {
+function ev2_funcall(dDict, dName, funcname, aDict, aName, _a, _i, _c, _result, _resultT, _cmd, _line) {
   _resultT = TYPE_NUM;
 
   if (aDict[aName, "M"] != MOD_ARG) {
@@ -663,7 +663,16 @@ function ev2_funcall(dDict, dName, funcname, aDict, aName, _a, _i, _c, _result, 
   } else if (funcname == "length") {
     _result = length(_a[0]);
   } else if (funcname == "getenv") {
+    _resultT = TYPE_STR;
     _result = ENVIRON[_a[0]];
+  } else if (funcname == "system") {
+    _resultT = TYPE_STR;
+    _result = "";
+    _cmd = _a[0];
+    while ((_cmd | getline _line) > 0)
+       _result = _result _line "\n";
+    close(_cmd);
+    sub(/\n+$/, "", _result);
   } else {
     print_error("mwg_pp.eval", "unknown function " funcname);
     _result = 0;

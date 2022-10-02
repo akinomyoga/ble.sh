@@ -37,9 +37,10 @@ ble-form.sh:
 
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
-$(OUTDIR)/ble.sh: ble.pp GNUmakefile | $(OUTDIR)
+$(OUTDIR)/ble.sh: ble.pp GNUmakefile | .git $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ FULLVER=$(FULLVER) \
 	  $(MWGPP) $< >/dev/null
+.DELETE_ON_ERROR: $(OUTDIR)/ble.sh
 
 src/canvas.c2w.sh:
 	bash make_command.sh generate-c2w-table > $@
@@ -122,7 +123,7 @@ $(OUTDIR)/doc/%: docs/% | $(OUTDIR)/doc
 # contrib
 
 .PHONY: update-contrib
-update-contrib contrib/.git contrib/contrib.mk:
+update-contrib contrib/contrib.mk:
 	git submodule update --init --recursive
 
 include contrib/contrib.mk
@@ -133,7 +134,7 @@ include contrib/contrib.mk
 $(outdirs):
 	mkdir -p $@
 
-build: contrib/.git $(outfiles) $(outfiles-doc)
+build: contrib/contrib.mk $(outfiles) $(outfiles-doc)
 .PHONY: build
 
 all: build

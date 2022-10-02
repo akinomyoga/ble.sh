@@ -61,7 +61,15 @@ time {
 # check --help or --version
 
 {
-  #%$ echo "_ble_init_version=$FULLVER+$(git show -s --format=%h)"
+  #%[commit_hash = system("git show -s --format=%h")]
+  #%[ble_version = getenv("FULLVER") + "+" + commit_hash]
+  #%expand
+  ##%if commit_hash != ""
+  _ble_init_version=$"ble_version"
+  ##%else
+  ###%error Failed to get the commit id (version = $"ble_version").
+  ##%end
+  #%end.i
   _ble_init_exit=
   _ble_init_command=
   for _ble_init_arg; do
