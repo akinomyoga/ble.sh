@@ -66,7 +66,8 @@ source ble-nightly*/ble.sh
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 mkdir -p ~/.local/share/blesh
-mv ble-nightly* ~/.local/share/blesh
+mv -f ble-nightly*/* ~/.local/share/blesh/
+rmdir ble-nightly*
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>
@@ -85,7 +86,7 @@ source ble-nightly*/ble.sh
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 mkdir -p ~/.local/share/blesh
-mv ble-nightly* ~/.local/share/blesh
+mv ble-nightly*/* ~/.local/share/blesh/
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>
