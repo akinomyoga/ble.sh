@@ -6385,10 +6385,12 @@ function _ble_builtin_trap_DEBUG__initialize {
   elif [[ $1 == force ]] || ble/function/is-global-trace-context; then
     _ble_builtin_trap_DEBUG_userTrapInitialized=1
     builtin eval -- "function $FUNCNAME() ((1))"
-    local tmp=$_ble_base_run/$$.trap.DEBUG ret
-    builtin trap -p DEBUG >| "$tmp"
-    local content; ble/util/readfile content "$tmp"
-    ble/util/put '' >| "$tmp"
+
+    # Note: ble/util/assign は DEBUG を継承しないのでその場で trap -p で出力する
+    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    builtin trap -p DEBUG >| "$_ble_local_tmpfile"
+    local content; ble/util/readfile content "$_ble_local_tmpfile"
+    ble/util/assign/.rmtmp
 
     # ble.sh の設定した DEBUG trap は無視する。
     case ${content#"trap -- '"} in

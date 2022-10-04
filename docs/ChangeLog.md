@@ -203,6 +203,7 @@
   - trap: work around possible interferences by recursive traps `#D1867` a22c25b
   - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` a22c25b
   - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` a22c25b
+  - trap: use `ble/util/assign/.mktmp` to read the `DEBUG` trap `#D1910` xxxxxxx
 - progcomp: reproduce arguments of completion functions passed by Bash `#D1872` 4d2dd35
 - prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` 69013d9
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
