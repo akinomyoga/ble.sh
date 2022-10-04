@@ -6613,6 +6613,11 @@ bash_tips
 
 2022-12-01
 
+  * contrib/colorglass: 実験的に実装したものを追加する事にした [#D1902]
+    少なくともこれでテーマを自分で作るのが以前よりは簡単になった気がする。
+    但し調整の仕方は普通のユーザーに対しては少々難しいかもしれない。
+    同時に自分でフィルターを設定できる様にもする。
+
   * complete: TAB completion の直後でも auto-complete が表示されるのは変だ (reported by DUOLabs333) [#D1901]
     https://github.com/akinomyoga/ble.sh/discussions/252
 

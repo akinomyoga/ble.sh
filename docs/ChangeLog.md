@@ -111,6 +111,7 @@
 - history: support extension `HISTCONTROL=strip` (motivated by aiotter) `#D1874` 021e033
 - benchmark (ble-measure): support an option `-V` `#D1881` 571ecec
 - complete: add `bleopt complete_auto_after_complete` `#D1901` xxxxxxx
+- color: allow setting color filter by `_ble_color_color2sgr_filter` `#D1902` xxxxxxx
 
 ## Changes
 

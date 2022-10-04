@@ -660,6 +660,7 @@ function ble/color/convert-rgb24-to-color88 {
   fi
 }
 
+_ble_color_color2sgr_filter=
 ## @fn ble/color/.color2sgrfg color
 ## @fn ble/color/.color2sgrbg color
 ##   @param[in] color
@@ -668,6 +669,7 @@ function ble/color/convert-rgb24-to-color88 {
 ##   @var[out] ret
 function ble/color/.color2sgr-impl {
   local ccode=$1 prefix=$2 # 3 for fg, 4 for bg
+  builtin eval -- "$_ble_color_color2sgr_filter"
   if ((ccode<0)); then
     ret=${prefix}9
   elif ((ccode<16&&ccode<_ble_term_colors)); then
