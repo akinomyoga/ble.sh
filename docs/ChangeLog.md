@@ -203,6 +203,7 @@
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
 - edit (`display-shell-version`): show `gawk`, `make`, and `git` versions of the build time `#D1892`
 - edit (`display-shell-version`): support running as a user command (reported by DhruvaG2000) `#D1893`
+- decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` xxxxxxx
 
 ## Fixes
 
@@ -325,6 +326,9 @@
 - README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 6123551
 - README: add links to `bash-it` and `oh-my-bash` `#D1724` 4a2575f
 - README: mention the Guix package (motivated by kiasoc5) `#D1888` 0f7c04b
+- blerc: add frequently used keybindings (motivated by KiaraGrouwstra, micimize) `#D1896` `#D1897` xxxxxxx
+- wiki/Q&A: add item for defining a widget calling multiple widgets (motivated by micimize) `#D1898` xxxxxxx
+- blerc: rename from `blerc` to `blerc.template` `#D1899` xxxxxxx
 
 ## Optimization
 

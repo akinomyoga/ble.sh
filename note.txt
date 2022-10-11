@@ -1855,20 +1855,6 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
-2022-10-24
-
-  * rename blerc.template
-    https://github.com/akinomyoga/ble.sh/issues/244
-
-  * 複数 widget を実行したい時: Q&A や wiki にも説明を書く
-    https://github.com/akinomyoga/ble.sh/discussions/241#discussioncomment-3937949
-
-  * cancel line by C-c in vi mode
-    https://github.com/akinomyoga/ble.sh/discussions/241
-
-  * delete word by M-backspace
-    https://github.com/akinomyoga/ble.sh/issues/243
-
 2022-10-02
 
   * prompt: dirty 状態の更新時にカーソル位置がずれる。
@@ -6624,6 +6610,53 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-12-01
+
+  * 2022-10-24 rename to blerc.template [#D1899]
+    https://github.com/akinomyoga/ble.sh/issues/244#issuecomment-1288439503
+
+    書きぶりから blerc を直接編集すれば良いと勘違いしているのかもしれないと思っ
+    たが別にそういう事ではなかった。しかし、それでも勘違いする人がいるかもしれ
+    ないので blerc のファイル名を変える事にした。blerc.template という名前にし
+    ておけば直接編集すれば良いと勘違いする人もいないだろう。
+
+    README の該当する部分も更新する。wiki には言及されていない様なので更新しな
+    くて良い。
+
+    * 何処かでリンクされていたのに対して通知した方が良いかもしれない。
+
+  * 2022-10-24 複数 widget を実行したい時: Q&A や wiki にも説明を書く (motivated by micimize) [#D1898]
+    https://github.com/akinomyoga/ble.sh/discussions/241#discussioncomment-3937949
+
+    * done: wiki の Q&A を編集した。
+
+    README では直接説明をしているが、特に他の部分には記述しない事にした。
+
+    というより [編集関数の作成] が wiki における主要な解説部分だが英語版がない。
+    然し翻訳するのも面倒だし今回の質問のレベルだとこれ全体を翻訳する程のことで
+    はない。将来的にそういった細かい仕様についての質問が出てきた時に翻訳すれば
+    良い気がしている。
+
+  * 2022-10-24 cancel line by C-c in vi mode (motivated by micimize) [#D1897]
+    https://github.com/akinomyoga/ble.sh/discussions/241
+
+    * done: C-c in blerc
+    * done: gg & G in blerc
+
+  * 2022-10-24 delete word by M-backspace (motivated by KiaraGrouwstra) [#D1896]
+    https://github.com/akinomyoga/ble.sh/issues/243
+
+    * done: blerc に追記した for emacs
+
+    * done: vi_imap rlfunc の更新
+
+      後 vi_imap の backward-kill-word が widget:kill-backward-uword になってい
+      たが実際に plain bash で動作を確認する限りはやはり emacs と同じ様に
+      widget:kill-backward-cword になっている気がする。実際に試してみても uword
+      は振る舞いが異なる。vi_imap での対応を変更する事にした。
+
+    * done: blerc 追記 for vi
 
 2022-11-28
 

@@ -1,0 +1,3 @@
+# bashrc
+
+source out/ble.sh --rcfile blerc.gh244

@@ -890,6 +890,16 @@ function blerc/emacs-load-hook {
   #ble-bind -f C-m 'accept-line'
   #ble-bind -f RET 'accept-line'
 
+
+  ## With the following settings, M-backspace (whose actual key sequence
+  ## depends on your terminal) will kill the backward word as in the default
+  ## readline.
+
+  #ble-bind -f 'M-C-?' kill-backward-cword
+  #ble-bind -f 'M-DEL' kill-backward-cword
+  #ble-bind -f 'M-C-h' kill-backward-cword
+  #ble-bind -f 'M-BS'  kill-backward-cword
+
   return
 }
 blehook/eval-after-load keymap_emacs blerc/emacs-load-hook
@@ -966,6 +976,37 @@ function blerc/vim-load-hook {
   ## digraphs with <C-k>{char1}{char2}, use the following setting:
 
   #ble-bind -m vi_imap -f 'C-k' 'vi_imap/insert-digraph'
+
+
+  ## The default mapping of <M-backspace> (whose actual key sequence depends on
+  ## your terminal) copies the previous shell word in the kill ring.  Instead,
+  ## the following settings will kill the backward word as in the default
+  ## readline.
+
+  #ble-bind -m vi_imap -f 'M-C-?' kill-backward-cword
+  #ble-bind -m vi_imap -f 'M-DEL' kill-backward-cword
+  #ble-bind -m vi_imap -f 'M-C-h' kill-backward-cword
+  #ble-bind -m vi_imap -f 'M-BS'  kill-backward-cword
+
+
+  ## The default mapping of C-c is vi_imap/normal-mode-without-insert-leave
+  ## (imap), vi-command/cancel (nmap).  If you instead want to discard the
+  ## current line and go to the next line, you can bind C-c to 'discard-line':
+
+  #ble-bind -m vi_imap -f 'C-c' discard-line
+  #ble-bind -m vi_nmap -f 'C-c' discard-line
+
+
+  ## The default mapping of 'g g' and G moves the current position in the
+  ## command history.  If you would like to move the cursor position in the
+  ## current command entry, you can overwrite the bindings as follows.
+
+  #ble-bind -m vi_nmap 'g g' vi-command/first-nol
+  #ble-bind -m vi_omap 'g g' vi-command/first-nol
+  #ble-bind -m vi_xmap 'g g' vi-command/first-nol
+  #ble-bind -m vi_nmap 'G' vi-command/last-line
+  #ble-bind -m vi_omap 'G' vi-command/last-line
+  #ble-bind -m vi_xmap 'G' vi-command/last-line
 
   #----------------------------------------------------------------------------
   # Cursor shapes and other terminal settings

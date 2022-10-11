@@ -1,0 +1,4 @@
+# blerc
+
+#ble-bind -m emacs   -f 'M-e v' 'vi-editing-mode'
+#ble-bind -m vi_imap -f 'M-e e' 'emacs-editing-mode'

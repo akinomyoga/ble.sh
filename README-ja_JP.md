@@ -291,7 +291,7 @@ $ cp -r ble-0.3.3 /path/to/blesh
 ## 1.4 初期化スクリプト `~/.blerc` について
 
 ユーザー設定は初期化スクリプト `~/.blerc` (またはもし `~/.blerc` が見つからなければ `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh`) に記述します。
-テンプレートとしてリポジトリの [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) というファイルを利用できます。
+テンプレートとしてリポジトリの [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template) というファイルを利用できます。
 初期化スクリプトは `ble.sh` ロード時に自動で読み込まれる Bash スクリプトなので、Bash で使えるコマンドを初期化スクリプトの中で利用できます。
 初期化スクリプトの位置を変更する場合には、`source ble.sh` 時に `--rcfile INITFILE` を指定します。以下に例を挙げます。
 
