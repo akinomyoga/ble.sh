@@ -1,0 +1,16 @@
+# bashrc
+
+eval "$(starship init bash)"
+
+if source out/ble.sh --noattach --norc; then
+  blehook PRECMD+='bleopt prompt_rps1="\n\n$(starship prompt --right)"'
+
+  # function ble/prompt/backslash:starship/right {
+  #   local right
+  #   ble/util/assign right 'starship prompt --right'
+  #   ble/prompt/process-prompt-string "$right"
+  # }
+  # bleopt prompt_rps1="\n\n\q{starship/right}"
+
+  ble-attach
+fi

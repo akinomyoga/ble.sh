@@ -1,0 +1,6 @@
+# blerc
+
+export STARSHIP_CONFIG=~/.config/starship-left.toml
+starship_config_right=~/.config/starship-right.toml
+bleopt prompt_ruler=empty-line
+blehook PRECMD+='bleopt prompt_rps1="$(STARSHIP_CONFIG=$starship_config_right starship prompt)"'

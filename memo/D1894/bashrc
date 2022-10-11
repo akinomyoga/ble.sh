@@ -1,0 +1,10 @@
+# bashrc
+
+export STARSHIP_CONFIG=$PWD/starship-left.toml
+starship_config_right=$PWD/starship-right.toml
+eval "$(starship init bash)"
+source ~/.mwg/src/ble.sh/out/ble.sh
+bleopt prompt_ruler=empty-line
+blehook PRECMD+='bleopt prompt_rps1="$(STARSHIP_CONFIG=$starship_config_right starship prompt)"'
+
+#blehook PRECMD+='cat -A <<< "[rps1: $bleopt_prompt_rps1][[ps1: $PS1]" >> a.txt'

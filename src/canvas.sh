@@ -1513,7 +1513,11 @@ function ble/canvas/trace/.justify/end-line {
     ((width+=wmin))
     ((ispan++))
   done
-  [[ $has_content ]] || return 0
+  if [[ ! $has_content ]]; then
+    justify_fields=()
+    return 0
+  fi
+
   local nspan=$ispan
 
   local -a DRAW_BUFF=()

@@ -1,0 +1,167 @@
+format = """\
+  $username\
+  $directory\
+  $package\
+  $git_branch\
+  $git_commit\
+  $git_state\
+  $git_status\
+  $fill\
+  $cmd_duration\
+  [ in](bright white)\
+  $env_var\
+  $shell\
+  $battery\
+  $time\
+  $line_break\
+  $jobs\
+  $character\
+  """
+
+right_format = """\
+  $status\
+  $memory_usage\
+  """
+
+[directory]
+truncate_to_repo = true
+read_only = " "
+truncation_symbol = "…/"
+
+[package]
+symbol = " "
+
+[git_branch]
+style = 'italic purple'
+symbol = " "
+
+[git_commit]
+style = "bold white"
+tag_symbol = "笠 "
+tag_disabled = false
+
+[git_status]
+conflicted = "= "
+ahead = "⇡×${count} "
+behind = "⇣×${count} "
+diverged = "${ahead_count}×⇕×${behind_count} "
+untracked = "?×${count} "
+stashed = "\\$×${count} "
+modified = "!×${count} "
+staged = "+×${count} "
+renamed = "»×${count} "
+deleted = "✘×${count} "
+
+[fill]
+symbol = " "
+
+[cmd_duration]
+format = " took [$duration]($style)"
+show_notifications = true
+min_time_to_notify = 60_000
+
+[env_var.WSL_DISTRO_NAME]
+format = " [$env_value]($style)"
+style = "underline purple"
+
+[env_var.MSYSTEM]
+format = " [$env_value]($style)"
+style = "underline purple"
+
+[shell]
+format = " \\[[$indicator]($style)\\] at"
+powershell_indicator = "pwsh"
+style = "bold blue"
+disabled = false
+
+[battery]
+full_symbol = "•"
+discharging_symbol = ""
+charging_symbol = ""
+unknown_symbol = "!"
+format = " [$symbol$percentage]($style)"
+
+[[battery.display]]
+threshold = 20
+style = "italic red"
+
+[[battery.display]]
+threshold = 80
+style = "italic green"
+
+[[battery.display]]
+threshold = 100
+style = "italic yellow"
+
+[time]
+disabled = false
+format = " [$time]($style)"
+style = "italic cyan"
+
+[status]
+disabled = false
+format = "[$symbol$status]($style)"
+symbol = "✕ "
+
+[memory_usage]
+format = " $symbol[${ram}]($style)"
+threshold = -1
+symbol = " "
+disabled = false
+
+[aws]
+symbol = " "
+
+[dart]
+symbol = " "
+
+[docker_context]
+symbol = " "
+
+[elixir]
+symbol = " "
+
+[elm]
+symbol = " "
+
+[golang]
+symbol = " "
+
+# [haskell]
+# symbol = " "
+
+[hg_branch]
+symbol = " "
+
+[java]
+symbol = " "
+
+[julia]
+symbol = " "
+
+[nim]
+symbol = " "
+
+[nix_shell]
+symbol = " "
+
+[nodejs]
+symbol = " "
+
+[perl]
+symbol = " "
+
+[php]
+symbol = " "
+
+[python]
+symbol = " "
+
+[ruby]
+symbol = " "
+
+[rust]
+symbol = " "
+
+[swift]
+symbol = "ﯣ "

@@ -171,7 +171,7 @@ ble/test:canvas/check-trace
 #------------------------------------------------------------------------------
 # test-trace.sh
 
-ble/test/start-section 'ble/canvas/trace (justify)' 24
+ble/test/start-section 'ble/canvas/trace (justify)' 30
 
 ble/test:canvas/trace.contra 30:1 'a b c' justify << EOF
 a             b              c$
@@ -276,6 +276,27 @@ ble/test:canvas/trace.contra 10:1 $'xyz\e[4Daxyz' relative:measure-bbox x=3 << E
 EOF
 if [[ $_ble_test_canvas_contra ]]; then
   ble/test 'echo "bbox:$x1,$y1-$x2,$y2"' stdout='bbox:2,0-6,1'
+fi
+
+
+# regression tests for https://github.com/akinomyoga/ble.sh/issues/239
+ble/test:canvas/trace.contra 30:3 $'\n2022-11-28' right:measure-bbox:measure-gbox << EOF
+                              $
+                    2022-11-28$
+                              $
+EOF
+if [[ $_ble_test_canvas_contra ]]; then
+  ble/test 'echo "bbox:$x1,$y1-$x2,$y2"' stdout='bbox:0,0-30,2'
+  ble/test 'echo "gbox:$gx1,$gy1-$gx2,$gy2"' stdout='gbox:20,1-30,2'
+fi
+ble/test:canvas/trace.contra 30:3 $'\n\n2022-11-28' right:measure-bbox:measure-gbox << EOF
+                              $
+                              $
+                    2022-11-28$
+EOF
+if [[ $_ble_test_canvas_contra ]]; then
+  ble/test 'echo "bbox:$x1,$y1-$x2,$y2"' stdout='bbox:0,0-30,3'
+  ble/test 'echo "gbox:$gx1,$gy1-$gx2,$gy2"' stdout='gbox:20,2-30,3'
 fi
 
 #------------------------------------------------------------------------------
