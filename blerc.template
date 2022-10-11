@@ -118,7 +118,67 @@
 # bleopt filename_ls_colors="$LS_COLORS"
 
 
-## Settings for vi-mode
+##-----------------------------------------------------------------------------
+## Keybindings
+
+
+## The default mapping of <SP> is magic-space which performs history and
+## sabbrev expansion before inserting a space.  If you want to insert just a
+## space without expansions as Bash's default, use the following setting:
+
+#ble-bind -f 'SP' 'self-insert'
+
+
+## If you want to search the already input string using <up> and <down> keys,
+## use the following setting:
+
+#ble-bind -f up 'history-search-backward'
+#ble-bind -f down 'history-search-forward'
+
+
+## If you want to immediately run the matched command by RET, you can specify
+## the option "immediate-accept" to nsearch widgets:
+
+#ble-bind -f up 'history-search-backward immediate-accept'
+#ble-bind -f down 'history-search-forward immediate-accept'
+
+
+## If you want to kill/copy words including the spaces preceding them, you can
+## use the following keybindings:
+
+#ble-bind -f C-w 'kill-region-or kill-uword'
+#ble-bind -f M-w 'copy-region-or copy-uword'
+
+##-----------------------------------------------------------------------------
+## Settings for Emacs mode
+
+ble/array#push _ble_keymap_emacs_load_hook blerc/emacs-load-hook
+function blerc/emacs-load-hook {
+  #----------------------------------------------------------------------------
+  # Keybindings
+
+  ## With the following setting, RET and C-m always causes the execution of the
+  ## command even in the multiline mode or when the command is not
+  ## syntactically completed.
+
+  #ble-bind -f C-m 'accept-line'
+  #ble-bind -f RET 'accept-line'
+
+
+  ## With the following settings, M-backspace (whose actual key sequence
+  ## depends on your terminal) will kill the backward word as in the default
+  ## readline.
+
+  #ble-bind -f 'M-C-?' kill-backward-cword
+  #ble-bind -f 'M-DEL' kill-backward-cword
+  #ble-bind -f 'M-C-h' kill-backward-cword
+  #ble-bind -f 'M-BS'  kill-backward-cword
+
+  return
+}
+
+##-----------------------------------------------------------------------------
+## Settings for Vim mode
 
 ble/array#push _ble_keymap_vi_load_hook blerc/vim-load-hook
 function blerc/vim-load-hook {
@@ -127,8 +187,63 @@ function blerc/vim-load-hook {
   # bleopt keymap_vi_macro_depth=64
   # bleopt keymap_vi_nmap_name:=$'\e[1m~\e[m'
 
-  # # keymap settings with Meta modifiers
-  # ble-decode/keymap:vi_imap/define-meta-bindings
+  #----------------------------------------------------------------------------
+  # Keybindings
+
+  ## The following setting sets up the keymap settings with Meta modifiers.
+  ## With this setting, M-RET can be used to insert a newline in the
+  ## commandline.  In this case, C-RET can be optionally configured so that it
+  ## forcibly executes the command.
+
+  #ble-decode/keymap:vi_imap/define-meta-bindings
+  #ble-bind -m vi_imap -f 'C-RET' 'accept-line'
+
+
+  ## The default mapping of C-o is vi_imap/single-command-mode.  If you want to
+  ## execute the current command line and load the next history entry with
+  ## <C-o>, use the following setting:
+
+  #ble-bind -m vi_imap -f 'C-o' 'accept-and-next'
+
+
+  ## The default mapping of C-k is kill-forward-line.  If you want to input
+  ## digraphs with <C-k>{char1}{char2}, use the following setting:
+
+  #ble-bind -m vi_imap -f 'C-k' 'vi_imap/insert-digraph'
+
+
+  ## The default mapping of <M-backspace> (whose actual key sequence depends on
+  ## your terminal) copies the previous shell word in the kill ring.  Instead,
+  ## the following settings will kill the backward word as in the default
+  ## readline.
+
+  #ble-bind -m vi_imap -f 'M-C-?' kill-backward-cword
+  #ble-bind -m vi_imap -f 'M-DEL' kill-backward-cword
+  #ble-bind -m vi_imap -f 'M-C-h' kill-backward-cword
+  #ble-bind -m vi_imap -f 'M-BS'  kill-backward-cword
+
+
+  ## The default mapping of C-c is vi_imap/normal-mode-without-insert-leave
+  ## (imap), vi-command/cancel (nmap).  If you instead want to discard the
+  ## current line and go to the next line, you can bind C-c to 'discard-line':
+
+  #ble-bind -m vi_imap -f 'C-c' discard-line
+  #ble-bind -m vi_nmap -f 'C-c' discard-line
+
+
+  ## The default mapping of 'g g' and G moves the current position in the
+  ## command history.  If you would like to move the cursor position in the
+  ## current command entry, you can overwrite the bindings as follows.
+
+  #ble-bind -m vi_nmap -f 'g g' vi-command/first-nol
+  #ble-bind -m vi_omap -f 'g g' vi-command/first-nol
+  #ble-bind -m vi_xmap -f 'g g' vi-command/first-nol
+  #ble-bind -m vi_nmap -f 'G' vi-command/last-line
+  #ble-bind -m vi_omap -f 'G' vi-command/last-line
+  #ble-bind -m vi_xmap -f 'G' vi-command/last-line
+
+  #----------------------------------------------------------------------------
+  # Cursor shapes and other terminal settings
 
   ## Cursor settings
 

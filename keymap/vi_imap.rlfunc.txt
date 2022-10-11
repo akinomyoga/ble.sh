@@ -6,7 +6,7 @@ backward-byte                     -
 backward-char                     @nomarked backward-char
 backward-delete-char              vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char
 backward-kill-line                kill-backward-line
-backward-kill-word                kill-backward-uword
+backward-kill-word                kill-backward-cword
 backward-word                     @nomarked backward-sword
 beginning-of-history              history-beginning
 beginning-of-line                 @nomarked beginning-of-line
