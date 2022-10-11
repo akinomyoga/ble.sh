@@ -60,14 +60,14 @@ This requires the commands `curl`, `tar` (with the support for the `J` flag), an
 # TRIAL without installation
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-source ble-nightly*/ble.sh
+source ble-nightly/ble.sh
 
 # Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 mkdir -p ~/.local/share/blesh
-mv -f ble-nightly*/* ~/.local/share/blesh/
-rmdir ble-nightly*
+cp -Rf ble-nightly/* ~/.local/share/blesh/
+rm -rf ble-nightly
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>
@@ -80,13 +80,14 @@ This requires the commands `wget`, `tar` (with the support for the `J` flag), an
 # TRIAL without installation
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-source ble-nightly*/ble.sh
+source ble-nightly/ble.sh
 
 # Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 mkdir -p ~/.local/share/blesh
-mv ble-nightly*/* ~/.local/share/blesh/
+cp -Rf ble-nightly/* ~/.local/share/blesh/
+rm -rf ble-nightly
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>

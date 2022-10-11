@@ -24,7 +24,8 @@ jobs:
         run: |
           make install INSDIR="./ble-${{ env.blesh_build_pkgver }}"
           tar -cJf "ble-${{ env.blesh_build_pkgver }}.tar.xz" "ble-${{ env.blesh_build_pkgver }}"
-          cp "ble-${{ env.blesh_build_pkgver }}.tar.xz" ble-nightly.tar.xz
+          mv "ble-${{ env.blesh_build_pkgver }}" ble-nightly
+          tar -cJf ble-nightly.tar.xz ble-nightly
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
