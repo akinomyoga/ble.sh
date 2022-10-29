@@ -3395,8 +3395,30 @@ function ble/complete/progcomp/.filter-and-split-compgen {
 
       END { if (mandb_count) exit 10; }
     '
+    local debug_log=~/blesh-gh246-debug.log
+    local debug_out=~/blesh-gh246-compgen.txt
+    ble/util/print "comp_func: $comp_func" >> "$debug_log"
+    if [[ $comp_func == __git_wrap__git_main ]]; then
+      echo "$out" >| "$debug_out"
+      {
+        ble/util/print ----------------------------------------
+        ble/util/print "size: ${#out}"
+        ls -la "${args_mandb[@]}" 2>/dev/null
+        ble/util/print "[head $debug_out]"
+        head "$debug_out"
+        ble/util/print "[tail $debug_out]"
+        tail "$debug_out"
+        ble/util/print "start: $EPOCHREALTIME"
+      } >> "$debug_log"
+    fi
     ble/util/assign-array "$1" 'ble/bin/awk -F "$_ble_term_FS" "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'
     (($?==10)) && flag_mandb=1
+    if [[ $comp_func == __git_wrap__git_main ]]; then
+      {
+        ble/util/print "end:   $EPOCHREALTIME"
+        ble/util/print ----------------------------------------
+      } >> "$debug_log"
+    fi
   else
     ble/string#split-lines "$1" "$out"
   fi
