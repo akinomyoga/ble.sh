@@ -6638,6 +6638,40 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-11-12
+
+  * test: テストで用いている rm が alias によって rm -i になって失敗する [#D1890]
+
+    これはテストの方を修正する事にした。他に類似の箇所はなかった。これは単独修
+    正で良い。但し #D1889 のcontrib の更新も含める。
+
+  * fzf-completion 経由で補完した path の特別文字が正しく quote されない (reported by MK-Alias) [#D1889]
+    https://github.com/akinomyoga/ble.sh/issues/250
+
+    fzf-completion.bash の中で noquote をしているのが原因の様である。noquote を
+    つけた経緯について調べる。syntax-raw を付加したのは fb145dea (contrib) であ
+    る。そして noquote をつけた箇所を確認しようとしたがどうも contrib の
+    initial commit から noquote がついていた様である。つまり、色々の報告があっ
+    た間も全然修正されなかった振る舞いという事である。なので余り深く考えられて
+    いる訳でもない気がする。
+
+    contrib を導入したのは f2901158 #D1335 (2020-04-16) の様である。contrib の
+    最初の commit では補完関数の advice は以下の様になっていた。
+
+    function _fzf_complete.advice {
+      [[ :$comp_type: == *:auto:* ]] && return
+      compopt -o noquote
+      COMP_WORDS=("${comp_words[@]}") COMP_CWORD=$comp_cword
+      COMP_LINE=$comp_line COMP_POINT=$comp_point
+      ble/function#push printf '[[ $1 == "\e[5n" ]] || builtin printf "$@"'
+      ble/function#advice/do <> /dev/tty >&0 2>&0
+      ble/function#pop printf
+      ble/textarea#invalidate
+    }
+
+    そんなに深く考えられている様には思われない。単に noquote を外してしまって良
+    い気がする。
+
 2022-10-02
 
   * README: Guix の package 一覧に追加する (motivated by kiasoc5) [#D1888]

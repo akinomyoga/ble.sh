@@ -50,23 +50,23 @@ ble/test/start-section 'ble/main' 19
   ble/test/chdir
   cd -P .
 
-  mkdir -p ab/cd/ef
-  touch ab/cd/ef/file.txt
-  ln -s ef/file.txt ab/cd/link1
-  ln -s ab link.d
-  ln -s link.d/cd/link1 f.txt
+  command mkdir -p ab/cd/ef
+  command touch ab/cd/ef/file.txt
+  command ln -s ef/file.txt ab/cd/link1
+  command ln -s ab link.d
+  command ln -s link.d/cd/link1 f.txt
   ble/test '
     ble/util/readlink f.txt
     [[ $ret != /* ]] && ret=${PWD%/}/$ret' \
     ret="${PWD%/}/ab/cd/ef/file.txt"
 
   # loop symbolic links
-  touch loop1.sh
-  ln -s loop1.sh loop0.sh
-  ln -s loop1.sh loop3.sh
-  rm loop1.sh
-  ln -s loop3.sh loop2.sh
-  ln -s loop2.sh loop1.sh
+  command touch loop1.sh
+  command ln -s loop1.sh loop0.sh
+  command ln -s loop1.sh loop3.sh
+  command rm loop1.sh
+  command ln -s loop3.sh loop2.sh
+  command ln -s loop2.sh loop1.sh
   for impl in impl1 impl2; do
     ble/test "ble/test:readlink.$impl loop0.sh" ret='loop1.sh'
   done

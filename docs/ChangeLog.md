@@ -313,7 +313,7 @@
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
 - progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` 4d2dd35
 - global: quote `return $?` `#D1884` 801d14a
-- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa xxxxxxx
+- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa 8cb9b84
 
 ## Documentation
 
@@ -321,7 +321,7 @@
 - blerc: add missing faces `argument_option` and `cmdinfo_cd_cdpath` (reported by Prikalel) `#D1675` 26aaf87
 - README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 6123551
 - README: add links to `bash-it` and `oh-my-bash` `#D1724` 4a2575f
-- README: mention the Guix package (motivated by kiasoc5) `#D1888` xxxxxxx
+- README: mention the Guix package (motivated by kiasoc5) `#D1888` 0f7c04b
 
 ## Optimization
 
@@ -444,6 +444,7 @@
     - util (ble/util/s2bytes): clear locale cache `#D1881` 2e1a7c1
   - complete: fix syntax error for bash-3.0 `#D1881` 0b3e611
 - test (ble/util/writearray): use `ble/file#hash` instead of `sha256sum` `#D1882` b76e21e
+- test (ble/util/readlink): work around external aliases `#D1890` xxxxxxx
 
 ## Internal changes and fixes
 
@@ -481,7 +482,7 @@
 - global: quote numbers for unexpected `IFS` `#D1835` 0179afc
 - history: refactor hooks `history_{{delete,clear,insert} => change}` `#D1860` c393c93
 - history: rename the hook `history_{on => }leave` `#D1860` c393c93
-- make: check necessary `.git` `#D1887` xxxxxxx
+- make: check necessary `.git` `#D1887` 0f7c04b
 
 ## Contrib
 
@@ -490,6 +491,7 @@
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - contrib/fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
+- contrib/fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` xxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
