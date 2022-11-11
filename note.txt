@@ -1855,6 +1855,33 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
+2022-10-28
+
+  * edit: display-shell-version
+    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294843777
+
+    直接 ble/widget/display-shell-version を実行すれば良い。
+    C-x C-v が効かない端末でもOK
+
+  * edit: display-shell-version
+    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
+
+    git, gmake 及び gawk の version も表示する?
+
+2022-10-24
+
+  * rename blerc.template
+    https://github.com/akinomyoga/ble.sh/issues/244
+
+  * 複数 widget を実行したい時: Q&A や wiki にも説明を書く
+    https://github.com/akinomyoga/ble.sh/discussions/241#discussioncomment-3937949
+
+  * cancel line by C-c in vi mode
+    https://github.com/akinomyoga/ble.sh/discussions/241
+
+  * delete word by M-backspace
+    https://github.com/akinomyoga/ble.sh/issues/243
+
 2022-10-02
 
   * prompt: dirty 状態の更新時にカーソル位置がずれる。
@@ -6721,6 +6748,9 @@ bash_tips
   * benchmark: -o KSH_ARRAY の中のコードが外と同じの気がする [#D1886]
     これは fe751acb の最初に benchmark.sh を追加した時からそのままである。
     実際 zsh の振る舞いを調べてみると KSH_ARRAYS を設定していると match の中身はずれる 。
+
+    2022-11-11 実際に zsh の上で使おうとしたらたくさんの修正が必要になっ
+    た。取り敢えず現状で分かっている分を追加修正した。
 
 2022-09-26
 

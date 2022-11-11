@@ -21,16 +21,16 @@ function ble-measure/.loop {
 if [[ ${ZSH_VERSION-} ]]; then
   _ble_measure_resolution=1000 # [usec]
   function ble-measure/.time {
-    local result
+    local result=
     result=$({ time ( ble-measure/.loop "$n" "$1" ; ) } 2>&1 )
     #local result=$({ time ( ble-measure/.loop "$n" "$1" &>/dev/null); } 2>&1)
     result=${result##*cpu }
     local rex='(([0-9]+):)?([0-9]+)\.([0-9]+) total$'
     if [[ $result =~ $rex ]]; then
       if [[ -o KSH_ARRAYS ]]; then
-        local m=${match[0]} s=${match[1]} ms=${match[2]}
-      else
         local m=${match[1]} s=${match[2]} ms=${match[3]}
+      else
+        local m=${match[2]} s=${match[3]} ms=${match[4]}
       fi
       m=${m:-0} ms=${ms}000; ms=${ms:0:3}
      
@@ -79,8 +79,9 @@ else
 fi
 
 _ble_measure_base= # [nsec]
-_ble_measure_base_real=()
 _ble_measure_base_nestcost=0 # [nsec/10]
+_ble_measure_base_real=()
+_ble_measure_base_guess=()
 _ble_measure_count=1 # 同じ倍率で _ble_measure_count 回計測して最小を取る。
 _ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上になるようにする
 
@@ -97,7 +98,7 @@ function ble-measure/calibrate.8 { ble-measure/calibrate.7; }
 function ble-measure/calibrate.9 { ble-measure/calibrate.8; }
 function ble-measure/calibrate.A { ble-measure/calibrate.9; }
 function ble-measure/calibrate {
-  local ret nsec
+  local ret= nsec=
 
   local calibrate_count=1
   _ble_measure_base=0
@@ -105,6 +106,7 @@ function ble-measure/calibrate {
 
   # nest0: calibrate.0 の ble-measure 内部での ${#FUNCNAME[*]}
   local nest0=$((${#FUNCNAME[@]}+2))
+  [[ ${ZSH_VERSION-} ]] && nest0=$((${#funcstack[@]}+2))
   ble-measure/calibrate.0; local x0=$nsec
   ble-measure/calibrate.A; local xA=$nsec
   local nest_cost=$((xA-x0))
@@ -118,7 +120,7 @@ function ble-measure/fit {
 
   local calibrate_count=10
 
-  local c nest_level=${#FUNCNAME[@]}
+  local c= nest_level=${#FUNCNAME[@]}
   for c in {0..9} A; do
     "ble-measure/calibrate.$c"
     ble/util/print "$((nest_level++)) $nsec"
@@ -132,10 +134,12 @@ EOF
 }
 
 ## @fn ble-measure/.read-arguments.get-optarg
-##   @var[in,out] args iarg arg i c
+##   @var[in] args arg i c
+##   @var[in,out] iarg
+##   @var[out] optarg
 function ble-measure/.read-arguments.get-optarg {
   if ((i+1<${#arg})); then
-    optarg=${arg:i+1}
+    optarg=${arg:$((i+1))}
     i=${#arg}
     return 0
   elif ((iarg<${#args[@]})); then
@@ -154,6 +158,7 @@ function ble-measure/.read-arguments.get-optarg {
 function ble-measure/.read-arguments {
   local -a args; args=("$@")
   local iarg=0 optarg=
+  [[ ${ZSH_VERSION-} && ! -o KSH_ARRAYS ]] && iarg=1
   while [[ ${args[iarg]} == -* ]]; do
     local arg=${args[iarg++]}
     case $arg in
@@ -164,9 +169,9 @@ function ble-measure/.read-arguments {
       ble/util/print "ble-measure: unrecognized option '$arg'."
       flags=E$flags ;;
     (-?*)
-      local i c
+      local i= c= # Note: zsh prints the values with just "local i c"
       for ((i=1;i<${#arg};i++)); do
-        c=${arg:i:1}
+        c=${arg:$i:1}
         case $c in
         (q) flags=qV$flags ;;
         ([ca])
@@ -189,7 +194,11 @@ function ble-measure/.read-arguments {
     esac
   done
   local IFS=$' \t\n'
-  command="${args[*]:iarg}"
+  if [[ ${ZSH_VERSION-} ]]; then
+    command="$args[$iarg,-1]"
+  else
+    command="${args[*]:$iarg}"
+  fi
   [[ $flags != *E* ]]
 }
 
@@ -205,6 +214,7 @@ function ble-measure/.read-arguments {
 ##     実行時間を nsec 単位で返します。
 function ble-measure {
   local __level=${#FUNCNAME[@]} __base=
+  [[ ${ZSH_VERSION-} ]] && __level=${#funcstack[@]}
   local flags= command= count=$_ble_measure_count
   local measure_threshold=$_ble_measure_threshold
   ble-measure/.read-arguments "$@" || return "$?"
@@ -237,24 +247,28 @@ function ble-measure {
       __base=$((_ble_measure_base+_ble_measure_base_nestcost*__level/10))
     else
       # それ以外の時は __level 毎に計測
-      if [[ ! $ble_measure_calibrate && ! ${_ble_measure_base[__level]} ]]; then
+      if [[ ! $ble_measure_calibrate && ! ${_ble_measure_base_guess[__level]} ]]; then
         if [[ ! ${_ble_measure_base_real[__level+1]} ]]; then
           local ble_measure_calibrate=1
           ble-measure -qc3 -B 0 ''
           ble/util/unlocal ble_measure_calibrate
           _ble_measure_base_real[__level+1]=$nsec
-          _ble_measure_base[__level+1]=$nsec
+          _ble_measure_base_guess[__level+1]=$nsec
         fi
 
-        # linear-fit result in chatoyancy
-        #   65.9818 pm 2.945 (4.463%)
-        #   4356.75 pm 19.97 (0.4585%)
+        # 上の実測値は一つ上のレベル (__level+1) での結果になるので現在のレベル
+        # (__level) の値に補正する。レベル毎の時間が chatoyancy での線形フィッ
+        # トの結果に比例する仮定して補正を行う。
+        #
+        # linear-fit result with $f(x) = A x + B$ in chatoyancy
+        #   A = 65.9818 pm 2.945 (4.463%)
+        #   B = 4356.75 pm 19.97 (0.4585%)
         local A=6598 B=435675
         nsec=${_ble_measure_base_real[__level+1]}
-        _ble_measure_base[__level]=$((nsec*(B+A*(__level-1))/(B+A*__level)))
+        _ble_measure_base_guess[__level]=$((nsec*(B+A*(__level-1))/(B+A*__level)))
         ble/util/unlocal A B
       fi
-      __base=${_ble_measure_base[__level]:-0}
+      __base=${_ble_measure_base_guess[__level]:-0}
     fi
   fi
 
@@ -296,9 +310,9 @@ function ble-measure {
       [[ ${_ble_measure_base_real[__level]} ]] &&
         ((__real<_ble_measure_base_real[__level])) &&
         _ble_measure_base_real[__level]=$__real
-      [[ ${_ble_measure_base[__level]} ]] &&
-        ((__real<_ble_measure_base[__level])) &&
-        _ble_measure_base[__level]=$__real
+      [[ ${_ble_measure_base_guess[__level]} ]] &&
+        ((__real<_ble_measure_base_guess[__level])) &&
+        _ble_measure_base_guess[__level]=$__real
       ((__real<__base)) &&
         __base=$__real
     fi

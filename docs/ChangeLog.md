@@ -313,7 +313,7 @@
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
 - progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` 4d2dd35
 - global: quote `return $?` `#D1884` 801d14a
-- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa
+- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa xxxxxxx
 
 ## Documentation
 
