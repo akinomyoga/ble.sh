@@ -313,7 +313,6 @@
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
 - progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` 4d2dd35
 - global: quote `return $?` `#D1884` 801d14a
-- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa 8cb9b84
 
 ## Documentation
 
@@ -444,7 +443,7 @@
     - util (ble/util/s2bytes): clear locale cache `#D1881` 2e1a7c1
   - complete: fix syntax error for bash-3.0 `#D1881` 0b3e611
 - test (ble/util/writearray): use `ble/file#hash` instead of `sha256sum` `#D1882` b76e21e
-- test (ble/util/readlink): work around external aliases `#D1890` xxxxxxx
+- test (ble/util/readlink): work around external aliases `#D1890` 0c6291f
 
 ## Internal changes and fixes
 
@@ -483,6 +482,9 @@
 - history: refactor hooks `history_{{delete,clear,insert} => change}` `#D1860` c393c93
 - history: rename the hook `history_{on => }leave` `#D1860` c393c93
 - make: check necessary `.git` `#D1887` 0f7c04b
+- benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa 8cb9b84
+- benchmark: support for ksh as `benchmark.ksh` `#D1886` 5dae4da
+- github/workflows (build): rename directory in `ble-nightly.tar.xz` to `ble-nightly` (reported by Harduex) `#D1891` xxxxxxx
 
 ## Contrib
 
@@ -491,7 +493,7 @@
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - contrib/fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
-- contrib/fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` xxxxxxx
+- contrib/fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

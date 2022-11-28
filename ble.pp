@@ -1585,8 +1585,8 @@ function ble-update/.download-nightly-build {
   local tarname=ble-nightly.tar.xz
   local url_tar=$_ble_base_repository_url/releases/download/nightly/$tarname
   (
-    shopt -u failglob
-    shopt -s nullglob
+    set +f
+    shopt -u failglob nullglob
 
     # mkcd "$_ble_base/src"
     if ! ble/bin/mkdir -p "$_ble_base/src"; then
@@ -1639,15 +1639,9 @@ function ble-update/.download-nightly-build {
     fi
 
     # cp -T ble-nightly* "$_ble_base"
-    local extracted_dir
-    extracted_dir=(ble-nightly*/)
-    if ((${#extracted_dir[@]}!=1)); then
-      if ((${#extracted_dir[@]}==0)); then
-        ble/util/print 'ble-update (nightly): the directory "ble-nightly*" not found in the tarball.' >&2
-      else
-        ble/util/print 'ble-update (nightly): multiple directories "ble-nightly*" found in the tarball.' >&2
-        ble/bin/rm -rf ble-nightly*/*
-      fi
+    local extracted_dir=ble-nightly
+    if [[ ! -d $extracted_dir ]]; then
+      ble/util/print "ble-update (nightly): the directory 'ble-nightly' not found in the tarball '$PWD/$tarname'." >&2
       return 1
     fi
     ble/bin/cp -Rf "$extracted_dir"/* "$_ble_base/" || return 1

@@ -57,13 +57,14 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 # 簡単お試し (インストールせずにお試しいただけます)
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-source ble-nightly*/ble.sh
+source ble-nightly/ble.sh
 
 # インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 mkdir -p ~/.local/share/blesh
-mv ble-nightly* ~/.local/share/blesh
+mv -f ble-nightly/* ~/.local/share/blesh/
+rmdir ble-nightly
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>
@@ -76,13 +77,14 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 # 簡単お試し (インストールせずにお試しいただけます)
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-source ble-nightly*/ble.sh
+source ble-nightly/ble.sh
 
 # インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 mkdir -p ~/.local/share/blesh
-mv ble-nightly* ~/.local/share/blesh
+mv ble-nightly/* ~/.local/share/blesh/
+rmdir ble-nightly
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 </details>
