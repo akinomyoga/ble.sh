@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#%define 1
+#%if target == "ksh"
+#%% $ echo _ble_measure_target=ksh
+#%end
 if ! type ble/util/print &>/dev/null; then
   function ble/util/unlocal { builtin unset -v "$@"; }
   function ble/util/print { builtin printf '%s\n' "$1"; }
@@ -7,23 +11,66 @@ if ! type ble/util/print &>/dev/null; then
 fi
 
 function ble-measure/.loop {
-  builtin eval "function _target { ${2:+$2; }return 0; }"
+  # Note: ksh requires to quote ;
+  builtin eval "function _target { ${2:+"$2; "}return 0; }"
   local _i _n=$1
   for ((_i=0;_i<_n;_i++)); do
     _target
   done
 }
 
-## @fn ble-measure/.time command
-##   @var[in]  n
-##   @var[out] utot
-##     計測にかかった総時間を返します。
-if [[ ${ZSH_VERSION-} ]]; then
+## @fn ble-measure/.time n command
+##   @param[in] n command
+##   @var[out] ret
+##     計測にかかった総時間を μs 単位で返します。
+if ((BASH_VERSINFO[0]>=5)) ||
+     { [[ ${ZSH_VERSION-} ]] && zmodload zsh/datetime &>/dev/null && [[ ${EPOCHREALTIME-} ]]; } ||
+     [[ ${SECONDS-} == *.??? ]]
+then
+  ## @fn ble-measure/.get-realtime
+  ##   @var[out] ret
+  if [[ ${EPOCHREALTIME-} ]]; then
+    _ble_measure_resolution=1 # [usec]
+    function ble-measure/.get-realtime {
+      local LC_ALL= LC_NUMERIC=C
+      ret=$EPOCHREALTIME
+    }
+  else
+    # Note: ksh does not have "local"-equivalent for the POSIX-style functions,
+    #   so we do not set the locale here.  Anyway, we do not care the
+    #   interference with outer-scope variables since this script is used
+    #   limitedly in ksh.
+    _ble_measure_resolution=1000 # [usec]
+    function ble-measure/.get-realtime {
+      ret=$SECONDS
+    }
+  fi
+  function ble-measure/.time {
+    ble-measure/.get-realtime 2>/dev/null; local __ble_time1=$ret
+    ble-measure/.loop "$1" "$2" &>/dev/null
+    ble-measure/.get-realtime 2>/dev/null; local __ble_time2=$ret
+
+    # convert __ble_time1 and __ble_time2 to usec
+    # Note: ksh does not support empty index as ${__ble_frac::6}.
+    local __ble_frac
+    [[ $__ble_time1 == *.* ]] || __ble_time1=${__ble_time1}.
+    __ble_frac=${__ble_time1##*.}000000 __ble_time1=${__ble_time1%%.*}${__ble_frac:0:6}
+    [[ $__ble_time2 == *.* ]] || __ble_time2=${__ble_time2}.
+    __ble_frac=${__ble_time2##*.}000000 __ble_time2=${__ble_time2%%.*}${__ble_frac:0:6}
+
+    ((ret=__ble_time2-__ble_time1))
+    ((ret==0&&(ret=_ble_measure_resolution)))
+    ((ret>0))
+  }
+elif [[ ${ZSH_VERSION-} ]]; then
   _ble_measure_resolution=1000 # [usec]
+#%if target == "ksh"
+  # [ksh incompatible code stripped]
+#%else
   function ble-measure/.time {
     local result=
-    result=$({ time ( ble-measure/.loop "$n" "$1" ; ) } 2>&1 )
-    #local result=$({ time ( ble-measure/.loop "$n" "$1" &>/dev/null); } 2>&1)
+    result=$({ time ( ble-measure/.loop "$1" "$2" ; ) } 2>&1 )
+    #local result=$({ time ( ble-measure/.loop "$1" "$2" &>/dev/null); } 2>&1)
     result=${result##*cpu }
     local rex='(([0-9]+):)?([0-9]+)\.([0-9]+) total$'
     if [[ $result =~ $rex ]]; then
@@ -33,58 +80,54 @@ if [[ ${ZSH_VERSION-} ]]; then
         local m=${match[2]} s=${match[3]} ms=${match[4]}
       fi
       m=${m:-0} ms=${ms}000; ms=${ms:0:3}
-     
-      ((utot=((10#0$m*60+10#0$s)*1000+10#0$ms)*1000))
+
+      ((ret=((10#0$m*60+10#0$s)*1000+10#0$ms)*1000))
       return 0
     else
       builtin echo "ble-measure: failed to read the result of \`time': $result." >&2
-      utot=0
+      ret=0
       return 1
     fi
   }
-elif ((BASH_VERSINFO[0]>=5)); then
-  _ble_measure_resolution=1 # [usec]
-  function ble-measure/.get-realtime {
-    local LC_ALL= LC_NUMERIC=C
-    time=$EPOCHREALTIME
-  }
-  function ble-measure/.time {
-    local command=$1
-    local time
-    ble-measure/.get-realtime 2>/dev/null; local time1=${time//.}
-    ble-measure/.loop "$n" "$command" &>/dev/null
-    ble-measure/.get-realtime 2>/dev/null; local time2=${time//.}
-    ((utot=time2-time1))
-    ((utot>0))
-  }
+#%end
 else
   _ble_measure_resolution=1000 # [usec]
+#%if target == "ksh"
+  # [ksh incompatible code stripped]
+#%else
   function ble-measure/.time {
-    utot=0
+    ret=0
 
-    local result TIMEFORMAT='[%R]' command=$1
+    local result TIMEFORMAT='[%R]' __ble_n=$1 __ble_command=$2
     if declare -f ble/util/assign &>/dev/null; then
-      ble/util/assign result '{ time ble-measure/.loop "$n" "$command" &>/dev/null;} 2>&1'
+      ble/util/assign result '{ time ble-measure/.loop "$__ble_n" "$__ble_command" &>/dev/null;} 2>&1'
     else
-      result=$({ time ble-measure/.loop "$n" "$1" &>/dev/null;} 2>&1)
+      result=$({ time ble-measure/.loop "$1" "$2" &>/dev/null;} 2>&1)
     fi
 
     local rex='\[([0-9]+)(\.([0-9]+))?\]'
     [[ $result =~  $rex ]] || return 1
     local s=${BASH_REMATCH[1]}
     local ms=${BASH_REMATCH[3]}000; ms=${ms::3}
-    ((utot=(10#0$s*1000+10#0$ms)*1000))
+    ((ret=(10#0$s*1000+10#0$ms)*1000))
     return 0
   }
+#%end
 fi
 
 _ble_measure_base= # [nsec]
 _ble_measure_base_nestcost=0 # [nsec/10]
+#%if target == "ksh"
+#%% $ echo typeset -a _ble_measure_base_real
+#%% $ echo typeset -a _ble_measure_base_guess
+#%else
 _ble_measure_base_real=()
 _ble_measure_base_guess=()
+#%end
 _ble_measure_count=1 # 同じ倍率で _ble_measure_count 回計測して最小を取る。
 _ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上になるようにする
 
+#%if target != "ksh"
 ## @fn ble-measure/calibrate
 function ble-measure/calibrate.0 { ble-measure -qc"$calibrate_count" ''; }
 function ble-measure/calibrate.1 { ble-measure/calibrate.0; }
@@ -132,6 +175,7 @@ b=4500;a=100
 fit f(x) 'ble-measure-fit.txt' via a,b
 EOF
 }
+#%end
 
 ## @fn ble-measure/.read-arguments.get-optarg
 ##   @var[in] args arg i c
@@ -195,7 +239,7 @@ function ble-measure/.read-arguments {
   done
   local IFS=$' \t\n'
   if [[ ${ZSH_VERSION-} ]]; then
-    command="$args[$iarg,-1]"
+    command="${args[$iarg,-1]}"
   else
     command="${args[*]:$iarg}"
   fi
@@ -249,9 +293,16 @@ function ble-measure {
       # それ以外の時は __level 毎に計測
       if [[ ! $ble_measure_calibrate && ! ${_ble_measure_base_guess[__level]} ]]; then
         if [[ ! ${_ble_measure_base_real[__level+1]} ]]; then
-          local ble_measure_calibrate=1
-          ble-measure -qc3 -B 0 ''
-          ble/util/unlocal ble_measure_calibrate
+          if [[ ${_ble_measure_target-} == ksh ]]; then
+            # Note: In ksh, we cannot do recursive call with dynamic scoping,
+            # so we directly call the measuring function
+            ble-measure/.time 50000 ''
+            ((nsec=ret*1000/50000))
+          else
+            local ble_measure_calibrate=1
+            ble-measure -qc3 -B 0 ''
+            ble/util/unlocal ble_measure_calibrate
+          fi
           _ble_measure_base_real[__level+1]=$nsec
           _ble_measure_base_guess[__level+1]=$nsec
         fi
@@ -263,25 +314,26 @@ function ble-measure {
         # linear-fit result with $f(x) = A x + B$ in chatoyancy
         #   A = 65.9818 pm 2.945 (4.463%)
         #   B = 4356.75 pm 19.97 (0.4585%)
-        local A=6598 B=435675
+        local __A=6598 __B=435675
         nsec=${_ble_measure_base_real[__level+1]}
-        _ble_measure_base_guess[__level]=$((nsec*(B+A*(__level-1))/(B+A*__level)))
-        ble/util/unlocal A B
+        _ble_measure_base_guess[__level]=$((nsec*(__B+__A*(__level-1))/(__B+__A*__level)))
+        ble/util/unlocal __A __B
       fi
       __base=${_ble_measure_base_guess[__level]:-0}
     fi
   fi
 
+  local __ble_max_n=500000
   local prev_n= prev_utot=
   local -i n
-  for n in {1,10,100,1000,10000}\*{1,2,5}; do
+  for n in {1,10,100,1000,10000,100000}\*{1,2,5}; do
     [[ $prev_n ]] && ((n/prev_n<=10 && prev_utot*n/prev_n<measure_threshold*2/5 && n!=50000)) && continue
 
     local utot=0
     [[ $flags != *V* ]] && printf '%s (x%d)...' "$command" "$n" >&2
-    ble-measure/.time "$command" || return 1
+    ble-measure/.time "$n" "$command" || return 1
     [[ $flags != *V* ]] && printf '\r\e[2K' >&2
-    ((utot >= measure_threshold)) || continue
+    ((utot=ret,utot>=measure_threshold||n==__ble_max_n)) || continue
 
     prev_n=$n prev_utot=$utot
     local min_utot=$utot
@@ -291,8 +343,8 @@ function ble-measure {
       local sum_utot=$utot sum_count=1 i
       for ((i=2;i<=count;i++)); do
         [[ $flags != *V* ]] && printf '%s' "$command (x$n $i/$count)..." >&2
-        if ble-measure/.time "$command"; then
-          ((utot<min_utot)) && min_utot=$utot
+        if ble-measure/.time "$n" "$command"; then
+          ((utot=ret,utot<min_utot)) && min_utot=$utot
           ((sum_utot+=utot,sum_count++))
         fi
         [[ $flags != *V* ]] && printf '\r\e[2K' >&2
@@ -327,13 +379,41 @@ function ble-measure {
         function genround(x, mod) { return int(x / mod + 0.5) * mod; }
         BEGIN { title = ENVIRON["title"]; printf("%12.3f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, reso / 10.0 / n), title); exit }'
     fi
-    ((ret=utot/n))
+
+    local out
+    ((out=utot/n))
     if ((n>=1000)); then
       ((nsec=utot/(n/1000)))
     else
       ((nsec=utot*1000/n))
     fi
-    ((ret-=nsec0/1000,nsec-=nsec0))
+    ((out-=nsec0/1000,nsec-=nsec0))
+    ret=$out
     return 0
   done
 }
+#%end
+#%if target == "ksh"
+#%% # varname and command names
+#%% define 1 1.r|builtin ||
+#%% define 1 1.r| local | typeset |
+#%% define 1 1.r|ble_measure_calibrate|_ble_measure_calibrate|
+#%% # function names
+#%% define 1 1.r|ble/util/unlocal|_ble_util_unlocal|
+#%% define 1 1.r|ble/util/print-lines|_ble_util_print_lines|
+#%% define 1 1.r|ble/util/print|_ble_util_print|
+#%% define 1 1.r|ble-measure/.loop|_ble_measure__loop|
+#%% define 1 1.r|ble-measure/.get-realtime|_ble_measure__get_realtime|
+#%% define 1 1.r|ble-measure/.time|_ble_measure__time|
+#%% define 1 1.r|ble-measure/.read-arguments.get-optarg|_ble_measure__read_arguments_get_optarg|
+#%% define 1 1.r|ble-measure/.read-arguments|_ble_measure__read_arguments|
+#%% define 1 1.r|ble-measure|ble_measure|
+#%% # function defs
+#%% define 1 1.r|function _ble_measure__time|_ble_measure__time()|
+#%% define 1 1.r|function _ble_measure__get_realtime|_ble_measure__get_realtime()|
+#%% define 1 1.r|function _ble_util_unlocal|_ble_util_unlocal()|
+#%% define 1 1.r|function _ble_measure__read_arguments_get_optarg|_ble_measure__read_arguments_get_optarg()|
+#%% define 1 1.r|function _ble_measure__read_arguments|_ble_measure__read_arguments()|
+#%% define 1 1.r|function ble_measure|ble_measure()|
+#%end
+#%expand 1

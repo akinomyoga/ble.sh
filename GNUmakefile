@@ -99,6 +99,10 @@ $(OUTDIR)/lib/init-msys1.sh: lib/init-msys1.sh lib/init-msys1-helper.c | $(OUTDI
 $(OUTDIR)/lib/test-canvas.sh: lib/test-canvas.sh lib/test-canvas.GraphemeClusterTest.sh | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 
+outfiles += $(OUTDIR)/lib/benchmark.ksh
+$(OUTDIR)/lib/benchmark.ksh: lib/benchmark.ksh src/benchmark.sh
+	$(MWGPP) $< > $@
+
 #outfiles += $(OUTDIR)/lib/init-msleep.sh
 #$(OUTDIR)/lib/init-msleep.sh: lib/init-msleep.sh lib/init-msleep.c | $(OUTDIR)/lib
 #	$(MWGPP) $< > $@
