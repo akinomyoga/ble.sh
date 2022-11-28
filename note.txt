@@ -1855,19 +1855,6 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
-2022-10-28
-
-  * edit: display-shell-version
-    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294843777
-
-    直接 ble/widget/display-shell-version を実行すれば良い。
-    C-x C-v が効かない端末でもOK
-
-  * edit: display-shell-version
-    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
-
-    git, gmake 及び gawk の version も表示する?
-
 2022-10-24
 
   * rename blerc.template
@@ -6639,6 +6626,27 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-11-28
+
+  * 2022-10-28 edit: display-shell-version を直接実行できる様にする (reported by DhruvaG2000) [#D1893]
+    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294843777
+
+    直接 ble/widget/display-shell-version を実行すれば良い。C-x C-v が
+    効かない端末でもOK。例えば報告者の環境では C-v が「貼り付け」に奪
+    われていた。
+
+    * done: 直接実行しても表示が壊れない様に ble/widget/print を修正した。
+    * done: issue template を修正した。
+    * reject: wiki に関しては確認してみたがそもそも C-x C-v の指示も書
+      いていなかった。敢えてここで新しく解説を追加する必要もない気がす
+      る。
+
+  * 2022-10-28 edit: display-shell-version で git/gmake/gawk の情報を表示 [#D1892]
+    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
+
+    git, gmake 及び gawk の version も表示する? 変な生成のされ方をして
+    いないか確認する時にこの情報があった方が良い。
+
+    これは生成に用いた物の version なので生成時に埋め込むべきの気がする。
 
   * 2022-10-13 github/workflows について (reported by Harduex) [#D1891]
     https://github.com/akinomyoga/ble.sh/pull/240

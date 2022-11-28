@@ -6,8 +6,9 @@ about: Create a report to fix problems
 
 **ble version**: <!-- The version and commit-hash or the result of `echo "$BLE_VERSION"` -->
 **Bash version**: <!-- The result of `echo "$BASH_VERSION ($MACHTYPE)"` -->
-<!-- You can instead copy and paste the result of pressing [Ctrl-x][Ctrl-v] in
-  the ble.sh session. -->
+<!-- Instead of the above, you can copy and paste the result of running the
+  command "ble/widget/display-shell-version" or the result of pressing
+  [Ctrl-x][Ctrl-v] in a ble.sh session with the issue. -->
 
 <!-- Describe the problem here.  If example terminal contents (in either the
   text form or an image) are available, you may paste/insert them to explain

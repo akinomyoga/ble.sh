@@ -10,12 +10,18 @@ endif
 
 # check gawk
 GAWK := $(shell which gawk 2>/dev/null || type -p gawk 2>/dev/null)
-ifeq ($(GAWK),)
+ifneq ($(GAWK),)
+  GAWK_VERSION := $(shell LANG=C $(GAWK) --version 2>/dev/null | head -1 | grep -Fi 'GNU Awk')
+  ifeq ($(GAWK_VERSION),)
+    $(error Sorry, gawk is found but does not seem to work. Please install a proper version of gawk (GNU Awk).)
+  endif
+else
   GAWK := $(shell which awk 2>/dev/null || type -p awk 2>/dev/null)
   ifeq ($(GAWK),)
     $(error Sorry, gawk/awk could not be found. Please check your PATH environment variable.)
   endif
-  ifeq ($(shell $(GAWK) --version 2>/dev/null | grep -Fi 'GNU Awk'),)
+  GAWK_VERSION := $(shell LANG=C $(GAWK) --version 2>/dev/null | head -1 | grep -Fi 'GNU Awk')
+  ifeq ($(GAWK_VERSION),)
     $(error Sorry, gawk could not be found. Please install gawk (GNU Awk).)
   endif
 endif
@@ -38,7 +44,11 @@ ble-form.sh:
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
 $(OUTDIR)/ble.sh: ble.pp GNUmakefile | .git $(OUTDIR)
-	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ FULLVER=$(FULLVER) \
+	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT="$(@:%.sh=%.dep)" DEPENDENCIES_TARGET="$@" \
+	  FULLVER=$(FULLVER) \
+	  BUILD_GIT_VERSION="$(shell LANG=C git --version)" \
+	  BUILD_MAKE_VERSION="$(shell LANG=C $(MAKE) --version | head -1)" \
+	  BUILD_GAWK_VERSION="$(GAWK_VERSION)" \
 	  $(MWGPP) $< >/dev/null
 .DELETE_ON_ERROR: $(OUTDIR)/ble.sh
 

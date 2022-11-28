@@ -3827,7 +3827,8 @@ function ble/widget/display-shell-version {
   fi
 
   local lines="${sgrC}GNU bash$sgr0, version $sgrV$BASH_VERSION$sgr0 ($sgrA$MACHTYPE$sgr0)${os_release:+ [$os_release]}" iline=1
-  lines[iline++]="${sgrF}ble.sh$sgr0, version $sgrV$BLE_VERSION$sgr0$label_noarch"
+  local ble_build_info="${_ble_base_build_git_version/#git version/git}, $_ble_base_build_make_version, $_ble_base_build_gawk_version"
+  lines[iline++]="${sgrF}ble.sh$sgr0, version $sgrV$BLE_VERSION$sgr0$label_noarch [$ble_build_info]"
 
   ble/edit/display-version/check:bash-completion
   ble/edit/display-version/check:fzf
@@ -10015,8 +10016,13 @@ function ble/widget/print {
   local message="$*" lines
   [[ ${message//["$_ble_term_IFS"]} ]] || return 1
   lines=("$@")
-  ble/widget/.internal-print-command \
-    'ble/util/print-lines "${lines[@]}" >&2' pre-flush
+
+  if [[ ! ${_ble_attached-} || ${_ble_edit_exec_inside_begin-} ]]; then
+    ble/util/print-lines "${lines[@]}"
+  else
+    ble/widget/.internal-print-command \
+      'ble/util/print-lines "${lines[@]}" >&2' pre-flush
+  fi
 }
 function ble/widget/internal-command {
   ble-edit/content/clear-arg

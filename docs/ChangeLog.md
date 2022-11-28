@@ -201,6 +201,8 @@
 - prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` 69013d9
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
+- edit (`display-shell-version`): show `gawk`, `make`, and `git` versions of the build time `#D1892`
+- edit (`display-shell-version`): support running as a user command (reported by DhruvaG2000) `#D1893`
 
 ## Fixes
 
@@ -484,7 +486,7 @@
 - make: check necessary `.git` `#D1887` 0f7c04b
 - benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa 8cb9b84
 - benchmark: support for ksh as `benchmark.ksh` `#D1886` 5dae4da
-- github/workflows (build): rename directory in `ble-nightly.tar.xz` to `ble-nightly` (reported by Harduex) `#D1891` xxxxxxx
+- github/workflows (build): rename directory in `ble-nightly.tar.xz` to `ble-nightly` (reported by Harduex) `#D1891` f20854f 4ea2e23 43c6d4b
 
 ## Contrib
 

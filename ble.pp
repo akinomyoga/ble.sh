@@ -1518,6 +1518,9 @@ function ble-reload {
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 #%$ echo "_ble_base_branch=$(git rev-parse --abbrev-ref HEAD)"
 _ble_base_repository_url=https://github.com/akinomyoga/ble.sh
+#%$ echo "_ble_base_build_git_version=\"$BUILD_GIT_VERSION\""
+#%$ echo "_ble_base_build_make_version=\"$BUILD_MAKE_VERSION\""
+#%$ echo "_ble_base_build_gawk_version=\"$BUILD_GAWK_VERSION\""
 function ble-update/.check-install-directory-ownership {
   if [[ ! -O $_ble_base ]]; then
     ble/util/print 'ble-update: install directory is owned by another user:' >&2
