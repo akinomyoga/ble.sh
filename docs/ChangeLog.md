@@ -316,6 +316,7 @@
 - progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` 4d2dd35
 - global: quote `return $?` `#D1884` 801d14a
 - canvas (`ble/canvas/trace`): fix text justification for empty lines (reported by rashil2000) `#D1894` xxxxxxx
+- main: fix adjustments of bash options (reported by rashil2000) `#D1895` xxxxxxx
 
 ## Documentation
 

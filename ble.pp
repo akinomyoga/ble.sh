@@ -715,7 +715,7 @@ function ble/init/clean-up {
   # 状態復元
   ble/base/restore-BASH_REMATCH
   ble/init/restore-IFS
-  if [[ :$opts: != *:check-attach:* && ! $_ble_attached ]]; then
+  if [[ :$opts: != *:check-attach:* || ! $_ble_attached ]]; then
     ble/base/restore-bash-options
     ble/base/restore-POSIXLY_CORRECT
     ble/base/restore-builtin-wrappers
