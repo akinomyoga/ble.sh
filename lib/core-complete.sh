@@ -4795,11 +4795,11 @@ function ble/complete/mandb:help/generate-cache {
 
 function ble/complete/mandb:_parse_help/inject {
   ble/is-function _parse_help || return 0
-  ble/function#advice before _parse_help 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}"'
-  ble/function#advice before _longopt 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}"'
-  ble/function#advice before _parse_usage 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}" usage'
-  function ble/complete/mandb:_parse_help/inject { return 0; }
-}
+  ble/function#advice before _parse_help 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}"' &&
+    ble/function#advice before _longopt 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}"' &&
+    ble/function#advice before _parse_usage 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}" usage' &&
+    function ble/complete/mandb:_parse_help/inject { return 0; }
+} 2>/dev/null # _parse_help が別の枠組みで定義されている事がある? #D1900
 
 ## @fn ble/string#hash-pjw text [size shift]
 ##   @var[out] ret

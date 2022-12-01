@@ -318,6 +318,7 @@
 - global: quote `return $?` `#D1884` 801d14a
 - canvas (`ble/canvas/trace`): fix text justification for empty lines (reported by rashil2000) `#D1894` xxxxxxx
 - main: fix adjustments of bash options (reported by rashil2000) `#D1895` xxxxxxx
+- complete: suppress error messages for non-bash_completion `_parse_help` (reported by nik312123) `#D1900` xxxxxxx
 
 ## Documentation
 

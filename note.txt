@@ -6613,6 +6613,23 @@ bash_tips
 
 2022-12-01
 
+  * complete: `#advice: _parse_usage is not a function.` というエラーメッセージ (reported by nik312123) [#D1900]
+    https://github.com/akinomyoga/ble.sh/issues/251
+
+    bash_completion の新しい version を使っていると発生するのかもしれない。と思っ
+    たがそうでもなかった。まだこれらの関数は bash_completion の内部で改名されて
+    いない。つまり、_parse_help や _longopt を勝手に定義しているが _parse_usage
+    を定義していない外部の補完ライブラリが存在する。
+
+    ? no: もしくは、古い bash_completion には _parse_usage は存在していなかった?
+      と思って調べてみたが _parse_usage も _parse_help も bash_completion
+      68f6f1c68 で同時に導入されているので片方だけが定義されていたという時期は
+      存在しない様に思われる。
+
+    何れにしても _parse_help という関数を勝手に定義する場合を考えると、勝手に他
+    の関数も定義されていると想定する訳には行かない。単にエラーを suppress する
+    事にした。
+
   * 2022-10-24 rename to blerc.template [#D1899]
     https://github.com/akinomyoga/ble.sh/issues/244#issuecomment-1288439503
 
