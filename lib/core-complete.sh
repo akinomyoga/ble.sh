@@ -7763,8 +7763,8 @@ function ble/complete/auto-complete.idle {
 
   case $_ble_decode_widget_last in
   (ble/widget/self-insert) ;;
-  (ble/widget/complete) ;;
-  (ble/widget/vi_imap/complete) ;;
+  (ble/widget/complete|ble/widget/vi_imap/complete)
+    [[ $bleopt_complete_auto_after_complete ]] || return 0 ;;
   (*) return 0 ;;
   esac
 

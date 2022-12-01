@@ -540,6 +540,15 @@
 #bleopt complete_auto_wordbreaks=$' \t\n/'
 
 
+## The setting "complete_auto_after_complete" controls whether auto-complete is
+## enabled after TAB completions.  If this option has a non-empty value,
+## auto-complete is enabled after TAB completions.  Otherwise, auto-complete is
+## disabled after TAB completions.  The auto-complete after TAB completions is
+## enabled by default.
+
+#bleopt complete_auto_after_complete=
+
+
 ## The setting "complete_auto_menu" controls the delay of "auto-menu".  When a
 ## non-empty string is set, auto-menu is enabled.  The string is evaluated as
 ## an arithmetic expression to give the delay in milliseconds.  ble.sh will

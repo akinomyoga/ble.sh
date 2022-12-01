@@ -6613,6 +6613,43 @@ bash_tips
 
 2022-12-01
 
+  * complete: TAB completion の直後でも auto-complete が表示されるのは変だ (reported by DUOLabs333) [#D1901]
+    https://github.com/akinomyoga/ble.sh/discussions/252
+
+    * done: うーん。確かに言われてみれば変な気がする。これは単にバグの気がする。
+      調べてみる。
+
+      ble/complete/auto-complete.idle では _ble_decode_widget_last が
+      self-insert 等の時にだけ auto-complete が実行される事になっているが、よく
+      見ると ble/widget/complete または ble/widget/vi_imap/complete の時にも明
+      示的に auto-complete を誘起する様になっている。これには理由があったのだっ
+      たか。
+
+      関係しているのは 63ddeffd #D0736 と 6081e0a9 "complete: support "bleopt
+      complete_ac_delay"" (議論なし?) である。うーん。周辺の議論を確認したが、
+      やはり関係する議論はないし、done.txt で delay についても mention されてい
+      ない。次の項目番号が #D0727 で auto-complete が導入されたのが #D0724 なの
+      で、#D0725 か #D0726 以前のどちらかが関係していそうだが、どちらも異なる。
+
+    うーん。やはり当初から意図した振る舞いの様な気がしてきた。少なくとも使って
+    いて問題が起こった事はない。menu-complete に入れば当然モード判定があるので
+    勝手に auto-complete が混ざって変な事になるという事もない。うーん。オプショ
+    ンを追加する事にする。実装した。
+
+    * done: blerc.template
+    * done: wiki
+
+    ? reject: 既定値を変更するべきか。うーん。少し使ってみる事にする。うーん。
+      考えて見るにこれを有効にしていたのは単語補完ではなく過去の履歴に自動補完
+      で一致する可能性を残しておきたかったからだと思われる。一律で無効にしてし
+      まうと履歴に依るコマンド挿入ができなくなってしまい不便なことがあるかもし
+      れない。元々明示的に有効にしていたのは他にもそれなりの理由があったのでは
+      ないかという気がする。というか delay の導入と一緒に導入されていたのだから、
+      待っていたらコマンド履歴による補完が起動しそうだという期待があったからか
+      もしれない。更に続く #D0736 では vi でも同様に動く様にわざわざ変更してい
+      る。そもそも表示していても別に問題はない気がするのでやはり既定では補完を
+      実行する事にする。
+
   * complete: `#advice: _parse_usage is not a function.` というエラーメッセージ (reported by nik312123) [#D1900]
     https://github.com/akinomyoga/ble.sh/issues/251
 

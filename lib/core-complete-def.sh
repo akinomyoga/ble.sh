@@ -52,6 +52,7 @@ bleopt/declare -v complete_auto_complete 1
 bleopt/declare -v complete_auto_history 1
 bleopt/declare -n complete_auto_delay 1
 bleopt/declare -v complete_auto_wordbreaks "$_ble_term_IFS"
+bleopt/declare -v complete_auto_after_complete 1
 bleopt/declare -v complete_auto_menu ''
 bleopt/declare -v complete_allow_reduction ''
 

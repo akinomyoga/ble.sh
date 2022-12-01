@@ -110,6 +110,7 @@
 - util (`ble-import`): support option `-q` `#D1859` 1ca87a9
 - history: support extension `HISTCONTROL=strip` (motivated by aiotter) `#D1874` 021e033
 - benchmark (ble-measure): support an option `-V` `#D1881` 571ecec
+- complete: add `bleopt complete_auto_after_complete` `#D1901` xxxxxxx
 
 ## Changes
 
