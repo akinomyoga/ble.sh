@@ -1311,7 +1311,7 @@ function ble/prompt/.instantiate {
       (vi_[noxs]map) ble/util/rlvar#read vi-cmd-mode-string '(cmd)' ;; # Note: bash-4.3 では ':'
       (emacs)        ble/util/rlvar#read emacs-mode-string  '@'     ;;
       esac
-      [[ $ret ]] && expanded=$expanded$ret
+      [[ $ret ]] && expanded=$ret$expanded
     fi
   fi
 

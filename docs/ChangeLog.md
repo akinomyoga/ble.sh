@@ -110,8 +110,8 @@
 - util (`ble-import`): support option `-q` `#D1859` 1ca87a9
 - history: support extension `HISTCONTROL=strip` (motivated by aiotter) `#D1874` 021e033
 - benchmark (ble-measure): support an option `-V` `#D1881` 571ecec
-- complete: add `bleopt complete_auto_after_complete` `#D1901` xxxxxxx
-- color: allow setting color filter by `_ble_color_color2sgr_filter` `#D1902` xxxxxxx
+- complete: add `bleopt complete_auto_after_complete` `#D1901` 1478a04
+- color: allow setting color filter by `_ble_color_color2sgr_filter` `#D1902` 88e74cc
 
 ## Changes
 
@@ -203,9 +203,9 @@
 - prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` 69013d9
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
-- edit (`display-shell-version`): show `gawk`, `make`, and `git` versions of the build time `#D1892`
-- edit (`display-shell-version`): support running as a user command (reported by DhruvaG2000) `#D1893`
-- decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` xxxxxxx
+- edit (`display-shell-version`): show `gawk`, `make`, and `git` versions of the build time `#D1892` e618133
+- edit (`display-shell-version`): support running as a user command (reported by DhruvaG2000) `#D1893` e618133
+- decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
 
 ## Fixes
 
@@ -318,9 +318,10 @@
 - main. util: fix problems of readlink etc. found by test in macOS (reported by aiotter) `#D1849` fa955c1 `#D1855` a22e145
 - progcomp: fix a bug that `COMP_WORDBREAKS` is ignored `#D1872` 4d2dd35
 - global: quote `return $?` `#D1884` 801d14a
-- canvas (`ble/canvas/trace`): fix text justification for empty lines (reported by rashil2000) `#D1894` xxxxxxx
-- main: fix adjustments of bash options (reported by rashil2000) `#D1895` xxxxxxx
-- complete: suppress error messages for non-bash_completion `_parse_help` (reported by nik312123) `#D1900` xxxxxxx
+- canvas (`ble/canvas/trace`): fix text justification for empty lines (reported by rashil2000) `#D1894` cdf74c2
+- main: fix adjustments of bash options (reported by rashil2000) `#D1895` 138c476
+- complete: suppress error messages for non-bash_completion `_parse_help` (reported by nik312123) `#D1900` 267de7f
+- prompt: fix the marker position for the readline variable `show-mode-in-prompt` (reported by Strykar) `#D1903` xxxxxxx
 
 ## Documentation
 
@@ -329,9 +330,10 @@
 - README: describe how to invoke multiple widgets with a keybinding (motivated by michaelmob) `#D1699` 6123551
 - README: add links to `bash-it` and `oh-my-bash` `#D1724` 4a2575f
 - README: mention the Guix package (motivated by kiasoc5) `#D1888` 0f7c04b
-- blerc: add frequently used keybindings (motivated by KiaraGrouwstra, micimize) `#D1896` `#D1897` xxxxxxx
-- wiki/Q&A: add item for defining a widget calling multiple widgets (motivated by micimize) `#D1898` xxxxxxx
-- blerc: rename from `blerc` to `blerc.template` `#D1899` xxxxxxx
+- blerc: add frequently used keybindings (motivated by KiaraGrouwstra, micimize) `#D1896` `#D1897` e19b796
+- wiki/Q&A: add item for defining a widget calling multiple widgets (motivated by micimize) `#D1898` e19b796
+- blerc: rename from `blerc` to `blerc.template` `#D1899` e19b796
+- README: add a link to the explanation on the "more reliable setup" of bashrc (motivated by telometto) `#D1905` xxxxxxx
 
 ## Optimization
 
@@ -505,6 +507,8 @@
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - contrib/fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
 - contrib/fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
+- README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` xxxxxxx
+- contrib/fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` xxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

@@ -255,6 +255,7 @@ The stable versions are significantly old compared to the devel version, so many
 
 If you want to load `ble.sh` by default in interactive sessions of `bash`, usually one can just source `ble.sh` in `~/.bashrc`,
 but more reliable way is to add the following codes to your `.bashrc` file:
+
 ```bash
 # bashrc
 
@@ -266,6 +267,8 @@ but more reliable way is to add the following codes to your `.bashrc` file:
 # Add this line at the end of .bashrc:
 [[ ${BLE_VERSION-} ]] && ble-attach
 ```
+
+The detailed conditions that we need the above *more reliable setup* are explained in [an answer in Discussion #254](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757).
 
 ## 1.4 User settings `~/.blerc`
 

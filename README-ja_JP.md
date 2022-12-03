@@ -288,6 +288,8 @@ $ cp -r ble-0.3.3 /path/to/blesh
 [[ ${BLE_VERSION-} ]] && ble-attach
 ```
 
+この「より確実な設定」が必要になる詳細な条件については [Discussion #254 への回答 (英語)](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757) で説明されています。
+
 ## 1.4 初期化スクリプト `~/.blerc` について
 
 ユーザー設定は初期化スクリプト `~/.blerc` (またはもし `~/.blerc` が見つからなければ `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh`) に記述します。

@@ -1855,6 +1855,40 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
+2022-12-03
+
+  * declare -f の出力は特殊関数名には使えないのではないか?
+    https://lists.gnu.org/archive/html/bug-bash/2022-12/msg00010.html
+    https://lists.gnu.org/archive/html/bug-bash/2022-12/msg00011.html
+
+    取り敢えず、これは evaldef の時点で function を prefix すれば良い気がする。
+    今後の Bash の振る舞いの変更で function が追加されるかもしれないので、その
+    時にはそれを避ける様にする。
+
+    更に変数代入の形の関数名は declare -f &>/dev/null でテストする事もできない。
+
+  * 2022-10-13 nix completion で止まる問題について。
+    https://github.com/akinomyoga/ble.sh/issues/58#issuecomment-1272222143
+
+    これは説明を書く。何処かにこういうののまとめを書く方が良いのではない
+    かという気がする。
+
+    Sorry for the late reply. I have been busy recent days (and am stil
+    busy actually...). This is actually one of the compatibility
+    problems that are hard to solve.  ble.sh extends the usage of the
+    programmable completions for auto-complete
+
+    やはり問題を解決してから対処する事にする。
+
+    2022-12-03 報告を受けた筈なのに何処かに行ってしまったとおもったら #58 の下
+    にあった。
+
+  * menu-complete: 一時挿入をしない設定
+    https://github.com/akinomyoga/ble.sh/discussions/252#discussioncomment-4293518
+
+  * colorglass: saturation (彩度) についての設定を追加する (motivated by auwsom)
+    https://github.com/akinomyoga/ble.sh/issues/258
+
 2022-10-02
 
   * prompt: dirty 状態の更新時にカーソル位置がずれる。
@@ -6610,6 +6644,29 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2022-12-03
+
+  * README: bashrc 設定の背景に対するリンクを載せる (motivated by telometto) [#D1905]
+    https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757
+
+    日本語の説明はないが仕方がない。
+
+  * contrib/README: PATH に fzf が見つかれば _ble_contrib_fzf_base は設定しなくて良い (reported by Strykar) [#D1904]
+    https://github.com/akinomyoga/blesh-contrib/issues/9
+
+    修正した。というか手動で指定したとしても fzf を PATH の中に見つける事ができ
+    なければ結局動かないのではないか? と思ったが fzf-initialize の中にちゃんと
+    PATH を追加する処理が組み込まれていた。
+
+    と思ったが、存在しないディレクトリを追加していたりしないか? →している。こ
+    れはディレクトリが存在する時にだけ PATH に追加する事にした。
+
+  * prompt: bind 'set show-mode-in-prompt on' が何故か PS1 の後に表示される? (reported by Strykar) [#D1903]
+    https://github.com/akinomyoga/ble.sh/discussions/256
+    https://github.com/akinomyoga/ble.sh/discussions/257
+
+    実際に試してみるとそうなっている。変なミスである。。。修正した。
 
 2022-12-01
 
