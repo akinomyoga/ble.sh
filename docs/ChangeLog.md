@@ -498,6 +498,7 @@
 - benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa 8cb9b84
 - benchmark: support for ksh as `benchmark.ksh` `#D1886` 5dae4da
 - github/workflows (build): rename directory in `ble-nightly.tar.xz` to `ble-nightly` (reported by Harduex) `#D1891` f20854f 4ea2e23 43c6d4b
+- edit: update prompts on g2sgr change `#D1906` xxxxxxx
 
 ## Contrib
 
@@ -505,10 +506,12 @@
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
-- contrib/fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
-- contrib/fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
+- fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
+- fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
 - README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` xxxxxxx
-- contrib/fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` xxxxxxx
+- fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` xxxxxxx
+- colorglass: add color filter `#D1902` xxxxxxx
+  - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` xxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

@@ -103,6 +103,7 @@ function ble-color-show {
 #   ない物をここで使いたい時には、それを
 #   ble/textarea#slice-text-buffer の正規表現に追加しなければならない。
 #
+_ble_color_g2sgr_version=0
 _ble_color_g2sgr=()
 _ble_color_g2sgr_ansi=()
 function ble/color/g2sgr/.impl {
@@ -140,6 +141,7 @@ function ble/color/g2sgr/.impl {
 }
 function ble/color/g2sgr/.clear-cache {
   _ble_color_g2sgr=()
+  ((_ble_color_g2sgr_version++))
 }
 function ble/color/g2sgr {
   ret=${_ble_color_g2sgr[$1]}
