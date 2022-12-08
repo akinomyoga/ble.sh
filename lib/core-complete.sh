@@ -7772,7 +7772,7 @@ function ble/complete/auto-complete.idle {
   [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]] || return 0
 
   case $_ble_decode_widget_last in
-  (ble/widget/self-insert) ;;
+  (ble/widget/self-insert|ble/widget/magic-space) ;;
   (ble/widget/complete|ble/widget/vi_imap/complete)
     [[ :$bleopt_complete_auto_complete_opts: == *:suppress-after-complete:* ]] && return 0 ;;
   (*) return 0 ;;
@@ -7856,7 +7856,28 @@ function ble/widget/auto_complete/cancel-default {
   ble/decode/widget/skip-lastwidget
   ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
+
+## @fn ble/widget/auto_complete/self-insert/.is-magic-space
+##   @var[in] KEYS
+##   現在のキー入力が親 keymap で magic-space に対応するかどうかを判定します。
+
+function ble/widget/auto_complete/self-insert/.is-magic-space {
+  ((${#KEYS[@]}==1)) || return 1
+
+  local ikeymap=$((${#_ble_decode_keymap_stack[@]}-1))
+  ((ikeymap>=0)) || return 1
+
+  local dicthead=_ble_decode_${_ble_decode_keymap_stack[ikeymap]}_kmap_
+  builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[KEYS[0]]-}"
+  [[ ${ent#*:} == ble/widget/magic-space ]]
+}
+
 function ble/widget/auto_complete/self-insert {
+  if ble/widget/auto_complete/self-insert/.is-magic-space; then
+    ble/widget/auto_complete/cancel-default
+    return $?
+  fi
+
   local code; ble/widget/self-insert/.get-code
   ((code==0)) && return 0
 

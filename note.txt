@@ -3120,20 +3120,6 @@ bash_tips
     を計算して加算する様にすれば良いだろうか。然し、絵文字の Emoji_Modifier な
     ど組み合わせた時と単体の時で幅の異なる物も存在する。
 
-2021-09-08
-
-  * complete: sabbrev vs auto-complete
-
-    auto-complete で履歴から候補が表示されている時には sabbrev が効かない。そも
-    そも sabbrev 展開が発生するかどうかも分からないので毎回 auto-complete を抜
-    けるというのも変な感じがする。理想的には sabbrev が起こった場合は再び
-    auto-complete を実行し、sabbrev が起こらなかった時には従来の auto-complete
-    と同様にカーソル位置を一つ進める事を試行する。
-
-    うーん。この問題は自動候補の先頭文字が空白の時にのみ起こる。それ以外の時に
-    は auto-complete を抜けて再度 SP が実行されるのでちゃんと sabbrev も呼び出
-    される。
-
 2021-09-06
 
   * menu: メニューの詳細表示を toggle できる様にするべきではないか。
@@ -6681,6 +6667,43 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-12-08
+
+  * 2021-09-08 complete: sabbrev (magic-space) vs auto-complete [#D1913]
+
+    auto-complete で履歴から候補が表示されている時には sabbrev が効かない。そも
+    そも sabbrev 展開が発生するかどうかも分からないので毎回 auto-complete を抜
+    けるというのも変な感じがする。理想的には sabbrev が起こった場合は再び
+    auto-complete を実行し、sabbrev が起こらなかった時には従来の auto-complete
+    と同様にカーソル位置を一つ進める事を試行する。
+
+    うーん。この問題は自動候補の先頭文字が空白の時にのみ起こる。それ以外の時に
+    は auto-complete を抜けて再度 SP が実行されるのでちゃんと sabbrev も呼び出
+    される。
+
+    2022-12-09 然しそもそも一つ上の keymap で SP に magic-space が割り当てられ
+    ているのかどうかも非自明である。うーん。やはり SP に対しては一旦
+    auto-complete を抜けるのが自然な気がする。
+
+    或いは一つ上の keymap の SP に magic-space が割り当てられているかどうか判定
+    する? うーん。ESC に関してはひとつ上の keymap の情報を参照している物があっ
+    た様な気もするが何だったか。うーん。ESC や M- で検索しても関係ありそうな物
+    は見つからない。→分かった。bleopt decode_isolated_esc=auto の処理である。
+    decode.sh の ble/decode/uses-isolated-esc で判定が行われている。
+
+    さて実際に magic-space に bind されているという事が分かったとして、どの様に
+    処理するべきか。その場でいきなり magic-space を呼び出す事を考えたが、そうす
+    ると auto-complete によって補正されている内容が壊れてしまう。特に
+    _ble_edit_mark 等の位置も変わってしまう可能性がある。また、magic-space は現
+    在の keymap を見て振る舞いを変えているので一旦 auto-complete から抜けるか抜
+    けたふりをする必要がある。色々考えるとやはり本当に一旦抜けて通常の状態に戻っ
+    てから処理するべきの気がする。
+
+    →その様に修正した。
+
+    x 今度は magic-space による空白挿入の後に auto-complete が再開しない。よく
+      考えたら self-insert は登録しているけれども magic-space に関しては登録し
+      ていない。登録するべき気がする。登録した。試した。ちゃんと期待どおりに動
+      いている。
 
   * 2021-02-28 magic-space で alias 展開する機能があっても良いのでは? (requested by telometto) [#D1912]
 
