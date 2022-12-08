@@ -3518,6 +3518,7 @@ function ble/term/enter-for-widget {
   ble/term/modifyOtherKeys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
+  ble/util/buffer.flush >&2
 }
 function ble/term/leave-for-widget {
   ble/term/visible-bell/erase
@@ -3525,6 +3526,7 @@ function ble/term/leave-for-widget {
   ble/term/modifyOtherKeys/leave
   ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
+  ble/util/buffer.flush >&2
 }
 
 _ble_term_state=external
