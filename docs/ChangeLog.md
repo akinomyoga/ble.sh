@@ -113,6 +113,7 @@
 - color: allow setting color filter by `_ble_color_color2sgr_filter` `#D1902` 88e74cc
 - auto-complete: add `bleopt complete_auto_complete_opts` (motivated by DUOLabs333) `#D1901` `#D1911` 1478a04 xxxxxxx
 - menu-complete: add `bleopt complete_menu_complete_opts` (requested by DUOLabs333) `#D1911` xxxxxxx
+- edit (`magic-space`): support `bleopt edit_magic_expand=...:alias` (requested by telometto) `#D1912` xxxxxxx
 
 ## Changes
 

@@ -112,6 +112,13 @@
 #bleopt edit_line_type=graphical
 
 
+## The following option specifies the set of expansions performed by
+## magic-space with a colon-separated list of expansion types. "history",
+## "sabbrev", and "alias" can be specified.
+
+#bleopt edit_magic_expand=history:sabbrev
+
+
 ## The following option controls the position of the info pane where completion
 ## menu, mode names, and other information are shown.  When the value "top" is
 ## specified, the info pane is shown just below the command line.  When the

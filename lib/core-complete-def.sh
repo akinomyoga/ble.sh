@@ -108,7 +108,8 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble-decode/keymap:auto_complete/define \
                   ble-decode/keymap:menu_complete/define \
                   ble-decode/keymap:dabbrev/define \
-                  ble/complete/sabbrev/expand
+                  ble/complete/sabbrev/expand \
+                  ble/complete/alias/expand
 
 #------------------------------------------------------------------------------
 # 描画設定

@@ -94,6 +94,8 @@ bleopt/declare -v undo_point end
 ##
 bleopt/declare -n edit_forced_textmap 1
 
+bleopt/declare -n edit_magic_expand history:sabbrev
+
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0
   ((bleopt_edit_forced_textmap)) || return 1
@@ -7656,10 +7658,25 @@ function ble/widget/magic-space {
     local oind=$_ble_edit_ind ostr=$_ble_edit_str
 
   local arg; ble-edit/content/get-arg ''
-  ble/widget/history-expand-backward-line ||
-    ble/complete/sabbrev/expand
-  local ext=$?
-  ((ext==147)) && return 147 # sabbrev/expand でメニュー補完に入った時など。
+
+  local expanded=
+  # (1) history expansion
+  if [[ :$bleopt_edit_magic_expand: == *:history:* ]]; then
+    ble/widget/history-expand-backward-line && expanded=1
+  fi
+  # (2) sabbrev expansion
+  if [[ ! $expanded && :$bleopt_edit_magic_expand: == *:sabbrev:* ]]; then
+    ble/complete/sabbrev/expand; local ext=$?
+    if ((ext==147)); then
+      return 147 # sabbrev/expand の中でメニュー補完に入った時など。
+    elif ((ext==0)); then
+      expanded=1
+    fi
+  fi
+  # (3) alias expansion
+  if [[ ! $expanded && :$bleopt_edit_magic_expand: == *:alias:* ]]; then
+    ble/complete/alias/expand && expanded=1
+  fi
 
   # keymap/vi.sh
   [[ $_ble_decode_keymap == vi_imap ]] &&

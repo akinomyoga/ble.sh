@@ -8188,18 +8188,25 @@ function ble-sabbrev {
   return "$ext"
 }
 
-function ble/complete/sabbrev/expand {
-  local sources comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
+## @fn ble/complete/sabbrev/locate-key rex_source_type
+## @var[out] pos
+## @var[in] comp_index comp_text
+function ble/complete/sabbrev/locate-key {
+  pos=$comp_index
+  local rex_source_type='^('$1')$'
+  local sources src asrc
   ble/complete/context:syntax/generate-sources
-  local src asrc pos=$comp_index
   for src in "${sources[@]}"; do
     ble/string#split-words asrc "$src"
-    case ${asrc[0]} in
-    (file|command|argument|variable:w|wordlist:*|sabbrev)
-      ((asrc[1]<pos)) && pos=${asrc[1]} ;;
-    esac
+    [[ ${asrc[0]} =~ $rex_source_type ]] &&
+      ((asrc[1]<pos)) &&
+      pos=${asrc[1]}
   done
+}
 
+function ble/complete/sabbrev/expand {
+  local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
+  ble/complete/sabbrev/locate-key 'file|command|argument|variable:w|wordlist:.*|sabbrev'
   ((pos<comp_index)) || return 1
 
   local key=${_ble_edit_str:pos:comp_index-pos}
@@ -8305,6 +8312,18 @@ function ble/complete/source:sabbrev {
     local flag_source_filter=1
     ble/complete/cand/yield "$action" "$cand"
   done
+}
+
+function ble/complete/alias/expand {
+  local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
+  ble/complete/sabbrev/locate-key 'command'
+  ((pos<comp_index)) || return 1
+
+  local word=${_ble_edit_str:pos:comp_index-pos}
+  local ret; ble/alias#expand "$word"
+  [[ $ret != "$word" ]] || return 1
+  ble/widget/.replace-range "$pos" "$comp_index" "$ret"
+  return 0
 }
 
 #------------------------------------------------------------------------------

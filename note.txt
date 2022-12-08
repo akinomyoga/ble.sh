@@ -3082,8 +3082,25 @@ bash_tips
 
 2021-09-20
 
-  * sabbrev を accept-line の時にも展開する可能性について。
-    zsh-abbr の振る舞いについても確認する。
+  * sabbrev: accept-line の時にも展開する可能性について (requested by pl643)
+    https://github.com/akinomyoga/ble.sh/discussions/138
+
+    * zsh-abbr の振る舞いについても確認する。
+
+    * 振る舞いについての考察
+
+      a グローバルに全ての合致する単語を置換する。
+
+        x 先ず、意図しない物まで展開されてしまう可能性がある。
+
+        x 展開を意図する単語があったとしても、通常は magic-space によって既に展
+          開されていると期待するべき。なのでわざわざグローバルな展開を試みるま
+          でもない。
+
+      b 或いはその場所にある単語だけを展開する magic-accept 的な物。
+
+      元の要求が結局どのような物だったかは返事がないので不明だが、考えて見るに
+      b の方が良い。
 
 2021-09-15
 
@@ -3912,12 +3929,6 @@ bash_tips
     vi でも emacs でも同様に記録されてしまう。
 
 2021-02-28
-
-  * magic-space で alias 展開する機能があっても良いのでは?
-
-    というか magic-space で何を展開するかの集合を設定できる様にするべき?
-    bleopt edit_magic_expand=sabbrev:history:alias という具合に。
-    流石にコマンド置換等まで展開するのはやりすぎの様に思われる。
 
   * canvas/trace: wordwrap に対応する。つまり、単語の途中で改行しない様にする。
 
@@ -6670,6 +6681,32 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-12-08
+
+  * 2021-02-28 magic-space で alias 展開する機能があっても良いのでは? (requested by telometto) [#D1912]
+
+    というか magic-space で何を展開するかの集合を設定できる様にするべき?
+    bleopt edit_magic_expand=sabbrev:history:alias という具合に。
+    流石にコマンド置換等まで展開するのはやりすぎの様に思われる。
+
+    2022-12-08 https://github.com/akinomyoga/ble.sh/discussions/260
+
+    まず最初に bleopt を実装する事にする。実装した。
+
+    alias expansion についても sabbrev expansion を元にして実装した。
+
+    ? ok: ところで他の discussion でも同様の物があった様な気がする。
+
+      https://github.com/akinomyoga/ble.sh/discussions/138
+
+      ここにある。と思ったが、これは alias expansion ではなくて、magic-space を
+      コマンド実行時にも呼び出すという話なのだった。というかこの項目が todo に
+      なかったので新しく項目を作って置く事にした。と思ったら項目自体はあって単
+      に GitHub#138 へのリンクが記録されていなかっただけだった。
+
+    x auto-complete が有効になっていると ' ' が magic-space として働かない。
+      →これは別に項目が存在していた筈なので別に処理する事にする。
+
+    * done: blerc/wiki: bleopt edit_magic_expand の説明。
 
   * 2022-12-03 menu-complete: 一時挿入をしない設定 (requested by DUOLabs333) [#D1911]
     https://github.com/akinomyoga/ble.sh/discussions/252#discussioncomment-4293518
