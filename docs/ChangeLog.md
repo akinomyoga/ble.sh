@@ -208,6 +208,7 @@
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
 - decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
+- term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` xxxxxxx
 
 ## Fixes
 
@@ -515,6 +516,7 @@
 - fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` xxxxxxx
 - colorglass: add color filter `#D1902` xxxxxxx
   - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` xxxxxxx
+- fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` xxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

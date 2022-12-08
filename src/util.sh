@@ -5717,8 +5717,12 @@ function ble/term/DA2/initialize-term {
   da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈; WA #D1570 checked (is-array)
 
   case $DA2R in
-  ('0;0;0')
-    _ble_term_TERM[depth]=wezterm:0 ;;
+  # Note #D1909: wezterm が 2022-04-07 に DA2 を変更している。xterm-277 と区別
+  # が付かないが、ちょうど該当 xterm version (2012-01-08) を使っている可能性は
+  # 低いと見て取り敢えず wezterm とする。
+  ('0;0;0') _ble_term_TERM[depth]=wezterm:0 ;;
+  ('1;277;0') _ble_term_TERM[depth]=wezterm:20220408 ;; # 2022-04-07 https://github.com/wez/wezterm/commit/ad91e377
+
   ('0;10;1') # Windows Terminal
     # 現状ハードコードされている。
     # https://github.com/microsoft/terminal/blob/bcc38d04/src/terminal/adapter/adaptDispatch.cpp#L779-L782
@@ -6168,6 +6172,7 @@ function ble/term/enter-for-widget {
   ble/term/modifyOtherKeys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
+  ble/util/buffer.flush >&2
 }
 function ble/term/leave-for-widget {
   ble/term/visible-bell/erase
@@ -6175,6 +6180,7 @@ function ble/term/leave-for-widget {
   ble/term/modifyOtherKeys/leave
   ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
+  ble/util/buffer.flush >&2
 }
 
 _ble_term_state=external
