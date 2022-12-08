@@ -1855,10 +1855,6 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
-2022-12-06
-
-  * ble-reload した時に M-z が効かなくなる
-
 2022-12-03
 
   * declare -f の出力は特殊関数名には使えないのではないか?
@@ -6667,6 +6663,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-12-08
+
+  * ble-reload した時に M-z が効かなくなる [#D1914]
+
+    何とそもそも ble-reload にて blerc が読み込まれていない。確認してみると
+    --rcfile=/dev/null という事になっている。何も指定していない時には
+    _ble_base_arguments_rcfile は空になっている。なので空の時にはやはり何も指定
+    せずに source ble.sh するべきであって、何か特定の blerc は指定しない様にす
+    る。
+
+    ? 或いはもしかすると元々指定したかったのは _ble_base_rcfile ではないか?
+      うーん。そんな気がする→その様に修正した。
 
   * 2021-09-08 complete: sabbrev (magic-space) vs auto-complete [#D1913]
 

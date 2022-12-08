@@ -1505,7 +1505,7 @@ function ble/base/print-usage-for-no-argument-command {
 }
 function ble-reload {
   local -a options=()
-  ble/array#push options --rcfile="${_ble_base_arguments_rcfile:-/dev/null}"
+  ble/array#push options --rcfile="${_ble_base_rcfile:-/dev/null}"
   local name
   for name in keep-rlvars noinputrc; do
     if [[ :$_ble_base_arguments_opts: == *:"$name":* ]]; then

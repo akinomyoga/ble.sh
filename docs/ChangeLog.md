@@ -186,6 +186,7 @@
   - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` 1c7f7a1
 - syntax (`extract-command`): extract unexpected command names as commands `#D1848` 5b63459
 - main (`ble-reload`): preserve the original initialization options `#D1852` d8c92cc
+ - main (`ble-reload`): fix a bug that the default rcfile is not loaded `#D1914` xxxxxxx
 - blehook: print reusable code to restore the user hooks `#D1857` b763677
   - blehook: separate internal and user hooks `#D1856` b763677
   - blehook: prefer the uniq  `!=` to the addition `+=` `#D1871` fe7abd4
@@ -440,7 +441,6 @@
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
-
 
 ## Test
 
