@@ -1855,6 +1855,17 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
+2022-12-06
+
+  * wezterm が DA2 を変えている
+    1;277;0 になっている。xterm との区別ができない気がする。
+
+    xterm ですらちゃんと動いていない。うーん。ちゃんと hook はできている。つま
+    り、modifyOtherKeys のシーケンス自体を正しく出力できていない可能性? 内部で
+    どのように設定しているかを出力しつつ振る舞いを調べる必要がある。
+
+  * ble-reload した時に M-z が効かなくなる
+
 2022-12-03
 
   * declare -f の出力は特殊関数名には使えないのではないか?
@@ -1885,6 +1896,9 @@ bash_tips
 
     2022-12-04 cevhyruz への私信での解説を何処かに移植して説明するのが良い気が
     する。
+
+    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
+    ここでも少し言及している。
 
   * menu-complete: 一時挿入をしない設定
     https://github.com/akinomyoga/ble.sh/discussions/252#discussioncomment-4293518
@@ -6666,6 +6680,43 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-12-05
+
+  * README: fzf-integration について記述する (motivated by SuperSandro2000) [#D1907]
+    https://github.com/akinomyoga/ble.sh/issues/259
+
+    * display-shell-version にも integration が入っていない時にメッセージを表示
+      する様にする。fzf についてはメッセージを出力した。
+
+    その他 (bash-preexec, zoxide) については必要になった時点で自動的にロードさ
+    れる事になっているので、その場で未だロードされていなくてもそのままにしてお
+    く事にする。と思ったが zoxide がない。
+
+    * done: zoxide についても情報を表示する事にする。
+
+      zoxide の初期化スクリプトで一番古い関数は何だろうか。
+
+      __zoxide_hook は以下のコミット (2020-09-16) で _zoxide_hook から改名され
+      ている。この関数は最新版の zoxide でも存在している。
+
+      https://github.com/ajeetdsouza/zoxide/commit/f4525db02fde1efa77f56f9f50b27cc1830d4912
+
+      _zoxide_hook は以下のコミット (2020-03-13) で導入されている。
+
+      https://github.com/ajeetdsouza/zoxide/commit/9c8e8da71a03f5c3c070247f5b0bffd971a70f62
+
+      _zoxide_precmd は以下のコミット (2020-03-11) で追加されている。これが
+      bash 対応の最初と思われる。
+
+      https://github.com/ajeetdsouza/zoxide/commit/f0c5e28fd7e56d7cec045a40154ab4768339da44
+
+      取り敢えず __zoxide_hook を使って判定する事にする。
+
+    * done: 動作を確認してみた所 _z という関数が存在しない。つまり、zoxide の側
+      で変更があったという事だろうか。以下のコミット (2021-12-29 v0.8.1..) によ
+      ると _z から __zoxide_z_complete に改名された様である。
+
+      https://github.com/ajeetdsouza/zoxide/commit/d106f4e3580d5594d8f1c96c256a8f085e2781a4
+
 
   * colorglass: saturation (彩度) についての設定を追加する (motivated by auwsom) [#D1906]
     https://github.com/akinomyoga/ble.sh/issues/258

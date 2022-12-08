@@ -554,6 +554,11 @@ function ble/widget/my/example1 {
 ble-bind -f C-t my/example1
 ```
 
+## 2.8 fzf integration
+
+If you would like to use `fzf` in combination with `ble.sh`, you need to configure `fzf` using [the `contrib/fzf` integration](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration).
+Please follow the instructions in the link.
+
 # 3 Tips
 
 ## 3.1 Use multiline mode

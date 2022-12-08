@@ -3661,6 +3661,7 @@ function ble/edit/display-version/check:fzf {
     ble/util/import/is-loaded contrib/fzf-key-bindings && integ=$label_integration
 
     ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}key-bindings$sgr0, $version$integ"
+    [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"contrib/fzf-key-bindings\" is not activated."
   fi
 
   # fzf-completion
@@ -3676,6 +3677,7 @@ function ble/edit/display-version/check:fzf {
     ble/util/import/is-loaded contrib/fzf-completion && integ=$label_integration
 
     ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}completion$sgr0, $version$integ"
+    [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"contrib/fzf-completion\" is not activated."
   fi
 }
 function ble/edit/display-version/check:starship {
@@ -3797,11 +3799,37 @@ function ble/edit/display-version/check:gitstatus {
 
   ble/edit/display-version/add-line "${sgrF}romkatv/gitstatus$sgr0, $version"
 }
+function ble/edit/display-version/check:zoxide {
+  ble/is-function __zoxide_hook || return 1
+
+  # get starship path
+  local sed_script='s/^[[:space:]]*PS1="\$(\(.\{1,\}\) prompt .*)";\{0,1\}$/\1/p'
+  ble/util/assign-array starship 'declare -f starship_precmd | ble/bin/sed -n "$sed_script"'
+  if ! ble/bin#has "$starship"; then
+    { builtin eval -- "starship=$starship" && ble/bin#has "$starship"; } ||
+      { starship=starship; ble/bin#has "$starship"; } || return 1
+  fi
+
+  local path=
+  ble/util/assign path 'type -P zoxide 2>/dev/null'
+  [[ $path ]] || return 1
+
+  local version=
+  ble/util/assign-array version '\command zoxide --version'
+  [[ $version ]] || return 1
+  version=${version#zoxide }
+  version=${version#v}
+
+  local integ=
+  ble/util/import/is-loaded contrib/integration/zoxide && integ=$label_integration
+  ble/edit/display-version/add-line "${sgrF}zoxide${sgr0}, version $sgrV$version$sgr0 ($path)$integ"
+}
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
 
-  local sgrC= sgrF= sgrV= sgrA= sgr2= sgr3= sgr0=
+  local sgrC= sgrF= sgrV= sgrA= sgr2= sgr3= sgr0= bold=
   if [[ -t 1 ]]; then
+    bold=$_ble_term_bold
     sgr0=$_ble_term_sgr0
     ble/color/face2sgr command_file; sgrC=$ret
     ble/color/face2sgr command_function; sgrF=$ret
@@ -3812,6 +3840,7 @@ function ble/widget/display-shell-version {
   fi
   local label_noarch=" (${sgrA}noarch$sgr0)"
   local label_integration=" $_ble_term_bold(integration: on)$sgr0"
+  local label_warning="${bold}WARNING$sgr0"
 
   local os_release=
   if [[ -s /etc/os-release ]]; then
@@ -3839,6 +3868,7 @@ function ble/widget/display-shell-version {
   ble/edit/display-version/check:oh-my-bash
   ble/edit/display-version/check:sbp
   ble/edit/display-version/check:gitstatus
+  ble/edit/display-version/check:zoxide
 
   # locale
   local q=\'

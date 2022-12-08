@@ -140,6 +140,10 @@
 - edit (`widget:display-shell-version`): include `ble.sh` version `#D1545` 750ca38
   - edit (`display-shell-version`): detect configurations and print details `#D1781` 5015cb56
   - edit (`display-shell-version`): show information of the OS distribution and properly handle saved locales `#D1854` 066ec63 bdb7dd6
+  - edit (`display-shell-version`): show `gawk`, `make`, and `git` versions of the build time `#D1892` e618133
+  - edit (`display-shell-version`): support running as a user command (reported by DhruvaG2000) `#D1893` e618133
+  - edit (`display-shell-version`): show warnings for fzf-integration `#D1907` xxxxxxx
+  - edit (`display-shell-version`): show the `zoxide` version `#D1907` xxxxxxx
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
@@ -203,8 +207,6 @@
 - prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` 69013d9
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
-- edit (`display-shell-version`): show `gawk`, `make`, and `git` versions of the build time `#D1892` e618133
-- edit (`display-shell-version`): support running as a user command (reported by DhruvaG2000) `#D1893` e618133
 - decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
 
 ## Fixes
@@ -429,6 +431,7 @@
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
 - progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 973ae8c
 - complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
+  - contrib/integration/zoxide: update `contrib/integration/zoxide` for zoxide v0.8.1 `#D1907` xxxxxxx
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1

@@ -581,6 +581,11 @@ function ble/widget/my/example1 {
 ble-bind -f C-t my/example1
 ```
 
+## 2.8 fzf との統合
+
+`fzf` を `ble.sh` と一緒にお使いいただく場合には、[`contrib/fzf` 統合機能](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration) を用いて `fzf` を設定していただく必要があります。
+詳細についてはリンク先の説明を御覧ください。
+
 # 3 ヒント
 
 ## 3.1 複数行モード
