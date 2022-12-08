@@ -5,6 +5,6 @@
 --exclude=./ble.sh
 GNUmakefile
 ble.pp
-blerc
+blerc.template
 lib/core-syntax-ctx.def
 lib/core-decode.*-rlfunc.txt

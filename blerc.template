@@ -540,13 +540,15 @@
 #bleopt complete_auto_wordbreaks=$' \t\n/'
 
 
-## The setting "complete_auto_after_complete" controls whether auto-complete is
-## enabled after TAB completions.  If this option has a non-empty value,
-## auto-complete is enabled after TAB completions.  Otherwise, auto-complete is
-## disabled after TAB completions.  The auto-complete after TAB completions is
-## enabled by default.
+## The setting "complete_auto_complete_opts" is a colon-separated list of
+## options:
+##
+## - The option "suppress-after-complete" controls whether auto-complete is
+##   enabled after TAB completions.  If "suppress-after-complete" is included,
+##   auto-complete is enabled after TAB completions.  Otherwise, auto-complete
+##   is disabled after TAB completions.
 
-#bleopt complete_auto_after_complete=
+#bleopt complete_auto_complete_opts=suppress-after-complete
 
 
 ## The setting "complete_auto_menu" controls the delay of "auto-menu".  When a
@@ -617,6 +619,15 @@
 ## setting is synchronized with the readline variable "skip-completed-text".
 
 #bleopt complete_skip_matched=on
+
+
+## The following setting controls the detailed behavior of menu-complete with a
+## colon-separated list of options:
+##
+## - When the option "insert-selection" is specified, the currently selected
+##  menu item is temporarily inserted in the command line.
+
+#bleopt complete_menu_complete_opts=insert-selection
 
 
 ## When a non-empty value is specified to this setting, the highlighting of the

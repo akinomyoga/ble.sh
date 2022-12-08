@@ -6221,8 +6221,13 @@ function ble/complete/menu-complete.class/onselect {
     ble/complete/cand/unpack "${_ble_complete_menu_items[nsel]}"
     insert=$INSERT
   fi
-  ble-edit/content/replace-limited "$_ble_complete_menu0_beg" "$_ble_edit_ind" "$insert"
-  ((_ble_edit_ind=_ble_complete_menu0_beg+${#insert}))
+
+  if [[ :$bleopt_complete_menu_complete_opts: == *:insert-selection:* ]]; then
+    ble-edit/content/replace-limited "$_ble_complete_menu0_beg" "$_ble_edit_ind" "$insert"
+    ((_ble_edit_ind=_ble_complete_menu0_beg+${#insert}))
+  else
+    ((_ble_edit_ind=_ble_complete_menu0_beg))
+  fi
 }
 
 function ble/complete/menu/clear {
@@ -7437,6 +7442,11 @@ function ble/widget/menu_complete/exit {
   if ((_ble_complete_menu_selected>=0)); then
     # 置換情報を再構成
     local new=${_ble_edit_str:_ble_complete_menu0_beg:_ble_edit_ind-_ble_complete_menu0_beg}
+    if [[ :$bleopt_complete_menu_complete_opts: != *:insert-selection:* ]]; then
+      local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
+      ble/complete/cand/unpack "${_ble_complete_menu_items[_ble_complete_menu_selected]}"
+      new=$INSERT
+    fi
     local old=$_ble_complete_menu_original
     local comp_text=${_ble_edit_str::_ble_complete_menu0_beg}$old${_ble_edit_str:_ble_edit_ind}
     local insert_beg=$_ble_complete_menu0_beg
@@ -7764,7 +7774,7 @@ function ble/complete/auto-complete.idle {
   case $_ble_decode_widget_last in
   (ble/widget/self-insert) ;;
   (ble/widget/complete|ble/widget/vi_imap/complete)
-    [[ $bleopt_complete_auto_after_complete ]] || return 0 ;;
+    [[ :$bleopt_complete_auto_complete_opts: == *:suppress-after-complete:* ]] && return 0 ;;
   (*) return 0 ;;
   esac
 

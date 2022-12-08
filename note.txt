@@ -1893,9 +1893,6 @@ bash_tips
     https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
     ここでも少し言及している。
 
-  * menu-complete: 一時挿入をしない設定
-    https://github.com/akinomyoga/ble.sh/discussions/252#discussioncomment-4293518
-
   * colorglass: オプションで指定した時に256色(またはより少ない色に)に減色する機能?
 
   * colorglass: face から読み取る時に作用する色設定?
@@ -6673,6 +6670,20 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2022-12-08
+
+  * 2022-12-03 menu-complete: 一時挿入をしない設定 (requested by DUOLabs333) [#D1911]
+    https://github.com/akinomyoga/ble.sh/discussions/252#discussioncomment-4293518
+
+    * done: complete_auto_after_complete はやはり廃止してより一般のオプションと
+      して complete_auto_complete_opts=suppress-after-complete とする事にした。
+
+    * done: blerc/wiki: update complete_auto_complete_opts
+
+    * done: blerc/wiki: add complete_menu_complete_opts
+
+    * done: temp-insert -> insert-selection
+
+    取り敢えず動いている気がする。多分大丈夫。
 
   * 2022-10-04 refactor(edit): 適当な一時ファイルを作っているのを assign/.mktmp に置き換える [#D1910]
 

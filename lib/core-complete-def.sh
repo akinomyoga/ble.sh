@@ -49,10 +49,10 @@ bleopt/declare -v complete_timeout_compvar 200
 bleopt/declare -v complete_ambiguous 1
 bleopt/declare -v complete_contract_function_names 1
 bleopt/declare -v complete_auto_complete 1
+bleopt/declare -v complete_auto_complete_opts ''
 bleopt/declare -v complete_auto_history 1
 bleopt/declare -n complete_auto_delay 1
 bleopt/declare -v complete_auto_wordbreaks "$_ble_term_IFS"
-bleopt/declare -v complete_auto_after_complete 1
 bleopt/declare -v complete_auto_menu ''
 bleopt/declare -v complete_allow_reduction ''
 
@@ -82,6 +82,7 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
 bleopt/declare -v menu_linewise_prefix ''
 bleopt/declare -v menu_desc_multicolumn_width 65
 bleopt/declare -v complete_menu_complete 1
+bleopt/declare -v complete_menu_complete_opts 'insert-selection'
 bleopt/declare -v complete_menu_filter 1
 bleopt/declare -v complete_menu_maxlines '-1'
 

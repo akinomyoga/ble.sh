@@ -110,8 +110,9 @@
 - util (`ble-import`): support option `-q` `#D1859` 1ca87a9
 - history: support extension `HISTCONTROL=strip` (motivated by aiotter) `#D1874` 021e033
 - benchmark (ble-measure): support an option `-V` `#D1881` 571ecec
-- complete: add `bleopt complete_auto_after_complete` `#D1901` 1478a04
 - color: allow setting color filter by `_ble_color_color2sgr_filter` `#D1902` 88e74cc
+- auto-complete: add `bleopt complete_auto_complete_opts` (motivated by DUOLabs333) `#D1901` `#D1911` 1478a04 xxxxxxx
+- menu-complete: add `bleopt complete_menu_complete_opts` (requested by DUOLabs333) `#D1911` xxxxxxx
 
 ## Changes
 
