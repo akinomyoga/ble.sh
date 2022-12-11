@@ -11,7 +11,7 @@ endif
 # check gawk
 GAWK := $(shell which gawk 2>/dev/null || type -p gawk 2>/dev/null)
 ifneq ($(GAWK),)
-  GAWK_VERSION := $(shell LANG=C $(GAWK) --version 2>/dev/null | head -1 | grep -Fi 'GNU Awk')
+  GAWK_VERSION := $(shell LANG=C $(GAWK) --version 2>/dev/null | sed -n '1{/[Gg][Nn][Uu] [Aa][Ww][Kk]/p;}')
   ifeq ($(GAWK_VERSION),)
     $(error Sorry, gawk is found but does not seem to work. Please install a proper version of gawk (GNU Awk).)
   endif
@@ -20,7 +20,7 @@ else
   ifeq ($(GAWK),)
     $(error Sorry, gawk/awk could not be found. Please check your PATH environment variable.)
   endif
-  GAWK_VERSION := $(shell LANG=C $(GAWK) --version 2>/dev/null | head -1 | grep -Fi 'GNU Awk')
+  GAWK_VERSION := $(shell LANG=C $(GAWK) --version 2>/dev/null | sed -n '1{/[Gg][Nn][Uu] [Aa][Ww][Kk]/p;}')
   ifeq ($(GAWK_VERSION),)
     $(error Sorry, gawk could not be found. Please install gawk (GNU Awk).)
   endif

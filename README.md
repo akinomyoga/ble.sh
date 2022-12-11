@@ -516,6 +516,17 @@ For example, with the following setting, "Hello, world!" will be inserted on typ
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
 
+The details on the key representation like <kbd>C-x</kbd> is described in [Manual §3.1](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-kspecs).
+The representations of space/tab/enter/backspace/escape, etc. are described in [Manual §3.1.1](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-kspecs-ret):
+The space is represented as <kbd>SP</kbd>,
+the tab key is represented as <kbd>C-i</kbd> or <kbd>TAB</kbd> depending on the terminal,
+the enter/return key is represented as <kbd>C-m</kbd> or <kbd>RET</kbd> depending on the terminal,
+and the backspace key is represented as <kbd>C-?</kbd>, <kbd>DEL</kbd>, <kbd>C-h</kbd>, or <kbd>BS</kbd> depending on the terminal.
+The representations of modified special keys such as <kbd>Ctrl+Return</kbd> and <kbd>Shift+Return</kbd> are described
+in [Manual §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#sec-modifyOtherKeys-manual):
+If your terminal does not support `modifyOtherKeys`, you need to manually configure the escape sequences of modified special keys.
+
+
 For another example, if you want to invoke a command on typing <kbd>M-c</kbd>, you can write as follows:
 
 ```bash
@@ -583,7 +594,9 @@ The feature `auto-complete` is available in Bash 4.0 or later. `auto-complete` a
 The suggested contents can be inserted by typing <kbd>S-RET</kbd>
 (when the cursor is at the end of the command line, you can also use <kbd>right</kbd>, <kbd>C-f</kbd> or <kbd>end</kbd> to insert the suggestion).
 If you want to insert only first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
-If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd> (if your terminal supports this special key combination).
+If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd>
+(if your terminal does not support special key combinations like <kbd>C-RET</kbd>, please check
+[Manual §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#sec-modifyOtherKeys-manual)).
 
 ## 3.4 Use `sabbrev` (static abbrev expansions)
 

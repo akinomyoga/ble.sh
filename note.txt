@@ -1855,6 +1855,10 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
 
+2022-12-09
+
+  * edit,complete: alias expansion で alias sudo='sudo ' 等による引数の展開に対応?
+
 2022-12-03
 
   * declare -f の出力は特殊関数名には使えないのではないか?
@@ -1888,8 +1892,6 @@ bash_tips
 
     https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
     ここでも少し言及している。
-
-  * colorglass: オプションで指定した時に256色(またはより少ない色に)に減色する機能?
 
   * colorglass: face から読み取る時に作用する色設定?
 
@@ -6662,6 +6664,51 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-12-11
+
+  * colorglass: オプションで指定した時に256色(またはより少ない色に)に減色する機能? [#D1918]
+
+    →よく考えたら bleopt term_true_colors が設定されていなければ自動的に減色さ
+    れるのではないか。実際に実装を確認してみた所そうなっている。この事を
+    colorglass の説明に書いておくべきではないか? → 記述した。これで十分である。
+
+  * README: RET や C-RET 等について 3.1.1 及び 3.3.6 に対するリンクを含めておく [#D1917]
+    https://github.com/akinomyoga/ble.sh/issues/262
+
+    取り敢えずリンクと説明を書いた。
+
+  * _ble_term_TERM (comment): wezterm の commit id は 8 文字では足りない (requested by SuperSandro2000) [#D1916]
+    https://github.com/akinomyoga/ble.sh/commit/486564ad314cef3f95317e88cf26879378dae507
+
+    うーん。行(特に120列)に収まり切らない様な気がするが面倒なので気にしない事にする。
+
+  * github/workflows: 何故か grep が windows-latest でクラッシュする [#D1915]
+
+    別のリポジトリで試しに実行してみたがやはり再現する。最終的に以下の単純な
+    workflow の定義ですらクラッシュするという事が分かった。
+
+    ---- .github/workflows/build.yml ------
+    name: grep-in-windows
+    on:
+      push:
+        branches:
+          - master
+
+    jobs:
+      check:
+        runs-on: windows-latest
+        steps:
+          - name: Check out
+            uses: actions/checkout@v3
+          - name: Check
+            run: echo 'GNU Awk' | grep -Fi 'GNU Awk'
+    ---------------------------------------
+
+    grep -i や grep -F だけでは問題は発生しない。 grep -Fi や grep -F -i 等、-F
+    と -i を組み合わせた時にクラッシュする様だ。grep の version は GNU grep 3.0
+    (2017) の様である。よく分からないが面倒なので grep を使わずに実装する事にす
+    る。head -1 による処理も一緒に sed で処理すれば良い。
+
 2022-12-08
 
   * ble-reload した時に M-z が効かなくなる [#D1914]
@@ -6776,6 +6823,7 @@ bash_tips
     [1] https://github.com/wez/wezterm/commit/ad91e3776808507cbef9e6d758b89d7ca92a4c7e
 
   * contrib/fzf-key-bindings: C-r で呼び出した fzf で modifyOtherKeys の状態が変 (reported by SuperSandro2000) [#D1908]
+    https://github.com/akinomyoga/ble.sh/issues/259
 
     xterm ですらちゃんと動いていない。以前はちゃんと動いていた筈なので
     regression の可能性が高い。うーん。ちゃんと hook はできている。つまり、
@@ -6833,7 +6881,6 @@ bash_tips
       ると _z から __zoxide_z_complete に改名された様である。
 
       https://github.com/ajeetdsouza/zoxide/commit/d106f4e3580d5594d8f1c96c256a8f085e2781a4
-
 
   * colorglass: saturation (彩度) についての設定を追加する (motivated by auwsom) [#D1906]
     https://github.com/akinomyoga/ble.sh/issues/258

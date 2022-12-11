@@ -5721,7 +5721,7 @@ function ble/term/DA2/initialize-term {
   # が付かないが、ちょうど該当 xterm version (2012-01-08) を使っている可能性は
   # 低いと見て取り敢えず wezterm とする。
   ('0;0;0') _ble_term_TERM[depth]=wezterm:0 ;;
-  ('1;277;0') _ble_term_TERM[depth]=wezterm:20220408 ;; # 2022-04-07 https://github.com/wez/wezterm/commit/ad91e377
+  ('1;277;0') _ble_term_TERM[depth]=wezterm:20220408 ;; # 2022-04-07 https://github.com/wez/wezterm/commit/ad91e3776808507cbef9e6d758b89d7ca92a4c7e
 
   ('0;10;1') # Windows Terminal
     # 現状ハードコードされている。

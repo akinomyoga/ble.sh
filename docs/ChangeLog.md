@@ -111,10 +111,10 @@
 - history: support extension `HISTCONTROL=strip` (motivated by aiotter) `#D1874` 021e033
 - benchmark (ble-measure): support an option `-V` `#D1881` 571ecec
 - color: allow setting color filter by `_ble_color_color2sgr_filter` `#D1902` 88e74cc
-- auto-complete: add `bleopt complete_auto_complete_opts` (motivated by DUOLabs333) `#D1901` `#D1911` 1478a04 xxxxxxx
-- menu-complete: add `bleopt complete_menu_complete_opts` (requested by DUOLabs333) `#D1911` xxxxxxx
-- edit (`magic-space`): support `bleopt edit_magic_expand=...:alias` (requested by telometto) `#D1912` xxxxxxx
-  - auto-complete: cancel auto-complete for `magic-space` `#D1913` xxxxxxx
+- auto-complete: add `bleopt complete_auto_complete_opts` (motivated by DUOLabs333) `#D1901` `#D1911` 1478a04 6a21ebb
+- menu-complete: add `bleopt complete_menu_complete_opts` (requested by DUOLabs333) `#D1911` 6a21ebb
+- edit (`magic-space`): support `bleopt edit_magic_expand=...:alias` (requested by telometto) `#D1912` 63da2ac
+  - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
 
 ## Changes
 
@@ -145,8 +145,8 @@
   - edit (`display-shell-version`): show information of the OS distribution and properly handle saved locales `#D1854` 066ec63 bdb7dd6
   - edit (`display-shell-version`): show `gawk`, `make`, and `git` versions of the build time `#D1892` e618133
   - edit (`display-shell-version`): support running as a user command (reported by DhruvaG2000) `#D1893` e618133
-  - edit (`display-shell-version`): show warnings for fzf-integration `#D1907` xxxxxxx
-  - edit (`display-shell-version`): show the `zoxide` version `#D1907` xxxxxxx
+  - edit (`display-shell-version`): show warnings for fzf-integration `#D1907` 3bc3bea
+  - edit (`display-shell-version`): show the `zoxide` version `#D1907` 3bc3bea
 - complete (`ble-sabbrev`): support colored output `#D1546` 750ca38
 - decode (`ble-bind`): support colored output `#D1547` 750ca38
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
@@ -186,7 +186,7 @@
   - complete: do not show option descriptions for the empty-word completion (requested by geekscrapy) `#D1846` 1c7f7a1
 - syntax (`extract-command`): extract unexpected command names as commands `#D1848` 5b63459
 - main (`ble-reload`): preserve the original initialization options `#D1852` d8c92cc
- - main (`ble-reload`): fix a bug that the default rcfile is not loaded `#D1914` xxxxxxx
+ - main (`ble-reload`): fix a bug that the default rcfile is not loaded `#D1914` 85b5828
 - blehook: print reusable code to restore the user hooks `#D1857` b763677
   - blehook: separate internal and user hooks `#D1856` b763677
   - blehook: prefer the uniq  `!=` to the addition `+=` `#D1871` fe7abd4
@@ -207,13 +207,13 @@
   - trap: work around possible interferences by recursive traps `#D1867` a22c25b
   - trap: ignore `RETURN` for `ble/builtin/trap/.handler` `#D1867` a22c25b
   - trap: fix a bug that `DEBUG` for internal commands clears `$?` `#D1867` a22c25b
-  - trap: use `ble/util/assign/.mktmp` to read the `DEBUG` trap `#D1910` xxxxxxx
+  - trap: use `ble/util/assign/.mktmp` to read the `DEBUG` trap `#D1910` 1de9a1e
 - progcomp: reproduce arguments of completion functions passed by Bash `#D1872` 4d2dd35
 - prompt: preserve transient prompt with `same-dir` after `clear-screen` `#D1876` 69013d9
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
 - decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
-- term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` xxxxxxx
+- term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
 
 ## Fixes
 
@@ -329,7 +329,7 @@
 - canvas (`ble/canvas/trace`): fix text justification for empty lines (reported by rashil2000) `#D1894` cdf74c2
 - main: fix adjustments of bash options (reported by rashil2000) `#D1895` 138c476
 - complete: suppress error messages for non-bash_completion `_parse_help` (reported by nik312123) `#D1900` 267de7f
-- prompt: fix the marker position for the readline variable `show-mode-in-prompt` (reported by Strykar) `#D1903` xxxxxxx
+- prompt: fix the marker position for the readline variable `show-mode-in-prompt` (reported by Strykar) `#D1903` 09bb4d3
 
 ## Documentation
 
@@ -341,7 +341,8 @@
 - blerc: add frequently used keybindings (motivated by KiaraGrouwstra, micimize) `#D1896` `#D1897` e19b796
 - wiki/Q&A: add item for defining a widget calling multiple widgets (motivated by micimize) `#D1898` e19b796
 - blerc: rename from `blerc` to `blerc.template` `#D1899` e19b796
-- README: add a link to the explanation on the "more reliable setup" of bashrc (motivated by telometto) `#D1905` xxxxxxx
+- README: add a link to the explanation on the "more reliable setup" of bashrc (motivated by telometto) `#D1905` 09bb4d3
+- README: add links to Manual pages for *kspec* and `modifyOtherKeys` `#D1917` xxxxxxx
 
 ## Optimization
 
@@ -437,7 +438,7 @@
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
 - progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 973ae8c
 - complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
-  - contrib/integration/zoxide: update `contrib/integration/zoxide` for zoxide v0.8.1 `#D1907` xxxxxxx
+  - contrib/integration/zoxide: update `contrib/integration/zoxide` for zoxide v0.8.1 `#D1907` 3bc3bea
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
@@ -463,6 +464,7 @@
     - util (ble/util/s2c): work around intermediate mbstate of bash <= 5.2 `#D1881` 2e1a7c1
     - util (ble/util/s2bytes): clear locale cache `#D1881` 2e1a7c1
   - complete: fix syntax error for bash-3.0 `#D1881` 0b3e611
+  - github/workflows: work around grep-3.0 which crashes in windows-latest `#D1915` xxxxxxx
 - test (ble/util/writearray): use `ble/file#hash` instead of `sha256sum` `#D1882` b76e21e
 - test (ble/util/readlink): work around external aliases `#D1890` 0c6291f
 
@@ -506,7 +508,7 @@
 - benchmark (zsh): fix for `KSH_ARRAYS` `#D1886` a144ffa 8cb9b84
 - benchmark: support for ksh as `benchmark.ksh` `#D1886` 5dae4da
 - github/workflows (build): rename directory in `ble-nightly.tar.xz` to `ble-nightly` (reported by Harduex) `#D1891` f20854f 4ea2e23 43c6d4b
-- edit: update prompts on g2sgr change `#D1906` xxxxxxx
+- edit: update prompts on g2sgr change `#D1906` 40625ac
 
 ## Contrib
 
@@ -516,11 +518,11 @@
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
 - fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
-- README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` xxxxxxx
-- fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` xxxxxxx
-- colorglass: add color filter `#D1902` xxxxxxx
-  - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` xxxxxxx
-- fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` xxxxxxx
+- README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` 09bb4d3
+- fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` 09bb4d3
+- colorglass: add color filter `#D1902` 88e74cc
+  - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` 40625ac
+- fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` 486564a
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
