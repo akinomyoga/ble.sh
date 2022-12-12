@@ -516,24 +516,26 @@ For example, with the following setting, "Hello, world!" will be inserted on typ
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
 
-The details on the key representation like <kbd>C-x</kbd> is described in [Manual §3.1](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-kspecs).
-The representations of space/tab/enter/backspace/escape, etc. are described in [Manual §3.1.1](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-kspecs-ret):
+The details on the key representation, such as <kbd>C-x h</kbd> in the above example,
+are described in [Manual §3.1](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-kspecs).
+The representations of <kbd>Space</kbd>, <kbd>Tab</kbd>, <kbd>Enter</kbd>, <kbd>Backspace</kbd>, <kbd>Escape</kbd>, etc. are described
+in [Manual §3.1.1](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-kspecs-ret):
 The space is represented as <kbd>SP</kbd>,
 the tab key is represented as <kbd>C-i</kbd> or <kbd>TAB</kbd> depending on the terminal,
 the enter/return key is represented as <kbd>C-m</kbd> or <kbd>RET</kbd> depending on the terminal,
 and the backspace key is represented as <kbd>C-?</kbd>, <kbd>DEL</kbd>, <kbd>C-h</kbd>, or <kbd>BS</kbd> depending on the terminal.
 The representations of modified special keys such as <kbd>Ctrl+Return</kbd> and <kbd>Shift+Return</kbd> are described
-in [Manual §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#sec-modifyOtherKeys-manual):
+in [Manual §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-modifyOtherKeys-manual):
 If your terminal does not support `modifyOtherKeys`, you need to manually configure the escape sequences of modified special keys.
 
 
-For another example, if you want to invoke a command on typing <kbd>M-c</kbd>, you can write as follows:
+For another example, if you want to invoke a command on typing <kbd>M-c</kbd>, you can write it as follows:
 
 ```bash
 ble-bind -c 'M-c' 'my-command'
 ```
 
-Or, if you want to invoke a edit function (designed for Bash `bind -x`) on typing <kbd>C-r</kbd>, you can write as follows:
+Or, if you want to invoke a edit function (designed for Bash `bind -x`) on typing <kbd>C-r</kbd>, you can write it as follows:
 
 ```bash
 ble-bind -x 'C-r' 'my-edit-function'
@@ -568,7 +570,18 @@ ble-bind -f C-t my/example1
 ## 2.8 fzf integration
 
 If you would like to use `fzf` in combination with `ble.sh`, you need to configure `fzf` using [the `contrib/fzf` integration](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration).
-Please follow the instructions in the link.
+Please follow the instructions in the link for the detailed description.
+
+```bash
+# blerc
+
+# Note: If you want to combine fzf-completion with bash_completion, you need to
+# load bash_completion earilier than fzf-completion.
+source /etc/profile.d/bash_completion.sh
+
+ble-import -d contrib/fzf-completion
+ble-import -d contrib/fzf-key-bindings
+```
 
 # 3 Tips
 
@@ -596,7 +609,7 @@ The suggested contents can be inserted by typing <kbd>S-RET</kbd>
 If you want to insert only first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
 If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd>
 (if your terminal does not support special key combinations like <kbd>C-RET</kbd>, please check
-[Manual §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#sec-modifyOtherKeys-manual)).
+[Manual §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-modifyOtherKeys-manual)).
 
 ## 3.4 Use `sabbrev` (static abbrev expansions)
 

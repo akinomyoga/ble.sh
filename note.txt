@@ -6664,6 +6664,24 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2022-12-13
+
+  * highlight: パス名着色において ls_colors が動いていなかった (reported by qoreQyaS) [#D1919]
+    https://github.com/akinomyoga/ble.sh/issues/263
+
+    どうも type=g:* の形で指定した後にそれを外側で g に反映させる事になっている
+    のが反映させていなかったのが問題であった。いつ壊れたのか確認した。3f1f472d
+    #D1095 で type == g:* の時の特別の処理が削除されている。実に3年半も動かない
+    状態で放置されていた事になる。
+
+    ディレクトリ名に関しては単純に今まで対応していなかった。
+
+    ble/syntax/highlight/ls_colors の値の返し方自体を変更する事にした。この関数
+    は今迄二箇所でしか呼び出していなくて、両方で呼び出し側で同様に色の合成など
+    を行っていたので、その色の合成も ble/syntax/highlight/ls_colors に統合する
+    事にした。そして直接に g に書き込む様に振る舞いを変更した。その上で / の前
+    のディレクトリ名の ls_colors による着色にも対応した。動いている。
+
 2022-12-11
 
   * colorglass: オプションで指定した時に256色(またはより少ない色に)に減色する機能? [#D1918]
@@ -6846,8 +6864,9 @@ bash_tips
 
 2022-12-05
 
-  * README: fzf-integration について記述する (motivated by SuperSandro2000) [#D1907]
+  * README: fzf-integration について記述する (motivated by SuperSandro2000, tbagrel1) [#D1907]
     https://github.com/akinomyoga/ble.sh/issues/259
+    https://github.com/akinomyoga/ble.sh/issues/261#issuecomment-1346450426
 
     * display-shell-version にも integration が入っていない時にメッセージを表示
       する様にする。fzf についてはメッセージを出力した。
@@ -6881,6 +6900,9 @@ bash_tips
       ると _z から __zoxide_z_complete に改名された様である。
 
       https://github.com/ajeetdsouza/zoxide/commit/d106f4e3580d5594d8f1c96c256a8f085e2781a4
+
+    2022-12-13 更に bash_completion を先にロードしておくべきという事についても
+    記述した。
 
   * colorglass: saturation (彩度) についての設定を追加する (motivated by auwsom) [#D1906]
     https://github.com/akinomyoga/ble.sh/issues/258

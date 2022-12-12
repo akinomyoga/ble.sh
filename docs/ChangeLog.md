@@ -330,6 +330,7 @@
 - main: fix adjustments of bash options (reported by rashil2000) `#D1895` 138c476
 - complete: suppress error messages for non-bash_completion `_parse_help` (reported by nik312123) `#D1900` 267de7f
 - prompt: fix the marker position for the readline variable `show-mode-in-prompt` (reported by Strykar) `#D1903` 09bb4d3
+- highlight: fix a bug that `bleopt filename_ls_colors` is not working (reported by qoreQyaS) `#D1919` xxxxxxx
 
 ## Documentation
 
@@ -342,6 +343,7 @@
 - wiki/Q&A: add item for defining a widget calling multiple widgets (motivated by micimize) `#D1898` e19b796
 - blerc: rename from `blerc` to `blerc.template` `#D1899` e19b796
 - README: add a link to the explanation on the "more reliable setup" of bashrc (motivated by telometto) `#D1905` 09bb4d3
+- README: describe `contrib/fzf` integration (reported by SuperSandro2000, tbagrel1) `#D1907` 3bc3bea xxxxxxx
 - README: add links to Manual pages for *kspec* and `modifyOtherKeys` `#D1917` xxxxxxx
 
 ## Optimization

@@ -543,7 +543,7 @@ $ ble-color-show
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
 
-<kbd>C-x</kbd> 等のキー表記については
+上記の <kbd>C-x h</kbd> の様なキー表記については
 [マニュアル §3.1](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A73-%E3%82%AD%E3%83%BC%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0#user-content-sec-kspecs) で詳細に説明されています。
 スペース・タブ・エンター・バックスペース・エスケープなどの特殊キーの表記については
 [マニュアル §3.1.1](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A73-%E3%82%AD%E3%83%BC%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0#user-content-sec-kspecs-ret) で説明されています:
@@ -552,7 +552,7 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 エンター・リターンキーは端末によって <kbd>C-m</kbd> または <kbd>RET</kbd> と表現します。
 バックスペースは端末によって <kbd>C-?</kbd>, <kbd>DEL</kbd>, <kbd>C-h</kbd>, または <kbd>BS</kbd> 等様々な表現があります。
 <kbd>Ctrl+Return</kbd> や <kbd>Shift+Return</kbd> などの修飾された特殊キーの取り扱いについては
-[マニュアル §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A73-%E3%82%AD%E3%83%BC%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0#sec-modifyOtherKeys-manual) で説明されています。
+[マニュアル §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A73-%E3%82%AD%E3%83%BC%E3%83%90%E3%82%A4%E3%83%B3%E3%83%87%E3%82%A3%E3%83%B3%E3%82%B0#user-content-sec-modifyOtherKeys-manual) で説明されています。
 お使いの端末が `modifyOtherKeys` に対応していない場合、手動で各キーの組み合わせに対応するエスケープシーケンスを設定する必要があります。
 
 
@@ -599,6 +599,17 @@ ble-bind -f C-t my/example1
 `fzf` を `ble.sh` と一緒にお使いいただく場合には、[`contrib/fzf` 統合機能](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration) を用いて `fzf` を設定していただく必要があります。
 詳細についてはリンク先の説明を御覧ください。
 
+```bash
+# blerc
+
+# 注意: fzf を bash_completion と組み合わせて使用する場合は、fzf-completion よ
+# りも先に bash_completion をロードしておく必要があります。
+source /etc/profile.d/bash_completion.sh
+
+ble-import -d contrib/fzf-completion
+ble-import -d contrib/fzf-key-bindings
+```
+
 # 3 ヒント
 
 ## 3.1 複数行モード
@@ -622,7 +633,7 @@ Bash 4.0 以降では自動補完が有効になり、予測候補が表示さ�
 候補を確定するには <kbd>S-RET</kbd> を入力します (編集文字列の末尾にいる時は <kbd>right</kbd>, <kbd>C-f</kbd> または <kbd>end</kbd> でも確定できます)。
 表示されている候補の初めの単語だけ部分的に確定する時は <kbd>M-f</kbd> または <kbd>M-right</kbd> を入力します。
 現在の候補で確定しそのままコマンドを実行する場合には <kbd>C-RET</kbd> (※お使いの端末が対応している時) を入力します。
-お使いの端末が対応していない時は [マニュアル §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#sec-modifyOtherKeys-manual) を参照して下さい。
+お使いの端末が対応していない時は [マニュアル §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-modifyOtherKeys-manual) を参照して下さい。
 
 
 ## 3.4 静的略語展開

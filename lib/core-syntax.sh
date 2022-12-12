@@ -6438,8 +6438,12 @@ function ble/syntax/highlight/ls_colors/.parse {
   done
 }
 
-## @fn ble/syntax/highlight/ls_colors
-##   @var[in,out] type
+## @fn ble/syntax/highlight/ls_colors filename
+##   対応する LS_COLORS 設定が見つかった時に g を上書きし成功します。
+##   それ以外の場合は g は変更せず失敗します。
+##   @param[in] filename
+##   @var[in] type
+##   @var[in,out] g
 function ble/syntax/highlight/ls_colors {
   local file=$1
   if ((type==ATTR_FILE_FILE)); then
@@ -6448,15 +6452,18 @@ function ble/syntax/highlight/ls_colors {
       ext=${ext#*.}
       [[ $ext ]] || break
       if ble/syntax/highlight/ls_colors/.read-extension "$ext"; then
-        type=g:$ret
+        local g1=$ret
+        ble/color/face2g filename_ls_colors; g=$ret
+        ble/color/g#append g "$g1"
         return 0
       fi
     done
   fi
 
-  local g=${_ble_syntax_highlight_lscolors[type]}
-  if [[ $g ]]; then
-    type=g:$g
+  local g1=${_ble_syntax_highlight_lscolors[type]}
+  if [[ $g1 ]]; then
+    ble/color/face2g filename_ls_colors; g=$ret
+    ble/color/g#append g "$g1"
     return 0
   fi
 
@@ -6467,9 +6474,7 @@ function ble/syntax/highlight/getg-from-filename {
   local filename=$1 type=
   ble/syntax/highlight/filetype "$filename"
   if [[ $bleopt_filename_ls_colors ]]; then
-    if ble/syntax/highlight/ls_colors "$filename" && [[ $type == g:* ]]; then
-      local ret; ble/color/face2g filename_ls_colors; g=$ret
-      ((g|=${type:2}))
+    if ble/syntax/highlight/ls_colors "$filename"; then
       return 0
     fi
   fi
@@ -6758,8 +6763,10 @@ function ble/progcolor/highlight-filename/.pathspec.wattr {
 
       if ble/syntax/util/is-directory "$epath"; then
         local type
-        ble/syntax/highlight/filetype "$epath" &&
-          ble/syntax/attr2g "$type"
+        if ble/syntax/highlight/filetype "$epath"; then
+          ble/syntax/highlight/ls_colors ||
+            ble/syntax/attr2g "$type"
+        fi
       elif ((wtype==CTX_CMDI)); then
         # コマンド名の時はディレクトリが存在する必要 #D1419
         ble/syntax/attr2g "$ATTR_ERR"
@@ -6839,10 +6846,7 @@ function ble/progcolor/highlight-filename/.pathspec-by-name.wattr {
 
   local g=
   if [[ $bleopt_filename_ls_colors ]]; then
-    if ble/syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
-      local ret; ble/color/face2g filename_ls_colors; g=$ret
-      type=g:$((${type:2}|g))
-    fi
+    ble/syntax/highlight/ls_colors "$value"
   fi
   [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
 
