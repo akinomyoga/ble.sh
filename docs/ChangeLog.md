@@ -330,7 +330,9 @@
 - main: fix adjustments of bash options (reported by rashil2000) `#D1895` 138c476
 - complete: suppress error messages for non-bash_completion `_parse_help` (reported by nik312123) `#D1900` 267de7f
 - prompt: fix the marker position for the readline variable `show-mode-in-prompt` (reported by Strykar) `#D1903` 09bb4d3
-- highlight: fix a bug that `bleopt filename_ls_colors` is not working (reported by qoreQyaS) `#D1919` xxxxxxx
+- highlight: fix a bug that `bleopt filename_ls_colors` is not working (reported by qoreQyaS) `#D1919` b568ade
+- bind: fix <kbd>M-C-@</kbd>, <kbd>C-x C-@</kbd>, and <kbd>M-C-x</kbd> (`bash-4.2 -o emacs`) `#D1920` xxxxxxx
+
 
 ## Documentation
 
@@ -343,8 +345,8 @@
 - wiki/Q&A: add item for defining a widget calling multiple widgets (motivated by micimize) `#D1898` e19b796
 - blerc: rename from `blerc` to `blerc.template` `#D1899` e19b796
 - README: add a link to the explanation on the "more reliable setup" of bashrc (motivated by telometto) `#D1905` 09bb4d3
-- README: describe `contrib/fzf` integration (reported by SuperSandro2000, tbagrel1) `#D1907` 3bc3bea xxxxxxx
-- README: add links to Manual pages for *kspec* and `modifyOtherKeys` `#D1917` xxxxxxx
+- README: describe `contrib/fzf` integration (reported by SuperSandro2000, tbagrel1) `#D1907` 3bc3bea b568ade
+- README: add links to Manual pages for *kspec* and `modifyOtherKeys` `#D1917` fb7bd0b1 b568ade
 
 ## Optimization
 
@@ -466,7 +468,7 @@
     - util (ble/util/s2c): work around intermediate mbstate of bash <= 5.2 `#D1881` 2e1a7c1
     - util (ble/util/s2bytes): clear locale cache `#D1881` 2e1a7c1
   - complete: fix syntax error for bash-3.0 `#D1881` 0b3e611
-  - github/workflows: work around grep-3.0 which crashes in windows-latest `#D1915` xxxxxxx
+  - github/workflows: work around grep-3.0 which crashes in windows-latest `#D1915` fb7bd0b
 - test (ble/util/writearray): use `ble/file#hash` instead of `sha256sum` `#D1882` b76e21e
 - test (ble/util/readlink): work around external aliases `#D1890` 0c6291f
 

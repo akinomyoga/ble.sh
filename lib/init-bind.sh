@@ -38,6 +38,7 @@ function ble/init:bind/generate-binder {
   : >| "$fbind2"
 
   local q=\' Q="'\\''"
+  local altdqs00='\xC0\x80'
   local altdqs24='\xC0\x98'
   local altdqs27='\xC0\x9B'
 
@@ -162,7 +163,7 @@ function ble/init:bind/generate-binder {
       # C-@
       if ((esc00)); then
         # ENCODING: UTF-8 2-byte code of 0 (UTF-8依存)
-        ble/init:bind/append-macro '\C-@' '\xC0\x80'
+        ble/init:bind/append-macro '\C-@' "$altdqs00"
       else
         ble/init:bind/append "$ret" "$i"
       fi
@@ -198,7 +199,9 @@ function ble/init:bind/generate-binder {
       # emacs mode では "C-x ?" の組み合わせで登録する。
       # Note: 普通に bind -x すると cmd_xmap の \C-x が曖昧になって vi 側の単一
       # "C-x" が動かなくなるので、ここでは UTF-8 2B 表示を通して受信する。
-      if ((i==24)); then
+      if ((i==0)); then
+        ble/init:bind/append-macro "\C-x$ret" "$altdqs24$altdqs00" '[[ -o emacs ]]'
+      elif ((i==24)); then
         ble/init:bind/append-macro "\C-x$ret" "$altdqs24$altdqs24" '[[ -o emacs ]]'
       else
         ble/init:bind/append-macro "\C-x$ret" "$altdqs24$ret"      '[[ -o emacs ]]'
@@ -207,7 +210,13 @@ function ble/init:bind/generate-binder {
 
     # ESC *
     if ((esc1B==3)); then
-      ble/init:bind/append-macro '\e'"$ret" "$altdqs27$ret"
+      if ((i==0)); then
+        ble/init:bind/append-macro '\e'"$ret" "$altdqs27$altdqs00"
+      elif ((bind18XX&&i==24)); then
+        ble/init:bind/append-macro '\e'"$ret" "$altdqs27$altdqs24"
+      else
+        ble/init:bind/append-macro '\e'"$ret" "$altdqs27$ret"
+      fi
     else
       if ((esc1B==1)); then
         # ESC [

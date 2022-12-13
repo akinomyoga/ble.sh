@@ -6666,6 +6666,22 @@ bash_tips
 
 2022-12-13
 
+  * bind: M-C-@ が正しく捕まえられていない気がする [#D1920]
+
+    bind -s で確認するとマクロ置換後の C-@ が消滅している。これは単にマクロが内
+    部的に null-terminated string で表現されている為である。
+
+    更に同様の状況を考えてみると C-x C-@ も正しく検出できていない。また M-C-x
+    (in bash-4.2, emacs binding) もその瞬間に検出できていなくて遅延が生じる。実
+    際にその場で入力を検出できていないという事を確認した。
+
+    取り敢えず M-C-@, C-x C-@, M-C-x (bash-4.2 -o emacs) を修正した。
+
+    ? reject: これは bash の側で修正するべきなのだろうか? 然し、bash は null
+      terminated な raw string でマクロを補完していて、これを変更するのは難しい
+      し其処までする理由もない様な気がする。取り敢えずは現在の workaround を保
+      持して、bash には何も要求しない方向が妥当の気がする。
+
   * highlight: パス名着色において ls_colors が動いていなかった (reported by qoreQyaS) [#D1919]
     https://github.com/akinomyoga/ble.sh/issues/263
 
