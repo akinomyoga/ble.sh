@@ -1639,6 +1639,21 @@ function ble/complete/action:word/get-desc {
 
 # action:file
 # action:file_rhs (source:argument 内部使用)
+
+## @fn ble/complete/action:file/.get-filename word
+##   "comopt -o ble/syntax-raw" の場合も考慮してファイル名を抽出する。
+##   Bash の振る舞いを見るとチルダ展開だけを実行する様だ。
+##   @var[in] CAND DATA
+function ble/complete/action:file/.get-filename {
+  ret=$CAND
+  if [[ $ACTION == progcomp && :$DATA: == *:ble/syntax-raw:* && $ret == '~'* ]]; then
+    local tilde=${ret%%/*} chars='\ "'\''`$|&;<>()!^*?[=:{,}'
+    [[ $tilde == *["$chars"]* ]] && return 0
+    builtin eval "local expand=$tilde"
+    [[ $expand == "$tilde" ]] && return 0
+    ret=$expand${ret:${#tilde}}
+  fi
+}
 function ble/complete/action:file/initialize {
   ble/complete/action/quote-insert
 }
@@ -1647,8 +1662,11 @@ function ble/complete/action:file/initialize.batch {
 }
 function ble/complete/action:file/complete {
   ble/complete/action/requote-final-insert
-  if [[ -e $CAND || -h $CAND ]]; then
-    if [[ -d $CAND ]]; then
+
+  local ret
+  ble/complete/action:file/.get-filename
+  if [[ -e $ret || -h $ret ]]; then
+    if [[ -d $ret ]]; then
       ble/complete/action/complete.mark-directory
     else
       ble/complete/action:word/complete
@@ -1656,15 +1674,17 @@ function ble/complete/action:file/complete {
   fi
 }
 function ble/complete/action:file/init-menu-item {
-  ble/syntax/highlight/getg-from-filename "$CAND"
+  local ret
+  ble/complete/action:file/.get-filename; local file=$ret
+  ble/syntax/highlight/getg-from-filename "$file"
   [[ $g ]] || { local ret; ble/color/face2g filename_warning; g=$ret; }
 
   if [[ :$comp_type: == *:vstat:* ]]; then
-    if [[ -h $CAND ]]; then
+    if [[ -h $file ]]; then
       suffix='@'
-    elif [[ -d $CAND ]]; then
+    elif [[ -d $file ]]; then
       suffix='/'
-    elif [[ -x $CAND ]]; then
+    elif [[ -x $file ]]; then
       suffix='*'
     fi
   fi

@@ -6666,6 +6666,115 @@ bash_tips
 
 2022-12-13
 
+  * fzf-completion: ファイル名に付く suffix の判定ができていない (reported by qoreQyaS) [#D1921]
+    https://github.com/akinomyoga/ble.sh/issues/264
+
+    結局問題は ble/syntax-raw で fzf にファイル名を渡しているので結果として生成
+    される物が、必ずしもそのままでファイル名になっているとは限らないのが原因だっ
+    た。
+
+    [原因解明]
+
+    bash-completion & fzf & ble.sh の組み合わせで再現する事を確認した。色々調べ
+    た所、単に以下の補完設定でも ble.sh だと問題が再現する。
+
+      function _test2a {
+        compopt -o filenames
+        COMPREPLY=("~/opt")
+      }
+      complete -F _test2a test2a
+
+    ble.sh の中の動作を調べると ble/complete/action:file/complete 迄期待通りに
+    呼び出されているが、そこで分かった。~/が定義されていないのである。
+
+    ? ok: fzf の補完で ~ が直接渡って suffix が付かなくなるのは良いとしても、不
+      思議なのは普通の補完で同様の修正が働かない理由である。そもそも ~/opt は
+      /home/murase/o に変換してから補完が走る設計にしていた様な気がする。何故 ~
+      が直接補完関数に渡っているのだろうか??
+
+      と思ったがよく考えたらテストの問題である。問題再現の為に直接
+      COMPREPLY=('~/opt') の様にしていただけで、実際に COMP_LINE や COMP_WORDS
+      に '~' が含まれていた訳では無い。
+
+    [修正]
+
+    取り敢えず ble/syntax-raw の時にはその場でパス名展開を試行してファイル名か
+    どうかの判定を実行する事にする。
+
+
+    ? 存在しないファイル名がある時に nullglob で消えてしまうのでは。これだと一
+      番最後の単語でない物を拾ってテストしてしまう可能性がある。
+
+      こういった設定を変更しないでできるパス名展開は存在しただろうか。と思った
+      が util の eval-pathname-expansion は元からその様な物だった。
+
+    * reject: comp_opts の値を記録する事を考える。或いは、DATA は progcomp の時
+      には常に comp_opts だと仮定して良いのだろうか。と思ったが、駄目。progcomp
+      のものに関しては問題が起こらないが、それ以外で生成された物について DATA
+      は別のものを含んでいるので、直接 DATA を読み取っていると誤作動の原因にな
+      る。
+
+      或いはそれが progcomp によって生成された物であるかどうかを判定する方法は
+      あるのか。確認した所、action=progcomp らしい。action=mandb もあるような気
+      がしたがそれは source:mandb から生成された物だけの様である。更に、
+      action=mandb で出てきた物はファイル名ではないのは明らかなので、やはり除外
+      しても良い。
+
+      progcomp から出てくる物は action=progcomp であると仮定して良い。
+
+    実装した。動いている。auto-complete の場合でもちゃんと / が挿入される。
+
+    x fixed: と思ったが menu-complete の着色の為にファイル名を判定している所で
+      結局同様にファイル名の判定に失敗して全てが赤くなっている。これにも対応す
+      る必要がある気がする。
+
+      これについても修正を行った。ファイル名取得の処理を共通化して、そしたら簡
+      単だった。
+
+    ? 生成される物が eval した後にファイル名になるという事を仮定しているが本当
+      にそう思って良いのだろうか。元の bash の振る舞いでは空白が入っていたとし
+      ても -o filename を指定したら quote してくれるみたいな事になっていたりは
+      しないのか?
+
+    x bash の振る舞いについて確認する事にする。更にそもそも不用意に eval して良
+      いのかという問題がある。コマンド置換など含まれていたらどうするのか。
+      syntax/simple-word で判定してから eval するべきなのではないか。
+
+      チルダ展開だけを実行するためにはどうしたら良いか。ble/widget/tilde-expand
+      を確認してみた所、これは command line に含まれる物に対する作用だったので、
+      単に syntax 情報を参照していた。
+
+      コマンド置換が含まれていたらチルダ展開は諦めると思ったがコマンド置換が含
+      まれていたとしても、結局は quote されるので inactive である。取り敢えずチ
+      ルダ展開だけ試みるというのが正しい動作の気がする。という事を考えると、最
+      初がチルダであって次の / までに何か特別な文字が含まれていない時に限ってチ
+      ルダ展開を試みるという処置が必要である。
+
+      先ず最初に作った以下のコードは全て棄却である。
+
+      | local -a dtor=()
+      | if shopt -q nullglob; then
+      |   shopt -u nullglob
+      |   ble/array#push dtor 'shopt -s nullglob'
+      | fi
+      | if shopt -q failglob; then
+      |   shopt -u failglob
+      |   ble/array#push dtor 'shopt -s failglob'
+      | fi
+      |
+      | # Note: 一番最後の文字の直後の文脈を知りたいので、末尾に '' を追加して評価
+      | # してから最後の単語を抜き出す。
+      | if ble/util/eval-pathname-expansion "$file''" && ((${#ret[@]})); then
+      |   file=${ret[${#ret[@]}-1]}
+      | else
+      |   file=
+      | fi
+      |
+      | ble/util/invoke-hook dtor
+
+      実装し直した。動作確認する。動いている。auto-complete もOK。menu-complete
+      もOK。その他の微妙なファイル名でも bash と同様に動作する事を確認した。
+
   * bind: M-C-@ が正しく捕まえられていない気がする [#D1920]
 
     bind -s で確認するとマクロ置換後の C-@ が消滅している。これは単にマクロが内

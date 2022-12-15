@@ -332,7 +332,7 @@
 - prompt: fix the marker position for the readline variable `show-mode-in-prompt` (reported by Strykar) `#D1903` 09bb4d3
 - highlight: fix a bug that `bleopt filename_ls_colors` is not working (reported by qoreQyaS) `#D1919` b568ade
 - bind: fix <kbd>M-C-@</kbd>, <kbd>C-x C-@</kbd>, and <kbd>M-C-x</kbd> (`bash-4.2 -o emacs`) `#D1920` xxxxxxx
-
+- complete (action:file): support `ble/syntax-raw` in the filename extraction (reported by qoreQyaS) `#D1921` xxxxxxx
 
 ## Documentation
 
