@@ -353,12 +353,26 @@ function ble/array#insert-before {
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
   '; builtin eval "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#filter arr predicate
+## @fn ble/array#filter arr predicate
+##   @param[in] predicate
+##     When a function name is specified, the target string is passed
+##     to the function as the first argument.  Otherwise, the value of
+##     PREDICATE is treated as a command string where the argument can
+##     be referenced as $1.
+function ble/array#filter/.eval {
+  builtin eval -- "$_ble_local_predicate_cmd"
+}
 function ble/array#filter {
+  local _ble_local_predicate=$2
+  if [[ $2 == *'$'* ]] || ! ble/is-function "$2"; then
+    _ble_local_predicate=ble/array#filter/.eval
+    _ble_local_predicate_cmd=$2
+  fi
+
   local _ble_local_script='
     local -a aARR=() eARR
     for eARR in "${ARR[@]}"; do
-      "$2" "$eARR" && ble/array#push "aARR" "$eARR"
+      "$_ble_local_predicate" "$eARR" && ble/array#push "aARR" "$eARR"
     done
     ARR=("${aARR[@]}")
   '; builtin eval "${_ble_local_script//ARR/$1}"

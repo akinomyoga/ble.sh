@@ -665,34 +665,50 @@ function ble/complete/source:command/.contract-by-slashes {
   '
 }
 
+## @fn ble/complete/source:command/gen.1
 function ble/complete/source:command/gen.1 {
-  local COMPS=$COMPS COMPV=$COMPV
-  ble/complete/source/reduce-compv-for-ambiguous-match
+  # Note #D1922: パス名コマンドの曖昧補完は compgen -c ではなく自前で処理する。
+  # ディレクトリ名に関しては ble/complete/source:command/gen の側で生成されるの
+  # でここでは生成しない。
+  if [[ $COMPV == */* && :$comp_type: == *:[maA]:* ]]; then
+    local ret
+    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+    ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
+    ble/array#filter ret '[[ ! -d $1 && -x $1 ]]'
+    ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
 
-  # Note: cygwin では cyg,x86,i68 等で始まる場合にとても遅い。
-  #   他の環境でも空の補完を実行すると遅くなる可能性がある。
-  local slow_compgen=
-  if [[ ! $COMPV ]]; then
-    slow_compgen=1
-  elif [[ $OSTYPE == cygwin* ]]; then
-    case $COMPV in
-    (?|cy*|x8*|i6*)
-      slow_compgen=1 ;;
-    esac
-  fi
+    local COMPS=$COMPS COMPV=$COMPV
+    ble/complete/source/reduce-compv-for-ambiguous-match
 
-  # Note: 何故か compgen -A command はクォート除去が実行されない。
-  #   compgen -A function はクォート除去が実行される。
-  #   従って、compgen -A command には直接 COMPV を渡し、
-  #   compgen -A function には compv_quoted を渡す。
-  if [[ $slow_compgen ]]; then
-    shopt -q no_empty_cmd_completion && return
-    ble/util/conditional-sync \
-      'compgen -c -- "$COMPV"' \
-      '! ble/complete/check-cancel' 128 progressive-weight
   else
-    compgen -c -- "$COMPV"
+    local COMPS=$COMPS COMPV=$COMPV
+    ble/complete/source/reduce-compv-for-ambiguous-match
+
+    # Note: cygwin では cyg,x86,i68 等で始まる場合にとても遅い。他の環境でも空
+    #   の補完を実行すると遅くなる可能性がある。
+    local slow_compgen=
+    if [[ ! $COMPV ]]; then
+      slow_compgen=1
+    elif [[ $OSTYPE == cygwin* ]]; then
+      case $COMPV in
+      (?|cy*|x8*|i6*)
+        slow_compgen=1 ;;
+      esac
+    fi
+
+    # Note: 何故か compgen -A command はクォート除去が実行されない。compgen -A
+    #   function はクォート除去が実行される。従って、compgen -A command には直
+    #   接 COMPV を渡し、compgen -A function には compv_quoted を渡す。
+    if [[ $slow_compgen ]]; then
+      shopt -q no_empty_cmd_completion && return 0
+      ble/util/conditional-sync \
+        'builtin compgen -c -- "$COMPV"' \
+        '! ble/complete/check-cancel' 128 progressive-weight
+    else
+      builtin compgen -c -- "$COMPV"
+    fi
   fi
+
   if [[ $COMPV == */* ]]; then
     local q="'" Q="'\''"
     local compv_quoted="'${COMPV//$q/$Q}'"
