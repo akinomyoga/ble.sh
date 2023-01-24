@@ -1571,8 +1571,15 @@ function ble/syntax:bash/simple-word/.get-rex_element {
 ##     timeout=*
 ##     timeout-carry
 ##     cached
+##       これらは simple-word/eval に対するオプションです。
+##
 ##     notilde
+##       評価時にチルダ展開を抑制します。
 ##     after-sep
+##       分割位置を分割子の前ではなく後に変更します。
+##     fixlen=LEN
+##       分割の対象とならない固定接頭辞の長さを指定します。
+##
 ##   @arr[out] spec
 ##   @arr[out] path
 ##   @arr[out] ret
@@ -1595,6 +1602,8 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   # read options
   local eval_opts=$opts notilde=
   [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
+  local fixlen
+  ble/opts#extract-last-optarg "$opts" fixlen 0
 
   # compose regular expressions
   local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
@@ -1602,7 +1611,7 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   [[ :$opts: == *:after-sep:* ]] &&
     local rex='^'$rex_element'['$sep']?|^['$sep']'
 
-  local tail=$word s= p= ext=0
+  local tail=${word:fixlen} s=${word::fixlen} p= ext=0
   while [[ $tail =~ $rex ]]; do
     local rematch=$BASH_REMATCH
     s=$s$rematch

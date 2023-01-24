@@ -115,7 +115,8 @@
 - menu-complete: add `bleopt complete_menu_complete_opts` (requested by DUOLabs333) `#D1911` 6a21ebb
 - edit (`magic-space`): support `bleopt edit_magic_expand=...:alias` (requested by telometto) `#D1912` 63da2ac
   - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
-- complete: support ambiguous completion for command paths `#D1922` xxxxxxx
+- complete: support ambiguous completion for command paths `#D1922` 8a716ad
+- complete: preserve original path segments as long as possible `#D1923` `#D1924` xxxxxxx
 
 ## Changes
 

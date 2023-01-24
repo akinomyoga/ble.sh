@@ -1267,16 +1267,27 @@ function ble/complete/action/quote-insert.initialize {
   esac
 
   # 遡って書き換える時に comps_fixed には注意する。
-  quote_fixed_comps=
-  quote_fixed_compv=
-  quote_fixed_comps_len=
-  quote_fixed_compv_len=
+  quote_fixed_comps=('')
+  quote_fixed_compv=('')
+  quote_fixed_comps_len=('')
+  quote_fixed_compv_len=('')
   if [[ $comps_fixed ]]; then
     quote_fixed_compv=${comps_fixed#*:}
     quote_fixed_compv_len=${#quote_fixed_compv}
     quote_fixed_comps_len=${comps_fixed%%:*}
     quote_fixed_comps=${COMPS::quote_fixed_comps_len}
   fi
+
+  # 遡って書き換える時に '/' 区切りでできるだけ元の展開を保持する。
+  # comps_fixed[1] 以降に '/' 区切りで展開した結果を短い順に格納する。
+  local i v
+  for ((i=1;i<${#comps_fixed[@]};i++)); do
+    v=${comps_fixed[i]#*:}
+    quote_fixed_compv[i]=$v
+    quote_fixed_compv_len[i]=${#v}
+    quote_fixed_comps_len[i]=${comps_fixed[i]%%:*}
+    quote_fixed_comps[i]=${COMPS::quote_fixed_comps_len[i]}
+  done
 }
 
 function ble/complete/action/quote-insert {
@@ -1301,6 +1312,7 @@ function ble/complete/action/quote-insert {
       escape_flags=T$escape_flags
   fi
 
+  # 入力済み文字列への追記の場合、元の単語を保持する。
   if [[ $comps_flags == *v* && $CAND == "$COMPV"* ]]; then
     local ins ret
     ble/complete/string#escape-for-completion-context "${CAND:${#COMPV}}" "$escape_flags"; ins=$ret
@@ -1310,13 +1322,22 @@ function ble/complete/action/quote-insert {
       [[ $quote_cont_cutbackslash ]] && ins=${ins#'\'}
       INSERT=$COMPS$ins;
     fi
-  elif [[ $quote_fixed_comps && $CAND == "$quote_fixed_compv"* ]]; then
-    local ret; ble/complete/string#escape-for-completion-context "${CAND:quote_fixed_compv_len}" "$escape_flags"
-    INSERT=$quote_fixed_comps$quote_trav_prefix$ret
-  else
-    local ret; ble/complete/string#escape-for-completion-context "$CAND" "$escape_flags"
-    INSERT=$quote_trav_prefix$ret
+    return 0
   fi
+
+  # 遡って書き換わる場合には単語内のできるだけ長い部分パスを保持する。
+  local i=${#quote_fixed_comps[@]}
+  while ((--i>=0)); do
+    if [[ ${quote_fixed_comps[i]} && $CAND == "${quote_fixed_compv[i]}"* ]]; then
+      local ret; ble/complete/string#escape-for-completion-context "${CAND:quote_fixed_compv_len[i]}" "$escape_flags"
+      INSERT=${quote_fixed_comps[i]}$quote_trav_prefix$ret
+      return 0
+    fi
+  done
+
+  # 既存の物に一致しない場合、完全に書き換える。
+  local ret; ble/complete/string#escape-for-completion-context "$CAND" "$escape_flags"
+  INSERT=$quote_trav_prefix$ret
 }
 
 function ble/complete/action/quote-insert.batch/awk {
@@ -1330,13 +1351,19 @@ function ble/complete/action/quote-insert.batch/awk {
   local -x quote_paramx_comps=$quote_paramx_comps
   local -x quote_cont_cutbackslash=$quote_cont_cutbackslash
   local -x quote_trav_prefix=$quote_trav_prefix
-  local -x quote_fixed_comps=$quote_fixed_comps
-  local -x quote_fixed_compv=$quote_fixed_compv
+
+  local -x quote_fixed_count=${#quote_fixed_comps[@]}
+  local i
+  for ((i=0;i<quote_fixed_count;i++)); do
+    local -x "quote_fixed_comps$i=${quote_fixed_comps[i]}"
+    local -x "quote_fixed_compv$i=${quote_fixed_compv[i]}"
+  done
+
   "$quote_batch_awk" -v quote_batch_nulsep="$quote_batch_nulsep" -v q="$q" '
     function exists(filename) { return substr($0, 1, 1) == "1"; }
     function is_file(filename) { return substr($0, 2, 1) == "1"; }
 
-    function initialize(_, flags, comp_opts, tmp) {
+    function initialize(_, flags, comp_opts, tmp, i) {
       IS_XPG4 = AWKTYPE == "xpg4";
       REP_SL = "\\";
       if (IS_XPG4) REP_SL = "\\\\";
@@ -1389,10 +1416,14 @@ function ble/complete/action/quote-insert.batch/awk {
       quote_cont_cutbackslash   = ENVIRON["quote_cont_cutbackslash"] != "";
       quote_paramx_comps        = ENVIRON["quote_paramx_comps"];
       quote_trav_prefix     = ENVIRON["quote_trav_prefix"];
-      quote_fixed_comps     = ENVIRON["quote_fixed_comps"];
-      quote_fixed_compv     = ENVIRON["quote_fixed_compv"];
-      quote_fixed_comps_len = length(quote_fixed_comps);
-      quote_fixed_compv_len = length(quote_fixed_compv);
+
+      quote_fixed_count = ENVIRON["quote_fixed_count"];
+      for (i = 0; i < quote_fixed_count; i++) {
+        quote_fixed_comps[i]     = ENVIRON["quote_fixed_comps" i];
+        quote_fixed_compv[i]     = ENVIRON["quote_fixed_compv" i];
+        quote_fixed_comps_len[i] = length(quote_fixed_comps[i]);
+        quote_fixed_compv_len[i] = length(quote_fixed_compv[i]);
+      }
     }
     BEGIN { initialize(); }
 
@@ -1430,7 +1461,7 @@ function ble/complete/action/quote-insert.batch/awk {
       return text;
     }
 
-    function quote_insert(cand) {
+    function quote_insert(cand, _, i) {
       # progcomp 特有
       if (quote_action == "command") {
         if (comps == compv && cand ~ /^(\[\[|]]|!)$/) return cand;
@@ -1447,12 +1478,16 @@ function ble/complete/action/quote-insert.batch/awk {
           if (quote_cont_cutbackslash) sub(/^\\/, "", ins);
           return comps ins;
         }
-      } else if (quote_fixed_comps_len && substr(cand, 1, quote_fixed_compv_len) == quote_fixed_compv) {
-        ins = substr(cand, quote_fixed_compv_len + 1);
-        return quote_fixed_comps quote_trav_prefix escape_for_completion_context(ins);
-      } else {
-        return quote_trav_prefix escape_for_completion_context(cand);
       }
+
+      for (i = quote_fixed_count; --i >= 0; ) {
+        if (quote_fixed_comps_len[i] && substr(cand, 1, quote_fixed_compv_len[i]) == quote_fixed_compv[i]) {
+          ins = substr(cand, quote_fixed_compv_len[i] + 1);
+          return quote_fixed_comps[i] quote_trav_prefix escape_for_completion_context(ins);
+        }
+      }
+
+      return quote_trav_prefix escape_for_completion_context(cand);
     }
 
     {
@@ -5529,7 +5564,7 @@ function ble/complete/candidates/.pick-nearest-sources {
 
   COMPS=${comp_text:COMP1:COMP2-COMP1}
   comps_flags=
-  comps_fixed=
+  comps_fixed=('')
 
   if [[ ! $COMPS ]]; then
     comps_flags=${comps_flags}v COMPV=
@@ -5553,6 +5588,14 @@ function ble/complete/candidates/.pick-nearest-sources {
         comps_fixed=${simple_ibrace%:*}:$ret
         comps_flags=${comps_flags}x
       fi
+
+      local path spec i s
+      ble/syntax:bash/simple-word/evaluate-path-spec "$reconstructed" '' noglob:fixlen="${simple_ibrace#*:}"
+      for ((i=0;i<${#spec[@]};i++)); do
+        s=${spec[i]}
+        [[ $s == "$comps_fixed" || $s == "$reconstructed" ]] && continue
+        ble/array#push comps_fixed "${#s}:${path[i]}"
+      done
     else
       # Note: failglob により simple-word/eval が失敗した時にここに来る。
       COMPV=
