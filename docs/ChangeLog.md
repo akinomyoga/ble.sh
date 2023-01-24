@@ -115,6 +115,7 @@
 - menu-complete: add `bleopt complete_menu_complete_opts` (requested by DUOLabs333) `#D1911` 6a21ebb
 - edit (`magic-space`): support `bleopt edit_magic_expand=...:alias` (requested by telometto) `#D1912` 63da2ac
   - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
+- complete: support ambiguous completion for command paths `#D1922` xxxxxxx
 
 ## Changes
 
@@ -331,8 +332,8 @@
 - complete: suppress error messages for non-bash_completion `_parse_help` (reported by nik312123) `#D1900` 267de7f
 - prompt: fix the marker position for the readline variable `show-mode-in-prompt` (reported by Strykar) `#D1903` 09bb4d3
 - highlight: fix a bug that `bleopt filename_ls_colors` is not working (reported by qoreQyaS) `#D1919` b568ade
-- bind: fix <kbd>M-C-@</kbd>, <kbd>C-x C-@</kbd>, and <kbd>M-C-x</kbd> (`bash-4.2 -o emacs`) `#D1920` xxxxxxx
-- complete (action:file): support `ble/syntax-raw` in the filename extraction (reported by qoreQyaS) `#D1921` xxxxxxx
+- bind: fix <kbd>M-C-@</kbd>, <kbd>C-x C-@</kbd>, and <kbd>M-C-x</kbd> (`bash-4.2 -o emacs`) `#D1920` a410b03
+- complete (action:file): support `ble/syntax-raw` in the filename extraction (reported by qoreQyaS) `#D1921` 32277da
 
 ## Documentation
 
