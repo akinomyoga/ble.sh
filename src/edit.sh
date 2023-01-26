@@ -529,9 +529,9 @@ function ble/prompt/initialize {
   local ret
 
   # hostname
-  ble/prompt/.initialize-constant '\H' 'ret=$HOSTNAME' escape
+  ble/prompt/.initialize-constant '\H' 'ret=${HOSTNAME:-$_ble_base_env_HOSTNAME}' escape
   _ble_prompt_const_H=$ret
-  if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $HOSTNAME =~ $rex ]]; then
+  if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $_ble_prompt_const_H =~ $rex ]]; then
     # IPv4 の形式の場合には省略しない
     _ble_prompt_const_h=$_ble_prompt_const_H
   else
@@ -547,7 +547,7 @@ function ble/prompt/initialize {
   _ble_prompt_const_s=$ret
 
   # user
-  ble/prompt/.initialize-constant '\s' 'ret=$USER' escape
+  ble/prompt/.initialize-constant '\s' 'ret=${USER:-$_ble_base_env_USER}' escape
   _ble_prompt_const_u=$ret
 
   # bash versions
@@ -2579,7 +2579,9 @@ function ble-edit/attach/.attach {
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
     _ble_edit_LINENO=${BASH_LINENO[${#BASH_LINENO[@]}-1]}
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
-    _ble_edit_CMD=$_ble_edit_LINENO
+
+    # When _ble_edit_CMD is empty or less than _ble_edit_LINENO, we update it.
+    ((_ble_edit_CMD<=_ble_edit_LINENO)) && _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
   ble/builtin/trap/install-hook WINCH readline
@@ -5702,7 +5704,7 @@ function ble-edit/exec/register {
     ble/edit/leave-command-layout
     return 1
   fi
-  ble/array#push _ble_edit_exec_lines "$1"
+  ble/array#push _ble_edit_exec_lines "$((++_ble_edit_CMD)):$1"
 }
 function ble-edit/exec/has-pending-commands {
   ((${#_ble_edit_exec_lines[@]}))
@@ -5937,7 +5939,7 @@ function ble/exec/time#restore-TIMEFORMAT {
     builtin unset -v 'TIMEFORMAT[0]'
   fi
   local tot usr sys dummy
-  IFS=' ' builtin read -r tot usr sys dummy < "$_ble_exec_time_TIMEFILE"
+  IFS=' ' builtin read "${_ble_bash_tmout_wa[@]}" -r tot usr sys dummy < "$_ble_exec_time_TIMEFILE"
   ((_ble_exec_time_tot=10#0${tot//[!0-9]}))
   ((_ble_exec_time_usr=10#0${usr//[!0-9]}))
   ((_ble_exec_time_sys=10#0${sys//[!0-9]}))
@@ -6102,9 +6104,9 @@ function ble/exec/time#start {
     (printf) ;;
     (uptime|SECONDS)
       # これらの原点は unix epoch でないので補正する。
-      ble/util/assign _ble_exec_time_SECONDS_base 'ble/bin/date +%s000000'
+      ble/util/assign _ble_exec_time_CLOCK_base 'ble/bin/date +%s000000'
       local ret; ble/util/clock
-      ((_ble_exec_time_SECONDS_base-=ret*1000)) ;;
+      ((_ble_exec_time_CLOCK_base-=ret*1000)) ;;
     (date)
       # どうせファイルコマンドを使うのであればより精度の良い物を使う。
       if ble/util/assign ret 'ble/bin/date +%6N' 2>/dev/null && [[ $ret ]]; then
@@ -6510,6 +6512,7 @@ function ble-edit/exec:gexec/.end {
   ble-edit/exec:gexec/.TRAPINT/reset
   builtin trap -- - DEBUG
 
+  blehook/invoke exec_end
   [[ $PWD != "$_ble_edit_exec_PWD" ]] && blehook/invoke CHPWD
   ble/util/joblist.flush >&2
   ble-edit/bind/.check-detach && return 0
@@ -6521,13 +6524,15 @@ function ble-edit/exec:gexec/.end {
   ble-edit/bind/.tail # flush will be called here
 }
 
-## @fn ble-edit/exec:gexec/.prologue command
+## @fn ble-edit/exec:gexec/.prologue command command_id
 ##   @param[in] command
 ##     次に実行するコマンド。_ble_edit_exec_BASH_COMMAND に記録する。
 function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_inside_prologue=1
   local IFS=$_ble_term_IFS
   _ble_edit_exec_BASH_COMMAND=$1
+  _ble_edit_exec_command_id=$2
+  BLE_COMMAND_ID=$2
   ble-edit/restore-PS1
   ble-edit/restore-READLINE
   ble-edit/restore-IGNOREEOF
@@ -6537,7 +6542,6 @@ function ble-edit/exec:gexec/.prologue {
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND"
   ble-edit/exec/print-PS0 >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
-  ((++_ble_edit_CMD))
 
   ble/exec/time#start
   ble/base/restore-BASH_REMATCH
@@ -6691,10 +6695,11 @@ function ble-edit/exec:gexec/.setup {
   if ((count)); then
     ble/util/buffer.flush >&2
 
-    local q=\' Q="'\''" cmd
+    local q=\' Q="'\''" line cmd cmd_id
     buff[ibuff++]=ble-edit/exec:gexec/.begin
-    for cmd in "${_ble_edit_exec_lines[@]}"; do
-      buff[ibuff++]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}'"
+    for line in "${_ble_edit_exec_lines[@]}"; do
+      cmd=${line#*:} cmd_id=${line%%:*}
+      buff[ibuff++]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}' $cmd_id"
       # Note #D1823: LINENO を unset せずに上書きする為に tempenv を用いる。
       # Note #D1823: Bash に "builtin eval" で tempenv が消滅するバグがあるので
       #   builtin を付けずに eval を直接呼び出す。adjust-builtin-wrappers して
@@ -6746,7 +6751,7 @@ function ble-edit/exec:gexec/restore-state {
 
 # **** accept-line ****                                            @edit.accept
 
-: ${_ble_edit_lineno:=0}
+: "${_ble_edit_lineno:=0}"
 _ble_prompt_trim_opwd=
 
 ## @fn ble/widget/.insert-newline/trim-prompt
@@ -6948,12 +6953,12 @@ function ble/widget/default/accept-line {
     hist_is_expanded=1
   fi
 
+  # 編集文字列を履歴に追加
+  ble/history/add "$command"
+
   ble/widget/.newline # #D1800 register
 
   [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $command"
-
-  # 編集文字列を履歴に追加
-  ble/history/add "$command"
 
   # 実行を登録
   ble-edit/exec/register "$command"

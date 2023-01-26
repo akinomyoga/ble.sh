@@ -116,7 +116,8 @@
 - edit (`magic-space`): support `bleopt edit_magic_expand=...:alias` (requested by telometto) `#D1912` 63da2ac
   - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
 - complete: support ambiguous completion for command paths `#D1922` 8a716ad
-- complete: preserve original path segments as long as possible `#D1923` `#D1924` xxxxxxx
+- complete: preserve original path segments as long as possible `#D1923` `#D1924` e3cdb9d
+- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` xxxxxxx
 
 ## Changes
 
@@ -529,6 +530,7 @@
 - colorglass: add color filter `#D1902` 88e74cc
   - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` 40625ac
 - fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` 486564a
+- add `histdb` `#D1925` xxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

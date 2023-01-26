@@ -18,7 +18,8 @@ function ble/util/msleep/.load-compiled-builtin {
   local basename=$_ble_edit_io_fname2
   local fname_buff=$basename.buff
 
-  local builtin_path=$_ble_base_cache/init-msleep.$_ble_bash.$HOSTNAME.so
+  local hostname=${HOSTNAME:-$_ble_base_env_HOSTNAME}
+  local builtin_path=$_ble_base_cache/init-msleep.$_ble_bash.$hostname.so
   local builtin_runpath=$_ble_base_run/$$.init-msleep.so
   ble/util/msleep/.load-compiled-builtin/compile "$builtin_path" &&
     ble/bin/cp "$builtin_path" "$builtin_runpath" || return 1

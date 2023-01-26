@@ -257,7 +257,7 @@ function ble/base/adjust-builtin-wrappers/.assign {
   if [[ ${_ble_util_assign_base-} ]]; then
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$1" >| "$_ble_local_tmpfile"
-    IFS= builtin read -r -d '' defs < "$_ble_local_tmpfile"
+    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' defs < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
   else
     defs=$(builtin eval -- "$1")
@@ -965,11 +965,21 @@ function ble/init/check-environment {
 
   if [[ ! $USER ]]; then
     ble/util/print "ble.sh: insane environment: \$USER is empty." >&2
-    if type id &>/dev/null; then
-      export USER=$(id -un)
+    if USER=$(id -un) && [[ $USER ]]; then
+      export USER
       ble/util/print "ble.sh: modified USER=$USER" >&2
     fi
   fi
+  _ble_base_env_USER=$USER
+
+  if [[ ! $HOSTNAME ]]; then
+    ble/util/print "ble.sh: suspicious environment: \$HOSTNAME is empty."
+    if HOSTNAME=$(uname -n 2>/dev/null) && [[ $HOSTNAME ]]; then
+      export HOSTNAME
+      ble/util/print "ble.sh: fixed HOSTNAME=$HOSTNAME" >&2
+    fi
+  fi
+  _ble_base_env_HOSTNAME=$HOSTNAME
 
   # 暫定的な ble/bin/$cmd 設定
   ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
@@ -1494,6 +1504,63 @@ if ! ble/base/initialize-cache-directory; then
 fi
 ble/base/migrate-cache-directory
 
+##
+## @var _ble_base_state
+##
+##   環境毎の初期化ファイルを格納するディレクトリ。以下の手順で決定する。
+##
+##   1. ${XDG_STATE_HOME:=$HOME/.state} (存在しなくても強制的に作成) の下に blesh を作成して使う。
+##   2. (1. に失敗した時) $_ble_base/state.d/$UID を使う。
+##
+function ble/base/initialize-state-directory/.xdg {
+  local state_dir=${XDG_STATE_HOME:-$HOME/.local/state}
+  if [[ -e $state_dir || -L $state_dir ]]; then
+    if [[ ! -d $state_dir ]]; then
+      if [[ $XDG_STATE_HOME ]]; then
+        ble/util/print "ble.sh: XDG_STATE_HOME='$XDG_STATE_HOME' is not a directory." >&2
+      else
+        ble/util/print "ble.sh: '$state_dir' is not a directory." >&2
+      fi
+      return 1
+    fi
+    if ! [[ -r $state_dir && -w $state_dir && -x $state_dir ]]; then
+      if [[ $XDG_STATE_HOME ]]; then
+        ble/util/print "ble.sh: XDG_STATE_HOME='$XDG_STATE_HOME' doesn't have a proper permission." >&2
+      else
+        ble/util/print "ble.sh: '$state_dir' doesn't have a proper permission." >&2
+      fi
+      return 1
+    fi
+  fi
+
+  ble/base/.create-user-directory _ble_base_state "$state_dir/blesh"
+}
+function ble/base/initialize-state-directory {
+  ble/base/initialize-state-directory/.xdg && return 0
+
+  # fallback
+  local state_dir=$_ble_base/state.d
+  if [[ ! -d $state_dir ]]; then
+    ble/bin/mkdir -p "$state_dir" || return 1
+    ble/bin/chmod a+rwxt "$state_dir" || return 1
+
+    # relocate an old state directory if any
+    local old_state_dir=$_ble_base/state
+    if [[ -d $old_state_dir && ! -h $old_state_dir ]]; then
+      mv "$old_state_dir" "$state_dir/$UID"
+      ln -s "$state_dir/$UID" "$old_state_dir"
+    fi
+  fi
+  ble/util/print "ble.sh: using the non-standard position of the state directory: '$state_dir/$UID'" >&2
+  ble/base/.create-user-directory _ble_base_state "$state_dir/$UID"
+}
+if ! ble/base/initialize-state-directory; then
+  ble/util/print "ble.sh: failed to initialize \$_ble_base_state." 1>&2
+  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
+  return 1
+fi
+
 
 function ble/base/print-usage-for-no-argument-command {
   local name=${FUNCNAME[1]} desc=$1; shift
@@ -1775,6 +1842,27 @@ ble/builtin/trap/install-hook INT
 ble/builtin/trap/install-hook ERR inactive
 ble/builtin/trap/install-hook RETURN inactive
 
+# @var _ble_base_session
+# @var BLE_SESSION_ID
+function ble/base/initialize-session {
+  [[ $_ble_base_session == */"$$" ]] && return 0
+
+  local start_time=
+  if ((_ble_bash>=50000)); then
+    start_time=${EPOCHREALTIME//[!0-9]}
+  elif ((_ble_bash>=40200)); then
+    printf -v start_time '%(%s)T'
+    ((start_time*=1000000))
+  else
+    ble/util/assign start_time 'ble/bin/date +%s'
+  fi
+  ((start_time-=SECONDS*1000000))
+
+  _ble_base_session=${start_time::${#start_time}-6}.${start_time:${#start_time}-6}/$$
+  BLE_SESSION_ID=$_ble_base_session
+}
+ble/base/initialize-session
+
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|
 #%x inc.r|@|src/canvas|
@@ -1844,7 +1932,9 @@ function ble/dispatch {
   (version|--version) ble/util/print "ble.sh, version $BLE_VERSION (noarch)" ;;
   (check|--test) ble/base/sub:test "$@" ;;
   (*)
-    if ble/is-function ble/bin/ble; then
+    if ble/string#match "$cmd" '^[a-z0-9]+$' && ble/is-function "ble-$cmd"; then
+      "ble-$cmd" "$@"
+    elif ble/is-function ble/bin/ble; then
       ble/bin/ble "$cmd" "$@"
     else
       ble/util/print "ble (ble.sh): unrecognized subcommand '$cmd'." >&2

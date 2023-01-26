@@ -341,6 +341,7 @@ make INSDIR="$HOME/.local/share/blesh" install
 - `blerc` 設定ファイル (`~/.blerc` または `~/.config/blesh/init.sh`) があれば削除します。
 - `ble.sh` をインストールしたディレクトリを削除します。
 - キャッシュディレクトリ `~/.cache/blesh` が生成されていればそれを削除します。
+- 状態ディレクトリ `~/.cache/blesh` が生成されていればそれを削除します。
 - 一時ディレクトリ `/tmp/blesh` が生成されていればそれを削除します。これは `/tmp` の内容が自動的にクリアされないシステムで必要です。
 
 # 2 基本設定

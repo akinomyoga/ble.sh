@@ -1172,6 +1172,7 @@ function sub:scan/bash502-patsub_replacement {
   grc --color '\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}"'\'']*([&$]|\\)' --exclude=./test |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z//?\$q/\$Q\}Zd
+      \Z//?\$q/\$qq\}Zd
       \Z//?\$__ble_q/\$__ble_Q\}Zd
       \Z//?\$_ble_local_q/\$_ble_local_Q\}Zd
       \Z/\$\(\([^()]+\)\)\}Zd
@@ -1297,6 +1298,7 @@ function sub:scan/word-splitting-number {
       \Z\$\{#[a-zA-Z_0-9]+\}[<>?&]Zd
       \Z \$\{\#[a-zA-Z_0-9]+\[@\]\} -gt 0 \]\]Zd
       \Zcase \$\? inZd
+      \Zcase \$\(\(.*\)\) inZd
       g'
 }
 

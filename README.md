@@ -321,6 +321,7 @@ Basically you can simply delete the installed directory and the settings that th
 - Remove `blerc` files (`~/.blerc` or `~/.config/blesh/init.sh`) if any.
 - Remove the installed directory.
 - Remove the cache directory `~/.cache/blesh` if any.
+- Remove the state directory `~/.local/state/blesh` if any.
 - Remove the temporary directory `/tmp/blesh` if any [ Only needed when your system does not automatically clears `/tmp` ].
 
 # 2 Basic settings

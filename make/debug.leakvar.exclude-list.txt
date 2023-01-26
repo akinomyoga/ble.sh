@@ -124,7 +124,6 @@
 ^TEXMFHOME=
 ^TIME_STYLE=
 ^USER=
-^WINDOW=
 ^XDG_RUNTIME_DIR=
 ^XDG_SESSION_CLASS=
 ^XDG_SESSION_ID=
@@ -155,6 +154,7 @@
 ^SSH_CONNECTION=
 ^SSH_TTY=
 ^STY=
+^WINDOW=
 --------------------------------------------------------------------------------
 # bash-completion
 ^_xspecs=
