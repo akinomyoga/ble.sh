@@ -214,12 +214,22 @@ function ble/.check-environment {
   fi
 
   if [[ ! $USER ]]; then
-    echo "ble.sh: Insane environment: \$USER is empty." >&2
-    if type id &>/dev/null; then
-      export USER=$(id -un)
-      echo "ble.sh: modified USER=$USER" >&2
+    ble/util/print "ble.sh: Insane environment: \$USER is empty." >&2
+    if USER=$(id -un 2>/dev/null) && [[ $USER ]]; then
+      export USER
+      ble/util/print "ble.sh: modified USER=$USER" >&2
     fi
   fi
+  _ble_base_env_USER=$USER
+
+  if [[ ! $HOSTNAME ]]; then
+    ble/util/print "ble.sh: suspicious environment: \$HOSTNAME is empty."
+    if HOSTNAME=$(uname -n 2>/dev/null) && [[ $HOSTNAME ]]; then
+      export HOSTNAME
+      ble/util/print "ble.sh: fixed HOSTNAME=$HOSTNAME" >&2
+    fi
+  fi
+  _ble_base_env_HOSTNAME=$HOSTNAME
 
   # 暫定的な ble/bin/$cmd 設定
   ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
