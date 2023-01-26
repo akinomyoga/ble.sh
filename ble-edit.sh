@@ -766,23 +766,23 @@ function ble-edit/draw/trace {
 ## called by ble-edit-initialize
 function .ble-line-prompt/initialize {
   # hostname
-  _ble_cursor_prompt__string_H=${HOSTNAME}
-  if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $HOSTNAME =~ $rex ]]; then
+  _ble_cursor_prompt__string_H=${HOSTNAME:-$_ble_base_env_HOSTNAME}
+  if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $_ble_cursor_prompt__string_H =~ $rex ]]; then
     # IPv4 の形式の場合には省略しない
-    _ble_cursor_prompt__string_h=$HOSTNAME
+    _ble_cursor_prompt__string_h=$_ble_cursor_prompt__string_H
   else
-    _ble_cursor_prompt__string_h=${HOSTNAME%%.*}
+    _ble_cursor_prompt__string_h=${_ble_cursor_prompt__string_H%%.*}
   fi
 
   # tty basename
   local tmp=$(tty 2>/dev/null)
-  _ble_cursor_prompt__string_l="${tmp##*/}"
+  _ble_cursor_prompt__string_l=${tmp##*/}
 
   # command name
-  _ble_cursor_prompt__string_s="${0##*/}"
+  _ble_cursor_prompt__string_s=${0##*/}
 
   # user
-  _ble_cursor_prompt__string_u="${USER}"
+  _ble_cursor_prompt__string_u=${USER:-$_ble_base_env_USER}
 
   # bash versions
   ble/util/sprintf _ble_cursor_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
