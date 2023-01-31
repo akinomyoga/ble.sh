@@ -98,19 +98,35 @@ time {
              '' \
              '  --rcfile=BLERC' \
              '  --init-file=BLERC' \
-             '    Specify the ble init file. The default is ~/.blerc.' \
+             '    Specify the ble init file. The default is ~/.blerc if any, or' \
+             '    ~/.config/blesh/init.sh.' \
              '' \
              '  --norc' \
              '    Do not load the ble init file.' \
              '' \
              '  --attach=ATTACH' \
              '  --noattach' \
-             '    The option "--attach" selects the strategy of "ble-attach" from the' \
-             '    list: ATTACH = "attach" | "prompt" | "none". The default strategy is' \
-             '    "prompt". The option "--noattach" is a synonym for "--attach=none".' \
+             '    The option "--attach" selects the strategy of "ble-attach" from the list:' \
+             '    ATTACH = "attach" | "prompt" | "none". The default strategy is "prompt".' \
+             '    When "attach" is specified, ble.sh immediately attaches to the session in' \
+             '    "source ble.sh".  When "prompt" is specified, ble.sh attaches to the' \
+             '    session before the first prompt using PROMPT_COMMAND.  When "none" is' \
+             '    specified, ble.sh does not attach to the session automatically, so' \
+             '    ble-attach needs to be called explicitly.  The option "--noattach" is a' \
+             '    synonym for "--attach=none".' \
              '' \
+             '  --inputrc=TYPE' \
              '  --noinputrc' \
-             '    Do not read inputrc settings for ble.sh' \
+             '    The option "--inputrc" selects the strategy of reconstructing user' \
+             '    keybindings from the list: "auto" (default), "diff", "all", "user", "none".' \
+             '    When "diff" is specified, user keybindings are extracted by the diff of the' \
+             '    outputs of the "bind" builtin between the current session and the plain' \
+             '    Bash.  When "all" is specified, the user keybindings are extracted from' \
+             '    /etc/inputrc and ${INPUTRC:-~/.inputrc*}.  When "user" is specified, the' \
+             '    user keybindings are extracted from ${INPUTRC:-~/.inputrc*}.  When "none"' \
+             '    is specified, the user keybindings are not reconstructed from the state of' \
+             '    Readline, and only the bindings by "ble-bind" are applied.  The option' \
+             '    "--noinputrc" is a synonym for "--inputrc=none".' \
              '' \
              '  --keep-rlvars' \
              '    Do not change readline settings for ble.sh' \
@@ -741,6 +757,7 @@ _ble_base_arguments_rcfile=
 function ble/base/read-blesh-arguments {
   local opts=
   local opt_attach=prompt
+  local opt_inputrc=auto
 
   _ble_init_command= # 再解析
   while (($#)); do
@@ -757,8 +774,19 @@ function ble/base/read-blesh-arguments {
         opts=$opts:E
         ble/util/print "ble.sh ($arg): an option argument is missing." >&2
       fi ;;
+
     (--noinputrc)
-      opts=$opts:noinputrc ;;
+      opt_inputrc=none ;;
+    (--inputrc=*) opt_inputrc=${arg#*=} ;;
+    (--inputrc)
+      if (($#)); then
+        opt_inputrc=$1; shift
+      else
+        opt_inputrc=inputrc
+        opts=$opts:E
+        ble/util/print "ble.sh ($arg): an option argument is missing." >&2
+      fi ;;
+
     (--rcfile=*|--init-file=*|--rcfile|--init-file)
       if [[ $arg != *=* ]]; then
         local rcfile=$1; shift
@@ -827,6 +855,7 @@ function ble/base/read-blesh-arguments {
 
   _ble_base_arguments_opts=$opts
   _ble_base_arguments_attach=$opt_attach
+  _ble_base_arguments_inputrc=$opt_inputrc
   [[ :$opts: != *:E:* ]]
 }
 if ! ble/base/read-blesh-arguments "$@"; then
@@ -980,6 +1009,10 @@ function ble/init/check-environment {
     fi
   fi
   _ble_base_env_HOSTNAME=$HOSTNAME
+
+  if [[ ! $LANG ]]; then
+    ble/util/print "ble.sh: suspicious environment: \$LANG is empty." >&2
+  fi
 
   # 暫定的な ble/bin/$cmd 設定
   ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
@@ -1573,8 +1606,10 @@ function ble/base/print-usage-for-no-argument-command {
 function ble-reload {
   local -a options=()
   ble/array#push options --rcfile="${_ble_base_rcfile:-/dev/null}"
+  [[ $_ble_base_arguments_inputrc == auto ]] ||
+    ble/array#push options --inputrc="$_ble_base_arguments_inputrc"
   local name
-  for name in keep-rlvars noinputrc; do
+  for name in keep-rlvars; do
     if [[ :$_ble_base_arguments_opts: == *:"$name":* ]]; then
       ble/array#push options "--$name"
     fi
@@ -2238,11 +2273,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
 function ble/base/process-blesh-arguments {
   local opts=$_ble_base_arguments_opts
   local attach=$_ble_base_arguments_attach
-
-  if [[ :$opts: == *:noinputrc:* ]]; then
-    _ble_builtin_bind_user_settings_loaded=noinputrc
-    _ble_builtin_bind_inputrc_done=noinputrc
-  fi
+  local inputrc=$_ble_base_arguments_inputrc
 
   _ble_base_rcfile=$_ble_base_arguments_rcfile
 #%if measure_load_time
@@ -2261,6 +2292,9 @@ ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
   (none) ;;
   (*) ble/util/print "ble.sh: unrecognized attach method --attach='$attach'." ;;
   esac
+
+  # reconstruction type of user-bindings
+  _ble_decode_initialize_inputrc=$inputrc
 }
 
 function ble/base/sub:test {

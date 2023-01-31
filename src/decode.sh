@@ -3763,6 +3763,11 @@ _ble_builtin_bind_inputrc_done=
 function ble/builtin/bind/initialize-inputrc {
   [[ $_ble_builtin_bind_inputrc_done ]] && return 0
   _ble_builtin_bind_inputrc_done=1
+
+  if [[ $1 == all ]]; then
+    local sys_inputrc=/etc/inputrc
+    [[ -e $sys_inputrc ]] && ble/decode/read-inputrc "$sys_inputrc"
+  fi
   local inputrc=${INPUTRC:-$HOME/.inputrc}
   [[ -e $inputrc ]] && ble/decode/read-inputrc "$inputrc"
 }
@@ -3987,27 +3992,51 @@ function bind { ble/builtin/bind "$@"; }
 # ble/decode/initialize, attach, detach                          @decode.attach
 
 function ble/decode/initialize/.has-broken-suse-inputrc {
-  ((_ble_bash<50000)) || return 1 # Bash 5.0+ are not suffered
-  [[ -s /etc/inputrc.keys ]] || return 1
-  local content
-  ble/util/readfile content /etc/inputrc.keys
-  [[ $content == *'"\M-[2~":'* ]]
+  # 1. Check if this is openSUSE and has /etc/input.keys.
+  local content=
+  [[ -s /etc/inputrc.keys && -r /etc/os-release ]] &&
+    ble/util/readfile content /etc/os-release &&
+    [[ $content == *'openSUSE'* ]] || return 1
+
+  # Note #1926: Even after the fix
+  # https://github.com/openSUSE/aaa_base/pull/84, "inputrc.keys" causes
+  # problems through extra bindings of the [home]/[end] escape sequences to
+  # [prior], [Enter] to "accept-line", etc.  Thus, we comment out the following
+  # part of codes and always return 0 when there is "/etc/inputrc.keys".
+
+  # 2. Check if the file "inputrc.keys" has the bug.
+  # ((_ble_bash<50000)) || return 1 # Bash 5.0+ are not suffered
+  # ble/util/readfile content /etc/inputrc.keys &&
+  #   [[ $content == *'"\M-[2~":'* ]] || return 1
+
+  return 0
 }
 
 _ble_decode_initialized=
+_ble_decode_initialize_inputrc=auto
 function ble/decode/initialize {
   [[ $_ble_decode_initialized ]] && return 0
   _ble_decode_initialized=1
   ble/decode/cmap/initialize
 
-  if ble/decode/initialize/.has-broken-suse-inputrc; then
-    # Note: #D1662 WA openSUSE (aaa_base < 202102) has broken /etc/inputrc
-    [[ ${INPUTRC-} == /etc/inputrc || ${INPUTRC-} == /etc/inputrc.keys ]] &&
-      local INPUTRC=~/.inputrc
-    ble/builtin/bind/initialize-inputrc
-  else
-    ble/builtin/bind/read-user-settings
+  if [[ $_ble_decode_initialize_inputrc == auto ]]; then
+    if ble/decode/initialize/.has-broken-suse-inputrc; then
+      # Note: #D1662 WA openSUSE (aaa_base < 202102) has broken /etc/inputrc
+      [[ ${INPUTRC-} == /etc/inputrc || ${INPUTRC-} == /etc/inputrc.keys ]] &&
+        local INPUTRC=~/.inputrc
+      _ble_decode_initialize_inputrc=all
+    else
+      _ble_decode_initialize_inputrc=diff
+    fi
   fi
+  case $_ble_decode_initialize_inputrc in
+  (all)
+    ble/builtin/bind/initialize-inputrc all ;;
+  (user)
+    ble/builtin/bind/initialize-inputrc ;;
+  (diff)
+    ble/builtin/bind/read-user-settings ;;
+  esac
 }
 
 function ble/decode/reset-default-keymap {

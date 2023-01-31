@@ -6846,6 +6846,38 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-01-30
+
+  * main: 空の LANG に対して警告を表示する (movivated by Ultra980) [#D1927]
+    https://github.com/akinomyoga/ble.sh/issues/269
+
+    文字幅計算がずれる。空の LANG なのに starship&terminal が UTF-8 を想定して
+    いる。
+
+  * main: openSUSE inputrc.keys は強制的に排除する? (motivated by Ultra980) [#D1926]
+    https://github.com/akinomyoga/ble.sh/issues/268
+
+    これが何度も問題を起こしている。
+
+    a 最早強制的に off にしても良いのではないか。
+
+    b 或いは自前で ~/.inputrc だけ読み取る事にする。
+
+      元々 --noinputrc は最早 inputrc とは関係なく bind の出力を plain Bash と
+      diff を取ってユーザー設定を復元している。という事を考えたらどの方式でユー
+      ザー設定を復元するかをオプションで選べる様にしても良いのではないか。
+
+      --inputrc={none,user,all,diff}
+
+    c 或いは、デフォルトとの bind diff を取った後で比較するのではなくて、仮に
+      ble-bind で全部登録した後の状態で diff を取って残った物だけ採用する? と思っ
+      たがこれだと問題は解決しない。
+
+    と思ったら既に opensuse では振る舞いを変える様になっていた。今までは
+    https://github.com/openSUSE/aaa_base/pull/84 の修正が入っているかどうかで問
+    題があるか判定していた気がするが、もう inputrc.keys が存在する時点で問題が
+    あると判定する事にする。
+
 2023-01-26
 
   * 2021-05-17 histdb: 履歴が余りに消滅するので ble.sh の側で独立した履歴の仕組みを作りたい [#D1925]

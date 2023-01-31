@@ -118,6 +118,7 @@
 - complete: support ambiguous completion for command paths `#D1922` 8a716ad
 - complete: preserve original path segments as long as possible `#D1923` `#D1924` e3cdb9d
 - main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` xxxxxxx
+- main: support an option `--inputrc={diff,all,user,none}` `#D1926` xxxxxxx
 
 ## Changes
 
@@ -449,6 +450,8 @@
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
+- main: show warning for empty locale (movivated by Ultra980) `#D1927` xxxxxxx
+- main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` xxxxxxx
 
 ## Test
 
