@@ -638,6 +638,18 @@ elif ((_ble_bash>=40000)); then
   ble/function#suppress-stderr ble/decode/nonblocking-read
 fi
 
+function ble-decode/.hook/adjust-volatile-options {
+  # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
+  # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
+  if [[ $_ble_bash_options_adjusted ]]; then
+    set +ev
+  fi
+  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted && ${POSIXLY_CORRECT+set} ]]; then
+    set +o posix
+    ble/base/workaround-POSIXLY_CORRECT
+  fi
+}
+
 _ble_decode_hook_Processing=
 function ble-decode/.hook {
   if ble/util/is-stdin-ready; then
@@ -645,7 +657,7 @@ function ble-decode/.hook {
 
     local buflen=${#_ble_decode_input_buffer[@]}
     if ((buflen%257==0&&buflen>=2000)); then
-      [[ ! $_ble_bash_options_adjusted ]] || set +ev +o posix
+      ble-decode/.hook/adjust-volatile-options
 
       local IFS=$_ble_term_IFS
       local _ble_decode_hook_Processing=prologue
@@ -678,9 +690,7 @@ function ble-decode/.hook {
     return 0
   fi
 
-  # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
-  # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
-  [[ ! $_ble_bash_options_adjusted ]] || set +ev +o posix
+  ble-decode/.hook/adjust-volatile-options
 
   local IFS=$_ble_term_IFS
   local _ble_decode_hook_Processing=prologue
