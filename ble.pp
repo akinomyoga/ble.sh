@@ -326,7 +326,7 @@ function ble/.check-environment {
     echo "ble.sh: modified PATH=${PATH::${#PATH}-${#original_path}}:\$PATH" >&2
   fi
 
-  if [[ ! $USER ]]; then
+  if [[ ! ${USER-} ]]; then
     ble/util/print "ble.sh: Insane environment: \$USER is empty." >&2
     if USER=$(id -un 2>/dev/null) && [[ $USER ]]; then
       export USER
@@ -335,7 +335,7 @@ function ble/.check-environment {
   fi
   _ble_base_env_USER=$USER
 
-  if [[ ! $HOSTNAME ]]; then
+  if [[ ! ${HOSTNAME-} ]]; then
     ble/util/print "ble.sh: suspicious environment: \$HOSTNAME is empty."
     if HOSTNAME=$(uname -n 2>/dev/null) && [[ $HOSTNAME ]]; then
       export HOSTNAME
@@ -343,6 +343,10 @@ function ble/.check-environment {
     fi
   fi
   _ble_base_env_HOSTNAME=$HOSTNAME
+
+  if [[ ! ${LANG-} ]]; then
+    ble/util/print "ble.sh: suspicious environment: \$LANG is empty." >&2
+  fi
 
   # 暫定的な ble/bin/$cmd 設定
   ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
