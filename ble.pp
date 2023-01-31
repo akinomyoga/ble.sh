@@ -132,15 +132,15 @@ function ble/base/restore-bash-options {
   ble/base/adjust-bash-options
 } &>/dev/null # set -x 対策 #D0930
 
-## @var _ble_edit_POSIXLY_CORRECT_adjusted
+## @var _ble_bash_POSIXLY_CORRECT_adjusted
 ##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
-## @var _ble_edit_POSIXLY_CORRECT_set
+## @var _ble_bash_POSIXLY_CORRECT_set
 ##   待避した POSIXLY_CORRECT の設定・非設定状態を保持します。
-## @var _ble_edit_POSIXLY_CORRECT_set
+## @var _ble_bash_POSIXLY_CORRECT_set
 ##   待避した POSIXLY_CORRECT の値を保持します。
-_ble_edit_POSIXLY_CORRECT_adjusted=
-_ble_edit_POSIXLY_CORRECT_set=
-_ble_edit_POSIXLY_CORRECT=
+_ble_bash_POSIXLY_CORRECT_adjusted=
+_ble_bash_POSIXLY_CORRECT_set=
+_ble_bash_POSIXLY_CORRECT=
 function ble/base/workaround-POSIXLY_CORRECT {
   # This function will be overwritten by ble-decode
   true
@@ -152,20 +152,20 @@ function ble/base/unset-POSIXLY_CORRECT {
   fi
 }
 function ble/base/adjust-POSIXLY_CORRECT {
-  [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]] && return
-  _ble_edit_POSIXLY_CORRECT_adjusted=1
-  _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
-  _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
+  [[ $_ble_bash_POSIXLY_CORRECT_adjusted ]] && return
+  _ble_bash_POSIXLY_CORRECT_adjusted=1
+  _ble_bash_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+  _ble_bash_POSIXLY_CORRECT=$POSIXLY_CORRECT
   unset -v POSIXLY_CORRECT
 
   # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
   ble/base/workaround-POSIXLY_CORRECT
 }
 function ble/base/restore-POSIXLY_CORRECT {
-  if [[ ! $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then return; fi # Note: set -e の為 || は駄目
-  _ble_edit_POSIXLY_CORRECT_adjusted=
-  if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
-    POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
+  if [[ ! $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then return; fi # Note: set -e の為 || は駄目
+  _ble_bash_POSIXLY_CORRECT_adjusted=
+  if [[ $_ble_bash_POSIXLY_CORRECT_set ]]; then
+    POSIXLY_CORRECT=$_ble_bash_POSIXLY_CORRECT
   else
     ble/base/unset-POSIXLY_CORRECT
   fi
@@ -173,8 +173,8 @@ function ble/base/restore-POSIXLY_CORRECT {
 ble/base/adjust-POSIXLY_CORRECT
 
 function ble/base/is-POSIXLY_CORRECT {
-  if [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then
-    [[ $_ble_edit_POSIXLY_CORRECT_set ]]
+  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then
+    [[ $_ble_bash_POSIXLY_CORRECT_set ]]
   else
     [[ ${POSIXLY_CORRECT+set} ]]
   fi

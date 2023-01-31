@@ -441,15 +441,25 @@ function ble-decode/.hook/erase-progress {
   fi
 }
 
+function ble-decode/.hook/adjust-volatile-options {
+  # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
+  # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
+  if [[ $_ble_bash_options_adjusted ]]; then
+    set +ev
+  fi
+  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted && ${POSIXLY_CORRECT+set} ]]; then
+    set +o posix
+    ble/base/workaround-POSIXLY_CORRECT
+  fi
+}
+
 function ble-decode/.hook {
   if ble/util/is-stdin-ready; then
     ble/array#push _ble_decode_input_buffer "$@"
     return
   fi
 
-  # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
-  # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
-  [[ ! $_ble_bash_options_adjusted ]] || set +ev +o posix
+  ble-decode/.hook/adjust-volatile-options
 
   local IFS=$' \t\n'
   ble-decode/PROLOGUE
