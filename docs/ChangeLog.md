@@ -454,7 +454,7 @@
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
 - main: show warning for empty locale (movivated by Ultra980) `#D1927` 92f2006
-- main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006
+- main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006 xxxxxxx
 - canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` b0c16dd
 
 ## Test

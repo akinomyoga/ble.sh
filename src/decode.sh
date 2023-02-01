@@ -4034,7 +4034,7 @@ function ble/decode/initialize {
       # Note: #D1662 WA openSUSE (aaa_base < 202102) has broken /etc/inputrc
       [[ ${INPUTRC-} == /etc/inputrc || ${INPUTRC-} == /etc/inputrc.keys ]] &&
         local INPUTRC=~/.inputrc
-      _ble_decode_initialize_inputrc=all
+      _ble_decode_initialize_inputrc=user
     else
       _ble_decode_initialize_inputrc=diff
     fi
