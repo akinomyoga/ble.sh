@@ -864,7 +864,8 @@ function ble/complete/util/eval-pathname-expansion {
 
 ## 関数 ble/complete/source:file/.construct-ambiguous-pathname-pattern path
 ##   指定された path に対応する曖昧一致パターンを生成します。
-##   例えばalpha/beta/gamma に対して a*/b*/g* でファイル名を生成します。
+##   例えば alpha/beta/gamma に対して a*/b*/g* でファイル名を生成します。
+##   但し "../" や "./" については (".*.*/" や ".*/" 等に変換せず) そのままにします。
 ##
 ##   @param[in] path
 ##   @var[out] ret
@@ -880,7 +881,9 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
   local name
   for name in "${names[@]}"; do
     ((i++)) && pattern=$pattern/
-    if [[ $name ]]; then
+    if [[ $name == .. || $name == . && i -lt ${#names[@]} ]]; then
+      pattern=$pattern$name
+    elif [[ $name ]]; then
       ble/string#quote-word "${name::fixlen}"
       pattern=$pattern$ret*
       for ((j=fixlen;j<${#name};j++)); do
