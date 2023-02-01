@@ -6848,6 +6848,11 @@ bash_tips
 
 2023-02-01
 
+  * main: ble-reload が動かなくなっている [#D1931]
+
+    "--rcfile=$HOME/.blerc" を指定して再 source しようとして $HOME/.blerc が存
+    在しない事によって失敗している
+
   * complete: ../ で始まるパスの曖昧補完が効いていない [#D1930]
 
     ../out/data/c2w.wcwidth-compare.musl-vs-12.1.txt[TAB] の曖昧補完が効いていない

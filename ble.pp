@@ -1605,7 +1605,8 @@ function ble/base/print-usage-for-no-argument-command {
 }
 function ble-reload {
   local -a options=()
-  ble/array#push options --rcfile="${_ble_base_rcfile:-/dev/null}"
+  [[ ! -e $_ble_base_rcfile ]] ||
+    ble/array#push options --rcfile="${_ble_base_rcfile:-/dev/null}"
   [[ $_ble_base_arguments_inputrc == auto ]] ||
     ble/array#push options --inputrc="$_ble_base_arguments_inputrc"
   local name
