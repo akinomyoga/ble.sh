@@ -338,6 +338,7 @@
 - bind: fix <kbd>M-C-@</kbd>, <kbd>C-x C-@</kbd>, and <kbd>M-C-x</kbd> (`bash-4.2 -o emacs`) `#D1920` a410b03
 - complete (action:file): support `ble/syntax-raw` in the filename extraction (reported by qoreQyaS) `#D1921` 32277da
 - decode: fix a bug that the tab completion do not work with bash-4.4 and lower `#D1928` 7da9bce
+- complete: fix non-working ambiguous path completion with `..` and `.` in the path `#D1930` xxxxxxx
 
 ## Documentation
 

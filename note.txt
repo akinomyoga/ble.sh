@@ -6848,6 +6848,14 @@ bash_tips
 
 2023-02-01
 
+  * complete: ../ で始まるパスの曖昧補完が効いていない [#D1930]
+
+    ../out/data/c2w.wcwidth-compare.musl-vs-12.1.txt[TAB] の曖昧補完が効いていない
+
+    どうやら .. を .*.* 等に変換すると .. に一致しなくなってしまう様だ。
+    ble/complete/source:file/.construct-ambiguous-pathname-pattern を修正したら
+    すぐ直った。
+
   * canvas: char_width_mode=musl の判定をより正確にする [#D1929]
     https://github.com/akinomyoga/ble.sh/issues/269#issuecomment-1407360550
 
