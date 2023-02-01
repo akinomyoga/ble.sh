@@ -714,7 +714,13 @@ function ble/base/print-usage-for-no-argument-command {
   [[ $1 != --help ]] && return 2
   return 0
 }
-function ble-reload { source "$_ble_base/ble.sh" --attach=prompt --rcfile="${_ble_base_rcfile:-/dev/null}"; }
+function ble-reload {
+  local -a options=()
+  ble/array#push options --attach=prompt
+  [[ ! -e $_ble_base_rcfile ]] ||
+    ble/array#push options --rcfile="${_ble_base_rcfile:-/dev/null}"
+  source "$_ble_base/ble.sh" "${options[@]}"
+}
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 function ble-update {
   if (($#)); then
