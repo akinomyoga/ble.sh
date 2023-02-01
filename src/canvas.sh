@@ -464,16 +464,6 @@ function ble/util/c2w/test.hook {
   _ble_util_c2w_auto_update_processing=0
 
   local ws
-  if [[ $bleopt_char_width_mode == auto ]]; then
-    IFS=: builtin eval 'ws="${_ble_util_c2w_auto_update_result[*]::2}:${_ble_util_c2w_auto_update_result[*]:5:2}"'
-    case $ws in
-    (2:2:*:*) bleopt char_width_mode=east ;;
-    (2:1:*:*) bleopt char_width_mode=emacs ;;
-    (1:1:2:0) bleopt char_width_mode=musl ;;
-    (*)       bleopt char_width_mode=west ;;
-    esac
-  fi
-
   if [[ $bleopt_char_width_version == auto ]]; then
     ws=("${_ble_util_c2w_auto_update_result[@]:2}")
     if ((ws[13]==2)); then
@@ -512,6 +502,23 @@ function ble/util/c2w/test.hook {
       bleopt char_width_version=4.1
     fi
   fi
+
+  # 先に char_width_version を確定してから musl の判定でそれを参照する。
+  if [[ $bleopt_char_width_mode == auto ]]; then
+    IFS=: builtin eval 'ws="${_ble_util_c2w_auto_update_result[*]::2}:${_ble_util_c2w_auto_update_result[*]:5:2}"'
+    case $ws in
+    (2:2:*:*) bleopt char_width_mode=east ;;
+    (2:1:*:*) bleopt char_width_mode=emacs ;;
+    (1:1:2:0)
+      if [[ $bleopt_char_width_version == 10.0 ]]; then
+        bleopt char_width_mode=musl
+      else
+        bleopt char_width_mode=west
+      fi ;;
+    (*) bleopt char_width_mode=west ;;
+    esac
+  fi
+
   return 0
 }
 

@@ -117,8 +117,8 @@
   - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
 - complete: support ambiguous completion for command paths `#D1922` 8a716ad
 - complete: preserve original path segments as long as possible `#D1923` `#D1924` e3cdb9d
-- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` xxxxxxx
-- main: support an option `--inputrc={diff,all,user,none}` `#D1926` xxxxxxx
+- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10
+- main: support an option `--inputrc={diff,all,user,none}` `#D1926` 92f2006
 
 ## Changes
 
@@ -337,7 +337,7 @@
 - highlight: fix a bug that `bleopt filename_ls_colors` is not working (reported by qoreQyaS) `#D1919` b568ade
 - bind: fix <kbd>M-C-@</kbd>, <kbd>C-x C-@</kbd>, and <kbd>M-C-x</kbd> (`bash-4.2 -o emacs`) `#D1920` a410b03
 - complete (action:file): support `ble/syntax-raw` in the filename extraction (reported by qoreQyaS) `#D1921` 32277da
-- decode: fix a bug that the tab completion do not work with bash-4.4 and lower `#D1928` xxxxxxx
+- decode: fix a bug that the tab completion do not work with bash-4.4 and lower `#D1928` 7da9bce
 
 ## Documentation
 
@@ -451,8 +451,9 @@
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
-- main: show warning for empty locale (movivated by Ultra980) `#D1927` xxxxxxx
-- main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` xxxxxxx
+- main: show warning for empty locale (movivated by Ultra980) `#D1927` 92f2006
+- main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006
+- canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` xxxxxxx
 
 ## Test
 
@@ -534,7 +535,7 @@
 - colorglass: add color filter `#D1902` 88e74cc
   - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` 40625ac
 - fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` 486564a
-- add `histdb` `#D1925` xxxxxxx
+- add `histdb` `#D1925` 44d9e10
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

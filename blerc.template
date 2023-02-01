@@ -370,9 +370,10 @@
 ## When the value "east" is specified, the width is 2. When the value "west" is
 ## specified, the width is 1.  When the value "emacs" is specified, the width
 ## table (depending on characters) used in Emacs is used.  When the value
-## "musl" is specified, the table for "wcwidth" of musl C library is used.
-## When "auto" is specified, the character width mode is automatically selected
-## based on interactions with the terminal.
+## "musl" is specified, the table for "wcwidth" of the musl C library in 2014
+## is used [Note: recent versions of musl library is more conforming to Unicode
+## so favor "west" or "east"].  When "auto" is specified, the character width
+## mode is automatically selected based on interactions with the terminal.
 
 #bleopt char_width_mode=auto
 

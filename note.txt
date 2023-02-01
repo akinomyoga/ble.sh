@@ -6846,6 +6846,171 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-02-01
+
+  * canvas: char_width_mode=musl の判定をより正確にする [#D1929]
+    https://github.com/akinomyoga/ble.sh/issues/269#issuecomment-1407360550
+
+    konsole の中で起動すると文字幅スキームが 15.0-musl であると勘違いしている。
+    何故? 或いは konsole が内部的に musl を使っている可能性? と思ったが、
+    Unicode 15.0 等もちゃんと認識している。もし本当に musl の実装であれば最新の
+    Unicode には対応できていない筈。
+
+    Refs: #D1880 #D1668
+
+    これは fedora でも発生している問題。
+
+    * konsole で U+D7B0 の幅が 1 ではなく 2 を返すのが問題の様である。
+
+    他の端末の振る舞いを調べる。
+
+    * kitty はちゃんと 1 になっていて 15.0-west と判定されている。U+D7B0:U+3099
+      に対して 1:0 である。
+
+    * xterm は 0 を返していて 14.0-west と判定されている。U+D7B0:U+3099 に対し
+      て 0:0 である。
+
+    * terminology は 15.0-west で大丈夫と思ったが、何故か 3099 に対して 2 を返
+      している。Unicode 15.0 に従っていない気がするが大丈夫なのか?
+
+    * lxterminal は U+D7B0:U+3099 に対して 0:0 を返していて 15.0-west になって
+      いる。
+
+    うーん。これらの振る舞いを見るとどの端末も何処か異なる振る舞いをしている。
+
+    * というかそもそも ble.sh が使っている musl のテーブル自体も古いという事が
+      判明した。何処かの野良 github repository から持ってきたが滅茶苦茶古い。こ
+      れも一緒に更新したい。もしかすると新しい musl では 0 にならないという可能
+      性もある。確認してみると以下の時点で修正が入っている。
+
+      2017-12-18 /src/ctype/{wide,nospacing}.h
+      2019-10-25 /src/ctype/{wide,nospacing}.h
+      2020-01-01 /src/ctype/wcwidth.c
+      2021-12-27 /src/ctype/nospacing.h
+
+      % 取り敢えず最新版に更新する事にする。うーん。どうやら D7B0 は以前は幅2だっ
+      % たが現在は幅 0 の様である。使えない。改めて
+      %
+      % $ (source make/canvas.c2w.list-ucsver-detection-codes.sh)
+      %
+      % を使ってテーブルを生成してみる。
+      %
+      %                | -----Unicode EAW+GeneralCategory                   |musl
+      % ws[0]  U+09FBC | -1  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 | 2
+      % ws[1]  U+09FC4 | -1 -1  2  2  2  2  2  2  2  2  2  2  2  2  2  2  2 | 2
+      % ws[2]  U+031B8 | -1 -1 -1  2  2  2  2  2  2  2  2  2  2  2  2  2  2 | 2
+      % ws[3]  U+0D7B0 | -1 -1  2  2  2  1  1  1  1  1  1  1  1  1  1  1  1 | 0 (Note: これは結合文字なので xterm/konsole/vte 等で 0 で上書きしている)
+      % ws[4]  U+03099 |  2  2  2  2  2  2  2  0  0  0  0  0  0  0  0  0  0 | 0
+      % ws[5]  U+09FCD | -1 -1  2  2  2  2  2 -2  2  2  2  2  2  2  2  2  2 | 2
+      % ws[6]  U+1F93B | -1 -1 -1 -1 -1 -1 -1 -1 -1  2  2  2  2  2  1  1  1 | 2
+      % ws[7]  U+0312E | -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  2  2  2  2  2  2  2 | 2
+      % ws[8]  U+0312F | -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  2  2  2  2  2  2 | 2
+      % ws[9]  U+16FE2 | -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  2  2  2  2  2 | 2
+      % ws[10] U+032FF | -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  2  2  2  2 | 2
+      % ws[11] U+031BB | -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  2  2  2 | 1
+      % ws[12] U+09FFD | -1 -1  2  2  2  2  2 -2 -2 -2 -2 -2 -2 -2 -2  2  2 | 2
+      % ws[13] U+1B132 | -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1  2 | 1
+      %
+      % うーん。これを見る限りは musl と Unicode 12.1 の違いはない。プログラムで
+      % 具体的に Unicode 12.1 との違いを確認する事にする。
+      %
+      % $ ./canvas.c2w.wcwidth.exe compare_musl2023
+      % $ awk '$4 == 0' ../out/data/c2w.wcwidth-compare.musl-vs-12.1.txt
+      % 00ad       wcwidth=1 width(eaw=3,gencat=Cf)=0 0
+      % 1160..11ff wcwidth=0 width(eaw=1,gencat=Lo)=1 0
+      % d7b0..d7c6 wcwidth=0 width(eaw=1,gencat=Lo)=1 0
+      % d7cb..d7fb wcwidth=0 width(eaw=1,gencat=Lo)=1 0
+      % e007f       wcwidth=1 width(eaw=1,gencat=Cf)=0 0
+      % e01ef       wcwidth=1 width(eaw=3,gencat=Mn)=0 0
+      %
+      % 最初の四行は他の wcwidth 実装と同じ。なので本質的には最後の2行で区別でき
+      % る可能性がある。U+E007F はタグをキャンセルするという制御文字。U+E01EF は
+      % variation selector である。U+E01EF は端末側で特別に処理していると予想され
+      % るので使うとしたら U+E007f である。
+
+      やはりこれを見ると実は musl の最新版は殆ど Unicode と一致している。なので、
+      敢えて区別する必要もないのではないかと思われる。やはり古い musl を区別す
+      るのを目的として、musl のテーブルは今まで通り古い musl の物にして、但し、
+      最近の Unicode を誤って新しい musl と判定しない様に判定の調整を行う。
+
+      と言っても konsole が変な振る舞いをしているだけなので気にしなくて良いかも
+      しれない。
+
+    * konsole の wcwidth がどの様に振る舞うのかについてちゃんと調べて判定できれば判定する
+
+      更に調べてみると konsole は konsole_wcwidth という関数を持っているらしい。
+      https://api.kde.org/legacy/4.12-api/applications-apidocs/konsole/html/konsole__wcwidth_8h_source.html
+      と思ったが現在の konsole には konsole_wcwidth という関数は存在しない。テス
+      トコードのコメント内にはあるので、恐らく昔は実際にそういう関数が存在した。
+      改めて konsole_wcwidth を検索してみると11年前のコードなどが当たる。kde-4.12
+      で検索してみると 2013年12月の記事が出てくる。なので、純粋に古いのだろう。見
+      つけた。現在のコードは以下にある。
+
+      https://github.com/KDE/konsole/blob/master/src/characters/CharacterWidth.src.cpp テンプレート
+      https://github.com/KDE/konsole/blob/master/src/characters/CharacterWidth.cpp 生成結果
+
+      そして幅のテーブルを生成しているコードは以下にある。
+
+      https://github.com/KDE/konsole/blob/master/tools/uni2characterwidth/uni2characterwidth.cpp
+
+      うーん。konsole の幅スキームまでテーブルを埋め込んで対応するのは大変だ。
+      しかも version が変わる度に変更される。
+
+      分かった。どうやら以下のファイルによって U+D7B0 の幅が上書きされている? 然
+      し、結果として 2 になっている理由は謎。
+
+      https://github.com/KDE/konsole/blob/master/tools/uni2characterwidth/overrides.txt
+      https://github.com/KDE/konsole/commit/cfff2326f98e1077c519bbb8d18c80262d1e2d1b 導入コミット
+
+      うーん。konsole_wcwidth の文字幅を Unicode の文字幅と比べると以下の差分が
+      ある。wcwidth の段階では U+D7B0 は幅0の様である。つまり、konsole は
+      grapheme clusters に対応していてそれでハングルだと判定して文字幅2にしてい
+      るという事だろうか。U+D7B0 は Unicode 6.1 の判定に使われている。代わりに
+      別の文字にしたらこういう変な事が起こらないで済むだろうか?
+
+      $ ./canvas.c2w.wcwidth.exe compare_konsole2023
+      $ awk '$4==0' ../out/data/c2w.wcwidth-compare.konsole2023-vs-15.0.txt
+      00ad       wcwidth=1 width(eaw=3,gencat=Cf)=0 0
+      1160..11ff wcwidth=0 width(eaw=1,gencat=Lo)=1 0
+      d7b0..d7c6 wcwidth=0 width(eaw=1,gencat=Lo)=1 0
+      d7cb..d7fb wcwidth=0 width(eaw=1,gencat=Lo)=1 0
+      1f1e6..1f1ff wcwidth=2 width(eaw=1,gencat=So)=1 0
+
+      調べてみると Unicode 6.1 で新しく変更された幅は全てハングル関係である。然
+      し、これらは恐らく全て konsole のハングルの実装によって幅2になってしまう
+      と予想される。一方でこれらの文字は musl でも全て 2 になっている。つまり、
+      どの文字を Unicode 6.1 に選んだとしても musl の判定には使えないという事に
+      なる。
+
+    * unicode version も参照して musl を判定する事にする。
+
+      うーん。本当に musl2014 の場合には unicode version 判定の時点で特定の ver
+      になるはずなので、それも一緒に確認する事で musl を判定するのが正しい気が
+      する。
+
+      musl は判定用文字幅は以下のようになっている。
+
+      $ ./canvas.c2w.wcwidth.exe vector_musl2014
+      ws[0]=1 # U+25BD
+      ws[1]=1 # U+25B6
+      ws[2]=2 # U+9FBC
+      ws[3]=2 # U+9FC4
+      ws[4]=2 # U+31B8
+      ws[5]=2 # U+D7B0
+      ws[6]=0 # U+3099
+      ws[7]=2 # U+9FCD
+      ws[8]=1 # U+1F93B
+      ws[9]=1 # U+312E
+      ws[10]=1 # U+312F
+      ws[11]=1 # U+16FE2
+      ws[12]=1 # U+32FF
+      ws[13]=1 # U+31BB
+      ws[14]=2 # U+9FFD
+      ws[15]=1 # U+1B132
+
+      これに基づくと char_width_version=10.0 になる。なので 10.0 の時にだけ
+      musl と判定する事にした。
+
 2023-01-31
 
   * decode: bash-4.4 以下で補完が全く起動されない [#D1928]

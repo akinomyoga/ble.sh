@@ -71,7 +71,7 @@ namespace impl1_dump_wcwidth {
 #include <algorithm>
 #include <vector>
 
-namespace impl2_compare_with_unicode {
+namespace compare_with_unicode {
 
   int config_cjkwidth = 1;
 
@@ -256,48 +256,58 @@ namespace impl2_compare_with_unicode {
     const char* name(std::uint32_t code) const { return names[data[code].hName].c_str(); }
   };
 
+  void print_wcwidth_difference(std::FILE* file, int (*wcwidth)(wchar_t wc), const char* unicode_version_string) {
+    char_width_data data;
+    {
+      char filename[256];
+      std::sprintf(filename, "../out/data/unicode-EastAsianWidth-%s.0.txt", unicode_version_string);
+      if (!data.load(filename)) std::exit(1);
+      std::clog << "loaded data from '" << filename << "'" << std::endl;
+    }
+
+    std::fprintf(file, "# CODE[..CODE] WCWIDTH UNICODE_EAW NO_CONFLICT\n");
+
+    std::uint32_t code1, code2;
+    int prev_wcw;
+    for (std::uint32_t code = 0; code < 0x110000; ) {
+      int wcw = wcwidth(code);
+      //if (wcw == -1) wcw = 1;
+      int eaw = data.width(code);
+
+      std::uint32_t code0 = code++;
+      while (code < 0x110000 && wcwidth(code) == wcw && data.prop(code) == data.prop(code0)) code++;
+
+      bool no_conflict = wcw == eaw || eaw == 3 && (wcw == 1 || wcw == 2) || eaw == -1;
+
+      if (code - code0 == 1) {
+        std::fprintf(file, "%04x       wcwidth=%d width(eaw=%d,gencat=%s)=%d %d\n", code0, wcw, data.eaw(code0), data.gencat(code0), eaw, no_conflict);
+      } else {
+        std::fprintf(file, "%04x..%04x wcwidth=%d width(eaw=%d,gencat=%s)=%d %d\n", code0, code - 1, wcw, data.eaw(code0), data.gencat(code0), eaw, no_conflict);
+      }
+
+      if (wcw != eaw) {
+        char field1[100], field2[20];
+        if (code - code0 == 1) {
+          std::sprintf(field1, "_ble_unicode_c2w_custom[%d]=%d", code0, wcw);
+          std::sprintf(field2, "U+%04X", code0);
+        }else {
+          std::sprintf(field1, "let '_ble_unicode_c2w_custom['{%d..%d}']=%d'", code0, code - 1, wcw);
+          std::sprintf(field2, "U+%04X..%04X", code0, code - 1);
+        }
+        std::fprintf(stdout, "%-52s # %-14s %s %d %s\n",
+          field1, field2, data.gencat(code0), data.eaw(code0), data.name(code0));
+      }
+    }
+  }
+
   int run(int argc, char** argv) {
     const char* unicode_version_string = 1 < argc ? argv[1] : "13.0";
-    char_width_data data;
-    char filename[256];
-    std::sprintf(filename, "../out/data/unicode-EastAsianWidth-%s.0.txt", unicode_version_string);
-    if (!data.load(filename)) return 1;
-    std::clog << "loaded data from '" << filename << "'" << std::endl;
-
     setlocale(LC_ALL, "");
     {
+      char filename[256];
       std::sprintf(filename, "../out/data/c2w.wcwidth-compare.%s.txt", unicode_version_string);
       std::FILE* file = std::fopen(filename, "w");
-
-      std::uint32_t code1, code2;
-      int prev_wcw;
-      for (std::uint32_t code = 0; code < 0x110000; ) {
-        int wcw = wcwidth(code);
-        //if (wcw == -1) wcw = 1;
-        int eaw = data.width(code);
-
-        std::uint32_t code0 = code++;
-        while (code < 0x110000 && wcwidth(code) == wcw && data.prop(code) == data.prop(code0)) code++;
-
-        if (code - code0 == 1) {
-          std::fprintf(file, "%04x wcwidth=%d width(eaw=%d gencat=%s)=%d\n", code0, wcw, data.eaw(code0), data.gencat(code0), eaw);
-        } else {
-          std::fprintf(file, "%04x..%04x wcwidth=%d width(eaw=%d gencat=%s)=%d\n", code0, code - 1, wcw, data.eaw(code0), data.gencat(code0), eaw);
-        }
-
-        if (wcw != eaw) {
-          char field1[100], field2[20];
-          if (code - code0 == 1) {
-            std::sprintf(field1, "_ble_unicode_c2w_custom[%d]=%d", code0, wcw);
-            std::sprintf(field2, "U+%04X", code0);
-          }else {
-            std::sprintf(field1, "let '_ble_unicode_c2w_custom['{%d..%d}']=%d'", code0, code - 1, wcw);
-            std::sprintf(field2, "U+%04X..%04X", code0, code - 1);
-          }
-          std::fprintf(stdout, "%-52s # %-14s %s %d %s\n",
-            field1, field2, data.gencat(code0), data.eaw(code0), data.name(code0));
-        }
-      }
+      print_wcwidth_difference(file, &::wcwidth, unicode_version_string);
       std::fclose(file);
     }
     return 0;
@@ -319,9 +329,99 @@ namespace impl2_compare_with_unicode {
   // }
 }
 
+extern int musl2014_wcwidth(wchar_t wc);
+extern int musl2023_wcwidth(wchar_t wc);
+extern int konsole2023_wcwidth(wchar_t wc);
+
+namespace compare_wcwidth_impl {
+  int musl2014() {
+    const char* filename = "../out/data/c2w.wcwidth-compare.musl2014-vs-8.0.txt";
+    std::FILE* file = std::fopen(filename, "w");
+    compare_with_unicode::print_wcwidth_difference(file, &musl2014_wcwidth, "8.0");
+    std::fclose(file);
+    return 0;
+  }
+  int musl2023() {
+    const char* filename = "../out/data/c2w.wcwidth-compare.musl2023-vs-12.1.txt";
+    std::FILE* file = std::fopen(filename, "w");
+    compare_with_unicode::print_wcwidth_difference(file, &musl2023_wcwidth, "12.1");
+    std::fclose(file);
+    return 0;
+  }
+  int konsole2023() {
+    const char* filename = "../out/data/c2w.wcwidth-compare.konsole2023-vs-15.0.txt";
+    std::FILE* file = std::fopen(filename, "w");
+    compare_with_unicode::print_wcwidth_difference(file, &konsole2023_wcwidth, "15.0");
+    std::fclose(file);
+    return 0;
+  }
+}
+
+namespace check_vector {
+  const int vec[] = {
+    0x25bd, 0x25b6,
+
+    0x9FBC, 0x9FC4, 0x31B8, 0xD7B0, 0x3099,
+    0x9FCD, 0x1F93B, 0x312E, 0x312F, 0x16FE2,
+    0x32FF, 0x31BB, 0x9FFD, 0x1B132,
+  };
+
+  int musl2014() {
+    std::size_t const sz = sizeof(vec) / sizeof(vec[0]);
+    for (int i = 0; i < sz; i++)
+      std::printf("ws[%d]=%d # U+%04X\n", i, musl2014_wcwidth(vec[i]), vec[i]);
+    return 0;
+  }
+}
+
+namespace generate_table {
+  void print_musl2014_table(FILE* file) {
+    int widths1[32], widths2[32];
+
+    int *widths = &widths1[0];
+    int *old_widths = &widths2[0];
+    int skipping = 0;
+
+    setlocale(LC_ALL, "");
+
+    int prev_w = 999;
+    for (int32_t i = 0;i <= 0x10FFFF; i++) {
+      int w = musl2014_wcwidth(i);
+      if (w == -1) w = 1;
+      if (w != prev_w) {
+        fprintf(file, "U+%04X %d\n", i, w);
+        prev_w = w;
+      }
+    }
+  }
+
+  int musl2014() {
+    // FILE* file = fopen("c2w.musl-wcwidth.txt", "w");
+    // print_musl2014_table(file);
+    // fclose(file);
+    print_musl2014_table(stdout);
+    return 0;
+  }
+
+}
+
 int main(int argc, char** argv) {
-  if (1 < argc && std::strcmp(argv[1], "compare_eaw") == 0)
-    return impl2_compare_with_unicode::run(argc - 1, argv + 1);
-  else
-    return impl1_dump_wcwidth::save_wcwidth();
+  if (1 < argc) {
+    if (std::strcmp(argv[1], "compare_eaw") == 0)
+      return compare_with_unicode::run(argc - 1, argv + 1);
+    if (std::strcmp(argv[1], "compare_musl") == 0)
+      return compare_wcwidth_impl::musl2014();
+    if (std::strcmp(argv[1], "compare_musl2023") == 0)
+      return compare_wcwidth_impl::musl2023();
+    if (std::strcmp(argv[1], "compare_konsole2023") == 0)
+      return compare_wcwidth_impl::konsole2023();
+
+    if (std::strcmp(argv[1], "vector_musl2014") == 0)
+      return check_vector::musl2014();
+
+    if (std::strcmp(argv[1], "table_musl2014") == 0)
+      return generate_table::musl2014();
+  }
+
+  return impl1_dump_wcwidth::save_wcwidth();
 }
