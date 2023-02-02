@@ -1173,6 +1173,7 @@ function sub:scan/bash502-patsub_replacement {
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z//?\$q/\$Q\}Zd
       \Z//?\$q/\$qq\}Zd
+      \Z//?\$qq/\$q\}Zd
       \Z//?\$__ble_q/\$__ble_Q\}Zd
       \Z//?\$_ble_local_q/\$_ble_local_Q\}Zd
       \Z/\$\(\([^()]+\)\)\}Zd

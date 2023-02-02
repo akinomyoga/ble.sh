@@ -2581,7 +2581,7 @@ function ble-edit/attach/.attach {
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
 
     # When _ble_edit_CMD is empty or less than _ble_edit_LINENO, we update it.
-    ((_ble_edit_CMD<=_ble_edit_LINENO)) && _ble_edit_CMD=$_ble_edit_LINENO
+    ((_ble_edit_CMD<=_ble_edit_LINENO+1)) && ((_ble_edit_CMD=_ble_edit_LINENO+1))
   fi
 
   ble/builtin/trap/install-hook WINCH readline
@@ -5700,11 +5700,15 @@ _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 _ble_edit_exec_BASH_COMMAND=$BASH
 function ble-edit/exec/register {
-  if [[ $1 != *[!"$_ble_term_IFS"]* ]]; then
+  local command=$1
+  if [[ $command != *[!"$_ble_term_IFS"]* ]]; then
     ble/edit/leave-command-layout
     return 1
   fi
-  ble/array#push _ble_edit_exec_lines "$((++_ble_edit_CMD)):$1"
+  local command_id=$((++_ble_edit_CMD)) # Exposed to blehook exec_register
+  local lineno=$((_ble_edit_LINENO+1))  # Exposed to blehook exec_register
+  ble/array#push _ble_edit_exec_lines "$command_id,$lineno:$command"
+  blehook/invoke exec_register "$command"
 }
 function ble-edit/exec/has-pending-commands {
   ((${#_ble_edit_exec_lines[@]}))
@@ -6695,10 +6699,11 @@ function ble-edit/exec:gexec/.setup {
   if ((count)); then
     ble/util/buffer.flush >&2
 
-    local q=\' Q="'\''" line cmd cmd_id
+    local q=\' Q="'\''" cmd cmd_id lineno
     buff[ibuff++]=ble-edit/exec:gexec/.begin
-    for line in "${_ble_edit_exec_lines[@]}"; do
-      cmd=${line#*:} cmd_id=${line%%:*}
+    for cmd in "${_ble_edit_exec_lines[@]}"; do
+      cmd_id=${cmd%%,*} cmd=${cmd#*,}
+      lineno=${cmd%%:*} cmd=${cmd#*:}
       buff[ibuff++]="ble-edit/exec:gexec/.prologue '${cmd//$q/$Q}' $cmd_id"
       # Note #D1823: LINENO を unset せずに上書きする為に tempenv を用いる。
       # Note #D1823: Bash に "builtin eval" で tempenv が消滅するバグがあるので
@@ -6711,7 +6716,7 @@ function ble-edit/exec:gexec/.setup {
       #   後にそのままコマンドを実行しないと無駄な出力がされてしまう。
       # Note: restore-lastarg の $_ble_edit_exec_lastarg は $_ を設定するための
       #   ものである。
-      buff[ibuff++]='{ time LINENO=$_ble_edit_LINENO eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
+      buff[ibuff++]='{ time LINENO='$lineno' builtin eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
       buff[ibuff++]='$_ble_edit_exec_BASH_COMMAND'
       # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
@@ -6953,15 +6958,15 @@ function ble/widget/default/accept-line {
     hist_is_expanded=1
   fi
 
+  # 実行を登録
+  local old_cmd=$_ble_edit_CMD
+  ble-edit/exec/register "$command"
+
   # 編集文字列を履歴に追加
   ble/history/add "$command"
 
-  ble/widget/.newline # #D1800 register
-
+  _ble_edit_CMD=$old_cmd ble/widget/.newline # #D1800 register
   [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $command"
-
-  # 実行を登録
-  ble-edit/exec/register "$command"
 }
 
 function ble/widget/accept-and-next {

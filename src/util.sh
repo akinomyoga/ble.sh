@@ -3620,7 +3620,12 @@ function ble/util/conditional-sync/.kill {
 ##     The command that is evaluated in a subshell
 ##   @param[in,opt] condition
 ##     The command to test the condition to continue to run the command.  The
-##     default condition is "! ble/decode/has-input".
+##     default condition is "! ble/decode/has-input".  The following local
+##     variables are available from the condition command:
+##
+##     @var sync_elapsed
+##       Accumulated time of sleep in milliseconds.
+##
 ##   @param[in,opt] weight
 ##     The interval of checking CONDITION in milliseconds.  The default is
 ##     "100".
@@ -3653,6 +3658,7 @@ function ble/util/conditional-sync {
   [[ :$__opts: == *:progressive-weight:* ]] &&
     local __weight_max=$__weight __weight=1
 
+  local sync_elapsed=0
   [[ $__timeout ]] && ((__timeout<=0)) && return 142
   builtin eval -- "$__continue" || return 148
   (
@@ -3669,6 +3675,7 @@ function ble/util/conditional-sync {
       fi
 
       ble/util/msleep "$__weight"
+      ((sync_elapsed+=__weight))
       [[ :$__opts: == *:progressive-weight:* ]] &&
         ((__weight<<=1,__weight>__weight_max&&(__weight=__weight_max)))
       builtin kill -0 "$__pid" &>/dev/null

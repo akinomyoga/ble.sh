@@ -541,6 +541,7 @@
   - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` 40625ac
 - fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` 486564a
 - add `histdb` `#D1925` 44d9e10
+  - histdb: support auto-complete source `histdb-word` `#D1938` xxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

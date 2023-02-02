@@ -1557,6 +1557,8 @@ function ble/complete/action/quote-insert.batch {
   return "$?"
 }
 
+## @fn ble/complete/action/requote-final-insert
+##   @var[ref] insert insert_flags
 function ble/complete/action/requote-final-insert {
   local comps_prefix= check_optarg=
   if [[ $insert == "$COMPS"* ]]; then
@@ -7638,11 +7640,56 @@ _ble_complete_ac_word=
 _ble_complete_ac_insert=
 _ble_complete_ac_suffix=
 
-## @fn ble/complete/auto-complete/.search-history-light text
+## @fn ble/complete/auto-complete/enter type comp1 suggest cand word [insert suffix]
+##   @param[in] type
+##     c ... 接頭辞補完
+##     h ... 履歴による接頭辞補完。c と同じ取り扱い
+##     m ... 部分文字列補完
+##     a ... 曖昧補完(1文字目確定)
+##     A ... 曖昧補完
+##   @param[in] comp1
+##     補完開始点
+##   @param[in] suggest
+##     提示文字列
+##   @param[in] cand
+##     元の単語
+##   @param[in] word
+##     挿入文字列(確定前)
+##   @param[in,opt] insert
+##     挿入文字列(確定時)。省略時は word と同じと見做されます。
+##   @param[in] suffix
+##     接尾挿入文字列。省略時は空文字列と見做されます。
+##
+##   @var[in] _ble_edit_ind
+##     提示文字列挿入位置を指定します。
+##   @var[out] _ble_edit_mark
+##     提示文字列の終端点を返します。
+##
+function ble/complete/auto-complete/enter {
+  local type=$1 COMP1=$2 suggest=$3 cand=$4 word=$5 insert1=${6-$5} suffix=${7-}
+
+  # 提示
+  local insert; ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$suggest" nobell
+  ((_ble_edit_mark=_ble_edit_ind+${#suggest}))
+
+  _ble_complete_ac_type=$type
+  _ble_complete_ac_comp1=$COMP1
+  _ble_complete_ac_cand=$cand
+  _ble_complete_ac_word=$word
+  _ble_complete_ac_insert=$insert1
+  _ble_complete_ac_suffix=$suffix
+
+  _ble_edit_mark_active=auto_complete
+  ble/decode/keymap/push auto_complete
+  ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
+  return 0
+}
+
+## @fn ble/complete/auto-complete/source:history/.search-light text
 ##   !string もしくは !?string を用いて履歴の検索を行います
 ##   @param[in] text
 ##   @var[out] ret
-function ble/complete/auto-complete/.search-history-light {
+function ble/complete/auto-complete/source:history/.search-light {
   [[ $_ble_history_prefix ]] && return 1
 
   local text=$1
@@ -7687,9 +7734,9 @@ function ble/complete/auto-complete/.search-history-light {
 _ble_complete_ac_history_needle=
 _ble_complete_ac_history_index=
 _ble_complete_ac_history_start=
-## @fn ble/complete/auto-complete/.search-history-heavy text
+## @fn ble/complete/auto-complete/source:history/.search-heavy text
 ##   @var[out] ret
-function ble/complete/auto-complete/.search-history-heavy {
+function ble/complete/auto-complete/source:history/.search-heavy {
   local text=$1
 
   local count; ble/history/get-count -v count
@@ -7715,55 +7762,34 @@ function ble/complete/auto-complete/.search-history-heavy {
   return 0
 }
 
-## @fn ble/complete/auto-complete/.enter-auto-complete-mode
-##   @var[in] type COMP1 cand word insert suffix
-function ble/complete/auto-complete/.enter-auto-complete-mode {
-  _ble_complete_ac_type=$type
-  _ble_complete_ac_comp1=$COMP1
-  _ble_complete_ac_cand=$cand
-  _ble_complete_ac_word=$word
-  _ble_complete_ac_insert=$insert
-  _ble_complete_ac_suffix=$suffix
-
-  _ble_edit_mark_active=auto_complete
-  ble/decode/keymap/push auto_complete
-  ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
-}
-## @fn ble/complete/auto-complete/.insert ins
-##   @param[in] ins
-##   @var[in,out] _ble_edit_ind _ble_edit_mark
-function ble/complete/auto-complete/.insert {
-  local insert=$1
-  ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$insert" nobell
-  ((_ble_edit_mark=_ble_edit_ind+${#insert}))
-}
-
-## @fn ble/complete/auto-complete/.check-history opts
+## @fn ble/complete/auto-complete/source:history/.impl opts
 ##   @param[in] opts
 ##   @var[in] comp_type comp_text comp_index
-function ble/complete/auto-complete/.check-history {
+function ble/complete/auto-complete/source:history/.impl {
   local opts=$1
-  local searcher=.search-history-heavy
-  [[ :$opts: == *:light:*  ]] && searcher=.search-history-light
+  local searcher=.search-heavy
+  [[ :$opts: == *:light:*  ]] && searcher=.search-light
 
   local ret
   ((_ble_edit_ind==${#_ble_edit_str})) || return 1
-  ble/complete/auto-complete/"$searcher" "$_ble_edit_str" || return "$?" # 0, 1 or 148
-  local word=$ret cand=
-  local COMP1=0 COMPS=$_ble_edit_str
-  [[ $word == "$COMPS" ]] && return 1
-  local insert=$word suffix=
-  local type=h
-  ble/complete/auto-complete/.insert "${insert:${#COMPS}}"
+  ble/complete/auto-complete/source:history/"$searcher" "$_ble_edit_str" || return "$?" # 0, 1 or 148
+  local command=$ret
+  [[ $command == "$_ble_edit_str" ]] && return 1
+  ble/complete/auto-complete/enter h 0 "${command:${#_ble_edit_str}}" '' "$command"
+}
+function ble/complete/auto-complete/source:history {
+  [[ $bleopt_complete_auto_history ]] || return 1
+  ble/complete/auto-complete/source:history/.impl light; local ext=$?
+  ((ext==0||ext==148)) && return "$ext"
 
-  # vars: type COMP1 cand word insert suffix
-  ble/complete/auto-complete/.enter-auto-complete-mode
-  return 0
+  [[ $_ble_history_prefix || $_ble_history_load_done ]] &&
+    ble/complete/auto-complete/source:history/.impl; local ext=$?
+  ((ext==0||ext==148)) && return "$ext"
 }
 
-## @fn ble/complete/auto-complete/.check-context
+## @fn ble/complete/auto-complete/source:syntax
 ##   @var[in] comp_type comp_text comp_index
-function ble/complete/auto-complete/.check-context {
+function ble/complete/auto-complete/source:syntax {
   local sources
   ble/complete/context:syntax/generate-sources "$comp_text" "$comp_index" &&
     ble/complete/context/filter-prefix-sources || return 1
@@ -7795,13 +7821,13 @@ function ble/complete/auto-complete/.check-context {
     ble/complete/action:"$ACTION"/complete
   fi
 
-  local type=
+  local type= suggest=
   if [[ $insert == "$COMPS"* ]]; then
     # 入力候補が既に続きに入力されている時は提示しない
     [[ ${comp_text:COMP1} == "$insert"* ]] && return 1
 
     type=c
-    ble/complete/auto-complete/.insert "${insert:${#COMPS}}"
+    suggest="${insert:${#COMPS}}"
   else
     case :$comp_type: in
     (*:a:*) type=a ;;
@@ -7809,13 +7835,12 @@ function ble/complete/auto-complete/.check-context {
     (*:A:*) type=A ;;
     (*)   type=r ;;
     esac
-    ble/complete/auto-complete/.insert " [$insert] "
+    suggest=" [$insert] "
   fi
-
-  # vars: type COMP1 cand word insert suffix
-  ble/complete/auto-complete/.enter-auto-complete-mode
-  return 0
+  ble/complete/auto-complete/enter "$type" "$COMP1" "$suggest" "$cand" "$word" "$insert" "$suffix"
 }
+
+_ble_complete_auto_source=(history syntax)
 
 ## @fn ble/complete/auto-complete.impl opts
 ##   @param[in] opts
@@ -7834,16 +7859,12 @@ function ble/complete/auto-complete.impl {
     ((_ble_edit_ind<end)) && return 0
   fi
 
-  if [[ $bleopt_complete_auto_history ]]; then
-    ble/complete/auto-complete/.check-history light; local ext=$?
-    ((ext==0||ext==148)) && return "$ext"
-
-    [[ $_ble_history_prefix || $_ble_history_load_done ]] &&
-      ble/complete/auto-complete/.check-history; local ext=$?
-    ((ext==0||ext==148)) && return "$ext"
-  fi
-
-  ble/complete/auto-complete/.check-context
+  local source
+  for source in "${_ble_complete_auto_source[@]}"; do
+    ble/complete/auto-complete/source:"$source"; local ext=$?
+    ((ext==0)) && break
+    ((ext==148)) && return "$ext"
+  done
 }
 
 ## 背景関数 ble/complete/auto-complete.idle

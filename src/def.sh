@@ -61,6 +61,7 @@ blehook/declare ERREXEC
 blehook/declare widget_bell
 blehook/declare textarea_render_defer
 blehook/declare info_reveal
+blehook/declare exec_register
 blehook/declare exec_end
 
 # deprecated function
