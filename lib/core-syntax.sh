@@ -4879,7 +4879,7 @@ function ble-highlight-layer:syntax/update-error-table {
         while ((inest>=0)); do
           # 開始字句の着色
           local inest2
-          for((inest2=inest+1;inest2<iN;inest2++)); do
+          for ((inest2=inest+1;inest2<iN;inest2++)); do
             [[ ${_ble_syntax_attr[inest2]} ]] && break
           done
           ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$g"

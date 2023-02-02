@@ -274,7 +274,7 @@ function ble-highlight-layer/update {
   local PREV_UMAX=-1
   local layer player=plain LEVEL
   local nlevel=${#_ble_highlight_layer__list[@]}
-  for((LEVEL=0;LEVEL<nlevel;LEVEL++)); do
+  for ((LEVEL=0;LEVEL<nlevel;LEVEL++)); do
     layer=${_ble_highlight_layer__list[LEVEL]}
 
     "ble-highlight-layer:$layer/update" "$text" "$player"
