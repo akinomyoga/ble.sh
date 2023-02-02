@@ -3738,7 +3738,7 @@ function ble-edit+isearch/next-history {
   local i ind=
   if [[ $_ble_edit_isearch_dir == - ]]; then
     # backward-search
-    for((i=_ble_edit_history_ind-(isMod?0:1);i>=0;i--)); do
+    for ((i=_ble_edit_history_ind-(isMod?0:1);i>=0;i--)); do
       if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
         ind="$i"
         break
@@ -3746,7 +3746,7 @@ function ble-edit+isearch/next-history {
     done
   else
     # forward-search
-    for((i=_ble_edit_history_ind+(isMod?0:1);i<${#_ble_edit_history[@]};i++)); do
+    for ((i=_ble_edit_history_ind+(isMod?0:1);i<${#_ble_edit_history[@]};i++)); do
       if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
         ind="$i"
         break
