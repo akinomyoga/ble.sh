@@ -1854,54 +1854,109 @@ function ble/syntax:bash/initialize-vars {
 #------------------------------------------------------------------------------
 # 共通の字句の一致判定
 
-## @fn ble/syntax/highlight/vartype varname [opts [tail]]
-##   @var[out] ret
-##   @var[out,opt] lookahead
-##     tail が指定された時にのみ設定されます。
-function ble/syntax/highlight/vartype {
+## @fn ble/syntax/highlight/vartype/.impl name [opts [tail]]
+##   @arr[out] __ble_vartype_ret=(ret [lookahead])
+##     属性値 ret と先読み文字数 lookahead を返します。
+function ble/syntax/highlight/vartype/.impl {
   if [[ ! $bleopt_highlight_variable ]]; then
-    ret=$ATTR_VAR
+    __ble_vartype_ret=$ATTR_VAR
     return 0
   fi
 
-  local name=$1 opts=$2 tail=$3 rex='^-?[0-9]+(#[0-9a-zA-Z@_]*)?$'
-  local attr; ble/variable#get-attr "$name"
-  if [[ ${!name+set} || $attr == *[aA]* ]]; then
-    if [[ ${!name-} && :$opts: == *:expr:* && ! ( ${!name} =~ $rex ) ]]; then
-      ret=$ATTR_VAR_EXPR
-    elif [[ ${!name+set} && $attr == *x* ]]; then
+  local __ble_name=$1 __ble_opts=$2 __ble_tail=$3
+  local __ble_attr; ble/variable#get-attr -v __ble_attr "$__ble_name"
+  if [[ ${!__ble_name+set} || $__ble_attr == *[aA]* ]]; then
+    local __ble_rex='^-?[0-9]+(#[0-9a-zA-Z@_]*)?$'
+    if [[ ${!__ble_name-} && :$__ble_opts: == *:expr:* && ! ( ${!__ble_name} =~ $__ble_rex ) ]]; then
+      __ble_vartype_ret=$ATTR_VAR_EXPR
+    elif [[ ${!__ble_name+set} && $__ble_attr == *x* ]]; then
       # Note: 配列の場合には第0要素が設定されている時のみ。
-      ret=$ATTR_VAR_EXPORT
-    elif [[ $attr == *a* ]]; then
-      ret=$ATTR_VAR_ARRAY
-    elif [[ $attr == *A* ]]; then
-      ret=$ATTR_VAR_HASH
-    elif [[ $attr == *r* ]]; then
-      ret=$ATTR_VAR_READONLY
-    elif [[ $attr == *i* ]]; then
-      ret=$ATTR_VAR_NUMBER
-    elif [[ $attr == *[luc]* ]]; then
-      ret=$ATTR_VAR_TRANSFORM
-    elif [[ ! ${!name} ]]; then
-      ret=$ATTR_VAR_EMPTY
+      __ble_vartype_ret=$ATTR_VAR_EXPORT
+    elif [[ $__ble_attr == *a* ]]; then
+      __ble_vartype_ret=$ATTR_VAR_ARRAY
+    elif [[ $__ble_attr == *A* ]]; then
+      __ble_vartype_ret=$ATTR_VAR_HASH
+    elif [[ $__ble_attr == *r* && :$__ble_opts: != *:no-readonly:* ]]; then
+      __ble_vartype_ret=$ATTR_VAR_READONLY
+    elif [[ $__ble_attr == *i* ]]; then
+      __ble_vartype_ret=$ATTR_VAR_NUMBER
+    elif [[ $__ble_attr == *[luc]* ]]; then
+      __ble_vartype_ret=$ATTR_VAR_TRANSFORM
+    elif [[ ! ${!__ble_name} ]]; then
+      __ble_vartype_ret=$ATTR_VAR_EMPTY
     else
-      ret=$ATTR_VAR
+      __ble_vartype_ret=$ATTR_VAR
     fi
   else
     # set -u のチェック
-    if [[ :$opts: == *:readvar:* && $_ble_bash_set == *u* ]]; then
-      if [[ ! $tail ]] || {
-           local rex='^:?[-+?=]'
-           [[ $tail == :* ]] && lookahead=2
-           ! [[ $tail =~ $rex ]]; }
+    if [[ :$__ble_opts: == *:readvar:* && $_ble_bash_set == *u* ]]; then
+      if [[ ! $__ble_tail ]] || {
+           local __ble_rex='^:?[-+?=]'
+           [[ $__ble_tail == :* ]] && __ble_vartype_ret[1]=2
+           ! [[ $__ble_tail =~ $__ble_rex ]]; }
       then
-        ret=$ATTR_ERR
+        __ble_vartype_ret=$ATTR_ERR
         return 0
       fi
     fi
 
-    ret=$ATTR_VAR_UNSET
+    __ble_vartype_ret=$ATTR_VAR_UNSET
   fi
+}
+function ble/syntax/highlight/vartype/.print {
+  if [[ :$2: == *:unset:* ]]; then
+    # local readonly で被覆されていて分からない時にここに来る。グローバル変数が
+    # 存在するかしないかもわからないのでデフォルトの変数着色にする。
+    ble/util/print "$ATTR_VAR"
+  else
+    local -a __ble_vartype_ret=()
+    ble/syntax/highlight/vartype/.impl "$1" "$__vartype_opts" "$__vartype_tail"
+    ble/util/print "${__ble_vartype_ret[@]}"
+  fi
+}
+
+## @fn ble/syntax/highlight/vartype varname [opts [tail]]
+##   変数の種類・状態に応じた属性値を決定します。
+##
+##   @param[in] varname
+##     判定対象の変数名を指定します。
+##   @param[in,opt] opts
+##     コロン区切りのオプションを指定します。
+##
+##     readvar ... ユーザー文脈で "set -u" が指定されていてかつ存在しない変数に
+##         対してエラー着色を適用します。
+##
+##     global ... グローバル変数の状態を参照します。
+##
+##     no-readonly ... readonly 状態を無視します。
+##
+##   @param[in,opt] tail
+##     ${var...} 形式の内部を解析している時に変数名に続く文字列を指定します。
+##
+##   @var[out] ret
+##     属性値を返します。
+##
+##   @var[out,opt] lookahead
+##     tail が指定された時にのみ設定されます。属性値を決定する際に参照した tail
+##     内の先読み文字数を返します。
+##
+function ble/syntax/highlight/vartype {
+  local -a __ble_vartype_ret=()
+  if [[ :$2: == *:global:* && $1 != __ble_* ]] && ! ble/variable#is-global "$1"; then
+    # Note: readonly を global 変数取得に使っているので readonly は正しく判定で
+    #   きない。何れにしてもローカル変数がある時点で global readonly ではないと
+    #   考えるのが (ローカル変数を定義した後に declare -gr するのでなければ) 普
+    #   通である。
+    local __vartype_name=$1
+    local __vartype_opts=$__ble_opts:no-readonly
+    local __vartype_tail=$__ble_tail
+    ble/util/assign-words __ble_vartype_ret 'ble/util/for-global-variables ble/syntax/highlight/vartype/.print "" "$__vartype_name"'
+  else
+    ble/syntax/highlight/vartype/.impl "$@"
+  fi
+  ret=${__ble_vartype_ret:-$ATTR_VAR}
+  [[ ${__ble_vartype_ret[1]+set} ]] && lookahead=${__ble_vartype_ret[1]}
+  return 0
 }
 
 function ble/syntax:bash/check-plain-with-escape {
@@ -1957,7 +2012,7 @@ function ble/syntax:bash/check-dollar {
       fi
 
       local ret lookahead= tail2=${tail:${#rematch1}+${#varname}}
-      ble/syntax/highlight/vartype "$varname" readvar "$tail2"; local attr=$ret
+      ble/syntax/highlight/vartype "$varname" readvar:global "$tail2"; local attr=$ret
 
       ble/syntax/parse/nest-push "$CTX_PARAM" "$ntype"
       ((_ble_syntax_attr[i]=ctx,
@@ -1998,7 +2053,7 @@ function ble/syntax:bash/check-dollar {
     return 0
   elif rex='^\$([-*@#?$!0_]|[1-9]|[a-zA-Z_][a-zA-Z_0-9]*)' && [[ $tail =~ $rex ]]; then
     local rematch=$BASH_REMATCH rematch1=${BASH_REMATCH[1]}
-    local ret; ble/syntax/highlight/vartype "$rematch1" readvar
+    local ret; ble/syntax/highlight/vartype "$rematch1" readvar:global
     ((_ble_syntax_attr[i]=CTX_PARAM,
       _ble_syntax_attr[i+1]=ret,
       i+=${#rematch}))
@@ -2821,7 +2876,7 @@ function ble/syntax:bash/ctx-expr {
   local rex
   if rex='^[a-zA-Z_][a-zA-Z_0-9]*'; [[ $tail =~ $rex ]]; then
     local rematch=$BASH_REMATCH
-    local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" readvar:expr
+    local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" readvar:expr:global
     ((_ble_syntax_attr[i]=ret,i+=${#rematch}))
     return 0
   elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
@@ -3175,7 +3230,7 @@ function ble/syntax:bash/check-variable-assignment {
   local variable_assign=
   if ((ctx==CTX_CMDI||ctx==CTX_ARGVI||ctx==CTX_ARGEI&&${#rematch2})); then
     # 変数代入のときは ctx は先に CTX_VRHS, CTX_ARGVR に変換する
-    local ret; ble/syntax/highlight/vartype "$rematch1"
+    local ret; ble/syntax/highlight/vartype "$rematch1" global
     ((wtype=ATTR_VAR,
       _ble_syntax_attr[i]=ret,
       i+=${#rematch},
@@ -3964,7 +4019,7 @@ function ble/syntax:bash/ctx-command {
       # for var in ... の var の部分は変数名をチェックして着色
       local rex='^[a-zA-Z_][a-zA-Z_0-9]*$' attr=$ATTR_ERR
       if ((i0==wbegin)) && [[ ${text:i0:i-i0} =~ $rex ]]; then
-        local ret; ble/syntax/highlight/vartype "$BASH_REMATCH"; attr=$ret
+        local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" global; attr=$ret
       fi
       ((_ble_syntax_attr[i0]=attr))
     fi

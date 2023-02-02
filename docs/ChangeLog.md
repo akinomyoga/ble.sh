@@ -339,7 +339,8 @@
 - complete (action:file): support `ble/syntax-raw` in the filename extraction (reported by qoreQyaS) `#D1921` 32277da
 - decode: fix a bug that the tab completion do not work with bash-4.4 and lower `#D1928` 7da9bce
 - complete: fix non-working ambiguous path completion with `..` and `.` in the path `#D1930` 632e90a
-- main (ble-reload): fix failure by non-existent rcfile `#D1931` xxxxxxx
+- main (`ble-reload`): fix failure by non-existent rcfile `#D1931` 0ceb0cb
+- syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` xxxxxxx
 
 ## Documentation
 
@@ -454,7 +455,7 @@
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
 - main: show warning for empty locale (movivated by Ultra980) `#D1927` 92f2006
-- main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006 xxxxxxx
+- main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006 0ceb0cb
 - canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` b0c16dd
 
 ## Test

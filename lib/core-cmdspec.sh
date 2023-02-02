@@ -48,7 +48,7 @@ function ble/cmdinfo/cmd:declare/chroma.wattr {
     if ble/string#match "$wval" '^([_a-zA-Z][_a-zA-Z0-9]*)(\[.+\])?$'; then
       # ToDo: properly support quoted case
       local varname=${BASH_REMATCH[1]}
-      ble/syntax/highlight/vartype "$varname"
+      ble/syntax/highlight/vartype "$varname" global
       ble/progcolor/wattr#setattr "$wbeg" "$ret"
       ble/progcolor/wattr#setattr "$((wbeg+${#varname}))" d
     elif ble/string#match "$wval" '^[-+]' && ble/progcolor/is-option-context; then

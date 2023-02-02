@@ -1251,7 +1251,16 @@ function sub:scan/unset-variable {
   echo "--- $FUNCNAME ---"
   local esc='(\[[ -?]*[@-~])*'
   sub:scan/list-command unset --exclude-this |
-    grep -Ev "unset$esc[[:space:]]$esc-[vf]|$rex_grep_head[[:space:]]*#"
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zunset[[:space:]]-[vf]Zd
+      \Z^[[:space:]]*#Zd
+      \Zunset _ble_init_(version|arg|exit|command)\bZd
+      \Zbuiltins1=\(.* unset .*\)Zd
+      \Zfunction unsetZd
+      \Zreadonly -f unsetZd
+      \Z'\''\(unset\)'\''Zd
+      \Z"\$__ble_proc" "\$__ble_name" unsetZd
+      g'
 }
 function sub:scan/eval-literal {
   echo "--- $FUNCNAME ---"
@@ -1328,6 +1337,7 @@ function sub:scan {
       \Z'\''  bindZd
       \Z\(bind\)    ble-bindZd
       \Zble/cmdspec/opts .* bind$Zd
+      \Zoutputs of the "bind" builtinZd
       g'
   sub:scan/builtin 'read' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -1358,6 +1368,7 @@ function sub:scan {
       \Zreadonly -f unsetZd
       \Zunset -f builtinZd
       \Z'\''\(unset\)'\''Zd
+      \Z"\$__ble_proc" "\$__ble_name" unsetZd
       g'
   sub:scan/builtin 'unalias' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -1386,14 +1397,7 @@ function sub:scan {
   sub:scan/bash502-patsub_replacement
   sub:scan/gawk402bug-regex-check
   sub:scan/array-count-in-arithmetic-expression
-  sub:scan/unset-variable |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zunset _ble_init_(version|arg|exit|command)\bZd
-      \Zbuiltins1=\(.* unset .*\)Zd
-      \Zfunction unsetZd
-      \Zreadonly -f unsetZd
-      \Z'\''\(unset\)'\''Zd
-      g'
+  sub:scan/unset-variable
   sub:scan/eval-literal
   sub:scan/WA-localvar_inherit
   sub:scan/mistake-_ble_bash

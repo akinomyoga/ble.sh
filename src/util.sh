@@ -432,15 +432,24 @@ function ble/util/restore-vars {
 ##   指定した変数の属性を取得します。
 ##   @var[out] attr
 if ((_ble_bash>=40400)); then
-  function ble/variable#get-attr { attr=${!1@a}; }
+  function ble/variable#get-attr {
+    if [[ $1 == -v ]]; then
+      builtin eval -- "$2=\${!3@a}"
+    else
+      attr=${!1@a}
+    fi
+  }
   function ble/variable#has-attr { [[ ${!1@a} == *["$2"]* ]]; }
 else
   function ble/variable#get-attr {
-    attr=
-    local __ble_tmp=$1
+    if [[ $1 == -v ]]; then
+      local __ble_var=$2 __ble_tmp=$3
+    else
+      local __ble_var=attr __ble_tmp=$1
+    fi
     ble/util/assign __ble_tmp 'declare -p "$__ble_tmp" 2>/dev/null'
-    local rex='^declare -([a-zA-Z]*)'
-    [[ $__ble_tmp =~ $rex ]] && attr=${BASH_REMATCH[1]}
+    local rex='^declare -([a-zA-Z]*)'; [[ $__ble_tmp =~ $rex ]]
+    builtin eval -- "$__ble_var=\${BASH_REMATCH[1]-}"
     return 0
   }
   function ble/variable#has-attr {
@@ -454,9 +463,10 @@ function ble/is-inttype { ble/variable#has-attr "$1" i; }
 function ble/is-readonly { ble/variable#has-attr "$1" r; }
 function ble/is-transformed { ble/variable#has-attr "$1" luc; }
 
-function ble/variable#is-global/.test { ! local "$1" 2>/dev/null; }
+function ble/variable#is-declared { [[ ${!1+set} ]] || declare -p "$1" &>/dev/null; }
+function ble/variable#is-global/.test { ! local "$1"; }
 function ble/variable#is-global {
-  (readonly "$1"; ble/variable#is-global/.test "$1")
+  (readonly "$1"; ble/variable#is-global/.test "$1") 2>/dev/null
 }
 function ble/variable#copy-state {
   local src=$1 dst=$2
@@ -1367,6 +1377,10 @@ function ble/path#contains {
 function ble/opts#has {
   local rex=':'$2'[=[]'
   [[ :$1: =~ $rex ]]
+}
+## @fn ble/opts#remove opts value
+function ble/opts#remove {
+  ble/path#remove "$@"
 }
 
 ## @fn ble/opts#extract-first-optarg opts key [default_value]
@@ -2944,11 +2958,18 @@ function ble/util/declare-print-definitions {
   '
 }
 
-## @fn ble/util/print-global-definitions/.save-decl name
-##   @var[out] __ble_decl
-function ble/util/print-global-definitions/.save-decl {
-  local __ble_name=$1
-  if [[ ! ${!__ble_name+set} ]]; then
+## @fn ble/util/print-global-definitions/.print-decl name opts
+##   指定された変数の宣言を出力します。
+##   @param[in] name
+##     処理対象の変数名を指定します。
+##   @param[in] opts
+##     指定した名前の変数が見つからない時 unset が指定されます。
+##   @stdout
+##     変数宣言を出力します。指定した名前の変数が見つからない時は unset 状態に
+##     するコマンドを出力します。
+function ble/util/print-global-definitions/.print-decl {
+  local __ble_name=$1 __ble_decl=
+  if [[ ! ${!__ble_name+set} || :$2: == *:unset:* ]]; then
     __ble_decl="declare $__ble_name; builtin unset -v $__ble_name"
   elif ble/variable#has-attr "$__ble_name" aA; then
     if ((_ble_bash>=40000)); then
@@ -2966,9 +2987,10 @@ function ble/util/print-global-definitions/.save-decl {
     __ble_decl=${!__ble_name}
     __ble_decl="declare $__ble_name='${__ble_decl//$__ble_q/$__ble_Q}'"
   fi
+  ble/util/print "$__ble_decl"
 }
+
 ## @fn ble/util/print-global-definitions varnames...
-##
 ##   @var[in] varnames
 ##
 ##   指定した変数のグローバル変数としての定義を出力します。
@@ -2983,46 +3005,75 @@ function ble/util/print-global-definitions/.save-decl {
 ##   Note: bash-4.2 にはバグがあって、グローバル変数が存在しない時に
 ##   declare -g -r var とすると、ローカルに新しく読み取り専用の var 変数が作られる。
 ##   現在の実装では問題にならない。
+##
 function ble/util/print-global-definitions {
+  local __ble_opts=
+  [[ $1 == --hidden-only ]] && { __ble_opts=hidden-only; shift; }
+  ble/util/for-global-variables ble/util/print-global-definitions/.print-decl "$__ble_opts" "$@"
+}
+
+## @fn ble/util/for-global-variables proc opts varnames...
+##   @fn proc name opts
+##     @param[in] name
+##       処理対象の変数名を指定します。
+##     @param[in] opts
+##       指定した名前の変数が見つからない時 unset が指定されます。
+##   @param[in] opts
+##     hidden-only が含まれている時、対応するグローバル変数が別のローカル変数で
+##     被覆されている時にのみ proc を呼び出します。
+##   @param[in] varnames...
+##     処理対象の変数名の集合を指定します。
+function ble/util/for-global-variables {
+  local __ble_proc=$1 __ble_opts=$2; shift 2
   local __ble_hidden_only=
-  [[ $1 == --hidden-only ]] && { __ble_hidden_only=1; shift; }
+  [[ :$__ble_opts: == *:hidden-only:* ]] && __ble_hidden_only=1
   (
     ((_ble_bash>=50000)) && shopt -u localvar_unset
     __ble_error=
     __ble_q="'" __ble_Q="'\''"
     # 補完で 20 階層も関数呼び出しが重なることはなかろう
     __ble_MaxLoop=20
+    builtin unset -v "${!_ble_processed_@}"
 
     for __ble_name; do
       [[ ${__ble_name//[0-9a-zA-Z_]} || $__ble_name == __ble_* ]] && continue
       ((__ble_processed_$__ble_name)) && continue
       ((__ble_processed_$__ble_name=1))
-      [[ $__ble_name == __ble_* ]] && continue
 
-      __ble_decl=
+      __ble_found=
       if ((_ble_bash>=40200)); then
         declare -g -r "$__ble_name"
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
           if ! builtin unset -v "$__ble_name"; then
-            ble/variable#is-global "$__ble_name" &&
-              ble/util/print-global-definitions/.save-decl "$__ble_name"
+            # Note: Even if the variable is declared readonly at the top level,
+            # we can test if the visible variable is global or not by using
+            # `(readonly var; ! local var)' because `local var' succeeds if the
+            # visible variable is local readonly.
+            if readonly "$__ble_name"; ble/variable#is-global/.test "$__ble_name"; then
+              __ble_found=1
+              [[ $__ble_hidden_only && $__ble_i == 0 ]] ||
+                "$__ble_proc" "$__ble_name"
+            fi
             break
           fi
         done
       else
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
           if ble/variable#is-global "$__ble_name"; then
-            ble/util/print-global-definitions/.save-decl "$__ble_name"
+            __ble_found=1
+            [[ $__ble_hidden_only && $__ble_i == 0 ]] ||
+              "$__ble_proc" "$__ble_name"
             break
           fi
           builtin unset -v "$__ble_name" || break
         done
       fi
 
-      [[ $__ble_decl ]] ||
-        __ble_error=1 __ble_decl="declare $__ble_name; builtin unset -v $__ble_name" # not found
-      [[ $__ble_hidden_only && $__ble_i == 0 ]] && continue
-      ble/util/print "$__ble_decl"
+      if [[ ! $__ble_found ]]; then
+        __ble_error=1
+        [[ $__ble_hidden_only && $__ble_i == 0 ]] ||
+          "$__ble_proc" "$__ble_name" unset
+      fi
     done
 
     [[ ! $__ble_error ]]
