@@ -321,6 +321,7 @@ function ble/builtin/trap/.read-arguments {
         case ${arg:i:1} in
         (l) flags=l$flags ;;
         (p) flags=p$flags ;;
+        (P) flags=P$flags ;;
         (*)
           ble/util/print "ble/builtin/trap: unknown option \"-${arg:i:1}\"." >&2
           flags=E$flags ;;
@@ -336,13 +337,16 @@ function ble/builtin/trap/.read-arguments {
     fi
   done
 
-  if [[ $flags != *[hlpE]* ]]; then
+  if [[ $flags != *[hlpPE]* ]]; then
     if [[ $flags != *c* ]]; then
       flags=p$flags
     elif ((${#sigspecs[@]}==0)); then
       sigspecs=("$command")
       command=-
     fi
+  elif [[ $flags == *p* && $flags == *P* ]]; then
+    ble/util/print "ble/builtin/trap: cannot specify both -p and -P" >&2
+    flags=E${flags//[pP]}
   fi
 }
 
@@ -609,8 +613,7 @@ function ble/builtin/trap {
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble/base/adjust-BASH_REMATCH
 
-  if [[ $flags == *p* ]]; then
-
+  if [[ $flags == *[pP]* ]]; then
     local -a indices=()
     if ((${#sigspecs[@]})); then
       local spec ret
@@ -628,8 +631,11 @@ function ble/builtin/trap {
     local q=\' Q="'\''" index _ble_trap_handler
     for index in "${indices[@]}"; do
       if ble/builtin/trap/user-handler#load "$index"; then
-        local n=${_ble_builtin_trap_sig_name[index]}
-        ble/util/print "trap -- '${_ble_trap_handler//$q/$Q}' $n"
+        if [[ $flags == *p* ]]; then
+          local n=${_ble_builtin_trap_sig_name[index]}
+          _ble_trap_handler="trap -- '${_ble_trap_handler//$q/$Q}' $n"
+        fi
+        ble/util/print "$_ble_trap_handler"
       fi
     done
   else

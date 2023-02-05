@@ -119,6 +119,7 @@
 - complete: preserve original path segments as long as possible `#D1923` `#D1924` e3cdb9d
 - main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10
 - main: support an option `--inputrc={diff,all,user,none}` `#D1926` 92f2006
+- util (`ble/builtin/trap`): support Bash 5.2 `trap -P` `#D1937` xxxxxxx
 
 ## Changes
 
