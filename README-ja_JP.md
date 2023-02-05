@@ -607,8 +607,8 @@ ble-bind -f C-t my/example1
 # りも先に bash_completion をロードしておく必要があります。
 source /etc/profile.d/bash_completion.sh
 
-ble-import -d contrib/fzf-completion
-ble-import -d contrib/fzf-key-bindings
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
 ```
 
 # 3 ヒント

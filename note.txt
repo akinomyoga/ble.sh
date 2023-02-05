@@ -1925,8 +1925,6 @@ bash_tips
 2023-02-03
 
   * contrib: ble-import で contrib/ は不要なのではないか?
-  * contrib: fzf, bash-preexec などは integration dir に移動する。install 時に
-    symlink を貼る。
 
   * histdb: 同じディレクトリの一番最近の履歴を抽出する。
 
@@ -6888,6 +6886,14 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-02-05
+
+  * contrib: fzf, bash-preexec などは integration dir に移動する [#D1939]
+
+    install 時に symlink を貼る。
+
+    古いインストール先を上書きする場合を考えたら symlink でなかったら削除するべ
+    きでは。→実際にやってみたら timestamp で比較してちゃんと rule が発火するの
+    で ln -sf で上書きしてしまえばOK。
 
   * histdb: 今までに入力した単語を記録する機能。単語自動補完 [#D1938]
 

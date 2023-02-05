@@ -1923,7 +1923,7 @@ ble/base/initialize-session
 #%x inc.r|@|lib/core-syntax-def|
 #%x inc.r|@|lib/core-complete-def|
 #%x inc.r|@|lib/core-debug-def|
-#%x inc.r|@|contrib/bash-preexec-def|
+#%x inc.r|@|contrib/integration/bash-preexec-def|
 
 bleopt -I
 #------------------------------------------------------------------------------

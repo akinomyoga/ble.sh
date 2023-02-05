@@ -3662,10 +3662,10 @@ function ble/edit/display-version/check:fzf {
     fi
 
     local integ=
-    ble/util/import/is-loaded contrib/fzf-key-bindings && integ=$label_integration
+    ble/util/import/is-loaded integration/fzf-key-bindings && integ=$label_integration
 
     ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}key-bindings$sgr0, $version$integ"
-    [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"contrib/fzf-key-bindings\" is not activated."
+    [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"integration/fzf-key-bindings\" is not activated."
   fi
 
   # fzf-completion
@@ -3678,10 +3678,10 @@ function ble/edit/display-version/check:fzf {
     fi
 
     local integ=
-    ble/util/import/is-loaded contrib/fzf-completion && integ=$label_integration
+    ble/util/import/is-loaded integration/fzf-completion && integ=$label_integration
 
     ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}completion$sgr0, $version$integ"
-    [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"contrib/fzf-completion\" is not activated."
+    [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"integration/fzf-completion\" is not activated."
   fi
 }
 function ble/edit/display-version/check:starship {

@@ -3576,7 +3576,7 @@ function ble/complete/progcomp/.compgen {
   if [[ $comp_func ]]; then
     # fzf
     [[ $comp_func == _fzf_* ]] &&
-      ble-import -f contrib/fzf-completion
+      ble-import -f contrib/integration/fzf-completion
 
     # bash_completion
     if ble/is-function _quote_readline_by_ref; then

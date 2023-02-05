@@ -580,8 +580,8 @@ Please follow the instructions in the link for the detailed description.
 # load bash_completion earilier than fzf-completion.
 source /etc/profile.d/bash_completion.sh
 
-ble-import -d contrib/fzf-completion
-ble-import -d contrib/fzf-key-bindings
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
 ```
 
 # 3 Tips
