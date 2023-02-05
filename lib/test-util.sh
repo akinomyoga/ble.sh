@@ -1727,7 +1727,8 @@ fi
 
 # # ble/file#mtime
 # (
-#   ble/test 'ble/file#mtime a'
+#   ble/file#mtime a
+#   ble/test 'ble/string#match "$ret" "^[0-9]+\$"'
 # )
 
 # ble/util/buffer

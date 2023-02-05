@@ -3730,27 +3730,66 @@ function ble/util/pager {
   builtin eval -- "$pager \"\$@\""
 }
 
-## @fn ble/file#mtime filename
-##   ファイル filename の mtime を取得し標準出力に出力します。
-##   ミリ秒も取得できる場合には第二フィールドとしてミリ秒を出力します。
-##   @param[in] filename ファイル名を指定します。
-##
-function ble/file#mtime {
-  # fallback: print current time
-  function ble/file#mtime { ble/util/strftime '%s %N'; } || return 1
-
-  if ble/bin/date -r / +%s &>/dev/null; then
-    function ble/file#mtime { ble/bin/date -r "$1" +'%s %N' 2>/dev/null; }
-  elif ble/bin/.freeze-utility-path stat; then
-    # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
-    if ble/bin/stat -c %Y / &>/dev/null; then
-      function ble/file#mtime { ble/bin/stat -c %Y "$1" 2>/dev/null; }
-    elif ble/bin/stat -f %m / &>/dev/null; then
-      function ble/file#mtime { ble/bin/stat -f %m "$1" 2>/dev/null; }
+_ble_util_file_stat=
+function ble/file/has-stat {
+  if [[ ! $_ble_util_file_stat ]]; then
+    _ble_util_file_stat=-
+    if ble/bin/.freeze-utility-path -n stat; then
+      # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
+      if ble/bin/stat -c %Y / &>/dev/null; then
+        _ble_util_file_stat=c
+      elif ble/bin/stat -f %m / &>/dev/null; then
+        _ble_util_file_stat=f
+      fi
     fi
   fi
 
+  function ble/file/has-stat { [[ $_ble_util_file_stat != - ]]; } || return 1
+  ble/file/has-stat
+}
+
+## @fn ble/file#mtime filename
+##   ファイル filename の mtime を取得します。
+##   @param[in] filename ファイル名を指定します。
+##
+##   @var[out] ret
+##     時刻を Unix Epoch で取得します。
+##     秒以下の少数も取得できる場合には ret[1] に小数部を格納します。
+##
+function ble/file#mtime {
+  # fallback: print current time
+  function ble/file#mtime { ble/util/strftime -v ret '%s %N'; ble/string#split-words ret "$ret"; ((0)); } || return 1
+
+  if ble/bin/date -r / +%s &>/dev/null; then
+    function ble/file#mtime { local file=$1; ble/util/assign-words ret 'ble/bin/date -r "$file" +"%s %N"' 2>/dev/null; }
+  elif ble/file/has-stat; then
+    # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
+    case $_ble_util_file_stat in
+    (c) function ble/file#mtime { local file=$1; ble/util/assign ret 'ble/bin/stat -c %Y "$file"' 2>/dev/null; } ;;
+    (f) function ble/file#mtime { local file=$1; ble/util/assign ret 'ble/bin/stat -f %m "$file"' 2>/dev/null; } ;;
+    esac
+  fi
+
   ble/file#mtime "$@"
+}
+
+function ble/file#inode {
+  # fallback
+  function ble/file#inode { ret=; ((0)); } || return 1
+
+  if ble/bin/.freeze-utility-path -n ls &&
+      ble/util/assign-words ret 'ble/bin/ls -di /' 2>/dev/null &&
+      ((${#ret[@]}==2)) && ble/string#match "$ret" '^[0-9]+$'
+  then
+    function ble/file#inode { local file=$1; ble/util/assign-words ret 'ble/bin/ls -di "$file"' 2>/dev/null; }
+  elif ble/file/has-stat; then
+    case $_ble_util_file_stat in
+    (c) function ble/file#inode { local file=$1; ble/util/assign-words ret 'ble/bin/stat -c %i "$file"' 2>/dev/null; } ;;
+    (f) function ble/file#inode { local file=$1; ble/util/assign-words ret 'ble/bin/stat -f %i "$file"' 2>/dev/null; } ;;
+    esac
+  fi
+
+  ble/file#inode "$@"
 }
 
 function ble/file#hash {
