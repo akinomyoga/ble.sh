@@ -1438,29 +1438,70 @@ fi
 # ロード時刻の記録 (ble-update で使う為)
 : >| "$_ble_base_run/$$.load"
 
+## @fn ble/base/clean-up-runtime-directory [opts]
+##   既に存在しないプロセスに属する実行時ファイルを削除します。*.pid のファイル
+##   名を持つ実行時ファイルはについては、子バックグラウンドプロセスのプロセスID
+##   を含むと見做し、ファイルの内容を読み取ってそれが整数であればその整数に対し
+##   て kill を実行します。
+##
+##   @param[in,opt] opts
+##     finalize ... 自プロセス $$ に関連するファイルも削除します。現セッション
+##       における ble.sh の終了処理時に呼び出される事を想定しています。
+##
 function ble/base/clean-up-runtime-directory {
-  local file pid mark removed
-  mark=() removed=()
+  local opts=$1 failglob= noglob=
+  if [[ $- == *f* ]]; then
+    noglob=1
+    set +f
+  fi
+  if shopt -q failglob &>/dev/null; then
+    failglob=1
+    shopt -u failglob
+  fi
+
+  local -a alive=() removed=() bgpids=()
+  [[ :$opts: == *:finalize:* ]] && alive[$$]=0
+
+  local file pid iremoved=0 ibgpid=0
   for file in "$_ble_base_run"/[1-9]*.*; do
-    [[ -e $file ]] || continue
+    [[ -e $file || -h $file ]] || continue
+
+    # extract pid (skip if it is not a number)
     pid=${file##*/}; pid=${pid%%.*}
-    [[ ${mark[pid]+set} ]] && continue
-    mark[pid]=1
-    if ! builtin kill -0 "$pid" &>/dev/null; then
-      removed=("${removed[@]}" "$_ble_base_run/$pid."*)
+    [[ $pid && ! ${pid//[0-9]} ]] || continue
+
+    if [[ ! ${alive[pid]+set} ]]; then
+      builtin kill -0 "$pid" &>/dev/null
+      ((alive[pid]=$?==0))
     fi
+    ((alive[pid])) && continue
+
+    # kill process specified by the pid file
+    if [[ $file == *.pid && -s $file ]]; then
+      local run_pid IFS= TMOUT=
+      builtin read "${_ble_bash_tmout_wa[@]}" -r run_pid < "$file"
+      if [[ $run_pid && ! ${run_pid//[0-9]} ]]; then
+        if ((pid==$$)); then
+          # 現セッションの背景プロセスの場合は遅延させる
+          kill -0 "$run_pid" &>/dev/null && bgpids[ibgpid++]=$run_pid
+        else
+          kill "$run_pid"
+        fi
+      fi
+    fi
+
+    removed[iremoved++]=$file
   done
-  ((${#removed[@]})) && ble/bin/rm -rf "${removed[@]}"
+  ((iremoved)) && ble/bin/rm -rf "${removed[@]}" 2>/dev/null
+  ((ibgpid)) && ({ ble/bin/sleep 3; kill "${bgpids[@]}"; } & disown) &>/dev/null </dev/null
+
+  [[ $failglob ]] && shopt -s failglob
+  [[ $noglob ]] && set -f
+  return 0
 }
 
 # initialization time = 9ms (for 70 files)
-if shopt -q failglob &>/dev/null; then
-  shopt -u failglob
-  ble/base/clean-up-runtime-directory
-  shopt -s failglob
-else
-  ble/base/clean-up-runtime-directory
-fi
+ble/base/clean-up-runtime-directory
 
 ##
 ## @var _ble_base_cache
@@ -2202,7 +2243,7 @@ function ble/base/unload {
   ble/builtin/trap/finalize
   ble/util/import/finalize
   ble/fd#finalize
-  ble/bin/rm -rf "$_ble_base_run/$$".* 2>/dev/null
+  ble/base/clean-up-runtime-directory finalize
   return 0
 }
 

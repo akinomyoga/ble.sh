@@ -544,6 +544,9 @@
   - histdb: support auto-complete source `histdb-word` `#D1938` xxxxxxx
   - histdb: automatically updrade histdb version `#D1940` xxxxxxx
   - histdb: support auto-complete source `histdb-history` `#D1941` xxxxxxx
+  - histdb: handle multiple exec lines for `histdb_ignore` `#D1942` xxxxxxx
+  - histdb: kill orphan `sqlite3` processes `#D1943` xxxxxxx
+  - histdb: back up the database `#D1944` xxxxxxx
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` xxxxxxx
 
 <!---------------------------------------------------------------------------->
