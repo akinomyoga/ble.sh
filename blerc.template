@@ -1168,6 +1168,12 @@ blehook/eval-after-load keymap_vi blerc/vim-load-hook
 #bleopt debug_xtrace_ps4='+ '
 
 
+## When the option "debug_idle" contains a non-empty value, the background
+## tasks currently running are shown in the info panel.
+
+#bleopt debug_idle=1
+
+
 ## [The setting "openat_base" needs to be set before ble.sh is loaded or
 ## specified in the source options.  Therefore the value should be assigned
 ## directly to the shell variable "bleopt_openat_base" instead of using

@@ -4756,6 +4756,8 @@ function ble-assert {
 #------------------------------------------------------------------------------
 # Event loop
 
+bleopt/declare -v debug_idle ''
+
 ## @fn ble/util/clock
 ##   時間を計測するのに使うことができるミリ秒単位の軽量な時計です。
 ##   計測の起点は ble.sh のロード時です。
@@ -4968,11 +4970,12 @@ if ((_ble_bash>=40000)); then
     local _idle_sclock_start=$_ble_util_idle_sclock
     local _idle_is_first=1
     local _idle_processed=
+    local _idle_info_shown=
     while :; do
       local _idle_key
       local _idle_next_time= _idle_next_itime= _idle_running= _idle_waiting=
       for _idle_key in "${!_ble_util_idle_task[@]}"; do
-        ble/util/idle/IS_IDLE || { [[ $_idle_processed ]]; return "$?"; }
+        ble/util/idle/IS_IDLE || break 2
         local _idle_to_process=
         local _idle_status=${_ble_util_idle_task[_idle_key]%%"$_ble_util_idle_SEP"*}
         case ${_idle_status::1} in
@@ -5008,6 +5011,8 @@ if ((_ble_bash>=40000)); then
       [[ $_idle_next_itime$_idle_next_time$_idle_running$_idle_waiting ]] || break
     done
 
+    [[ $_idle_info_shown ]] &&
+      ble/edit/info/immediate-default
     [[ $_idle_processed ]]
   }
   ## @fn ble/util/idle.do/.call-task command
@@ -5019,6 +5024,10 @@ if ((_ble_bash>=40000)); then
     local _command=$1
     local ble_util_idle_status=
     local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_sclock_start))
+    if [[ $bleopt_debug_idle && ( $_ble_edit_info_scene == default || $_idle_info_shown ) ]]; then
+      _idle_info_shown=1
+      ble/edit/info/immediate-show text "${EPOCHREALTIME:+[$EPOCHREALTIME] }idle: $_command"
+    fi
     builtin eval -- "$_command"; local ext=$?
     if ((ext==148)); then
       _ble_util_idle_task[_idle_key]=R$_ble_util_idle_SEP$_command
