@@ -1947,6 +1947,7 @@ function ble/base/initialize-session {
     ((start_time*=1000000))
   else
     ble/util/assign start_time 'ble/bin/date +%s'
+    ((start_time*=1000000))
   fi
   ((start_time-=SECONDS*1000000))
 

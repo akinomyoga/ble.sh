@@ -117,7 +117,7 @@
   - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
 - complete: support ambiguous completion for command paths `#D1922` 8a716ad
 - complete: preserve original path segments as long as possible `#D1923` `#D1924` e3cdb9d
-- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10
+- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10 `#D1947` xxxxxxx
 - main: support an option `--inputrc={diff,all,user,none}` `#D1926` 92f2006
 - util (`ble/builtin/trap`): support Bash 5.2 `trap -P` `#D1937` xxxxxxx
 
@@ -549,6 +549,7 @@
   - histdb: handle multiple exec lines for `histdb_ignore` `#D1942` xxxxxxx
   - histdb: kill orphan `sqlite3` processes `#D1943` xxxxxxx
   - histdb: back up the database `#D1944` xxxxxxx
+  - histdb: fix miscellaneous SQL query errors `#D1947` xxxxxxx
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` xxxxxxx
 
 <!---------------------------------------------------------------------------->
