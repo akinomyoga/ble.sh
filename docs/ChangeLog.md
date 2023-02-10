@@ -81,6 +81,7 @@
   - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 9033f29
 - edit: support `bleopt canvas_winch_action` (requested by Johann-Goncalves-Pereira, guptapriyanshu7) `#D1679` 2243e91
   - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) b1be640
+  - edit: go back to the previous lines with `redraw-here` more aggressively `#D1966` xxxxxxx
 - menu (menu-style:desc): improve descriptions (motivated by Shahabaz-Bagwan) `#D1685` 4de1b45
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
   - menu (menu-style:desc): fix not working `bleopt menu_desc_multicolumn_width=` `#D1727` 2140d1e

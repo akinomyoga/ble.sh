@@ -291,7 +291,7 @@ function ble/application/render {
       ble/prompt/update
       ble/canvas/panel/render ;;
     (forms:*)
-      ble/forms/render "${render#*:}" ;;
+      ble/forms/render "${render#*:}" ;; # NYI
     esac
     _ble_app_winsize=("$COLUMNS" "$LINES")
     ble/util/buffer.flush >&2
@@ -301,6 +301,55 @@ function ble/application/render {
     _ble_application_render_winch=
     ble/application/onwinch
   fi
+}
+
+## @fn ble/application/onwinch/panel.process-redraw-here
+##   @arr[in] _ble_app_winsize
+##   @var[in] LINES COLUMNS
+function ble/application/onwinch/panel.process-redraw-here {
+  local old_w=${_ble_app_winsize[0]}
+
+  local -a DRAW_BUFF=()
+
+  # text reflowing によって行数が減ってしまって問題になるのは端末幅が拡大した時
+  # だけである。なので端末幅が拡大した時にのみ、拡大後に最低でも何行存在するか
+  # を求めて、それに基づいて描画開始位置を決定する。
+  if ((COLUMNS>old_w)); then
+    # 下部パネルにいる時は DECRC で何処に戻るか非自明である。移動先も reflow し
+    # ている可能性、端末画面の左上からの絶対位置で戻る可能性、相対位置で移動す
+    # る可能性など。最悪ケースは移動先も reflow して上に移動している場合なので、
+    # それを想定して取り敢えず DECRC で戻った先の座標を使って判定する。
+    ble/canvas/panel/goto-top-dock.draw
+
+    local i npanel=${#_ble_canvas_panel_height[@]}
+    local y0=0
+    local nchar=0
+    for ((i=0;i<npanel;i++)); do
+      ((_ble_canvas_panel_height[i])) || continue
+      ((_ble_canvas_y<=y0)) && break
+
+      if ! ble/function#try "${_ble_canvas_panel_class[i]}#panel::moveReflowInf" "$i" "$_ble_canvas_x" "$((_ble_canvas_y-y0))"; then
+        if ((_ble_canvas_y-y0<_ble_canvas_panel_height[i])); then
+          ((nchar+=(_ble_canvas_y-y0)*(old_w-1)+_ble_canvas_x))
+        else
+          ((nchar+=(_ble_canvas_panel_height[i]*(old_w-1))))
+        fi
+      fi
+
+      ((y0+=_ble_canvas_panel_height[i]))
+    done
+    ((_ble_canvas_y>=y0)) &&
+      ((nchar+=(_ble_canvas_y-y0)*(old_w-1)*_ble_canvas_x))
+
+    local new_y_min=$(((nchar-1)/COLUMNS))
+    ((_ble_canvas_y>new_y_min)) &&
+      _ble_canvas_y=$new_y_min
+  fi
+
+  ble/canvas/panel#goto.draw 0 0 0
+  ble/canvas/bflush.draw
+
+  return 0
 }
 
 function ble/application/onwinch {
@@ -331,32 +380,33 @@ function ble/application/onwinch {
     ble/util/joblist.check ignore-volatile-jobs
     local size=$LINES:$COLUMNS
     [[ $size == "$old_size" ]] && break
+    old_size=$size
 
     local _ble_app_render_Processing=1
     {
-      old_size=$size
-
-      case $bleopt_canvas_winch_action in
-      (clear)
-        # 全消去して一番上から再描画
-        _ble_prompt_trim_opwd=
-        ble/util/buffer "$_ble_term_clear" ;;
-      (redraw-here)
-        # 現在位置から再描画 (幅が減った時は前のコマンドの出力結果を破壊しな
-        # いので戻る)
-        if ((COLUMNS<_ble_app_winsize[0])); then
+      local render=$_ble_app_render_mode
+      case $render in
+      (panel)
+        case $bleopt_canvas_winch_action in
+        (clear)
+          # 全消去して一番上から再描画
+          _ble_prompt_trim_opwd=
+          ble/util/buffer "$_ble_term_clear" ;;
+        (redraw-here)
+          ble/application/onwinch/panel.process-redraw-here ;;
+        (redraw-prev)
+          # 前回の開始相対位置が変化していないと仮定して戻って再描画
           local -a DRAW_BUFF=()
           ble/canvas/panel#goto.draw 0 0 0
-          ble/canvas/bflush.draw
-        fi ;;
-      (redraw-prev)
-        # 前回の開始相対位置が変化していないと仮定して戻って再描画
-        local -a DRAW_BUFF=()
-        ble/canvas/panel#goto.draw 0 0 0
-        ble/canvas/bflush.draw ;;
-      esac
+          ble/canvas/bflush.draw ;;
+        (redraw-safe) ;;
+        esac
+        # 高さの再確保も含めて。
+        ble/canvas/panel/invalidate height ;;
 
-      ble/canvas/panel/invalidate height # 高さの再確保も含めて。
+      (forms:*)
+        ble/forms/invalidate "${render#*:}" ;; # NYI
+      esac
     }
     ble/util/unlocal _ble_app_render_Processing
 
@@ -740,6 +790,7 @@ function ble/prompt/unit/add-hash {
 ##
 _ble_prompt_ps1_dirty=
 _ble_prompt_ps1_data=(0 '' '' 0 0 0 32 0 '' '')
+_ble_prompt_ps1_bbox=()
 _ble_prompt_rps1_dirty=
 _ble_prompt_rps1_data=()
 _ble_prompt_rps1_gbox=()
@@ -1439,7 +1490,7 @@ function ble/prompt/unit:{section}/update {
 
 function ble/prompt/unit:_ble_prompt_ps1/update {
   ble/prompt/unit/add-hash '$prompt_ps1'
-  ble/prompt/unit:{section}/update _ble_prompt_ps1 "$prompt_ps1" show-mode-in-prompt
+  ble/prompt/unit:{section}/update _ble_prompt_ps1 "$prompt_ps1" show-mode-in-prompt:measure-bbox
 }
 
 function ble/prompt/unit:_ble_prompt_rps1/update {
@@ -2653,6 +2704,64 @@ function ble/textarea#panel::render {
   if (($1==_ble_textarea_panel)); then
     ble/textarea#render
   fi
+}
+## @fn ble/textarea#panel::moveReflowInf ipanel x y
+##   (x,y) 以前のこのパネルの内容が端末サイズ変更に伴う text reflowing 後に最低
+##   でも何処まで専有するかを文字数で返します。
+##
+##   @param[in] x y
+##     (端末サイズ変更前の) カーソル位置のパネル左上からの相対位置を指定します。
+##
+##   @arr[in] _ble_app_winsize
+##     端末サイズ変更前 (正確には前回 application/render 時) の端末の幅と高さを
+##     保持します。
+##   @var[in] LINES COLUMNS
+##     端末サイズ変更後の端末の幅と高さを保持します。
+##   @var[ref] nchar
+##     このパネルの左上境界の (端末サイズ変更後の) 最小位置を指定します。(端末
+##     サイズ変更前の) カーソル位置がこのパネル内にあった時、端末サイズ変更後の
+##     カーソルの最小位置を返します。それ以外の時、パネルの右下境界の端末サイズ
+##     変更後の最小位置を返します。
+##
+function ble/textarea#panel::moveReflowInf {
+  local ipanel=$1 x=$2 y=$3
+
+  # 右プロンプトが表示されている時は右寄せしている筈なので reflow unsafe である。
+  [[ $_ble_prompt_rps1_shown ]] && return 1
+
+  # プロンプト PS1 が端末の右端に触れている時にも reflow が起こっている可能性が
+  # あるので、reflow unsafe という事で return 1 で抜ける。
+  ((_ble_prompt_ps1_bbox[2]>=_ble_app_winsize[0])) && return 1
+
+  local height=${_ble_canvas_panel_height[ipanel]}
+  local proy=${_ble_prompt_ps1_data[4]}
+
+  # Note: 現在の実装ではプロンプト以降の実際にコマンドを入力している部分につい
+  # て改行があるか自動折り返しが起こっているかについては分からないとして、安全
+  # 側に倒して reflow する想定にしている。実際に改行があったとしても、編集過程
+  # で折り返しが一度でも起こっていると端末の reflow が発生する可能性を排除でき
+  # ないし、ECH 等の欠如によって空白埋めしている場合にも reflow が起こっている
+  # 可能性がある。等の理由でやはり分からない。
+
+  local newline= reflow= offset=
+  if ((y<=proy)); then
+    # もしプロンプト最終行またはプロンプトの内部 (プロンプトの内部にカーソルい
+    # る事がありうるのか謎だが) に居た時は、reflow が全く起こらない前提で左上か
+    # らの相対位置が保持されると見做す。
+    ((newline=y,reflow=0,offset=x))
+  elif ((y<height)); then
+    # プロンプトの内部にカーソルいる事がありうるのか謎だがもし内部に居た時は
+    # reflow が起こらない前提で左上からの相対位置が保持されると見做す。
+    ((newline=proy,reflow=y-proy,offset=x))
+  else
+    # カーソルがこのパネルの中にない場合は単にこのパネルの proy 行は改行があっ
+    # て、それ以降は reflow で潰れうると考える。
+    ((newline=proy,reflow=height-proy,offset=0))
+  fi
+  ((newline)) && ((nchar=(nchar/COLUMNS+newline)*COLUMNS))
+  ((nchar+=reflow*(_ble_app_winsize[0]-1)+offset))
+
+  return 0
 }
 
 # **** textarea.buffer ****                                    @textarea.buffer
