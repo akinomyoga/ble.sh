@@ -120,6 +120,8 @@
 - main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10 `#D1947` 46ac426 `#D1954` xxxxxxx
 - main: support an option `--inputrc={diff,all,user,none}` `#D1926` 92f2006
 - util (`ble/builtin/trap`): support Bash 5.2 `trap -P` `#D1937` 826a275
+- syntax: highlight `\?` in here documents `#D1959` xxxxxxx
+- syntax: recognize history expansion in here documents, `"...!"` (bash <= 4.2), and `$!` (bash <= 4.1) `#D1959` xxxxxxx
 
 ## Changes
 

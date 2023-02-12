@@ -10063,12 +10063,12 @@ function ble-decode/EPILOGUE {
 }
 
 function ble/widget/.internal-print-command {
-  local command=$1 opts=$2
+  local _ble_local_command=$1 _ble_command_opts=$2
   _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
-  [[ :$opts: != *:pre-flush:* ]] || ble/util/buffer.flush >&2
-  BASH_COMMAND=$command builtin eval -- "$command"
+  [[ :$_ble_command_opts: != *:pre-flush:* ]] || ble/util/buffer.flush >&2
+  BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"
   ble/edit/leave-command-layout # #D1800 pair=.insert-newline
-  [[ :$opts: != *:post-flush:* ]] || ble/util/buffer.flush >&2
+  [[ :$_ble_command_opts: != *:post-flush:* ]] || ble/util/buffer.flush >&2
 }
 
 function ble/widget/print {

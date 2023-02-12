@@ -837,6 +837,9 @@ if ((_ble_bash>=30100)); then
     source "$TMPBASE.part"
     ble/history:bash/resolve-multiline/.cleanup
   }
+else
+  function ble/history:bash/resolve-multiline/readfile { builtin history -r "$filename"; }
+  function ble/history:bash/resolve-multiline { ((1)); }
 fi
 
 # Note: 複数行コマンドは eval -- $'' の形に変換して

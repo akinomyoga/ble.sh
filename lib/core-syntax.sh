@@ -1038,6 +1038,7 @@ function ble/syntax:bash/cclass/initialize {
   _ble_syntax_bash_charsDef[CTX_PWORDE]="}$expansions$glob!" # パラメータ展開 ${～} エラー
   _ble_syntax_bash_charsDef[CTX_PWORDR]="}/$expansions$glob!" # パラメータ展開 ${～} 置換前
   _ble_syntax_bash_charsDef[CTX_RDRH]="$delimiters$expansions"
+  _ble_syntax_bash_charsDef[CTX_HERE1]="\\\$\`$_ble_term_nl!"
 
   # templates
   _ble_syntax_bash_charsFmt[CTX_ARGI]="$delimiters$expansions$glob{$tilde@q@h"
@@ -1048,6 +1049,7 @@ function ble/syntax:bash/cclass/initialize {
   _ble_syntax_bash_charsFmt[CTX_PWORDE]="}$expansions$glob@h"
   _ble_syntax_bash_charsFmt[CTX_PWORDR]="}/$expansions$glob@h"
   _ble_syntax_bash_charsFmt[CTX_RDRH]=${_ble_syntax_bash_charsDef[CTX_RDRH]}
+  _ble_syntax_bash_charsFmt[CTX_HERE1]="\\\$\`$_ble_term_nl@h"
 
   _ble_syntax_bash_chars_simpleDef="$delimiters$expansions^!"
   _ble_syntax_bash_chars_simpleFmt="$delimiters$expansions@q@h"
@@ -2053,11 +2055,17 @@ function ble/syntax:bash/check-dollar {
     return 0
   elif rex='^\$([-*@#?$!0_]|[1-9]|[a-zA-Z_][a-zA-Z_0-9]*)' && [[ $tail =~ $rex ]]; then
     local rematch=$BASH_REMATCH rematch1=${BASH_REMATCH[1]}
-    local ret; ble/syntax/highlight/vartype "$rematch1" readvar:global
-    ((_ble_syntax_attr[i]=CTX_PARAM,
-      _ble_syntax_attr[i+1]=ret,
-      i+=${#rematch}))
-    return 0
+    ((_ble_syntax_attr[i++]=CTX_PARAM))
+
+    if ((_ble_bash<40200)) && local tail=${tail:1} &&
+         ble/syntax:bash/starts-with-histchars && ble/syntax:bash/check-history-expansion; then
+      # bash-4.1 以下では $!" や $!a 等が履歴展開の対象になる。
+      return 0
+    else
+      local ret; ble/syntax/highlight/vartype "$rematch1" readvar:global
+      ((_ble_syntax_attr[i]=ret,i+=${#rematch}-1))
+      return 0
+    fi
   else
     # if dollar doesn't match any patterns it is treated as a normal character
     ((_ble_syntax_attr[i++]=ctx))
@@ -2374,7 +2382,7 @@ function ble/syntax:bash/check-history-expansion {
   if [[ $histc1 && $tail == "$histc1"[^"$_ble_syntax_bash_histstop"]* ]]; then
 
     # "～" 文字列中では一致可能範囲を制限する。
-    if ((ctx==CTX_QUOT)); then
+    if ((_ble_bash>=40300&&ctx==CTX_QUOT)); then
       local tail=${tail%%'"'*}
       [[ $tail == '!' ]] && return 1
     fi
@@ -4625,16 +4633,24 @@ function ble/syntax:bash/ctx-heredoc-content {
     ((ctx=CTX_HERE1))
 
     # \? 及び $? ${} $(()) $[] $() ``
-    if rex='^([^$`\'"$lf"']|\\.)+'"$lf"'?|^'"$lf" && [[ $tail =~ $rex ]]; then
-      ((_ble_syntax_attr[i]=CTX_HERE0,
-        i+=${#BASH_REMATCH}))
-      [[ $BASH_REMATCH == *"$lf" ]] && ((ctx=CTX_HERE0))
+    if rex='^(\\[\$`'$lf'])|^([^'${_ble_syntax_bash_chars[CTX_HERE1]}']|\\[^\$`'$lf'])+'$lf'?|^'$lf && [[ $tail =~ $rex ]]; then
+      if [[ ${BASH_REMATCH[1]} ]]; then
+        ((_ble_syntax_attr[i]=ATTR_QESC))
+      else
+        ((_ble_syntax_attr[i]=CTX_HERE0))
+        [[ $BASH_REMATCH == *"$lf" ]] && ((ctx=CTX_HERE0))
+      fi
+      ((i+=${#BASH_REMATCH}))
       return 0
     fi
 
     if ble/syntax:bash/check-dollar; then
       return 0
     elif [[ $tail == '`'* ]] && ble/syntax:bash/check-quotes; then
+      return 0
+    elif ble/syntax:bash/starts-with-histchars; then
+      ble/syntax:bash/check-history-expansion ||
+        ((_ble_syntax_attr[i]=CTX_HERE0,i++))
       return 0
     else
       # 単独の $ や終端の \ など?
