@@ -122,6 +122,7 @@
 - util (`ble/builtin/trap`): support Bash 5.2 `trap -P` `#D1937` 826a275
 - syntax: highlight `\?` in here documents `#D1959` xxxxxxx
 - syntax: recognize history expansion in here documents, `"...!"` (bash <= 4.2), and `$!` (bash <= 4.1) `#D1959` xxxxxxx
+- syntax: support context after `((...))` and `[[ ... ]]` in bash-5.2 `#D1962` xxxxxxx
 
 ## Changes
 
