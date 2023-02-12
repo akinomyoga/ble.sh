@@ -1943,7 +1943,7 @@ function ble/base/initialize-session {
   if ((_ble_bash>=50000)); then
     start_time=${EPOCHREALTIME//[!0-9]}
   elif ((_ble_bash>=40200)); then
-    printf -v start_time '%(%s)T'
+    printf -v start_time '%(%s)T' -1
     ((start_time*=1000000))
   else
     ble/util/assign start_time 'ble/bin/date +%s'

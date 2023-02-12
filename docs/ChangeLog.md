@@ -117,9 +117,9 @@
   - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
 - complete: support ambiguous completion for command paths `#D1922` 8a716ad
 - complete: preserve original path segments as long as possible `#D1923` `#D1924` e3cdb9d
-- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10 `#D1947` xxxxxxx
+- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10 `#D1947` 46ac426 `#D1954` xxxxxxx
 - main: support an option `--inputrc={diff,all,user,none}` `#D1926` 92f2006
-- util (`ble/builtin/trap`): support Bash 5.2 `trap -P` `#D1937` xxxxxxx
+- util (`ble/builtin/trap`): support Bash 5.2 `trap -P` `#D1937` 826a275
 
 ## Changes
 
@@ -341,7 +341,7 @@
 - decode: fix a bug that the tab completion do not work with bash-4.4 and lower `#D1928` 7da9bce
 - complete: fix non-working ambiguous path completion with `..` and `.` in the path `#D1930` 632e90a
 - main (`ble-reload`): fix failure by non-existent rcfile `#D1931` 0ceb0cb
-- syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` xxxxxxx
+- syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
 
 ## Documentation
 
@@ -458,7 +458,7 @@
 - main: show warning for empty locale (movivated by Ultra980) `#D1927` 92f2006
 - main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006 0ceb0cb
 - canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` b0c16dd
-- term (`terminology`): work around terminal glitches `#D1946` xxxxxxx
+- term (`terminology`): work around terminal glitches `#D1946` 9a1b4f9
 
 ## Test
 
@@ -526,8 +526,8 @@
 - benchmark: support for ksh as `benchmark.ksh` `#D1886` 5dae4da
 - github/workflows (build): rename directory in `ble-nightly.tar.xz` to `ble-nightly` (reported by Harduex) `#D1891` f20854f 4ea2e23 43c6d4b
 - edit: update prompts on g2sgr change `#D1906` 40625ac
-- util, decode, vi: fix leak variables `#D1933` xxxxxxx
-- util: support `bleopt debug_idle` `#D1945` xxxxxxx
+- util, decode, vi: fix leak variables `#D1933` 8d5cab8
+- util: support `bleopt debug_idle` `#D1945` fa10184
 
 ## Contrib
 
@@ -543,14 +543,18 @@
   - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` 40625ac
 - fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` 486564a
 - add `histdb` `#D1925` 44d9e10
-  - histdb: support auto-complete source `histdb-word` `#D1938` xxxxxxx
-  - histdb: automatically updrade histdb version `#D1940` xxxxxxx
-  - histdb: support auto-complete source `histdb-history` `#D1941` xxxxxxx
-  - histdb: handle multiple exec lines for `histdb_ignore` `#D1942` xxxxxxx
-  - histdb: kill orphan `sqlite3` processes `#D1943` xxxxxxx
-  - histdb: back up the database `#D1944` xxxxxxx
-  - histdb: fix miscellaneous SQL query errors `#D1947` xxxxxxx
-- integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` xxxxxxx
+  - histdb: support auto-complete source `histdb-word` `#D1938` 00cae74
+  - histdb: automatically upgrade histdb version `#D1940` 4fac1e3
+  - histdb: support auto-complete source `histdb-history` `#D1941` 4fac1e3
+  - histdb: handle multiple exec lines for `histdb_ignore` `#D1942` 36e1c89
+  - histdb: kill orphan `sqlite3` processes `#D1943` 36e1c89
+  - histdb: back up the database `#D1944` 36e1c89
+  - histdb: fix miscellaneous SQL query errors `#D1947` 46ac426
+  - histdb: output error messages to tty `#D1952` xxxxxxx
+  - histdb: fix remaining debug function name "assign{2 => }" in bash <= 3.2 `#D1953` xxxxxxx
+  - histdb: fix a problem that the background process fails to start in bash-3.0 `#D1956` xxxxxxx
+  - histdb: fix a bug that history search fails with a single quote in the commandline `#D1957` xxxxxxx
+- integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
