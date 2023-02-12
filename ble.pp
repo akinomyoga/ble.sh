@@ -2020,7 +2020,7 @@ function ble/dispatch {
   (opt)     bleopt "$@" ;;
   (hook)    blehook "$@" ;;
   (sabbrev) ble-sabbrev "$@" ;;
-  (palette) ble-color-show "$@" ;;
+  (palette) ble-palette "$@" ;;
   (help|--help) ble/dispatch/.help "$@" ;;
   (version|--version) ble/util/print "ble.sh, version $BLE_VERSION (noarch)" ;;
   (check|--test) ble/base/sub:test "$@" ;;

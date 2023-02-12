@@ -13,6 +13,8 @@ _ble_color_gflags_Blink=0x40
 _ble_color_gflags_DecorationMask=0x77
 _ble_color_gflags_FgMask=0x00000000FFFFFF00
 _ble_color_gflags_BgMask=0x00FFFFFF00000000
+_ble_color_gflags_FgShift=8
+_ble_color_gflags_BgShift=32
 _ble_color_gflags_FgIndexed=0x0100000000000000
 _ble_color_gflags_BgIndexed=0x0200000000000000
 
@@ -72,17 +74,69 @@ function ble-color-show {
     return "$?"
   fi
 
-  local cols=16
+  local cols=$(((${COLUMNS:-80}-1)/4))
+  ((cols<1?(cols=1):(cols>16&&(cols=16))))
   local bg bg0 bgN ret gflags=$((_ble_color_gflags_BgIndexed|_ble_color_gflags_FgIndexed))
   for ((bg0=0;bg0<256;bg0+=cols)); do
     ((bgN=bg0+cols,bgN<256||(bgN=256)))
     for ((bg=bg0;bg<bgN;bg++)); do
-      ble/color/g2sgr "$((gflags|bg<<32))"
+      ble/color/g2sgr "$((gflags|bg<<_ble_color_gflags_BgShift))"
       printf '%s%03d ' "$ret" "$bg"
     done
     printf '%s\n' "$_ble_term_sgr0"
     for ((bg=bg0;bg<bgN;bg++)); do
-      ble/color/g2sgr "$((gflags|bg<<32|15<<8))"
+      ble/color/g2sgr "$((gflags|bg<<_ble_color_gflags_BgShift|15<<_ble_color_gflags_FgShift))"
+      printf '%s%03d ' "$ret" "$bg"
+    done
+    printf '%s\n' "$_ble_term_sgr0"
+  done
+}
+function ble-palette {
+  if (($#)); then
+    ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
+    return "$?"
+  fi
+
+  if ((${COLUMNS:-80}<80)); then
+    ble-color-show
+    return 0
+  fi
+
+  local ret gflags=$((_ble_color_gflags_BgIndexed|_ble_color_gflags_FgIndexed))
+  local l c bg
+  for ((l=0;l<2;l++)); do
+    for ((c=0;c<16;c++)); do
+      ((bg=l/2*8+c))
+      ble/color/g2sgr "$((gflags|bg<<_ble_color_gflags_BgShift|(l%2?15:0)<<_ble_color_gflags_FgShift))"
+      printf '%s%03d ' "$ret" "$bg"
+    done
+    printf '%s\n' "$_ble_term_sgr0"
+  done
+
+  local l p B G R
+  for ((l=0;l<24;l++)); do
+    ((G=l%12/2))
+    for ((p=0;p<3;p++)); do
+      ((R=l>=12?3+p:p))
+      for ((B=0;B<6;B++)); do
+        ((bg=16+R*36+G*6+B))
+        ble/color/g2sgr "$((gflags|bg<<_ble_color_gflags_BgShift|(l%2?15:0)<<_ble_color_gflags_FgShift))"
+        printf '%s%03d ' "$ret" "$bg"
+      done
+      if ((p+1<3)); then
+        printf '%s ' "$_ble_term_sgr0"
+      else
+        printf '%s\n' "$_ble_term_sgr0"
+      fi
+    done
+  done
+
+  local l c K
+  for ((l=0;l<4;l++)); do
+    for ((c=0;c<12;c++)); do
+      ((K=l/2*12+c))
+      ((bg=232+K))
+      ble/color/g2sgr "$((gflags|bg<<_ble_color_gflags_BgShift|(l%2?15:0)<<_ble_color_gflags_FgShift))"
       printf '%s%03d ' "$ret" "$bg"
     done
     printf '%s\n' "$_ble_term_sgr0"
