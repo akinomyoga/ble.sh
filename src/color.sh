@@ -1054,6 +1054,7 @@ function ble/color/face2g    { ble/color/initialize-faces && ble/color/face2g   
 function ble/color/face2sgr  { ble/color/initialize-faces && ble/color/face2sgr  "$@"; }
 function ble/color/iface2g   { ble/color/initialize-faces && ble/color/iface2g   "$@"; }
 function ble/color/iface2sgr { ble/color/initialize-faces && ble/color/iface2sgr "$@"; }
+function ble/color/spec2g    { ble/color/initialize-faces && ble/color/spec2g    "$@"; }
 
 function ble/color/face2sgr-ansi { ble/color/initialize-faces && ble/color/face2sgr  "$@"; }
 
@@ -1082,11 +1083,16 @@ function ble/color/initialize-faces {
   function ble/color/iface2sgr {
     ble/color/g2sgr "$((_ble_faces[$1]))"
   }
+  ## @fn ble/color/spec2g [TYPE:]SPEC
+  function ble/color/spec2g {
+    ble/color/setface/.spec2gexpr "$@" prefix-face
+    ((ret=ret))
+  }
 
-  ## @fn ble/color/setface/.spec2g spec
+  ## @fn ble/color/setface/.spec2gexpr spec
   ##   @var[out] ret
-  function ble/color/setface/.spec2g {
-    local spec=$1 value=${spec#*:}
+  function ble/color/setface/.spec2gexpr {
+    local spec=$1 value=${1#*:} opts=$2
     case $spec in
     (gspec:*)   ble/color/gspec2g "$value" ;;
     (g:*)       ret=$(($value)) ;;
@@ -1098,7 +1104,7 @@ function ble/color/initialize-faces {
       fi ;;
     (copy:*|face:*|iface:*)
       # `face:*' and `iface:*' are obsoleted forms.
-      [[ $spec == copy:* ]] ||
+      [[ $spec == copy:* || $spec == face:* && :$opts: == *:prefix-face:* ]] ||
         ble/util/print "ble-face: \"${spec%%:*}:*\" is obsoleted. Use \"copy:*\" instead." >&2
       if [[ ! ${value//[0-9]} ]]; then
         ble/color/iface2g "$value"
@@ -1115,14 +1121,14 @@ function ble/color/initialize-faces {
     local name=_ble_faces__$1 spec=$2 ret
     (($name)) && return 0
     (($name=++_ble_faces_count))
-    ble/color/setface/.spec2g "$spec"
+    ble/color/setface/.spec2gexpr "$spec"
     _ble_faces[$name]=$ret
     _ble_faces_def[$name]=$ret
   }
   function ble/color/setface {
     local name=_ble_faces__$1 spec=$2 ret
     if [[ ${!name} ]]; then
-      ble/color/setface/.spec2g "$spec"; _ble_faces[$name]=$ret
+      ble/color/setface/.spec2gexpr "$spec"; _ble_faces[$name]=$ret
     else
       local message="ble.sh: the specified face \`$1' is not defined."
       if [[ $_ble_color_faces_initializing ]]; then

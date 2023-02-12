@@ -63,6 +63,7 @@
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
   - syntax: recognize escape \" in double-quoted strings `#D1641` 4b71449
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
+  - prompt: accept more general `[TYPE:]SPEC` in `\g{...}` like `ble-face` `#D1963` xxxxxxx
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - canvas: support grapheme clusters (motivated by huresche) `#D1619` c0d997b
   - canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 9a132b7

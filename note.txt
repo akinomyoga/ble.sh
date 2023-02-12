@@ -1934,14 +1934,6 @@ bash_tips
 
 2023-02-12
 
-  * prompt: \g{} は ble/color/setface/.spec2g を使う?
-    https://github.com/akinomyoga/ble.sh/issues/278
-
-    そうしたらカスタム face を指定できて、ユーザーが自分で定義する事に直接の意
-    義が出てくる。
-
-    * wiki: 他にも faces はあるという事を書く。
-
   * blerc.template: update unicode versions
 
   * README: Guix package の位置が変わっている。
@@ -1949,6 +1941,18 @@ bash_tips
   * syntax: 5.0 以降では関数名として function `xxx` 等も実は許されている。5.3
     以降では更に <(...) も関数名として使える。しかもこれらは `xxx`() や
     <(...)() の形式でも定義できる。
+
+    現在の実装では関数名を function NAME まで一回の解析で進むようにしている。何
+    故だったか。何か理由があった気がするが、この取扱になっている限りはちゃんと
+    対応するのは難しい。過去の記録を調べる必要がある。
+
+  * histdb: bg process timeout
+
+  * complete: shopt -s extglob failglob で @(aa)() { echo; } という関数を作成し
+    て置くと screen -dr の補完の途中でエラーメッセージが表示される。何処から表
+    示されているのだろうか? 関数名を拾って更にその上でそれをパス名展開に晒して
+    いる箇所があるのだろうか? simple-word ではないので ble.sh の内部ではないの
+    ではないか…という気がするが分からない。
 
 2023-02-06
 
@@ -6675,6 +6679,21 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-02-12
+
+  * prompt: \g{} は ble/color/setface/.spec2g を使う? [#D1963]
+    https://github.com/akinomyoga/ble.sh/issues/278
+
+    そうしたらカスタム face を指定できて、ユーザーが自分で定義する事に直接の意
+    義が出てくる。
+
+    * done: wiki: 他にも faces はあるという事を書く (motivated by bkerin)
+
+    2023-02-13 .spec2g は動的な face の為に算術式を返すので、color.sh の枠組み
+    の外側で算術式評価する様になっていると、後に face 継承などを実装した時に評
+    価文脈が違って変な事になる可能性がある。評価文脈をちゃんと把握する為に、算
+    術式評価した結果を返す関数を color.sh の側で用意してそれを呼び出す様にする
+    べきである。.spec2g は .spec2gexpr に改名し、それとは別に spec2g という関数
+    を用意してそれを呼び出させる事にした。
 
   * syntax: 5.2 以降では (()) [[]] の直後は } 等が来ても良い [#D1962]
     これの修正は簡単。

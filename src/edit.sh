@@ -1008,7 +1008,7 @@ function ble/prompt/backslash:g {
   if [[ ${tail:2} =~ $rex ]]; then
     ((i+=${#BASH_REMATCH}))
     local ret
-    ble/color/gspec2g "${BASH_REMATCH[1]}"
+    ble/color/spec2g "${BASH_REMATCH[1]}"
     ble/color/g2sgr-ansi "$ret"
     ble/prompt/print "$ret"
   else
