@@ -2484,7 +2484,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
       # 条件コマンド開始
       ble-syntax/parse/touch-updated-attr "$wbeg"
       ((_ble_syntax_attr[wbeg]=ATTR_DEL,
-        ctx=CTX_ARGX0))
+        ctx=_ble_bash>=50200?CTX_CMDXE:CTX_ARGX0))
 
       ble-syntax/parse/word-cancel # 単語 "[[" (とその内部のノード全て) を削除
       if [[ $word == '[[' ]]; then
@@ -2734,7 +2734,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local m=${BASH_REMATCH[0]}
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC)); then
       ((_ble_syntax_attr[i]=ATTR_DEL))
-      ((ctx=CTX_ARGX0))
+      ((ctx=_ble_bash>=50200||${#m}==1?CTX_CMDXE:CTX_ARGX0))
       [[ $_ble_syntax_bash_is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD0))
       ble-syntax/parse/nest-push $((${#m}==1?CTX_CMDX1:CTX_EXPR)) "$m"
       ((i+=${#m}))
