@@ -361,6 +361,7 @@
 - README: add a link to the explanation on the "more reliable setup" of bashrc (motivated by telometto) `#D1905` 09bb4d3
 - README: describe `contrib/fzf` integration (reported by SuperSandro2000, tbagrel1) `#D1907` 3bc3bea b568ade
 - README: add links to Manual pages for *kspec* and `modifyOtherKeys` `#D1917` fb7bd0b1 b568ade
+- README: explain the build process `#D1964` `#D1965` xxxxxxx
 
 ## Optimization
 

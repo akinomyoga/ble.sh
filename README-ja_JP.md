@@ -21,7 +21,7 @@
 巨大なデータの処理 (補完、貼り付けなど) の局面でPOSIX 標準コマンドを利用しています。
 
 呼称: `ble.sh` はお好きな様に読んでいただいて問題ありませんが、一番短いのは標記の /blɛʃ/ になりましょう。
-しかし個人的には脳裡で /biːɛliː dɑt ɛseɪtʃ/ と読んでいるものですから、標記の読み方は飽くまで参考と受け止めていただければ幸いです。
+しかし個人的には脳裡で /biːɛliː/ または /biːɛliː dɑt ɛseɪtʃ/ と読んでいるものですから、標記の読み方は飽くまで参考と受け止めていただければ幸いです。
 
 ## 簡単設定
 
@@ -48,6 +48,11 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
+
+生成過程では、複数のBashスクリプトファイルを結合することで `ble.sh` を生成し、
+他の関連ファイルを正しく配置し、またソースコード中のコードコメントを削除してロードを最適化します。
+生成過程は、C/C++ のコンパイルも伴わずバイナリも生成しませんので、コンパイラを準備していただく必要はありません。
+</details>
 
 <details><summary><b><code>curl</code> を用いて nightly ビルドをダウンロード</b></summary>
 
@@ -95,7 +100,7 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 
 - [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
 - [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
-- [Guix](https://guix.gnu.org/ja/packages/blesh-0.4.0-devel2/) `blesh` (0.4.0-devel2)
+- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel2/) `blesh` (0.4.0-devel2)
 </details>
 
 <details open><summary><b>既存の <code>ble.sh</code> を更新</b></summary>
@@ -113,12 +118,38 @@ bash /path/to/ble.sh --update
 
 <details><summary><b><code>ble.sh</code> のパッケージ作成</b></summary>
 
+`ble.sh` は単にシェルスクリプトの集合ですので環境に依存せずにお使いいただけます (いわゆる "`noarch`") ので、
+単にリリースページからビルド済みの tar ボールをダウンロードし中身を `/tmp/blesh-package/usr/local` など所定の位置に配置するだけで問題ありません。
+それでも何らかの理由により自前でビルドする必要がある場合には以下のコマンドをお使いください。
+ビルドの為には git リポジトリ (`.git`) が必要になることにご注意ください。
+
 ```bash
-# パッケージ作成用コマンド
+# ビルド & パッケージ作成用コマンド
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
+
+パッケージ管理システムを用いたパッケージ更新方法を指定すると `ble-update` でそれが呼び出されます。
+更新方法を指定するにはスクリプトファイルを `${prefix}/share/blesh/lib/_package.bash` に配置します。
+スクリプトは次の様な変数と関数を定義します。但し `XXX` はパッケージ管理システムの名前に置き換えてください。
+
+```bash
+# ${prefix}/share/blesh/lib/_package.bash
+
+_ble_base_package_type=XXX
+
+function ble/base/package:XXX/update {
+  update-the-package-in-a-proper-way
+  return 0
+}
+```
+
+シェル関数がステータス 0 で終了した場合、更新が成功した事を表し `ble.sh` のリロードが自動的に行われます。
+シェル関数がステータス 6 で終了した場合、`ble.sh` のタイムスタンプが確認され、`ble.sh` が現セッションの開始時刻よりも新しい時に限りリロードが行われます。
+シェル関数がステータス 125 で終了した場合、`ble.sh` に組み込みの更新処理が試みられます。
+それ以外の場合には更新処理が中断されます。この場合、シェル関数が状況を説明するメッセージを出力するようにして下さい。
+具体例として `AUR` パッケージの [`_package.bash`](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git) も参考にしていただければ幸いです。
 </details>
 
 ## 機能概要

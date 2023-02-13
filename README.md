@@ -23,7 +23,7 @@ processing of large data in completions, paste of large data, etc.
 
 Pronunciation: The easiest pronunciation of `ble.sh` that users use is /blɛʃ/, but you can actually pronounce it as you like.
 I do not specify the canonical way of pronoucing `ble.sh`.
-In fact, I personally read it verbosely as /biːɛliː dɑt ɛseɪtʃ/ in my head.
+In fact, I personally call it simply /biːɛliː/ or verbosely read it as /biːɛliː dɑt ɛseɪtʃ/ in my head.
 
 ## Quick instructions
 
@@ -50,6 +50,28 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
+
+The build process integrates multiple Bash script files into a single Bash script `ble.sh`,
+place other module files in appropriate places, and strip code comments for shorter initialization time.
+This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
+
+<sup><sub>
+[ Some people seem to bilindly believe that one always need to use `make` with C/C++/Fortran compilers to generate binaries.
+They complain about `ble.sh`'s make process, which comes from the lack of knowledge on `make`.
+One should learn the general principle of `make`.
+
+C/C++ programs in the repository is used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
+The generated table is included in the repository:
+[`canvas.GraphemeClusterBreak.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.GraphemeClusterBreak.sh),
+[`canvas.c2w.musl.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.musl.sh),
+[`canvas.c2w.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.sh),
+and [`canvas.emoji.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.emoji.sh),
+so there is no need to run these C/C++ programs in the build process.
+Another C file is used as an adapter in a old system MSYS1,
+which is used with an old compiler toolchain in Windows, but it will never be used in Unix-like systems.
+
+Each file used in the build process is explained in [make/README.md](make/README.md). ]
+</sub></sup>
 </details>
 
 <details><summary><b>Download the nightly build with <code>curl</code></b></summary>
@@ -98,7 +120,7 @@ This only requires the corresponding package manager.
 
 - [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
 - [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
-- [Guix](https://guix.gnu.org/en/packages/blesh-0.4.0-devel2/) `blesh` (0.4.0-devel2)
+- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel2/) `blesh` (0.4.0-devel2)
 </details>
 
 <details open><summary><b>Update an existing copy of <code>ble.sh</code></b></summary>
@@ -116,12 +138,39 @@ bash /path/to/ble.sh --update
 
 <details><summary><b>Create a package of <code>ble.sh</code></b></summary>
 
+Since `ble.sh` is just a set of shell scripts and do not contain any binary (i.e., "`noarch`"), 
+you may just download the pre-built tarball from release pages and put the extracted contents in e.g. `/tmp/blesh-package/usr/local`.
+Nevertheless, if you need to build the package from the source, please use the following commands.
+Note that the git repository (`.git`) is required for the build.
+
 ```bash
-# PACKAGE (for package maintainers)
+# BUILD & PACKAGE (for package maintainers)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
+
+When you would like to tell `ble.sh` the way to update the package for `ble-update`,
+you can place `_package.bash` at `${prefix}/share/blesh/lib/_package.bash`.
+The file `_package.bash` is supposed to define a shell variable and a shell function
+as illustrated in the following example (please replace `XXX` with the package management system):
+
+```bash
+# ${prefix}/share/blesh/lib/_package.bash
+
+_ble_base_package_type=XXX
+
+function ble/base/package:XXX/update {
+  update-the-package-in-a-proper-way
+  return 0
+}
+```
+
+When the shell function returns exit status 0, it means that the update has been successfully done, and the reload of `ble.sh` will be automatically happen.
+When the shell function returns exit status 6, the timestamp of `ble.sh` is checked, and the reload of `ble.sh` only happens when `ble.sh` is actually update.
+When the shell function returns exit status 125, the default `ble.sh` update procedure is attempted.
+Otherwise, the updating procedure is canceled, where any message explaining situation should be output by the shell function.
+An example `_package.bash` for `AUR` can be found [here](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git).
 </details>
 
 ## Features
