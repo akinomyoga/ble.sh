@@ -247,8 +247,7 @@ function ble/prompt/backslash:lib/vim-airline/mode {
 function ble/prompt/backslash:lib/vim-airline/gitstatus {
   local "${_ble_contrib_prompt_git_vars[@]/%/=}" # WA #D1570 checked
   if ble/contrib/prompt-git/initialize; then
-    local hash branch
-    ble/contrib/prompt-git/get-head-information
+    ble/contrib/prompt-git/update-head-information
     if [[ $branch ]]; then
       ble/prompt/print "$bleopt_vim_airline_symbol_branch$branch"
     elif [[ $hash ]]; then

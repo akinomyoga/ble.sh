@@ -561,6 +561,8 @@
   - histdb: fix remaining debug function name "assign{2 => }" in bash <= 3.2 `#D1953` xxxxxxx
   - histdb: fix a problem that the background process fails to start in bash-3.0 `#D1956` xxxxxxx
   - histdb: fix a bug that history search fails with a single quote in the commandline `#D1957` xxxxxxx
+  - histdb: fix `histdb-word` completions in the middle of the commandline `#D1968` xxxxxxx
+  - histdb: support `bleopt histdb_remarks` `#D1968` xxxxxxx
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->
