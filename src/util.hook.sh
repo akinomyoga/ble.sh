@@ -6,7 +6,7 @@
 ## @fn blehook/.print
 ##   @var[in] flags
 function blehook/.print {
-  (($#)) || return
+  (($#)) || return 0
 
   local out= q=\' Q="'\''" nl=$'\n'
   local sgr0= sgr1= sgr2= sgr3=

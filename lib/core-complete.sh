@@ -4048,7 +4048,7 @@ function ble/complete/mandb/search-file {
 
   local path
   ble/complete/mandb/search-file/.extract-path "$command"
-  ble/complete/mandb/search-file/.check "$path" && return
+  ble/complete/mandb/search-file/.check "$path" && return 0
 
   # Get manpaths
   ble/string#split ret : "$MANPATH"

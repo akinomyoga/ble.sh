@@ -1074,6 +1074,8 @@ function sub:check-all {
 #------------------------------------------------------------------------------
 # sub:scan
 
+_make_rex_escseq='(\[[ -?]*[@-~])*'
+
 function sub:scan/grc-source {
   local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk} --exclude=./{GNUmakefile,make_command.sh})
   grc "${options[@]}" "$@"
@@ -1113,12 +1115,12 @@ function sub:scan/list-command {
 
 function sub:scan/builtin {
   echo "--- $FUNCNAME $1 ---"
-  local command=$1 esc='(\[[ -?]*[@-~])*'
+  local command=$1 esc=$_make_rex_escseq
   sub:scan/list-command --exclude-this --exclude={generate-release-note.sh,lib/test-*.sh,make,ext} "$command" "${@:2}" |
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
-    sed -E 'h;s/'"$esc"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g'
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g'
 }
 
 function sub:scan/check-todo-mark {
@@ -1164,13 +1166,27 @@ function sub:scan/bash501-arith-base {
   grc '\b10#\$' --exclude={test,ChangeLog.md}
 }
 
+function sub:scan/bash404-no-argument-return {
+  echo "--- $FUNCNAME ---"
+  grc --color 'return[[:space:]]*($|[;|&<>])' --exclude={test,wiki,ChangeLog.md,make,docs,make_command.sh} |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+
+      \Z@returnZd
+      \Z\) return;Zd
+      \Zreturn;[[:space:]]*$Zd
+      \Zif \(REQ == "[A-Z]+"\)Zd
+      \Z\(return\|ret\)Zd
+      \Z_ble_trap_done=return$Zd
+
+      g'
+}
+
 function sub:scan/bash502-patsub_replacement {
   echo "--- $FUNCNAME ---"
   # bash-5.2 patsub_replacement で ${var/pat/string} の string 中の & が特別な
   # 意味を持つ様になったので、特に意識する場合を除いては quote が必要になった。
-  local esc='(\[[ -?]*[@-~])*'
   grc --color '\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}"'\'']*([&$]|\\)' --exclude=./test |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z//?\$q/\$Q\}Zd
       \Z//?\$q/\$qq\}Zd
       \Z//?\$qq/\$q\}Zd
@@ -1187,7 +1203,7 @@ function sub:scan/bash502-patsub_replacement {
       g'
 
   grc --color '"[^"]*\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}"'\'']*"[^"]*([&$]|\\)' --exclude=./test |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z#D1751Zd
       g'
 }
@@ -1250,9 +1266,8 @@ function sub:scan/array-count-in-arithmetic-expression {
 # unset 変数名 としていると誤って関数が消えることがある。
 function sub:scan/unset-variable {
   echo "--- $FUNCNAME ---"
-  local esc='(\[[ -?]*[@-~])*'
   sub:scan/list-command unset --exclude-this |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zunset[[:space:]]-[vf]Zd
       \Z^[[:space:]]*#Zd
       \Zunset _ble_init_(version|arg|exit|command)\bZd
@@ -1265,9 +1280,8 @@ function sub:scan/unset-variable {
 }
 function sub:scan/eval-literal {
   echo "--- $FUNCNAME ---"
-  local esc='(\[[ -?]*[@-~])*'
   sub:scan/grc-source 'builtin eval "\$' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zeval "(\$[[:alnum:]_]+)+(\[[^]["'\''\$`]+\])?\+?=Zd
       g'
 }
@@ -1284,10 +1298,8 @@ function sub:scan/mistake-_ble_bash {
 
 function sub:scan/command-layout {
   echo "--- $FUNCNAME ---"
-  local esc='(\[[ -?]*[@-~])*'
-
   grc '/(enter-command-layout|\.insert-newline|\.newline)([[:space:]]|$)' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[[:space:]]*#Zd
       \Z^[[:space:]]*function [^[:space:]]* \{$Zd
       \Z[: ]keep-infoZd
@@ -1300,7 +1312,7 @@ function sub:scan/word-splitting-number {
   # #D1835 一般には IFS に整数が含まれるている場合もあるので ${#...} や
   # $((...)) や >&$fd であってもちゃんと quote する必要がある。
   grc '[<>]&\$|([[:space:]]|=\()\$(\(\(|\{#|\?)' --exclude={docs,mwg_pp.awk} |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[^#]*(^|[[:space:]])#Zd
       \Z^([^"]|"[^\#]*")*"[^"]*([& (]\$)Zd
       \Z^[^][]*\[\[[^][]*([& (]\$)Zd
@@ -1318,21 +1330,21 @@ function sub:scan {
     exit
   fi
 
-  local esc='(\[[ -?]*[@-~])*'
+  local esc=$_make_rex_escseq
   local rex_grep_head="^$esc[[:graph:]]+$esc:$esc[[:digit:]]*$esc:$esc"
 
   # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
   #sub:scan/builtin 'history'
   sub:scan/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\bstty[[:space:]]+echoZd
       \Zecho \$PPIDZd
       \Zmandb-help=%'\''help echo'\''Zd
       g'
   #sub:scan/builtin '(compopt|type|printf)'
   sub:scan/builtin 'bind' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zinvalid bind typeZd
       \Zline = "bind"Zd
       \Z'\''  bindZd
@@ -1341,18 +1353,18 @@ function sub:scan {
       \Zoutputs of the "bind" builtinZd
       g'
   sub:scan/builtin 'read' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \ZDo not read Zd
       \Zfailed to read Zd
       g'
   sub:scan/builtin 'exit' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zble.pp.*return 1 2>/dev/null || exit 1Zd
       \Z^[-[:space:][:alnum:]_./:=$#*]+('\''[^'\'']*|"[^"()`]*|([[:space:]]|^)#.*)\bexit\bZd
       \Z\(exit\) ;;Zd
       \Zprint NR; exit;Zd;g'
   sub:scan/builtin 'eval' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\('\''eval'\''\)Zd
       \Zbuiltins1=\(.* eval .*\)Zd
       \Z\^eval --Zd
@@ -1364,7 +1376,7 @@ function sub:scan {
       \ZLINENO=\$_ble_edit_LINENO evalZd
       g'
   sub:scan/builtin 'unset' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zunset _ble_init_(version|arg|exit|command)\bZd
       \Zreadonly -f unsetZd
       \Zunset -f builtinZd
@@ -1372,13 +1384,13 @@ function sub:scan {
       \Z"\$__ble_proc" "\$__ble_name" unsetZd
       g'
   sub:scan/builtin 'unalias' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zbuiltins1=\(.* unalias .*\)Zd
       g'
 
   #sub:scan/assign
   sub:scan/builtin trap |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z_ble_trap_handler="trap -- '\''\$\{_ble_trap_handler//\$q/\$Q}'\'' \$nZd
       \Zline = "bind"Zd
       \Ztrap_command=["'\'']trap -- Zd
@@ -1394,6 +1406,7 @@ function sub:scan {
   sub:scan/check-todo-mark
   sub:scan/bash300bug
   sub:scan/bash301bug-array-element-length
+  sub:scan/bash404-no-argument-return
   sub:scan/bash501-arith-base
   sub:scan/bash502-patsub_replacement
   sub:scan/gawk402bug-regex-check

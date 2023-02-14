@@ -2337,7 +2337,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
       # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
       #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ
       #   イレクトにより stdout.off の効果が巻き戻されるのを防ぐ為。
-      [[ ${ble_base_attach_from_prompt_command-} != processing ]] || return
+      [[ ${ble_base_attach_from_prompt_command-} != processing ]] || return 0
     fi
 
     # 既に attach 状態の時は処理はスキップ

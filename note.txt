@@ -1935,12 +1935,7 @@ bash_tips
   - todo 項目の整理
   - leakvars
   - keymap の移動 (これは別 commit にする?)
-
-2023-02-14
-
-  * no-argument return がまたある。make scan でチェックするべき。
-
-    $ grc 'return[[:space:]]*($|[;|&])'
+  - make_command.sh の整理 (scan 分離, char_width 分離)
 
 2023-02-12
 
@@ -6656,6 +6651,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-02-14
+
+  * make: no-argument return がまたある。make scan でチェックするべき [#D1970]
+
+    $ grc 'return[[:space:]]*($|[;|&])'
 
   * histdb: git info 等追加情報を user の指定で記録できる様にする [#D1969]
     → "bleopt histdb_remarks" として実装した。

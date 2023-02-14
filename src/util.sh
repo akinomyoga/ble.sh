@@ -1198,7 +1198,7 @@ else
   function ble/string#quote-command {
     if (($#<=1)); then
       ret=$1
-      return
+      return 0
     fi
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@:2}")
@@ -1228,14 +1228,14 @@ function ble/string#quote-word {
   if [[ ! $ret ]]; then
     [[ :$opts: == *:quote-empty:* ]] &&
       ret=$sgrq\'\'$sgr0
-    return
+    return 0
   fi
 
   local chars=$'\a\b\e\f\n\r\t\v'
   if [[ $ret == *["$chars"]* ]]; then
     ble/string#escape-for-bash-escape-string "$ret"
     ret=$sgrq\$\'$ret\'$sgr0
-    return
+    return 0
   fi
 
   local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
@@ -5832,7 +5832,7 @@ _ble_term_TERM_done=
 function ble/term/DA2/initialize-term {
   local depth=$1
   local DA2R=${_ble_term_DA2R[depth]}
-  local rex='^[0-9]*(;[0-9]*)*$'; [[ $DA2R =~ $rex ]] || return
+  local rex='^[0-9]*(;[0-9]*)*$'; [[ $DA2R =~ $rex ]] || return 1
   local da2r
   ble/string#split da2r ';' "$DA2R"
   da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈; WA #D1570 checked (is-array)
@@ -5915,7 +5915,7 @@ function ble/term/DA2/initialize-term {
       ((354<=version&&version<2000))
     else
       false
-    fi && { _ble_term_TERM[depth]=xterm:$version; return; }
+    fi && { _ble_term_TERM[depth]=xterm:$version; return 0; }
   fi
 
   _ble_term_TERM[depth]=unknown:-

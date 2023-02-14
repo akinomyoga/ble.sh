@@ -932,7 +932,7 @@ function blerc/emacs-load-hook {
   #ble-bind -f 'M-C-h' kill-backward-cword
   #ble-bind -f 'M-BS'  kill-backward-cword
 
-  return
+  return 0
 }
 blehook/eval-after-load keymap_emacs blerc/emacs-load-hook
 

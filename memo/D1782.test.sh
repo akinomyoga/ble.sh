@@ -5,7 +5,7 @@ flag=
 shopt -s extdebug
 
 function set_exit {
-  return $1
+  return "$1"
 }
 function set_trap {
   # DEBUG trap の中で trap や return を実行しても "現在のコマンド" は
@@ -20,7 +20,7 @@ function set_trap {
   # Note: continue や return の前に指定した終了ステータスは DEBUG trap
   # (extdebug) の振る舞いには関係ない。
   #
-  #trap '[[ $flag == 1 ]] && { echo "cmd:$FUNCNAME/$BASH_COMMAND"; set_exit 2; return; }' DEBUG
+  #trap '[[ $flag == 1 ]] && { echo "cmd:$FUNCNAME/$BASH_COMMAND"; set_exit 2; return 2; }' DEBUG
 
   trap '[[ $flag == 1 ]] && { echo "cmd:$FUNCNAME/$BASH_COMMAND"; shopt -s extdebug; set_exit 2; }' DEBUG
 }

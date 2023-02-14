@@ -322,24 +322,24 @@ function ble-decode-kbd {
   case $spec in
   (keys:*)
     ret="${spec#*:}"
-    return ;;
+    return 0 ;;
   (chars:*)
     local chars
     ble/string#split-words chars "${spec#*:}"
     ble/decode/cmap/decode-chars "${ret[@]}"
     ret="${keys[*]}"
-    return ;;
+    return 0 ;;
   (keyseq:*) # i.e. untranslated keyseq
     local keys
     ble/util/keyseq2chars "${spec#*:}"
     ble/decode/cmap/decode-chars "${ret[@]}"
     ret="${keys[*]}"
-    return ;;
+    return 0 ;;
   (raw:*) # i.e. translated keyseq
     ble/util/s2chars "${spec#*:}"
     ble/decode/cmap/decode-chars "${ret[@]}"
     ret="${keys[*]}"
-    return ;;
+    return 0 ;;
   (kspecs:*)
     spec=${spec#*:} ;;
   esac

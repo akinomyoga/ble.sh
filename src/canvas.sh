@@ -1391,7 +1391,7 @@ function ble/canvas/trace/.put-atomic.draw {
 }
 function ble/canvas/trace/.put-ascii.draw {
   local value=$1 w=${#1}
-  [[ $value ]] || return
+  [[ $value ]] || return 0
 
   if [[ $flag_clip ]]; then
     local xL=$x xR=$((x+w))
@@ -2898,14 +2898,14 @@ function ble/canvas/goto.draw {
 _ble_canvas_excursion_x=
 _ble_canvas_excursion_y=
 function ble/canvas/excursion-start.draw {
-  [[ $_ble_canvas_excursion ]] && return
+  [[ $_ble_canvas_excursion ]] && return 1
   _ble_canvas_excursion=1
   _ble_canvas_excursion_x=$_ble_canvas_x
   _ble_canvas_excursion_y=$_ble_canvas_y
   ble/canvas/put.draw "$_ble_term_sc"
 }
 function ble/canvas/excursion-end.draw {
-  [[ $_ble_canvas_excursion ]] || return
+  [[ $_ble_canvas_excursion ]] || return 1
   _ble_canvas_excursion=
   ble/canvas/put.draw "$_ble_term_rc"
   _ble_canvas_x=$_ble_canvas_excursion_x

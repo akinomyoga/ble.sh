@@ -5584,7 +5584,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:quote/.check-container-
       ble/syntax/completion-context/.add argument "$wbeg2"
     elif ((wt==CTX_CPATI)); then # case pattern の内部
       #ble/syntax/completion-context/.add file "$wbeg2"
-      return
+      return 0
     fi
   fi
 }
@@ -7436,7 +7436,7 @@ function ble/highlight/layer:syntax/update {
       _ble_highlight_layer_syntax_active=
       PREV_UMIN=0 PREV_UMAX=${#1}
     fi
-    return
+    return 0
   fi
 
   # 前回 layer:syntax が無効だった時
@@ -7532,7 +7532,7 @@ function ble/highlight/layer:syntax/update {
 }
 
 function ble/highlight/layer:syntax/getg {
-  [[ ! $bleopt_highlight_syntax ]] && return
+  [[ $bleopt_highlight_syntax ]] || return 1
   local i=$1
   if [[ ${_ble_highlight_layer_syntax3_table[i]} ]]; then
     g=${_ble_highlight_layer_syntax3_table[i]}

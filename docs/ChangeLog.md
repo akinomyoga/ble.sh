@@ -535,6 +535,7 @@
 - edit: update prompts on g2sgr change `#D1906` 40625ac
 - util, decode, vi: fix leak variables `#D1933` 8d5cab8
 - util: support `bleopt debug_idle` `#D1945` fa10184
+- global: work around bash-4.4 no-argument return in trap `#D1970` xxxxxxx
 
 ## Contrib
 

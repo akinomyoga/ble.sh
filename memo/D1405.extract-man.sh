@@ -13,16 +13,16 @@ function ble/complete/mandb/search-file {
   local command=$1
 
   # Try "man -w" first
-  ble/complete/mandb/search-file/.check "$(man -w "$command" 2>/dev/null)" && return
+  ble/complete/mandb/search-file/.check "$(man -w "$command" 2>/dev/null)" && return 0
 
   local manpath=${MANPATH:-/usr/share/man:/usr/local/share/man:/usr/local/man}
   ble/string#split manpath : "$manpath"
   local path
   for path in "${manpath[@]}"; do
-    ble/complete/mandb/search-file/.check "$path/man1/$man.1.gz" && return
-    ble/complete/mandb/search-file/.check "$path/man1/$man.1" && return
-    ble/complete/mandb/search-file/.check "$path/man1/$man.8.gz" && return
-    ble/complete/mandb/search-file/.check "$path/man1/$man.8" && return
+    ble/complete/mandb/search-file/.check "$path/man1/$man.1.gz" && return 0
+    ble/complete/mandb/search-file/.check "$path/man1/$man.1" && return 0
+    ble/complete/mandb/search-file/.check "$path/man1/$man.8.gz" && return 0
+    ble/complete/mandb/search-file/.check "$path/man1/$man.8" && return 0
   done
   return 1
 }

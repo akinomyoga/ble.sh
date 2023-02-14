@@ -47,16 +47,16 @@ function face {
   # check mode
   case ${mode%_modified} in
   (normal|insert|replace|visual|commandline|inactive) ;;
-  (accents|tabline|ctrlp|terminal) return ;;
-  (*_paste|insert_replace|normal_error|insert_error) return ;;
+  (accents|tabline|ctrlp|terminal) return 0 ;;
+  (*_paste|insert_replace|normal_error|insert_error) return 0 ;;
   (*) ble/util/print "$theme: Unknown mode '$mode'" >&2
   esac
 
   # check face
   case $face in
   (airline_[abcxyz]|airline_error|airline_term|airline_warning) ;;
-  (airline_*_to_airline_*) return ;;
-  (airline_file) return ;; # ?????? itchyny/landscape.vim で使用
+  (airline_*_to_airline_*) return 0 ;;
+  (airline_file) return 0 ;; # ?????? itchyny/landscape.vim で使用
   (*) ble/util/print "$theme: Unknown face type '$face'" >&2
   esac
 

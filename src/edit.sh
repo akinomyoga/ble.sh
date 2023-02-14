@@ -1268,10 +1268,11 @@ function ble/prompt/.get-keymap-for-current-mode {
   keymap=$_ble_decode_keymap
   local index=${#_ble_decode_keymap_stack[@]}
   while :; do
-    case $keymap in (vi_?map|emacs) return ;; esac
+    case $keymap in (vi_?map|emacs) return 0 ;; esac
     ((--index<0)) && break
     keymap=${_ble_decode_keymap_stack[index]}
   done
+  return 1
 }
 
 function ble/prompt/.uses-builtin-prompt-expansion {
@@ -6874,7 +6875,7 @@ function ble/widget/.insert-newline/trim-prompt {
   local ps1f=$bleopt_prompt_ps1_final
   local ps1t=$bleopt_prompt_ps1_transient
   if [[ ! $ps1f && :$ps1t: == *:trim:* ]]; then
-    [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_prompt_trim_opwd ]] && return
+    [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_prompt_trim_opwd ]] && return 0
     local y=${_ble_prompt_ps1_data[4]}
     if ((y)); then
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0

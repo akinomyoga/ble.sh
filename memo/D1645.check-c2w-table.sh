@@ -19,7 +19,7 @@ function dump {
 function c2w.binary {
   local c=$1
   ret=${_ble_unicode_EastAsianWidth_c2w[c]}
-  [[ $ret ]] && return
+  [[ $ret ]] && return 0
 
   local l u m
   ((l=0,u=${#_ble_unicode_EastAsianWidth_c2w_ranges[@]}-1))
@@ -38,7 +38,7 @@ function c2w.binary {
 function c2w.bindex {
   local c=$1
   ret=${_ble_unicode_EastAsianWidth_c2w[c]}
-  [[ $ret ]] && return
+  [[ $ret ]] && return 0
 
   ret=${_ble_unicode_EastAsianWidth_c2w_index[c<0x20000?c>>8:((c>>12)-32+512)]}
   if [[ $ret == *:* ]]; then
