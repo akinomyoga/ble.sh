@@ -2186,10 +2186,10 @@ function ble/util/assign/.rmtmp {
   if ((BASH_SUBSHELL)); then
     printf 'caller %s\n' "${FUNCNAME[@]}" >| "$_ble_local_tmpfile"
   else
-    : >| "$_ble_local_tmpfile"
+    builtin : >| "$_ble_local_tmpfile"
   fi
 #%else
-  : >| "$_ble_local_tmpfile"
+  builtin : >| "$_ble_local_tmpfile"
 #%end
 }
 if ((_ble_bash>=40000)); then
@@ -5128,13 +5128,25 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle.push {
     local status=R nice=0
     while [[ $1 == -* ]]; do
+      local sleep= isleep=
       case $1 in
       (-[SWPFEC]) status=${1:1}$2; shift 2 ;;
       (-[SWPFECIRZ]*) status=${1:1}; shift ;;
       (-n) nice=$2; shift 2 ;;
       (-n*) nice=${1#-n}; shift ;;
+      (--sleep)    sleep=$2; shift 2 ;;
+      (--sleep=*)  sleep=${1#*=}; shift ;;
+      (--isleep)   isleep=$2; shift 2 ;;
+      (--isleep=*) isleep=${1#*=}; shift ;;
       (*) break ;;
       esac
+
+      if [[ $sleep ]]; then
+        local ret; ble/util/idle.clock
+        status=S$((ret+sleep))
+      elif [[ $isleep ]]; then
+        status=W$((_ble_util_idle_sclock+isleep))
+      fi
     done
     ble/util/idle.push/.impl "$nice" "$status$_ble_util_idle_SEP$1"
   }
