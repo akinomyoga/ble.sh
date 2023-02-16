@@ -1093,10 +1093,10 @@ function ble/util/assign/.rmtmp {
   if ((BASH_SUBSHELL)); then
     printf 'caller %s\n' "${FUNCNAME[@]}" >| "$_ble_local_tmpfile"
   else
-    : >| "$_ble_local_tmpfile"
+    builtin : >| "$_ble_local_tmpfile"
   fi
 #%else
-  : >| "$_ble_local_tmpfile"
+  builtin : >| "$_ble_local_tmpfile"
 #%end
 }
 if ((_ble_bash>=40000)); then
