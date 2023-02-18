@@ -25,6 +25,7 @@
 - keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
 - prompt: support multiline `prompt_rps1` `#D1502` 4fa139a
   - canvas: fix wrong coordinate calculation on linefolding (reported by telometto) `#D1602` 9badb5f
+  - prompt: fix coordinates after `prompt_rps1` `#D1972` xxxxxxx
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
   - decode: reflect changes after `ble-bind --cursor` `#D1873` 39efcf9
