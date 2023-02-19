@@ -6641,6 +6641,81 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-02-19
+
+  * edit: EXIT trap の中のサブシェルの中で exit が動作しない [#D1973]
+
+    builtin exit 自体の処理判定が駄目という事。実際に確認してみるとexit 経由で
+    これらの close の処理が呼び出されているので入れ子の exit を実行している事に
+    なっている。入れ子の exit に対する特別の処理を行っている?
+
+    →うーん。これは EXIT の中で exit してしまう駄目な設定を回避する為に使って
+    いる。然し、subshell の中での exit は別に main のシェルを終了させるのに使っ
+    ている物ではないから気にしなくても良い。なので、単に
+    _ble_builtin_trap_processing を確認するだけでなくて BASHPID を記録してそれ
+    から確認する必要がある。もしくは BASH_SUBSHELL の値を確認する。
+
+    a _ble_builtin_trap_processing に BASH_SUBSHELL も一緒に記録する
+
+      _ble_builtin_trap_processing を現在のどの様に使っているか確認する。現在は
+      _ble_builtin_trap_processing には基本的には sig の番号を入れているが、特
+      別に exit:* という値を設定している。値を使っている箇所は実は exit:* かど
+      うかの判定を行っている所しかない様だ (+ 値が "exit:xxx" の時 trap
+      postproc に ble/builtin/exit xxx を設定している)。つまり、sig の値を使っ
+      ている箇所は存在しない?
+
+    取り敢えず _ble_builtin_trap_processing に BASH_SUBSHELL を入れる事にした。
+
+    * exit の判定条件はどの様にするのが良いか
+
+      現在の判定には subshell で実行しているかどうか、attach しているかどうか、
+      trap を処理中かどうかという三要素を使っている。
+
+      attach していない時に関しては、trap 処理中でなければそのまま exit してい
+      る。trap 処理中の時には DEBUG を用いて上まで bubble する様にしている。先
+      ず、何故 trap 処理中には bubble を行うのかという事。いきなり終了では駄目
+      なのだろうか。うーん。でもやはり trap 処理中であれば trap handling の途中
+      で勝手に終了されては困るという事だろう。
+
+      だとすると trap を処理しているサブシェルよりも更に下のサブシェルにいる時
+      には普通に builtin exit して良いという事になる。
+
+      つまり以下で良い様な気がする。
+
+      if (trap processing) {
+        if (trap processing subshell != current subshell)
+          builtin exit
+      } else {
+        if (subshell || unbound)
+          builtin exit
+      }
+
+      % 実は
+      %
+      % if (trap processing subshell != current subshell)
+      %   builtin exit
+      % else if (unbound)
+      %   builtin exit
+      %
+      % で良いのではないか? subshell の中にいて trap の外にいる場合には何れにして
+      % も trap processing subshell ＝ nil ≠ current subshell なので、最初の分岐
+      % に入る。と思ったが、unbound の時には !(trap processing) の時にだけ
+      % builtin exit したい。!(trap processing) かつ unbound の時は最初の分岐に入
+      % るが、(trap processing) かつシェルレベルが同じの時には、やはり強制的に
+      % exit する訳には行かない。
+
+      改めて整理する。builtin exit せずに特別な処理を実行する必要があるのは、
+      (1) trap processing を top レベルで処理する為 (2) 実際に抜けようとする時
+      に job 等のチェックをする為。の二種類がある。(1) の処理に関しては同じサブ
+      シェルの trap でなければ必要ない。(2) の処理に関してはトップレベルのシェ
+      ルでかつ attach しているという事。従来の判定は単に ¬(1)∧¬(2) を書き下
+      しただけの話である。という事で (1) の条件を更新すれば良いだけ。
+
+    実装した。動作確認する。ちゃんとその場で終了している。OK
+
+    histdb/sqlite3.kill の方は実は exit ではなくて単に return を呼び出しておけ
+    ば良いのでその様に修正しておく。
+
 2023-02-18
 
   * 2022-10-02 prompt: 実行直前の rps1 の更新時にカーソル位置がずれる [#D1972]
@@ -6841,6 +6916,28 @@ bash_tips
         待つのは非現実的である。
 
       ここは c の方針で良い気がする。実装した。
+
+    2023-02-19 うーん。プロセスが残る様になってしまっている。また、tty が閉じら
+    れるのに時間がかかる様になっている。これも何れかのプロセスが fd を掴んだま
+    ま残っているのが原因である。
+
+    どうも sqlite3.kill のプロセスがやはり残留してしまっている。
+
+    % * ble/bin/msleep が固まって動かなくなるのが原因のようだ。msleep の実装は
+    %   run/$$.util.msleep.pipe に対する fd を用いた物だが、もしかするとこの
+    %   pipe ファイルが削除されると動かないのかもしれない。或いは、この fd を開
+    %   いているプロセスが2つ以上ないとだめという事なのかもしれない。一応最初の
+    %   msleep は動作しているので、サブシェルでは msleep は使えないとかそういう
+    %   問題ではない筈である。
+    % →これを ble/bin/sleep に変えても元の問題は直らなかったし、逆に本体の問題
+    %   を解決したら別に msleep でもちゃんと動いた。
+
+    然し、msleep を ble/bin/sleep に置き換えてもやはり暫くプロセスが生きている
+    様である。exit を builtin exit に変更したらちゃんと動く様になった。
+
+    これは ble/builtin/exit の問題なので別項目で議論する (#D1973)。そもそも実は
+    ここでは exit よりも return を使うべきなので、ここは単に return に変更する
+    事にする。動作している。
 
 2023-02-14
 

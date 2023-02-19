@@ -189,6 +189,7 @@
 - edit (command-help): show source files for functions `#D1779` 7683ab9
 - edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 6fdabf3
   - util (`blehook`): fix a bug that the the hook arguments are lost (reported by SuperSandro2000) `#D1804` 479795d
+  - edit: fix a bug of `ble/builtin/exit` inside subshells in the `EXIT` trap `#D1973` xxxxxxx
 - complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
 - decode (`bind`): do not treat non-beginning `#` as comments `#D1820` 65c4138

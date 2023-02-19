@@ -838,7 +838,20 @@ function ble/builtin/trap/invoke {
   return 0
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 
-_ble_builtin_trap_processing= # ble/builtin/trap/.handler 実行中かどうか
+## @var _ble_builtin_trap_processing
+##   ble/builtin/trap/.handler 実行中かどうかを表すローカル変数です。
+##   以下の二つの形式の内のどちらかを取ります。
+##
+##   SUBSHELL/SIG
+##     SUBSHELL は trap 処理の実行元のサブシェルの深さ (呼び出し元にお
+##     ける BASH_SUBSHELL の値) を記録します。SIG はシグナルを表す整数
+##     値です。
+##
+##   SUBSHELL/exit:EXIT
+##     EXIT は ble/builtin/exit に渡された終了ステータスで、これは最終
+##     的な exit で使われる終了ステータスです。
+##
+_ble_builtin_trap_processing=
 _ble_builtin_trap_postproc=()
 _ble_builtin_trap_lastarg=()
 function ble/builtin/trap/install-hook/.compose-trap_command {
@@ -888,7 +901,7 @@ function ble/builtin/trap/.handler {
     fi
   fi
 
-  local _ble_builtin_trap_processing=$_ble_trap_sig
+  local _ble_builtin_trap_processing=${BASH_SUBSHELL:-0}/$_ble_trap_sig
   _ble_builtin_trap_lastarg[_ble_trap_sig]=$_ble_trap_lastarg
   _ble_builtin_trap_postproc[_ble_trap_sig]="ble/util/setexit $_ble_trap_lastexit"
 
@@ -948,8 +961,8 @@ function ble/builtin/trap/.handler {
   fi
 
   # 何処かの時点で exit が要求された場合
-  if [[ $_ble_builtin_trap_processing == exit:* && ${_ble_builtin_trap_postproc[_ble_trap_sig]} != 'ble/builtin/exit '* ]]; then
-    _ble_builtin_trap_postproc[_ble_trap_sig]="ble/builtin/exit ${_ble_builtin_trap_processing#exit:}"
+  if [[ $_ble_builtin_trap_processing == */exit:* && ${_ble_builtin_trap_postproc[_ble_trap_sig]} != 'ble/builtin/exit '* ]]; then
+    _ble_builtin_trap_postproc[_ble_trap_sig]="ble/builtin/exit ${_ble_builtin_trap_processing#*/exit:}"
   fi
 
   # Note #D1757: 現在 eval が終わった後の $_ を設定する為には eval に

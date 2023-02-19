@@ -5926,7 +5926,12 @@ function ble/builtin/exit/.read-arguments {
 }
 function ble/builtin/exit {
   local ext=$?
-  if [[ ! $_ble_builtin_trap_processing ]] && { ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; }; then
+
+  # 現在、同じ(サブ)シェルでの trap 処理実行中かどうか
+  local trap_processing=$_ble_builtin_trap_processing
+  [[ $_ble_builtin_trap_processing != "${BASH_SUBSHELL:-0}"/* ]] && trap_processing=
+
+  if [[ ! $trap_processing ]] && { ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; }; then
     (($#)) || set -- "$ext"
     builtin exit "$@"
     return "$?" # オプションの指定間違いなどで失敗する可能性がある。
@@ -5943,7 +5948,7 @@ function ble/builtin/exit {
   fi
   ((${#opt_args[@]})) || ble/array#push opt_args "$ext"
 
-  if [[ $_ble_builtin_trap_processing ]]; then
+  if [[ $trap_processing ]]; then
     # Note #D1782: trap の中で処理している時は exit は trap の側で処理する。な
     # ので exit は延期して一旦元の呼び出し元まで戻る。これによって細かな動作の
     # 違いが問題になる可能性はある。例えば trap の中で time で時間計測中だった
@@ -6370,10 +6375,12 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
         shopt -q extdebug || postproc='return 0' ;;
       (' blehook/invoke.sandbox blehook/invoke ble/builtin/trap/.handler '*)
 
-        # Rewrite variables declared for the other signal
-        # (_ble_builtin_trap_processing is already removed above).
-        _ble_local_ext=$_ble_edit_exec_TRAPDEBUG_EXIT                    # declared in blehook/invoke for the other signal
-        _ble_builtin_trap_processing=exit:$_ble_edit_exec_TRAPDEBUG_EXIT # declared in ble/builtin/trap/.handler for the other signal
+        # Rewrite variables declared for the other signal (Note: the local
+        # _ble_builtin_trap_processing is already removed above).
+        # The following is declared in "blehook/invoke" for the other signal.
+        _ble_local_ext=$_ble_edit_exec_TRAPDEBUG_EXIT
+        # The following is declared in "ble/builtin/trap/.handler" for the other signal.
+        _ble_builtin_trap_processing=${_ble_builtin_trap_processing%%/*}/exit:$_ble_edit_exec_TRAPDEBUG_EXIT
 
         postproc='ble/util/setexit 2'
         shopt -q extdebug || postproc='return 0' ;;
