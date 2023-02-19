@@ -318,7 +318,7 @@ function ble-complete/source/argument/.compgen-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
-  ble-complete/source/argument/.compgen-helper-varsz
+  ble-complete/source/argument/.compgen-helper-vars
 
   # compopt に介入して -o/+o option を読み取る。
   local fDefault=
