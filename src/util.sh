@@ -6619,7 +6619,7 @@ function ble/util/s2bytes {
   ble/util/unlocal LC_ALL LC_CTYPE
   ble/util/.cache/update-locale
   return "$?"
-} >/dev/null
+} &>/dev/null
 
 # bind で使用される keyseq の形式
 

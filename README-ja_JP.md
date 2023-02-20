@@ -26,6 +26,7 @@
 ## 簡単設定
 
 `ble.sh` をお使いいただくには Bash 3.0 以上 (及び POSIX の基本的なコマンド) が必要です。
+<!-- 但し、macOS では附属の `/usr/bin/awk` (awk-32 以降) でマルチバイト文字セットの問題があるため、`gawk`, `nawk`, または `mawk` を別途インストールする必要があるかもしれません。 -->
 `ble.sh` を取得するには主に2つの方法があります: `git` を用いてソースを取得しビルドする方法と `curl` または `wget` を用いて nightly ビルドをダウンロードする方法です。
 詳細は、試用またはインストールに関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
@@ -38,20 +39,21 @@
 ```bash
 # 簡単お試し (インストールせずにお試しいただけます)
 
-git clone --recursive https://github.com/akinomyoga/ble.sh.git
+git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh
 source ble.sh/out/ble.sh
 
 # インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
 
-git clone --recursive https://github.com/akinomyoga/ble.sh.git
+git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 生成過程では、複数のBashスクリプトファイルを結合することで `ble.sh` を生成し、
 他の関連ファイルを正しく配置し、またソースコード中のコードコメントを削除してロードを最適化します。
-生成過程は、C/C++ のコンパイルも伴わずバイナリも生成しませんので、コンパイラを準備していただく必要はありません。
+
+※生成過程は、C/C++ のコンパイルも伴わずバイナリも生成しませんので、コンパイラを準備していただく必要はありません。
 </details>
 
 <details><summary><b><code>curl</code> を用いて nightly ビルドをダウンロード</b></summary>
@@ -126,7 +128,7 @@ bash /path/to/ble.sh --update
 ```bash
 # ビルド & パッケージ作成用コマンド
 
-git clone --recursive https://github.com/akinomyoga/ble.sh.git
+git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
 

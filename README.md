@@ -11,7 +11,7 @@
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash which replaces the default GNU Readline.
 
 Current devel version is 0.4.
-This script supports Bash 3.0 or higher although we recommend to use `ble.sh` with release versions of Bash 4.0 or higher.
+This script supports Bash 3.0 or higher although we recommend to use `ble.sh` with release versions of **Bash 4.0 or higher**.
 Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
 
@@ -28,6 +28,7 @@ In fact, I personally call it simply /biːɛliː/ or verbosely read it as /biː�
 ## Quick instructions
 
 To use `ble.sh`, Bash 3.0+ and POSIX standard utilities are required.
+<!-- In macOS, you might additionally need to install `gawk`, `nawk`, or `mawk` since macOS `/usr/bin/awk` (awk-32 and later) seems to have a problem with some multibyte charsets. -->
 There are two ways to get `ble.sh`: to download and build `ble.sh` using `git`, or to download the nightly build using `curl` or `wget`.
 For the detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
 and [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
@@ -40,26 +41,24 @@ In the following, please replace `make` with `gmake` if your system provides GNU
 ```bash
 # TRIAL without installation
 
-git clone --recursive https://github.com/akinomyoga/ble.sh.git
+git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh
 source ble.sh/out/ble.sh
 
 # Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
 
-git clone --recursive https://github.com/akinomyoga/ble.sh.git
+git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 The build process integrates multiple Bash script files into a single Bash script `ble.sh`,
 place other module files in appropriate places, and strip code comments for shorter initialization time.
-This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
 
-<sup><sub>
-[ Some people seem to bilindly believe that one always need to use `make` with C/C++/Fortran compilers to generate binaries.
+Note: This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
+Some people seem to bilindly believe that one always need to use `make` with C/C++/Fortran compilers to generate binaries.
 They complain about `ble.sh`'s make process, which comes from the lack of knowledge on `make`.
 One should learn the general principle of `make`.
-
 C/C++ programs in the repository is used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
 The generated table is included in the repository:
 [`canvas.GraphemeClusterBreak.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.GraphemeClusterBreak.sh),
@@ -69,9 +68,7 @@ and [`canvas.emoji.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/can
 so there is no need to run these C/C++ programs in the build process.
 Another C file is used as an adapter in a old system MSYS1,
 which is used with an old compiler toolchain in Windows, but it will never be used in Unix-like systems.
-
-Each file used in the build process is explained in [make/README.md](make/README.md). ]
-</sub></sup>
+Each file used in the build process is explained in [`make/README.md`](make/README.md).
 </details>
 
 <details><summary><b>Download the nightly build with <code>curl</code></b></summary>

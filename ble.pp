@@ -1088,9 +1088,21 @@ function ble/bin/awk/.instantiate {
         _ble_bin_awk_type=unknown
       fi
       builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }" && ext=0
-      [[ $_ble_bin_awk_type == [gmn]awk ]] &&
-        ! ble/is-function "ble/bin/$_ble_bin_awk_type" &&
+      if [[ $OSTYPE == darwin* && $path == /usr/bin/awk && $_ble_bin_awk_type == nawk ]]; then
+        # Note #D1974: macOS の awk-32 の multibyte character support が怪しい。
+        #   問題は GitHub Actions の上では再現できていないが特別の入力で失敗す
+        #   るのかもしれない。または、報告者の環境が壊れているだけの可能性もあ
+        #   る。テスト不可能だが、そもそも nawk は UTF-8 に対応していない前提な
+        #   ので、取り敢えず LC_CTYPE=C で実行する。
+        function ble/bin/awk {
+          local LC_ALL= LC_CTYPE=C 2>/dev/null
+          /usr/bin/awk -v AWKTYPE=nawk "$@"; local ext=$?
+          ble/util/unlocal LC_ALL LC_CTYPE 2>/dev/null
+          return "$ext"
+        }
+      elif [[ $_ble_bin_awk_type == [gmn]awk ]] && ! ble/is-function "ble/bin/$_ble_bin_awk_type" ; then
         builtin eval "function ble/bin/$_ble_bin_awk_type { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
+      fi
     fi
   fi
   return "$ext"

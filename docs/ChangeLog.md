@@ -25,7 +25,7 @@
 - keymap/vi: add `ble/keymap:vi/script/get-mode` for user-defined mode strings `#D1488` f25a6e8 462918d
 - prompt: support multiline `prompt_rps1` `#D1502` 4fa139a
   - canvas: fix wrong coordinate calculation on linefolding (reported by telometto) `#D1602` 9badb5f
-  - prompt: fix coordinates after `prompt_rps1` `#D1972` xxxxxxx
+  - prompt: fix coordinates after `prompt_rps1` `#D1972` e128801
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
   - decode: reflect changes after `ble-bind --cursor` `#D1873` 39efcf9
@@ -64,7 +64,7 @@
 - syntax: highlight quotes of the `\?` form `#D1584` 5076a03
   - syntax: recognize escape \" in double-quoted strings `#D1641` 4b71449
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
-  - prompt: accept more general `[TYPE:]SPEC` in `\g{...}` like `ble-face` `#D1963` xxxxxxx
+  - prompt: accept more general `[TYPE:]SPEC` in `\g{...}` like `ble-face` `#D1963` 81b3b0e
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - canvas: support grapheme clusters (motivated by huresche) `#D1619` c0d997b
   - canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 9a132b7
@@ -82,7 +82,7 @@
   - prompt: fix hanging by a zero-width `prompt_ruler` `#D1673` 9033f29
 - edit: support `bleopt canvas_winch_action` (requested by Johann-Goncalves-Pereira, guptapriyanshu7) `#D1679` 2243e91
   - blerc: fix the name of the option `bleopt canvas_winch_action` (reported by Knusper) b1be640
-  - edit: go back to the previous lines with `redraw-here` more aggressively `#D1966` xxxxxxx
+  - edit: go back to the previous lines with `redraw-here` more aggressively `#D1966` a125187
 - menu (menu-style:desc): improve descriptions (motivated by Shahabaz-Bagwan) `#D1685` 4de1b45
 - menu (menu-style:desc): support multicolumns (motivated by Shahabaz-Bagwan) `#D1686` 231dc39
   - menu (menu-style:desc): fix not working `bleopt menu_desc_multicolumn_width=` `#D1727` 2140d1e
@@ -120,12 +120,12 @@
   - auto-complete: cancel auto-complete for `magic-space` `#D1913` 01b4f67
 - complete: support ambiguous completion for command paths `#D1922` 8a716ad
 - complete: preserve original path segments as long as possible `#D1923` `#D1924` e3cdb9d
-- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10 `#D1947` 46ac426 `#D1954` xxxxxxx
+- main: support `BLE_SESSION_ID` and `BLE_COMMAND_ID` `#D1925` 44d9e10 `#D1947` 46ac426 `#D1954` 651c70c
 - main: support an option `--inputrc={diff,all,user,none}` `#D1926` 92f2006
 - util (`ble/builtin/trap`): support Bash 5.2 `trap -P` `#D1937` 826a275
-- syntax: highlight `\?` in here documents `#D1959` xxxxxxx
-- syntax: recognize history expansion in here documents, `"...!"` (bash <= 4.2), and `$!` (bash <= 4.1) `#D1959` xxxxxxx
-- syntax: support context after `((...))` and `[[ ... ]]` in bash-5.2 `#D1962` xxxxxxx
+- syntax: highlight `\?` in here documents `#D1959` e619e73
+- syntax: recognize history expansion in here documents, `"...!"` (bash <= 4.2), and `$!` (bash <= 4.1) `#D1959` e619e73
+- syntax: support context after `((...))` and `[[ ... ]]` in bash-5.2 `#D1962` 67cb967
 
 ## Changes
 
@@ -189,7 +189,7 @@
 - edit (command-help): show source files for functions `#D1779` 7683ab9
 - edit (`ble/builtin/exit`): defer exit in trap handlers (motivated by SuperSandro2000) `#D1782` f62fc04 6fdabf3
   - util (`blehook`): fix a bug that the the hook arguments are lost (reported by SuperSandro2000) `#D1804` 479795d
-  - edit: fix a bug of `ble/builtin/exit` inside subshells in the `EXIT` trap `#D1973` xxxxxxx
+  - edit: fix a bug of `ble/builtin/exit` inside subshells in the `EXIT` trap `#D1973` 0451521
 - complete (`source:command/get-desc`): show function location and body `#D1788` 496e798
 - edit (`ble-detach`): prepend a space to `stty sane` for `HISTIGNORE=' *'` `#D1796` 26b532e
 - decode (`bind`): do not treat non-beginning `#` as comments `#D1820` 65c4138
@@ -226,7 +226,7 @@
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
 - decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
 - term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
-- color: rearrange color table by `ble palette` (suggested by stackoverflow/caoanan) `#D1961` xxxxxxx
+- color: rearrange color table by `ble palette` (suggested by stackoverflow/caoanan) `#D1961` bb8541d
 
 ## Fixes
 
@@ -364,7 +364,7 @@
 - README: add a link to the explanation on the "more reliable setup" of bashrc (motivated by telometto) `#D1905` 09bb4d3
 - README: describe `contrib/fzf` integration (reported by SuperSandro2000, tbagrel1) `#D1907` 3bc3bea b568ade
 - README: add links to Manual pages for *kspec* and `modifyOtherKeys` `#D1917` fb7bd0b1 b568ade
-- README: explain the build process `#D1964` `#D1965` xxxxxxx
+- README: explain the build process `#D1964` `#D1965` 14ca1e5
 
 ## Optimization
 
@@ -468,6 +468,7 @@
 - main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006 0ceb0cb
 - canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` b0c16dd
 - term (`terminology`): work around terminal glitches `#D1946` 9a1b4f9
+- main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` xxxxxxx
 
 ## Test
 
@@ -537,7 +538,7 @@
 - edit: update prompts on g2sgr change `#D1906` 40625ac
 - util, decode, vi: fix leak variables `#D1933` 8d5cab8
 - util: support `bleopt debug_idle` `#D1945` fa10184
-- global: work around bash-4.4 no-argument return in trap `#D1970` xxxxxxx
+- global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
 
 ## Contrib
 
@@ -560,12 +561,13 @@
   - histdb: kill orphan `sqlite3` processes `#D1943` 36e1c89
   - histdb: back up the database `#D1944` 36e1c89
   - histdb: fix miscellaneous SQL query errors `#D1947` 46ac426
-  - histdb: output error messages to tty `#D1952` xxxxxxx
-  - histdb: fix remaining debug function name "assign{2 => }" in bash <= 3.2 `#D1953` xxxxxxx
-  - histdb: fix a problem that the background process fails to start in bash-3.0 `#D1956` xxxxxxx
-  - histdb: fix a bug that history search fails with a single quote in the commandline `#D1957` xxxxxxx
-  - histdb: fix `histdb-word` completions in the middle of the commandline `#D1968` xxxxxxx
-  - histdb: support `bleopt histdb_remarks` `#D1968` xxxxxxx
+  - histdb: output error messages to tty `#D1952` 651c70c
+  - histdb: fix remaining debug function name "assign{2 => }" in bash <= 3.2 `#D1953` 651c70c
+  - histdb: fix a problem that the background process fails to start in bash-3.0 `#D1956` 651c70c
+  - histdb: fix a bug that history search fails with a single quote in the commandline `#D1957` 651c70c
+  - histdb: fix `histdb-word` completions in the middle of the commandline `#D1968` adaec05
+  - histdb: support `bleopt histdb_remarks` `#D1968` adaec05
+  - histdb: support timeout of background processes `#D1971` e0566bd
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->
