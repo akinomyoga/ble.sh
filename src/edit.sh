@@ -1826,7 +1826,7 @@ function ble/prompt/print-ruler.draw {
   [[ $bleopt_prompt_ruler ]] || return 0
 
   local command=$1 opts=$2 cols=$COLUMNS
-  local rex_eval_prefix='(([!{]|time|if|then|elif|while|until|do|exec|eval|command|env|nice|nohup|xargs|sudo)[[:space:]]+)?'
+  local rex_eval_prefix='(([!{]|time|if|then|elif|while|until|do|exec|eval|command|env|nice|nohup|xargs|sudo|doas|pkexec|kdesu)[[:space:]]+)?'
   local rex_clear_command='(tput[[:space:]]+)?(clear|reset)'
   local rex=$'(^|[\n;&|(])[[:space:]]*'$rex_eval_prefix$rex_clear_command'([ \t\n;&|)]|$)'
   [[ $command =~ $rex ]] && return 0
