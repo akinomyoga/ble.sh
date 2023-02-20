@@ -101,7 +101,7 @@ if [[ $type == fix3 ]]; then
   if [[ ${BLE_VERSION-} ]]; then
     ble/function#advice after ble/widget/clear-screen '_ble_edit_lineno=0'
     _check_clear_command() {
-      local rex_eval_prefix='((eval|command|env|sudo)[[:space:]]+)?'
+      local rex_eval_prefix='((eval|command|env|sudo|doas|pkexec|kdesu)[[:space:]]+)?'
       local rex_clear_command='(tput[[:space:]]+)?(clear|reset)'
       local rex=$'(^|[\n;&|(])[[:space:]]*'$rex_eval_prefix$rex_clear_command'([ \t\n;&|)]|$)'
       [[ $BASH_COMMAND =~ $rex ]] && _ble_edit_lineno=0
