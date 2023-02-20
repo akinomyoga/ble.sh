@@ -105,6 +105,7 @@
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097
 - prompt: escape control characters in `\w` and `\W` `#D1798` 8940434 a9551e5
   - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` d340233
+  - prompt: fix a bug that `\u` is expanded to the shell name `#D1975` xxxxxxx
 - emacs: support `bleopt keymap_emacs_mode_string_multiline` (motivated by ArianaAsl) `#D1818` 8e9d273
 - util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` 6d20f51
   - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` 1e19a67

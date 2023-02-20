@@ -597,7 +597,7 @@ function ble/prompt/initialize {
   _ble_prompt_const_s=$ret
 
   # user
-  ble/prompt/.initialize-constant '\s' 'ret=${USER:-$_ble_base_env_USER}' escape
+  ble/prompt/.initialize-constant '\u' 'ret=${USER:-$_ble_base_env_USER}' escape
   _ble_prompt_const_u=$ret
 
   # bash versions
