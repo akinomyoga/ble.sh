@@ -6590,6 +6590,10 @@ bash_tips
 
 2023-02-21
 
+  * prompt: PS1='\g{fg=#FF0000,bold}\$ ' としても色が反映されない [#D1977]
+
+    これは単純なバグだった。
+
   * 5.3: case insensitive history search (bash 72c4a0f4) [#D1976]
 
     rlvar search-ignore-case を on にすると readline での検索機能が ignore-case

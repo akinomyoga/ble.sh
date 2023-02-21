@@ -218,7 +218,7 @@ function ble/color/g2sgr-ansi/.impl {
   elif ((g&_ble_color_gflags_FgMask)); then
     local rgb=$((1<<24|g>>8&0xFFFFFF))
     local R=$((rgb>>16&0xFF)) G=$((rgb>>8&0xFF)) B=$((rgb&0xFF))
-    sgr="$sgr;38:2::$r:$g:$b"
+    sgr="$sgr;38:2::$R:$G:$B"
   fi
   if ((g&_ble_color_gflags_BgIndexed)); then
     local bg=$((g>>32&0xFF))
@@ -226,7 +226,7 @@ function ble/color/g2sgr-ansi/.impl {
   elif ((g&_ble_color_gflags_BgMask)); then
     local rgb=$((1<<24|g>>32&0xFFFFFF))
     local R=$((rgb>>16&0xFF)) G=$((rgb>>8&0xFF)) B=$((rgb&0xFF))
-    sgr="$sgr;48:2::$r:$g:$b"
+    sgr="$sgr;48:2::$R:$G:$B"
   fi
 
   ret=$'\e['$sgr'm'
@@ -783,7 +783,7 @@ function ble/color/.color2sgr-impl {
     if [[ $bleopt_term_true_colors == semicolon ]]; then
       ret="${prefix}8;2;$R;$G;$B"
     elif [[ $bleopt_term_true_colors == colon ]]; then
-      ret="${prefix}8:2:$R:$G:$B"
+      ret="${prefix}8:2::$R:$G:$B"
     else
       local index_colors=$_ble_color_index_colors_default
       [[ $bleopt_term_index_colors == auto ]] || ((index_colors=bleopt_term_index_colors))
