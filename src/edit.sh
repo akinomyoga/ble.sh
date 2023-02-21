@@ -7823,6 +7823,54 @@ function ble/widget/magic-space {
 
 function ble/highlight/layer:region/mark:search/get-face { face=region_match; }
 
+## @fn ble-edit/isearch/search/.match str rex
+##   @var[in] flag_icase
+##   @var[out] BASH_REMATCH
+function ble-edit/isearch/search/.match {
+  if [[ $flag_icase ]]; then
+    shopt -s nocasematch
+    [[ $1 =~ $2 ]]; local ext=$?
+    shopt -u nocasematch
+    return "$ext"
+  fi
+
+  [[ $1 =~ $2 ]]
+}
+
+## @fn ble-edit/isearch/search/.index str needle
+##   @var[in] flag_icase
+##   @var[out] beg end
+function ble-edit/isearch/search/.index {
+  local target=${1:$3} needle=$2
+  if [[ $flag_icase ]]; then
+    local ret
+    ble/string#tolower "$target"; target=$ret
+    ble/string#tolower "$needle"; needle=$ret
+  fi
+  local suffix=${target#*"$needle"}
+  [[ $target != "$suffix" ]] || return 1
+  ((end=${#1}-${#suffix}))
+  ((beg=end-${#needle}))
+  return 0
+}
+
+## @fn ble-edit/isearch/search/.last-index str needle
+##   @var[in] flag_icase
+##   @var[out] beg end
+function ble-edit/isearch/search/.last-index {
+  local target=$1 needle=$2
+  if [[ $flag_icase ]]; then
+    local ret
+    ble/string#tolower "$target"; target=$ret
+    ble/string#tolower "$needle"; needle=$ret
+  fi
+  local prefix=${target%"$needle"*}
+  [[ $target != "$prefix" ]] || return 1
+  beg=${#prefix}
+  end=$((beg+${#needle}))
+  return 0
+}
+
 ## @fn ble-edit/isearch/search needle opts ; beg end
 ##   @param[in] needle
 ##
@@ -7836,7 +7884,9 @@ function ble/highlight/layer:region/mark:search/get-face { face=region_match; }
 ##       これが指定された時、現在位置における一致の伸長が試みられます。
 ##       指定されなかったとき、現在一致範囲と重複のない新しい一致が試みられます。
 ##     regex
-##       正規表現による一致を試みます
+##       正規表現による一致を試みます。
+##     ignore-case
+##       大文字・小文字を区別せずに検索します。
 ##     allow_empty
 ##       空一致 (長さ0の一致) が現在位置で起こることを許容します。
 ##       既定では空一致の時には一つ次の位置から再検索を実行します。
@@ -7852,6 +7902,8 @@ function ble-edit/isearch/search {
   beg= end=
   [[ :$opts: != *:regex:* ]]; local has_regex=$?
   [[ :$opts: != *:extend:* ]]; local has_extend=$?
+  local flag_icase=
+  [[ :$opts: == *:ignore-case:* ]] && flag_icase=1
 
   local flag_empty_retry=
   if [[ :$opts: == *:-:* ]]; then
@@ -7861,7 +7913,7 @@ function ble-edit/isearch/search {
       ble-edit/isearch/.shift-backward-references
       local rex="^.*($needle)" padding=$((${#_ble_edit_str}-start))
       ((padding)) && rex="$rex.{$padding}"
-      if [[ $_ble_edit_str =~ $rex ]]; then
+      if ble-edit/isearch/search/.match "$_ble_edit_str" "$rex"; then
         local rematch1=${BASH_REMATCH[1]}
         if [[ $rematch1 || $BASH_REMATCH == "$_ble_edit_str" || :$opts: == *:allow_empty:* ]]; then
           ((end=${#BASH_REMATCH}-padding,
@@ -7873,13 +7925,7 @@ function ble-edit/isearch/search {
       fi
     else
       if [[ $needle ]]; then
-        local target=${_ble_edit_str::start}
-        local m=${target%"$needle"*}
-        if [[ $target != "$m" ]]; then
-          beg=${#m}
-          end=$((beg+${#needle}))
-          return 0
-        fi
+        ble-edit/isearch/search/.last-index "${_ble_edit_str::start}" "$needle" && return 0
       else
         if [[ :$opts: == *:allow_empty:* ]] || ((--start>=0)); then
           ((beg=end=start))
@@ -7895,7 +7941,7 @@ function ble-edit/isearch/search {
       ble-edit/isearch/.shift-backward-references
       local rex="^.{0,$start}($needle)"
       ((start==0)) && rex="^($needle)"
-      if [[ $_ble_edit_str =~ $rex ]]; then
+      if ble-edit/isearch/search/.match "$_ble_edit_str" "$rex"; then
         local rematch1=${BASH_REMATCH[1]}
         if [[ $rematch1 || :$opts: == *:allow_empty:* ]]; then
           ((end=${#BASH_REMATCH},
@@ -7907,13 +7953,7 @@ function ble-edit/isearch/search {
       fi
     else
       if [[ $needle ]]; then
-        local target=${_ble_edit_str::start+${#needle}}
-        local m=${target%"$needle"*}
-        if [[ $target != "$m" ]]; then
-          ((beg=${#m},
-            end=beg+${#needle}))
-          return 0
-        fi
+        ble-edit/isearch/search/.last-index "${_ble_edit_str::start+${#needle}}" "$needle" && return 0
       else
         if [[ :$opts: == *:allow_empty:* ]] && ((--start>=0)); then
           ((beg=end=start))
@@ -7927,7 +7967,7 @@ function ble-edit/isearch/search {
       ble-edit/isearch/.shift-backward-references
       local rex="($needle).*\$"
       ((start)) && rex=".{$start}$rex"
-      if [[ $_ble_edit_str =~ $rex ]]; then
+      if ble-edit/isearch/search/.match "$_ble_edit_str" "$rex"; then
         local rematch1=${BASH_REMATCH[1]}
         if [[ $rematch1 || :$opts: == *:allow_empty:* ]]; then
           ((beg=${#_ble_edit_str}-${#BASH_REMATCH}+start))
@@ -7939,13 +7979,7 @@ function ble-edit/isearch/search {
       fi
     else
       if [[ $needle ]]; then
-        local target=${_ble_edit_str:start}
-        local m=${target#*"$needle"}
-        if [[ $target != "$m" ]]; then
-          ((end=${#_ble_edit_str}-${#m}))
-          ((beg=end-${#needle}))
-          return 0
-        fi
+        ble-edit/isearch/search/.index "$_ble_edit_str" "$needle" "$start" && return 0
       else
         if [[ :$opts: == *:allow_empty:* ]] || ((++start<=${#_ble_edit_str})); then
           ((beg=end=start))
@@ -8014,6 +8048,7 @@ function ble-edit/isearch/.shift-backward-references {
 ##   needle は検索に使用した文字列を表す。
 ## @var _ble_edit_isearch_old
 ##   前回の検索に使用した文字列
+_ble_edit_isearch_opts=
 _ble_edit_isearch_str=
 _ble_edit_isearch_dir=-
 _ble_edit_isearch_arr=()
@@ -8155,9 +8190,15 @@ function ble-edit/isearch/.goto-match.fib {
 
 ## @fn ble-edit/isearch/.next.fib opts [needle]
 ##   @param[in] opts
+##     コロン区切りのリストです。
 ##     append
+##       前回の検索の続きを新しい needle で実行します。
 ##     forward
+##       検索方向を前方に変更します。
 ##     backward
+##       検索方向を後方に変更します。
+##     ignore-case
+##       大文字小文字の区別をしません。
 function ble-edit/isearch/.next.fib {
   local opts=$1
   if [[ ! $fib_suspend ]]; then
@@ -8178,6 +8219,8 @@ function ble-edit/isearch/.next.fib {
       #   .next-history.fib には append は指定しない #D1025
       ble/path#remove opts append
     fi
+    [[ :$opts: == *:ignore-case:* ]] &&
+      search_opts=$search_opts:ignore-case
     if [[ $needle ]] && ble-edit/isearch/search "$needle" "$search_opts"; then
       local ind; ble/history/get-index -v ind
       ble-edit/isearch/.goto-match.fib "$ind" "$beg" "$end" "$needle"
@@ -8193,6 +8236,8 @@ function ble-edit/isearch/.next.fib {
 ##     コロン区切りのリストです。
 ##     append
 ##       現在の履歴項目を検索対象とします。
+##     ignore-case
+##       大文字・小文字の区別をしません。
 ##
 ##   @param[in,opt] needle
 ##     新しい検索を開始する場合に、検索対象を明示的に指定します。
@@ -8237,10 +8282,12 @@ function ble-edit/isearch/.next-history.fib {
 
   # 検索
   local isearch_progress_callback=ble-edit/isearch/.show-status-with-progress.fib
+  local isearch_opts=stop_check:progress
+  [[ :$opts: == *:ignore-case:* ]] && isearch_opts=$isearch_opts:ignore-case
   if [[ $_ble_edit_isearch_dir == - ]]; then
-    ble/history/isearch-backward-blockwise stop_check:progress
+    ble/history/isearch-backward-blockwise "$isearch_opts"
   else
-    ble/history/isearch-forward stop_check:progress
+    ble/history/isearch-forward "$isearch_opts"
   fi
   local ext=$?
 
@@ -8250,12 +8297,19 @@ function ble-edit/isearch/.next-history.fib {
     # 一致範囲 beg-end を取得
     local str; ble/history/get-edited-entry -v str "$index"
     if [[ $needle ]]; then
-      if [[ $_ble_edit_isearch_dir == - ]]; then
-        local prefix=${str%"$needle"*}
-      else
-        local prefix=${str%%"$needle"*}
+      local ndl=$needle
+      if [[ :$opts: == *:ignore-case:* ]]; then
+        local ret
+        ble/string#tolower "$str"; str=$ret
+        ble/string#tolower "$ndl"; ndl=$ret
       fi
-      local beg=${#prefix} end=$((${#prefix}+${#needle}))
+
+      if [[ $_ble_edit_isearch_dir == - ]]; then
+        local prefix=${str%"$ndl"*}
+      else
+        local prefix=${str%%"$ndl"*}
+      fi
+      local beg=${#prefix} end=$((${#prefix}+${#ndl}))
     else
       local beg=${#str} end=${#str}
     fi
@@ -8274,16 +8328,16 @@ function ble-edit/isearch/.next-history.fib {
 
 function ble-edit/isearch/forward.fib {
   if [[ ! $_ble_edit_isearch_str ]]; then
-    ble-edit/isearch/.next.fib forward "$_ble_edit_isearch_old"
+    ble-edit/isearch/.next.fib "$_ble_edit_isearch_opts:forward" "$_ble_edit_isearch_old"
   else
-    ble-edit/isearch/.next.fib forward
+    ble-edit/isearch/.next.fib "$_ble_edit_isearch_opts:forward"
   fi
 }
 function ble-edit/isearch/backward.fib {
   if [[ ! $_ble_edit_isearch_str ]]; then
-    ble-edit/isearch/.next.fib backward "$_ble_edit_isearch_old"
+    ble-edit/isearch/.next.fib "$_ble_edit_isearch_opts:backward" "$_ble_edit_isearch_old"
   else
-    ble-edit/isearch/.next.fib backward
+    ble-edit/isearch/.next.fib "$_ble_edit_isearch_opts:backward"
   fi
 }
 function ble-edit/isearch/self-insert.fib {
@@ -8294,21 +8348,21 @@ function ble-edit/isearch/self-insert.fib {
     local ret; ble/util/c2s "$code"
     needle=$_ble_edit_isearch_str$ret
   fi
-  ble-edit/isearch/.next.fib append "$needle"
+  ble-edit/isearch/.next.fib "$_ble_edit_isearch_opts:append" "$needle"
 }
 function ble-edit/isearch/insert-string.fib {
   local needle=
   [[ ! $fib_suspend ]] &&
     needle=$_ble_edit_isearch_str$1
-  ble-edit/isearch/.next.fib append "$needle"
+  ble-edit/isearch/.next.fib "$_ble_edit_isearch_opts:append" "$needle"
 }
 function ble-edit/isearch/history-forward.fib {
   _ble_edit_isearch_dir=+
-  ble-edit/isearch/.next-history.fib
+  ble-edit/isearch/.next-history.fib "$_ble_edit_isearch_opts"
 }
 function ble-edit/isearch/history-backward.fib {
   _ble_edit_isearch_dir=-
-  ble-edit/isearch/.next-history.fib
+  ble-edit/isearch/.next-history.fib "$_ble_edit_isearch_opts"
 }
 function ble-edit/isearch/history-self-insert.fib {
   local needle=
@@ -8318,7 +8372,7 @@ function ble-edit/isearch/history-self-insert.fib {
     local ret; ble/util/c2s "$code"
     needle=$_ble_edit_isearch_str$ret
   fi
-  ble-edit/isearch/.next-history.fib append "$needle"
+  ble-edit/isearch/.next-history.fib "$_ble_edit_isearch_opts:append" "$needle"
 }
 
 function ble-edit/isearch/prev {
@@ -8463,6 +8517,10 @@ function ble/widget/history-isearch.impl {
   local index; ble/history/get-index
   _ble_edit_isearch_save=("$index" "$_ble_edit_ind" "$_ble_edit_mark" "$_ble_edit_mark_active")
 
+  _ble_edit_isearch_opts=
+  ble/util/rlvar#test search-ignore-case 0 &&
+    _ble_edit_isearch_opts=ignore-case
+
   if [[ :$opts: == *:forward:* ]]; then
     _ble_edit_isearch_dir=+
   else
@@ -8564,7 +8622,7 @@ function ble-edit/nsearch/.show-status.fib {
     local pos=$1
     local count; ble/history/get-count
     text=$text' searching...'
-    ble-edit/isearch/status/append-progress-bar "$pos" "$count" "$_ble_edit_isearch_opts"
+    ble-edit/isearch/status/append-progress-bar "$pos" "$count" "$_ble_edit_nsearch_opts"
     local percentage=$((count?pos*1000/count:1000))
     text=$text" @$pos ($((percentage/10)).$((percentage%10))%)"
   fi
@@ -8602,9 +8660,18 @@ function ble-edit/nsearch/.goto-match {
   else
     ble-edit/history/goto "$index"
   fi
-  local prefix=${_ble_edit_str%%"$needle"*}
+
+  # 一致範囲の決定
+  local s=$_ble_edit_str n=$needle
+  if [[ :$opts: == *:ignore-case:* ]]; then
+    local ret
+    ble/string#tolower "$s"; s=$ret
+    ble/string#tolower "$n"; n=$ret
+  fi
+  local prefix=${s%%"$n"*}
   local beg=${#prefix}
   local end=$((beg+${#needle}))
+
   _ble_edit_nsearch_match=$index
   _ble_edit_nsearch_index=$index
   _ble_edit_mark=$beg
@@ -8704,7 +8771,9 @@ function ble-edit/nsearch/.search.fib {
   then
     local isearch_time=$fib_clock
     local isearch_progress_callback=ble-edit/nsearch/.show-status.fib
-    local isearch_opts=stop_check:progress; [[ :$opts: != *:substr:* ]] && isearch_opts=$isearch_opts:head
+    local isearch_opts=stop_check:progress
+    [[ :$opts: != *:substr:* ]] && isearch_opts=$isearch_opts:head
+    [[ :$opts: == *:ignore-case:* ]] && isearch_opts=$isearch_opts:ignore-case
     if [[ $opt_forward ]]; then
       ble/history/isearch-forward "$isearch_opts"; local ext=$?
     else
@@ -8740,6 +8809,21 @@ function ble-edit/nsearch/forward.fib {
 }
 function ble-edit/nsearch/backward.fib {
   ble-edit/nsearch/.search.fib "$_ble_edit_nsearch_opts:backward"
+}
+
+## @fn ble-edit/nsearch/.test str ndl opts
+##   指定した文字列が一致するかどうかを判定します。
+function ble-edit/nsearch/.test {
+  local str=$1 ndl=$2 opts=$3
+  [[ :$opts: == *:ignore-case:* ]] &&
+    shopt -s nocasematch
+  if [[ :$opts: == *:substr:* ]]; then
+    [[ $str == *"$ndl"* ]]
+  else
+    [[ $str == "$ndl"* ]]
+  fi; local ext=$?
+  shopt -u nocasematch
+  return "$ext"
 }
 
 ## @widget history-search opts
@@ -8820,6 +8904,12 @@ function ble/widget/history-search {
 
   ble/keymap:generic/clear-arg
 
+  # ignore-case も match-case も指定されていない時は readline の
+  # search-ignore-case を参照する。
+  [[ :$opts: != *:ignore-case:* && :$opts: != *:match-case:* ]] &&
+    ble/util/rlvar#test search-ignore-case 0 &&
+    opts=$opts:ignore-case
+
   _ble_edit_nsearch_stack=()
   local index; ble/history/get-index
   _ble_edit_nsearch_index0=$index
@@ -8832,13 +8922,7 @@ function ble/widget/history-search {
   ble/decode/keymap/push nsearch
 
   # 現在履歴位置が一致する場合は戻って来れる様に記録する。
-  if
-    if [[ :$opts: == *:substr:* ]]; then
-      [[ $_ble_edit_str == *"$_ble_edit_nsearch_needle"* ]]
-    else
-      [[ $_ble_edit_str == "$_ble_edit_nsearch_needle"* ]]
-    fi
-  then
+  if ble-edit/nsearch/.test "$_ble_edit_str" "$_ble_edit_nsearch_needle" "$opts"; then
     ble-edit/nsearch/.goto-match '' "$opts"
   fi
 

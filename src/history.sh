@@ -2141,6 +2141,8 @@ function ble/history/isearch-backward-blockwise {
   local irest block j i=$index
   index=
 
+  local flag_icase=; [[ :$opts: == *:ignore-case:* ]] && flag_icase=1
+
   local flag_cycled= range_min range_max
   while :; do
     if ((i<=start)); then
@@ -2157,6 +2159,7 @@ function ble/history/isearch-backward-blockwise {
         irest=NSTPCHK-isearch_time%NSTPCHK,
         block>irest&&(block=irest)))
 
+      [[ $flag_icase ]] && shopt -s nocasematch
       case $search_type in
       (regex)     for ((j=i-block;++j<=i;)); do
                     [[ ${_ble_history_edit[j]} =~ $needle ]] && index=$j
@@ -2185,6 +2188,7 @@ function ble/history/isearch-backward-blockwise {
                     [[ ${_ble_history_edit[j]} == *"$needle"* ]] && index=$j
                   done ;;
       esac
+      [[ $flag_icase ]] && shopt -u nocasematch
 
       ((isearch_time+=block))
       [[ $index ]] && return 0
@@ -2206,7 +2210,7 @@ function ble/history/isearch-backward-blockwise {
     fi
   done
 }
-function ble/history/forward-isearch.impl {
+function ble/history/isearch-forward.impl {
   local opts=$1
   local search_type has_stop_check has_progress has_backward
   ble/history/.read-isearch-options "$opts"
@@ -2216,6 +2220,8 @@ function ble/history/forward-isearch.impl {
     local -a _ble_history_edit
     builtin eval "_ble_history_edit=(\"\${${_ble_history_prefix}_history_edit[@]}\")"
   fi
+
+  local flag_icase=; [[ :$opts: == *:ignore-case:* ]] && flag_icase=1
 
   while :; do
     local flag_cycled= expr_cond expr_incr
@@ -2233,6 +2239,7 @@ function ble/history/forward-isearch.impl {
       fi
     fi
 
+    [[ $flag_icase ]] && shopt -s nocasematch
     case $search_type in
     (regex)
 #%define search_loop
@@ -2258,6 +2265,7 @@ function ble/history/forward-isearch.impl {
     (*)
 #%expand search_loop.r/@/[[ ${_ble_history_edit[index]} == *"$needle"* ]]/
     esac
+    [[ $flag_icase ]] && shopt -u nocasematch
 
     if [[ ! $flag_cycled && :$opts: == *:cyclic:* ]]; then
       if ((has_backward)); then
@@ -2273,8 +2281,8 @@ function ble/history/forward-isearch.impl {
   done
 }
 function ble/history/isearch-forward {
-  ble/history/forward-isearch.impl "$1"
+  ble/history/isearch-forward.impl "$1"
 }
 function ble/history/isearch-backward {
-  ble/history/forward-isearch.impl "$1:backward"
+  ble/history/isearch-forward.impl "$1:backward"
 }

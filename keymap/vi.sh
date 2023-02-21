@@ -5196,7 +5196,7 @@ function ble/keymap:vi/search/clear-matched {
   _ble_keymap_vi_search_matched=
   [[ $_ble_edit_mark_active == vi_search ]] && _ble_edit_mark_active=
 }
-## @fn ble/keymap:vi/search/invoke-search needle opts
+## @fn ble/keymap:vi/search/invoke-search needle
 ##
 ##   @param[in] needle
 ##     検索パターンを表す正規表現を指定する。
