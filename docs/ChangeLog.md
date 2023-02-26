@@ -65,7 +65,7 @@
   - syntax: recognize escape \" in double-quoted strings `#D1641` 4b71449
 - prompt: support a new backslash sequence `\g{...}` `#D1609` be31391
   - prompt: accept more general `[TYPE:]SPEC` in `\g{...}` like `ble-face` `#D1963` 81b3b0e
-  - prompt: fix non-working 24-bit color in `\g{...}` `#D1977` xxxxxxx
+  - prompt: fix non-working 24-bit color in `\g{...}` `#D1977` 881ec25
 - complete: add a new option `bleopt complete_limit_auto_menu` `#D1618` 1829d80
 - canvas: support grapheme clusters (motivated by huresche) `#D1619` c0d997b
   - canvas (`ble/util/c2w`): use `EastAsianWidth` and `GeneralCategory` to mimic `wcwidth` `#D1645` 9a132b7
@@ -106,7 +106,7 @@
 - util (blehook): support `hook!=handler` and `hook+-=handler` `#D1791` 0b8c097
 - prompt: escape control characters in `\w` and `\W` `#D1798` 8940434 a9551e5
   - prompt: fix wrongly escaped UTF-8 chars in `\w` and `\W` `#D1806` d340233
-  - prompt: fix a bug that `\u` is expanded to the shell name `#D1975` xxxxxxx
+  - prompt: fix a bug that `\u` is expanded to the shell name `#D1975` fe339c3
 - emacs: support `bleopt keymap_emacs_mode_string_multiline` (motivated by ArianaAsl) `#D1818` 8e9d273
 - util: synchronize rlvars with `bleopt complete_{menu_color{,_match},skip_matched} term_bracketed_paste_mode` (motivated by ArianaAsl) `#D1819` 6d20f51
   - util: suppress false warnings of `bind` inside non-interactive shells (reported by wukuan405) `#D1823` 1e19a67
@@ -128,7 +128,7 @@
 - syntax: highlight `\?` in here documents `#D1959` e619e73
 - syntax: recognize history expansion in here documents, `"...!"` (bash <= 4.2), and `$!` (bash <= 4.1) `#D1959` e619e73
 - syntax: support context after `((...))` and `[[ ... ]]` in bash-5.2 `#D1962` 67cb967
-- edit: support the readline variable `search-ignore-case` of bash-5.3 `#D1976` xxxxxxx
+- edit: support the readline variable `search-ignore-case` of bash-5.3 `#D1976` e3ad110
 
 ## Changes
 
@@ -354,7 +354,7 @@
 - complete: fix non-working ambiguous path completion with `..` and `.` in the path `#D1930` 632e90a
 - main (`ble-reload`): fix failure by non-existent rcfile `#D1931` 0ceb0cb
 - syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
-- menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` xxxxxxx
+- menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` cc852dc
 
 ## Documentation
 
@@ -473,7 +473,8 @@
 - main: never load `/etc/inputrc` in openSUSE (motivated by Ultra980) `#D1926` 92f2006 0ceb0cb
 - canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` b0c16dd
 - term (`terminology`): work around terminal glitches `#D1946` 9a1b4f9
-- main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` xxxxxxx
+- main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` e2ec89c
+- util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` xxxxxxx
 
 ## Test
 
@@ -553,7 +554,7 @@
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
 - fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
-  - completion: quote only with `filenames` when `ble/syntax-raw` is specified (reported by christianknauer) `#D1978` xxxxxxx
+  - completion: quote only with `filenames` when `ble/syntax-raw` is specified (reported by christianknauer) `#D1978` 8965b61
 - README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` 09bb4d3
 - fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` 09bb4d3
 - colorglass: add color filter `#D1902` 88e74cc
@@ -574,6 +575,7 @@
   - histdb: fix `histdb-word` completions in the middle of the commandline `#D1968` adaec05
   - histdb: support `bleopt histdb_remarks` `#D1968` adaec05
   - histdb: support timeout of background processes `#D1971` e0566bd
+  - histdb: enable database timeout for transactions `#D1982` xxxxxxx
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->

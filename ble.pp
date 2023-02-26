@@ -288,7 +288,7 @@ function ble/base/adjust-builtin-wrappers/.assign {
   if [[ ${_ble_util_assign_base-} ]]; then
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$1" >| "$_ble_local_tmpfile"
-    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' defs < "$_ble_local_tmpfile"
+    IFS= ble/bash/read -d '' defs < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
   else
     defs=$(builtin eval -- "$1")
@@ -930,6 +930,36 @@ function ble/base/initialize-version-information {
 ble/base/initialize-version-information
 
 #------------------------------------------------------------------------------
+# workarounds for builtin read
+
+function ble/bash/read { builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"; }
+function ble/bash/read-timeout { builtin read -t "$@"; }
+
+# WA for bas-5.2 nested read by WINCH causes corrupted "running_trap"
+_ble_bash_read_winch=
+if ((50200<=_ble_bash&&_ble_bash<50300)); then
+  function ble/bash/read/.process-winch {
+    if [[ $_ble_bash_read_winch != - ]]; then
+      local _ble_local_handler=$_ble_bash_read_winch
+      local _ble_bash_read_winch=
+      builtin eval -- "$_ble_local_handler"
+    fi
+  }
+  function ble/bash/read {
+    local _ble_bash_read_winch=-
+    builtin read "${_ble_bash_tmout_wa[@]}" "$@"; local _ble_local_ext=$?
+    ble/bash/read/.process-winch
+    return "$_ble_local_ext"
+  }
+  function ble/bash/read-timeout {
+    local _ble_bash_read_winch=-
+    builtin read -t "$@"; local _ble_local_ext=$?
+    ble/bash/read/.process-winch
+    return "$_ble_local_ext"
+  }
+fi
+
+#------------------------------------------------------------------------------
 # check environment
 
 # will be overwritten by src/util.sh
@@ -1491,7 +1521,7 @@ function ble/base/clean-up-runtime-directory {
     # kill process specified by the pid file
     if [[ $file == *.pid && -s $file ]]; then
       local run_pid IFS= TMOUT=
-      builtin read "${_ble_bash_tmout_wa[@]}" -r run_pid < "$file"
+      ble/bash/read run_pid < "$file"
       if [[ $run_pid && ! ${run_pid//[0-9]} ]]; then
         if ((pid==$$)); then
           # 現セッションの背景プロセスの場合は遅延させる

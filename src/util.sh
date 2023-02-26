@@ -1653,13 +1653,13 @@ else
   function ble/util/readfile { # 465ms for man bash
     [[ -r $2 && ! -d $2 ]] || return 1
     local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "$1" < "$2"
+    IFS= ble/bash/read -d '' "$1" < "$2"
     return 0
   }
   function ble/util/mapfile {
     local IFS= TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
-    while builtin read "${_ble_bash_tmout_wa[@]}" -r _ble_local_val || [[ $_ble_local_val ]]; do
+    while ble/bash/read _ble_local_val || [[ $_ble_local_val ]]; do
       _ble_local_arr[_ble_local_i++]=$_ble_local_val
     done
     builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
@@ -2140,7 +2140,7 @@ function ble/util/readarray {
   else
     local _ble_local_script='
       local IFS= ARRI=0; ARR=()
-      while builtin read "${_ble_bash_tmout_wa[@]}" -r -d "$_ble_local_delim" "ARR[ARRI++]"; do :; done'
+      while ble/bash/read -d "$_ble_local_delim" "ARR[ARRI++]"; do :; done'
   fi
 
   if [[ $_ble_local_nlfix ]]; then
@@ -2208,7 +2208,7 @@ else
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$? TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "$1" < "$_ble_local_tmpfile"
+    IFS= ble/bash/read -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
     builtin eval "$1=\${$1%\$_ble_term_nl}"
     return "$_ble_local_ret"
@@ -2260,7 +2260,7 @@ else
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
     local IFS= i=0 _ble_local_arr
-    while builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmpfile"
+    while ble/bash/read -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
     [[ ${_ble_local_arr[--i]} ]] || builtin unset -v "_ble_local_arr[i]"
     ble/util/unlocal i IFS
@@ -3285,7 +3285,7 @@ function ble/util/msleep/.use-read-timeout {
       ((v>1000000+_ble_util_msleep_delay2)) &&
         ble/util/msleep/.core2
       ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
-      ! builtin read -t "$v" v < /dev/udp/0.0.0.0/80
+      ! ble/bash/read-timeout "$v" v < /dev/udp/0.0.0.0/80
     }
     function ble/util/msleep/.calibrate-loop {
       local _ble_measure_threshold=10000
@@ -3309,7 +3309,7 @@ function ble/util/msleep/.use-read-timeout {
       local v=$((1000*$1-_ble_util_msleep_delay))
       ((v<=0)) && v=100
       ble/util/sprintf v '%d.%06d' "$((v/1000000))" "$((v%1000000))"
-      ! builtin read -t "$v" -u "$_ble_util_msleep_fd" v
+      ! ble/bash/read-timeout "$v" -u "$_ble_util_msleep_fd" v
     } ;;
   (*.*)
     if local rex='^(fifo|zero|ptmx)\.(open|exec)([12])(-[a-z]+)?$'; [[ $msleep_type =~ $rex ]]; then
@@ -3340,12 +3340,12 @@ function ble/util/msleep/.use-read-timeout {
       # open type
       if [[ $open == dup ]]; then
         _ble_util_msleep_fd=$_ble_util_msleep_tmp
-        _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
+        _ble_util_msleep_read='! ble/bash/read-timeout "$v" -u "$_ble_util_msleep_fd" v'
       elif [[ $open == exec ]]; then
         ble/fd#alloc _ble_util_msleep_fd "$redir \"\$_ble_util_msleep_tmp\""
-        _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
+        _ble_util_msleep_read='! ble/bash/read-timeout "$v" -u "$_ble_util_msleep_fd" v'
       else
-        _ble_util_msleep_read='! builtin read -t "$v" v '$redir' "$_ble_util_msleep_tmp"'
+        _ble_util_msleep_read='! ble/bash/read-timeout "$v" v '$redir' "$_ble_util_msleep_tmp"'
       fi
 
       # fallback/switch
@@ -3396,7 +3396,7 @@ function ble/util/msleep/.use-read-timeout {
   # #D1467 Cygwin/Linux では timeout は 142 だが、これはシステム依存。
   #   man bash にある様に 128 より大きいかどうかで判定
   if [[ :$opts: == *:check:* && $_ble_util_msleep_fd ]]; then
-    if builtin read -t 0.000001 -u "$_ble_util_msleep_fd" _ble_util_msleep_dummy 2>/dev/null; (($?<=128)); then
+    if ble/bash/read-timeout 0.000001 -u "$_ble_util_msleep_fd" _ble_util_msleep_dummy 2>/dev/null; (($?<=128)); then
       ble/fd#close _ble_util_msleep_fd
       _ble_util_msleep_fd=
       return 1
@@ -3694,7 +3694,7 @@ function ble/util/conditional-sync {
 ##   cat の代替。直接扱えない NUL で区切って読み出す。
 function ble/util/cat/.impl {
   local content= TMOUT= IFS= 2>/dev/null # #D1630 WA readonly TMOUT
-  while builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' content; do
+  while ble/bash/read -d '' content; do
     printf '%s\0' "$content"
   done
   [[ $content ]] && printf '%s' "$content"
@@ -6442,7 +6442,7 @@ else
 
     local bytes byte TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     ble/util/assign bytes '
-      while IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -n 1 byte; do
+      while IFS= ble/bash/read -n 1 byte; do
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
     '

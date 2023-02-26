@@ -3242,7 +3242,7 @@ function ble/complete/progcomp/.compgen-helper-func {
   ble/complete/progcomp/.compvar-initialize
 
   local progcomp_read_count=0
-  local _ble_builtin_read_hook='ble/complete/progcomp/.check-limits || { builtin read "$@" < /dev/null; return 148; }'
+  local _ble_builtin_read_hook='ble/complete/progcomp/.check-limits || { ble/bash/read "$@" < /dev/null; return 148; }'
 
   local fDefault=
   ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
@@ -3966,7 +3966,7 @@ function ble/complete/action:mandb/get-desc {
 function ble/complete/mandb/load-mandb-conf {
   [[ -s $1 ]] || return 0
   local line words
-  while builtin read "${_ble_bash_tmout_wa[@]}" -r line || [[ $line ]]; do
+  while ble/bash/read line || [[ $line ]]; do
     ble/string#split-words words "${line%%'#'*}"
     case ${words[0]} in
     (MANDATORY_MANPATH)

@@ -375,8 +375,15 @@ function ble/application/onwinch {
 
   local old_size= i
   for ((i=0;i<20;i++)); do
-    # 次の待つと共にサブシェルで checkwinsize を誘発
-    (ble/util/msleep 50)
+    if ((50200<=_ble_bash&&_ble_bash<50300)); then
+      # Note: bash-5.2 では trap string / bind -x 内部で COLUMNS/LINES が更新さ
+      #   れないので "$BASH" を起動して端末サイズを取得する。
+      builtin eval -- "$(ble/util/msleep 50; exec "$BASH" -O checkwinsize -c '(:); [[ $COLUMNS && $LINES ]] && printf %s "COLUMNS=$COLUMNS LINES=$LINES"' 2>/dev/tty)"
+    else
+      # 次の WINCH を待つと共にサブシェルで checkwinsize を誘発
+      (ble/util/msleep 50)
+    fi
+
     # trap 中だと bash のバグでジョブが溜まるので逐次捌く
     ble/util/joblist.check ignore-volatile-jobs
     local size=$LINES:$COLUMNS
@@ -6059,7 +6066,7 @@ function ble/exec/time#restore-TIMEFORMAT {
     builtin unset -v 'TIMEFORMAT[0]'
   fi
   local tot usr sys dummy
-  IFS=' ' builtin read "${_ble_bash_tmout_wa[@]}" -r tot usr sys dummy < "$_ble_exec_time_TIMEFILE"
+  IFS=' ' ble/bash/read tot usr sys dummy < "$_ble_exec_time_TIMEFILE"
   ((_ble_exec_time_tot=10#0${tot//[!0-9]}))
   ((_ble_exec_time_usr=10#0${usr//[!0-9]}))
   ((_ble_exec_time_sys=10#0${sys//[!0-9]}))
@@ -9575,7 +9582,7 @@ function ble/builtin/read/.loop {
 
     # read 1 character
     local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-    IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
+    IFS= ble/bash/read -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
     if ((ext>128)); then
       # timeout
       #   Note: #D1467 Cygwin/Linux では read の timeout は 142 だが、これはシステム依存。
@@ -9658,7 +9665,7 @@ function ble/builtin/read/.impl {
     [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
     [[ $opt_timeout ]] && ble/array#push opts -t "$opt_timeout"
     __ble_args=("${opts[@]}" "${opts_in[@]}" -- "${vars[@]}")
-    __ble_command='builtin read "${__ble_args[@]}"'
+    __ble_command='ble/bash/read "${__ble_args[@]}"'
     return 0
   fi
 
@@ -9678,7 +9685,7 @@ function ble/builtin/read/.impl {
   if ((ext==0)); then
     builtin eval -- "$result"
     __ble_args=("${opts[@]}" -- "${vars[@]}")
-    __ble_command='builtin read "${__ble_args[@]}" <<< "$__ble_input"'
+    __ble_command='ble/bash/read "${__ble_args[@]}" <<< "$__ble_input"'
   fi
   return "$ext"
 }
@@ -9996,7 +10003,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
         local message= line TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-        while IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r line || [[ $line ]]; do
+        while IFS= ble/bash/read line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
@@ -10057,7 +10064,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
 
     function ble-edit/io/check-ignoreeof-loop {
       local line opts=:$1: TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-      while IFS= builtin read "${_ble_bash_tmout_wa[@]}" -r line; do
+      while IFS= ble/bash/read line; do
         if [[ $line == *[^$_ble_term_IFS]* ]]; then
           ble/util/print "$line" >> "$_ble_edit_io_fname2"
         fi

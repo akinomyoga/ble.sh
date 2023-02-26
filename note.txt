@@ -1379,6 +1379,46 @@ bash_tips
     bug-bash, third-party bugs & reviews
 -------------------------------------------------------------------------------
 
+2023-02-20
+
+  * review: completion 自動生成
+
+    argument-parser と一緒に completion を自動生成する試みがある。
+
+    - spf13/cobra や rsteube/carapace 等の仕組み。
+
+    - https://github.com/adoyle-h/bash-completor
+
+    - ble.sh でも最初期に getopts interface を実装して、これだけで引数パーサー
+      と同時にそれと consistent なコマンド依存単語着色を実装しようと試みた。結
+      局、これは argument parsing 速度が遅いという事で放棄されて
+      archive/getopt1.sh に眠っているが、直接実行するのではなくて、事前に関数を
+      生成して置くという方式にすればそれは気にしなくても良いのかもしれない (但
+      しその分だけ footprint が大きくなる)。実のところ ble-face だとか ble-bind
+      の様に初期化時に大量に呼び出される物でなければ、別に其処まで速度を気にす
+      る必要はない気もする。
+
+    - 最近もシェルで getopts と同時にヘルプ等も自動的に生成しようという試みがあ
+      る。これである。
+
+      https://github.com/ko1nksm/getoptions
+
+    - 他にも類似の物が定期的に github 上に現れる気がするが忘れた。
+
+    ble.sh 的には以下の物を同時に全てしてくれるととても良い。
+
+    - 引数解析器
+    - 引数補完候補生成
+    - 単語着色
+    - 引数指定方法のエラーの検知、診断情報の取得、修正候補の生成
+
+    一般的な枠組みとしては更に以下の様な物もあると便利なのだろう
+
+    - ヘルプ自動生成
+    - 引数に関する単体テストの自動生成 (特殊ファイル名、巨大数、etc.) →でも正
+      しく動作しているかどうかの判定は別で書かなければならないのでは?
+
+
 2023-02-14
 
   * bug-bash: bash-5.2 で -u extquote しても ${var//[$'\n']} が改行を削除する。
@@ -1941,6 +1981,37 @@ bash_tips
   - leakvars
   - keymap の移動 (これは別 commit にする?)
   - make_command.sh の整理 (scan 分離, char_width 分離)
+
+2023-02-27
+
+  * complete: compopt -o filenames が指定された時に末尾の空白を除去する?
+    bash の振る舞いを確認する。
+
+2023-02-20
+
+  * autoenv 実装
+
+    既存の物と同じ設定ファイルを使い回す事を検討するべきだろうか。zsh-autoenv
+    は .autoenv.zsh を使っている。これに倣うのであれば .autoenv.blesh という物
+    を用意するのが便利である。
+
+    * authorized 的なファイルの形式はどうするか。何処に記録するか。sha256sum を
+      呼び出せば良い。然し、sha256sum が存在しなかった時にどうするのかや、前に
+      無かったのに新しくインストールされた場合にどうするのか等が非自明である。
+      取り敢えず cksum は存在すると思っておくべき? あと、前にはあったけれどもな
+      くなってしまったという場合にもどうするのか困る。うーん。ファイルには hash
+      の形式も一緒に記録する事にするのが良い気がする。
+
+    * bleopt push/pop の機能を実装するべき。bleopt --push ... 等とする? 或いは
+      全ての設定を一斉に push するという手もあるだろうか。或いは、bleopt 自体に
+      hook して .autoenv を実行中の変更を全て track する。これが楽の気がする。
+
+    * function については ble/function#push/pop を使ってもらう。alias は ble.sh
+      側で追跡する。adjust の中で定義して大丈夫なのか? 抜ける時には特に今まであっ
+      たものを敢えて削除する事はしないので一応使える? 然し、以前の alias が退避
+      されていた場合にそれが restore される時に上書きされて昔の物に戻ってしまう
+      という事が起こるのでは。という事を考えると alias に関しては adjust を一旦
+      restore しておく必要があるのではないか。他にも FUNCNAME 等が気になる。
 
 2023-02-12
 
@@ -6587,6 +6658,188 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-03-01
+
+  * 2023-02-21 histdb: 終了時に sqlite3 のエラーが発生して失敗する事がある [#D1982]
+
+    Runtime error near line 779: database is locked (5)
+
+    調べてみるとどうやら timeout を指定していたとしても BEGIN TRANSACTION は即
+    座に失敗するらしい。IMMEDIATE を指定する必要がある。
+
+    https://blog.ver001.com/sqlite-databaseislocked/
+
+    これは単に IMMEDIATE を指定したがそれ以降エラーは出ていない。これ
+    で直っていると良いが、エラーがそもそも出る確率が少ない様だから確認
+    が難しい。次にまた問題が出た時に考える。
+
+  * 2023-02-21 どうも bash-5.2 で WINCH が効かなくなっている [#D1981]
+
+    最初は効いているが、同時に複数の WINCH を受け取る等の事が一旦起こるとそれ以
+    降は WINCH が効かなくなってしまう。bash-5.1 では問題は起こらない。より簡単
+    な設定で再現しようとしたが再現しない。bash 自体の内部で何が起こっているのか
+    確認するべきの気がする。
+
+    * 更に devel で試してみると無限ループになってしまう。何故? 自前で適当に
+      setup しても無限ループにはならない。この devel の無限ループでは別に
+      ble/builtin/trap/.handler が沢山呼び出されている訳でもない様だ。bash の側
+      で無限ループになっている。
+
+      devel 407d9af (20221119) は大丈夫。3687888 (20230220) も大丈夫。という事
+      は DPF で勝手に書き換えているのが問題という事? 或いは debug version が駄
+      目という事なのだろうか。どうやら ./configure --with-bash-malloc=no でコン
+      パイルすると駄目? と思ったが ./configure でも駄目の様だ。どうも maint の
+      時にだけ発生する問題の様である。うーん。これの優先度は低い。
+
+    * うーん。一応 WINCH は受信はできている様だ。然し COLUMNS LINES が更新され
+      ていないという状態。subshell を呼び出したとしても更新されない。但し内部で
+      改めて builtin trap 等を実行して WINCH を呼び出すと WINCH 自体が動かなく
+      なる。
+
+    これは結局 histdb の timeout の処理の為に動かしている msleep が良くない様だ。
+    つまり、ble/util/msleep (中身は read -t) が待っている間に WINCH が来るとそ
+    の WINCH は消えてなくなるという事。実は 5.1 では read -t の途中で WINCH が
+    来ても read -t が終わった後にちゃんと WINCH が発火してくれる。これは
+    sigmask 等を弄ったら動く様にならないだろうか。
+
+    改めて bash-5.2 --norc で起動して read -t 5 をしてみたら実はその場 (read -t
+    の timeout を待たずに) で発火する。何れにしても 5.1 とは振る舞いが微妙に違
+    うが、これは ble.sh の時に全く発火しないのとは振る舞いが違う。或いは、read
+    -t の読み取り元の fd の種類によって振る舞いが違うのだろうか。
+
+    * ble.sh の中にいると WINCH が不活性になってしまう問題。起動した瞬間に
+      builtin trap WINCH を実行している場合には問題は生じない。つまり、WINCH の
+      処理中に更に新しい WINCH が来るなどの事があると不活性になってしまうという
+      事だろうか。
+
+      またこれは bash のバグなのかという事もある。bash のバグとしての修正と、そ
+      れから既に出ている bash-5.2 に対する workaround の両方を実装する必要があ
+      る。取り敢えず bash 側で何が起こっているのかについては確認する必要がある。
+
+    * WINCH が不活性の時は bash の中で何が起こっているのか。
+
+      % 先ず _rl_signal_handler は通常の動作している状態であっても ble.sh の中で
+      % は呼び出されていない。つまり、自分が設定した WINCH だけが有効になっている
+      % 状態で、readline signal handler がない状態だろう。これは不活性になってい
+      % る時でもちゃんと WINCH が活性している時でも問題になっている。
+      %
+      % trap でどう設定されるのかを見て呼び出し経路を探る事にする。set_signal を
+      % 呼び出している。中では trap_handler という関数をシステムに登録している。
+      %
+      % 実際に trap_handler が呼び出されているかどうかを確認してみると
+      % trap_handler までは不活性の状態でも呼び出されている様だ。trap_handler は
+      % set_trap_state を呼び出して抜ける。更に pending_traps[SIGWINCH]++ が実行
+      % される。この配列をチェックして実際の trap string を実行している箇所を探せ
+      % ば良い。
+      %
+      % →どうやら set_trap_state までは呼び出されるけれどもその後
+      % run_pending_traps が実行されない状態になっているということの気がする。
+      %
+      % どうも running_trap が有効になったままになってしまい無限ループ状態になっ
+      % ている。つまり running_trap の復元に失敗している。running_trap はどの様に
+      % 復元する事になっているのだったか。
+      %
+      % どうも parse_and_execute で実行している最中に実行が途切れて戻ってこないの
+      % が問題の様である。然し何故だろうか。実行しているコマンドの内容による? 特
+      % 定のコマンドの後に変な事が起こるのか、それとも最後まで実行した挙げ句に変
+      % な事になるのか。
+      %
+      % 調べてみると blehook internal_WINCH の実行途中に制御が消滅する様である。
+      % どんどん調べていくと結局やはり ret=$(msleep 50; bash -c ... ) として端末
+      % サイズを取得しようとしている所で失敗している。これを assign に置き換えて
+      % も失敗する。assign は mapfile で失敗する。つまり、read -t の最中に起こっ
+      % たシグナルの中で何らかの読み取り動作を実行しようとすると失敗するという事。
+      % 実際に sigmask で sigwinch が即時発火しない様に修正したら問題は生じなくな
+      % る。
+
+      まとめると、read -t (msleep) で待っている間に SIGWINCH を受信するとその場
+      で WINCH handler が呼び出され、更にその中で a=$() や mapfile 等の読み取り
+      を使おうとするとエラーが発生して、run_pending_trap 自体の実行が中途半端に
+      キャンセルされてしまう。これにより run_pending_trap が設定している
+      runnning_trap がクリアされずに残ってしまい、入れ子の trap 実行と判定され
+      て run_pending_trap が全く実行されなくなってしまう。
+
+      read -t の実行時に sigmask を指定して SIGWINCH をブロックしておけば変な事
+      は起こらない。なので 5.3 以降では気にしなくて良い。
+
+      以下 ble/application/onwinch の COLUMNS, LINES 取得部分で行った実験コード
+
+      | # bash-5.2 では read -t の最中の WINCH がその場で発火して、(1) 内部で
+      | # ble/util/msleep を実行しようとすると外側の timeout 設定が削除されてロッ
+      | # クする (2) WINCH が受信できない変な状態になる。
+      |
+      | # local ret
+      | # ble/util/msleep 50
+      | # ble/util/assign-words ret 'ble/bin/stty size'
+      | # LINES=${ret[0]}
+      | # COLUMNS=${ret[1]}
+      |
+      | # (ble/util/msleep 50)
+      | # local cmd='(:); echo "COLUMNS=$COLUMNS LINES=$LINES"' ret
+      | # ble/util/assign ret '"$BASH" -O checkwinsize -c "$cmd"'
+      | # builtin eval -- "$ret"
+      |
+      | echo "$FUNCNAME @3" >/dev/tty
+      | # 5.2 コマンド置換 $() を使うと停止する。
+      | #builtin eval -- "$(sleep 0.05; "$BASH" -O checkwinsize -c '(:); echo "COLUMNS=$COLUMNS LINES=$LINES"' 2>/dev/null)"
+      | #local ret=$(ble/util/msleep 50; "$BASH" -O checkwinsize -c '(:); echo "COLUMNS=$COLUMNS LINES=$LINES"' 2>/dev/null)
+      | #local ret=$(sleep 0.05; "$BASH" -O checkwinsize -c '(:); echo "COLUMNS=$COLUMNS LINES=$LINES"' 2>/dev/null)
+      | #local ret=$(echo echo yes)
+      | #(echo yes)
+      | (ble/util/msleep 50)
+      | echo "$FUNCNAME @3.1" >/dev/tty
+      | (echo >/dev/null; bash -c ':')
+      | echo "$FUNCNAME @3.2" >/dev/tty
+      | (bash -c ':')
+      | echo "$FUNCNAME @3.3" >/dev/tty
+      | local _ble_local_tmpfile;
+      | echo "$FUNCNAME @3.31" >/dev/tty
+      | ble/util/assign/.mktmp;
+      | echo "$FUNCNAME @3.32" >/dev/tty
+      | builtin eval -- "(echo echo yes)" >| "$_ble_local_tmpfile";
+      | echo "$FUNCNAME @3.33" >/dev/tty
+      | local _ble_local_ret=$? _ble_local_arr=;
+      | echo "$FUNCNAME @3.34" >/dev/tty
+      | mapfile -t _ble_local_arr < "$_ble_local_tmpfile";
+      | echo "$FUNCNAME @3.35" >/dev/tty
+      | ble/util/assign/.rmtmp;
+      | echo "$FUNCNAME @3.36" >/dev/tty
+      | #ble/util/assign ret '(echo echo yes)'
+      | echo "$FUNCNAME @3.4" >/dev/tty
+      | local script='(:); echo "COLUMNS=$COLUMNS LINES=$LINES"'
+      | ble/util/assign ret '"$BASH" -O checkwinsize -c "$script" 2>/dev/null'
+      | #ble/util/assign ret '(ble/util/msleep 50; "$BASH" -O checkwinsize -c "$script" 2>/dev/null)'
+      | #builtin eval -- "$ret"
+      | echo "$FUNCNAME @4 ($ret)" >/dev/tty
+
+    5.2 における対策としては ble/util/assign を全く使わないという処置は大変なの
+    で、(read -t 実行中) または ble/decode/.hook 実行中は SIGWINCH をその場で処
+    理するのはやめて後回しにする? 然し、これは SIGWINCH に限った問題ではない気
+    がするので、trap/.handler 全般に read -t を実行中の場合にはそれが終わるまで
+    trap を pending するという機能が必要の気がする。
+
+    ? bash: 然しそもそもの疑問は何故 SIGWINCH が即時発火するのかという事。
+      run_pending_trap が read -t の最中に呼び出されるという事があるのだろうか?
+      trap_handler は単にシグナルを受信して pending_traps 配列に記録するだけの
+      筈なので、何処か別の場所から run_pending_trap を呼び出す必要がある。そう
+      しないとその場で発火はしないのではないか。
+
+    * 再現スクリプト? 少し試してみたが全然再現しない。そもそも別の修正で発生し
+      なくなるからこれについて簡単なスクリプトで再現する必要は実はない。
+
+    * done: 実は builtin read は全て置き換える必要があるのではないか? 序に
+      _ble_bash_tmout_wa の配列も関数の側で指定する事にする。
+
+      builtin read -t 0 や builtin read --help 等は一瞬で終わると思われるし、ま
+      た内部で実際の読み取りを試行する訳でもなさそうなので入れ子にしても問題は
+      ないと期待してそのままにする。また detach 状態で呼び出す builtin read に
+      関してもそのままで良い。
+
+      と思ったが動かない。と思ったら分かった。bash version 判定に使っている
+      _ble_bash が定義されるよりも前の段階で ble/bash/read を _ble_bash に基づ
+      いて切り替えようとしていた。実際に ble/bash/read が使われるのはもっと後な
+      ので、もっと後ろに移動する事にした。直った。
 
 2023-02-27
 

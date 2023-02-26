@@ -877,6 +877,21 @@ function ble/builtin/trap/.handler {
   local _ble_trap_sig=$1 _ble_trap_bash_command=$2
   shift 2
 
+  # Note: bash-5.2 では read -t の最中に WINCH が来るとその場で発火して変なこと
+  #   が色々起こる。(1) 内部で ble/util/msleep を実行しようとすると外側の
+  #   timeout 設定が削除されて、外側の read -t が永遠に終わらない状態になる。特
+  #   に msleep では終端しないストリームから読み出そうとするのでデッドロックす
+  #   る。(2) 中でコマンド置換 $() や mapfile を使おうとすると、
+  #   run_pending_trap (trap.c) が途中で予期せず中断してしまって running_trap
+  #   が放置された状態になる。trap 処理入れ子状態になってしまってずっと WINCH
+  #   を受信できない状態になってしまう。
+  if [[ $_ble_bash_read_winch && ${_ble_builtin_trap_sig_name[_ble_trap_sig]} == SIGWINCH ]]; then
+    local ret
+    ble/string#quote-command "$FUNCNAME" "$_ble_trap_sig" "$_ble_trap_bash_command" "$@"
+    _ble_bash_read_winch=$ret$'\n''builtin eval -- "${_ble_builtin_trap_postproc['$_ble_trap_sig']}"'
+    return 0
+  fi
+
   # Early filter for frequently called DEBUG (set by edit.sh)
   if ((_ble_trap_sig==_ble_builtin_trap_DEBUG)) &&
        ! builtin eval -- "$_ble_trap_builtin_handler_DEBUG_filter"; then
@@ -942,6 +957,7 @@ function ble/builtin/trap/.handler {
     fi
 
     # user hook
+    local install_opts=${_ble_builtin_trap_sig_opts[_ble_trap_sig]}
     if [[ :$_ble_tra_opts: == *:user-trap-in-postproc:* ]]; then
       # ユーザートラップを外で実行 (Note: user-trap lastarg は反映されず)
       local q=\' Q="'\''" _ble_trap_handler postproc=

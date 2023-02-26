@@ -589,7 +589,7 @@ if ((_ble_bash>=40400)); then
     local -a data=()
     local line buff ext
     while ((loop--)); do
-      builtin read -t "$timeout" -r -d '' buff; ext=$?
+      ble/bash/read-timeout "$timeout" -r -d '' buff; ext=$?
       [[ $buff ]] && line=$line$buff
       if ((ext==0)); then
         ble/array#push data "$line"
@@ -619,7 +619,7 @@ elif ((_ble_bash>=40000)); then
     local line buff
     while ((loop--)); do
       builtin read -t 0 || break
-      builtin read "${_ble_bash_tmout_wa[@]}" -r -d '' -n 1 buff || break
+      ble/bash/read -d '' -n 1 buff || break
       if [[ $buff ]]; then
         line=$line$buff
       else
@@ -3336,7 +3336,7 @@ function ble/decode/read-inputrc {
 
   local -a script=()
   local ret line= iline=0 TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-  while builtin read "${_ble_bash_tmout_wa[@]}" -r line || [[ $line ]]; do
+  while ble/bash/read line || [[ $line ]]; do
     ((++iline))
     ble/string#trim "$line"; line=$ret
     [[ ! $line || $line == '#'* ]] && continue
@@ -3592,7 +3592,7 @@ function ble/builtin/bind/rlfunc2widget {
     local line TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     for line in "${dict[@]}"; do
       [[ $line == "$rlfunc "* ]] || continue
-      local rl widget; builtin read "${_ble_bash_tmout_wa[@]}" -r rl widget <<< "$line"
+      local rl widget; ble/bash/read rl widget <<< "$line"
       if [[ $widget == - ]]; then
         ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'." >&2
         return 1
