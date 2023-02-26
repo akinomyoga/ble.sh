@@ -230,6 +230,7 @@
 - decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
 - term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
 - color: rearrange color table by `ble palette` (suggested by stackoverflow/caoanan) `#D1961` bb8541d
+- util (`ble/util/idle`): process events before idle sleep `#D1980` xxxxxxx
 
 ## Fixes
 

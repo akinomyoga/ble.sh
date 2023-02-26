@@ -302,6 +302,7 @@ function ble/application/render {
     ble/application/onwinch
   fi
 }
+blehook idle_after_task!=ble/application/render
 
 ## @fn ble/application/onwinch/panel.process-redraw-here
 ##   @arr[in] _ble_app_winsize
@@ -10216,14 +10217,14 @@ function ble-edit/bind/.tail-without-draw {
 if ((_ble_bash>=40000)); then
   function ble-edit/bind/.tail {
     ble/application/render
-    ble/util/idle.do && ble/application/render
+    ble/util/idle.do
     ble/textarea#adjust-for-bash-bind # bash-4.0+
     ble-edit/bind/stdout.off
   }
 else
   function ble-edit/bind/.tail {
     ble/application/render
-    ble/util/idle.do && ble/application/render
+    ble/util/idle.do
     # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     ble-edit/bind/stdout.off
   }

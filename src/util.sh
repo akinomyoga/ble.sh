@@ -4829,7 +4829,7 @@ function ble/util/clock/.initialize {
 ble/util/clock/.initialize 2>/dev/null
 
 if ((_ble_bash>=40000)); then
-  ## @fn[custom] ble/util/idle/IS_IDLE { ble/util/is-stdin-ready; }
+  ## @fn[custom] ble/util/idle/IS_IDLE
   ##   他にするべき処理がない時 (アイドル時) に終了ステータス 0 を返します。
   ##   Note: この設定関数は ble-decode.sh で上書きされます。
   function ble/util/idle/IS_IDLE { ! ble/util/is-stdin-ready; }
@@ -4970,6 +4970,7 @@ if ((_ble_bash>=40000)); then
     local _idle_is_first=1
     local _idle_processed=
     local _idle_info_shown=
+    local _idle_after_task=0
     while :; do
       local _idle_key
       local _idle_next_time= _idle_next_itime= _idle_running= _idle_waiting=
@@ -4998,6 +4999,8 @@ if ((_ble_bash>=40000)); then
           # Note: #D1450 _idle_command が 148 を返したとしても idle.do は中断し
           # ない事にした。IS_IDLE と条件が同じとは限らないので。
           #((ext==148)) && return 0
+
+          ((_idle_after_task++))
         elif [[ $_idle_status == [FEPC]* ]]; then
           _idle_waiting=1
         fi
@@ -5012,7 +5015,17 @@ if ((_ble_bash>=40000)); then
 
     [[ $_idle_info_shown ]] &&
       ble/edit/info/immediate-default
+    ble/util/idle.do/.do-after-task
     [[ $_idle_processed ]]
+  }
+  ## @fn ble/util/idle.do/.do-after-task
+  ##   @var[ref] _idle_after_task
+  function ble/util/idle.do/.do-after-task {
+    if ((_idle_after_task)); then
+      # 50ms 以上の待機時間があれば再描画などの処理を試行する。
+      blehook/invoke idle_after_task
+      _idle_after_task=0
+    fi
   }
   ## @fn ble/util/idle.do/.call-task command
   ##   @var[in,out] _idle_next_time
@@ -5086,6 +5099,9 @@ if ((_ble_bash>=40000)); then
     [[ $_idle_running ]] && return 0
     local isfirst=1
     while
+      # ファイル等他の条件を待っている時は一回だけで外に戻り確認する状態確認
+      [[ $_idle_waiting && ! $isfirst ]] && break
+
       local sleep_amount=
       if [[ $_idle_next_itime ]]; then
         local clock=$_ble_util_idle_sclock
@@ -5101,11 +5117,15 @@ if ((_ble_bash>=40000)); then
           sleep_amount=$sleep1
         fi
       fi
-      [[ $isfirst && $_idle_waiting ]] || ((sleep_amount>0))
+      ((sleep_amount>0))
     do
       # Note: 変数 ble_util_idle_elapsed は
       #   $((bleopt_idle_interval)) の評価時に参照される。
       local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_sclock_start))
+
+      # sleep_amount が十分に長い場合に idle_after_task が必要あれば実行する
+      ((sleep_amount>50)) && ble/util/idle.do/.do-after-task
+
       local interval=$((bleopt_idle_interval))
 
       if [[ ! $sleep_amount ]] || ((interval<sleep_amount)); then

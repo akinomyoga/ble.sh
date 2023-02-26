@@ -34,6 +34,7 @@ blehook/declare DETACH
 
 blehook/declare term_DA1R
 blehook/declare term_DA2R
+blehook/declare idle_after_task
 
 # color.sh
 
