@@ -353,6 +353,7 @@
 - complete: fix non-working ambiguous path completion with `..` and `.` in the path `#D1930` 632e90a
 - main (`ble-reload`): fix failure by non-existent rcfile `#D1931` 0ceb0cb
 - syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
+- menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` xxxxxxx
 
 ## Documentation
 
@@ -551,7 +552,7 @@
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
 - fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
-  - completion: quote only with `filenames` when `ble/syntax-raw` is specified `#D1978` xxxxxxx
+  - completion: quote only with `filenames` when `ble/syntax-raw` is specified (reported by christianknauer) `#D1978` xxxxxxx
 - README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` 09bb4d3
 - fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` 09bb4d3
 - colorglass: add color filter `#D1902` 88e74cc

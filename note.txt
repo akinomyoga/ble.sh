@@ -6590,6 +6590,12 @@ bash_tips
 
 2023-02-27
 
+  * menu (linewise): 行番号を表示すると表示レイアウトが壊れる (reported by bkerin) [#D1979]
+    https://github.com/akinomyoga/ble.sh/discussions/284
+    https://github.com/akinomyoga/ble.sh/issues/286
+
+    これは簡単なミスだった。単に x を更新した後に x を参照していた。すぐ直った。
+
   * completion: fzf-completion がまた動かなくなっている (reported by christianknauer) [#D1978]
     https://github.com/akinomyoga/ble.sh/issues/285
 

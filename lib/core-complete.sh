@@ -341,8 +341,8 @@ function ble/complete/menu-style:linewise/construct-page {
       local prefix1; ble/util/sprintf prefix1 "$prefix_format" "$((index+1))"
       LINES=1 COLUMNS=$max_icon_width y=0 ble/canvas/trace "$prefix1" truncate:relative:measure-bbox; esc1=$ret
       if ((x<prefix_width)); then
-        x=$prefix_width
         esc=$esc${_ble_string_prototype::prefix_width-x}$esc1
+        x=$prefix_width
       else
         esc=$esc$esc1
       fi
