@@ -551,6 +551,7 @@
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
 - fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
+  - completion: quote only with `filenames` when `ble/syntax-raw` is specified `#D1978` xxxxxxx
 - README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` 09bb4d3
 - fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` 09bb4d3
 - colorglass: add color filter `#D1902` 88e74cc

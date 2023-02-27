@@ -1290,6 +1290,10 @@ function ble/complete/action/quote-insert.initialize {
   done
 }
 
+## @fn ble/complete/action/quote-insert
+# Note: この関数の処理は ble/complete/action/quote-insert.batch/awk と一貫して
+# いる必要がある。この関数を変更する時には quote-insert.batch/awk にも等価の変
+# 更を適用する必要がある。
 function ble/complete/action/quote-insert {
   if [[ ! $quote_action ]]; then
     local "${_ble_complete_quote_insert_varnames[@]/%/=}" # WA #D1570 checked
@@ -1298,9 +1302,14 @@ function ble/complete/action/quote-insert {
 
   local escape_flags=$quote_escape_flags
   if [[ $quote_action == command ]]; then
+    # Note (#D1715,#D1978): "*:noquote:*" の判定について。action=command
+    #   DATA=:noquote: は alias 生成のみで使われる。そして alias 生成は
+    #   yield.batch を使わずに直接 yield を呼び出して行われる。なので :noquote:
+    #   の判定は awk batch の側では行わなくて良い。
     [[ $DATA == *:noquote:* || $COMPS == "$COMPV" && ( $CAND == '[[' || $CAND == '!' ) ]] && return 0
   elif [[ $quote_action == progcomp ]]; then
     [[ $comp_opts == *:noquote:* ]] && return 0
+    [[ $comp_opts == *:ble/syntax-raw:* && $comp_opts != *:filenames:* ]] && return 0
 
     # bash-completion には compopt -o nospace として、
     # 自分でスペースを付加する補完関数がある。この時クォートすると問題。
@@ -1402,6 +1411,7 @@ function ble/complete/action/quote-insert.batch/awk {
       comp_opts = ENVIRON["comp_opts"];
       is_noquote = comp_opts ~ /:noquote:/;
       is_nospace = comp_opts ~ /:nospace:/;
+      is_syntaxraw = comp_opts ~ /:ble\/syntax-raw:/ && comp_opts !~ /:filenames:/;
 
       flags = ENVIRON["quote_escape_flags"];
       escape_c = (flags ~ /c/);
@@ -1466,7 +1476,7 @@ function ble/complete/action/quote-insert.batch/awk {
       if (quote_action == "command") {
         if (comps == compv && cand ~ /^(\[\[|]]|!)$/) return cand;
       } else if (quote_action == "progcomp") {
-        if (is_noquote) return cand;
+        if (is_noquote || is_syntaxraw) return cand;
         if (is_nospace && cand ~ / $/ && !is_file(cand)) return cand;
       }
 
@@ -6009,6 +6019,17 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
   common=$fixed$word1
 }
 
+# Note (#D1978): progcomp (syntax-raw) による単一確定の場合には遡って書き換わっ
+#   ている場合でも、元の単語の部分を復元しようとはしない。
+function ble/completion/candidates/determine-common-prefix/.is-progcomp-raw {
+  ((cand_count==1)) && [[ ${cand_pack[0]} == progcomp:*:ble/syntax-raw:* ]] || return 0
+
+  # 念の為、本当に DATA に :ble/syntax-raw: が含まれている事を確認する
+  local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
+  ble/complete/cand/unpack "${cand_pack[0]}"
+  [[ $DATA == *:ble/syntax-raw:* ]]
+}
+
 ## @fn ble/complete/candidates/determine-common-prefix
 ##   cand_* を元に common prefix を算出します。
 ##   @var[in] cand_*
@@ -6052,10 +6073,12 @@ function ble/complete/candidates/determine-common-prefix {
   fi
 
   if [[ $common != "$COMPS"* && ! ( $cand_count -eq 1 && $comp_type == *:i:* ) ]]; then
-    # common を部分的に COMPS に置換する試み
-    # Note: ignore-case で一意確定の時は case を
-    #   候補に合わせたいので COMPS には置換しない。
-    ble/complete/candidates/determine-common-prefix/.apply-partial-comps
+    if ! ble/completion/candidates/determine-common-prefix/.is-progcomp-raw; then
+      # common を部分的に COMPS に置換する試み
+      # Note: ignore-case で一意確定の時は case を候補に合わせたいので COMPS に
+      #   は置換しない。
+      ble/complete/candidates/determine-common-prefix/.apply-partial-comps
+    fi
   fi
 
   if ((cand_count>1)) && [[ $common != "$COMPS"* ]]; then
