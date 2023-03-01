@@ -480,6 +480,7 @@
 - main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` e2ec89c
 - util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` xxxxxxx
 - edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` xxxxxxx
+- syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` xxxxxxx
 
 ## Test
 
