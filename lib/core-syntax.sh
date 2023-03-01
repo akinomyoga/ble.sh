@@ -2240,6 +2240,9 @@ function ble/syntax:bash/check-brace-expansion {
     inactive=1
   elif ((ctx==CTX_CONDI||ctx==CTX_CONDQ||ctx==CTX_RDRS||ctx==CTX_VRHS)); then
     inactive=1
+  elif ((_ble_bash>=50300&&ctx==CTX_VALR)); then
+    # bash-5.3 以降では arr=([9]={1..10}) 等のブレース展開は不活性
+    inactive=1
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
     local ntype; ble/syntax/parse/nest-type -v ntype
     if [[ $ntype == glob_attr=* ]]; then
