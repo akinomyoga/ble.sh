@@ -166,7 +166,10 @@
   - decode (`ble-bind`): output bindings of the specified keymaps with `ble-bind -m KEYMAP` (fixup 750ca38) `#D1559` 6e0245a
 - keymap/vi: update mode names on change of `bleopt keymap_vi_mode_name_*` (motivated by huresche) `#D1565` 11ac106
 - main: show notifications against debug versions of Bash `#D1612` 8f974aa
-- term: update `vte` identification `#D1620` 00e74d8
+- term: terminal identification
+  - term (`_ble_term_TERM`): update `vte` identification `#D1620` 00e74d8
+  - term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
+  - term (`_ble_term_TERM`): detect konsole `#D1988` xxxxxxx
 - edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
@@ -228,9 +231,9 @@
 - color: let `bleopt term_index_colors` override the default if specified `#D1878` 7d238c0
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
 - decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
-- term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
 - color: rearrange color table by `ble palette` (suggested by stackoverflow/caoanan) `#D1961` bb8541d
 - util (`ble/util/idle`): process events before idle sleep `#D1980` xxxxxxx
+- keymap/vi (`decompose-meta`): translate <kbd>S-a</kbd> to <kbd>A</kbd> `#D1988` xxxxxxx
 
 ## Fixes
 

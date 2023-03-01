@@ -5882,6 +5882,10 @@ function ble/term/DA2/initialize-term {
   ('0;0;0') _ble_term_TERM[depth]=wezterm:0 ;;
   ('1;277;0') _ble_term_TERM[depth]=wezterm:20220408 ;; # 2022-04-07 https://github.com/wez/wezterm/commit/ad91e3776808507cbef9e6d758b89d7ca92a4c7e
 
+  # Konsole も大体決め打ちにしている。最近変更した様だ。
+  ('0;115;0') _ble_term_TERM[depth]=konsole:30000  ;; # 2001-09-16 https://github.com/KDE/konsole/commit/2d93fed82aa27e89c9d7301d09d2e24e4fa4416d
+  ('1;115;0') _ble_term_TERM[depth]=konsole:220380 ;; # 2022-02-24 https://github.com/KDE/konsole/commit/0cc64dcf7b90075bd17e46653df3069208d6a590
+
   ('0;10;1') # Windows Terminal
     # 現状ハードコードされている。
     # https://github.com/microsoft/terminal/blob/bcc38d04/src/terminal/adapter/adaptDispatch.cpp#L779-L782
