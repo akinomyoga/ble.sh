@@ -114,7 +114,9 @@ function ble/widget/vi_imap/__default__ {
 
     local esc=27 # ESC
     # local esc=$((ble_decode_Ctrl|0x5b)) # もしくは C-[
-    ble-decode-key "$esc" "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
+    ((flag&=~_ble_decode_Meta))
+    ((flag==_ble_decode_Shft&&0x61<=code&&code<=0x7A&&(flag=0,code-=0x20)))
+    ble-decode-key "$esc" "$((flag|code))" "${KEYS[@]:1}"
     return 0
   fi
 
@@ -140,7 +142,9 @@ function ble/widget/vi-command/decompose-meta {
     old_suppress=$_ble_decode_keylog_depth
     local _ble_decode_keylog_depth=$((old_suppress-1))
 
-    ble-decode-key "$esc" "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
+    ((flag&=~_ble_decode_Meta))
+    ((flag==_ble_decode_Shft&&0x61<=code&&code<=0x7A&&(flag=0,code-=0x20)))
+    ble-decode-key "$esc" "$((flag|code))" "${KEYS[@]:1}"
     return 0
   fi
 

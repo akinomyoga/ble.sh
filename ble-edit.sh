@@ -6404,7 +6404,7 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'S-home'    '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'S-end'     '@marked end-of-line'
   ble-decode/keymap:safe/.bind 'M-m'       '@nomarked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'S-M-m'     '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'M-S-m'     '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'M-M'       '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line' # overwritten by bind-history
   ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line' # overwritten by bind-history
