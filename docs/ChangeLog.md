@@ -585,6 +585,9 @@
   - histdb: support `bleopt histdb_remarks` `#D1968` adaec05
   - histdb: support timeout of background processes `#D1971` e0566bd
   - histdb: enable database timeout for transactions `#D1982` a5b10e8
+  - histdb: fix `.timeout` not set for background `sqlite3` `#D1982` xxxxxxx
+  - histdb: suppress color codes in the default `histdb_remarks` `#D1968` xxxxxxx
+  - histdb: disable timeout of background processes in Bash 3.2 `#D1992` xxxxxxx
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->
