@@ -1471,6 +1471,7 @@ function ble/textarea#invalidate {
 
 ## 関数 ble/textarea#render/.erase-forward-line.draw opts
 ##   @var[in] x cols
+##   @var[out] DRAW_BUFF
 function ble/textarea#render/.erase-forward-line.draw {
   local eraser=$_ble_term_sgr0$_ble_term_el
   if [[ :$render_opts: == *:relative:* ]]; then
@@ -1643,8 +1644,8 @@ function ble/textarea#render/.erase-rprompt {
 ##   rps1_transient の時に、次の行に行く前に行末の無駄な空白を削除します。
 ##   @var[in] text
 ##   @var[in] _ble_textmap_pos
+##   @var[out] DRAW_BUFF
 function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
-  local -a DRAW_BUFF=()
   local -a buffer; ble/string#split-lines buffer "$text"
   local line index=0 pos
   for line in "${buffer[@]}"; do
@@ -1654,7 +1655,6 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
     ble/canvas/put.draw "$_ble_term_el"
     ((index++))
   done
-  ble/canvas/bflush.draw
 }
 
 ## 関数 ble/textarea#render/.show-prompt
