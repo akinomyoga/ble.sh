@@ -1528,7 +1528,7 @@ function ble/complete/action/quote-insert.batch/proc {
   local fname_cands=$_ble_local_tmpfile
   ble/util/conditional-sync \
     'ble/complete/action/quote-insert.batch/awk < "$fname_cands"' \
-    '! ble/complete/check-cancel < /dev/tty' '' progressive-weight
+    '! ble/complete/check-cancel <&"$_ble_util_fd_stdin"' '' progressive-weight
   local ext=$?
 
   ble/util/assign/.rmtmp

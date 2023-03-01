@@ -380,7 +380,7 @@ function ble/application/onwinch {
     if ((50200<=_ble_bash&&_ble_bash<50300)); then
       # Note: bash-5.2 では trap string / bind -x 内部で COLUMNS/LINES が更新さ
       #   れないので "$BASH" を起動して端末サイズを取得する。
-      builtin eval -- "$(ble/util/msleep 50; exec "$BASH" -O checkwinsize -c '(:); [[ $COLUMNS && $LINES ]] && printf %s "COLUMNS=$COLUMNS LINES=$LINES"' 2>/dev/tty)"
+      builtin eval -- "$(ble/util/msleep 50; exec "$BASH" -O checkwinsize -c '(:); [[ $COLUMNS && $LINES ]] && printf %s "COLUMNS=$COLUMNS LINES=$LINES"' 2>&"$_ble_util_fd_stderr")"
     else
       # 次の WINCH を待つと共にサブシェルで checkwinsize を誘発
       (ble/util/msleep 50)
@@ -737,7 +737,7 @@ function ble/prompt/unit#update/.update-dependencies {
       local ble_prompt_unit_processing=1
       "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}" # WA #D1570 checked
     elif ble/set#contains ble_prompt_unit_mark "$unit"; then
-      ble/util/print "ble/prompt: FATAL: detected cyclic dependency ($unit required by $ble_prompt_unit_parent)" >/dev/tty
+      ble/util/print "ble/prompt: FATAL: detected cyclic dependency ($unit required by $ble_prompt_unit_parent)" >&"$_ble_util_fd_stderr"
       return 1
     fi
     local ble_prompt_unit_parent=$unit
@@ -1640,7 +1640,7 @@ if ble/is-function ble/util/idle.push; then
       builtin exit 0 &>/dev/null
       builtin exit 0 &>/dev/null' pre-flush
     return 1 # exit に失敗した時
-  } >/dev/tty
+  } >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
   function ble/prompt/timeout/check {
     [[ $_ble_edit_lineno == "$_ble_prompt_timeout_lineno" ]] && return 0
     _ble_prompt_timeout_lineno=$_ble_edit_lineno
@@ -6088,7 +6088,7 @@ function ble/exec/time/times.parse-time {
   local msc=$((10#0${BASH_REMATCH[3]#?}))
   ((ret=(min*60+sec)*1000+msc))
   return 0
-} 2>/dev/tty
+} 2>&"$_ble_util_fd_stderr"
 function ble/exec/time/times.start {
   builtin times >| "$_ble_exec_time_TIMES"
 }
@@ -6442,13 +6442,13 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
       local sep=${_ble_term_setaf[6]}:
       local lineno=${_ble_term_setaf[2]}${BLE_TRAP_LINENO[0]}
       local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${BLE_TRAP_FUNCNAME[0]}${1:+ $1}${_ble_term_setaf[6]}')'
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >/dev/tty
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >&"$_ble_util_fd_stderr"
       _ble_builtin_trap_postproc[_ble_trap_sig]="{ return $_ble_edit_exec_TRAPDEBUG_INT || break; } &>/dev/null"
     elif ((depth==0)) && ! ble/string#match "$_ble_trap_bash_command" '^ble-edit/exec:gexec/\.'; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
       local source=${_ble_term_setaf[5]}global
       local sep=${_ble_term_setaf[6]}:
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $_ble_trap_bash_command" >/dev/tty
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $_ble_trap_bash_command" >&"$_ble_util_fd_stderr"
       _ble_builtin_trap_postproc[_ble_trap_sig]="break &>/dev/null"
     fi
 
@@ -6555,7 +6555,7 @@ function ble-edit/exec:gexec/.TRAPINT {
     _ble_edit_exec_TRAPDEBUG_INT=$ext
     ble-edit/exec:gexec/.TRAPDEBUG/trap
   else
-    _ble_builtin_trap_postproc="{ return $ext || break; } &>/dev/tty"
+    _ble_builtin_trap_postproc="{ return $ext || break; } 2>&$_ble_util_fd_stderr"
   fi
 }
 function ble-edit/exec:gexec/.TRAPINT/reset {

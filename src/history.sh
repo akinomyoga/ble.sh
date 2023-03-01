@@ -100,7 +100,7 @@ if ((_ble_bash<40000)); then
       true 100 progressive-weight:timeout=3000:SIGKILL
     local ext=$?
     if ((ext==142)); then
-      printf 'ble.sh: timeout: builtin history %s' "$*" >/dev/tty
+      printf 'ble.sh: timeout: builtin history %s' "$*" >&"$_ble_util_fd_stderr"
       local ret=11
       ble/builtin/trap/sig#resolve SIGSEGV
       ((ext=128+ret))

@@ -1129,8 +1129,15 @@ function sub:scan/check-todo-mark {
 }
 function sub:scan/a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude=./{test,ext} --exclude=./lib/test-*.sh --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
-    grep -Ev "$rex_grep_head#|[[:space:]]#|DEBUG_LEAKVAR"
+  grc --color --exclude={test,ext,./lib/test-\*.sh,./make_command.sh,\*.md} --exclude=check-mem.sh 'a\.txt|/dev/(pts/|pty)[0-9]*|/dev/tty' |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g
+      \Z^\./memo/Zd
+    s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z^[[:space:]]*#Zd
+      \ZDEBUG_LEAKVARZd
+      \Z\[\[ -t 4 && -t 5 ]]Zd
+      \Z^ble/fd#alloc .*Zd
+      g'
 }
 
 function sub:scan/bash300bug {

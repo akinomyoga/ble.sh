@@ -6661,6 +6661,9 @@ bash_tips
 
 2023-03-01
 
+  * global: コード中の /dev/tty は予め持っておいた fd に置き換えるべきなのでは [#D1986]
+    修正した。
+
   * util: readonly を上書きする? (reqeusted by mozirilla213) [#D1985]
     https://github.com/akinomyoga/ble.sh/issues/289
 
