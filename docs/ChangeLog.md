@@ -475,6 +475,7 @@
 - term (`terminology`): work around terminal glitches `#D1946` 9a1b4f9
 - main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` e2ec89c
 - util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` xxxxxxx
+- edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` xxxxxxx
 
 ## Test
 

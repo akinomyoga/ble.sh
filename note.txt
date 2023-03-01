@@ -6661,6 +6661,30 @@ bash_tips
 
 2023-03-01
 
+  * decode: compat zoxide bind -x (reported by linwaytin) [#D1983]
+    https://github.com/akinomyoga/ble.sh/issues/293
+
+    leave-for-widget を毎回呼ぶ事にしてしまっても良いのでは。
+
+    ? ここで fzf-key-bindings の advice を残すかどうかが問題になる。もしこれら
+      の関数を completion にも流用しようとしている人がいてこれらを直接呼び出し
+      たとすると問題になる。しかし、fzf-completion を弄って (もしくは自分で新し
+      く設定を作って) いる人がいたら何れにしても fzf-completion はちゃんと動か
+      ない。なので、現状で中途半端に fzf-key-bindings の中の関数だけ patch して
+      も余り意味は無いのではないか。
+
+      やはり単純に削除してしまって良い気がする。
+
+    * ok: もう一つの懸念事項は bind -x の全てに対して毎回呼び出すと重くなるので
+      はないかという事。うーん。ble.sh の上で更に ble.sh 的な事をしようという様
+      な事がない限りは多少エスケープシーケンスが端末に沢山送られても別に大した
+      処理量にはならない気がする。
+
+      但し、visible-bell/erase に関してはファイル等をチェックする等するはずなの
+      で多少のコストはあるかもしれない。然し、ble/util/assign 等もっと沢山の非
+      自明な事をしているのだから bind -x の時にファイルを確認するぐらいであれば
+      無視できる筈である。
+
   * 2023-02-21 histdb: 終了時に sqlite3 のエラーが発生して失敗する事がある [#D1982]
 
     Runtime error near line 779: database is locked (5)

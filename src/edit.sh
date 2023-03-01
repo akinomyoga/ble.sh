@@ -10346,8 +10346,9 @@ function ble/widget/.EDIT_COMMAND {
     local -x READLINE_ARGUMENT=$_ble_edit_arg
   ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
   ble/widget/.hide-current-line keep-header
-  ble/util/buffer.flush >&2
+  ble/term/leave-for-widget
   builtin eval -- "$command"; local ext=$?
+  ble/term/enter-for-widget
   ble-edit/content/clear-arg
   ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
 
