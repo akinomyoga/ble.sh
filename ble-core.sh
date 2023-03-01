@@ -1842,23 +1842,32 @@ function ble/term/rl-convert-meta/leave {
 
 #---- terminal enter/leave ----------------------------------------------------
 
+function ble/term/enter-for-widget {
+  ble/term/bracketed-paste-mode/enter
+  ble/term/cursor-state/.update "$_ble_term_cursor_internal"
+  ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
+  ble/util/buffer.flush >&2
+}
+function ble/term/leave-for-widget {
+  ble/term/bracketed-paste-mode/leave
+  ble/term/cursor-state/.update "$_ble_term_cursor_external"
+  ble/term/cursor-state/.update-hidden reveal
+  ble/util/buffer.flush >&2
+}
+
 _ble_term_state=external
 function ble/term/enter {
   [[ $_ble_term_state == internal ]] && return
   ble/term/stty/enter
-  ble/term/bracketed-paste-mode/enter
-  ble/term/cursor-state/.update "$_ble_term_cursor_internal"
-  ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
   ble/term/rl-convert-meta/enter
+  ble/term/enter-for-widget
   _ble_term_state=internal
 }
 function ble/term/leave {
   [[ $_ble_term_state == external ]] && return
   ble/term/stty/leave
-  ble/term/bracketed-paste-mode/leave
-  ble/term/cursor-state/.update "$_ble_term_cursor_external"
-  ble/term/cursor-state/.update-hidden reveal
   ble/term/rl-convert-meta/leave
+  ble/term/leave-for-widget
   _ble_term_cursor_current=unknown # vim は復元してくれない
   _ble_term_cursor_hidden_current=unknown
   _ble_term_state=external
