@@ -138,27 +138,27 @@ ble/test ble/util/setexit 255 exit=255
 # ble/util/save-vars, restore-vars
 
 (
-  VARNAMES=(name x y count data)
+  varnames=(name x y count data)
 
   function print-status {
     echo "name=$name x=$x y=$y count=$count data=(${data[*]})"
   }
 
   function f1 {
-    local "${VARNAMES[@]/%/=}" # WA #D1570 checked
+    local "${varnames[@]/%/=}" # WA #D1570 checked
 
     name=1 x=2 y=3 count=4 data=(aa bb cc dd)
     print-status
-    ble/util/save-vars save1_ "${VARNAMES[@]}"
+    ble/util/save-vars save1_ "${varnames[@]}"
 
     name=one x= y=A count=1 data=(Q)
     print-status
-    ble/util/save-vars save2_ "${VARNAMES[@]}"
+    ble/util/save-vars save2_ "${varnames[@]}"
 
-    ble/util/restore-vars save1_ "${VARNAMES[@]}"
+    ble/util/restore-vars save1_ "${varnames[@]}"
     print-status
 
-    ble/util/restore-vars save2_ "${VARNAMES[@]}"
+    ble/util/restore-vars save2_ "${varnames[@]}"
     print-status
   }
   ble/test f1 \
@@ -174,7 +174,7 @@ ble/test ble/util/setexit 255 exit=255
   declare v=1
   declare -i i=1
   export x=2
-  readonly r=3
+  builtin readonly r=3
   declare -a a=()
   if ((_ble_bash>=40000)); then
     declare -A A=()
@@ -236,7 +236,7 @@ ble/test ble/util/setexit 255 exit=255
 )
 
 # ble/variable#is-global
-function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
+function is-global() (builtin readonly "$1"; ! local "$1" 2>/dev/null)
 (
   v1=1 v2=2
   ((_ble_bash>=40200)) &&

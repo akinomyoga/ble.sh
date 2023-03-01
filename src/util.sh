@@ -404,22 +404,22 @@ else
 fi
 
 function ble/util/save-vars {
-  local __name __prefix=$1; shift
-  for __name; do
-    if ble/is-array "$__name"; then
-      builtin eval "$__prefix$__name=(\"\${$__name[@]}\")"
+  local __ble_name __ble_prefix=$1; shift
+  for __ble_name; do
+    if ble/is-array "$__ble_name"; then
+      builtin eval "$__ble_prefix$__ble_name=(\"\${$__ble_name[@]}\")"
     else
-      builtin eval "$__prefix$__name=\"\$$__name\""
+      builtin eval "$__ble_prefix$__ble_name=\"\$$__ble_name\""
     fi
   done
 }
 function ble/util/restore-vars {
-  local __name __prefix=$1; shift
-  for __name; do
-    if ble/is-array "$__prefix$__name"; then
-      builtin eval "$__name=(\"\${$__prefix$__name[@]}\")"
+  local __ble_name __ble_prefix=$1; shift
+  for __ble_name; do
+    if ble/is-array "$__ble_prefix$__ble_name"; then
+      builtin eval "$__ble_name=(\"\${$__ble_prefix$__ble_name[@]}\")"
     else
-      builtin eval "$__name=\"\$$__prefix$__name\""
+      builtin eval "$__ble_name=\"\$$__ble_prefix$__ble_name\""
     fi
   done
 }
@@ -466,7 +466,7 @@ function ble/is-transformed { ble/variable#has-attr "$1" luc; }
 function ble/variable#is-declared { [[ ${!1+set} ]] || declare -p "$1" &>/dev/null; }
 function ble/variable#is-global/.test { ! local "$1"; }
 function ble/variable#is-global {
-  (readonly "$1"; ble/variable#is-global/.test "$1") 2>/dev/null
+  (builtin readonly "$1"; ble/variable#is-global/.test "$1") 2>/dev/null
 }
 function ble/variable#copy-state {
   local src=$1 dst=$2
@@ -3049,7 +3049,7 @@ function ble/util/for-global-variables {
             # we can test if the visible variable is global or not by using
             # `(readonly var; ! local var)' because `local var' succeeds if the
             # visible variable is local readonly.
-            if readonly "$__ble_name"; ble/variable#is-global/.test "$__ble_name"; then
+            if builtin readonly "$__ble_name"; ble/variable#is-global/.test "$__ble_name"; then
               __ble_found=1
               [[ $__ble_hidden_only && $__ble_i == 0 ]] ||
                 "$__ble_proc" "$__ble_name"
@@ -3593,18 +3593,18 @@ function ble/util/conditional-sync/.collect-descendant-pids {
 }
 
 ## @fn ble/util/conditional-sync/.kill
-##   @var __pid
-##   @var __opts
+##   @var __ble_pid
+##   @var __ble_opts
 function ble/util/conditional-sync/.kill {
   local kill_pids
-  if [[ :$__opts: == *:killall:* ]]; then
-    ble/util/conditional-sync/.collect-descendant-pids "$__pid"
+  if [[ :$__ble_opts: == *:killall:* ]]; then
+    ble/util/conditional-sync/.collect-descendant-pids "$__ble_pid"
     kill_pids=("${ret[@]}")
   else
-    kill_pids=("$__pid")
+    kill_pids=("$__ble_pid")
   fi
 
-  if [[ :$__opts: == *:SIGKILL:* ]]; then
+  if [[ :$__ble_opts: == *:SIGKILL:* ]]; then
     builtin kill -9 "${kill_pids[@]}" &>/dev/null
   else
     builtin kill "${kill_pids[@]}" &>/dev/null
@@ -3646,45 +3646,45 @@ function ble/util/conditional-sync/.kill {
 ##       processes are killed by SIGTERM.
 ##
 function ble/util/conditional-sync {
-  local __command=$1
-  local __continue=${2:-'! ble/decode/has-input'}
-  local __weight=$3; ((__weight<=0&&(__weight=100)))
-  local __opts=$4
+  local __ble_command=$1
+  local __ble_continue=${2:-'! ble/decode/has-input'}
+  local __ble_weight=$3; ((__ble_weight<=0&&(__ble_weight=100)))
+  local __ble_opts=$4
 
-  local __timeout= __rex=':timeout=([^:]+):'
-  [[ :$__opts: =~ $__rex ]] && ((__timeout=BASH_REMATCH[1]))
+  local __ble_timeout= __ble_rex=':timeout=([^:]+):'
+  [[ :$__ble_opts: =~ $__ble_rex ]] && ((__ble_timeout=BASH_REMATCH[1]))
 
-  [[ :$__opts: == *:progressive-weight:* ]] &&
-    local __weight_max=$__weight __weight=1
+  [[ :$__ble_opts: == *:progressive-weight:* ]] &&
+    local __ble_weight_max=$__ble_weight __ble_weight=1
 
   local sync_elapsed=0
-  [[ $__timeout ]] && ((__timeout<=0)) && return 142
-  builtin eval -- "$__continue" || return 148
+  [[ $__ble_timeout ]] && ((__ble_timeout<=0)) && return 142
+  builtin eval -- "$__ble_continue" || return 148
   (
-    builtin eval -- "$__command" & local __pid=$!
+    builtin eval -- "$__ble_command" & local __ble_pid=$!
     while
       # check timeout
-      if [[ $__timeout ]]; then
-        if ((__timeout<=0)); then
+      if [[ $__ble_timeout ]]; then
+        if ((__ble_timeout<=0)); then
           ble/util/conditional-sync/.kill
           return 142
         fi
-        ((__weight>__timeout)) && __weight=$__timeout
-        ((__timeout-=__weight))
+        ((__ble_weight>__ble_timeout)) && __ble_weight=$__ble_timeout
+        ((__ble_timeout-=__ble_weight))
       fi
 
-      ble/util/msleep "$__weight"
-      ((sync_elapsed+=__weight))
-      [[ :$__opts: == *:progressive-weight:* ]] &&
-        ((__weight<<=1,__weight>__weight_max&&(__weight=__weight_max)))
-      builtin kill -0 "$__pid" &>/dev/null
+      ble/util/msleep "$__ble_weight"
+      ((sync_elapsed+=__ble_weight))
+      [[ :$__ble_opts: == *:progressive-weight:* ]] &&
+        ((__ble_weight<<=1,__ble_weight>__ble_weight_max&&(__ble_weight=__ble_weight_max)))
+      builtin kill -0 "$__ble_pid" &>/dev/null
     do
-      if ! builtin eval -- "$__continue"; then
+      if ! builtin eval -- "$__ble_continue"; then
         ble/util/conditional-sync/.kill
         return 148
       fi
     done
-    wait "$__pid"
+    wait "$__ble_pid"
   )
 }
 
@@ -3870,25 +3870,25 @@ function ble/util/buffer.clear {
 # class dirty-range, urange
 
 function ble/dirty-range#load {
-  local _prefix=
+  local prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix=${1#--prefix=}
-    ((beg=${_prefix}beg,
-      end=${_prefix}end,
-      end0=${_prefix}end0))
+    prefix=${1#--prefix=}
+    ((beg=${prefix}beg,
+      end=${prefix}end,
+      end0=${prefix}end0))
   fi
 }
 
 function ble/dirty-range#clear {
-  local _prefix=
+  local prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix=${1#--prefix=}
+    prefix=${1#--prefix=}
     shift
   fi
 
-  ((${_prefix}beg=-1,
-    ${_prefix}end=-1,
-    ${_prefix}end0=-1))
+  ((${prefix}beg=-1,
+    ${prefix}end=-1,
+    ${prefix}end0=-1))
 }
 
 ## @fn ble/dirty-range#update [--prefix=PREFIX] beg end end0
@@ -3897,18 +3897,18 @@ function ble/dirty-range#clear {
 ##   @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
 ##   @param[in]  end0   変更前の end に対応する位置。
 function ble/dirty-range#update {
-  local _prefix=
+  local prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix=${1#--prefix=}
+    prefix=${1#--prefix=}
     shift
-    [[ $_prefix ]] && local beg end end0
+    [[ $prefix ]] && local beg end end0
   fi
 
   local begB=$1 endB=$2 endB0=$3
   ((begB<0)) && return 1
 
   local begA endA endA0
-  ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}end0))
+  ((begA=${prefix}beg,endA=${prefix}end,endA0=${prefix}end0))
 
   local delta
   if ((begA<0)); then
@@ -3925,10 +3925,10 @@ function ble/dirty-range#update {
     fi
   fi
 
-  if [[ $_prefix ]]; then
-    ((${_prefix}beg=beg,
-      ${_prefix}end=end,
-      ${_prefix}end0=end0))
+  if [[ $prefix ]]; then
+    ((${prefix}beg=beg,
+      ${prefix}end=end,
+      ${prefix}end0=end0))
   fi
 }
 
@@ -4770,7 +4770,7 @@ function ble/util/clock/.initialize {
        local now=$EPOCHREALTIME
        [[ $now == *.???* && $now != $EPOCHREALTIME ]]; }; then
     # implementation with EPOCHREALTIME
-    readonly EPOCHREALTIME
+    builtin readonly EPOCHREALTIME
     _ble_util_clock_base=$((10#0${now%.*}))
     _ble_util_clock_reso=1
     _ble_util_clock_type=EPOCHREALTIME
@@ -4808,7 +4808,7 @@ function ble/util/clock/.initialize {
       ((ret=(now-_ble_util_clock_base)*1000))
     }
   elif [[ $SECONDS && ! ${SECONDS//[0-9]} ]]; then
-    readonly SECONDS
+    builtin readonly SECONDS
     _ble_util_clock_base=$SECONDS
     _ble_util_clock_reso=1000
     _ble_util_clock_type=SECONDS
@@ -4965,117 +4965,117 @@ if ((_ble_bash>=40000)); then
     ble/util/idle.clock/.initialize
     ble/util/idle.clock/.restart
     ble/util/idle.clock
-    local _idle_clock_start=$ret
-    local _idle_sclock_start=$_ble_util_idle_sclock
-    local _idle_is_first=1
-    local _idle_processed=
-    local _idle_info_shown=
-    local _idle_after_task=0
+    local _ble_idle_clock_start=$ret
+    local _ble_idle_sclock_start=$_ble_util_idle_sclock
+    local _ble_idle_is_first=1
+    local _ble_idle_processed=
+    local _ble_idle_info_shown=
+    local _ble_idle_after_task=0
     while :; do
-      local _idle_key
-      local _idle_next_time= _idle_next_itime= _idle_running= _idle_waiting=
-      for _idle_key in "${!_ble_util_idle_task[@]}"; do
+      local _ble_idle_key
+      local _ble_idle_next_time= _ble_idle_next_itime= _ble_idle_running= _ble_idle_waiting=
+      for _ble_idle_key in "${!_ble_util_idle_task[@]}"; do
         ble/util/idle/IS_IDLE || break 2
-        local _idle_to_process=
-        local _idle_status=${_ble_util_idle_task[_idle_key]%%"$_ble_util_idle_SEP"*}
-        case ${_idle_status::1} in
-        (R) _idle_to_process=1 ;;
-        (I) [[ $_idle_is_first ]] && _idle_to_process=1 ;;
-        (S) ble/util/idle/.check-clock "$_idle_status" && _idle_to_process=1 ;;
-        (W) ble/util/idle/.check-clock "$_idle_status" && _idle_to_process=1 ;;
-        (F) [[ -s ${_idle_status:1} ]] && _idle_to_process=1 ;;
-        (E) [[ -e ${_idle_status:1} ]] && _idle_to_process=1 ;;
-        (P) ! builtin kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
-        (C) builtin eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
+        local _ble_idle_to_process=
+        local _ble_idle_status=${_ble_util_idle_task[_ble_idle_key]%%"$_ble_util_idle_SEP"*}
+        case ${_ble_idle_status::1} in
+        (R) _ble_idle_to_process=1 ;;
+        (I) [[ $_ble_idle_is_first ]] && _ble_idle_to_process=1 ;;
+        (S) ble/util/idle/.check-clock "$_ble_idle_status" && _ble_idle_to_process=1 ;;
+        (W) ble/util/idle/.check-clock "$_ble_idle_status" && _ble_idle_to_process=1 ;;
+        (F) [[ -s ${_ble_idle_status:1} ]] && _ble_idle_to_process=1 ;;
+        (E) [[ -e ${_ble_idle_status:1} ]] && _ble_idle_to_process=1 ;;
+        (P) ! builtin kill -0 ${_ble_idle_status:1} &>/dev/null && _ble_idle_to_process=1 ;;
+        (C) builtin eval -- "${_ble_idle_status:1}" && _ble_idle_to_process=1 ;;
         (Z) ;;
-        (*) builtin unset -v '_ble_util_idle_task[_idle_key]'
+        (*) builtin unset -v '_ble_util_idle_task[_ble_idle_key]'
         esac
 
-        if [[ $_idle_to_process ]]; then
-          local _idle_command=${_ble_util_idle_task[_idle_key]#*"$_ble_util_idle_SEP"}
-          _idle_processed=1
-          ble/util/idle.do/.call-task "$_idle_command"
+        if [[ $_ble_idle_to_process ]]; then
+          local _ble_idle_command=${_ble_util_idle_task[_ble_idle_key]#*"$_ble_util_idle_SEP"}
+          _ble_idle_processed=1
+          ble/util/idle.do/.call-task "$_ble_idle_command"
 
-          # Note: #D1450 _idle_command が 148 を返したとしても idle.do は中断し
-          # ない事にした。IS_IDLE と条件が同じとは限らないので。
-          #((ext==148)) && return 0
+          # Note: #D1450 _ble_idle_command が 148 を返したとしても idle.do は中
+          # 断しない事にした。IS_IDLE と条件が同じとは限らないので。
+          # ((ext==148)) && return 0
 
-          ((_idle_after_task++))
-        elif [[ $_idle_status == [FEPC]* ]]; then
-          _idle_waiting=1
+          ((_ble_idle_after_task++))
+        elif [[ $_ble_idle_status == [FEPC]* ]]; then
+          _ble_idle_waiting=1
         fi
       done
 
-      _idle_is_first=
+      _ble_idle_is_first=
       ble/util/idle.do/.sleep-until-next; local ext=$?
       ((ext==148)) && break
 
-      [[ $_idle_next_itime$_idle_next_time$_idle_running$_idle_waiting ]] || break
+      [[ $_ble_idle_next_itime$_ble_idle_next_time$_ble_idle_running$_ble_idle_waiting ]] || break
     done
 
-    [[ $_idle_info_shown ]] &&
+    [[ $_ble_idle_info_shown ]] &&
       ble/edit/info/immediate-default
     ble/util/idle.do/.do-after-task
-    [[ $_idle_processed ]]
+    [[ $_ble_idle_processed ]]
   }
   ## @fn ble/util/idle.do/.do-after-task
-  ##   @var[ref] _idle_after_task
+  ##   @var[ref] _ble_idle_after_task
   function ble/util/idle.do/.do-after-task {
-    if ((_idle_after_task)); then
+    if ((_ble_idle_after_task)); then
       # 50ms 以上の待機時間があれば再描画などの処理を試行する。
       blehook/invoke idle_after_task
-      _idle_after_task=0
+      _ble_idle_after_task=0
     fi
   }
   ## @fn ble/util/idle.do/.call-task command
-  ##   @var[in,out] _idle_next_time
-  ##   @var[in,out] _idle_next_itime
-  ##   @var[in,out] _idle_running
-  ##   @var[in,out] _idle_waiting
+  ##   @var[in,out] _ble_idle_next_time
+  ##   @var[in,out] _ble_idle_next_itime
+  ##   @var[in,out] _ble_idle_running
+  ##   @var[in,out] _ble_idle_waiting
   function ble/util/idle.do/.call-task {
-    local _command=$1
+    local _ble_local_command=$1
     local ble_util_idle_status=
-    local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_sclock_start))
-    if [[ $bleopt_debug_idle && ( $_ble_edit_info_scene == default || $_idle_info_shown ) ]]; then
-      _idle_info_shown=1
-      ble/edit/info/immediate-show text "${EPOCHREALTIME:+[$EPOCHREALTIME] }idle: $_command"
+    local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_ble_idle_sclock_start))
+    if [[ $bleopt_debug_idle && ( $_ble_edit_info_scene == default || $_ble_idle_info_shown ) ]]; then
+      _ble_idle_info_shown=1
+      ble/edit/info/immediate-show text "${EPOCHREALTIME:+[$EPOCHREALTIME] }idle: $_ble_local_command"
     fi
-    builtin eval -- "$_command"; local ext=$?
+    builtin eval -- "$_ble_local_command"; local ext=$?
     if ((ext==148)); then
-      _ble_util_idle_task[_idle_key]=R$_ble_util_idle_SEP$_command
+      _ble_util_idle_task[_ble_idle_key]=R$_ble_util_idle_SEP$_ble_local_command
     elif [[ $ble_util_idle_status ]]; then
-      _ble_util_idle_task[_idle_key]=$ble_util_idle_status$_ble_util_idle_SEP$_command
+      _ble_util_idle_task[_ble_idle_key]=$ble_util_idle_status$_ble_util_idle_SEP$_ble_local_command
       if [[ $ble_util_idle_status == [WS]* ]]; then
         local scheduled_time=${ble_util_idle_status:1}
         if [[ $ble_util_idle_status == W* ]]; then
-          local next=_idle_next_itime
+          local next=_ble_idle_next_itime
         else
-          local next=_idle_next_time
+          local next=_ble_idle_next_time
         fi
         if [[ ! ${!next} ]] || ((scheduled_time<next)); then
           builtin eval "$next=\$scheduled_time"
         fi
       elif [[ $ble_util_idle_status == R ]]; then
-        _idle_running=1
+        _ble_idle_running=1
       elif [[ $ble_util_idle_status == [FEPC]* ]]; then
-        _idle_waiting=1
+        _ble_idle_waiting=1
       fi
     else
-      builtin unset -v '_ble_util_idle_task[_idle_key]'
+      builtin unset -v '_ble_util_idle_task[_ble_idle_key]'
     fi
     return "$ext"
   }
   ## @fn ble/util/idle/.check-clock status
-  ##   @var[in,out] _idle_next_itime
-  ##   @var[in,out] _idle_next_time
+  ##   @var[in,out] _ble_idle_next_itime
+  ##   @var[in,out] _ble_idle_next_time
   function ble/util/idle/.check-clock {
     local status=$1
     if [[ $status == W* ]]; then
-      local next=_idle_next_itime
+      local next=_ble_idle_next_itime
       local current_time=$_ble_util_idle_sclock
     elif [[ $status == S* ]]; then
       local ret
-      local next=_idle_next_time
+      local next=_ble_idle_next_time
       ble/util/idle.clock; local current_time=$ret
     else
       return 1
@@ -5090,29 +5090,29 @@ if ((_ble_bash>=40000)); then
     return 1
   }
   ## @fn ble/util/idle.do/.sleep-until-next
-  ##   @var[in] _idle_next_time
-  ##   @var[in] _idle_next_itime
-  ##   @var[in] _idle_running
-  ##   @var[in] _idle_waiting
+  ##   @var[in] _ble_idle_next_time
+  ##   @var[in] _ble_idle_next_itime
+  ##   @var[in] _ble_idle_running
+  ##   @var[in] _ble_idle_waiting
   function ble/util/idle.do/.sleep-until-next {
     ble/util/idle/IS_IDLE || return 148
-    [[ $_idle_running ]] && return 0
+    [[ $_ble_idle_running ]] && return 0
     local isfirst=1
     while
       # ファイル等他の条件を待っている時は一回だけで外に戻り確認する状態確認
-      [[ $_idle_waiting && ! $isfirst ]] && break
+      [[ $_ble_idle_waiting && ! $isfirst ]] && break
 
       local sleep_amount=
-      if [[ $_idle_next_itime ]]; then
+      if [[ $_ble_idle_next_itime ]]; then
         local clock=$_ble_util_idle_sclock
-        local sleep1=$((_idle_next_itime-clock))
+        local sleep1=$((_ble_idle_next_itime-clock))
         if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
           sleep_amount=$sleep1
         fi
       fi
-      if [[ $_idle_next_time ]]; then
+      if [[ $_ble_idle_next_time ]]; then
         local ret; ble/util/idle.clock; local clock=$ret
-        local sleep1=$((_idle_next_time-clock))
+        local sleep1=$((_ble_idle_next_time-clock))
         if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
           sleep_amount=$sleep1
         fi
@@ -5121,7 +5121,7 @@ if ((_ble_bash>=40000)); then
     do
       # Note: 変数 ble_util_idle_elapsed は
       #   $((bleopt_idle_interval)) の評価時に参照される。
-      local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_sclock_start))
+      local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_ble_idle_sclock_start))
 
       # sleep_amount が十分に長い場合に idle_after_task が必要あれば実行する
       ((sleep_amount>50)) && ble/util/idle.do/.do-after-task
@@ -5862,13 +5862,13 @@ _ble_term_TERM_done=
 ##   @var[out] _ble_term_TERM
 function ble/term/DA2/initialize-term {
   local depth=$1
-  local DA2R=${_ble_term_DA2R[depth]}
-  local rex='^[0-9]*(;[0-9]*)*$'; [[ $DA2R =~ $rex ]] || return 1
-  local da2r
-  ble/string#split da2r ';' "$DA2R"
-  da2r=("${da2r[@]/#/10#0}") # 0で始まっていても10進数で解釈; WA #D1570 checked (is-array)
+  local da2r=${_ble_term_DA2R[depth]}
+  local rex='^[0-9]*(;[0-9]*)*$'; [[ $da2r =~ $rex ]] || return 1
+  local da2r_vec
+  ble/string#split da2r_vec ';' "$da2r"
+  da2r_vec=("${da2r_vec[@]/#/10#0}") # 0で始まっていても10進数で解釈; WA #D1570 checked (is-array)
 
-  case $DA2R in
+  case $da2r in
   # Note #D1946: Terminology は xterm と区別が付かないが決め打ちの様なので、丁
   # 度 xterm の該当 version を使っている可能性は低いと見て、取り敢えず
   # terminology と判断する事にする。
@@ -5887,19 +5887,19 @@ function ble/term/DA2/initialize-term {
     # https://github.com/microsoft/terminal/blob/bcc38d04/src/terminal/adapter/adaptDispatch.cpp#L779-L782
     _ble_term_TERM[depth]=wt:0 ;;
   ('0;'*';1')
-    if ((da2r[1]>=1001)); then
+    if ((da2r_vec[1]>=1001)); then
       # Alacritty
       # https://github.com/alacritty/alacritty/blob/4734b2b8/alacritty_terminal/src/term/mod.rs#L1315
       # https://github.com/alacritty/alacritty/blob/4734b2b8/alacritty_terminal/src/term/mod.rs#L3104
-      _ble_term_TERM[depth]=alacritty:$((da2r[1]))
+      _ble_term_TERM[depth]=alacritty:$((da2r_vec[1]))
     fi ;;
   ('1;0'?????';0')
-    _ble_term_TERM[depth]=foot:${DA2R:3:5} ;;
+    _ble_term_TERM[depth]=foot:${da2r:3:5} ;;
   ('1;'*)
-    if ((4000<=da2r[1]&&da2r[1]<=4009&&3<=da2r[2])); then
-      _ble_term_TERM[depth]=kitty:$((da2r[1]-4000))
-    elif ((2000<=da2r[1]&&da2r[1]<5400&&da2r[2]==0)); then
-      local version=$((da2r[1]))
+    if ((4000<=da2r_vec[1]&&da2r_vec[1]<=4009&&3<=da2r_vec[2])); then
+      _ble_term_TERM[depth]=kitty:$((da2r_vec[1]-4000))
+    elif ((2000<=da2r_vec[1]&&da2r_vec[1]<5400&&da2r_vec[2]==0)); then
+      local version=$((da2r_vec[1]))
       _ble_term_TERM[depth]=vte:$version
       if ((version<4000)); then
         # Note #D1785: vte 0.40.0 未満では DECSCUSR に対応していない。更に未知のシーケ
@@ -5910,39 +5910,39 @@ function ble/term/DA2/initialize-term {
       fi
     fi ;;
   ('65;'*)
-    if ((5300<=da2r[1]&&da2r[2]==1)); then
-      _ble_term_TERM[depth]=vte:$((da2r[1]))
-    elif ((da2r[1]>=100)); then
-      _ble_term_TERM[depth]=RLogin:$((da2r[1]))
+    if ((5300<=da2r_vec[1]&&da2r_vec[2]==1)); then
+      _ble_term_TERM[depth]=vte:$((da2r_vec[1]))
+    elif ((da2r_vec[1]>=100)); then
+      _ble_term_TERM[depth]=RLogin:$((da2r_vec[1]))
     fi ;;
   ('67;'*)
     local rex='^67;[0-9]{3,};0$'
-    if [[ $TERM == cygwin && $DA2R =~ $rex ]]; then
-      _ble_term_TERM[depth]=cygwin:$((da2r[1]))
+    if [[ $TERM == cygwin && $da2r =~ $rex ]]; then
+      _ble_term_TERM[depth]=cygwin:$((da2r_vec[1]))
     fi ;;
   ('77;'*';0')
-    _ble_term_TERM[depth]=mintty:$((da2r[1])) ;;
+    _ble_term_TERM[depth]=mintty:$((da2r_vec[1])) ;;
   ('83;'*)
     local rex='^83;[0-9]+;0$'
-    [[ $DA2R =~ $rex ]] && _ble_term_TERM[depth]=screen:$((da2r[1])) ;;
+    [[ $da2r =~ $rex ]] && _ble_term_TERM[depth]=screen:$((da2r_vec[1])) ;;
   ('84;0;0')
     _ble_term_TERM[depth]=tmux:0 ;;
   ('99;'*)
-    _ble_term_TERM[depth]=contra:$((da2r[1])) ;;
+    _ble_term_TERM[depth]=contra:$((da2r_vec[1])) ;;
   esac
   [[ ${_ble_term_TERM[depth]} ]] && return 0
 
   # xterm
   if rex='^xterm(-|$)'; [[ $TERM =~ $rex ]]; then
-    local version=$((da2r[1]))
-    if rex='^1;[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
+    local version=$((da2r_vec[1]))
+    if rex='^1;[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
       # Note: vte (2000以上), kitty (4000以上) は処理済み
       true
-    elif rex='^0;[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
+    elif rex='^0;[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
       ((95<=version))
-    elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
+    elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
       ((280<=version))
-    elif rex='^32;[0-9]+;0$'; [[ $DA2R =~ $rex ]]; then
+    elif rex='^32;[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
       ((354<=version&&version<2000))
     else
       false
@@ -6120,9 +6120,9 @@ function ble/term/modifyOtherKeys/.update {
     case $_ble_term_TERM in
     (RLogin:*) method=RLogin_modifyStringKeys ;;
     (kitty:*)
-      local da2r
-      ble/string#split da2r ';' "$_ble_term_DA2R"
-      if ((da2r[2]>=23)); then
+      local da2r_vec
+      ble/string#split da2r_vec ';' "$_ble_term_DA2R"
+      if ((da2r_vec[2]>=23)); then
         method=kitty_keyboard_protocol
       else
         method=kitty_modifyOtherKeys
@@ -6135,9 +6135,9 @@ function ble/term/modifyOtherKeys/.update {
         #   send keyboard-protocol sequences to the outermost kitty.
         local index=$((${#_ble_term_TERM[*]}-1))
         if [[ ${_ble_term_TERM[index]} == kitty:* ]]; then
-          local da2r
-          ble/string#split da2r ';' "${_ble_term_DA2R[index]}"
-          ((da2r[2]>=23)) && method=kitty_keyboard_protocol
+          local da2r_vec
+          ble/string#split da2r_vec ';' "${_ble_term_DA2R[index]}"
+          ((da2r_vec[2]>=23)) && method=kitty_keyboard_protocol
         fi
       fi ;;
     (*)
@@ -6787,3 +6787,118 @@ function ble/encoding:C/c2b {
   local code=$1
   bytes=("$((code&0xFF))")
 }
+
+#------------------------------------------------------------------------------
+# builtin readonly
+
+_ble_builtin_readonly_message=
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_readonly_blacklist}"
+
+function ble/builtin/readonly/.initialize-blacklist {
+  function ble/builtin/readonly/.initialize-blacklist { return 0; }
+
+  local -a list=()
+
+  # Bash variables ble.sh uses
+  ble/array#push list FUNCNEST IFS IGNOREEOF POSIXLY_CORRECT TMOUT # adjust
+  ble/array#push list PWD OLDPWD CDPATH # readlink
+  ble/array#push list BASHPID GLOBIGNORE MAPFILE REPLY # util
+  ble/array#push list INPUTRC # decode
+  ble/array#push list LINES COLUMNS # canvas
+  ble/array#push list HIST{CONTROL,IGNORE,SIZE,TIMEFORMAT} # history
+  ble/array#push list PROMPT_COMMAND PS1 # prompt
+  ble/array#push list BASH_COMMAND BASH_REMATCH HISTCMD LINENO PIPESTATUS TIMEFORMAT # exec
+  ble/array#push list BASH_XTRACEFD PS4 # debug
+
+  # Other common variables that ble.sh uses
+  ble/array#push list CC LESS MANOPT MANPAGER PAGER PATH MANPATH
+
+  # Other uppercase variables that ble.sh internally uses in each module
+  ble/array#push list BUFF # util
+  ble/array#push list KEYS KEYMAP WIDGET LASTWIDGET # decode
+  ble/array#push list DRAW_BUFF # canvas
+  ble/array#push list D{MIN,MAX,MAX0} {HIGHLIGHT,PREV}_{BUFF,UMAX,UMIN} LEVEL LAYER_{UMAX,UMIN} # color
+  ble/array#push list HISTINDEX_NEXT FILE LINE INDEX INDEX_FILE # history
+  ble/array#push list ARG FLAG REG # vi
+  ble/array#push list COMP{1,2,S,V} ACTION CAND DATA INSERT PREFIX_LEN # core-complete
+
+  local v
+  for v in "${list[@]}"; do ble/gdict#set _ble_builtin_readonly_blacklist "$v" 1; done
+}
+function ble/builtin/readonly/.check-variable-name {
+  # Local variables are always allowed to make readonly.  Note: this
+  # implementation does not block propagating tempenv variables being
+  # propagated to the global context.  There is no way to reliably detect the
+  # tempenv variables.
+  ble/variable#is-global "$1" || return 0
+
+  # If the variable starts with "_" but does not start with "_ble", it could be
+  # a global variable used by another framework.  We allow such namespaced
+  # variables being readonly.
+  if [[ $1 == _* && $1 != _ble*  && $1 != __ble* ]]; then
+    return 0
+  fi
+
+  # These special variables should not be made readonly.
+  case $1 in
+  (?)                    return 1;; # single character variables
+  (BLE_*|ADVICE_*)       return 1;; # ble.sh variables
+  (COMP_*|COMPREPLY)     return 1;; # completion variables
+  (READLINE_*)           return 1;; # readline variables
+  (LC_*|LANG)            return 1;; # locale variables
+  esac
+
+  # If the variable name is in the black list, the variable cannot be readonly.
+  ble/builtin/readonly/.initialize-blacklist
+  if ble/gdict#get _ble_builtin_readonly_blacklist; then
+    return 1
+  fi
+
+  # Otherwise, the variables that do not contain lowercase characters are
+  # allowed to become readonly.
+  if [[ $1 != *[a-z]* ]] && ! ; then
+    return 0
+  fi
+
+  return 1
+}
+function ble/builtin/readonly {
+  local _ble_local_flags=
+  local -a _ble_local_options=()
+  while (($#)); do
+    if ble/string#match "$1" '^([_a-zA-Z][_a-zA-Z0-9]*)($|=)'; then
+      _ble_local_flags=v$_ble_local_flags
+      local _ble_local_var=${BASH_REMATCH[1]}
+      if [[ ${BASH_REMATCH[2]} == = ]]; then
+        ble/util/sprintf "$_ble_local_var" "${1#*=}"
+      fi
+
+      if ble/builtin/readonly/.check-variable-name "$_ble_local_var"; then
+        _ble_local_flags=r$_ble_local_flags
+        ble/array#push _ble_local_options "$_ble_local_var"
+      else
+        # We show messages only up to ten times
+        if ((_ble_builtin_readonly_message<10)) && [[ -t 2 ]]; then
+          ((++_ble_builtin_readonly_message))
+          _ble_local_flags=w$_ble_local_flags
+          ble/util/print "ble.sh: An attempt to make variable \`$1' readonly was blocked." >&2
+        fi
+      fi
+    else
+      ble/array#push _ble_local_options "$1"
+    fi
+    shift
+  done
+
+  if [[ $_ble_local_flags == *w* ]]; then
+    ble/util/print 'ble.sh: The global variables with unprefixed lowercase names or special names should not be made readonly. It can break arbitrary Bash configurations.' >&2
+  fi
+  if [[ $_ble_local_flags != *v* || $_ble_local_flags == *r* ]]; then
+    # We call `builtin readonly' only when no variables are specified
+    # (e.g. readonly, readonly --help), or at least one variable are allowed to
+    # become readonly.
+    builtin readonly "${_ble_local_options[@]}"
+  fi
+}
+
+function readonly { ble/builtin/readonly "$@"; }

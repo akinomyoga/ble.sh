@@ -245,6 +245,10 @@ For example,
   This is not the problem specific to `ble.sh`, but any Bash framework may suffer from the global readonly variables.
   It is generally not recommended to define global readonly variables in Bash except for the security reasoning
   (Refs. [[1]](https://lists.gnu.org/archive/html/bug-bash/2019-03/threads.html#00150), [[2]](https://lists.gnu.org/archive/html/bug-bash/2020-04/threads.html#00200), [[3]](https://mywiki.wooledge.org/BashProgramming?highlight=%28%22readonly%22%20flag,%20or%20an%20%22integer%22%20flag,%20but%20these%20are%20mostly%20useless,%20and%20serious%20scripts%20shouldn%27t%20be%20using%20them%29#Variables)).
+  Also, `ble.sh` overrides the builtin `readonly` with a shell function to prevent it from making global variables readonly.
+  It allows only uppercase global variables and `_*` to become readonly except `_ble_*`, `__ble_*`, and some special uppercase variables.
+- `ble.sh` overrides Bash's built-in commands (`trap`, `readonly`, `bind`, `history`, `read`, and `exit`) with shell functions to adjust the behavior of each built-in command and prevent them from interfering with `ble.sh`.
+  If the user or another framework directly calls the original builtins through `builtin BUILTIN`, or if the user or another framework replaces the shell functions, the behavior is undefined.
 
 # 1 Usage
 

@@ -302,7 +302,7 @@ function ble/base/adjust-builtin-wrappers-1 {
   #   ので builtin は unset -f builtin してしまう。
   unset -f builtin
   builtin local POSIXLY_CORRECT=y builtins1 keywords1
-  builtins1=(builtin unset enable unalias return break continue declare local typeset readonly eval exec set)
+  builtins1=(builtin unset enable unalias return break continue declare local typeset eval exec set)
   keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
   if [[ ! $_ble_bash_builtins_adjusted ]]; then
     _ble_bash_builtins_adjusted=1
@@ -375,9 +375,13 @@ function ble/variable#copy-state {
 # From src/util.sh (ble/fd#is-open and ble/fd#alloc/.nextfd)
 function ble/base/xtrace/.fdcheck { builtin : >&"$1"; } 2>/dev/null
 function ble/base/xtrace/.fdnext {
-  local __init=${_ble_util_openat_nextfd:=${bleopt_openat_base:-30}}
-  for (($1=__init;$1<__init+1024;$1++)); do ble/base/xtrace/.fdcheck "${!1}" || break; done
-  (($1<__init+1024)) || { (($1=__init,_ble_util_openat_nextfd++)); builtin eval "exec ${!1}>&-"; } || ((1))
+  local _ble_local_init=${_ble_util_openat_nextfd:=${bleopt_openat_base:-30}}
+  for (($1=_ble_local_init;$1<_ble_local_init+1024;$1++)); do
+    ble/base/xtrace/.fdcheck "${!1}" || break
+  done
+  (($1<_ble_local_init+1024)) ||
+    { (($1=_ble_local_init,_ble_util_openat_nextfd++)); builtin eval "exec ${!1}>&-"; } ||
+    ((1))
 } 
 function ble/base/xtrace/.log {
   local bash=${_ble_bash:-$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))}
@@ -1740,11 +1744,11 @@ function ble-update/.make {
     shift
   fi
 
-  if ! "$MAKE" -q "$@"; then
+  if ! "$make" -q "$@"; then
     if [[ $sudo ]]; then
-      sudo "$MAKE" "$@"
+      sudo "$make" "$@"
     else
-      "$MAKE" "$@"
+      "$make" "$@"
     fi
   else
     # インストール先に更新がなくても現在の session でロードされている ble.sh が
@@ -1882,11 +1886,11 @@ function ble-update {
   fi
 
   # check make
-  local MAKE=
+  local make=
   if ble/bin#has gmake; then
-    MAKE=gmake
+    make=gmake
   elif ble/bin#has make && make --version 2>&1 | ble/bin/grep -qiF 'GNU Make'; then
-    MAKE=make
+    make=make
   else
     ble/util/print "ble-update: GNU Make is not available." >&2
     return 1
@@ -1942,8 +1946,8 @@ function ble-update {
     local branch=${_ble_base_branch:-master}
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
         git clone --recursive --depth 1 "$_ble_base_repository_url" "$_ble_base/src/ble.sh" -b "$branch" &&
-        builtin cd ble.sh && "$MAKE" all &&
-        "$MAKE" INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install ) &&
+        builtin cd ble.sh && "$make" all &&
+        "$make" INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install ) &&
       ble-update/.reload
     return "$?"
   fi

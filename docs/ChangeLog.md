@@ -546,6 +546,7 @@
 - util, decode, vi: fix leak variables `#D1933` 8d5cab8
 - util: support `bleopt debug_idle` `#D1945` fa10184
 - global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
+- util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` xxxxxxx
 
 ## Contrib
 

@@ -13,8 +13,8 @@ fi
 function ble-measure/.loop {
   # Note: ksh requires to quote ;
   builtin eval "function _target { ${2:+"$2; "}return 0; }"
-  local _i _n=$1
-  for ((_i=0;_i<_n;_i++)); do
+  local __ble_i __ble_n=$1
+  for ((__ble_i=0;__ble_i<__ble_n;__ble_i++)); do
     _target
   done
 }
@@ -226,7 +226,7 @@ function ble-measure/.read-arguments {
             measure_threshold=$optarg ;;
         (B)
           ble-measure/.read-arguments.get-optarg &&
-            __base=$optarg ;;
+            __ble_base=$optarg ;;
         (*)
           ble/util/print "ble-measure: unrecognized option '-$c'."
           flags=E$flags ;;
@@ -257,8 +257,8 @@ function ble-measure/.read-arguments {
 ##   @var[out] nsec
 ##     実行時間を nsec 単位で返します。
 function ble-measure {
-  local __level=${#FUNCNAME[@]} __base=
-  [[ ${ZSH_VERSION-} ]] && __level=${#funcstack[@]}
+  local __ble_level=${#FUNCNAME[@]} __ble_base=
+  [[ ${ZSH_VERSION-} ]] && __ble_level=${#funcstack[@]}
   local flags= command= count=$_ble_measure_count
   local measure_threshold=$_ble_measure_threshold
   ble-measure/.read-arguments "$@" || return "$?"
@@ -285,14 +285,14 @@ function ble-measure {
     return 2
   fi
 
-  if [[ ! $__base ]]; then
+  if [[ ! $__ble_base ]]; then
     if [[ $_ble_measure_base ]]; then
       # ble-measure/calibrate 実行済みの時
-      __base=$((_ble_measure_base+_ble_measure_base_nestcost*__level/10))
+      __ble_base=$((_ble_measure_base+_ble_measure_base_nestcost*__ble_level/10))
     else
-      # それ以外の時は __level 毎に計測
-      if [[ ! $ble_measure_calibrate && ! ${_ble_measure_base_guess[__level]} ]]; then
-        if [[ ! ${_ble_measure_base_real[__level+1]} ]]; then
+      # それ以外の時は __ble_level 毎に計測
+      if [[ ! $ble_measure_calibrate && ! ${_ble_measure_base_guess[__ble_level]} ]]; then
+        if [[ ! ${_ble_measure_base_real[__ble_level+1]} ]]; then
           if [[ ${_ble_measure_target-} == ksh ]]; then
             # Note: In ksh, we cannot do recursive call with dynamic scoping,
             # so we directly call the measuring function
@@ -303,23 +303,23 @@ function ble-measure {
             ble-measure -qc3 -B 0 ''
             ble/util/unlocal ble_measure_calibrate
           fi
-          _ble_measure_base_real[__level+1]=$nsec
-          _ble_measure_base_guess[__level+1]=$nsec
+          _ble_measure_base_real[__ble_level+1]=$nsec
+          _ble_measure_base_guess[__ble_level+1]=$nsec
         fi
 
-        # 上の実測値は一つ上のレベル (__level+1) での結果になるので現在のレベル
-        # (__level) の値に補正する。レベル毎の時間が chatoyancy での線形フィッ
+        # 上の実測値は一つ上のレベル (__ble_level+1) での結果になるので現在のレベル
+        # (__ble_level) の値に補正する。レベル毎の時間が chatoyancy での線形フィッ
         # トの結果に比例する仮定して補正を行う。
         #
         # linear-fit result with $f(x) = A x + B$ in chatoyancy
         #   A = 65.9818 pm 2.945 (4.463%)
         #   B = 4356.75 pm 19.97 (0.4585%)
-        local __A=6598 __B=435675
-        nsec=${_ble_measure_base_real[__level+1]}
-        _ble_measure_base_guess[__level]=$((nsec*(__B+__A*(__level-1))/(__B+__A*__level)))
-        ble/util/unlocal __A __B
+        local cA=6598 cB=435675
+        nsec=${_ble_measure_base_real[__ble_level+1]}
+        _ble_measure_base_guess[__ble_level]=$((nsec*(cB+cA*(__ble_level-1))/(cB+cA*__ble_level)))
+        ble/util/unlocal cA cB
       fi
-      __base=${_ble_measure_base_guess[__level]:-0}
+      __ble_base=${_ble_measure_base_guess[__ble_level]:-0}
     fi
   fi
 
@@ -358,18 +358,18 @@ function ble-measure {
 
     # upate base if the result is shorter than base
     if ((min_utot<0x7FFFFFFFFFFFFFFF/1000)); then
-      local __real=$((min_utot*1000/n))
-      [[ ${_ble_measure_base_real[__level]} ]] &&
-        ((__real<_ble_measure_base_real[__level])) &&
-        _ble_measure_base_real[__level]=$__real
-      [[ ${_ble_measure_base_guess[__level]} ]] &&
-        ((__real<_ble_measure_base_guess[__level])) &&
-        _ble_measure_base_guess[__level]=$__real
-      ((__real<__base)) &&
-        __base=$__real
+      local __ble_real=$((min_utot*1000/n))
+      [[ ${_ble_measure_base_real[__ble_level]} ]] &&
+        ((__ble_real<_ble_measure_base_real[__ble_level])) &&
+        _ble_measure_base_real[__ble_level]=$__ble_real
+      [[ ${_ble_measure_base_guess[__ble_level]} ]] &&
+        ((__ble_real<_ble_measure_base_guess[__ble_level])) &&
+        _ble_measure_base_guess[__ble_level]=$__ble_real
+      ((__ble_real<__ble_base)) &&
+        __ble_base=$__ble_real
     fi
 
-    local nsec0=$__base
+    local nsec0=$__ble_base
     if [[ $flags != *q* ]]; then
       local reso=$_ble_measure_resolution
       local awk=ble/bin/awk

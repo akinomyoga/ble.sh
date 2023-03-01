@@ -25,7 +25,7 @@ function ble/keymap:vi_test/check {
   ble/keymap:vi_test/decompose-state "$initial"; local i=$ind in=$str ima=$mark
   ble/keymap:vi_test/decompose-state "$final"; local f=$ind fin=$str fma=$mark
   
-  local nl=$'\n' NL=$'\e[7m^J\e[m'
+  local nl=$'\n' nl_rep=$'\e[7m^J\e[m'
   ble-edit/content/reset "$in" edit
   _ble_edit_ind=$i
   [[ $ima ]] && _ble_edit_mark=$ima
@@ -40,9 +40,9 @@ function ble/keymap:vi_test/check {
     ((ntest++,nsuccess++))
   else
     ((ntest++))
-    local esc_in=${in//$nl/"$NL"}
-    local esc_fin=${fin//$nl/"$NL"}
-    local esc_str=${_ble_edit_str//$nl/"$NL"}
+    local esc_in=${in//$nl/"$nl_rep"}
+    local esc_fin=${fin//$nl/"$nl_rep"}
+    local esc_str=${_ble_edit_str//$nl/"$nl_rep"}
     ble/util/print "test($section/$id): keys = ($kspecs)"
     ble/util/print "  initial  = \"$i:$esc_in\""
     ble/util/print "  expected = \"$f:$esc_fin\""

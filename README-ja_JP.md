@@ -230,6 +230,10 @@ Vimモードの実装は2017年9月に始まり2018年3月に一先ず完成と�
   つまり、同名の異なるローカル変数さえ定義することができません。
   この問題は `ble.sh` 固有の制限ではなく、あらゆる Bash の枠組みがグローバルの読み込み専用変数に影響を受けます。
   一般的にグローバルスコープに読み込み変数を設定することはセキュリティ的な理由がない限りは非推奨と考えられています (参照 [[1]](https://lists.gnu.org/archive/html/bug-bash/2019-03/threads.html#00150), [[2]](https://lists.gnu.org/archive/html/bug-bash/2020-04/threads.html#00200), [[3]](https://mywiki.wooledge.org/BashProgramming?highlight=%28%22readonly%22%20flag,%20or%20an%20%22integer%22%20flag,%20but%20these%20are%20mostly%20useless,%20and%20serious%20scripts%20shouldn%27t%20be%20using%20them%29#Variables))。
+  また、`ble.sh` はビルトインコマンド `readonly` をシェル関数で置き換え、グローバル変数を読み込み専用にするのをブロックします。
+  例外として、全て大文字の変数 (`ble.sh` が内部使用するものを除く) および `_*` の形の変数 (`_ble_*` および `__ble_*` を除く) を読み込み専用にすることは可能です。
+- `ble.sh` は Bash のビルトインコマンド (`trap`, `readonly`, `bind`, `history`, `read`, `exit`) をシェル関数で上書きし、`ble.sh` と干渉しないようにその振る舞いを調整します。
+  ユーザーまたは他の枠組みが元のビルトインを直接呼び出した場合、または `ble.sh` の定義したシェル関数を別のシェル関数で上書きした場合、正しい動作を保証できません。
 
 # 1 使い方
 

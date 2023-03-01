@@ -4861,7 +4861,7 @@ function ble/keymap:vi/text-object/tag.impl {
 ## @fn ble/keymap:vi/text-object:sentence/.beg
 ##   @var[out] beg
 ##   @var[out] is_interval
-##   @var[in] LF, HT
+##   @var[in] lf, ht
 function ble/keymap:vi/text-object:sentence/.beg {
   beg= is_interval=
   local pivot=$_ble_edit_ind rex=
@@ -4877,7 +4877,7 @@ function ble/keymap:vi/text-object:sentence/.beg {
     fi
   fi
   if [[ ! $beg ]]; then
-    rex="^.*((^$LF?|$LF$LF)([ $HT]*)|[.!?][])'\"]*([ $HT$LF]+))"
+    rex="^.*((^$lf?|$lf$lf)([ $ht]*)|[.!?][])'\"]*([ $ht$lf]+))"
     if [[ ${_ble_edit_str::pivot+1} =~ $rex ]]; then
       beg=${#BASH_REMATCH}
       if ((pivot<beg)); then
@@ -4900,7 +4900,7 @@ function ble/keymap:vi/text-object:sentence/.beg {
 ## @fn ble/keymap:vi/text-object:sentence/.next {
 ##   @var[in,out] end
 ##   @var[in,out] is_interval
-##   @var[in] LF, HT
+##   @var[in] lf, ht
 function ble/keymap:vi/text-object:sentence/.next {
   if [[ $is_interval ]]; then
     is_interval=
@@ -4914,7 +4914,7 @@ function ble/keymap:vi/text-object:sentence/.next {
     if local rex=$'^\n+'; [[ ${_ble_edit_str:end} =~ $rex ]]; then
       # 連続する LF を読み切る
       ((end+=${#BASH_REMATCH}))
-    elif rex="(([.!?][])\"']*)[ $HT$LF]|$LF$LF).*\$"; [[ ${_ble_edit_str:end} =~ $rex ]]; then
+    elif rex="(([.!?][])\"']*)[ $ht$lf]|$lf$lf).*\$"; [[ ${_ble_edit_str:end} =~ $rex ]]; then
       # 文を次の文末記号まで
       local rematch2=${BASH_REMATCH[2]}
       end=$((${#_ble_edit_str}-${#BASH_REMATCH}+${#rematch2}))
@@ -4928,7 +4928,7 @@ function ble/keymap:vi/text-object:sentence/.next {
 }
 function ble/keymap:vi/text-object/sentence.impl {
   local arg=$1 flag=$2 reg=$3 type=$4
-  local LF=$'\n' HT=$'\t'
+  local lf=$'\n' ht=$'\t'
   local rex
 
   local beg is_interval
@@ -4945,7 +4945,7 @@ function ble/keymap:vi/text-object/sentence.impl {
   if [[ $type != i* && ! $is_interval ]]; then
     local ifs=$_ble_term_IFS
     if ((end)) && [[ ${_ble_edit_str:end-1:1} != ["$ifs"] ]]; then
-      rex="^.*(^$LF?|$LF$LF|[.!?][])'\"]*([ $HT$LF]))([ $HT$LF]*)\$"
+      rex="^.*(^$lf$lf|[.!?][])'\"]*([ $ht$lf]))([ $ht$lf]*)\$"
       if [[ ${_ble_edit_str::beg} =~ $rex ]]; then
         local rematch2=${BASH_REMATCH[2]}
         local rematch3=${BASH_REMATCH[3]}

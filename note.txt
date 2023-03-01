@@ -6661,6 +6661,61 @@ bash_tips
 
 2023-03-01
 
+  * util: readonly を上書きする? (reqeusted by mozirilla213) [#D1985]
+    https://github.com/akinomyoga/ble.sh/issues/289
+
+    其処まで積極的にユーザー環境を上書きして良いのか不明である。
+
+    - alias doesn't affect existing functions.
+
+    - command line can be easily detected, but this is still incomplete
+      detection because even if the user does not directly write declare -r,
+      the functions called by the user could contain declare -gr, etc.
+
+    The scope that the readonly is called and the scope of the variable
+    specified to readonly are unrelated to each other.  One needs to test each
+    variable name whether it is in the global scope or not.
+
+    * propagating tempenv にも気をつけなければならない。
+
+      $ f1() { ble/variable#is-global fdsafdsa; }
+      $ fdsafdsa=a f1
+
+      このテストだと global ではないと判定されてそれは is-global の判定としては
+      期待する動作である。然しこれに対して export/readonly を実行すると外側に
+      propagate してしまう。global に propagate しないという事までちゃんと判定
+      する方法はあるのだろうか。そもそも tempenv をそうと判定する方法があるのか
+      という事も疑問である。
+
+      まあこの場合は仕方がないと思って諦めるべきだろうか。
+
+      これの判定は完全ではない。
+
+    * done: global readonly に対しても whitelist は作っても良いのかもしれない。
+      全て [A-Z0-9_] であり 2 文字以上で Bash の特殊変数に一致していなくて
+      ble.sh が使っていない変数名?
+
+      ble.sh 内部で使っている大文字変数も実は改名するべきの気もする。特に vi.sh
+      の中で使っている変数が気になる…がこれは禁止リストに入れてしまっても良い
+      気がする。
+
+      小文字でも _ble で始まらない _[a-zA-Z]* の様な変数名も許容して良いのでは
+      ないか。然し、ble.sh の内部で使っている変数もあるのでそれらは ble.sh の側
+      で改名する等して避ける事にする。
+
+    * done: is-global の実装で readonly が使われている。
+
+    * done: adjust builtins: readonly はユーザーによる上書きを許容する。
+
+    * done: エラーメッセージは一回しか実行しない→もう何回か表示して良い気がす
+      る。10回迄表示する事にした。
+
+    * ユーザーが既に readonly を上書きしている場合にはどうするのか。
+      function#push,pop で処理する事にすれば良いだろうか。と思ったがその様にす
+      るのであれば他の builtin も同様にする必要があるのではないかという事になっ
+      てくる。もしこれについて考えるのであれば全ての builtin について同時に適用
+      するべき。
+
   * exec: BLE_PIPESTATUS 公開する (motivated by mozirilla213) [#D1984]
     https://github.com/akinomyoga/ble.sh/issues/290
 

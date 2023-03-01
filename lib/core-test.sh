@@ -136,7 +136,7 @@ function ble/test/section#report {
 }
 
 function ble/test/.read-arguments {
-  local _stdout _stderr _exit _ret
+  local xstdout xstderr xexit xret
   local qstdout qstderr qexit qret
   local -a buff=()
   while (($#)); do
@@ -144,60 +144,64 @@ function ble/test/.read-arguments {
     case $arg in
     ('#'*)
       local ret; ble/string#trim "${arg#'#'}"
-      title=$ret ;;
+      _ble_test_title=$ret ;;
     (stdout[:=]*)
-      [[ $qstdout ]] && _stdout=$_stdout$'\n'
+      [[ $qstdout ]] && xstdout=$xstdout$'\n'
       qstdout=1
-      _stdout=$_stdout${arg#*[:=]} ;;
+      xstdout=$xstdout${arg#*[:=]} ;;
     (stderr[:=]*)
-      [[ $qstderr ]] && _stderr=$_stderr$'\n'
+      [[ $qstderr ]] && xstderr=$xstderr$'\n'
       qstderr=1
-      _stderr=$_stderr${arg#*[:=]} ;;
+      xstderr=$xstderr${arg#*[:=]} ;;
     (ret[:=]*)
       qret=1
-      _ret=${arg#*[:=]} ;;
+      xret=${arg#*[:=]} ;;
     (exit[:=]*)
       qexit=1
-      _exit=${arg#*[:=]} ;;
+      xexit=${arg#*[:=]} ;;
     (code[:=]*)
       ((${#buff[@]})) && ble/array#push buff $'\n'
       ble/array#push buff "${arg#*[:=]}" ;;
     (--depth=*)
-      caller_depth=${arg#*=} ;;
+      _ble_test_caller_depth=${arg#*=} ;;
     (--display-code=*)
-      display_code=${arg#*=} ;;
+      _ble_test_display_code=${arg#*=} ;;
     (*)
       ((${#buff[@]})) && ble/array#push buff ' '
       ble/array#push buff "$arg" ;;
     esac
   done
 
-  [[ $qstdout ]] && item_expect[0]=$_stdout
-  [[ $qstderr ]] && item_expect[1]=$_stderr
-  [[ $qexit   ]] && item_expect[2]=$_exit
-  [[ $qret    ]] && item_expect[3]=$_ret
+  [[ $qstdout ]] && _ble_test_item_expect[0]=$xstdout
+  [[ $qstderr ]] && _ble_test_item_expect[1]=$xstderr
+  [[ $qexit   ]] && _ble_test_item_expect[2]=$xexit
+  [[ $qret    ]] && _ble_test_item_expect[3]=$xret
 
   # 何もチェックが指定されなかった時は終了ステータスをチェックする
-  ((${#item_expect[@]})) || item_expect[2]=0
+  ((${#_ble_test_item_expect[@]})) || _ble_test_item_expect[2]=0
 
-  IFS= builtin eval 'code="${buff[*]}"'
+  IFS= builtin eval '_ble_test_code="${buff[*]}"'
 }
-function ble/test {
-  local -a item_name=(stdout stderr exit ret)
 
-  local code title
-  local caller_depth=0 display_code=
-  local -a item_expect=()
+_ble_test_item_name=(stdout stderr exit ret)
+## @fn ble/test [--depth=NUM|--display-code=CODE] CODE [[code|stdout|stderr|exit|ret]=VALUE]... '# title'
+##   @var[out] stdout stderr exit ret
+function ble/test {
+  local _ble_test_code
+  local _ble_test_title
+  local _ble_test_caller_depth=0
+  local _ble_test_display_code=
+  local -a _ble_test_item_expect=()
   ble/test/.read-arguments "$@"
 
-  local caller_lineno=${BASH_LINENO[caller_depth+0]}
-  local caller_source=${BASH_SOURCE[caller_depth+1]}
-  title="$caller_source:$caller_lineno${title+ ($title)}"
-  ble/test/section#incr "$title"
+  local caller_lineno=${BASH_LINENO[_ble_test_caller_depth+0]}
+  local caller_source=${BASH_SOURCE[_ble_test_caller_depth+1]}
+  _ble_test_title="$caller_source:$caller_lineno${_ble_test_title+ ($_ble_test_title)}"
+  ble/test/section#incr "$_ble_test_title"
 
   # run
   ble/util/assign stderr '
-    ble/util/assign stdout "$code" 2>&1'; exit=$?
+    ble/util/assign stdout "$_ble_test_code" 2>&1'; exit=$?
   local -a item_result=()
   item_result[0]=$stdout
   item_result[1]=$stderr
@@ -205,18 +209,18 @@ function ble/test {
   item_result[3]=$ret
 
   local i flag_error=
-  for i in "${!item_expect[@]}"; do
-    [[ ${item_result[i]} == "${item_expect[i]}" ]] && continue
+  for i in "${!_ble_test_item_expect[@]}"; do
+    [[ ${item_result[i]} == "${_ble_test_item_expect[i]}" ]] && continue
 
     if [[ ! $flag_error ]]; then
       flag_error=1
-      ble/test/log $'\e[1m'"$title"$'\e[m: \e[91m'"${display_code:-$code}"$'\e[m'
+      ble/test/log $'\e[1m'"$_ble_test_title"$'\e[m: \e[91m'"${_ble_test_display_code:-$_ble_test_code}"$'\e[m'
     fi
 
-    ble/test/diff "${item_name[i]}" "${item_expect[i]}" "${item_result[i]}"
+    ble/test/diff "${_ble_test_item_name[i]}" "${_ble_test_item_expect[i]}" "${item_result[i]}"
   done
   if [[ $flag_error ]]; then
-    if [[ ! ${item_expect[1]+set} && $stderr ]]; then
+    if [[ ! ${_ble_test_item_expect[1]+set} && $stderr ]]; then
       ble/test/log "<STDERR>"
       ble/test/log "$stderr"
       ble/test/log "</STDERR>"
@@ -225,6 +229,6 @@ function ble/test {
   fi
 
   [[ ! $flag_error ]]
-  ble/test/section#report "$title"
+  ble/test/section#report "$_ble_test_title"
   return 0
 }

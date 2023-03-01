@@ -5529,16 +5529,16 @@ function ble/complete/util/construct-glob-pattern {
 
 
 function ble/complete/.fignore/prepare {
-  _fignore=()
+  comp_fignore=()
   local i=0 leaf tmp
   ble/string#split tmp ':' "$FIGNORE"
   for leaf in "${tmp[@]}"; do
-    [[ $leaf ]] && _fignore[i++]="$leaf"
+    [[ $leaf ]] && comp_fignore[i++]="$leaf"
   done
 }
 function ble/complete/.fignore/filter {
   local pat
-  for pat in "${_fignore[@]}"; do
+  for pat in "${comp_fignore[@]}"; do
     [[ $1 == *"$pat" ]] && return 1
   done
   return 0
@@ -5959,10 +5959,10 @@ function ble/complete/candidates/generate {
   local opts=$1
   local flag_force_fignore=
   local flag_source_filter=
-  local -a _fignore=()
+  local -a comp_fignore=()
   if [[ $FIGNORE ]]; then
     ble/complete/.fignore/prepare
-    ((${#_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
+    ((${#comp_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
   fi
 
   local rex_raw_paramx
@@ -6664,9 +6664,9 @@ function ble/complete/insert-braces/.compose {
   # Note: awk が RS = "\0" に対応していれば \0 で区切る。
   #   それ以外の場合には \x1E (ASCII RS) で区切る。
   if ble/bin/awk0.available; then
-    local printf_format='%s\0' RS='"\0"' awk=ble/bin/awk0
+    local printf_format='%s\0' char_RS='"\0"' awk=ble/bin/awk0
   else
-    local printf_format='%s\x1E' RS='"\x1E"' awk=ble/bin/awk
+    local printf_format='%s\x1E' char_RS='"\x1E"' awk=ble/bin/awk
   fi
 
   local q=\'
@@ -6690,7 +6690,7 @@ function ble/complete/insert-braces/.compose {
     }
 
     BEGIN {
-      RS = '"$RS"';
+      RS = '"$char_RS"';
       rex_atom = ENVIRON["rex_atom"];
       del_close = ENVIRON["del_close"];
       del_open = ENVIRON["del_open"];
@@ -7908,7 +7908,7 @@ function ble/complete/auto-complete.idle {
   [[ $_ble_edit_str ]] || return 0
 
   # bleopt_complete_auto_delay だけ経過してから処理
-  ble/util/idle.sleep-until "$((_idle_clock_start+bleopt_complete_auto_delay))" checked && return 0
+  ble/util/idle.sleep-until "$((_ble_idle_clock_start+bleopt_complete_auto_delay))" checked && return 0
 
   ble/complete/auto-complete.impl
 }
@@ -7930,7 +7930,7 @@ function ble/complete/auto-menu.idle {
   [[ $_ble_edit_str ]] || return 0
 
   # bleopt_complete_auto_delay だけ経過してから処理
-  local until=$((_idle_clock_start+bleopt_complete_auto_menu))
+  local until=$((_ble_idle_clock_start+bleopt_complete_auto_menu))
   ble/util/idle.sleep-until "$until" checked && return 0
 
   ble/widget/complete auto_menu:show_menu:no-empty:no-bell

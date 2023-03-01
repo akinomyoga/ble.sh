@@ -3,7 +3,7 @@
 
 # Usage
 #
-#   local "${ble_getopt_vars[@]/%/=}" # WA #D1570 checked
+#   local "${_ble_getopt_vars[@]/%/=}" # WA #D1570 checked
 #   ble-getopt-begin "progname" "m:n c:n,n k:n,n" "$@"
 #   ble-getopt
 #
@@ -12,35 +12,35 @@
 #   * next-argument: appropriate error message
 #   * next-argument: negative tests
 #   * next-argument: function calls
-#   * _getopt_index を OPTIND に名前を変える?
+#   * getopt_index を OPTIND に名前を変える?
 
-ble_getopt_vars=(
-  OPTARGS       # 読み取られたオプション
+_ble_getopt_vars=(
+  optargs      # 読み取られたオプション
 
-  _getopt_cmd   # 呼出元コマンド名
-  _getopt_odefs # オプション定義
-  _getopt_args  # コマンド引数
-  _getopt_len   # コマンド引数の数
-  _getopt_index # 現在のコマンド引数の位置 OPTIND
+  getopt_cmd   # 呼出元コマンド名
+  getopt_odefs # オプション定義
+  getopt_args  # コマンド引数
+  getopt_len   # コマンド引数の数
+  getopt_index # 現在のコマンド引数の位置 OPTIND
 
-  _getopt_opt   # 解析中オプション
-  _getopt_oarg  # オプション引数
-  _getopt_olen  # オプション引数の数
-  _getopt_oind  # オプション引数の現在位置
+  getopt_opt   # 解析中オプション
+  getopt_oarg  # オプション引数
+  getopt_olen  # オプション引数の数
+  getopt_oind  # オプション引数の現在位置
 )
 
 function .ble-getopt.next-argument {
   local type=$1 oarg
-  if ((_getopt_oind<_getopt_olen)); then
-    oarg=${_getopt_oarg[_getopt_oind++]}
-  elif ((_getopt_index<_getopt_len)); then
-    oarg=${_getopt_args[_getopt_index++]}
+  if ((getopt_oind<getopt_olen)); then
+    oarg=${getopt_oarg[getopt_oind++]}
+  elif ((getopt_index<getopt_len)); then
+    oarg=${getopt_args[getopt_index++]}
   else
     if [[ $type == '?'* ]]; then
       oarg=${type:1}
       [[ ! $oarg ]] && return 0
     else
-      ble/util/print "$_getopt_cmd: missing an argument of the option \`${OPTARGS[0]}'." 1>&2
+      ble/util/print "$getopt_cmd: missing an argument of the option \`${optargs[0]}'." 1>&2
       return 1
     fi
   fi
@@ -49,24 +49,24 @@ function .ble-getopt.next-argument {
   case "$type" in
   [nefdhcbpugkrwxsv])
     if [ ! -$type "$oarg" ]; then
-      ble/util/print "$_getopt_cmd: the argument of the option \`${OPTARGS[0]}' is empty string (oarg=$oarg)." 1>&2
+      ble/util/print "$getopt_cmd: the argument of the option \`${optargs[0]}' is empty string (oarg=$oarg)." 1>&2
       return 1
     fi ;;
   esac
 
-  OPTARGS[${#OPTARGS[@]}]=$oarg
+  optargs[${#optargs[@]}]=$oarg
 }
 
 function .ble-getopt.process-option {
   local name=$1
-  OPTARGS=("$name")
+  optargs=("$name")
 
   # search the option definition
   local i f_found adef
-  for ((i=0;i<${#_getopt_odefs[@]};i++)); do
-    if [[ $name == "${_getopt_odefs[$i]%%:*}" ]]; then
+  for ((i=0;i<${#getopt_odefs[@]};i++)); do
+    if [[ $name == "${getopt_odefs[$i]%%:*}" ]]; then
       f_found=1
-      ble/string#split adef : "${_getopt_odefs[i]}"
+      ble/string#split adef : "${getopt_odefs[i]}"
       break
     fi
   done
@@ -87,35 +87,35 @@ function .ble-getopt.process-option {
 }
 
 function ble-getopt-begin {
-  ble/string#split-words _getopt_cmd "$1"
-  ble/string#split-words _getopt_odefs "$2"
+  ble/string#split-words getopt_cmd "$1"
+  ble/string#split-words getopt_odefs "$2"
   shift 2
-  _getopt_args=("$@")
-  _getopt_len=${#_getopt_args[@]}
-  _getopt_index=0
+  getopt_args=("$@")
+  getopt_len=${#getopt_args[@]}
+  getopt_index=0
 
-  _getopt_opt=
-  _getopt_olen=0
-  _getopt_oind=0
+  getopt_opt=
+  getopt_olen=0
+  getopt_oind=0
 
-  OPTARGS=()
+  optargs=()
 }
 
 function .ble-getopt.check-oarg-processed {
-  if ((_getopt_oind<_getopt_olen)); then
-    ble/util/print "$_getopt_cmd: an option argument not processed (oarg=${_getopt_oarg[$_getopt_oind]})." 1>&2
-    _getopt_oind=0
-    _getopt_olen=0
-    builtin unset -v '_getopt_oarg[@]'
+  if ((getopt_oind<getopt_olen)); then
+    ble/util/print "$getopt_cmd: an option argument not processed (oarg=${getopt_oarg[$getopt_oind]})." 1>&2
+    getopt_oind=0
+    getopt_olen=0
+    builtin unset -v 'getopt_oarg[@]'
     return 1
   fi
 }
 
 function ble-getopt {
   # 読み掛けのオプション列
-  if [[ $_getopt_opt ]]; then
-    local o=${_getopt_opt::1}
-    _getopt_opt=${_getopt_opt:1}
+  if [[ $getopt_opt ]]; then
+    local o=${getopt_opt::1}
+    getopt_opt=${getopt_opt:1}
     .ble-getopt.process-option "$o"
     return "$?"
   fi
@@ -124,26 +124,26 @@ function ble-getopt {
   .ble-getopt.check-oarg-processed || return 1
 
   # 完了
-  if ((_getopt_index>=_getopt_len)); then
-    builtin unset -v 'OPTARGS[@]'
+  if ((getopt_index>=getopt_len)); then
+    builtin unset -v 'optargs[@]'
     return 2
   fi
 
-  local arg=${_getopt_args[_getopt_index++]}
+  local arg=${getopt_args[getopt_index++]}
   if [[ $arg == -?* ]]; then
     
     if [[ $arg == --?* ]]; then
       # longname option
       local f_longname=1
-      _getopt_opt=${arg:2}
+      getopt_opt=${arg:2}
 
-      local o=${_getopt_opt%%=*}
-      if [[ $o != "$_getopt_opt" ]]; then
-        _getopt_oarg=("${_getopt_opt#*=}")
-        _getopt_oind=0
-        _getopt_olen=1
+      local o=${getopt_opt%%=*}
+      if [[ $o != "$getopt_opt" ]]; then
+        getopt_oarg=("${getopt_opt#*=}")
+        getopt_oind=0
+        getopt_olen=1
       fi
-      _getopt_opt=
+      getopt_opt=
 
       .ble-getopt.process-option "$o"
       .ble-getopt.check-oarg-processed || return 1
@@ -151,17 +151,17 @@ function ble-getopt {
     else
       # short options
       local f_longname=
-      _getopt_opt=${arg:1}
+      getopt_opt=${arg:1}
 
-      ble/string#split _getopt_oarg : "$_getopt_opt"
-      _getopt_olen=${#_getopt_oarg[@]}
-      _getopt_oind=1
+      ble/string#split getopt_oarg : "$getopt_opt"
+      getopt_olen=${#getopt_oarg[@]}
+      getopt_oind=1
       ble-getopt
       return "$?"
     fi
   else
     # 通常の引数
-    OPTARGS=('' "$arg")
+    optargs=('' "$arg")
   fi
 
 }

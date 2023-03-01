@@ -1133,9 +1133,9 @@ function ble/canvas/flush.draw {
 ##     出力先の変数名を指定します。
 ##   @var[out] !var
 function ble/canvas/sflush.draw {
-  local _var=ret
-  [[ $1 == -v ]] && _var=$2
-  IFS= builtin eval "$_var=\"\${DRAW_BUFF[*]}\""
+  local _ble_local_var=ret
+  [[ $1 == -v ]] && _ble_local_var=$2
+  IFS= builtin eval "$_ble_local_var=\"\${DRAW_BUFF[*]}\""
   DRAW_BUFF=()
 }
 function ble/canvas/bflush.draw {
@@ -1787,21 +1787,21 @@ function ble/canvas/trace/.process-csi-sequence {
         fi
       elif [[ $char == I ]]; then
         # CHT "CSI I"
-        local _x
-        ((_x=(x/it+arg)*it,
-          _x>=cols&&(_x=cols-1)))
-        if ((_x>x)); then
-          [[ $flag_clip ]] || ble/canvas/put-cuf.draw "$((_x-x))"
-          ((x=_x))
+        local tx
+        ((tx=(x/it+arg)*it,
+          tx>=cols&&(tx=cols-1)))
+        if ((tx>x)); then
+          [[ $flag_clip ]] || ble/canvas/put-cuf.draw "$((tx-x))"
+          ((x=tx))
         fi
       elif [[ $char == Z ]]; then
         # CHB "CSI Z"
-        local _x
-        ((_x=((x+it-1)/it-arg)*it,
-          _x<0&&(_x=0)))
-        if ((_x<x)); then
-          [[ $flag_clip ]] || ble/canvas/put-cub.draw "$((x-_x))"
-          ((x=_x))
+        local tx
+        ((tx=((x+it-1)/it-arg)*it,
+          tx<0&&(tx=0)))
+        if ((tx<x)); then
+          [[ $flag_clip ]] || ble/canvas/put-cub.draw "$((x-tx))"
+          ((x=tx))
         fi
       fi
       ble/canvas/trace/.measure-point
@@ -2066,12 +2066,12 @@ function ble/canvas/trace/.impl {
           ble/canvas/trace/.measure-point
         fi ;;
       ($'\t') # HT
-        local _x
-        ((_x=(x+it)/it*it,
-          _x>=cols&&(_x=cols-1)))
-        if ((x<_x)); then
+        local tx
+        ((tx=(x+it)/it*it,
+          tx>=cols&&(tx=cols-1)))
+        if ((x<tx)); then
           ((lc=32,lg=g))
-          ble/canvas/trace/.put-ascii.draw "${_ble_string_prototype::_x-x}"
+          ble/canvas/trace/.put-ascii.draw "${_ble_string_prototype::tx-x}"
         fi ;;
       ($'\n') # LF = CR+LF
         ble/canvas/trace/.NEL ;;
@@ -2479,7 +2479,7 @@ function ble/textmap#update {
   local iN=${#text}
 
   # 初期位置 x y
-  local _pos="$x $y"
+  local pos0="$x $y"
   _ble_textmap_begx=$x
   _ble_textmap_begy=$y
 
@@ -2495,12 +2495,12 @@ function ble/textmap#update {
   if ((cols!=_ble_textmap_cols)); then
     # 表示幅が変化したときは全部再計算
     ((dbeg=0,dend0=_ble_textmap_length,dend=iN))
-    _ble_textmap_pos[0]=$_pos
-  elif [[ ${_ble_textmap_pos[0]} != "$_pos" ]]; then
+    _ble_textmap_pos[0]=$pos0
+  elif [[ ${_ble_textmap_pos[0]} != "$pos0" ]]; then
     # 初期位置の変更がある場合は初めから計算し直し
     ((dbeg<0&&(dend=dend0=0),
       dbeg=0))
-    _ble_textmap_pos[0]=$_pos
+    _ble_textmap_pos[0]=$pos0
   else
     if ((dbeg<0)); then
       # 表示幅も初期位置も内容も変更がない場合はOK
@@ -2713,16 +2713,16 @@ function ble/textmap#assert-up-to-date {
 ##
 function ble/textmap#getxy.out {
   ble/textmap#assert-up-to-date
-  local _prefix=
+  local _ble_local_prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix=${1#--prefix=}
+    _ble_local_prefix=${1#--prefix=}
     shift
   fi
 
-  local -a _pos
-  _pos=(${_ble_textmap_pos[$1]})
-  ((${_prefix}x=_pos[0]))
-  ((${_prefix}y=_pos[1]))
+  local -a pos
+  ble/string#split-words pos "${_ble_textmap_pos[$1]}"
+  ((${_ble_local_prefix}x=pos[0]))
+  ((${_ble_local_prefix}y=pos[1]))
 }
 
 ## @fn ble/textmap#getxy.cur index
@@ -2736,50 +2736,51 @@ function ble/textmap#getxy.out {
 ##
 function ble/textmap#getxy.cur {
   ble/textmap#assert-up-to-date
-  local _prefix=
+  local _ble_local_prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix=${1#--prefix=}
+    _ble_local_prefix=${1#--prefix=}
     shift
   fi
 
-  local -a _pos
-  ble/string#split-words _pos "${_ble_textmap_pos[$1]}"
+  local -a pos
+  ble/string#split-words pos "${_ble_textmap_pos[$1]}"
 
   # 追い出しされたか check
   if (($1<_ble_textmap_length)); then
-    local -a _eoc
-    ble/string#split-words _eoc "${_ble_textmap_pos[$1+1]}"
-    ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
+    local -a eoc
+    ble/string#split-words eoc "${_ble_textmap_pos[$1+1]}"
+    ((eoc[2])) && ((pos[0]=0,pos[1]++))
   fi
 
-  ((${_prefix}x=_pos[0]))
-  ((${_prefix}y=_pos[1]))
+  ((${_ble_local_prefix}x=pos[0]))
+  ((${_ble_local_prefix}y=pos[1]))
 }
 
 ## @fn ble/textmap#get-index-at [-v varname] x y
 ##   指定した位置 x y に対応する index を求めます。
 function ble/textmap#get-index-at {
   ble/textmap#assert-up-to-date
-  local _var=index
+  local __ble_var=index
   if [[ $1 == -v ]]; then
-    _var=$2
+    __ble_var=$2
     shift 2
   fi
 
-  local _x=$1 _y=$2
-  if ((_y>_ble_textmap_endy)); then
-    (($_var=_ble_textmap_length))
-  elif ((_y<_ble_textmap_begy)); then
-    (($_var=0))
+  local __ble_x=$1 __ble_y=$2
+  if ((__ble_y>_ble_textmap_endy)); then
+    (($__ble_var=_ble_textmap_length))
+  elif ((__ble_y<_ble_textmap_begy)); then
+    (($__ble_var=0))
   else
     # 2分法
-    local _l=0 _u=$((_ble_textmap_length+1)) _m
-    local _mx _my
-    while ((_l+1<_u)); do
-      ble/textmap#getxy.cur --prefix=_m "$((_m=(_l+_u)/2))"
-      (((_y<_my||_y==_my&&_x<_mx)?(_u=_m):(_l=_m)))
+    local __ble_l=0 __ble_u=$((_ble_textmap_length+1))
+    local m mx my
+    while ((__ble_l+1<__ble_u)); do
+      ble/textmap#getxy.cur --prefix=m "$((m=(__ble_l+__ble_u)/2))"
+      (((__ble_y<my||__ble_y==my&&__ble_x<mx)?(__ble_u=m):(__ble_l=m)))
     done
-    (($_var=_l))
+    ble/util/unlocal m mx my
+    (($__ble_var=__ble_l))
   fi
 }
 

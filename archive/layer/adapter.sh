@@ -219,14 +219,14 @@ function ble/syntax-highlight+default {
       elif rex='^([^'"$IFS"'|&;()<>'\''"\]|\\.)+' && [[ $tail =~ $rex ]]; then
         # ■ time'hello' 等の場合に time だけが切り出されてしまう
 
-        local _0=${BASH_REMATCH[0]}
-        builtin eval "local cmd=${_0}"
+        local word=${BASH_REMATCH[0]}
+        builtin eval "local cmd=${word}"
 
         # この部分の判定で fork を沢山する \if 等に対しては 4fork+2exec になる。
         # ■キャッシュ(accept-line 時に clear)するなどした方が良いかもしれない。
         local type; ble/util/type type "$cmd"
         ble/syntax-highlight+default/type "$type" "$cmd" # -> type
-        if [[ $type = alias && $cmd != "$_0" ]]; then
+        if [[ $type = alias && $cmd != "$word" ]]; then
           # alias を \ で無効化している場合
           # → unalias して再度 check (2fork)
           type=$(
@@ -234,7 +234,7 @@ function ble/syntax-highlight+default {
             ble/util/type type "$cmd"
             ble/syntax-highlight+default/type "$type" "$cmd" # -> type
             ble/util/put "$type")
-        elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
+        elif [[ "$type" = keyword && "$cmd" != "$word" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合
           # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
           ble/util/joblist.check
@@ -256,21 +256,21 @@ function ble/syntax-highlight+default {
 
         case "$type" in
         (file)
-          ble/syntax-highlight/append "$i $((i+${#_0})) fg=green" ;;
+          ble/syntax-highlight/append "$i $((i+${#word})) fg=green" ;;
         (alias)
-          ble/syntax-highlight/append "$i $((i+${#_0})) fg=teal" ;;
+          ble/syntax-highlight/append "$i $((i+${#word})) fg=teal" ;;
         (function)
-          ble/syntax-highlight/append "$i $((i+${#_0})) fg=navy" ;;
+          ble/syntax-highlight/append "$i $((i+${#word})) fg=navy" ;;
         (builtin)
-          ble/syntax-highlight/append "$i $((i+${#_0})) fg=red" ;;
+          ble/syntax-highlight/append "$i $((i+${#word})) fg=red" ;;
         (builtin_bold)
-          ble/syntax-highlight/append "$i $((i+${#_0})) fg=red,bold" ;;
+          ble/syntax-highlight/append "$i $((i+${#word})) fg=red,bold" ;;
         (keyword)
-          ble/syntax-highlight/append "$i $((i+${#_0})) fg=blue" ;;
+          ble/syntax-highlight/append "$i $((i+${#word})) fg=blue" ;;
         (jobs)
           ble/syntax-highlight/append "$i $((i+1)) fg=red" ;;
         (error|*)
-          ble/syntax-highlight/append "$i $((i+${#_0})) bg=224" ;;
+          ble/syntax-highlight/append "$i $((i+${#word})) bg=224" ;;
         esac
 
         ((i+=${#BASH_REMATCH}))

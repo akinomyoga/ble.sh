@@ -1402,6 +1402,15 @@ function sub:scan {
       \Z# EXIT trapZd
       g'
 
+  sub:scan/builtin 'readonly' |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z^[[:space:]]*#Zd
+      \ZWA readonlyZd
+      \Zble/cmdspec/opts Zd
+      \Z\('\''declare'\''(\|'\''[a-z]+'\'')+\)Zd
+      \Z readonly was blocked\.Zd
+      g'
+
   sub:scan/a.txt
   sub:scan/check-todo-mark
   sub:scan/bash300bug

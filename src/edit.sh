@@ -560,20 +560,22 @@ ble/function#suppress-stderr ble/prompt/.escape-control-characters # LC_COLLATE
 ##     コロン区切りのオプションリストです。escape が指定されている時、
 ##     展開結果に含まれる制御文字をエスケープします。
 function ble/prompt/.initialize-constant {
-  local __ps=$1 __defeval=$2 __opts=$3
+  local _ble_local_ps=$1
+  local _ble_local_defeval=$2
+  local _ble_local_opts=$3
   if ((_ble_bash>=40400)); then
-    ret=${__ps@P}
+    ret=${_ble_local_ps@P}
   else
-    builtin eval -- "$__defeval"
+    builtin eval -- "$_ble_local_defeval"
   fi
 
-  if [[ $__opts == *:escape:* ]]; then
+  if [[ $_ble_local_opts == *:escape:* ]]; then
     if ((_ble_bash>=50200)); then
       # bash-5.2 以上では bash が escape を行うが、反転などの処理が実
       # 装されていないので、制御文字が含まれている場合には ble.sh の側
       # で処理を行う。
       if [[ $ret == *\^['A'-'Z[\]^_?']* ]]; then
-        builtin eval -- "$__defeval"
+        builtin eval -- "$_ble_local_defeval"
         ble/prompt/.escape-control-characters "$ret"
       elif [[ $ret == *$'\t'* ]]; then
         ble/prompt/.escape-control-characters "$ret"
@@ -1676,11 +1678,11 @@ function _ble_prompt_update__eval_prompt_command_1 {
 ble/function#trace _ble_prompt_update__eval_prompt_command_1
 function ble/prompt/update/.eval-prompt_command {
   ((${#PROMPT_COMMAND[@]})) || return 0
-  local _command _ble_edit_exec_TRAPDEBUG_adjusted=1
+  local _ble_local_command _ble_edit_exec_TRAPDEBUG_adjusted=1
   ble-edit/exec:gexec/.TRAPDEBUG/restore filter
-  for _command in "${PROMPT_COMMAND[@]}"; do
-    [[ $_command ]] || continue
-    _ble_prompt_update__eval_prompt_command_1 "$_command"
+  for _ble_local_command in "${PROMPT_COMMAND[@]}"; do
+    [[ $_ble_local_command ]] || continue
+    _ble_prompt_update__eval_prompt_command_1 "$_ble_local_command"
   done
   _ble_edit_exec_gexec__TRAPDEBUG_adjust
 }
@@ -3006,12 +3008,12 @@ function ble/textarea#render/.determine-scroll {
   if ((height<nline)); then
     ((scroll<=nline-height)) || ((scroll=nline-height))
 
-    local _height=$((height-begy)) _nline=$((nline-begy)) _cy=$((cy-begy))
-    local margin=$((_height>=6&&_nline>_height+2?2:1))
+    local rheight=$((height-begy)) rnline=$((nline-begy)) rcy=$((cy-begy))
+    local margin=$((rheight>=6&&rnline>rheight+2?2:1))
     local smin smax
-    ((smin=_cy-_height+margin,
+    ((smin=rcy-rheight+margin,
       smin>nline-height&&(smin=nline-height),
-      smax=_cy-margin,
+      smax=rcy-margin,
       smax<0&&(smax=0)))
     if ((scroll>smax)); then
       scroll=$smax
@@ -5569,21 +5571,21 @@ function ble/widget/backward-line {
 ## @fn ble/edit/word:uword/setup
 ## @fn ble/edit/word:sword/setup
 ## @fn ble/edit/word:fword/setup
-##   @var[out] WSET WSEP
+##   @var[out] word_set word_sep
 function ble/edit/word:eword/setup {
-  WSET='a-zA-Z0-9'; WSEP="^$WSET"
+  word_set='a-zA-Z0-9'; word_sep="^$word_set"
 }
 function ble/edit/word:cword/setup {
-  WSET='_a-zA-Z0-9'; WSEP="^$WSET"
+  word_set='_a-zA-Z0-9'; word_sep="^$word_set"
 }
 function ble/edit/word:uword/setup {
-  WSEP="$_ble_term_IFS"; WSET="^$WSEP"
+  word_sep="$_ble_term_IFS"; word_set="^$word_sep"
 }
 function ble/edit/word:sword/setup {
-  WSEP=$'|&;()<> \t\n'; WSET="^$WSEP"
+  word_sep=$'|&;()<> \t\n'; word_set="^$word_sep"
 }
 function ble/edit/word:fword/setup {
-  WSEP="/$_ble_term_IFS"; WSET="^$WSEP"
+  word_sep="/$_ble_term_IFS"; word_set="^$word_sep"
 }
 
 ## @fn ble/edit/word/skip-backward set
@@ -5603,7 +5605,7 @@ function ble/edit/word/skip-forward {
 ## @fn ble/edit/word/locate-backward x arg
 ##   左側の単語の範囲を特定します。
 ##   @param[in] x arg
-##   @var[in] WSET WSEP
+##   @var[in] word_set word_sep
 ##   @var[out] a b c
 ##
 ##   |---|www|---|
@@ -5612,15 +5614,15 @@ function ble/edit/word/skip-forward {
 function ble/edit/word/locate-backward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
   while ((arg--)); do
-    ble/edit/word/skip-backward "$WSET"; c=$x
-    ble/edit/word/skip-backward "$WSEP"; b=$x
+    ble/edit/word/skip-backward "$word_set"; c=$x
+    ble/edit/word/skip-backward "$word_sep"; b=$x
   done
-  ble/edit/word/skip-backward "$WSET"; a=$x
+  ble/edit/word/skip-backward "$word_set"; a=$x
 }
 ## @fn ble/edit/word/locate-forward x arg
 ##   右側の単語の範囲を特定します。
 ##   @param[in] x arg
-##   @var[in] WSET WSEP
+##   @var[in] word_set word_sep
 ##   @var[out] s t u
 ##
 ##   |---|www|---|
@@ -5629,10 +5631,10 @@ function ble/edit/word/locate-backward {
 function ble/edit/word/locate-forward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
   while ((arg--)); do
-    ble/edit/word/skip-forward "$WSET"; s=$x
-    ble/edit/word/skip-forward "$WSEP"; t=$x
+    ble/edit/word/skip-forward "$word_set"; s=$x
+    ble/edit/word/skip-forward "$word_sep"; t=$x
   done
-  ble/edit/word/skip-forward "$WSET"; u=$x
+  ble/edit/word/skip-forward "$word_set"; u=$x
 }
 
 ## @fn ble/edit/word/forward-range arg
@@ -5674,7 +5676,7 @@ function ble/widget/word.impl {
   local operator=$1 direction=$2 wtype=$3
 
   local arg; ble-edit/content/get-arg 1
-  local WSET WSEP; ble/edit/word:"$wtype"/setup
+  local word_set word_sep; ble/edit/word:"$wtype"/setup
 
   local x=$_ble_edit_ind y=$_ble_edit_ind
   ble/function#try ble/edit/word/"$direction"-range "$arg"
@@ -5705,32 +5707,32 @@ function ble/widget/word.impl {
 
 function ble/widget/transpose-words.impl1 {
   local wtype=$1 arg=$2
-  local WSET WSEP; ble/edit/word:"$wtype"/setup
+  local word_set word_sep; ble/edit/word:"$wtype"/setup
   if ((arg==0)); then
     local x=$_ble_edit_ind
-    ble/edit/word/skip-forward "$WSET"
-    ble/edit/word/skip-forward "$WSEP"; local e1=$x
-    ble/edit/word/skip-backward "$WSEP"; local b1=$x
+    ble/edit/word/skip-forward "$word_set"
+    ble/edit/word/skip-forward "$word_sep"; local e1=$x
+    ble/edit/word/skip-backward "$word_sep"; local b1=$x
     local x=$_ble_edit_mark
-    ble/edit/word/skip-forward "$WSET"
-    ble/edit/word/skip-forward "$WSEP"; local e2=$x
-    ble/edit/word/skip-backward "$WSEP"; local b2=$x
+    ble/edit/word/skip-forward "$word_set"
+    ble/edit/word/skip-forward "$word_sep"; local e2=$x
+    ble/edit/word/skip-backward "$word_sep"; local b2=$x
   else
     local x=$_ble_edit_ind
-    ble/edit/word/skip-backward "$WSET"
-    ble/edit/word/skip-backward "$WSEP"; local b1=$x
-    ble/edit/word/skip-forward "$WSEP"; local e1=$x
+    ble/edit/word/skip-backward "$word_set"
+    ble/edit/word/skip-backward "$word_sep"; local b1=$x
+    ble/edit/word/skip-forward "$word_sep"; local e1=$x
     if ((arg>0)); then
       x=$e1
-      ble/edit/word/skip-forward "$WSET"; local b2=$x
-      while ble/edit/word/skip-forward "$WSEP" || return 1; ((--arg>0)); do
-        ble/edit/word/skip-forward "$WSET"
+      ble/edit/word/skip-forward "$word_set"; local b2=$x
+      while ble/edit/word/skip-forward "$word_sep" || return 1; ((--arg>0)); do
+        ble/edit/word/skip-forward "$word_set"
       done; local e2=$x
     else
       x=$b1
-      ble/edit/word/skip-backward "$WSET"; local e2=$x
-      while ble/edit/word/skip-backward "$WSEP" || return 1; ((++arg<0)); do
-        ble/edit/word/skip-backward "$WSET"
+      ble/edit/word/skip-backward "$word_set"; local e2=$x
+      while ble/edit/word/skip-backward "$word_sep" || return 1; ((++arg<0)); do
+        ble/edit/word/skip-backward "$word_set"
       done; local b2=$x
     fi
   fi
@@ -5767,7 +5769,7 @@ function ble/widget/filter-word.impl {
     local arg; ble-edit/content/get-arg 1
   fi
 
-  local WSET WSEP; ble/edit/word:"$xword"/setup
+  local word_set word_sep; ble/edit/word:"$xword"/setup
   local x=$_ble_edit_ind s t u
   ble/edit/word/locate-forward "$x" "$arg"
   if ((x==t)); then

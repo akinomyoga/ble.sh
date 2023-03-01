@@ -5,10 +5,10 @@
 ## function myfunc {
 ##   local flagVersion= flagHelp= flagEnd=
 ##
-##   builtin eval -- "$ble_getopt_prologue"
+##   builtin eval -- "$_ble_getopt_prologue"
 ##   ble/getopt.init myfunc "$@"
 ##   while ble/getopt.next; do
-##     case "$OPTION" in
+##     case "$option" in
 ##
 ##     #
 ##     # --version, --help (引数を取らないオプション)
@@ -22,11 +22,11 @@
 ##     (-w|--width)
 ##       if ble/getopt.get-optarg; then
 ##         # 引数が見付かった場合
-##         process "$OPTARG"
+##         process "$optarg"
 ##       else
 ##         # 引数が見付からなかった場合
-##         ble/getopt.print-argument-message "missing an option argument for $OPTION"
-##         _opterror=1
+##         ble/getopt.print-argument-message "missing an option argument for $option"
+##         getopt_error=1
 ##       fi
 ##
 ##     #
@@ -37,7 +37,7 @@
 ##       if ble/getopt.has-optarg; then
 ##         # 形式 --continue=... (直接引数あり) の場合
 ##         ble/getopt.get-optarg
-##         process "$OPTARG"
+##         process "$optarg"
 ##       else
 ##         # 形式 --continue (直接引数なし) の場合
 ##       fi
@@ -47,14 +47,14 @@
 ##     #
 ##     (--)
 ##       # 残りの引数を処理
-##       process "${@:OPTIND}"
+##       process "${@:optind}"
 ##       break ;;
 ##
 ##     (-*)
 ##       ble/getopt.print-argument-message "unknown option."
-##       _opterror=1 ;;
+##       getopt_error=1 ;;
 ##     (*)
-##       process "$OPTION" ;;
+##       process "$option" ;;
 ##     esac
 ##   done
 ##
@@ -73,37 +73,39 @@
 ##   fi
 ## }
 
-ble_getopt_locals=(_optargs _optchars _optarg _opterror OPTIND OPTION OPTARG)
-ble_getopt_prologue='declare "${ble_getopt_locals[@]}"'
+_ble_getopt_locals=(getopt_args getopt_chars getopt_arg getopt_error optind option optarg)
+_ble_getopt_prologue='declare "${_ble_getopt_locals[@]}"'
 function ble/getopt.init {
-  _optargs=("$@")
-  _optchars= _optarg= _opterror=
-  OPTIND=1 OPTION= OPTARG=
+  getopt_args=("$@")
+  getopt_chars=
+  getopt_arg=
+  getopt_error=
+  optind=1 option= optarg=
 }
 function ble/getopt.print-argument-message {
   local IFS=$_ble_term_IFS
-  local index=$((OPTIND-1))
-  ble/util/print "${_optargs[0]##*/} (argument#$index \`${_optargs[index]}'): $*" >&2
+  local index=$((optind-1))
+  ble/util/print "${getopt_args[0]##*/} (argument#$index \`${getopt_args[index]}'): $*" >&2
 }
 function ble/getopt.print-message {
   local IFS=$_ble_term_IFS
-  local index=$((OPTIND-1))
-  ble/util/print "${_optargs[0]##*/} (arguments): $*" >&2
+  local index=$((optind-1))
+  ble/util/print "${getopt_args[0]##*/} (arguments): $*" >&2
 }
 
 function ble/getopt.next {
   ble/getopt/.check-optarg-cleared
-  if ((${#_optchars})); then
-    OPTION=-${_optchars::1}
-    _optchars=${_optchars:1}
-  elif ((OPTIND<${#_optargs[@]})); then
-    OPTION=${_optargs[OPTIND++]}
-    if [[ $OPTION == -[^-]* ]]; then
-      _optchars=${OPTION:2}
-      OPTION=${OPTION::2}
-    elif [[ $OPTION == --*=* ]]; then
-      _optarg==${OPTION#--*=}
-      OPTION=${OPTION%%=*}
+  if ((${#getopt_chars})); then
+    option=-${getopt_chars::1}
+    getopt_chars=${getopt_chars:1}
+  elif ((optind<${#getopt_args[@]})); then
+    option=${getopt_args[optind++]}
+    if [[ $option == -[^-]* ]]; then
+      getopt_chars=${option:2}
+      option=${option::2}
+    elif [[ $option == --*=* ]]; then
+      getopt_arg==${option#--*=}
+      option=${option%%=*}
     fi
   else
     return 1
@@ -112,28 +114,28 @@ function ble/getopt.next {
 
 # optarg
 function ble/getopt.get-optarg {
-  if [[ $_optarg ]]; then
-    OPTARG=${_optarg:1}
-    _optarg=
-  elif ((OPTIND<${#_optargs[@]})); then
-    OPTARG=${_optargs[OPTIND++]}
+  if [[ $getopt_arg ]]; then
+    optarg=${getopt_arg:1}
+    getopt_arg=
+  elif ((optind<${#getopt_args[@]})); then
+    optarg=${getopt_args[optind++]}
   else
     return 1
   fi
 }
 function ble/getopt.has-optarg {
-  [[ $_optarg ]]
+  [[ $getopt_arg ]]
 }
 function ble/getopt/.check-optarg-cleared {
-  if [[ $_optarg ]]; then
-    ble/getopt.print-argument-message "the option argument \`${_optarg:1}' is not processed ">&2
-    _opterror=1 _optarg=
+  if [[ $getopt_arg ]]; then
+    ble/getopt.print-argument-message "the option argument \`${getopt_arg:1}' is not processed ">&2
+    getopt_error=1 getopt_arg=
   fi
 }
 
 function ble/getopt.finalize {
   ble/getopt/.check-optarg-cleared
   
-  [[ ! $_opterror ]]
+  [[ ! $getopt_error ]]
 }
 

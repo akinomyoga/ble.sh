@@ -244,73 +244,83 @@ function ble/color/g#setbg-clear {
   (($1&=~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)))
 }
 function ble/color/g#setfg-index {
-  local __color=$2
-  (($1=$1&~_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed|(__color&0xFF)<<8)) # index color
+  local _ble_local_color=$2
+  (($1=$1&~_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed|(_ble_local_color&0xFF)<<8)) # index color
 }
 function ble/color/g#setbg-index {
-  local __color=$2
-  (($1=$1&~_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed|(__color&0xFF)<<32)) # index color
+  local _ble_local_color=$2
+  (($1=$1&~_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed|(_ble_local_color&0xFF)<<32)) # index color
 }
 function ble/color/g#setfg-rgb {
-  local __R=$2 __G=$3 __B=$4
-  ((__R&=0xFF,__G&=0xFF,__B&=0xFF))
-  if ((__R==0&&__G==0&&__B==0)); then
+  local _ble_local_R=$2
+  local _ble_local_G=$3
+  local _ble_local_B=$4
+  ((_ble_local_R&=0xFF,_ble_local_G&=0xFF,_ble_local_B&=0xFF))
+  if ((_ble_local_R==0&&_ble_local_G==0&&_ble_local_B==0)); then
     ble/color/g#setfg-index "$1" 16
   else
-    (($1=$1&~(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask)|__R<<24|__G<<16|__B<<8)) # true color
+    (($1=$1&~(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask)|_ble_local_R<<24|_ble_local_G<<16|_ble_local_B<<8)) # true color
   fi
 }
 function ble/color/g#setbg-rgb {
-  local __R=$2 __G=$3 __B=$4
-  ((__R&=0xFF,__G&=0xFF,__B&=0xFF))
-  if ((__R==0&&__G==0&&__B==0)); then
+  local _ble_local_R=$2
+  local _ble_local_G=$3
+  local _ble_local_B=$4
+  ((_ble_local_R&=0xFF,_ble_local_G&=0xFF,_ble_local_B&=0xFF))
+  if ((_ble_local_R==0&&_ble_local_G==0&&_ble_local_B==0)); then
     ble/color/g#setbg-index "$1" 16
   else
-    (($1=$1&~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)|__R<<48|__G<<40|__B<<32)) # true color
+    (($1=$1&~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)|_ble_local_R<<48|_ble_local_G<<40|_ble_local_B<<32)) # true color
   fi
 }
 function ble/color/g#setfg-cmyk {
-  local __C=$2 __M=$3 __Y=$4 __K=${5:-0}
-  ((__K=~__K&0xFF,
-    __C=(~__C&0xFF)*__K/255,
-    __M=(~__M&0xFF)*__K/255,
-    __Y=(~__Y&0xFF)*__K/255))
-  ble/color/g#setfg-rgb "$__C" "$__M" "$__Y"
+  local _ble_local_C=$2
+  local _ble_local_M=$3
+  local _ble_local_Y=$4
+  local _ble_local_K=${5:-0}
+  ((_ble_local_K=~_ble_local_K&0xFF,
+    _ble_local_C=(~_ble_local_C&0xFF)*_ble_local_K/255,
+    _ble_local_M=(~_ble_local_M&0xFF)*_ble_local_K/255,
+    _ble_local_Y=(~_ble_local_Y&0xFF)*_ble_local_K/255))
+  ble/color/g#setfg-rgb "$_ble_local_C" "$_ble_local_M" "$_ble_local_Y"
 }
 function ble/color/g#setbg-cmyk {
-  local __C=$2 __M=$3 __Y=$4 __K=${5:-0}
-  ((__K=~__K&0xFF,
-    __C=(~__C&0xFF)*__K/255,
-    __M=(~__M&0xFF)*__K/255,
-    __Y=(~__Y&0xFF)*__K/255))
-  ble/color/g#setbg-rgb "$1" "$__C" "$__M" "$__Y"
+  local _ble_local_C=$2
+  local _ble_local_M=$3
+  local _ble_local_Y=$4
+  local _ble_local_K=${5:-0}
+  ((_ble_local_K=~_ble_local_K&0xFF,
+    _ble_local_C=(~_ble_local_C&0xFF)*_ble_local_K/255,
+    _ble_local_M=(~_ble_local_M&0xFF)*_ble_local_K/255,
+    _ble_local_Y=(~_ble_local_Y&0xFF)*_ble_local_K/255))
+  ble/color/g#setbg-rgb "$1" "$_ble_local_C" "$_ble_local_M" "$_ble_local_Y"
 }
 function ble/color/g#setfg {
-  local __color=$2
-  if ((__color<0)); then
+  local _ble_local_color=$2
+  if ((_ble_local_color<0)); then
     ble/color/g#setfg-clear "$1"
-  elif ((__color>=0x1000000)); then
-    if ((__color==0x1000000)); then
+  elif ((_ble_local_color>=0x1000000)); then
+    if ((_ble_local_color==0x1000000)); then
       ble/color/g#setfg-index "$1" 16
     else
-      (($1=$1&~(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask)|(__color&0xFFFFFF)<<8)) # true color
+      (($1=$1&~(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask)|(_ble_local_color&0xFFFFFF)<<8)) # true color
     fi
   else
-    ble/color/g#setfg-index "$1" "$__color"
+    ble/color/g#setfg-index "$1" "$_ble_local_color"
   fi
 }
 function ble/color/g#setbg {
-  local __color=$2
-  if ((__color<0)); then
+  local _ble_local_color=$2
+  if ((_ble_local_color<0)); then
     ble/color/g#setbg-clear "$1"
-  elif ((__color>=0x1000000)); then
-    if ((__color==0x1000000)); then
+  elif ((_ble_local_color>=0x1000000)); then
+    if ((_ble_local_color==0x1000000)); then
       ble/color/g#setbg-index "$1" 16
     else
-      (($1=$1&~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)|(__color&0xFFFFFF)<<32)) # true color
+      (($1=$1&~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)|(_ble_local_color&0xFFFFFF)<<32)) # true color
     fi
   else
-    ble/color/g#setbg-index "$1" "$__color"
+    ble/color/g#setbg-index "$1" "$_ble_local_color"
   fi
 }
 ## @fn ble/color/g#append g g2
@@ -318,18 +328,18 @@ function ble/color/g#setbg {
 ##   @param[in,out] g
 ##   @param[in] g2
 function ble/color/g#append {
-  local __g2=$2
-  ((__g2&(_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed))) &&
+  local _ble_local_g2=$2
+  ((_ble_local_g2&(_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed))) &&
     (($1&=~(_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed)))
-  ((__g2&(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed))) &&
+  ((_ble_local_g2&(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed))) &&
     (($1&=~(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed)))
-  (($1|=__g2))
+  (($1|=_ble_local_g2))
 }
 function ble/color/g#compose {
   (($1=($2)))
-  local __g2
-  for __g2 in "${@:3}"; do
-    ble/color/g#append "$1" "$__g2"
+  local _ble_local_g2
+  for _ble_local_g2 in "${@:3}"; do
+    ble/color/g#append "$1" "$_ble_local_g2"
   done
 }
 function ble/color/g.setfg { ble/color/g#setfg g "$@"; }
@@ -827,20 +837,20 @@ function ble/color/.color2sgrbg {
 ##   @var[in,out] j
 ##   @var[   out] arg
 function ble/color/read-sgrspec/.arg-next {
-  local _var=arg _ret
+  local _ble_local_var=arg _ble_local_ret
   if [[ $1 == -v ]]; then
-    _var=$2
+    _ble_local_var=$2
     shift 2
   fi
 
   if ((j<${#fields[*]})); then
-    ((_ret=10#0${fields[j++]}))
+    ((_ble_local_ret=10#0${fields[j++]}))
   else
     ((i++))
-    ((_ret=10#0${specs[i]%%:*}))
+    ((_ble_local_ret=10#0${specs[i]%%:*}))
   fi
 
-  (($_var=_ret))
+  (($_ble_local_var=_ble_local_ret))
 }
 
 ## @fn ble-color/read-sgrspec sgrspec opts
@@ -1479,17 +1489,18 @@ function ble/highlight/layer/update/add-urange {
     (PREV_UMAX<0||PREV_UMAX<umax)&&(PREV_UMAX=umax)))
 }
 function ble/highlight/layer/update/shift {
-  local __dstArray=$1
-  local __srcArray=${2:-$__dstArray}
+  local _ble_local_dstarr=$1
+  local _ble_local_srcarr=${2:-$_ble_local_dstarr}
   if ((DMIN>=0)); then
     ble/array#reserve-prototype "$((DMAX-DMIN))"
     builtin eval "
-    $__dstArray=(
-      \"\${$__srcArray[@]::DMIN}\"
+    $_ble_local_dstarr=(
+      \"\${$_ble_local_srcarr[@]::DMIN}\"
       \"\${_ble_array_prototype[@]::DMAX-DMIN}\"
-      \"\${$__srcArray[@]:DMAX0}\")"
+      \"\${$_ble_local_srcarr[@]:DMAX0}\")"
   else
-    [[ $__dstArray != "$__srcArray" ]] && builtin eval "$__dstArray=(\"\${$__srcArray[@]}\")"
+    [[ $_ble_local_dstarr != "$_ble_local_srcarr" ]] &&
+      builtin eval -- "$_ble_local_dstarr=(\"\${$_ble_local_srcarr[@]}\")"
   fi
 }
 

@@ -551,7 +551,7 @@ if ((_ble_bash>=30100)); then
   ##       各行は '#%s' または 'コマンド' の形式をしている。
   ##       ble.sh では先頭行が '#%s' の時の複数行モードには対応しない。
   ##
-  ##   @var[in] TMPBASE
+  ##   @var[in] tmpfile_base
   function ble/history:bash/resolve-multiline/.awk {
     if ((_ble_bash>=50000)); then
       local -x epoch=$EPOCHSECONDS
@@ -569,7 +569,7 @@ if ((_ble_bash>=30100)); then
         reason = ENVIRON["reason"];
         is_resolve = reason == "resolve";
 
-        TMPBASE = ENVIRON["TMPBASE"];
+        TMPBASE = ENVIRON["tmpfile_base"];
         filename_source = TMPBASE ".part";
         if (is_resolve)
           print "builtin history -c" > filename_source
@@ -713,26 +713,26 @@ if ((_ble_bash>=30100)); then
     '
   }
   ## @fn ble/history:bash/resolve-multiline/.cleanup
-  ##   @var[in] TMPBASE
+  ##   @var[in] tmpfile_base
   function ble/history:bash/resolve-multiline/.cleanup {
     local file
-    for file in "$TMPBASE".*; do : >| "$file"; done
+    for file in "$tmpfile_base".*; do : >| "$file"; done
   }
   function ble/history:bash/resolve-multiline/.worker {
     local HISTTIMEFORMAT=__ble_time_%s__
-    local -x TMPBASE=$_ble_base_run/$$.history.mlfix
+    local -x tmpfile_base=$_ble_base_run/$$.history.mlfix
     local multiline_count=0 modification_count=0
     builtin eval -- "$(ble/builtin/history/.dump | ble/history:bash/resolve-multiline/.awk resolve 2>/dev/null)"
     if ((modification_count)); then
-      ble/bin/mv -f "$TMPBASE.part" "$TMPBASE.sh"
+      ble/bin/mv -f "$tmpfile_base.part" "$tmpfile_base.sh"
     else
-      ble/util/print : >| "$TMPBASE.sh"
+      ble/util/print : >| "$tmpfile_base.sh"
     fi
   }
   function ble/history:bash/resolve-multiline/.load {
-    local TMPBASE=$_ble_base_run/$$.history.mlfix
+    local tmpfile_base=$_ble_base_run/$$.history.mlfix
     local HISTCONTROL= HISTSIZE= HISTIGNORE=
-    source "$TMPBASE.sh"
+    source "$tmpfile_base.sh"
     ble/history:bash/resolve-multiline/.cleanup
   }
 
@@ -832,9 +832,9 @@ if ((_ble_bash>=30100)); then
 
   function ble/history:bash/resolve-multiline/readfile {
     local filename=$1
-    local -x TMPBASE=$_ble_base_run/$$.history.read
+    local -x tmpfile_base=$_ble_base_run/$$.history.read
     ble/history:bash/resolve-multiline/.awk read < "$filename" &>/dev/null
-    source "$TMPBASE.part"
+    source "$tmpfile_base.part"
     ble/history:bash/resolve-multiline/.cleanup
   }
 else
@@ -1929,37 +1929,37 @@ function ble/history/initialize {
     ble/history:bash/initialize
 }
 function ble/history/get-count {
-  local _var=count _ret
-  [[ $1 == -v ]] && { _var=$2; shift 2; }
+  local _ble_local_var=count
+  [[ $1 == -v ]] && { _ble_local_var=$2; shift 2; }
   ble/history/.update-position
-  (($_var=_ble_history_COUNT))
+  (($_ble_local_var=_ble_history_COUNT))
 }
 function ble/history/get-index {
-  local _var=index
-  [[ $1 == -v ]] && { _var=$2; shift 2; }
+  local _ble_local_var=index
+  [[ $1 == -v ]] && { _ble_local_var=$2; shift 2; }
   ble/history/.update-position
-  (($_var=_ble_history_INDEX))
+  (($_ble_local_var=_ble_history_INDEX))
 }
 function ble/history/set-index {
   _ble_history_INDEX=$1
   ((${_ble_history_prefix:-_ble}_history_index=_ble_history_INDEX))
 }
 function ble/history/get-entry {
-  local __var=entry
-  [[ $1 == -v ]] && { __var=$2; shift 2; }
+  local _ble_local_var=entry
+  [[ $1 == -v ]] && { _ble_local_var=$2; shift 2; }
   if [[ $_ble_history_prefix$_ble_history_load_done ]]; then
-    builtin eval -- "$__var=\${${_ble_history_prefix:-_ble}_history[\$1]}"
+    builtin eval -- "$_ble_local_var=\${${_ble_history_prefix:-_ble}_history[\$1]}"
   else
-    builtin eval -- "$__var="
+    builtin eval -- "$_ble_local_var="
   fi
 }
 function ble/history/get-edited-entry {
-  local __var=entry
-  [[ $1 == -v ]] && { __var=$2; shift 2; }
+  local _ble_local_var=entry
+  [[ $1 == -v ]] && { _ble_local_var=$2; shift 2; }
   if [[ $_ble_history_prefix$_ble_history_load_done ]]; then
-    builtin eval -- "$__var=\${${_ble_history_prefix:-_ble}_history_edit[\$1]}"
+    builtin eval -- "$_ble_local_var=\${${_ble_history_prefix:-_ble}_history_edit[\$1]}"
   else
-    builtin eval -- "$__var=\$_ble_edit_str"
+    builtin eval -- "$_ble_local_var=\$_ble_edit_str"
   fi
 }
 ## @fn ble/history/set-edited-entry index str
@@ -2136,8 +2136,8 @@ function ble/history/isearch-backward-blockwise {
     builtin eval "_ble_history_edit=(\"\${${_ble_history_prefix}_history_edit[@]}\")"
   fi
 
-  local NSTPCHK=1000 # 十分高速なのでこれぐらい大きくてOK
-  local NPROGRESS=$((NSTPCHK*2)) # 倍数である必要有り
+  local isearch_block=1000 # 十分高速なのでこれぐらい大きくてOK
+  local isearch_quantum=$((isearch_block*2)) # 倍数である必要有り
   local irest block j i=$index
   index=
 
@@ -2156,7 +2156,7 @@ function ble/history/isearch-backward-blockwise {
       ((block=range_max-i,
         block<5&&(block=5),
         block>i+1-range_min&&(block=i+1-range_min),
-        irest=NSTPCHK-isearch_time%NSTPCHK,
+        irest=isearch_block-isearch_time%isearch_block,
         block>irest&&(block=irest)))
 
       [[ $flag_icase ]] && shopt -s nocasematch
@@ -2194,10 +2194,10 @@ function ble/history/isearch-backward-blockwise {
       [[ $index ]] && return 0
 
       ((i-=block))
-      if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble/decode/has-input; then
+      if ((has_stop_check&&isearch_time%isearch_block==0)) && ble/decode/has-input; then
         index=$i
         return 148
-      elif ((has_progress&&isearch_time%NPROGRESS==0)); then
+      elif ((has_progress&&isearch_time%isearch_quantum==0)); then
         "$isearch_progress_callback" "$i"
       fi
     done
