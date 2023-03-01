@@ -2991,6 +2991,7 @@ function ble/textarea#render/.erase-forward-line.draw {
 ##     現在の表示高さを指定します。再配置後の表示高さを返します。
 ##   @var[in,out] umin umax
 ##     描画範囲を表示領域に制限して返します。
+##   @var[out] DRAW_BUFF
 ##
 ##   @var[in] cols
 ##   @var[in] begx begy endx endy cx cy
@@ -3147,8 +3148,8 @@ function ble/textarea#render/.erase-rprompt {
 ##   rps1_transient の時に、次の行に行く前に行末の無駄な空白を削除します。
 ##   @var[in] text
 ##   @var[in] _ble_textmap_pos
+##   @var[out] DRAW_BUFF
 function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
-  local -a DRAW_BUFF=()
   local -a buffer; ble/string#split-lines buffer "$text"
   local line index=0 pos
   for line in "${buffer[@]}"; do
@@ -3158,7 +3159,6 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
     ble/canvas/put.draw "$_ble_term_el"
     ((index++))
   done
-  ble/canvas/bflush.draw
   _ble_prompt_rps1_shown=
 }
 

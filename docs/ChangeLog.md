@@ -355,6 +355,7 @@
 - main (`ble-reload`): fix failure by non-existent rcfile `#D1931` 0ceb0cb
 - syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
 - menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` cc852dc
+- edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` xxxxxxx
 
 ## Documentation
 
