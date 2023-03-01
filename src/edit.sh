@@ -7454,9 +7454,11 @@ function ble/widget/.EDIT_COMMAND {
   local READLINE_POINT=$_ble_edit_ind
   local READLINE_MARK=$_ble_edit_mark
   ble/widget/.hide-current-line keep-header
-  ble/util/buffer.flush >&2
-  eval "$command" || return 1
+  ble/term/leave-for-widget
+  builtin eval -- "$command"; local ext=$?
+  ble/term/enter-for-widget
   ble-edit/content/clear-arg
+  ((ext==0)) || return 1
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     ble-edit/content/reset-and-check-dirty "$READLINE_LINE"
