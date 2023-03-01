@@ -233,8 +233,13 @@ I started working on the enhancement of the completion in August, 2018 and relea
 
 ## Limitations
 
-Some user configurations or other Bash frameworks may conflict with ble.sh. For example,
+There are some limitations due to the way `ble.sh` is implemented.
+Also some user configurations or other Bash frameworks may conflict with ble.sh.
+For example,
 
+- `ble.sh` does not set `PIPESTATUS` for the previous command line by default because it adds extra execution costs.
+  Instead, the array `BLE_PIPESTATUS` contains the values of `PIPESTATUS` of the previous command line.
+  If you need to access the values directly through the variable `PIPESTATUS`, please use the option `bleopt exec_restore_pipestatus=1`.
 - `ble.sh` assumes that common variable names and environment variables (such as `LC_*`) are not used for the global readonly variables.
   In Bash, global readonly variables take effect in any scope including the local scope of the function, which means that we cannot even define a local variable that have the same name as a global readonly variable.
   This is not the problem specific to `ble.sh`, but any Bash framework may suffer from the global readonly variables.

@@ -212,6 +212,16 @@
 #bleopt prompt_command_changes_layout=1  # PRECMD/PROMPT_COMMAND may output
 
 
+## "exec_restore_pipestatus" controls whether ble.sh restores PIPESTATUS of the
+## previous user command.  When this option is set to a non-empty value,
+## PIPESTATUS is restored.  This feature is turned off by default because it
+## adds extra execution costs.  Note that the values of PIPESTATUS of the
+## previous command are always available with the array BLE_PIPESTATUS
+## regardless of this setting.
+
+#bleopt exec_restore_pipestatus=1  # restores PIPESTATUS
+
+
 ## "exec_errexit_mark" specifies the format of the mark to show the exit status
 ## of the command when it is non-zero.  If this setting is an empty string the
 ## exit status will not be shown.  The value can contain ANSI escape sequences.

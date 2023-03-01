@@ -232,6 +232,8 @@ bleopt/declare -v history_share ''
 ##   正の整数 n の時、未処理のユーザ入力が n 以上の時に改行を挿入して複数行モードに入ります。
 bleopt/declare -v accept_line_threshold 5
 
+bleopt/declare -v exec_restore_pipestatus ''
+
 ## @bleopt exec_errexit_mark
 ##   終了ステータスが非零の時に表示するマークの書式を指定します。
 ##   この変数が空の時、終了ステータスは表示しません。
@@ -5817,6 +5819,7 @@ _ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 _ble_edit_exec_BASH_COMMAND=$BASH
+_ble_edit_exec_PIPESTATUS=()
 function ble-edit/exec/register {
   local command=$1
   if [[ $command != *[!"$_ble_term_IFS"]* ]]; then
@@ -6662,6 +6665,17 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_BASH_COMMAND=$1
   _ble_edit_exec_command_id=$2
   BLE_COMMAND_ID=$2
+  BLE_PIPESTATUS=("${_ble_edit_exec_PIPESTATUS[@]}")
+
+  _ble_edit_exec_BASH_COMMAND_eval=$_ble_edit_exec_BASH_COMMAND
+  if [[ $bleopt_exec_restore_pipestatus ]] && ((${#BLE_PIPESTATUS[@]} > 0)); then
+    local i pipe=
+    for ((i=0;i<${#BLE_PIPESTATUS[@]};i++)); do
+      pipe=$pipe'| (exit '${BLE_PIPESTATUS[i]}')'
+    done
+    _ble_edit_exec_BASH_COMMAND_eval="${pipe:2}; $_ble_edit_exec_BASH_COMMAND_eval"
+  fi
+
   ble-edit/restore-PS1
   ble-edit/restore-READLINE
   ble-edit/restore-IGNOREEOF
@@ -6743,12 +6757,12 @@ function ble-edit/exec:gexec/.epilogue {
   _ble_edit_exec_inside_prologue=
 
   ble/util/buffer.flush >&"$_ble_util_fd_stderr"
-  ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC
+  ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC "$_ble_edit_exec_BASH_COMMAND"
 
   local msg=
   if ((_ble_edit_exec_lastexit)); then
     # ERREXEC処理
-    ble-edit/exec:gexec/invoke-hook-with-setexit ERREXEC
+    ble-edit/exec:gexec/invoke-hook-with-setexit ERREXEC "$_ble_edit_exec_BASH_COMMAND"
     if [[ $bleopt_exec_errexit_mark ]]; then
       local ret
       ble/util/sprintf ret "$bleopt_exec_errexit_mark" "$_ble_edit_exec_lastexit"
@@ -6842,7 +6856,7 @@ function ble-edit/exec:gexec/.setup {
       # Note: restore-lastarg の $_ble_edit_exec_lastarg は $_ を設定するための
       #   ものである。
       buff[ibuff++]='{ time LINENO='$lineno' builtin eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
-      buff[ibuff++]='$_ble_edit_exec_BASH_COMMAND'
+      buff[ibuff++]='$_ble_edit_exec_BASH_COMMAND_eval'
       # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
       #   る時に eval の最終引数になってしまう)。

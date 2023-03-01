@@ -6661,6 +6661,36 @@ bash_tips
 
 2023-03-01
 
+  * exec: BLE_PIPESTATUS 公開する (motivated by mozirilla213) [#D1984]
+    https://github.com/akinomyoga/ble.sh/issues/290
+
+    * done: wiki misc
+
+    * ok: 然し、実際に BLE_PIPESTATUS をどの様に PIPESTATUS と使い分けるのかと
+      いうとよく分からない。現在のコマンドが ble.sh 内での一番最初のコマンドか
+      どうかの情報がないので両方にアクセスできる時にどちらを選ぶべきか分からな
+      い。
+
+      一応 exec が終わったら BLE_PIPESTATUS を削除すれば良い気もするが、でもそ
+      もそも exec が終わったら ble.sh の内部なので誰も BLE_PIPESTATUS を参照し
+      ないので削除してもしなくても関係ない気がする。
+
+      然し気にし出したら限がない気がするので考えない事にする。
+
+    * ok: 唯一削除したほうが良いかもしれないのは ble-detach する時だが、そうだ
+      としても ble-detach する時のステータスを復元する必要はないのか。というか、
+      ble-detach した時の $_ $? などはちゃんと保持されているのか (そもそも保持
+      する必要があるのかも怪しいが。何故なら ble-detach コマンドを結局呼び出す
+      のでその $? や $_ が適用されるのでは。より複雑な構成で非自明な場合を考え
+      る事も可能だが其処まで考えても意味がない気がする)。同様に PIPESTATUS に関
+      しても敢えて ble-detach の PIPESTATUS を保持する事が有用である様には思え
+      ない。なので考えなくて良い事にする。
+
+    * done: 序でなので POSTEXEC 及び ERREXEC にも BASH_COMMAND を引数に指定する
+      様に変更する事にした。
+
+    * done: README Limitations
+
   * decode: compat zoxide bind -x (reported by linwaytin) [#D1983]
     https://github.com/akinomyoga/ble.sh/issues/293
 
