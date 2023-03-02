@@ -856,8 +856,8 @@ function ble-decode-char/csi/.modify-key {
     # Note: xterm, mintty では modifyOtherKeys で通常文字に対するシフトは
     #   文字自体もそれに応じて変化させ、更に修飾フラグも設定する。
     # Note: RLogin は修飾がある場合は常に英大文字に統一する。
-    local term=${_ble_term_TERM[${#_ble_term_TERM[@]}-1]}
     if ((33<=key&&key<_ble_decode_FunctionKeyBase)); then
+      local term=${_ble_term_TERM[0]+${_ble_term_TERM[${#_ble_term_TERM[@]}-1]}}
       if (((mod&0x01)&&0x31<=key&&key<=0x39)) && [[ $term == RLogin:* ]]; then
         # RLogin は数字に対する S- 修飾の解決はしてくれない。
         ((key-=16,mod&=~0x01))

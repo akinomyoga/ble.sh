@@ -169,7 +169,7 @@
 - term: terminal identification
   - term (`_ble_term_TERM`): update `vte` identification `#D1620` 00e74d8
   - term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
-  - term (`_ble_term_TERM`): detect konsole `#D1988` 600e845
+  - term (`_ble_term_TERM`): detect konsole `#D1988` 600e845 xxxxxxx
 - edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
@@ -551,7 +551,7 @@
 - util, decode, vi: fix leak variables `#D1933` 8d5cab8
 - util: support `bleopt debug_idle` `#D1945` fa10184
 - global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
-- util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 xxxxxxx
+- util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 e4758db
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
 
 ## Contrib

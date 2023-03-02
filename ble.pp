@@ -939,7 +939,7 @@ ble/base/initialize-version-information
 function ble/bash/read { builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"; }
 function ble/bash/read-timeout { builtin read -t "$@"; }
 
-# WA for bas-5.2 nested read by WINCH causes corrupted "running_trap"
+# WA for bash-5.2 nested read by WINCH causes corrupted "running_trap" (#D1982)
 _ble_bash_read_winch=
 if ((50200<=_ble_bash&&_ble_bash<50300)); then
   function ble/bash/read/.process-winch {

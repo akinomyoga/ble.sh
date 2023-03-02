@@ -6773,6 +6773,9 @@ bash_tips
       以下 (2001-09-16) によると v3.0.0 から 0;115;0 だった様だ。
       https://github.com/KDE/konsole/commit/2d93fed82aa27e89c9d7301d09d2e24e4fa4416d
 
+      2023-03-02 初期化時に _ble_term_TERM が未初期化の状態で modify-key が呼び
+      出されると負の配列添字になってエラーになる。
+
   * vim mode ! で複数行の結果を返すと描画位置がずれて変な事になる [#D1987]
 
     どうやら行数が増えると駄目な様だ。単に複数行を replace-range で挿入する
