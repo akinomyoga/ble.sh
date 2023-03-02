@@ -6860,7 +6860,7 @@ function ble/builtin/readonly/.check-variable-name {
 
   # Otherwise, the variables that do not contain lowercase characters are
   # allowed to become readonly.
-  if [[ $1 != *[a-z]* ]] && ! ; then
+  if [[ $1 != *[a-z]* ]]; then
     return 0
   fi
 

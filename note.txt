@@ -6851,6 +6851,9 @@ bash_tips
       てくる。もしこれについて考えるのであれば全ての builtin について同時に適用
       するべき。
 
+    2023-03-02 文法エラーが発生している。bash-4.0 以降では "!" 単体はエラーにな
+    らないのだろうか。何れにしても修正した。
+
   * exec: BLE_PIPESTATUS 公開する (motivated by mozirilla213) [#D1984]
     https://github.com/akinomyoga/ble.sh/issues/290
 

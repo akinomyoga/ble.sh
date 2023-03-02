@@ -169,7 +169,7 @@
 - term: terminal identification
   - term (`_ble_term_TERM`): update `vte` identification `#D1620` 00e74d8
   - term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
-  - term (`_ble_term_TERM`): detect konsole `#D1988` xxxxxxx
+  - term (`_ble_term_TERM`): detect konsole `#D1988` 600e845
 - edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
@@ -232,8 +232,8 @@
 - canvas: update Unicode version 15.0.0 `#D1880` 49e55f4
 - decode (`vi_imap-rlfunc.txt`): update the widget for `backward-kill-word` as `kill-backward-{u => c}word` `#D1896` e19b796
 - color: rearrange color table by `ble palette` (suggested by stackoverflow/caoanan) `#D1961` bb8541d
-- util (`ble/util/idle`): process events before idle sleep `#D1980` xxxxxxx
-- keymap/vi (`decompose-meta`): translate <kbd>S-a</kbd> to <kbd>A</kbd> `#D1988` xxxxxxx
+- util (`ble/util/idle`): process events before idle sleep `#D1980` 559d64b
+- keymap/vi (`decompose-meta`): translate <kbd>S-a</kbd> to <kbd>A</kbd> `#D1988` 600e845
 
 ## Fixes
 
@@ -358,7 +358,7 @@
 - main (`ble-reload`): fix failure by non-existent rcfile `#D1931` 0ceb0cb
 - syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
 - menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` cc852dc
-- edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` xxxxxxx
+- edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` 6d61388
 
 ## Documentation
 
@@ -478,9 +478,9 @@
 - canvas: refine detection of `bleopt char_width_mode=musl` `#D1929` b0c16dd
 - term (`terminology`): work around terminal glitches `#D1946` 9a1b4f9
 - main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` e2ec89c
-- util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` xxxxxxx
-- edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` xxxxxxx
-- syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` xxxxxxx
+- util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` a5b10e8
+- edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` 5d14cf1
+- syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
 
 ## Test
 
@@ -551,8 +551,8 @@
 - util, decode, vi: fix leak variables `#D1933` 8d5cab8
 - util: support `bleopt debug_idle` `#D1945` fa10184
 - global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
-- util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` xxxxxxx
-- global: avoid directly using `/dev/tty` `#D1986` xxxxxxx
+- util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 xxxxxxx
+- global: avoid directly using `/dev/tty` `#D1986` a835b83
 
 ## Contrib
 
@@ -583,7 +583,7 @@
   - histdb: fix `histdb-word` completions in the middle of the commandline `#D1968` adaec05
   - histdb: support `bleopt histdb_remarks` `#D1968` adaec05
   - histdb: support timeout of background processes `#D1971` e0566bd
-  - histdb: enable database timeout for transactions `#D1982` xxxxxxx
+  - histdb: enable database timeout for transactions `#D1982` a5b10e8
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->
