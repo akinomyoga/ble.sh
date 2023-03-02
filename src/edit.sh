@@ -6915,6 +6915,13 @@ function ble/widget/.insert-newline/trim-prompt {
     fi
   fi
 }
+## @fn ble/widget/.insert-newline [opts]
+##   @param[in,opt] opts
+##
+##   @remarks keep-info が指定されていない場合は
+##   ble/edit/enter-command-layout が一段階呼び出されます。keep-info
+##   が指定されている場合は ble/edit/enter-command-layout の階層は変更
+##   しません。
 function ble/widget/.insert-newline {
   local opts=$1
   local -a DRAW_BUFF=()
@@ -6941,6 +6948,9 @@ function ble/widget/.insert-newline {
     ble/canvas/put.draw "$_ble_term_nl"
     ble/canvas/bflush.draw
     ble/util/joblist.bflush
+
+    # keep-info の時は階層をバランスする
+    [[ :$opts: == *:keep-info:* ]] && ble/edit/leave-command-layout
   fi
 
   # 描画領域情報の初期化

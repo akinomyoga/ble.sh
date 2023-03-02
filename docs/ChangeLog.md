@@ -338,6 +338,7 @@
 - complete: do not attempt an independent rhs completion for arguments (reported by rsteube) `#D1787` f8bbe2c
 - history: fix the unsaved history in the detached state `#D1795` 344168e
 - edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
+  - edit: fix the command layout remaining after job information (reported by mozirilla213) `#D1991` xxxxxxx
 - history: work around possible dirty prefix `*` in the history output `#D1808` 64a740d
 - decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
 - command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` 937a164

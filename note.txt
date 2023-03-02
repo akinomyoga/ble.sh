@@ -6678,6 +6678,54 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-03-02
+
+  * edit: ジョブ情報が出力されるとステータスバーが消える (reported by mozirilla213) [#D1991]
+    https://github.com/akinomyoga/blesh-contrib/issues/11
+    Ref #D1800
+
+    うーん。これは coproc でなくても sleep 1 & で発生する。joblist の出力部分を
+    ちゃんと command layout で囲んで置かなければならないという事? 或いは
+    display-shell-version 等と同じ様にして出力する必要?
+
+    ble/widget/print を呼び出せば良い様な気もする。
+
+    うーん。出力は joblist.bflush で行われていて buffer に問題の文字列が混入す
+    るという事になっている様だ。呼び出し元を見るとble/util/joblist.bflush
+    ble/widget/.insert-newline となっている。つまり、layout 変更の途中の様な気
+    がするのでこの状態で command layout への切り替えなどすると変な事になる気が
+    する。後でよく考える必要がある。
+
+    一方で joblist.check や ble/util/joblist では直接出力はしていない様なので
+    joblist.bflush と joblist.flush だけ抑えて置けば大丈夫の気がする。実はこれ
+    らは三箇所でしか呼び出されていないので対応はそんなに難しくない気がする。
+
+    うーん。調べてみたが joblist.bflush を呼び出す所まではちゃんとできている気
+    がする。それよりも一旦 collapse した状態を抜けていないのが原因の気がする。
+    実際 joblist.bflush の呼び出しをなくしても問題が発生する。
+
+    どうもこれは #D1800 で問題にしていたのと同じ問題の様に見える。うーん。どう
+    も keep-info が指定されている時には enter/leave-command-layout がバランスす
+    るという仮定の様な気がする。keep-info が指定されていない時は #D1800 を気に
+    してコメントが書かれているが、keep-info のついている .insert-newline に関し
+    ては #D1800 のコメントはついていない。
+
+    単に keep-info の時に leave-command-layout を呼び出す様にしたら解決した。
+
+  * [棄却] external: coproc c { sleep 1; echo; } とすると文法エラーになる [#D1990]
+
+    "bash --norc" だと問題はない。何故? "bash --norc" で .blerc を読み込んでも
+    問題はない。 mshex をロードしていると blerc をロードしていなくても問題にな
+    る。何らかの shopt が関係しているという事だろうか。
+
+    shopt を完全に合わせてみたがそれでも問題は再現しない。mshex について bisect
+    するしかないのだろうか。
+
+    うーん。分かった。alias c が展開されている。つまり、coproc の次はコマンドで
+    も良いし変数名でも良いので取り敢えず alias 展開が実行されてしまうという事。
+    そして一文字エイリアスはよく使われてかつ一文字変数も良く使われるので衝突す
+    るという事。
+
 2023-03-01
 
   * syntax: 5.3: 配列要素代入の右辺でブレース展開は無効 [#D1989]
@@ -6799,7 +6847,7 @@ bash_tips
   * global: コード中の /dev/tty は予め持っておいた fd に置き換えるべきなのでは [#D1986]
     修正した。
 
-  * util: readonly を上書きする? (reqeusted by mozirilla213) [#D1985]
+  * util: readonly を上書きする? (requested by mozirilla213) [#D1985]
     https://github.com/akinomyoga/ble.sh/issues/289
 
     其処まで積極的にユーザー環境を上書きして良いのか不明である。
