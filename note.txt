@@ -6680,6 +6680,14 @@ bash_tips
 
 2023-03-03
 
+  * zoxide: zi を bind -x から呼び出すと Enter が効かないらしい (reported by linwaytin) [#D1993]
+    https://github.com/akinomyoga/ble.sh/issues/293#issuecomment-1451208995
+
+    何故か自分の手元では再現しないが取り敢えず stty icanon を実行すれば直る様で
+    ある。bind -x の度に stty を二回実行するのはコストが高いのでデフォルトで実
+    行するのは微妙だが、zi を実行した時にだけという事であればそんなに問題にはな
+    らないだろう。という事で関連する関数を上書きする事にする。
+
   * histdb: bash-3.2 で idle を使おうとして失敗している [#D1992]
 
     bash-3.2 では自動的に kill する機能はなくす?

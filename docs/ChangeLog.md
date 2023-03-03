@@ -469,8 +469,6 @@
 - complete: work around blocking `_scp_remote_files` and `_dnf` (reported by iantra) `#D1807` a4a779e 46f5c13
 - history: work around broken timestamps in `HISTFILE` (reported by johnyaku) `#D1831` 5ef28eb
 - progcomp: disable `command_not_found_handle` (reported by telometto, wisnoskij) `#D1834` 64d471a d5fe1d1 973ae8c
-- complete: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
-  - contrib/integration/zoxide: update `contrib/integration/zoxide` for zoxide v0.8.1 `#D1907` 3bc3bea
 - util (`modifyOtherKeys`): work around delayed terminal identification `#D1842` 14f3c81
   - util (`modifyOtherKeys`): fix a bug that kitty protocol is never activated `#D1842` 14f3c81
 - util (`modifyOtherKeys`): pass-through kitty protocol sequences (motivated by ferdinandyb) `#D1845` f66e0c1
@@ -561,14 +559,19 @@
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
-- fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
-- fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
-  - completion: quote only with `filenames` when `ble/syntax-raw` is specified (reported by christianknauer) `#D1978` 8965b61
+- integration/fzf
+  - fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
+  - fzf-completion: remove `noquote` (reported by MK-Alias) `#D1889` 0c6291f
+  - fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` 09bb4d3
+  - fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` 486564a
+  - fzf-completion: quote only with `filenames` when `ble/syntax-raw` is specified (reported by christianknauer) `#D1978` 8965b61
+- integration/zoxide
+  - complete, contrib: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
+  - zoxide: update `contrib/integration/zoxide` for zoxide v0.8.1 `#D1907` 3bc3bea
+  - zoxide: adjust `zoxide icanon` (reported by linwaytin) `#D1993` xxxxxxx
 - README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` 09bb4d3
-- fzf-initialize: check directory existence before adding it to `PATH` (reported by Strykar) `#D1904` 09bb4d3
 - colorglass: add color filter `#D1902` 88e74cc
   - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` 40625ac
-- fzf-key-bindings: fix a problem that `modifyOtherKeys` is not reflected (reported by SuperSandro2000) `#D1908` 486564a
 - add `histdb` `#D1925` 44d9e10
   - histdb: support auto-complete source `histdb-word` `#D1938` 00cae74
   - histdb: automatically upgrade histdb version `#D1940` 4fac1e3
