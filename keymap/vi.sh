@@ -1624,7 +1624,7 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
   if ((beg<bol2&&_ble_edit_ind<=bol2&&end<=nol2)); then
     end=$bol2
   else
-    ble-edit/content/find-logical-eol "$end"; local end=$ret
+    ble-edit/content/find-logical-eol "$end"; end=$ret
     [[ ${_ble_edit_str:end:1} == $'\n' ]] && ((end++))
   fi
 }
@@ -2053,7 +2053,8 @@ function ble/keymap:vi/operator:filter/.hook {
     ble/widget/vi-command/bell
     return 1
   fi
-  new=${new%$'\n'}$'\n'
+  new=${new%$'\n'}
+  ((end<${#_ble_edit_str})) && new=$new$'\n'
   ble/widget/.replace-range "$beg" "$end" "$new"
 
   _ble_edit_ind=$beg

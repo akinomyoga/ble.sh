@@ -360,6 +360,8 @@
 - syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
 - menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` cc852dc
 - edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` 6d61388
+- keymap/vi (`expand-range-for-linewise-operator`): fix the end point being not extended `#D1994` xxxxxxx
+- keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` xxxxxxx
 
 ## Documentation
 
