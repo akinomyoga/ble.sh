@@ -1005,14 +1005,14 @@ function ble-edit/content/update-syntax {
   fi
 }
 
-## 関数 ble-edit/content/bolp
-##   現在カーソルが行頭に位置しているかどうかを判定します。
+## @fn ble-edit/content/bolp
+##   現在カーソルが行末に位置しているかどうかを判定します。
 function ble-edit/content/eolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
 }
-## 関数 ble-edit/content/bolp
-##   現在カーソルが行末に位置しているかどうかを判定します。
+## @fn ble-edit/content/bolp
+##   現在カーソルが行頭に位置しているかどうかを判定します。
 function ble-edit/content/bolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos<=0)) || [[ ${_ble_edit_str:pos-1:1} == $'\n' ]]
