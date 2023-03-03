@@ -7169,6 +7169,8 @@ _ble_complete_state=
 ##       候補を全て挿入します。
 ##     insert_braces
 ##       候補をブレース展開にまとめて挿入します。
+##     insert_unique
+##       候補が一意のときメニュー補完に入らずに挿入します。
 ##     show_menu
 ##       メニューを表示します。
 ##     enter_menu
@@ -7205,7 +7207,7 @@ function ble/widget/complete {
       if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]]; then
         local footprint; ble/complete/menu/get-footprint
         [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
-          ble/complete/menu-complete/enter && return 0
+          ble/complete/menu-complete/enter "$opts" && return 0
       fi
       [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
     fi
@@ -7253,7 +7255,7 @@ function ble/widget/complete {
     fi
   fi
 
-  if [[ :$opts: == *:insert_common:* ]]; then
+  if [[ :$opts: == *:insert_common:* || :$opts: == *:insert_unique:* && cand_count -eq 1 ]]; then
     ble/complete/insert-common; return "$?"
 
   elif [[ :$opts: == *:insert_braces:* ]]; then
@@ -7292,7 +7294,7 @@ function ble/widget/complete-insert {
 
 function ble/widget/menu-complete {
   local opts=$1
-  ble/widget/complete enter_menu:$opts
+  ble/widget/complete enter_menu:insert_unique:$opts
 }
 
 #------------------------------------------------------------------------------
@@ -7515,6 +7517,10 @@ function ble/complete/menu-complete/select {
   ble/complete/menu#select "$@"
 }
 
+## @fn ble/complete/menu-complete/enter [opts]
+##   @var[in,opt] opts
+##     backward
+##     insert_unique
 function ble/complete/menu-complete/enter {
   ((${#_ble_complete_menu_icons[@]}>=1)) || return 1
   local beg end; ble/complete/menu/get-active-range || return 1
@@ -7527,6 +7533,14 @@ function ble/complete/menu-complete/enter {
   if [[ $comps_fixed ]]; then
     local comps_fixed_length=${comps_fixed%%:*}
     ((_ble_edit_mark+=comps_fixed_length))
+  fi
+
+  # 一意確定時。menu の処理も含めて menu-complete の枠組みの中で確定を実行する。
+  if [[ :$opts: == *:insert_unique:* ]] && ((${#_ble_complete_menu_items[@]}==1)); then
+    ble/complete/menu#select 0
+    ble/decode/keymap/push menu_complete
+    ble/widget/menu_complete/exit complete
+    return 0
   fi
 
   _ble_complete_menu_original=${_ble_edit_str:beg:end-beg}
@@ -8411,7 +8425,7 @@ function ble/complete/sabbrev/expand {
     local menu_common_part=
     ble/complete/menu/show || return "$?"
     [[ :$bleopt_sabbrev_menu_opts: == *:enter_menu:* ]] &&
-      ble/complete/menu-complete/enter
+      ble/complete/menu-complete/enter "$bleopt_sabbrev_menu_opts"
     return 147 ;;
   (*) return 1 ;;
   esac

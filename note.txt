@@ -6680,6 +6680,23 @@ bash_tips
 
 2023-03-03
 
+  * menu-complete: enter_menu であっても一意確定なら補完完了する機能 [#D1995]
+    https://github.com/akinomyoga/ble.sh/discussions/297#discussioncomment-5159146
+
+    実装した。menu を既に表示してしまっている時に単に menu に入る処理をしている
+    所では、既存のメニューを選択してから即座に menu の確定処理を行う。menu を未
+    だ表示していない時には menu の処理は一切せずにその場で挿入を実行する。menu
+    を既に表示していて二回連続 TAB を押した時についてはまた別の処理が必要になる。
+
+    うーん。単純に opts を継承する事にした。調べてみると menu/enter が処理して
+    いる opts は backward と今回追加した insert_unique だけなので別の物が指定さ
+    れていたとしても突然問題になる様には思われない。なので、単に opts を
+    menu/enter に渡してしまう事にする。この様にすれば個別に insert_unique を実
+    装しなくて済む。
+
+    うーん。widget/menu-complete は enter_menu:insert_unique を既定にしてしまっ
+    て良いのではないか → 変更した。
+
   * vi: operator:filter で end が文字列の最後の時には追加の改行は入れない [#D1994]
 
     x fixed: うーん。v 等で中途半端な場所にある時に beg は行頭に移動するけれど

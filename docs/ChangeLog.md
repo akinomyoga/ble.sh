@@ -129,6 +129,7 @@
 - syntax: recognize history expansion in here documents, `"...!"` (bash <= 4.2), and `$!` (bash <= 4.1) `#D1959` e619e73
 - syntax: support context after `((...))` and `[[ ... ]]` in bash-5.2 `#D1962` 67cb967
 - edit: support the readline variable `search-ignore-case` of bash-5.3 `#D1976` e3ad110
+- menu-complete: add `insert_unique` option to the `complete` widget `#D1995` xxxxxxx
 
 ## Changes
 
