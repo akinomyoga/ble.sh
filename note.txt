@@ -2135,28 +2135,6 @@ bash_tips
 
     更に変数代入の形の関数名は declare -f &>/dev/null でテストする事もできない。
 
-  * 2022-10-13 nix completion で止まる問題について。
-    https://github.com/akinomyoga/ble.sh/issues/58#issuecomment-1272222143
-
-    これは説明を書く。何処かにこういうののまとめを書く方が良いのではない
-    かという気がする。
-
-    Sorry for the late reply. I have been busy recent days (and am stil
-    busy actually...). This is actually one of the compatibility
-    problems that are hard to solve.  ble.sh extends the usage of the
-    programmable completions for auto-complete
-
-    やはり問題を解決してから対処する事にする。
-
-    2022-12-03 報告を受けた筈なのに何処かに行ってしまったとおもったら #58 の下
-    にあった。
-
-    2022-12-04 cevhyruz への私信での解説を何処かに移植して説明するのが良い気が
-    する。
-
-    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
-    ここでも少し言及している。
-
   * colorglass: face から読み取る時に作用する色設定?
 
     現在は全ての出力に対して色を変更しているが、プロンプトのテーマを別に指定し
@@ -6679,6 +6657,50 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-03-04
+
+  * 2022-10-13 nix completion で止まる問題 (reported by aiotter, Aleksana) [#D1997]
+    https://github.com/akinomyoga/ble.sh/issues/58#issuecomment-1272222143
+
+    これは説明を書く。何処かにこういうののまとめを書く方が良いのではない
+    かという気がする。
+
+    Sorry for the late reply. I have been busy recent days (and am stil
+    busy actually...). This is actually one of the compatibility
+    problems that are hard to solve.  ble.sh extends the usage of the
+    programmable completions for auto-complete
+
+    やはり問題を解決してから対処する事にする。
+
+    2022-12-03 報告を受けた筈なのに何処かに行ってしまったとおもったら #58 の下
+    にあった。
+
+    2022-12-04 cevhyruz への私信での解説を何処かに移植して説明するのが良い気が
+    する。
+
+    https://github.com/akinomyoga/ble.sh/issues/246#issuecomment-1294893636
+    ここでも少し言及している。
+
+    2023-03-03 また issue が上がったので見てみる事にする。
+
+    以前の nix-bash-completion のファイルを持ってきて試してみたが動かない。補完
+    しようとすると行が消えてしまう。調べてみると同じ現象が以下で報告されていて、
+    しかし最早このリポジトリは管理されていなくて古いということの様に思える。
+
+    https://github.com/hedning/nix-bash-completions/pull/22
+
+    という事は最新版は何処か別の場所にあるという事になるが何処にあるのだろうか。
+    というか普通に nix を入れたら入るという事なのだろうか。だとしても何処にある
+    のか謎である。よく読むと ncfavier が代わりにメンテナンスするとかしないとか。
+
+    https://github.com/NixOS/nixpkgs/pull/207224
+
+    然し ncfavier の github 上のリポジトリに bash-completion っぽいのはない。別
+    の場所で管理しているという事なのだろうか。
+
+    適当にファイルを漁ってみると以下の場所に nix completion が置いてある。これ
+    を確認してみる事にする。
+
+    /nix/var/nix/profiles/default/share/bash-completion/completions/nix
 
   * syntax: coproc 変数名が alias に一致する時、着色を変更する [#D1996]
 

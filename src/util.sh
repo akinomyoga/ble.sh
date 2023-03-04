@@ -2351,7 +2351,7 @@ function ble/function#evaldef {
     shopt -s extglob
   fi
   builtin eval -- "$1"; local ext=$?
-  [[ $reset_extglob ]] && shopt -u extglob
+  [[ ! $reset_extglob ]] || shopt -u extglob
   return "$ext"
 }
 
@@ -2522,7 +2522,7 @@ function ble/function#push {
   if ble/is-function "$name"; then
     local index=0
     while ble/is-function "ble/function#push/$index:$name"; do
-      ((index++))
+      ((++index))
     done
 
     local def; ble/function#getdef "$name"
@@ -2542,7 +2542,7 @@ function ble/function#pop {
 
   local index=-1
   while ble/is-function "ble/function#push/$((index+1)):$name"; do
-    ((index++))
+    ((++index))
   done
 
   if ((index<0)); then

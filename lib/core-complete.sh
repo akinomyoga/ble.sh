@@ -3631,6 +3631,12 @@ function ble/complete/progcomp/.compgen {
       ble-import -f contrib/integration/zoxide
       ble/contrib:integration/zoxide/adjust
     fi
+
+    # WA for _complete_nix
+    if [[ $comp_func == _complete_nix ]]; then
+      ble-import -f integration/nix-completion
+      ble/contrib:integration/nix-completion/adjust
+    fi
   fi
   if [[ $comp_prog ]]; then
     # aws
