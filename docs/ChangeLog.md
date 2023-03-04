@@ -130,6 +130,7 @@
 - syntax: support context after `((...))` and `[[ ... ]]` in bash-5.2 `#D1962` 67cb967
 - edit: support the readline variable `search-ignore-case` of bash-5.3 `#D1976` e3ad110
 - menu-complete: add `insert_unique` option to the `complete` widget `#D1995` xxxxxxx
+- syntax: check alias expansions of `coproc` variable names `#D1996` xxxxxxx
 
 ## Changes
 

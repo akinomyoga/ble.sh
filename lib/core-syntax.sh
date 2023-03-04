@@ -3452,14 +3452,40 @@ function ble/syntax:bash/ctx-coproc/check-word-end {
   local word=${text:wbegin:wlen}
   local wt=$wtype
 
-  if local rex='^[_a-zA-Z0-9]+$'; [[ $word =~ $rex ]]; then
+  if local rex='^[_a-zA-Z][_a-zA-Z]*$'; [[ $word =~ $rex ]]; then
     if ble/syntax:bash/ctx-coproc/.is-next-compound; then
-      # Note: [_a-zA-Z0-9]+ は一回の読み取りの筈なので、
-      #   此処で遡って代入しても問題ない筈。
-      ((_ble_syntax_attr[wbegin]=ATTR_VAR))
-      ((ctx=CTX_CMDXC,type=CTX_ARGVI))
-      ble/syntax/parse/word-pop
-      return 0
+      # 構文: 変数名 複合コマンド
+      local attr=$ATTR_VAR
+
+      # alias だった場合は解釈が変わり得る。alias が厳密に変数名に展開された時
+      # にのみ変数名と判定する。複合コマンド開始に展開された場合は通常処理にフォー
+      # ルバック。それ以外はエラー。
+      if ble/alias#active "$word"; then
+        attr=
+        local ret; ble/alias#expand "$word"
+        case $word in
+        # 通常処理にフォールバックする
+        ('if'|'while'|'until'|'for'|'select'|'case'|'{'|'[[') ;;
+        # 通常処理(構文エラー)
+        ('fi'|'done'|'esac'|'then'|'elif'|'else'|'do'|'}'|'!'|'coproc'|'function'|'in') ;;
+        (*)
+          if ble/string#match "$word" '^[_a-zA-Z][_a-zA-Z0-9]*$'; then
+            # 変数名に展開される場合はOK
+            attr=$ATTR_CMD_ALIAS
+          else
+            attr=$ATTR_ERR
+          fi
+        esac
+      fi
+
+      if [[ $attr ]]; then
+        # Note: [_a-zA-Z0-9]+ は一回の読み取りの筈なので、
+        #   此処で遡って代入しても問題ない筈。
+        _ble_syntax_attr[wbegin]=$attr
+        ((ctx=CTX_CMDXC,wtype=CTX_ARGVI))
+        ble/syntax/parse/word-pop
+        return 0
+      fi
     fi
   fi
 
