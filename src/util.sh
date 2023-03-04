@@ -1195,7 +1195,7 @@ function ble/function#evaldef {
     shopt -s extglob
   fi
   builtin eval -- "$1"; local ext=$?
-  [[ $reset_extglob ]] && shopt -u extglob
+  [[ ! $reset_extglob ]] || shopt -u extglob
   return "$ext"
 }
 
