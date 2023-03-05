@@ -936,7 +936,10 @@ ble/base/initialize-version-information
 #------------------------------------------------------------------------------
 # workarounds for builtin read
 
-function ble/bash/read { builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"; }
+function ble/bash/read {
+  local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+  builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"
+}
 function ble/bash/read-timeout { builtin read -t "$@"; }
 
 # WA for bash-5.2 nested read by WINCH causes corrupted "running_trap" (#D1982)
@@ -950,8 +953,9 @@ if ((50200<=_ble_bash&&_ble_bash<50300)); then
     fi
   }
   function ble/bash/read {
+    local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     local _ble_bash_read_winch=-
-    builtin read "${_ble_bash_tmout_wa[@]}" "$@"; local _ble_local_ext=$?
+    builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"; local _ble_local_ext=$?
     ble/bash/read/.process-winch
     return "$_ble_local_ext"
   }
@@ -1524,7 +1528,7 @@ function ble/base/clean-up-runtime-directory {
 
     # kill process specified by the pid file
     if [[ $file == *.pid && -s $file ]]; then
-      local run_pid IFS= TMOUT=
+      local run_pid IFS=
       ble/bash/read run_pid < "$file"
       if [[ $run_pid && ! ${run_pid//[0-9]} ]]; then
         if ((pid==$$)); then
@@ -2071,7 +2075,7 @@ function ble/dispatch {
   (version|--version) ble/util/print "ble.sh, version $BLE_VERSION (noarch)" ;;
   (check|--test) ble/base/sub:test "$@" ;;
   (*)
-    if ble/string#match "$cmd" '^[a-z0-9]+$' && ble/is-function "ble-$cmd"; then
+    if ble/string#match "$cmd" '^[-a-z0-9]+$' && ble/is-function "ble-$cmd"; then
       "ble-$cmd" "$@"
     elif ble/is-function ble/bin/ble; then
       ble/bin/ble "$cmd" "$@"

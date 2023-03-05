@@ -614,7 +614,7 @@ if ((_ble_bash>=40400)); then
 elif ((_ble_bash>=40000)); then
   function ble/decode/nonblocking-read {
     local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
-    local LC_ALL= LC_CTYPE=C TMOUT= IFS= 2>/dev/null # #D1630 WA readonly TMOUT
+    local LC_ALL= LC_CTYPE=C IFS= 2>/dev/null
     local -a data=()
     local line buff
     while ((loop--)); do
@@ -3338,7 +3338,7 @@ function ble/decode/read-inputrc {
   fi
 
   local -a script=()
-  local ret line= iline=0 TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+  local ret line= iline=0
   while ble/bash/read line || [[ $line ]]; do
     ((++iline))
     ble/string#trim "$line"; line=$ret
@@ -3592,7 +3592,7 @@ function ble/builtin/bind/rlfunc2widget {
     dict=("${DICT[@]}")'
     builtin eval -- "${script//DICT/$rlfunc_dict}"
 
-    local line TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    local line
     for line in "${dict[@]}"; do
       [[ $line == "$rlfunc "* ]] || continue
       local rl widget; ble/bash/read rl widget <<< "$line"

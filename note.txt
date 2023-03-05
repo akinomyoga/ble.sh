@@ -6630,6 +6630,97 @@ bash_tips
 
 2023-03-05
 
+  * コマンドラインに文字列を挿入する関数 (zsh print -z) (requested by mozirilla213) [#D2001]
+    https://github.com/akinomyoga/ble.sh/discussions/291
+
+    * done: TMOUT= は ble/bash/read の中で指定してしまうのが良い気がする。
+      ble/bash/read を使う時に必ず TMOUT= の設定を試みなければならないというの
+      は面倒な契約であるし忘れてしまう可能性が高い。
+
+    * Bash プロセス間通信の整備
+
+      これは何らかのプロセス間通信を実装する必要がある気がする。前々から考えて
+      いた枠組みをこれを機に実装してしまうのが良い気がする。さて、何らかのメッ
+      セージが来た時にどの瞬間に読み込むのかという問題がある。
+
+      a joblist をチェックするタイミング? 今回の場合に丁度良い気がする。
+
+        joblist.flush は現在は ble-edit/exec:gexec/.end から呼び出している。コ
+        マンドを実行していない時の joblist の表示は何処で呼び出している?
+        →ble/util/joblist.bflush を .insert-newline の中から呼び出していた。
+
+      b history_share をチェックしている箇所? これはコマンド実行直前、
+        discard-line、履歴移動直前等で行っている。今回の場合には余り適していな
+        い様に思われるし、一般の枠組みとしても適したタイミングを与える様には思
+        われない。
+
+      c 何かキー入力をする度に? 然しこれは何か画面更新をしたい場合等には余り適
+        していない気がする。
+
+      d PRECMD と同じタイミングで呼び出すという手もある気がする。と思ったが、
+        precmd が呼び出されるのは既に leave-command-layout した後なので不用意に
+        何かを出力できない気がする。
+
+        一方で joblist.bflush のタイミングだとしても問題になる様な気がする。
+
+        寧ろ precmd でなにか出力したい時には enter-command-layout /
+        leave-command-layout を自分で呼び出して出力する事にすれば問題ない気がす
+        る。既に enter-command-layout には呼び出し階層のカウントも実装している
+        ので呼び出している箇所が既に command-layout なのかどうかなどについて考
+        えなくて良い。更に ble/util/buffer の flush 等についても意識しなくて良
+        い。
+
+      % 最終的に複数の処理タイミングの種類を考える必要があるかもしれないが、取
+      % り敢えずは a という事にする。後で処理タイミングを追加できる様に最初の実
+      % 装から処理タイミングを指定するフィールドを作っておく。暫定的な名前は何
+      % にするか。postexec だと複数 exec の時に正しくないし、exec_end にしたと
+      % してもまた空のコマンドを実行した直後にも発火することを考えると正しくな
+      % い。
+
+      うーん d の方が良い気がしてきた。これにすれば最初の実装における既定の処理
+      タイミングに対応する名前も precmd で良くてすっきりする。また、単に
+      blehook internal_PRECMD に ble/message.check を指定しておけば良い。
+
+      ユーザーの作成したイベントについても処理できる様にしたい。broadcast の関
+      数も作りたい。message という関数も用意する。
+
+      取り敢えず一通り実装した。試験的な handler print で動作確認もした。
+      subshell からデータを送信できる事も確認した。
+
+    * コマンドラインへの文字列挿入を実装する。
+
+      コマンド名は何が良いか。ble-print はない。ble insert-string string ぐらい
+      にする→結局 append-line にした。文字列を挿入するとしても既に入力されてい
+      る行に続けて挿入するのも変である。独立な新しい行を追加するのが自然である。
+      すると insert-string よりは insert-line の方が自然である。line は widget
+      の名前でもよく使われている。また、現在のカーソル位置などにいきなり挿入す
+      るのも変な気がする。コマンドラインの末尾に挿入するのが自然である。という
+      ことを考えると append-line が自然の気がする。
+
+      取り敢えず実装した簡単だった。
+
+    ? ok: 特に大量の文字列を挿入する時に何が起こるか? line_limit_length のチェッ
+      クはどの時点で入るのだったか → ble-edit/content/replace-limited によって
+      挿入している限りはちゃんとチェックが入る様だ。
+
+    o C-o とちゃんと一貫した動作になるか→OK ちゃんと動いている。
+    o 複数の append-line があってもちゃんと動くか → 動いている。
+
+    ----
+
+    その他の修正
+
+    * main (read): ble/bash/read で bash-5.2 で -r を付け忘れていた。
+
+    * main (ble): "- " が名前に含まれている ble.sh 関数 "ble-*" も "ble *" の形
+      で呼び出せるようにする。
+
+    * util: ble/string#quote-word を set -ue 等で呼び出しても大丈夫な様にする。
+
+    * util: "builtin : >| file" は単に ">| file" で良い。
+
+    * global: builtin read する時の TMOUT= は ble/bash/read の中で指定する
+
   * 2022-07-06 highlight: "function aaa bbb ccc" と素早く入力すると変なエラー着色の残り方をする [#D2000]
 
     % function aaa bbb ccc として C-l すると描画の着色がおかしい。C-l としなく

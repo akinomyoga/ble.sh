@@ -133,6 +133,7 @@
 - menu-complete: add `insert_unique` option to the `complete` widget `#D1995` 36efbb7
 - syntax: check alias expansions of `coproc` variable names `#D1996` 92ce433
 - syntax: support new parameter transformation `"${arr@k}"` `#D1998` xxxxxxx
+- edit: support a user command `ble append-line` (requested by mozirilla213) `#D2001` xxxxxxx
 
 ## Changes
 
@@ -560,6 +561,7 @@
 - global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
 - util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 e4758db
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
+- util: add `ble/util/message` `#D2001` xxxxxxx
 
 ## Contrib
 

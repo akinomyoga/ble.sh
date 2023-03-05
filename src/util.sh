@@ -1209,14 +1209,15 @@ else
 fi
 ## @fn ble/string#quote-word text opts
 function ble/string#quote-word {
-  ret=$1
+  ret=${1-}
 
   local rex_csi=$'\e\\[[ -?]*[@-~]'
-  local opts=$2 sgrq= sgr0=
+  local opts=${2-} sgrq= sgr0=
   if [[ $opts ]]; then
     local rex=':sgrq=(('$rex_csi'|[^:])*):'
-    [[ :$opts: =~ $rex ]] &&
+    if [[ :$opts: =~ $rex ]]; then
       sgrq=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
+    fi
     rex=':sgr0=(('$rex_csi'|[^:])*):'
     if [[ :$opts: =~ $rex ]]; then
       sgr0=${BASH_REMATCH[1]}
@@ -1226,8 +1227,9 @@ function ble/string#quote-word {
   fi
 
   if [[ ! $ret ]]; then
-    [[ :$opts: == *:quote-empty:* ]] &&
+    if [[ :$opts: == *:quote-empty:* ]]; then
       ret=$sgrq\'\'$sgr0
+    fi
     return 0
   fi
 
@@ -1652,12 +1654,11 @@ if ((_ble_bash>=40000)); then
 else
   function ble/util/readfile { # 465ms for man bash
     [[ -r $2 && ! -d $2 ]] || return 1
-    local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     IFS= ble/bash/read -d '' "$1" < "$2"
     return 0
   }
   function ble/util/mapfile {
-    local IFS= TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    local IFS=
     local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
     while ble/bash/read _ble_local_val || [[ $_ble_local_val ]]; do
       _ble_local_arr[_ble_local_i++]=$_ble_local_val
@@ -2186,10 +2187,10 @@ function ble/util/assign/.rmtmp {
   if ((BASH_SUBSHELL)); then
     printf 'caller %s\n' "${FUNCNAME[@]}" >| "$_ble_local_tmpfile"
   else
-    builtin : >| "$_ble_local_tmpfile"
+    >| "$_ble_local_tmpfile"
   fi
 #%else
-  builtin : >| "$_ble_local_tmpfile"
+  >| "$_ble_local_tmpfile"
 #%end
 }
 if ((_ble_bash>=40000)); then
@@ -2207,7 +2208,7 @@ else
   function ble/util/assign {
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
-    local _ble_local_ret=$? TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    local _ble_local_ret=$?
     IFS= ble/bash/read -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
     builtin eval "$1=\${$1%\$_ble_term_nl}"
@@ -3693,7 +3694,7 @@ function ble/util/conditional-sync {
 ## @fn ble/util/cat [files..]
 ##   cat の代替。直接扱えない NUL で区切って読み出す。
 function ble/util/cat/.impl {
-  local content= TMOUT= IFS= 2>/dev/null # #D1630 WA readonly TMOUT
+  local content= IFS=
   while ble/bash/read -d '' content; do
     printf '%s\0' "$content"
   done
@@ -6455,7 +6456,7 @@ else
       return 0
     fi
 
-    local bytes byte TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+    local bytes byte
     ble/util/assign bytes '
       while IFS= ble/bash/read -n 1 byte; do
         builtin printf "%d " "'\''$byte"
@@ -6917,3 +6918,150 @@ function ble/builtin/readonly {
 }
 
 function readonly { ble/builtin/readonly "$@"; }
+
+#------------------------------------------------------------------------------
+# ble/util/message
+
+>| "$_ble_base_run/$$.util.message-listening"
+>> "$_ble_base_run/$$.util.message"
+_ble_util_message_precmd=()
+
+## @fn ble/util/message/.encode-data target data
+##   @param[in] target
+##     送信対象のプロセスの PID を指定します
+##   @param[in] data
+##     送るデータを指定します
+##   @var[out] ret
+function ble/util/message/.encode-data {
+  local target=$1 data=$2
+  if ((${#data}<256)); then
+    ble/string#quote-word "$data"
+    ret=eval:$ret
+  else
+    ble/util/getpid
+
+    local index=0 file
+    while
+      file=$_ble_base_run/$target.util.message.data-$BASHPID-$index
+      [[ -e $file ]]
+    do ((++index)); done
+
+    ble/util/put "$data" >| "$file"
+
+    ret=file:${file##*.}
+  fi
+}
+## @fn ble/util/message/.decode-data data
+##   @var[out] ret
+function ble/util/message/.decode-data {
+  ret=$1
+  case $ret in
+  (eval:*)
+    builtin eval -- "ret=(${ret#eval:})" ;;
+  (file:*)
+    local file=$_ble_base_run/$$.util.message.${ret#file:}
+    ble/util/readfile ret "$file"
+    ble/array#push _ble_local_remove "$file"
+  esac
+}
+
+function ble/util/message.post {
+  local target=${1:-$$} event=${2-} type=${3-} data=${4-}
+
+  if ! [[ $type && $type != *["$_ble_term_IFS"]* ]]; then
+    ble/util/print "ble/util/message: invalid message type format '$type'" >&2
+    return 2
+  elif [[ $target == $$ ]] && ! ble/is-function ble/util/message/handler:"$type"; then
+    ble/util/print "ble/util/message: unknown message type name '$type'" >&2
+    return 2
+  fi
+
+  case $event in
+  (precmd) ;;
+  (*)
+    ble/util/print "ble/util/message: unknown event type '$event'" >&2
+    return 2 ;;
+  esac
+
+  if [[ $target == broadcast ]]; then
+    local ret file
+    ble/util/eval-pathname-expansion '"$_ble_base_run"/+([0-9]).util.message-listening' canonical
+    for file in "${ret[@]}"; do
+      file=${file%-listening}
+      local pid=${file##*/}; pid=${pid%%.*}
+      if builtin kill -0 "$pid"; then
+        ble/util/message/.encode-data "$pid" "$data"
+        ble/util/print "$event $type $ret" >> "$file"
+      fi
+    done
+
+  elif ble/string#match "$target" '^[0-9]+$'; then
+    if ! builtin kill -0 "$target"; then
+      ble/util/print "ble/util/message: target process $target is not found" >&2
+      return 2
+    elif [[ ! -f $_ble_base_run/$target.util.message-listening ]]; then
+      ble/util/print "ble/util/message: target process $target is not listening ble-messages" >&2
+      return 2
+    fi
+
+    local ret
+    ble/util/message/.encode-data "$target" "$data"
+    ble/util/print "$event $type $ret" >> "$_ble_base_run/$target.util.message"
+  else
+    ble/util/print "ble/util/message: unknown target '$target'" >&2
+    return 2
+  fi
+}
+function ble/util/message.check {
+  local file=$_ble_base_run/$$.util.message
+  while [[ -f $file && -s $file ]]; do
+    local fread=$file
+    ble/bin/mv -f "$file" "$file-reading" && fread=$file-reading
+
+    local IFS=$_ble_term_IFS event type data
+    while ble/bash/read event type data || [[ $event ]]; do
+      # check message handler
+      [[ $type ]] && ble/is-function ble/util/message/handler:"$type" || continue
+
+      case $event in
+      (precmd) ble/array#push _ble_util_message_precmd "$type $data" ;;
+      esac
+    done < "$fread"
+
+    >| "$fread"
+  done
+}
+function ble/util/message.process {
+  ble/util/message.check
+
+  local event=$1
+  case $event in
+  (precmd)
+    local _ble_local_messages
+    _ble_local_messages=("${_ble_util_message_precmd[@]}")
+    _ble_util_message_precmd=()
+
+    local _ble_local_message
+    local -a _ble_local_remove=()
+    for _ble_local_message in "${_ble_local_messages[@]}"; do
+      local _ble_local_event=${_ble_local_message%%' '*}
+      local ret; ble/util/message/.decode-data "${_ble_local_message#* }"
+      local _ble_local_data=$ret
+      ble/util/unlocal ret
+      ble/util/message/handler:"$_ble_local_event" "$_ble_local_data"
+    done
+
+    ((${#_ble_local_remove[@]})) &&ble/bin/rm -f "${_ble_local_remove[@]}" ;;
+  (*)
+    ble/util/print "ble/util/message: unknown event type '$event'" >&2
+    return 2 ;;
+  esac
+}
+
+function ble/util/message/handler:print {
+  ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
+  ble/util/print "$1" >&2
+  ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
+}
+
+blehook internal_PRECMD!='ble/util/message.process precmd'

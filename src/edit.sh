@@ -9607,7 +9607,6 @@ function ble/builtin/read/.loop {
     fi
 
     # read 1 character
-    local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
     IFS= ble/bash/read -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
     if ((ext>128)); then
       # timeout
@@ -10028,7 +10027,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       #   since the $file might be /dev/null depending on the configuration.
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
-        local message= line TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+        local message= line
         while IFS= ble/bash/read line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
@@ -10089,7 +10088,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     }
 
     function ble-edit/io/check-ignoreeof-loop {
-      local line opts=:$1: TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
+      local line opts=:$1:
       while IFS= ble/bash/read line; do
         if [[ $line == *[^$_ble_term_IFS]* ]]; then
           ble/util/print "$line" >> "$_ble_edit_io_fname2"
@@ -10457,3 +10456,21 @@ function ble-edit/detach {
 }
 
 ble/function#trace ble-edit/attach
+
+#------------------------------------------------------------------------------
+# messages
+
+function ble/util/message/handler:edit/append-line {
+  local data=${1%$'\n'}; data=${data#$'\n'}
+  [[ ${_ble_edit_str##*$'\n'} ]] && data=$'\n'$data
+  local len=${#_ble_edit_str}
+  ble-edit/content/replace-limited "$len" "$len" "$data" nobell
+  _ble_edit_ind=${#_ble_edit_str}
+  return 0
+}
+
+function ble-append-line {
+  local data="${*-}"
+  [[ $data ]] || return 0
+  ble/util/message.post "$$" precmd edit/append-line "$data"
+}
