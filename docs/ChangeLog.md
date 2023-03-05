@@ -129,8 +129,9 @@
 - syntax: recognize history expansion in here documents, `"...!"` (bash <= 4.2), and `$!` (bash <= 4.1) `#D1959` e619e73
 - syntax: support context after `((...))` and `[[ ... ]]` in bash-5.2 `#D1962` 67cb967
 - edit: support the readline variable `search-ignore-case` of bash-5.3 `#D1976` e3ad110
-- menu-complete: add `insert_unique` option to the `complete` widget `#D1995` xxxxxxx
-- syntax: check alias expansions of `coproc` variable names `#D1996` xxxxxxx
+- menu-complete: add `insert_unique` option to the `complete` widget `#D1995` 36efbb7
+- syntax: check alias expansions of `coproc` variable names `#D1996` 92ce433
+- syntax: support new parameter transformation `"${arr@k}"` `#D1998` xxxxxxx
 
 ## Changes
 
@@ -171,7 +172,7 @@
 - term: terminal identification
   - term (`_ble_term_TERM`): update `vte` identification `#D1620` 00e74d8
   - term (`_ble_term_TERM`): detect wezterm-20220408 `#D1909` 486564a
-  - term (`_ble_term_TERM`): detect konsole `#D1988` 600e845 xxxxxxx
+  - term (`_ble_term_TERM`): detect konsole `#D1988` 600e845 ed53858
 - edit: suppress only `stderr` with `internal_suppress_bash_output` (motivated by rashil2000) `#D1646` a30887f
 - prompt: do not evaluate `PROMPT_COMMAND` for subprompts `#D1654` 08e903e
 - Makefile: work around the case the repository is cloned without `--recursive` `#D1655` 22ace5f
@@ -340,7 +341,7 @@
 - complete: do not attempt an independent rhs completion for arguments (reported by rsteube) `#D1787` f8bbe2c
 - history: fix the unsaved history in the detached state `#D1795` 344168e
 - edit: fix an unexpected leave from the command layout on `read` `#D1800` 4dbf16f
-  - edit: fix the command layout remaining after job information (reported by mozirilla213) `#D1991` xxxxxxx
+  - edit: fix the command layout remaining after job information (reported by mozirilla213) `#D1991` dcfb067
 - history: work around possible dirty prefix `*` in the history output `#D1808` 64a740d
 - decode (`ble-bind`): fix the printed definition of `-c`/`-x` bindings `#D1821` 94de078
 - command-help (`.read-man`): add missing `ble/util/assign/.rmtmp` `#D1840` 937a164
@@ -362,8 +363,8 @@
 - syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
 - menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` cc852dc
 - edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` 6d61388
-- keymap/vi (`expand-range-for-linewise-operator`): fix the end point being not extended `#D1994` xxxxxxx
-- keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` xxxxxxx
+- keymap/vi (`expand-range-for-linewise-operator`): fix the end point being not extended `#D1994` bce2033
+- keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` bce2033
 
 ## Documentation
 
@@ -484,7 +485,7 @@
 - util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` a5b10e8
 - edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` 5d14cf1
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
-- progcomp: work around slow `nix` completion `#D1997` xxxxxxx
+- progcomp: work around slow `nix` completion `#D1997` 2c1aacf
 
 ## Test
 
@@ -573,7 +574,7 @@
 - integration/zoxide
   - complete, contrib: add completion integration with `zoxide` (reported by ferdinandyb) `#D1838` a96bafe
   - zoxide: update `contrib/integration/zoxide` for zoxide v0.8.1 `#D1907` 3bc3bea
-  - zoxide: adjust `zoxide icanon` (reported by linwaytin) `#D1993` xxxxxxx
+  - zoxide: adjust `zoxide icanon` (reported by linwaytin) `#D1993` dc7de6b
 - README: update description on `_ble_contrib_fzf_base` (reported by Strykar) `#D1904` 09bb4d3
 - colorglass: add color filter `#D1902` 88e74cc
   - colorglass: add `bleopt colorglass_{saturation,brightness}` (motivated by auwsom) `#D1906` 40625ac
@@ -593,9 +594,9 @@
   - histdb: support `bleopt histdb_remarks` `#D1968` adaec05
   - histdb: support timeout of background processes `#D1971` e0566bd
   - histdb: enable database timeout for transactions `#D1982` a5b10e8
-  - histdb: fix `.timeout` not set for background `sqlite3` `#D1982` xxxxxxx
-  - histdb: suppress color codes in the default `histdb_remarks` `#D1968` xxxxxxx
-  - histdb: disable timeout of background processes in Bash 3.2 `#D1992` xxxxxxx
+  - histdb: fix `.timeout` not set for background `sqlite3` `#D1982` 20b42fa
+  - histdb: suppress color codes in the default `histdb_remarks` `#D1968` 20b42fa
+  - histdb: disable timeout of background processes in Bash 3.2 `#D1992` 20b42fa
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->
