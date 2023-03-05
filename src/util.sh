@@ -5878,13 +5878,24 @@ function ble/term/DA2/initialize-term {
 
   # Note #D1909: wezterm が 2022-04-07 に DA2 を変更している。xterm-277 と区別
   # が付かないが、ちょうど該当 xterm version (2012-01-08) を使っている可能性は
-  # 低いと見て取り敢えず wezterm とする。
+  # 低いと見て取り敢えず wezterm とする。更に mlterm-3.4.2..3.7.1
+  # (201412..201608) も 1;277;0 を使っていた。
   ('0;0;0') _ble_term_TERM[depth]=wezterm:0 ;;
   ('1;277;0') _ble_term_TERM[depth]=wezterm:20220408 ;; # 2022-04-07 https://github.com/wez/wezterm/commit/ad91e3776808507cbef9e6d758b89d7ca92a4c7e
 
   # Konsole も大体決め打ちにしている。最近変更した様だ。
   ('0;115;0') _ble_term_TERM[depth]=konsole:30000  ;; # 2001-09-16 https://github.com/KDE/konsole/commit/2d93fed82aa27e89c9d7301d09d2e24e4fa4416d
   ('1;115;0') _ble_term_TERM[depth]=konsole:220380 ;; # 2022-02-24 https://github.com/KDE/konsole/commit/0cc64dcf7b90075bd17e46653df3069208d6a590
+
+  # mlterm (#D1999)
+  # - 0;96;0   v3.1.0 (2012-03-24) https://github.com/arakiken/mlterm/commit/6ca37d7f99337194d8c893cc48285c0614762535
+  # * 1;96;0   v3.1.2 (2012-05-20) https://github.com/arakiken/mlterm/commit/6293d0af9cf1e78fd6c35620824b62ff6c87370b
+  # * 1;277;0  v3.4.2 (2014-12-27) https://github.com/arakiken/mlterm/commit/c4fb36291ec67daf73c48c5b60d1af88ad0487e6
+  # - 1;279;0  v3.7.2 (2016-08-06) https://github.com/arakiken/mlterm/commit/24a2a4886b70f747fba4ea7c07d6e50a6a49039d
+  # * 24;279;0 v3.7.2 (2016-08-11) https://github.com/arakiken/mlterm/commit/d094f0f4a31224e1b8d2fa15c6ab37bd1c4c4713
+  ('1;96;0')   _ble_term_TERM[depth]=mlterm:30102 ;;
+  ('1;277;0')  _ble_term_TERM[depth]=mlterm:30402 ;; # Note: wezterm:20220408 と同じ。wezterm の方を優先
+  ('24;279;0') _ble_term_TERM[depth]=mlterm:30702 ;;
 
   ('0;10;1') # Windows Terminal
     # 現状ハードコードされている。

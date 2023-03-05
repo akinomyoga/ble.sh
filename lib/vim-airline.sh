@@ -189,6 +189,43 @@ function ble/prompt/unit:_ble_lib_vim_airline_mode/update {
   [[ $prompt_unit_changed ]]
 }
 
+## unit:_ble_lib_vim_airline_sep_width
+##   分割子の幅を計測してキャッシュします。
+## @arr _ble_lib_vim_airline_right_sep_width
+##   @var _ble_lib_vim_airline_right_sep_width[0] (unit内部使用) version
+##   @var _ble_lib_vim_airline_right_sep_width[1] (unit内部使用) hashref
+##   @var _ble_lib_vim_airline_right_sep_width[2] (unit内部使用) hash
+##   @var _ble_lib_vim_airline_right_sep_width[3] 左sepの幅
+##   @var _ble_lib_vim_airline_right_sep_width[4] 右sepの幅
+_ble_lib_vim_airline_sep_width_data=()
+function ble/prompt/unit:_ble_lib_vim_airline_sep_width/update {
+  ble/prompt/unit/add-hash '$bleopt_char_width_version,$bleopt_char_width_mode'
+  ble/prompt/unit/add-hash '$bleopt_emoji_version,$bleopt_emoji_width,$bleopt_emoji_opts'
+
+  local w ret x y g
+
+  ((x=0,y=0,g=0))
+  LINES=1 COLUMNS=$cols ble/canvas/trace "$bleopt_vim_airline_left_sep" confine
+  ((w=x,x=0,y=0,g=0))
+  LINES=1 COLUMNS=$cols ble/canvas/trace "$bleopt_vim_airline_left_alt_sep" confine
+  ((w=x>w?x:w))
+  ble/prompt/unit/add-hash '$bleopt_vim_airline_left_sep'
+  ble/prompt/unit/add-hash '$bleopt_vim_airline_left_alt_sep'
+  ble/prompt/unit/assign '_ble_lib_vim_airline_sep_width_data[3]' "$w"
+
+  ((x=0,y=0,g=0))
+  LINES=1 COLUMNS=$cols ble/canvas/trace "$bleopt_vim_airline_right_sep" confine
+  ((w=x,x=0,y=0,g=0))
+  LINES=1 COLUMNS=$cols ble/canvas/trace "$bleopt_vim_airline_right_alt_sep" confine
+  ((w=x>w?x:w))
+  ble/prompt/unit/add-hash '$bleopt_vim_airline_right_sep'
+  ble/prompt/unit/add-hash '$bleopt_vim_airline_right_alt_sep'
+  ble/prompt/unit/assign '_ble_lib_vim_airline_sep_width_data[4]' "$w"
+
+  declare -p _ble_lib_vim_airline_sep_width_data >> ~/b.txt
+  [[ $prompt_unit_changed ]]
+}
+
 ## @fn ble/prompt/backslash:lib/vim-airline/mode/.resolve rawmode
 ##   @var[out] ret
 function ble/prompt/backslash:lib/vim-airline/mode/.resolve {
@@ -331,6 +368,10 @@ function ble/prompt/backslash:lib/vim-airline {
   local "${_ble_contrib_prompt_git_vars[@]/%/=}" # WA #D1570 checked
   ble/prompt/unit#update _ble_lib_vim_airline_mode
 
+  ble/prompt/unit#update _ble_lib_vim_airline_sep_width
+  local lwsep=${_ble_lib_vim_airline_sep_width_data[3]:-1}
+  local rwsep=${_ble_lib_vim_airline_sep_width_data[4]:-1}
+
   # Set background color
   local ret bg=0
   ble/color/face2g "vim_airline_c_$_ble_lib_vim_airline_mode"
@@ -339,7 +380,7 @@ function ble/prompt/backslash:lib/vim-airline {
   ble/color/setface prompt_status_line "g:$bg"
 
   local cols=$COLUMNS; ((_ble_term_xenl||cols--))
-  local unit rest_cols=$((cols-4))
+  local unit rest_cols=$((cols-2*lwsep-3*rwsep))
   for unit in _ble_lib_vim_airline_section_{a,c,z,b,y,x}; do
     ble/prompt/unit#update "$unit"
 

@@ -1573,7 +1573,7 @@ function ble/prompt/unit:_ble_prompt_status/update {
   [[ $bleopt_prompt_status_align =~ $rex ]] &&
     trace_opts=$trace_opts:$BASH_REMATCH
 
-  local prompt_cols=1 prompt_cols=$cols
+  local prompt_rows=1 prompt_cols=$cols
   ble/prompt/unit:{section}/update _ble_prompt_status "$ps" "$trace_opts" || return 1
 
   # tailor
