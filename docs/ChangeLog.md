@@ -366,6 +366,7 @@
 - edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` 6d61388
 - keymap/vi (`expand-range-for-linewise-operator`): fix the end point being not extended `#D1994` bce2033
 - keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` bce2033
+- highlight: fix shifted error marks after delayed `core-syntax` `#D2000` xxxxxxx
 
 ## Documentation
 

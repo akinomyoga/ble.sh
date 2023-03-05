@@ -7229,11 +7229,15 @@ _ble_highlight_layer_syntax_VARNAMES=(
   _ble_highlight_layer_syntax3_list
   _ble_highlight_layer_syntax3_table)
 function ble/highlight/layer:syntax/initialize-vars {
-  _ble_highlight_layer_syntax_buff=()
-  _ble_highlight_layer_syntax1_table=()
-  _ble_highlight_layer_syntax2_table=()
+  # Note (#D2000): core-syntax は遅延ロードされるので layter/update/shift 対象
+  # の配列は全て必要な要素数を備えている必要がある。
+  local prev_iN=${#_ble_highlight_layer_plain_buff[*]}
+  ble/array#reserve-prototype "$prev_iN"
+  _ble_highlight_layer_syntax_buff=("${_ble_array_prototype[@]::prev_iN}")
+  _ble_highlight_layer_syntax1_table=("${_ble_array_prototype[@]::prev_iN}")
+  _ble_highlight_layer_syntax2_table=("${_ble_array_prototype[@]::prev_iN}")
+  _ble_highlight_layer_syntax3_table=("${_ble_array_prototype[@]::prev_iN}") # errors
   _ble_highlight_layer_syntax3_list=()
-  _ble_highlight_layer_syntax3_table=() # errors
 }
 ble/highlight/layer:syntax/initialize-vars
 
