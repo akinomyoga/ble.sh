@@ -857,22 +857,26 @@ function ble/string#escape-for-bash-specialchars-in-brace {
 }
 
 function ble/string#quote-word {
-  ret=$1
+  ret=${1-}
 
-  local opts=$2 sgrq= sgr0=
+  local rex_csi=$'\e\\[[ -?]*[@-~]'
+  local opts=${2-} sgrq= sgr0=
   if [[ $opts ]]; then
-    local rex=':sgrq=([^:]*):'
-    [[ :$opts: =~ $rex ]] &&
+    local rex=':sgrq=(('$rex_csi'|[^:])*):'
+    if [[ :$opts: =~ $rex ]]; then
       sgrq=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
-    rex=':sgr0=([^:]*):'
-    [[ :$opts: =~ $rex ]] &&
+    fi
+    rex=':sgr0=(('$rex_csi'|[^:])*):'
+    if [[ :$opts: =~ $rex ]]; then
       sgr0=${BASH_REMATCH[1]}
+    fi
   fi
 
   if [[ ! $ret ]]; then
-    [[ :$opts: == *:quote-empty:* ]] &&
+    if [[ :$opts: == *:quote-empty:* ]]; then
       ret=$sgrq\'\'$sgr0
-    return
+    fi
+    return 0
   fi
 
   local chars=$'\a\b\e\f\n\r\t\v'
@@ -1093,10 +1097,10 @@ function ble/util/assign/.rmtmp {
   if ((BASH_SUBSHELL)); then
     printf 'caller %s\n' "${FUNCNAME[@]}" >| "$_ble_local_tmpfile"
   else
-    builtin : >| "$_ble_local_tmpfile"
+    >| "$_ble_local_tmpfile"
   fi
 #%else
-  builtin : >| "$_ble_local_tmpfile"
+  >| "$_ble_local_tmpfile"
 #%end
 }
 if ((_ble_bash>=40000)); then
