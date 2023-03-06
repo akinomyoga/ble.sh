@@ -222,7 +222,6 @@ function ble/prompt/unit:_ble_lib_vim_airline_sep_width/update {
   ble/prompt/unit/add-hash '$bleopt_vim_airline_right_alt_sep'
   ble/prompt/unit/assign '_ble_lib_vim_airline_sep_width_data[4]' "$w"
 
-  declare -p _ble_lib_vim_airline_sep_width_data >> ~/b.txt
   [[ $prompt_unit_changed ]]
 }
 

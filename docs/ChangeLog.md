@@ -49,7 +49,7 @@
   - prompt (`contrib/prompt-git`): do not use `ble/util/idle` in Bash 3 `#D1606` 959cf27
   - util (`bleopt`): add new option `-I` to reinitialize user settings on reload `#D1607` 959cf27
   - vi (vi_cmap): fix wrong prompt calculations by the outdated initial values `#D1653` 2710b23
-  - vim-airline: measure separator widths and fix layout of status line `#D1999` xxxxxxx
+  - vim-airline: measure separator widths and fix layout of status line `#D1999` 1ce0d1ad xxxxxxx
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
@@ -132,8 +132,8 @@
 - edit: support the readline variable `search-ignore-case` of bash-5.3 `#D1976` e3ad110
 - menu-complete: add `insert_unique` option to the `complete` widget `#D1995` 36efbb7
 - syntax: check alias expansions of `coproc` variable names `#D1996` 92ce433
-- syntax: support new parameter transformation `"${arr@k}"` `#D1998` xxxxxxx
-- edit: support a user command `ble append-line` (requested by mozirilla213) `#D2001` xxxxxxx
+- syntax: support new parameter transformation `"${arr@k}"` `#D1998` 1dd7e385
+- edit: support a user command `ble append-line` (requested by mozirilla213) `#D2001` 2a524f34
 
 ## Changes
 
@@ -367,7 +367,7 @@
 - edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` 6d61388
 - keymap/vi (`expand-range-for-linewise-operator`): fix the end point being not extended `#D1994` bce2033
 - keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` bce2033
-- highlight: fix shifted error marks after delayed `core-syntax` `#D2000` xxxxxxx
+- highlight: fix shifted error marks after delayed `core-syntax` `#D2000` f4145f16
 
 ## Documentation
 
@@ -561,7 +561,7 @@
 - global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
 - util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 e4758db
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
-- util: add `ble/util/message` `#D2001` xxxxxxx
+- util: add `ble/util/message` `#D2001` 2a524f34
 
 ## Contrib
 

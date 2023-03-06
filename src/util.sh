@@ -6957,7 +6957,9 @@ function ble/util/message/.decode-data {
   ret=$1
   case $ret in
   (eval:*)
-    builtin eval -- "ret=(${ret#eval:})" ;;
+    local value=${ret#eval:}
+    ble/syntax:bash/simple-word/is-simple "$value" &&
+      builtin eval -- "ret=($value)" ;;
   (file:*)
     local file=$_ble_base_run/$$.util.message.${ret#file:}
     ble/util/readfile ret "$file"

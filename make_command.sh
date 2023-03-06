@@ -1129,7 +1129,7 @@ function sub:scan/check-todo-mark {
 }
 function sub:scan/a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude={test,ext,./lib/test-\*.sh,./make_command.sh,\*.md} --exclude=check-mem.sh 'a\.txt|/dev/(pts/|pty)[0-9]*|/dev/tty' |
+  grc --color --exclude={test,ext,./lib/test-\*.sh,./make_command.sh,\*.md} --exclude=check-mem.sh '[/[:space:]<>"'\''][a-z]\.txt|/dev/(pts/|pty)[0-9]*|/dev/tty' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g
       \Z^\./memo/Zd
     s/^[^:]*:[0-9]+:[[:space:]]*//
