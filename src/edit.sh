@@ -3184,7 +3184,7 @@ function ble/textarea#render/.show-prompt {
 ##   @var[in] cols
 function ble/textarea#render/.show-rprompt {
   [[ $1 || $_ble_prompt_rps1_dirty ]] || return 0
-  local rps1out=${_ble_prompt_rps1_data[8]}$_ble_term_cr
+  local rps1out=${_ble_prompt_rps1_data[8]}$_ble_term_sgr0$_ble_term_cr
   local rps1x=0
   local rps1y=${_ble_prompt_rps1_data[4]}
   # Note: cols は画面右端ではなく textmap の右端

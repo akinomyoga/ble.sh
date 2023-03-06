@@ -6630,6 +6630,21 @@ bash_tips
 
 2023-03-06
 
+  * edit (rps1): PS1 に prompt_rps1 の色が残る (reported by linwaytin) [#D2003]
+    https://github.com/akinomyoga/ble.sh/issues/293#issuecomment-1452786142
+    https://github.com/akinomyoga/ble.sh/issues/293#issuecomment-1453507285
+    Ref #D1972
+
+    今迄問題が生じていなかったのは ble/textarea#render/.show-rprompt の直後にプ
+    ロンプト原点以外の場所にカーソルを配置していたので、sgr に色が設定されてい
+    たとしても何れにしても goto.draw の際に色がクリアされていたから。
+
+    それが e128801c1 によってプロンプト原点に強制的に戻る様にしたので PS1 の開
+    始位置に移動する時の sgr0 が出力されなくなって色が残る事となった。元々移動
+    する時に sgr0 を出力したのはそうしないと変な所の色に影響が出てしまう端末を
+    避ける目的があったので、元々 show-rprompt で先頭に戻る CR の直前の時点で
+    _ble_term_sgr0 を出力するべきである。その様に修正した。
+
   * contrib/prompt-git: git gc したら branch 名など取得できなくなった [#D2002]
 
     調べてみるとどうも .git/info/refs の中にまとめて記録される様になった様だ。
