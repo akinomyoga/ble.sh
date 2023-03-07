@@ -3637,6 +3637,9 @@ function ble/complete/progcomp/.compgen {
       ble-import -f integration/nix-completion
       ble/contrib:integration/nix-completion/adjust
     fi
+
+    # https://github.com/akinomyoga/ble.sh/issues/292 (Android Debug Bridge)
+    ble/function#suppress-stderr _adb 2>/dev/null
   fi
   if [[ $comp_prog ]]; then
     # aws

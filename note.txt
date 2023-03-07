@@ -6630,6 +6630,30 @@ bash_tips
 
 2023-03-08
 
+  * complete: adb completion で "no devices/emulators found" というエラーメッセージ (reported by mozirilla213) [#D2005]
+    https://github.com/akinomyoga/ble.sh/issues/292
+
+    これは結局通常の bash での TAB 補完でも同様のエラーメッセージが発生するとい
+    う事だった。何が問題なのかは分からないが、ちゃんと設定されていない状態で補
+    完を試みようとするとエラーメッセージが表示されるという事なのだろうか。設定
+    されていても設定されていなくても補完の途中でエラーメッセージは出すべきでは
+    ない気がするが、取り敢えずエラーメッセージは封殺する事にする。
+
+    * upstream に報告しようと思ったが何処に報告すれば良いのかよく分からない。
+      platform/system/core に昔 adb.bash が含まれていた? ような含まれていなかっ
+      た様だ。野良 repository に adb.bash が追加されていて、それが広まったとい
+      う可能性もある。或いは、大本の repository では管理していないが配布アーカ
+      イブには含まれていた?
+
+      sdk/bash_completion/adb.bash 的な物もあるようだが。これは大昔だ。
+      https://android.googlesource.com/platform/sdk/+/3056c8e/bash_completion/adb.bash
+
+      ここにもあるがこれは報告者の使っている物とは微妙に異なる様だ。
+      https://github.com/mbrubeck/android-completion
+
+      結局よく分からない。Google が何処か人目に触れないところで最新版を管理して
+      いて配布しているという事なのだろうか。
+
   * decode: M-S-o in konsole? (reported by mozirilla213) [#D2004]
     https://github.com/akinomyoga/ble.sh/issues/298
 
