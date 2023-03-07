@@ -1521,6 +1521,9 @@ function ble/complete/source:argument/.progcomp {
       # https://github.com/scop/bash-completion/pull/556 (fixed in bash-completion 2.12)
       ble/function#suppress-stderr _scp_remote_files 2>/dev/null
     fi
+
+    # https://github.com/akinomyoga/ble.sh/issues/292 (Android Debug Bridge)
+    ble/function#suppress-stderr _adb 2>/dev/null
   fi
   if [[ $comp_prog ]]; then
     # aws
