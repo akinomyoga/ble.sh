@@ -1224,6 +1224,9 @@ function ble/decode/char-hook/next-char {
 ##   @var[out] ent
 function ble-decode-char/.getent {
   builtin eval "ent=\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}"
+  if [[ $ent == ?*_ || $ent == _ && $_ble_decode_char2_seq == _27 ]]; then
+    ble/decode/wait-input 5 char || ent=${ent%_}
+  fi
 
   # CSI sequence
   #   ent=     の時 → (CSI の結果)
@@ -2323,14 +2326,28 @@ function ble/decode/has-input {
   #   従って ble-decode-key/is-intermediate についてはチェックしない。
 }
 
-## @fn ble/decode/wait-input timeout
+## @fn ble/decode/has-input-char
+##   cseq (char -> key) にとって次の文字が来ているかどうか
+function ble/decode/has-input-char {
+  ((_ble_decode_input_count||ble_decode_char_rest)) ||
+    ble/util/is-stdin-ready ||
+    ble/encoding:"$bleopt_input_encoding"/is-intermediate
+}
+
+## @fn ble/decode/wait-input timeout [type]
 function ble/decode/wait-input {
-  local timeout=$1
-  while ((timeout>0)); do
+  local timeout=$1 type=${2-}
+  if [[ $type == char ]]; then
+    ble/decode/has-input-char && return 0
+  else
     ble/decode/has-input && return 0
+  fi
+
+  while ((timeout>0)); do
     local w=$((timeout<20?timeout:20))
     ble/util/msleep "$w"
     ((timeout-=w))
+    ble/util/is-stdin-ready && return 0
   done
   return 1
 }
