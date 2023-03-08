@@ -7922,7 +7922,7 @@ function ble/complete/auto-complete.idle {
   [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]] || return 0
 
   case $_ble_decode_widget_last in
-  (ble/widget/self-insert|ble/widget/magic-space) ;;
+  (ble/widget/self-insert|ble/widget/magic-space|ble/widget/magic-slash) ;;
   (ble/widget/complete|ble/widget/vi_imap/complete)
     [[ :$bleopt_complete_auto_complete_opts: == *:suppress-after-complete:* ]] && return 0 ;;
   (*) return 0 ;;
@@ -7943,7 +7943,7 @@ function ble/complete/auto-menu.idle {
   ((bleopt_complete_auto_menu>0)) || return 1
 
   case $_ble_decode_widget_last in
-  (ble/widget/self-insert) ;;
+  (ble/widget/self-insert|ble/widget/magic-slash) ;;
   (ble/widget/complete) ;;
   (ble/widget/vi_imap/complete) ;;
   (ble/widget/auto_complete/self-insert) ;;
@@ -8019,7 +8019,8 @@ function ble/widget/auto_complete/self-insert/.is-magic-space {
 
   local dicthead=_ble_decode_${_ble_decode_keymap_stack[ikeymap]}_kmap_
   builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[KEYS[0]]-}"
-  [[ ${ent#*:} == ble/widget/magic-space ]]
+  local command=${ent#*:}
+  [[ $command == ble/widget/magic-space || $command == ble/widget/magic-slash ]]
 }
 
 function ble/widget/auto_complete/self-insert {
@@ -8396,16 +8397,38 @@ function ble/complete/sabbrev/locate-key {
   ((pos<comp_index))
 }
 
+## @fn ble/complete/sabbrev/expand [opts]
+##   @param[in,opt] opts
+##     コロン区切りのオプションです。
+##
+##     pattern=PATTERN
+##       これが一つ以上指定されていた時は何れかの PATTERN で指定された名前を持
+##       つ sabbrev だけ有効にします。
+##
+##     strip-slash
+##       展開後の末尾に含まれる / を削除します。
+##
 function ble/complete/sabbrev/expand {
-  local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
+  local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str opts=$1
   ble/complete/sabbrev/locate-key 'file|command|argument|variable:w|wordlist:.*|sabbrev|rhs' || return 1
 
   local key=${_ble_edit_str:pos:comp_index-pos}
-  local ret; ble/complete/sabbrev/get "$key" || return 1
+  local ret; ble/complete/sabbrev/get "$key" || return 1; local ent=$ret
 
-  local type=${ret%%:*} value=${ret#*:}
+  if ble/opts#extract-all-optargs "$opts" pattern; then
+    local pattern found=
+    for pattern in "${ret[@]}"; do
+      [[ $key == $pattern ]] || continue
+      found=1
+      break
+    done
+    [[ $found ]] || return 1
+  fi
+
+  local type=${ent%%:*} value=${ent#*:}
   case $type in
   (s)
+    [[ :$opts: == *:strip-slash:* ]] && value=${value%/}
     ble/widget/.replace-range "$pos" "$comp_index" "$value"
     ((_ble_edit_ind=pos+${#value})) ;;
   (m)
@@ -8442,6 +8465,7 @@ function ble/complete/sabbrev/expand {
       return 1
     elif ((cand_count==1)); then
       local value=${cand_word[0]}
+      [[ :$opts: == *:strip-slash:* ]] && value=${value%/}
       ble/widget/.replace-range "$pos" "$comp_index" "$value"
       ((_ble_edit_ind=pos+${#value}))
       return 0

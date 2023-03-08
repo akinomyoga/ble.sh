@@ -26,7 +26,7 @@ _ble_keymap_emacs_white_list=(
   self-insert
   batch-insert
   nop
-  magic-space
+  magic-space magic-slash
   copy{,-forward,-backward}-{c,f,s,u}word
   copy-region{,-or}
   clear-screen
@@ -207,6 +207,7 @@ function ble-decode/keymap:emacs/define {
   # history
   ble-bind -f 'M-^'      history-expand-line
   ble-bind -f 'SP'       magic-space
+  ble-bind -f '/'        magic-slash
 
   #----------------------------------------------------------------------------
 

@@ -7850,6 +7850,13 @@ function ble/widget/magic-space {
   _ble_edit_arg=$arg
   ble/widget/self-insert
 }
+function ble/widget/magic-slash {
+  ble/complete/sabbrev/expand pattern='~*':strip-slash
+  (($?==147)) && return 147 # sabbrev/expand の中でメニュー補完に入った時など。
+
+  local -a KEYS=(47) # /
+  ble/widget/self-insert
+}
 
 # 
 #------------------------------------------------------------------------------
@@ -9322,6 +9329,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'C-d'      'delete-region-or delete-forward-char-or-exit'
 
   ble-bind -f 'SP'       magic-space
+  ble-bind -f '/'        magic-slash
   ble-bind -f 'M-^'      history-expand-line
 
   ble-bind -f __attach__     safe/__attach__
@@ -9444,6 +9452,7 @@ function ble-decode/keymap:read/define {
   # command-history
   # ble-bind -f 'M-^'      history-expand-line
   # ble-bind -f 'SP'       magic-space
+  # ble-bind -f '/'        magic-slash
 
   # ble-bind -f 'C-[' bell # unbound for "bleopt decode_isolated_esc=auto"
   ble-bind -f 'C-^' bell

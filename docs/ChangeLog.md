@@ -136,6 +136,7 @@
 - syntax: support new parameter transformation `"${arr@k}"` `#D1998` 1dd7e385
 - edit: support a user command `ble append-line` (requested by mozirilla213) `#D2001` 2a524f34
 - decode: accept isolated <kbd>ESC \<char\></kbd> (requested by mozirilla213) `#D2004` xxxxxxxx
+- sabbrev: add widget `magic-slash` to approximate Zsh named directories (motivated by mozirilla213) `#D2008` xxxxxxxx
 
 ## Changes
 

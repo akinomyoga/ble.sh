@@ -221,7 +221,7 @@ _ble_keymap_vi_imap_white_list=(
   self-insert
   batch-insert
   nop
-  magic-space
+  magic-space magic-slash
   delete-backward-{c,f,s,u}word
   copy{,-forward,-backward}-{c,f,s,u}word
   copy-region{,-or}
@@ -7890,6 +7890,7 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f 'C-d'       'delete-region-or delete-forward-char-or-exit'
 
   ble-bind -f 'SP'        'magic-space'
+  ble-bind -f '/'         'magic-slash'
   # ble-bind -f 'M-^'      'history-expand-line'
 
   # ble-bind -f  'C-c'     'discard-line'
@@ -8187,6 +8188,7 @@ function ble-decode/keymap:vi_cmap/define {
   # command-history
   # ble-bind -f 'M-^'     history-expand-line
   # ble-bind -f 'SP'      magic-space
+  # ble-bind -f '/'       magic-slash
 
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-^' bell

@@ -874,11 +874,18 @@
 ## Keybindings
 
 
-## The default mapping of <SP> is magic-space which performs history and
-## sabbrev expansion before inserting a space.  If you want to insert just a
-## space without expansions as Bash's default, use the following setting:
+## The default mapping of <SP> in ble.sh is magic-space which performs history
+## and sabbrev expansion before inserting a space.  If you want to insert just
+## a space without expansions as Bash's default, use the following setting:
 
 #ble-bind -f 'SP' 'self-insert'
+
+
+## The default mapping of `/' (<slash>) in ble.sh is magic-slash which performs
+## sabbrev expansions of the name ` ~*'.  If you want to insert just a slash
+## without expansions as Bash's default, use the following setting:
+
+#ble-bind -f '/' 'self-insert'
 
 
 ## If you want to search the already input string using <up> and <down> keys,
