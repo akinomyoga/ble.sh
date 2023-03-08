@@ -6626,6 +6626,26 @@ bash_tips
 
 2023-03-08
 
+  * contrib: sabbrev 補完候補を生成しない設定 (motivated by mozirilla213) [#D2013]
+    https://github.com/akinomyoga/ble.sh/discussions/288#discussioncomment-5159335
+
+    これを contrib に入れて改良する。例えば simple-word eval する。argument か
+    ら呼び出された時にだけ不活性にする。ADVICE_FUNCNAME で本来の FUNCNAME を記
+    録する (もしくは function#advice 側で advice 関連の FUNCNAME を削除した物を
+    取得して返す関数を作る?)。
+
+    ble.sh 側でも sabbrev は empty completion しない設定や、literal sabbrev 候
+    補の生成を抑える設定などを考えても良い気がする。etc.
+
+    bleopt complete_sabbrev_opts=no-empty-completion:literal
+
+    うーん。実装仕掛けたがこれは literal を実装してからにするべきの気がする。取
+    り敢えず inline, linewise sabbrev を実装した (#D2012)。
+
+    改めて考えてみたが取り敢えず literal sabbrev の類いは wordwise ではないので
+    source:argument では生成しなくて良いという気がする。後になって欲しくなった
+    らその時に考える。
+
   * 2021-05-19 sabbrev: 単語でなくても任意の文脈で発動する sabbrev が欲しい [#D2012]
 
     \ 等で前置すれば特に問題ないのではないか? 然し、その為には全ての場合につい

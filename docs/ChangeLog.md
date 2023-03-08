@@ -138,6 +138,7 @@
 - decode: accept isolated <kbd>ESC \<char\></kbd> (requested by mozirilla213) `#D2004` xxxxxxxx
 - sabbrev: add widget `magic-slash` to approximate Zsh named directories (motivated by mozirilla213) `#D2008` xxxxxxxx
 - sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` xxxxxxxx
+- complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` xxxxxxxx
 
 ## Changes
 

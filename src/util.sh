@@ -2444,25 +2444,38 @@ function ble/function#get-source-and-lineno {
 ##     本来の関数を呼び出します。
 ##
 ##   @arr[in,out] ADVICE_WORDS
-##     proc の中から参照できる変数です。
-##     関数の呼び出しに使うコマンドを提供します。
-##     例えば元の関数呼び出しが function arg1 arg2 だった場合、
-##     ADVICE_WORDS=(function arg1 arg2) が設定されます。
-##     before/around に於いて本来の関数の呼び出し前にこの配列を書き換える事で
-##     呼び出す関数または関数の引数を変更する事ができます。
+##     proc の中から参照できる変数です。関数の呼び出しに使うコマンドを提供しま
+##     す。例えば元の関数呼び出しが function arg1 arg2 だった場合、
+##     ADVICE_WORDS=(function arg1 arg2) が設定されます。before/around に於いて
+##     本来の関数の呼び出し前にこの配列を書き換える事で呼び出す関数または関数の
+##     引数を変更する事ができます。
 ##
 ##   @var[in.out] ADVICE_EXIT
-##     proc の中から参照できる変数です。
-##     after/around に於いて関数実行後の戻り値を参照または
-##     変更するのに使います。
+##     proc の中から参照できる変数です。after/around に於いて関数実行後の戻り値
+##     を参照または変更するのに使います。
+##
+##   @var[in.out] ADVICE_FUNCNAME
+##     proc の中から参照できる変数です。FUNCNAME から ble/function#advice の調
+##     整による余分な関数呼び出しを取り除いたものを保持します。
 ##
 function ble/function#advice/do {
+  ble/util/setexit "$advice_lastexit" "$advice_lastarg"
   ble/function#advice/original:"${ADVICE_WORDS[@]}"
   ADVICE_EXIT=$?
 }
 function ble/function#advice/.proc {
+  local advice_lastexit=$? advice_lastarg=$_
+
   local ADVICE_WORDS ADVICE_EXIT=127
   ADVICE_WORDS=("$@")
+  local -a ADVICE_FUNCNAME=()
+  local func
+  for func in "${FUNCNAME[@]}"; do
+    [[ $func == ble/function#advice/* ]] ||
+      ble/array#push ADVICE_FUNCNAME "$func"
+  done
+  ble/util/unlocal func
+
   ble/function#try "ble/function#advice/before:$1"
   if ble/is-function "ble/function#advice/around:$1"; then
     "ble/function#advice/around:$1"

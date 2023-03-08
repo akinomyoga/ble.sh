@@ -114,6 +114,18 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/complete/sabbrev/expand \
                   ble/complete/alias/expand
 
+bleopt/declare -v complete_source_sabbrev_opts ''
+bleopt/declare -v complete_source_sabbrev_ignore ''
+
+_ble_complete_source_sabbrev_ignore=()
+function bleopt/check:complete_source_sabbrev_ignore {
+  if [[ $value ]]; then
+    ble/string#split _ble_complete_source_sabbrev_ignore : "$value"
+  else
+    _ble_complete_source_sabbrev_ignore=()
+  fi
+}
+
 #------------------------------------------------------------------------------
 # 描画設定
 

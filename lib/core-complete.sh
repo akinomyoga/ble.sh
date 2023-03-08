@@ -5660,20 +5660,21 @@ function ble/complete/candidates/clear {
   cand_pack=()
 }
 
-## @fn ble/complete/candidates/.filter-by-command command
+## @fn ble/complete/candidates/filter-by-command command [start]
 ##   生成された候補 (cand_*) に対して指定したコマンドを実行し、
 ##   成功した候補のみを残して他を削除します。
 ##   @param[in] command
+##   @param[in,opt] start
 ##   @var[in,out] cand_count
 ##   @arr[in,out] cand_{prop,cand,word,show,data}
 ##   @exit
 ##     ユーザ入力によって中断された時に 148 を返します。
-function ble/complete/candidates/.filter-by-command {
-  local command=$1
+function ble/complete/candidates/filter-by-command {
+  local command=$1 start=${2:-0}
   # todo: 複数の配列に触る非効率な実装だが後で考える
-  local i j=0
+  local i j=$start
   local -a prop=() cand=() word=() show=() data=()
-  for ((i=0;i<cand_count;i++)); do
+  for ((i=start;i<cand_count;i++)); do
     ((i%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     builtin eval -- "$command" || continue
     cand[j]=${cand_cand[i]}
@@ -5695,15 +5696,15 @@ function ble/complete/candidates/.filter-by-command {
 ##     ユーザ入力によって中断された時に 148 を返します。
 function ble/complete/candidates/.filter-by-regex {
   local rex_filter=$1
-  ble/complete/candidates/.filter-by-command '[[ ${cand_cand[i]} =~ $rex_filter ]]'
+  ble/complete/candidates/filter-by-command '[[ ${cand_cand[i]} =~ $rex_filter ]]'
 }
 function ble/complete/candidates/.filter-by-glob {
   local globpat=$1
-  ble/complete/candidates/.filter-by-command '[[ ${cand_cand[i]} == $globpat ]]'
+  ble/complete/candidates/filter-by-command '[[ ${cand_cand[i]} == $globpat ]]'
 }
 function ble/complete/candidates/.filter-word-by-prefix {
   local prefix=$1
-  ble/complete/candidates/.filter-by-command '[[ ${cand_word[i]} == "$prefix"* ]]'
+  ble/complete/candidates/filter-by-command '[[ ${cand_word[i]} == "$prefix"* ]]'
 }
 
 function ble/complete/candidates/.initialize-rex_raw_paramx {
@@ -8702,6 +8703,9 @@ function ble/complete/action:sabbrev/get-desc {
   desc="$desc_sgrt(sabbrev)$desc_sgr0 $ret"
 }
 function ble/complete/source:sabbrev {
+  local opts=$bleopt_complete_source_sabbrev_opts
+  [[ ! $COMPV && :$opts: == *:no-empty-completion:* ]] && return 1
+
   local keys; ble/complete/sabbrev/wordwise.get-keys "$opts"
 
   local filter_type=$comp_filter_type
@@ -8716,6 +8720,7 @@ function ble/complete/source:sabbrev {
   ble/complete/cand/yield.initialize "$action"
   for cand in "${keys[@]}"; do
     ble/complete/candidates/filter#test "$cand" || continue
+    ble/complete/string#match-patterns "$cand" "${_ble_complete_source_sabbrev_ignore[@]}" && continue
 
     # filter で除外されない為に cand には評価後の値を入れる必要がある。
     local ret simple_flags simple_ibrace
