@@ -1707,7 +1707,7 @@ function ble/util/writearray/.read-arguments {
         flags=E$flags ;;
       esac
     else
-      if local rex='^[a-zA-Z_][a-zA-Z_0-9]*$'; ! [[ $arg =~ $rex ]]; then
+      if local rex='^[_a-zA-Z][_a-zA-Z0-9]*$'; ! [[ $arg =~ $rex ]]; then
         ble/util/print "${FUNCNAME[1]}: '$arg': invalid array name." >&2
         flags=E$flags
       elif [[ $flags == *A* ]]; then
@@ -3037,7 +3037,7 @@ function ble/util/for-global-variables {
     builtin unset -v "${!_ble_processed_@}"
 
     for __ble_name; do
-      [[ ${__ble_name//[0-9a-zA-Z_]} || $__ble_name == __ble_* ]] && continue
+      [[ ${__ble_name//[_a-zA-Z0-9]} || $__ble_name == __ble_* ]] && continue
       ((__ble_processed_$__ble_name)) && continue
       ((__ble_processed_$__ble_name=1))
 

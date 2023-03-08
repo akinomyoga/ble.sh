@@ -189,8 +189,8 @@ function blehook {
   ble/base/.adjust-bash-options set shopt
 
   local flags print process
-  local rex1='^([a-zA-Z_@][a-zA-Z_0-9@]*)$'
-  local rex2='^([a-zA-Z_@][a-zA-Z_0-9@]*)(:?([-+!]|-\+|\+-)?=)(.*)$'
+  local rex1='^([_a-zA-Z@][_a-zA-Z0-9@]*)$'
+  local rex2='^([_a-zA-Z@][_a-zA-Z0-9@]*)(:?([-+!]|-\+|\+-)?=)(.*)$'
   blehook/.read-arguments "$@"
   if [[ $flags == *[HE]* ]]; then
     if [[ $flags == *H* ]]; then

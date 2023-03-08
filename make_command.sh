@@ -1144,14 +1144,14 @@ function sub:scan/bash300bug {
   echo "--- $FUNCNAME ---"
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
-  grc 'local [a-zA-Z_]+=\(' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md
+  grc 'local [_a-zA-Z]+=\(' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
   grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh
 
   # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
-  grc '\$\{[a-zA-Z_0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
+  grc '\$\{[_a-zA-Z0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
     grep -v '#D1570'
 
   # bash-3.0 では "..${var-$'hello'}.." は (var が存在しない時) "..'hello'..." になる。
@@ -1295,7 +1295,7 @@ function sub:scan/eval-literal {
 
 function sub:scan/WA-localvar_inherit {
   echo "--- $FUNCNAME ---"
-  grc 'local [^;&|()]*"\$\{[a-zA-Z_0-9]+\[@*\]\}"'
+  grc 'local [^;&|()]*"\$\{[_a-zA-Z0-9]+\[@*\]\}"'
 }
 
 function sub:scan/mistake-_ble_bash {
@@ -1323,9 +1323,9 @@ function sub:scan/word-splitting-number {
       \Z^[^#]*(^|[[:space:]])#Zd
       \Z^([^"]|"[^\#]*")*"[^"]*([& (]\$)Zd
       \Z^[^][]*\[\[[^][]*([& (]\$)Zd
-      \Z\(\([a-zA-Z_0-9]+=\(\$Zd
-      \Z\$\{#[a-zA-Z_0-9]+\}[<>?&]Zd
-      \Z \$\{\#[a-zA-Z_0-9]+\[@\]\} -gt 0 \]\]Zd
+      \Z\(\([_a-zA-Z0-9]+=\(\$Zd
+      \Z\$\{#[_a-zA-Z0-9]+\}[<>?&]Zd
+      \Z \$\{\#[_a-zA-Z0-9]+\[@\]\} -gt 0 \]\]Zd
       \Zcase \$\? inZd
       \Zcase \$\(\(.*\)\) inZd
       g'

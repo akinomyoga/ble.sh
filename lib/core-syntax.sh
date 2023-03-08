@@ -933,7 +933,7 @@ function ble/syntax:text/initialize-vars { :; }
 _ble_syntax_bash_RexSpaces=$'[ \t]+'
 _ble_syntax_bash_RexIFSs="[$_ble_term_IFS]+"
 _ble_syntax_bash_RexDelimiter="[$_ble_term_IFS;|&<>()]"
-_ble_syntax_bash_RexRedirect='((\{[a-zA-Z_][a-zA-Z_0-9]*\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<[-<]?))[ 	]*'
+_ble_syntax_bash_RexRedirect='((\{[_a-zA-Z][_a-zA-Z0-9]*\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<[-<]?))[ 	]*'
 
 ## @var _ble_syntax_bash_chars[]
 ##   特定の役割を持つ文字の集合。Bracket expression [～] に入れて使う為の物。
@@ -1088,8 +1088,8 @@ function ble/syntax:bash/simple-word/update {
   local q="'"
 
   local letter='\[[!^]|[^'${_ble_syntax_bashc_simple}']'
-  local param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
-  local param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
+  local param1='\$([-*@#?$!0_]|[1-9][0-9]*|[_a-zA-Z][_a-zA-Z0-9]*)'
+  local param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[_a-zA-Z][_a-zA-Z0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
   local param=$param1'|'$param2
   local bquot='\\.'
   local squot=$q'[^'$q']*'$q'|\$'$q'([^'$q'\]|\\.)*'$q
@@ -1552,10 +1552,10 @@ function ble/syntax:bash/simple-word/eval {
   return "$ext"
 }
 
-## @fn ble/syntax:bash/simple-word/.get-rex_element sep
+## @fn ble/syntax:bash/simple-word/get-rex_element sep
 ##   指定した分割文字 (sep) で区切られた単純単語片に一致する正規表現を構築します。
 ##   @var[out] rex_element
-function ble/syntax:bash/simple-word/.get-rex_element {
+function ble/syntax:bash/simple-word/get-rex_element {
   local sep=$1
   local param=$_ble_syntax_bash_simple_rex_param
   local bquot=$_ble_syntax_bash_simple_rex_bquot
@@ -1608,7 +1608,7 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   ble/opts#extract-last-optarg "$opts" fixlen 0
 
   # compose regular expressions
-  local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
+  local rex_element; ble/syntax:bash/simple-word/get-rex_element "$sep"
   local rex='^['$sep']?'$rex_element'|^['$sep']'
   [[ :$opts: == *:after-sep:* ]] &&
     local rex='^'$rex_element'['$sep']?|^['$sep']'
@@ -1656,7 +1656,7 @@ function ble/syntax:bash/simple-word/detect-separated-path {
 
   # compose regular expressions
   local rex_element
-  ble/syntax:bash/simple-word/.get-rex_element /
+  ble/syntax:bash/simple-word/get-rex_element /
   local rex='^'$rex_element'/?|^/'
 
   local tail=$word head=
@@ -1673,7 +1673,7 @@ function ble/syntax:bash/simple-word/detect-separated-path {
   local i
   for ((i=0;i<${#sep};i++)); do
     local sep1=${sep:i:1}
-    ble/syntax:bash/simple-word/.get-rex_element "$sep1"
+    ble/syntax:bash/simple-word/get-rex_element "$sep1"
     local rex_nocolon='^('$rex_element')?$'
     local rex_hascolon='^('$rex_element')?['$sep1']'
     [[ $head =~ $rex_nocolon && $tail =~ $rex_hascolon ]] && ret=$ret$sep1
@@ -1729,7 +1729,7 @@ function ble/syntax:bash/simple-word/locate-filename {
   local eval_opts=$opts
 
   # compose regular expressions
-  local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
+  local rex_element; ble/syntax:bash/simple-word/get-rex_element "$sep"
   local rex='^'$rex_element'['$sep']|^['$sep']'
   local rex_url='^[a-z]+://'
 
@@ -1797,7 +1797,7 @@ function ble/syntax:bash/simple-word#break-word {
   sep=${sep//[\"\'\$\`]}
 
   # compose regular expressions
-  local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
+  local rex_element; ble/syntax:bash/simple-word/get-rex_element "$sep"
   local rex='^('$rex_element')?['$sep']+'
 
   local -a out=()
@@ -1984,8 +1984,8 @@ function ble/syntax:bash/check-dollar {
     # Note: 初めに文字数 ${#param} の形式を試す (失敗するとしても lookahead は設定する)。
     #   その次に ${param...} 及び ${!param...} の形式を試す。
     #   これにより ${#...} の # が文字数か或いは $# か判定する。
-    local rex1='^(\$\{#)([-*@#?$!0]\}?|[1-9][0-9]*\}?|[a-zA-Z_][a-zA-Z_0-9]*[[}]?)'
-    local rex2='^(\$\{!?)([-*@#?$!0]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*\[?)'
+    local rex1='^(\$\{#)([-*@#?$!0]\}?|[1-9][0-9]*\}?|[_a-zA-Z][_a-zA-Z0-9]*[[}]?)'
+    local rex2='^(\$\{!?)([-*@#?$!0]|[1-9][0-9]*|[_a-zA-Z][_a-zA-Z0-9]*\[?)'
     if
       [[ $tail =~ $rex1 ]] && {
         [[ ${BASH_REMATCH[2]} == *['[}'] || $BASH_REMATCH == "$tail" ]] ||
@@ -2023,7 +2023,7 @@ function ble/syntax:bash/check-dollar {
         i+=${#varname}))
       [[ $lookahead ]] && ble/syntax/parse/set-lookahead "$lookahead"
 
-      if rex='^\$\{![a-zA-Z_][a-zA-Z_0-9]*[*@]\}?'; [[ $tail =~ $rex ]]; then
+      if rex='^\$\{![_a-zA-Z][_a-zA-Z0-9]*[*@]\}?'; [[ $tail =~ $rex ]]; then
         ble/syntax/parse/set-lookahead 2
         if [[ $BASH_REMATCH == *'}' ]]; then
           # ${!head<@>} の時は末尾の @* を個別に読み取る。
@@ -2053,7 +2053,7 @@ function ble/syntax:bash/check-dollar {
     ble/syntax/parse/nest-push "$CTX_CMDX" '$('
     ((i+=2))
     return 0
-  elif rex='^\$([-*@#?$!0_]|[1-9]|[a-zA-Z_][a-zA-Z_0-9]*)' && [[ $tail =~ $rex ]]; then
+  elif rex='^\$([-*@#?$!0_]|[1-9]|[_a-zA-Z][_a-zA-Z0-9]*)' && [[ $tail =~ $rex ]]; then
     local rematch=$BASH_REMATCH rematch1=${BASH_REMATCH[1]}
     ((_ble_syntax_attr[i++]=CTX_PARAM))
 
@@ -2578,7 +2578,7 @@ function ble/syntax:bash/ctx-bracket-expression {
         ((_ble_syntax_attr[i++]=ctx,is_assign=1))
       elif [[ $tail == ']+'* ]]; then
         ble/syntax/parse/set-lookahead 2
-        [[ $tail == ']+=' ]] && ((_ble_syntax_attr[i]=ctx,i+=2,is_assign=1))
+        [[ $tail == ']+='* ]] && ((_ble_syntax_attr[i]=ctx,i+=2,is_assign=1))
       fi
 
       if [[ $is_assign ]]; then
@@ -2884,7 +2884,7 @@ function ble/syntax:bash/ctx-expr/.count-brace {
 function ble/syntax:bash/ctx-expr {
   # 式の中身
   local rex
-  if rex='^[a-zA-Z_][a-zA-Z_0-9]*'; [[ $tail =~ $rex ]]; then
+  if rex='^[_a-zA-Z][_a-zA-Z0-9]*'; [[ $tail =~ $rex ]]; then
     local rematch=$BASH_REMATCH
     local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" readvar:expr:global
     ((_ble_syntax_attr[i]=ret,i+=${#rematch}))
@@ -2892,7 +2892,7 @@ function ble/syntax:bash/ctx-expr {
   elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ATTR_VAR_NUMBER,i+=${#BASH_REMATCH}))
     return 0
-  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}a-zA-Z_0-9]+" 1; then
+  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}_a-zA-Z0-9]+" 1; then
     return 0
   elif [[ $tail == ['][()}']* ]]; then
     local char=${tail::1} ntype
@@ -3225,7 +3225,7 @@ function ble/syntax:bash/check-variable-assignment {
   # パターン一致 (var= var+= arr[ のどれか)
   local suffix='[=[]'
   ((_ble_bash>=30100)) && suffix=$suffix'|\+=?'
-  local rex_assign="^([a-zA-Z_][a-zA-Z_0-9]*)($suffix)"
+  local rex_assign="^([_a-zA-Z][_a-zA-Z0-9]*)($suffix)"
   [[ $tail =~ $rex_assign ]] || return 1
   local rematch=$BASH_REMATCH
   local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
@@ -4056,7 +4056,7 @@ function ble/syntax:bash/ctx-command {
 
     if ((ctx==CTX_FARGI1)); then
       # for var in ... の var の部分は変数名をチェックして着色
-      local rex='^[a-zA-Z_][a-zA-Z_0-9]*$' attr=$ATTR_ERR
+      local rex='^[_a-zA-Z][_a-zA-Z0-9]*$' attr=$ATTR_ERR
       if ((i0==wbegin)) && [[ ${text:i0:i-i0} =~ $rex ]]; then
         local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" global; attr=$ret
       fi
@@ -4769,6 +4769,8 @@ function ble/syntax:bash/find-end-of-array-index {
 ##   @param[in] opts
 ##     element-assignment
 ##       配列要素の場合にも変数代入の形式を許します。
+##     long-option
+##       --long-option= の形式にも強制的に対応します。
 ##   @var[out] ret
 ##     右辺の開始位置を返します。
 ##     変数代入の形式でない時には単語の開始位置を返します。
@@ -4783,14 +4785,17 @@ function ble/syntax:bash/find-rhs {
 
   local rex=
   if ((wtype==ATTR_VAR)); then
-    rex='^[a-zA-Z0-9_]+(\+?=|\[)'
+    rex='^[_a-zA-Z0-9]+(\+?=|\[)'
   elif ((wtype==CTX_VALI)); then
     if [[ :$opts: == *:element-assignment:* ]]; then
       # 配列要素に対しても変数代入の形式を許す
-      rex='^[a-zA-Z0-9_]+(\+?=|\[)|^(\[)'
+      rex='^[_a-zA-Z0-9]+(\+?=|\[)|^(\[)'
     else
       rex='^(\[)'
     fi
+  fi
+  if [[ :$opts: == *:long-option:* ]]; then
+    rex=${rex:+$rex'|'}'^--[-_a-zA-Z0-9]+='
   fi
 
   if [[ $rex && $word =~ $rex ]]; then
@@ -5329,7 +5334,7 @@ function ble/syntax/completion-context/.add {
 ## @fn ble/syntax/completion-context/.check/parameter-expansion
 ##   @var[in] text istat index ctx
 function ble/syntax/completion-context/.check/parameter-expansion {
-  local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
+  local rex_paramx='^(\$(\{[!#]?)?)([_a-zA-Z][_a-zA-Z0-9]*)?$'
   if [[ ${text:istat:index-istat} =~ $rex_paramx ]]; then
     local rematch1=${BASH_REMATCH[1]}
     local source=variable
@@ -5444,7 +5449,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-command {
     ble/syntax/completion-context/.add command "$istat"
 
     # 変数・代入のチェック
-    if local rex='^[a-zA-Z_][a-zA-Z_0-9]*(\+?=)?$' && [[ $word =~ $rex ]]; then
+    if local rex='^[_a-zA-Z][_a-zA-Z0-9]*(\+?=)?$' && [[ $word =~ $rex ]]; then
       if [[ $word == *= ]]; then
         if ((_ble_bash>=30100)) || [[ $word != *+= ]]; then
           # VAR=<argument>: 現在位置から argument 候補を生成する
@@ -5710,7 +5715,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:param {
 ##   数式中の変数名を補完する文脈
 _ble_syntax_bash_complete_check_prefix[CTX_EXPR]=expr
 function ble/syntax/completion-context/.check-prefix/ctx:expr {
-  local tail=${text:istat:index-istat} rex='[a-zA-Z_]+$'
+  local tail=${text:istat:index-istat} rex='[_a-zA-Z]+$'
   if [[ $tail =~ $rex ]]; then
     local p=$((index-${#BASH_REMATCH}))
     ble/syntax/completion-context/.add variable:a "$p"
@@ -5791,7 +5796,7 @@ function ble/syntax/completion-context/.search-last-istat {
 ##   @var[in] index
 ##   @var[out] sources
 function ble/syntax/completion-context/.check-prefix {
-  local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
+  local rex_param='^[_a-zA-Z][_a-zA-Z0-9]*$'
   local from=${1:-$((index-1))}
 
   local ret

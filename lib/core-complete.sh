@@ -3799,7 +3799,7 @@ function ble/complete/progcomp/.split-alias-words {
   done
 
   # skip assignments/redirections
-  local i=0 rex_assign='^[a-zA-Z_0-9]+(\['$_ble_syntax_bash_simple_rex_element'*\])?\+?='
+  local i=0 rex_assign='^[_a-zA-Z0-9]+(\['$_ble_syntax_bash_simple_rex_element'*\])?\+?='
   while ((i<${#words[@]})); do
    if [[ ${words[i]} =~ $rex_assign ]]; then
      ((i++))
@@ -4759,7 +4759,7 @@ function ble/complete/mandb:help/generate-cache {
     }
 
     cfg_usage {
-      if (NR <= 20 && (g_usage_start || $0 ~ /^[a-zA-Z_0-9]|^[^-[:space:]][^[:space:]]*(: |：)/) ) {
+      if (NR <= 20 && (g_usage_start || $0 ~ /^[_a-zA-Z0-9]|^[^-[:space:]][^[:space:]]*(: |：)/) ) {
         g_usage_start = 1;
         usage_parse($0);
       } else if (/^[[:space:]]*$/)
@@ -5260,7 +5260,7 @@ function ble/complete/source:argument {
   #----------------------------------------------------------------------------
   # 3. Attempt rhs completion
 
-  if local rex='^/?[-_a-zA-Z0-9.]+[:=]|^-[^-/=:]'; [[ $COMPV =~ $rex ]]; then
+  if local rex='^/?[-_a-zA-Z0-9.]+\+?[:=]|^-[^-/=:]'; [[ $COMPV =~ $rex ]]; then
     # var=filename --option=filename /I:filename など。
     local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
     local COMP_PREFIX=$prefix
@@ -5688,7 +5688,7 @@ function ble/complete/candidates/.filter-word-by-prefix {
 function ble/complete/candidates/.initialize-rex_raw_paramx {
   local element=$_ble_syntax_bash_simple_rex_element
   local open_dquot=$_ble_syntax_bash_simple_rex_open_dquot
-  rex_raw_paramx='^('$element'*('$open_dquot')?)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+  rex_raw_paramx='^('$element'*('$open_dquot')?)\$[_a-zA-Z][_a-zA-Z0-9]*$'
 }
 
 ## 候補フィルタ (candidate filters) は以下の関数を通して実装される。
@@ -8369,16 +8369,36 @@ function ble/complete/sabbrev/locate-key {
   ble/complete/context:syntax/generate-sources
   for src in "${sources[@]}"; do
     ble/string#split-words asrc "$src"
-    [[ ${asrc[0]} =~ $rex_source_type ]] &&
-      ((asrc[1]<pos)) &&
-      pos=${asrc[1]}
+    [[ ${asrc[0]} =~ $rex_source_type ]] || continue
+
+    if [[ ${asrc[0]} == argument ]]; then
+      # source:argument かつ変数代入形式の時は右辺を sabbrev の対象とする。
+      # wtype を (恰も declare の引数の様に) ATTR_VAR にして find-rhs を呼び出
+      # す。
+      local wtype=$_ble_attr_VAR wbeg=${asrc[1]} wlen=$((comp_index-asrc[1])) ret
+      ble/syntax:bash/find-rhs "$wtype" "$wbeg" "$wlen" long-option &&
+        asrc[0]=rhs asrc[1]=$ret
+    fi
+
+    if [[ ${asrc[0]} == rhs ]]; then
+      # 変数代入形式の右辺では : で区切った最後のフィールドを対象とする。最後の
+      # unquoted colon まで読み飛ばす。[Note: 文法情報の参照をすればより厳密に
+      # 決定できるかもしれないが今は実装しない]
+      local rex_element
+      ble/syntax:bash/simple-word/get-rex_element :
+      local rex='^:*('$rex_element':+)'
+      [[ ${_ble_edit_str:asrc[1]:comp_index-asrc[1]} =~ $rex ]] &&
+        ((asrc[1]+=${#BASH_REMATCH}))
+    fi
+
+    ((asrc[1]<pos)) && pos=${asrc[1]}
   done
+  ((pos<comp_index))
 }
 
 function ble/complete/sabbrev/expand {
   local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
-  ble/complete/sabbrev/locate-key 'file|command|argument|variable:w|wordlist:.*|sabbrev'
-  ((pos<comp_index)) || return 1
+  ble/complete/sabbrev/locate-key 'file|command|argument|variable:w|wordlist:.*|sabbrev|rhs' || return 1
 
   local key=${_ble_edit_str:pos:comp_index-pos}
   local ret; ble/complete/sabbrev/get "$key" || return 1

@@ -26,7 +26,7 @@
 - prompt: support multiline `prompt_rps1` `#D1502` 4fa139a
   - canvas: fix wrong coordinate calculation on linefolding (reported by telometto) `#D1602` 9badb5f
   - prompt: fix coordinates after `prompt_rps1` `#D1972` e128801
-  - prompt: clear remaining SGR after `prompt_rps1` (reported by linwaytin) `#D2003` xxxxxxx
+  - prompt: clear remaining SGR after `prompt_rps1` (reported by linwaytin) `#D2003` ea99d944
 - syntax: support tilde expansions in parameter expansions `#D1513` 0506df2
 - decode: support `ble-bind -m KEYMAP --cursor DECSCUSR` (motivated by jmederosalvarado) `#D1514` `#D1515` `#D1516` 79d671d
   - decode: reflect changes after `ble-bind --cursor` `#D1873` 39efcf9
@@ -50,7 +50,7 @@
   - prompt (`contrib/prompt-git`): do not use `ble/util/idle` in Bash 3 `#D1606` 959cf27
   - util (`bleopt`): add new option `-I` to reinitialize user settings on reload `#D1607` 959cf27
   - vi (vi_cmap): fix wrong prompt calculations by the outdated initial values `#D1653` 2710b23
-  - vim-airline: measure separator widths and fix layout of status line `#D1999` 1ce0d1ad xxxxxxx
+  - vim-airline: measure separator widths and fix layout of status line `#D1999` 1ce0d1ad 478c9a10
 - util, color: refactor configuration interfaces (`bleopt`, `blehook`, `ble-face`) `#D1568` c94d292
   - color: support new face setting function `ble-face`
   - util (`bleopt`): support option `-r` and `-u` and wildcards in option names
@@ -241,6 +241,8 @@
 - color: rearrange color table by `ble palette` (suggested by stackoverflow/caoanan) `#D1961` bb8541d
 - util (`ble/util/idle`): process events before idle sleep `#D1980` 559d64b
 - keymap/vi (`decompose-meta`): translate <kbd>S-a</kbd> to <kbd>A</kbd> `#D1988` 600e845
+- sabbrev: apply sabbrev to right-hand sides of variable assignments `#D2006` xxxxxxxx
+- complete (`source:argument`): fallback to rhs completion also for `name+=rhs` `#D2006` xxxxxxxx
 
 ## Fixes
 
@@ -370,6 +372,7 @@
 - keymap/vi (`expand-range-for-linewise-operator`): fix the end point being not extended `#D1994` bce2033
 - keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` bce2033
 - highlight: fix shifted error marks after delayed `core-syntax` `#D2000` f4145f16
+- syntax: fix unrecognized variable assignment of the form `echo arr[i]+=rhs` `#D2007` xxxxxxxx
 
 ## Documentation
 
@@ -565,6 +568,7 @@
 - util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 e4758db
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
 - util: add `ble/util/message` `#D2001` 2a524f34
+- global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` xxxxxxxx
 
 ## Contrib
 

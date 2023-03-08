@@ -132,7 +132,7 @@ function ble/lib/vim-airline/convert-theme/.setface {
 }
 function ble/lib/vim-airline/convert-theme {
   local file=$1
-  sed -n 's/let s:airline_\([a-zA-Z_0-9]\{1,\}\)[^[:alnum:]]\{1,\}\(\#[0-9a-fA-F]\{6\}\)[^[:alnum:]]\{1,\}\(\#[0-9a-fA-F]\{6\}\).*/\1 \2 \3/p' "$file" |
+  sed -n 's/let s:airline_\([_a-zA-Z0-9]\{1,\}\)[^[:alnum:]]\{1,\}\(\#[0-9a-fA-F]\{6\}\)[^[:alnum:]]\{1,\}\(\#[0-9a-fA-F]\{6\}\).*/\1 \2 \3/p' "$file" |
     while ble/bash/read face fg bg; do
       ble/lib/vim-airline/convert-theme/.setface "$face" "$fg" "$bg"
     done
