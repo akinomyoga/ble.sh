@@ -245,6 +245,7 @@
 - sabbrev: apply sabbrev to right-hand sides of variable assignments `#D2006` xxxxxxxx
 - complete (`source:argument`): fallback to rhs completion also for `name+=rhs` `#D2006` xxxxxxxx
 - auto-complete: limit the line length for auto-complete `#D2009` xxxxxxxx
+- complete (`source:argument`): generate sabbrev completions after normal completions (motivated by mozirilla213) `#D2011` xxxxxxxx
 
 ## Fixes
 

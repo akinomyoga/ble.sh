@@ -5215,20 +5215,7 @@ function ble/complete/source:argument/.generate-user-defined-completion {
   fi
 }
 
-function ble/complete/source:argument {
-  local comp_opts=:
-
-  ble/complete/source:sabbrev
-
-  # failglob で展開に失敗した時は * を付加して再度展開を試みる
-  if [[ $comps_flags == *f* && $COMPS != *\* && :$comp_type: != *:[maA]:* ]]; then
-    local ret simple_flags simple_ibrace
-    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"
-    ble/complete/source/eval-simple-word "$ret*" && ((${#ret[*]})) &&
-      ble/complete/cand/yield-filenames file "${ret[@]}"
-    (($?==148)) && return 148
-  fi
-
+function ble/complete/source:argument/generate {
   local old_cand_count=$cand_count
 
   #----------------------------------------------------------------------------
@@ -5273,11 +5260,32 @@ function ble/complete/source:argument {
     ble/complete/source/test-limit "${#ret[@]}" || return 1
     ble/complete/cand/yield.initialize file_rhs
     for cand in "${ret[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
       [[ -e $cand || -h $cand ]] || continue
       [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
       ble/complete/cand/yield file_rhs "$prefix$cand" "$prefix"
     done
   fi
+
+  ((cand_count>old_cand_count))
+}
+
+function ble/complete/source:argument {
+  local comp_opts=:
+
+  # failglob で展開に失敗した時は * を付加して再度展開を試みる
+  if [[ $comps_flags == *f* && $COMPS != *\* && :$comp_type: != *:[maA]:* ]]; then
+    local ret simple_flags simple_ibrace
+    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"
+    ble/complete/source/eval-simple-word "$ret*" && ((${#ret[*]})) &&
+      ble/complete/cand/yield-filenames file "${ret[@]}"
+    (($?==148)) && return 148
+  fi
+
+  ble/complete/source:argument/generate
+  (($?==148)) && return 148
+
+  ble/complete/source:sabbrev
 }
 
 # source:variable
