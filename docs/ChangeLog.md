@@ -244,6 +244,7 @@
 - keymap/vi (`decompose-meta`): translate <kbd>S-a</kbd> to <kbd>A</kbd> `#D1988` 600e845
 - sabbrev: apply sabbrev to right-hand sides of variable assignments `#D2006` xxxxxxxx
 - complete (`source:argument`): fallback to rhs completion also for `name+=rhs` `#D2006` xxxxxxxx
+- auto-complete: limit the line length for auto-complete `#D2009` xxxxxxxx
 
 ## Fixes
 

@@ -7714,6 +7714,12 @@ _ble_complete_ac_suffix=
 function ble/complete/auto-complete/enter {
   local type=$1 COMP1=$2 suggest=$3 cand=$4 word=$5 insert1=${6-$5} suffix=${7-}
 
+  local limit=$((bleopt_line_limit_length))
+  if ((limit&&${#_ble_edit_str}+${#suggest}>limit)); then
+    # 文字数制限に引っかかる場合には単純に auto-complete は失敗する
+    return 1
+  fi
+
   # 提示
   local insert; ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$suggest" nobell
   ((_ble_edit_mark=_ble_edit_ind+${#suggest}))
