@@ -52,7 +52,7 @@ function ble/init:term/define-sgr-param {
     builtin eval "$name="
   fi
 
-  if [[ $name =~ ^[a-zA-Z_][a-zA-Z_0-9]*$ ]]; then
+  if [[ $name =~ ^[_a-zA-Z][_a-zA-Z0-9]*$ ]]; then
     ble/init:term/register-varname "$name"
   fi
 }

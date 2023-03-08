@@ -188,7 +188,7 @@ function ble/complete/action/util/quote-insert {
     ble/complete/string#escape-for-completion-context "$ins"; ins=$ret
 
     # 直前にパラメータ展開があればエスケープ
-    if [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]]; then
+    if [[ $comps_flags == *p* && $ins == [_a-zA-Z0-9]* ]]; then
       case $comps_flags in
       (*[DI]*)
         if [[ $COMPS =~ $rex_raw_paramx ]]; then
@@ -2090,7 +2090,7 @@ function ble/complete/candidates/.filter-by-command {
 function ble/complete/candidates/.initialize-rex_raw_paramx {
   local element=$_ble_syntax_bash_simple_rex_element
   local open_dquot=$_ble_syntax_bash_simple_rex_open_dquot
-  rex_raw_paramx='^('$element'*('$open_dquot')?)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+  rex_raw_paramx='^('$element'*('$open_dquot')?)\$[_a-zA-Z][_a-zA-Z0-9]*$'
 }
 
 ## 候補フィルタ (candidate filters) は以下の関数を通して実装される。

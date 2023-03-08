@@ -167,7 +167,7 @@ function ble-decode-kbd/generate-keycode {
   local keyname=$1
   if ((${#keyname}==1)); then
     ble/util/s2c "$1"
-  elif [[ $keyname && ! ${keyname//[a-zA-Z_0-9]} ]]; then
+  elif [[ $keyname && ! ${keyname//[_a-zA-Z0-9]} ]]; then
     ble-decode-kbd/.get-keycode "$keyname"
     if [[ ! $ret ]]; then
       ((ret=_ble_decode_FunctionKeyBase+_ble_decode_kbd__n++))
@@ -319,7 +319,7 @@ function ble-decode-kbd {
     if [[ $kspec == ? ]]; then
       ble/util/s2c "$kspec" 0
       ((code|=ret))
-    elif [[ $kspec && ! ${kspec//[_0-9a-zA-Z]} ]]; then
+    elif [[ $kspec && ! ${kspec//[_a-zA-Z0-9]} ]]; then
       ble-decode-kbd/.get-keycode "$kspec"
       [[ $ret ]] || ble-decode-kbd/generate-keycode "$kspec"
       ((code|=ret))

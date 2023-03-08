@@ -130,14 +130,14 @@ function sub:check/bash300bug {
   echo "--- $FUNCNAME ---"
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
-  grc 'local [a-zA-Z_]+=\(' --exclude=./test --exclude=./make_command.sh
+  grc 'local [_a-zA-Z]+=\(' --exclude=./test --exclude=./make_command.sh
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
   grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh
 
   # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
-  grc '\$\{[a-zA-Z_0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
+  grc '\$\{[_a-zA-Z0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
     grep -v '#D1570'
 
   # bash-3.0 では "..${var-$'hello'}.." は (var が存在しない時) "..'hello'..." になる。
@@ -172,8 +172,8 @@ function sub:check/bash502-patsub_replacement {
       \Z/\$\(\([^()]+\)\)\}Zd
       \Z/\$'\''([^\\]|\\.)+'\''\}Zd
 
-      \Z\$\{[a-zA-Z0-9_]+//(ARR|DICT|PREFIX|NAME)/\$([a-zA-Z0-9_]+|\{[a-zA-Z0-9_#:-]+\})\}Zd
-      \Z\$\{[a-zA-Z0-9_]+//'\''%[dlcxy]'\''/\$[a-zA-Z0-9_]+\}Zd # src/canvas.sh
+      \Z\$\{[_a-zA-Z0-9]+//(ARR|DICT|PREFIX|NAME)/\$([_a-zA-Z0-9]+|\{[_a-zA-Z0-9#:-]+\})\}Zd
+      \Z\$\{[_a-zA-Z0-9]+//'\''%[dlcxy]'\''/\$[_a-zA-Z0-9]+\}Zd # src/canvas.sh
 
       \Z#D1738Zd
       \Z\$\{_ble_edit_str//\$'\''\\n'\''/\$'\''\\n'\''"\$comment_begin"\}Zd # edit.sh
