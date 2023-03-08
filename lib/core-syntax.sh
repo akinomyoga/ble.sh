@@ -1667,7 +1667,7 @@ function ble-syntax:bash/ctx-bracket-expression {
         ((_ble_syntax_attr[i++]=ctx,is_assign=1))
       elif [[ $tail == ']+'* ]]; then
         ble-syntax/parse/set-lookahead 2
-        [[ $tail == ']+=' ]] && ((_ble_syntax_attr[i]=ctx,i+=2,is_assign=1))
+        [[ $tail == ']+='* ]] && ((_ble_syntax_attr[i]=ctx,i+=2,is_assign=1))
       fi
 
       if [[ $is_assign ]]; then
