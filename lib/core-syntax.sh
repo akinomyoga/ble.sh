@@ -1925,7 +1925,7 @@ function ble/syntax:bash/ctx-bracket-expression {
         ((_ble_syntax_attr[i++]=ctx,is_assign=1))
       elif [[ $tail == ']+'* ]]; then
         ble/syntax/parse/set-lookahead 2
-        [[ $tail == ']+=' ]] && ((_ble_syntax_attr[i]=ctx,i+=2,is_assign=1))
+        [[ $tail == ']+='* ]] && ((_ble_syntax_attr[i]=ctx,i+=2,is_assign=1))
       fi
 
       if [[ $is_assign ]]; then
@@ -3864,6 +3864,8 @@ function ble/syntax:bash/find-end-of-array-index {
 ##   @param[in] opts
 ##     element-assignment
 ##       配列要素の場合にも変数代入の形式を許します。
+##     long-option
+##       --long-option= の形式にも強制的に対応します。
 ##   @var[out] ret
 ##     右辺の開始位置を返します。
 ##     変数代入の形式でない時には単語の開始位置を返します。
@@ -3886,6 +3888,9 @@ function ble/syntax:bash/find-rhs {
     else
       rex='^(\[)'
     fi
+  fi
+  if [[ :$opts: == *:long-option:* ]]; then
+    rex=${rex:+$rex'|'}'^--[-_a-zA-Z0-9]+='
   fi
 
   if [[ $rex && $word =~ $rex ]]; then
