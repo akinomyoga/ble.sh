@@ -30,9 +30,12 @@ function ble-sabbrev {
   blehook/eval-after-load complete "$ret"
 }
 
-if ! declare -p _ble_complete_sabbrev &>/dev/null; then # reload #D0875
-  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_complete_sabbrev}"
+if ! declare -p _ble_complete_sabbrev_wordwise &>/dev/null; then # reload #D0875
+  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_complete_sabbrev_wordwise}"
 fi
+
+declare -p _ble_complete_sabbrev_literal &>/dev/null ||
+  builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_complete_sabbrev_literal}"
 
 #------------------------------------------------------------------------------
 # 設定変数

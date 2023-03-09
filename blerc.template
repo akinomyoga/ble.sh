@@ -119,6 +119,14 @@
 #bleopt edit_magic_expand=history:sabbrev
 
 
+## This option configures the detailed behavior of the widget "magic-space"
+## with a colon-separated list.  If the field "inline-sabbrev-no-insert" is
+## specified, the insertion of "SP" is skipped when the inline sabbrev is
+## performed by "magic-space".
+
+#bleopt edit_magic_opts=
+
+
 ## The following option controls the position of the info pane where completion
 ## menu, mode names, and other information are shown.  When the value "top" is
 ## specified, the info pane is shown just below the command line.  When the

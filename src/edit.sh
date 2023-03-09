@@ -95,6 +95,7 @@ bleopt/declare -v undo_point end
 bleopt/declare -n edit_forced_textmap 1
 
 bleopt/declare -n edit_magic_expand history:sabbrev
+bleopt/declare -v edit_magic_opts   ''
 
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0
@@ -7819,19 +7820,23 @@ function ble/widget/magic-space {
     local oind=$_ble_edit_ind ostr=$_ble_edit_str
 
   local arg; ble-edit/content/get-arg ''
+  local opts=$bleopt_edit_magic_opts
 
-  local expanded=
+  local expanded= opt_noinsert=
   # (1) history expansion
   if [[ :$bleopt_edit_magic_expand: == *:history:* ]]; then
     ble/widget/history-expand-backward-line && expanded=1
   fi
   # (2) sabbrev expansion
   if [[ ! $expanded && :$bleopt_edit_magic_expand: == *:sabbrev:* ]]; then
-    ble/complete/sabbrev/expand; local ext=$?
-    if ((ext==147)); then
-      return 147 # sabbrev/expand の中でメニュー補完に入った時など。
-    elif ((ext==0)); then
+    ble/complete/sabbrev/expand type-status; local ext=$?
+    if ((ext==0||32<=ext&&ext<=126)); then
       expanded=1
+      ((ext==105)) && # 105 = 'i' (inline sabbrev)
+        [[ :$opts: == *:inline-sabbrev-no-insert:* ]] &&
+        opt_noinsert=1
+    elif ((ext==147)); then
+      return 147 # メニュー補完に入った時
     fi
   fi
   # (3) alias expansion
@@ -7840,18 +7845,19 @@ function ble/widget/magic-space {
   fi
 
   # keymap/vi.sh
-  [[ $_ble_decode_keymap == vi_imap ]] &&
-    if [[ $ostr != "$_ble_edit_str" ]]; then
-      _ble_edit_ind=$oind _ble_edit_str=$ostr ble/keymap:vi/undo/add more
-      ble/keymap:vi/undo/add more
-    fi
+  if [[ $_ble_decode_keymap == vi_imap && $ostr != "$_ble_edit_str" ]]; then
+    _ble_edit_ind=$oind _ble_edit_str=$ostr ble/keymap:vi/undo/add more
+    ble/keymap:vi/undo/add more
+  fi
 
-  local -a KEYS=(32)
-  _ble_edit_arg=$arg
-  ble/widget/self-insert
+  if [[ ! $opt_noinsert ]]; then
+    local -a KEYS=(32)
+    _ble_edit_arg=$arg
+    ble/widget/self-insert
+  fi
 }
 function ble/widget/magic-slash {
-  ble/complete/sabbrev/expand pattern='~*':strip-slash
+  ble/complete/sabbrev/expand wordwise:pattern='~*':strip-slash
   (($?==147)) && return 147 # sabbrev/expand の中でメニュー補完に入った時など。
 
   local -a KEYS=(47) # /

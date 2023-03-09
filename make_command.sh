@@ -1184,6 +1184,7 @@ function sub:scan/bash404-no-argument-return {
       \Zif \(REQ == "[A-Z]+"\)Zd
       \Z\(return\|ret\)Zd
       \Z_ble_trap_done=return$Zd
+      \Z\bwe return\bZd
 
       g'
 }
