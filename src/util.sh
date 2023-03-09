@@ -6905,7 +6905,7 @@ function ble/builtin/readonly/.print-warning {
   if [[ ! $_ble_local_caller ]]; then
     _ble_local_caller=-
     local i n=${#FUNCNAME[@]}
-    for ((i=1;i<n-1;i++)); do
+    for ((i=1;i<n;i++)); do
       [[ ${FUNCNAME[i]} == *readonly ]] && continue
       [[ ${FUNCNAME[i]} == ble/function#advice/* ]] && continue
       _ble_local_caller="${BASH_SOURCE[i]}:${BASH_LINENO[i-1]}"

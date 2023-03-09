@@ -6640,6 +6640,8 @@ bash_tips
 
     * done: 回数上限はコマンドラインの実行ごとにリセットする?
 
+    2023-03-10 ちゃんと動いていない。FUNCNAME を最後の要素までチェックする事にした。
+
   * complete: option:source を他のコマンド名として呼び出せる様にする (requested by mozirilla213) [#D2014]
 
     complete: progcomp_alias と同様の処理をその他の補完生成の時にも行う
