@@ -1701,7 +1701,7 @@ function ble/complete/action:word/get-desc {
 # action:file_rhs (source:argument 内部使用)
 
 ## @fn ble/complete/action:file/.get-filename word
-##   "comopt -o ble/syntax-raw" の場合も考慮してファイル名を抽出する。
+##   "compopt -o ble/syntax-raw" の場合も考慮してファイル名を抽出する。
 ##   Bash の振る舞いを見るとチルダ展開だけを実行する様だ。
 ##   @var[in] CAND DATA
 function ble/complete/action:file/.get-filename {
@@ -5116,10 +5116,33 @@ function ble/complete/source:option {
   local comp_words comp_line comp_point comp_cword
   ble/syntax:bash/extract-command "$COMP2" || return 1
 
-  local -a prev_args=()
-  ((comp_cword>=1)) && prev_args=("${comp_words[@]:1:comp_cword-1}")
+  ble/complete/source:option/generate-for-command "${comp_words[@]::comp_cword}"
+}
 
-  local cmd=${comp_words[0]}
+## @fn ble/complete/source:option/generate-for-command command prev_args...
+##   This function generates the option names based on man pages.
+##
+##   @param[in] command
+##     The command name
+##   @param[in] prev_args
+##     The previous arguments before the word we currently try to complete.
+##
+##   For example, when one would like to generate the option
+##   candidates for "cmd abc def ghi -xx[TAB]", command is "cmd", and
+##   prev_args are "abc" "def" "ghi".
+##
+##   @var[in] COMP1 COMP2 COMPV COMPS comp_type
+##     These variables carry the information on the completion
+##     context. [COMP1, COMP2] specifies the range of the complete
+##     target in the command-line text. COMPS is the word to
+##     complete. COMPV is, if available, its current value after
+##     evaluation. The variable "comp_type" contains additional flags
+##     for the completion context.
+##
+function ble/complete/source:option/generate-for-command {
+  local cmd=$1 prev_args
+  prev_args=("${@:2}")
+
   local alias_checked=' '
   while local ret; ! ble/complete/mandb/load-cache "$cmd"; do
     alias_checked=$alias_checked$cmd' '

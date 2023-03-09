@@ -248,6 +248,7 @@
 - complete (`source:argument`): fallback to rhs completion also for `name+=rhs` `#D2006` xxxxxxxx
 - auto-complete: limit the line length for auto-complete `#D2009` xxxxxxxx
 - complete (`source:argument`): generate sabbrev completions after normal completions (motivated by mozirilla213) `#D2011` xxxxxxxx
+- complete (`source:option`): carve out `ble/complete/source:option/generate-for-command` (requested by mozirilla213) `#D2014` xxxxxxxx
 
 ## Fixes
 
