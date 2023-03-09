@@ -1332,6 +1332,64 @@ function sub:scan/word-splitting-number {
       g'
 }
 
+function sub:scan/check-readonly-unsafe {
+  echo "--- $FUNCNAME ---"
+  local rex_varname='\b(_[_a-zA-Z0-9]+|[_A-Z][_A-Z0-9]+)\b'
+  grc -Wg,-n -Wg,--color=always -o "$rex_varname"'\+?=\b|(/assign|/assign-array|#split) '"$rex_varname"'| -v '"$rex_varname"' ' --exclude={memo,wiki,test,make,\*.md,make_command.sh,GNUmakefile} |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g
+
+      # Exceptions in each file
+      /^\.\/ble.pp:[0-9]*:BLEOPT=$/d
+      /^\.\/lib\/core-complete.sh:[0-9]+:KEY=$/d
+      /^\.\/lib\/core-syntax.sh:[0-9]+:VAR=$/d
+      /^\.\/lib\/init-(cmap|term).sh:[0-9]+:TERM=$/d
+      /^\.\/src\/edit.sh:[0-9]+:_dirty=$/d
+      /^\.\/src\/history.sh:[0-9]+:_history_index=$/d
+      /^\.\/src\/util.sh:[0-9]+:(ARRI|OPEN|TERM)=$/d
+
+      # (extract only variable names)
+      s/^[^:]*:[0-9]+:[[:space:]]*//;
+      s/^-v (.*) $/\1/;s/\+?=$//;s/^.+ //;
+
+      # other frameworks & integrations
+      /^__bp_blesh_invoking_through_blesh$/d
+      /^BP_PROMPT_COMMAND_.*$/d
+
+      # common variables
+      /^__?ble[_a-zA-Z0-9]*$/d
+      /^[A-Z]$/d
+      /^BLE_[_A-Z0-9]*$/d
+      /^ADVICE_[_A-Z0-9]*$/d
+      /^COMP_[_A-Z0-9]*$/d
+      /^COMPREPLY$/d
+      /^READLINE_[_A-Z0-9]*$/d
+      /^LC_[_A-Z0-9]*$/d
+      /^LANG$/d
+
+      # other uppercase variables that ble.sh is allowed to use.
+      /^(FUNCNEST|IFS|IGNOREEOF|POSIXLY_CORRECT|TMOUT)$/d
+      /^(PWD|OLDPWD|CDPATH)$/d
+      /^(BASHPID|GLOBIGNORE|MAPFILE|REPLY)$/d
+      /^INPUTRC$/d
+      /^(LINES|COLUMNS)$/d
+      /^HIST(CONTROL|IGNORE|SIZE|TIMEFORMAT)$/d
+      /^(PROMPT_COMMAND|PS1)$/d
+      /^(BASH_COMMAND|BASH_REMATCH|HISTCMD|LINENO|PIPESTATUS|TIMEFORMAT)$/d
+      /^(BASH_XTRACEFD|PS4)$/d
+      /^(CC|LESS|MANOPT|MANPAGER|PAGER|PATH|MANPATH)$/d
+      /^(BUFF|KEYS|KEYMAP|WIDGET|LASTWIDGET|DRAW_BUFF)$/d
+      /^(D(MIN|MAX|MAX0)|(HIGHLIGHT|PREV)_(BUFF|UMAX|UMIN)|LEVEL|LAYER_(UMAX|UMIN))$/d
+      /^(HISTINDEX_NEXT|FILE|LINE|INDEX|INDEX_FILE)$/d
+      /^(ARG|FLAG|REG)$/d
+      /^(COMP[12SV]|ACTION|CAND|DATA|INSERT|PREFIX_LEN)$/d
+      /^(PRETTY_NAME|NAME|VERSION)$/d
+
+      # variables in awk/comments/etc
+      /^AWKTYPE$/d
+      /^FOO$/d
+      g'
+}
+
 function sub:scan {
   if ! type grc >/dev/null; then
     echo 'blesh check: grc not found. grc can be found in github.com:akinomyoga/mshex.git/' >&2
@@ -1417,6 +1475,7 @@ function sub:scan {
       \Zble/cmdspec/opts Zd
       \Z\('\''declare'\''(\|'\''[a-z]+'\'')+\)Zd
       \Z readonly was blocked\.Zd
+      \Z\[\[ \$\{FUNCNAME\[i]} == \*readonly ]]Zd
       g'
 
   sub:scan/a.txt
@@ -1434,6 +1493,7 @@ function sub:scan {
   sub:scan/mistake-_ble_bash
   sub:scan/command-layout
   sub:scan/word-splitting-number
+  sub:scan/check-readonly-unsafe
 
   sub:scan/memo-numbering
 }

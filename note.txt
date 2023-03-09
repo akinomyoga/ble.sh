@@ -6626,6 +6626,20 @@ bash_tips
 
 2023-03-09
 
+  * readonly blacklist のチェックを m scan に含める (motivated by mozirilla213) [#D2015]
+    https://github.com/akinomyoga/ble.sh/issues/289#issuecomment-1457920928
+
+    * done: m scan
+
+    * done: readonly でファイル名・行番号を表示する。
+
+    * done: 警告の表示の回数上限はパス毎に決める? (dict が使えない場合を除く)
+
+      →一回表示した(パス,行,変数)の組み合わせに関しては二度と表示しない様にす
+      る。トップレベルの呼び出しの時には回数上限を使う。
+
+    * done: 回数上限はコマンドラインの実行ごとにリセットする?
+
   * complete: option:source を他のコマンド名として呼び出せる様にする (requested by mozirilla213) [#D2014]
 
     complete: progcomp_alias と同様の処理をその他の補完生成の時にも行う
@@ -7199,6 +7213,12 @@ bash_tips
 
     2023-03-06 直接 eval するのはやはり変な事が起こりそうで嫌なので is-simple
     の判定だけ行ってから eval する事にした。
+
+    ----
+
+    wiki に ble-append-line の説明を追加した。
+
+    * done: wiki: ble append-line
 
   * 2022-07-06 highlight: "function aaa bbb ccc" と素早く入力すると変なエラー着色の残り方をする [#D2000]
 

@@ -572,6 +572,7 @@
 - util: support `bleopt debug_idle` `#D1945` fa10184
 - global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
 - util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 e4758db
+  - util (`ble/builtin/readonly`): show file and line in warnings `#D2015` xxxxxxxx
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
 - util: add `ble/util/message` `#D2001` 2a524f34
 - global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` xxxxxxxx

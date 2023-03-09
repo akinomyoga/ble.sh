@@ -57,6 +57,7 @@ blehook/declare CHPWD
 blehook/declare PRECMD
 blehook/declare internal_PRECMD
 blehook/declare PREEXEC
+blehook/declare internal_PREEXEC
 blehook/declare POSTEXEC
 blehook/declare ERREXEC
 blehook/declare widget_bell

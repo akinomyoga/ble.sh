@@ -6686,6 +6686,7 @@ function ble-edit/exec:gexec/.prologue {
 
   _ble_edit_exec_TRAPDEBUG_INT=
   ble/util/joblist.clear
+  ble-edit/exec:gexec/invoke-hook-with-setexit internal_PREEXEC "$_ble_edit_exec_BASH_COMMAND"
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND"
   ble-edit/exec/print-PS0 >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
 

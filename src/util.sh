@@ -6820,7 +6820,6 @@ function ble/encoding:C/c2b {
 #------------------------------------------------------------------------------
 # builtin readonly
 
-_ble_builtin_readonly_message=
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_readonly_blacklist}"
 
 function ble/builtin/readonly/.initialize-blacklist {
@@ -6850,6 +6849,7 @@ function ble/builtin/readonly/.initialize-blacklist {
   ble/array#push list HISTINDEX_NEXT FILE LINE INDEX INDEX_FILE # history
   ble/array#push list ARG FLAG REG # vi
   ble/array#push list COMP{1,2,S,V} ACTION CAND DATA INSERT PREFIX_LEN # core-complete
+  ble/array#push list PRETTY_NAME NAME VERSION # edit (/etc/os-release)
 
   local v
   for v in "${list[@]}"; do ble/gdict#set _ble_builtin_readonly_blacklist "$v" 1; done
@@ -6891,9 +6891,47 @@ function ble/builtin/readonly/.check-variable-name {
 
   return 1
 }
+
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_builtin_readonly_mark}"
+_ble_builtin_readonly_message_count=0
+blehook internal_PREEXEC!='_ble_builtin_readonly_message_count=0'
+
+## @fn ble/builtin/readonly/.print-warning
+##   @var[out] _ble_local_caller
+function ble/builtin/readonly/.print-warning {
+  [[ -t 2 ]] || return 0
+
+  # If the caller iformation has not been initialized:
+  if [[ ! $_ble_local_caller ]]; then
+    _ble_local_caller=-
+    local i n=${#FUNCNAME[@]}
+    for ((i=1;i<n-1;i++)); do
+      [[ ${FUNCNAME[i]} == *readonly ]] && continue
+      [[ ${FUNCNAME[i]} == ble/function#advice/* ]] && continue
+      _ble_local_caller="${BASH_SOURCE[i]}:${BASH_LINENO[i-1]}"
+      break
+    done
+  fi
+
+  local s_caller=
+  if [[ $_ble_local_caller != - ]]; then
+    ! ble/gdict#has _ble_builtin_readonly_mark "$_ble_local_caller:$1" || return 0
+    ble/gdict#set _ble_builtin_readonly_mark "$_ble_local_caller:$1" yes
+    s_caller=" ($_ble_local_caller)"
+  else
+    # We show messages only up to ten times
+    ((_ble_builtin_readonly_message_count++<10)) || return 0
+  fi
+
+  _ble_local_flags=w$_ble_local_flags
+  ble/util/print "ble.sh$s_caller: An attempt to make variable \`$1' readonly was blocked." >&2
+
+  return 0
+}
 function ble/builtin/readonly {
   local _ble_local_flags=
   local -a _ble_local_options=()
+  local _ble_local_caller= # used by print-warning
   while (($#)); do
     if ble/string#match "$1" '^([_a-zA-Z][_a-zA-Z0-9]*)($|=)'; then
       _ble_local_flags=v$_ble_local_flags
@@ -6906,12 +6944,7 @@ function ble/builtin/readonly {
         _ble_local_flags=r$_ble_local_flags
         ble/array#push _ble_local_options "$_ble_local_var"
       else
-        # We show messages only up to ten times
-        if ((_ble_builtin_readonly_message<10)) && [[ -t 2 ]]; then
-          ((++_ble_builtin_readonly_message))
-          _ble_local_flags=w$_ble_local_flags
-          ble/util/print "ble.sh: An attempt to make variable \`$1' readonly was blocked." >&2
-        fi
+        ble/builtin/readonly/.print-warning "$1"
       fi
     else
       ble/array#push _ble_local_options "$1"
