@@ -739,6 +739,19 @@
 
 #bind 'set menu-complete-display-prefix off'
 
+
+## This option specifies a colon-separated list of glob patterns of sabbrev
+## names ignored in generating the sabbrev completion candidates.
+
+#bleopt complete_source_sabbrev_ignore=
+
+
+## This is a colon-separated list of options.  When the field
+## `no-empty-completion` is specified, the sabbrev completion candidates are
+## not generated when the word to complete is empty.
+
+#bleopt complete_source_sabbrev_opts=no-empty-completion
+
 ##-----------------------------------------------------------------------------
 ## Color settings
 

@@ -135,10 +135,10 @@
 - syntax: check alias expansions of `coproc` variable names `#D1996` 92ce433
 - syntax: support new parameter transformation `"${arr@k}"` `#D1998` 1dd7e385
 - edit: support a user command `ble append-line` (requested by mozirilla213) `#D2001` 2a524f34
-- decode: accept isolated <kbd>ESC \<char\></kbd> (requested by mozirilla213) `#D2004` xxxxxxxx
-- sabbrev: add widget `magic-slash` to approximate Zsh named directories (motivated by mozirilla213) `#D2008` xxxxxxxx
-- sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` xxxxxxxx
-- complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` xxxxxxxx
+- decode: accept isolated <kbd>ESC \<char\></kbd> (requested by mozirilla213) `#D2004` d7210494
+- sabbrev: add widget `magic-slash` to approximate Zsh named directories (motivated by mozirilla213) `#D2008` e6b9581c
+- sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` 56208534
+- complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` xxxxxxxx
 
 ## Changes
 
@@ -244,11 +244,11 @@
 - color: rearrange color table by `ble palette` (suggested by stackoverflow/caoanan) `#D1961` bb8541d
 - util (`ble/util/idle`): process events before idle sleep `#D1980` 559d64b
 - keymap/vi (`decompose-meta`): translate <kbd>S-a</kbd> to <kbd>A</kbd> `#D1988` 600e845
-- sabbrev: apply sabbrev to right-hand sides of variable assignments `#D2006` xxxxxxxx
-- complete (`source:argument`): fallback to rhs completion also for `name+=rhs` `#D2006` xxxxxxxx
-- auto-complete: limit the line length for auto-complete `#D2009` xxxxxxxx
-- complete (`source:argument`): generate sabbrev completions after normal completions (motivated by mozirilla213) `#D2011` xxxxxxxx
-- complete (`source:option`): carve out `ble/complete/source:option/generate-for-command` (requested by mozirilla213) `#D2014` xxxxxxxx
+- sabbrev: apply sabbrev to right-hand sides of variable assignments `#D2006` 41faa494
+- complete (`source:argument`): fallback to rhs completion also for `name+=rhs` `#D2006` 41faa494
+- auto-complete: limit the line length for auto-complete `#D2009` 5bfbd6f2
+- complete (`source:argument`): generate sabbrev completions after normal completions (motivated by mozirilla213) `#D2011` a6f168d0
+- complete (`source:option`): carve out `ble/complete/source:option/generate-for-command` (requested by mozirilla213) `#D2014` 54ace59c
 
 ## Fixes
 
@@ -378,7 +378,7 @@
 - keymap/vi (`expand-range-for-linewise-operator`): fix the end point being not extended `#D1994` bce2033
 - keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` bce2033
 - highlight: fix shifted error marks after delayed `core-syntax` `#D2000` f4145f16
-- syntax: fix unrecognized variable assignment of the form `echo arr[i]+=rhs` `#D2007` xxxxxxxx
+- syntax: fix unrecognized variable assignment of the form `echo arr[i]+=rhs` `#D2007` 41faa494
 
 ## Documentation
 
@@ -500,7 +500,7 @@
 - edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` 5d14cf1
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
 - progcomp: work around slow `nix` completion `#D1997` 2c1aacf
-- complete: suppress error messages from `_adb` (reported by mozirilla213) `#D2005` xxxxxxx
+- complete: suppress error messages from `_adb` (reported by mozirilla213) `#D2005` f2aa32b0
 
 ## Test
 
@@ -572,10 +572,10 @@
 - util: support `bleopt debug_idle` `#D1945` fa10184
 - global: work around bash-4.4 no-argument return in trap `#D1970` eb4ffce
 - util: replace builtin `readonly` with a shell function (requested by mozirilla213) `#D1985` 8683c84 e4758db
-  - util (`ble/builtin/readonly`): show file and line in warnings `#D2015` xxxxxxxx xxxxxxxx
+  - util (`ble/builtin/readonly`): show file and line in warnings `#D2015` 467fa448 2c9b56d7
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
 - util: add `ble/util/message` `#D2001` 2a524f34
-- global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` xxxxxxxx
+- global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` 41faa494
 
 ## Contrib
 

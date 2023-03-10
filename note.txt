@@ -6624,6 +6624,18 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-03-10
+
+  * complete: complete_source_sabbrev_ignore が動いていない [#D2016]
+
+    * done: そもそも全然動作していなかった。修正した。
+
+    * fixed: opts の方も動作をチェックする。no-empty-completion は '\' から始め
+      ても候補が生成されない様だ。うーん。COMPV ではなく COMPS に対して適用する
+      べきである。
+
+    * done: wiki, blerc: complete_source_sabbrev_{opts,ignore}
+
 2023-03-09
 
   * readonly blacklist のチェックを m scan に含める (motivated by mozirilla213) [#D2015]

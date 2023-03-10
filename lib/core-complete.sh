@@ -44,9 +44,11 @@ function ble/complete/string#common-suffix-prefix {
 ##   @param[in] patterns
 ##   @exit
 function ble/complete/string#match-patterns {
-  local s=$1 pattern found=
-  for pattern in "${patterns[@]}"; do
-    [[ $s == $pattern ]] && return 0
+  local s=$1 found= pattern; shift
+  for pattern; do
+    if [[ $s == $pattern ]]; then
+      return 0
+    fi
   done
   return 1
 }
@@ -8727,7 +8729,7 @@ function ble/complete/action:sabbrev/get-desc {
 }
 function ble/complete/source:sabbrev {
   local opts=$bleopt_complete_source_sabbrev_opts
-  [[ ! $COMPV && :$opts: == *:no-empty-completion:* ]] && return 1
+  [[ ! $COMPS && :$opts: == *:no-empty-completion:* ]] && return 1
 
   local keys; ble/complete/sabbrev/wordwise.get-keys "$opts"
 
