@@ -376,6 +376,7 @@ function ble/util/bgproc#keepalive {
 
   local timeout_proc="ble/util/bgproc#keepalive/.timeout $1"
   ble/util/idle.cancel "$timeout_proc"
+  local ret
   ble/opts#extract-last-optarg "${bgproc[3]}" timeout || return 0; local bgproc_timeout=$ret
   if ((bgproc_timeout>0)); then
     ble/util/idle.push --sleep="$bgproc_timeout" "$timeout_proc"

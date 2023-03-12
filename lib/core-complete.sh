@@ -8616,6 +8616,7 @@ function ble/complete/sabbrev/expand {
     opts=$opts:wordwise:literal
 
   local -a patterns=()
+  local ret
   ble/opts#extract-all-optargs "$opts" pattern &&
     patterns=("${ret[@]}")
 

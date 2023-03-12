@@ -139,7 +139,7 @@
 - sabbrev: add widget `magic-slash` to approximate Zsh named directories (motivated by mozirilla213) `#D2008` e6b9581c
 - sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` 56208534
 - complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` 45c76746
-- util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` xxxxxxxx
+- util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` 7803305f
 
 ## Changes
 
@@ -577,6 +577,7 @@
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
 - util: add `ble/util/message` `#D2001` 2a524f34
 - global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` 41faa494
+- global: fix leak variables `#D2018` xxxxxxxx
 
 ## Contrib
 

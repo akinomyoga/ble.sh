@@ -4822,11 +4822,11 @@ function ble/util/clock/.initialize {
       ((ret=integral*1000+10#0$fraction))
     }
   elif ((_ble_bash>=40200)); then
-    printf -v _ble_util_clock_base '%(%s)T'
+    printf -v _ble_util_clock_base '%(%s)T' -1
     _ble_util_clock_reso=1000
     _ble_util_clock_type=printf
     function ble/util/clock {
-      local now; printf -v now '%(%s)T'
+      local now; printf -v now '%(%s)T' -1
       ((ret=(now-_ble_util_clock_base)*1000))
     }
   elif [[ $SECONDS && ! ${SECONDS//[0-9]} ]]; then

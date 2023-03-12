@@ -5911,7 +5911,7 @@ function ble-edit/exec/print-PS0 {
     local prompt_cols=${COLUMNS:-80}
     local "${_ble_prompt_cache_vars[@]/%/=}" # WA #D1570 checked
     ble/prompt/unit#update _ble_prompt_ps10
-    ble/prompt/unit:{section}/get _ble_prompt_ps10
+    local ret; ble/prompt/unit:{section}/get _ble_prompt_ps10
     ble/util/put "$ret"
   fi
 }
@@ -10264,9 +10264,15 @@ function ble-edit/bind/.tail-without-draw {
 
 if ((_ble_bash>=40000)); then
   function ble-edit/bind/.tail {
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" tail.beg
+#%end.i
     ble/application/render
     ble/util/idle.do
     ble/textarea#adjust-for-bash-bind # bash-4.0+
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" tail.end
+#%end.i
     ble-edit/bind/stdout.off
   }
 else

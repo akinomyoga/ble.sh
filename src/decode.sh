@@ -2167,7 +2167,13 @@ function ble-decode/widget/.invoke-hook {
   local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
   builtin eval "local hook=\${$dicthead[key]-}"
   hook=${hook:2}
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "widget.hook.0"
+#%end.i
   [[ $hook ]] && builtin eval -- "$hook"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "widget.hook.1 $hook"
+#%end.i
 }
 
 ## @fn ble-decode/widget/.call-keyseq
@@ -2211,7 +2217,13 @@ function ble-decode/widget/.call-keyseq {
   _ble_decode_key__seq=
 
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" widget.0
+#%end.i
   builtin eval -- "$WIDGET"; local ext=$?
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "widget $WIDGET"
+#%end.i
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
   ((_ble_decode_keylog_depth==1)) &&
     _ble_decode_keylog_chars_count=0 _ble_decode_keylog_keys_count=0
@@ -2242,7 +2254,13 @@ function ble/decode/widget/call-interactively {
   local -a KEYS; KEYS=("${@:2}")
   _ble_decode_widget_last=$WIDGET
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" widget.0
+#%end.i
   builtin eval -- "$WIDGET"; local ext=$?
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "widget $WIDGET"
+#%end.i
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
   return "$ext"
 }
@@ -2250,14 +2268,26 @@ function ble/decode/widget/call {
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS; KEYS=("${@:2}")
   _ble_decode_widget_last=$WIDGET
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" widget.0
+#%end.i
   builtin eval -- "$WIDGET"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "widget $WIDGET"
+#%end.i
 }
 ## @fn ble/decode/widget/dispatch widget args...
 function ble/decode/widget/dispatch {
   local ret; ble/string#quote-command "ble/widget/$@"
   local WIDGET=$ret
   _ble_decode_widget_last=$WIDGET
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" widget.0
+#%end.i
   builtin eval -- "$WIDGET"
+#%if leakvar
+ble/debug/leakvar#check $"leakvar" "widget $WIDGET"
+#%end.i
 }
 ## @fn ble/decode/widget/suppress-widget
 ##   __before_widget__ に登録された関数から呼び出します。

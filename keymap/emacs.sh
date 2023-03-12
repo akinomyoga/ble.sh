@@ -123,7 +123,7 @@ function ble/keymap:emacs/update-mode-indicator {
   local version=$COLUMNS,$_ble_edit_lineno,$_ble_history_count,$_ble_edit_CMD
   local prompt_hashref_base='$version'
   ble/prompt/unit#update _ble_keymap_emacs_mode_indicator
-  ble/prompt/unit:{section}/get _ble_keymap_emacs_mode_indicator; local str=$ret
+  local ret; ble/prompt/unit:{section}/get _ble_keymap_emacs_mode_indicator; local str=$ret
 
   [[ $_ble_edit_arg ]] &&
     str=${str:+"$str "}$'(arg: \e[1;34m'$_ble_edit_arg$'\e[m)'

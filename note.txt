@@ -1991,6 +1991,103 @@ bash_tips
   - keymap の移動 (これは別 commit にする?)
   - make_command.sh の整理 (scan 分離, char_width 分離)
 
+2023-03-09
+
+  * sabbrev: suffix alias in Zsh (拡張子で実行形式を選択)
+    コマンド名補間も一緒に対応する必要がある。
+
+  * complete: 末尾に不完全な \ がある候補の specialchars フィルタリング?
+
+    最後に中途半端な \ がある時には実はフィルターする時にも \ で quote する必要
+    性のある文字が続いている物だけにするべきなのではないか。と思ったが処理的に
+    複雑になるのではないか? 取り敢えず末端に中途半端な \ があるかどうかは
+    comps_flags に B が含まれているかどうかで分かる。
+
+    その上でその事実を用いて生成するファイル名を制限するかどうかというのが問題。
+    然しその制限を適用する事によって候補がなくなってしまっては変な気もする。
+
+    a 全ての候補を生成してから、生成候補を制限しても候補が残るようであれば制限
+      をかける事にしようと思ったがそうしたとしても異なる種類の候補が混ざってい
+      る時に不用意にフィルタできない。例えば sabbrev 候補は絞り込みの為に cand
+      には quote を処理した後の値を入れている。
+
+    b と思ったが quote の必要のない候補ばかりの時には生成候補がなくなっても良い
+      気がしてきた。
+
+    そうは言っても問題になるのが bash-completion によって生成される候補を制限す
+    るかしないかという事。実際に生成している側でないとその意図は分からない。
+
+2023-03-08
+
+  * :name: に対して emoji 変換を実装する?
+
+    https://www.webfx.com/tools/emoji-cheat-sheet/ に一覧がある。
+    然し、emoji リストの難点は思い出すのが大変という事。リストを表示できたら良いのだが。
+    例えば sabbrev -m 経由で挿入するというのが良いかもしれない。
+
+  * [保留] canvas/panel: 一旦 scroll buffer に行ったものを元に戻す可能性? (motivated by mozirilla213)
+
+    https://github.com/akinomyoga/ble.sh/discussions/288#discussioncomment-5226973
+    > (And the completion words fill and cut the previous output when scrolling
+    > up the terminal which I think is a known limitation which is fine,
+
+    panel の set-height で行が消えてなくなる? うーん。然し報告者の使っているら
+    しき konsole では特に内容が失われるということはない様である。ちゃんと
+    scroll buffer に内容が残っている。
+
+    恐らく scroll buffer に行って一旦画面から見えなくなるという事を言っているの
+    だろう。或いは、一旦 scroll buffer に行った物を、menu が閉じた後にある程度
+    回復するという事。端末によっては何かそういう様な拡張をしていた様な気がする
+    のでそれを有効にする可能性はある。
+
+2023-03-06
+
+  * menu-complete: 番号で選択する
+    https://github.com/akinomyoga/ble.sh/discussions/284
+
+    これは実は実装はそんなに大変ではない気がする。
+
+    LASTWIDGET のチェックは必要?  否、他のものは全て抜けるから関係ない? と思っ
+    たが TAB や cursor key 等の移動コマンドの後も番号はリセットしたい。なのでや
+    はり LASTWIDGET はチェックする。番号が溜まって一致する物がなくなったら一つ
+    ずつ古い文字を削除して一致するものが出るまで削る。一つも一致しなかったら削
+    る前にリセットして新しい文字自体をなかった事にする?
+
+2023-03-02
+
+  * menu-complete: C-TAB を連続で押すと仮挿入をそのままに新しい補完が始まる
+
+    menu-complete の外側の keymap で menu-complete が設定されている時には単に
+    menu_complete/forward にしたりなどした方が良いのではないか。
+
+    と思ったが menu_complete に対して引数が指定されている時などにどのように対処
+    するべきかわからない。例えば insert_all や insert_brances や context=* が指
+    定されている場合には単に移動するのではなくて今の補完を明示的にキャンセルし
+    て新しく補完し直すべきなのではないか。然し、単なる complete や
+    menu-completion や menu-complete backward 等の時には改めて開始するのではな
+    くて内部での補完候補の移動を行いたい気もする。
+
+  * menu-complete: suffix もメニュー選択時に表示する機能?
+    https://github.com/akinomyoga/ble.sh/discussions/297#discussioncomment-5159146
+
+    然しこれは最後の確定時にならないと計算されない。メニューを選択した時にそれ
+    も計算する? 然しそうするとしてもrequote だとか前方の文字列の吸収だとかその
+    他の処理についてはどうするのか。
+
+    特に前方の文字列の吸収に関しては実際に実行してしまうと元々の内容が消滅して
+    しまうので駄目である。或いは前方の文字列に一致する物がある場合には単に挿入
+    部分の方を短くすれば良いのかもしれないが、それはそれで着色範囲が変になって
+    しまって見にくい。更に前方に完全に一致する場合には挿入文字列の幅が 0 になっ
+    てしまって見えなくなる。また確定した時に何処にカーソルが移動するのかという
+    のも分かりにくい。
+
+  * wiki: Design Widget の翻訳?
+    https://github.com/akinomyoga/ble.sh/discussions/272#discussioncomment-5013253
+    https://github.com/akinomyoga/ble.sh/discussions/294
+    https://github.com/akinomyoga/ble.sh/discussions/301
+
+    何やら色々変な事を試そうとしている人がいるみたいなので。
+
 2023-03-01
 
   * [保留] decode: M-S-o と M-O のどちらか一方でに強制的に揃える?
@@ -6634,6 +6731,20 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-03-12
+
+  * ret が leak する様になっている [#D2018]
+
+    だいぶ遡ってもずっと leak している。何故だろうか。取り敢えず最新版で修正した。
+
+    * ble/util/bgproc#keepalive がリークしていた
+    * ble/complete/sabbrev/expand もリークしていた
+
+    →ずっと遡っても発生している ret の上書きはどうも ble.sh --norc で発生して
+    いる? 調べてみると任意のキー入力の後で低確率で発生している様に見える。或い
+    は auto-complete が関係しているのだろうか。
+
+    * 結局 emacs keymap の __after_widget__ に問題があった。
+    * 更に類似の呼び出しで PS0 についても ret の leak があった。両方とも直した。
 
   * bgproc: histdb から切り離して再利用可能にする (motivated by bkerin) [#D2017]
     https://lists.gnu.org/archive/html/help-bash/2023-03/msg00068.html

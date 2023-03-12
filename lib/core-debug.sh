@@ -34,11 +34,13 @@ function ble/debug/leakvar#reset {
   builtin eval "$1=__t1wJltaP9nmow__"
 }
 function ble/debug/leakvar#check {
-  if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
+  local ext=$?
+  if [[ ${!1} != __t1wJltaP9nmow__ ]] && ble/variable#is-global "$1"; then
     local IFS=$_ble_term_IFS
     ble/util/print "$1=${!1}:${*:2} [${FUNCNAME[*]:1:5}]" >> ~/a.txt # DEBUG_LEAKVAR
     builtin eval "$1=__t1wJltaP9nmow__"
   fi
+  return "$?"
 }
 function ble/debug/leakvar#list {
   local _ble_local_exclude_file=${_ble_base_repository:-$_ble_base}/make/debug.leakvar.exclude-list.txt
