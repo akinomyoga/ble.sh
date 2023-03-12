@@ -138,7 +138,8 @@
 - decode: accept isolated <kbd>ESC \<char\></kbd> (requested by mozirilla213) `#D2004` d7210494
 - sabbrev: add widget `magic-slash` to approximate Zsh named directories (motivated by mozirilla213) `#D2008` e6b9581c
 - sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` 56208534
-- complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` xxxxxxxx
+- complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` 45c76746
+- util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` xxxxxxxx
 
 ## Changes
 
@@ -615,6 +616,7 @@
   - histdb: fix `.timeout` not set for background `sqlite3` `#D1982` 20b42fa
   - histdb: suppress color codes in the default `histdb_remarks` `#D1968` 20b42fa
   - histdb: disable timeout of background processes in Bash 3.2 `#D1992` 20b42fa
+  - histdb: rewrite to use `ble/util/bgproc` `#D2017` xxxxxxxx
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->

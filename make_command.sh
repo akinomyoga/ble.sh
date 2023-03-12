@@ -1132,6 +1132,7 @@ function sub:scan/a.txt {
   grc --color --exclude={test,ext,./lib/test-\*.sh,./make_command.sh,\*.md} --exclude=check-mem.sh '[/[:space:]<>"'\''][a-z]\.txt|/dev/(pts/|pty)[0-9]*|/dev/tty' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g
       \Z^\./memo/Zd
+      \Zgithub302-perlre-server\.bashZd
     s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[[:space:]]*#Zd
       \ZDEBUG_LEAKVARZd

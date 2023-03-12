@@ -98,6 +98,7 @@ outfiles += $(OUTDIR)/lib/test-decode.sh
 outfiles += $(OUTDIR)/lib/test-edit.sh
 outfiles += $(OUTDIR)/lib/test-syntax.sh
 outfiles += $(OUTDIR)/lib/test-complete.sh
+outfiles += $(OUTDIR)/lib/util.bgproc.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
 $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib

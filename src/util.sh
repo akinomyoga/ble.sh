@@ -417,9 +417,11 @@ function ble/util/restore-vars {
   local __ble_name __ble_prefix=$1; shift
   for __ble_name; do
     if ble/is-array "$__ble_prefix$__ble_name"; then
-      builtin eval "$__ble_name=(\"\${$__ble_prefix$__ble_name[@]}\")"
+      # Note: bash-4.2 以下では set -u で空配列に対する "${arr[@]}" が失敗す
+      # るので ${arr[@]+"${arr[@]}"} とする。
+      builtin eval "$__ble_name=(\${$__ble_prefix$__ble_name[@]+\"\${$__ble_prefix$__ble_name[@]}\"})"
     else
-      builtin eval "$__ble_name=\"\$$__ble_prefix$__ble_name\""
+      builtin eval "$__ble_name=\"\${$__ble_prefix$__ble_name-}\""
     fi
   done
 }
@@ -1378,7 +1380,7 @@ function ble/path#contains {
 
 ## @fn ble/opts#has opts key
 function ble/opts#has {
-  local rex=':'$2'[=[]'
+  local rex=':'$2'[=:]'
   [[ :$1: =~ $rex ]]
 }
 ## @fn ble/opts#remove opts value
@@ -2195,6 +2197,12 @@ function ble/util/assign/.rmtmp {
 }
 if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
+  #
+  # @remarks 将来的に ${ ...; } に切り替えることになった時に set -m でプロセス
+  #   グループが作られるかどうかについて確認が必要。util.broc.sh では «
+  #   ble/util/assign bgpid '(set -m; command & echo "$!")' » でプロセスグルー
+  #   プが作られる事を想定している。例えば $(...) はプロセスグループが作られな
+  #   いので使えない。
   function ble/util/assign {
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
