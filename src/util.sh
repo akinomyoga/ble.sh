@@ -197,11 +197,11 @@ function ble/util/save-arrs {
 }
 function ble/util/restore-vars {
   local __name __prefix=$1; shift
-  for __name; do eval "$__name=\"\$$__prefix$__name\""; done
+  for __name; do eval "$__name=\"\${$__prefix$__name-}\""; done
 }
 function ble/util/restore-arrs {
   local __name __prefix=$1; shift
-  for __name; do eval "$__name=(\"\${$__prefix$__name[@]}\")"; done
+  for __name; do eval "$__name=(\${$__prefix$__name[@]+\"\${$__prefix$__name[@]}\"})"; done
 }
 
 #%if !release
