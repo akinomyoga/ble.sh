@@ -2278,9 +2278,10 @@ function ble/base/unload-for-reload {
     [[ $_ble_edit_detach_flag ]] ||
       _ble_edit_detach_flag=reload
   fi
-  ble/base/unload
+  ble/base/unload reload
   return 0
 }
+## @fn ble/base/unload [opts]
 function ble/base/unload {
   ble/util/is-running-in-subshell && return 1
   local IFS=$_ble_term_IFS
@@ -2291,7 +2292,7 @@ function ble/base/unload {
   blehook/invoke unload
   ble/decode/keymap#unload
   ble-edit/bind/clear-keymap-definition-loader
-  ble/builtin/trap/finalize
+  ble/builtin/trap/finalize "$1"
   ble/util/import/finalize
   ble/fd#finalize
   ble/base/clean-up-runtime-directory finalize

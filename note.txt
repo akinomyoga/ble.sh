@@ -2982,9 +2982,6 @@ bash_tips
 
 2021-10-26
 
-  * ble/builtin/read: WINCH を受信できていない気がする。
-    もしかすると subshell の中では受信できないという事なのかもしれない。
-
   * winch: Window サイズを変化した時に menu の座標計算がずれる
     (menu_style=dense)そもそも resize した時点で menu の再配置を実行しなければ
     ならない筈である。
@@ -6730,9 +6727,169 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-03-14
+
+  * 2021-10-26 ble/builtin/read: WINCH を受信できていない気がする [#D2022]
+    もしかすると subshell の中では受信できないという事なのかもしれない。
+
+    2023-03-14 winsize を更新する関数を作ったのでこれにも対応する事にする。
+
+    % と思ったが WINCH を受信できていない? 問題は WINCH を受信しても LINES
+    % COLUMNS が更新されない事と思ったが、そもそも WINCH を受信できていないという
+    % 事なのだった。
+    % →即時 WINCH を受信できる訳では無いがユーザーが文字を入力した時にちゃんと
+    % 受信できている。
+
+    subshell の中で実行するとちゃんと内部で設定した trap が発火している様に見える。
+
+    * fixed: ble/builtin/read/TRAPWINCH でも update-winsize を呼ぶ事にした。と
+      思ったが 個別に色々処理するよりも単にここで ble/application/onwinch を呼
+      び出してしまうのが自然である→その様に修正した。
+
+    x fixed: "bash: ble/term/visible-bell:/clear: そのようなファイルやディレク
+      トリはありません" というエラーが発生する。/clear は
+      ble/term/visible-bell/.erase-previous-visible-bell から呼び出されるが、こ
+      の関数は $_ble_base_run/$$.visible-bell.* に属している物を全て削除しよう
+      とする。なので subshell で設定された物も削除しようとする。
+
+      この時親 shell で一度も visible-bell を使っていないと visible-bell が初期
+      化されていない状態になっていて問題が生じる。
+
+      或いは subshell で発生した visible-bell は subshell だけで管理する事にし
+      て subshell を抜ける時に始末する事にする? subshell というか read を抜ける
+      時に処理すれば良い → read を終了する時に visible-bell/erase を呼び出して
+      消去する事にした。C-c を押した時には結局中断して駄目なのでは? と思って試
+      してみたが C-c の時にもちゃんとその場で visible-bell/erase が呼び出されて
+      いる様なので、C-c もちゃんと ble.sh の上で処理されているという事なのだろ
+      う。
+
+    実際に read -ep でも WINCH もちゃんと発火している様に見える。LINES, COLUMNS
+    も更新されている。それなのに textmap が更新されていない様な気がする → と思っ
+    たが textmap を更新した後に出力して確認していたので更新されていない様に見え
+    ただけだった。ちゃんと更新されていて新しい端末幅を反映した値になっている。
+    ずれて見えたのは単に端末の折り返しによって行が増えている事による物だった。
+
+    ? reject: redraw-here がちゃんと働いていない様な気がする? と思ったがそもそ
+      も幅が縮まった時には、縦に内容がはみ出てしまってその分まで遡ろうとはしな
+      いので、現在見えている振る舞いが元々意図した物である気がする。なので気に
+      しない。
+
+    * fixed: サイズの変更があった後に read を中断すると親のプロンプトが表示され
+      てから [EOF] 等のマーカーが表示される。何故?
+
+      うーん。read -ep ; read -ep をコマンドから実行すると一つ目の read と二つ
+      目の read の間で既にプロンプトを表示しようとしている。SIGWINCH が走ってそ
+      れで再描画が起こっている?
+
+      ble-edit/attach/TRAPWINCH ではちゃんと _ble_term_state を確認しているのに
+      何故かそれをすりぬけて表示が実行されている。_ble_term_state が一時的に
+      internal になっている様に見える。
+
+      と思ったら分かった気がする。ble/builtin/read/.impl の中で一旦
+      ble/term/enter してその後で ble/term/leave している。この ble/term/leave
+      するよりも前に WINCH が走って其処で internal 状態にあると勘違いしてプロン
+      プトが表示されてしまうということの気がする。何故 subshell の中で実行しな
+      いのかというと C-c やその他の事故で subshell が予期せず終了した時に状態の
+      復元に失敗しない為だろうという気がする。
+
+      →これは ble/application/onwinch を呼び出す時の条件を増やして対処する事に
+      した。
+
+2023-03-13
+
+  * trap: winch の様々な問題 [#D2021]
+
+    * fixed: bash-4.3..5.0 で ble-reload 後に WINCH が効かない
+
+      一方で Cygwin の bash-4.4 で ble-reload した後に WINCH が正しく処理されな
+      くなっている。chatoyancy 上では bash-5.2 も 4.4 もちゃんと動いている。
+
+      builtin trap WINCH 自体が発火していない様だ。一方でウィンドウサイズを変更
+      した後は謎の PS1 への代入ジョブ (終了ステータス 127) が表示される。而も、
+      その PS1 に代入される値は現在の値とは関係ない。
+
+      うーん。chatoyancy でも 4.4 で再現した。histdb を無効にした状態で reload
+      すると動かなくなる。bash-5.2 では問題になっていない。5.1 でも OK。5.0,
+      4.3 は駄目。bash-4.2 はちゃんと動いている。つまり 4.3,4.4,5.0 の問題。何
+      故 reload だと駄目なのだろうか。
+
+      詳しく調べてみると ble-detach してから ble-attach すると再び動く様になる。
+      これは要するに rl winch hook のインストールが関係しているという事ではない
+      か?  確認してみると実際に winch が再設定されている。既存の trap を確認し
+      てみると、空になっている。つまり unload の時にクリアされているという事。
+
+      unload-for-reload から呼び出している時には WINCH を削除しない事にした。動
+      く様になった。因みに INT についても同様の処理はしなくて良いのか? と思った
+      が取り敢えずは問題は起こっていない気がするので気にしないことにする。現在
+      は WINCH だけ特別扱いする。
+
+      x この実装だと元々存在していた user WINCH trap が消えてしまうのではないか。
+        →実際に確かめてみたら消滅する。別の変数に記録しておく事にした。別の変
+        数に記録しておいた物を拾う処理をする為に、今まで内部 trap を install 済
+        みの時に単に return 0 していたのを trap_string, trap_command を空にして
+        処理を続ける事にした。取り敢えず動いている。
+
+    ? ok: bashrc で ble-attach しても WINCH はちゃんと有効なのか? bash-4.3 以外
+      は大丈夫。
+
+    * ok: bash-4.3 で WINCH が即時発火しない問題
+
+      逆に bash-4.3 は最初から ble-attach しても prompt attach しても WINCH が
+      全然発火していない。というか 4.3 は --norc で起動して WINCH に trap した
+      としても WINCH が発火しない。次にユーザーが入力を試みた時に初めて発火して
+      いる。逆に言えば 4.3 では入力を開始すれば何れにしても正しい幅で描画される。
+
+      これは取り敢えず入力を開始さえすれば直るので取り敢えずは気にしない。
+
+    * fixed: bash-5.2 でコマンド実行中にサイズ変更が発生した時に反映されない問題
+
+      うーん。全てのコマンドを実行する度にサイズ再取得を実行する必要があるか?
+      或いは idle で処理する必要があるかもしれない。
+
+      できるだけ高速に判定する方法が欲しい。複数のコマンドで速度を比較する?
+
+      stty size, resize, tput lines cols, bash -c
+
+      試してみた所、tput が最も速く、その次が stty、更に resize が来て bash -c
+      による方法が最も遅かった。一方で、stty size は ble/term/stty/enter で呼び
+      出している stty とくっつけることができる。取り敢えず優先順位として stty,
+      tput, resize, bash の順に試し、stty による実装が使える場合には
+      ble/term/stty/enter の stty 呼び出しを修正する方法も考慮に入れる事にした。
+
+      取り敢えず実装した。動いている。
+
+  * edit: WINCH で拡大した時のサイズの変わり方が変だ [#D2020]
+
+    調べてみると onwinch が入れ子で呼び出されている。SINGWINCH の処理が入れ子に
+    なっている。bash 自体は入れ子にはしていないが、read-timeout が WINCH 発火を
+    遅延していて、read-timeout の中から主導で呼び出した WINCH の中で、更に trap
+    WINCH が発火している様だ。
+
+    一方で、ble/application/onwinch の実装を見ると入れ子で呼び出した時の対策は
+    ちゃんとしてある様に見える。
+
+    うーん。ble/application/onwinch の中では何れにしても一切の更新処理は実行し
+    たくない。ble/application/onwinch を抜ける時に改めて処理を行いたい。
+
+    ? 今の実装だと _ble_decode_hook_Processing=body|prologue の時に winch を受
+      け取ると後の ble/application/render の際に無駄に二回描画される気がする。
+      どうせ onwinch の中で ble/application/render が発生するのだから、直接
+      ble/application/render を呼び出せば良いのではないか。
+
+    取り敢えず onwinch 全体を WINCH の抑制対象として onwinch の末尾でも WINCH
+    の発火が途中であった時に onwinch を呼び出す様にした。ble/application/render
+    の前に onwinch があった時には ble/application/render をせずに最初から
+    onwinch をする様にした。実装した。動いている。前よりも素早い動作になった。
+
+  * execmark: wrong usage (2), command_not_found (127) 等の文字列 [#D2019]
+    https://qiita.com/Linda_pp/items/1104d2d9a263b60e104b に面白い記述がある
+
+    /usr/include/sysexits.h に幾らか値が定義されている様だ。EX_USAGE..EX_CONFIG
+    が 64..78 に定義されている。
+
 2023-03-12
 
-  * ret が leak する様になっている [#D2018]
+  * global: ret が leak する様になっている [#D2018]
 
     だいぶ遡ってもずっと leak している。何故だろうか。取り敢えず最新版で修正した。
 

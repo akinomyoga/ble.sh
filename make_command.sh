@@ -1297,7 +1297,10 @@ function sub:scan/eval-literal {
 
 function sub:scan/WA-localvar_inherit {
   echo "--- $FUNCNAME ---"
-  grc 'local [^;&|()]*"\$\{[_a-zA-Z0-9]+\[@*\]\}"'
+  grc 'local [^;&|()]*"\$\{[_a-zA-Z0-9]+\[@*\]\}"' |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Ztest_command='\''ble/bin/stty -echo -nl -icrnl -icanon "\$\{_ble_term_stty_flags_enter\[@]}" size'\''Zd
+      g'
 }
 
 function sub:scan/mistake-_ble_bash {
@@ -1461,6 +1464,7 @@ function sub:scan {
       \Z_ble_trap_handler="trap -- '\''\$\{_ble_trap_handler//\$q/\$Q}'\'' \$nZd
       \Zline = "bind"Zd
       \Ztrap_command=["'\'']trap -- Zd
+      \Z_ble_builtin_trap_handlers_reload\[sig\]="trap -- Zd
       \Zlocal trap$Zd
       \Z"trap -- '\''"Zd
       \Z\('\'' trap '\''\*Zd

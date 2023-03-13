@@ -581,11 +581,28 @@ function ble/builtin/trap/user-handler/is-internal {
 }
 
 function ble/builtin/trap/finalize {
-  local sig
+  _ble_builtin_trap_handlers_reload=()
+
+  local sig unload_opts=$1
   for sig in "${!_ble_builtin_trap_sig_opts[@]}"; do
     local name=${_ble_builtin_trap_sig_name[sig]}
     local opts=${_ble_builtin_trap_sig_opts[sig]}
     [[ $name && :$opts: == *:override-builtin-signal:* ]] || continue
+
+    # Note (#D2021): reload の為に一旦設定を復元する時は readline によ
+    # る WINCH trap を破壊しない様に WINCH だけはそのままにして置く。
+    # 元々のユーザートラップは _ble_builtin_trap_handlers_reload に記
+    # 録し、後の ble/builtin/trap/install-hook で読み取る。
+    if [[ :$opts: == *:readline:* && :$unload_opts: == *:reload:* ]]; then
+      if local _ble_trap_handler; ble/builtin/trap/user-handler#load "$sig"; then
+        local q=\' Q="'\''"
+        _ble_builtin_trap_handlers_reload[sig]="trap -- '${_ble_trap_handler//$q/$Q}' $name"
+      else
+        _ble_builtin_trap_handlers_reload[sig]=
+      fi
+      continue
+    fi
+
     if local _ble_trap_handler; ble/builtin/trap/user-handler#load "$sig"; then
       builtin trap -- "$_ble_trap_handler" "$name"
     else
@@ -1040,10 +1057,13 @@ function ble/builtin/trap/install-hook {
     # - INT は bind -x 内だと改めて設定しないと有効にならない(?)様なの
     #   で既に登録されていても、builtin trap は省略できない。
     #
-    [[ $trap_command == "$trap_string" ]] && return 0
+    [[ $trap_command == "$trap_string" ]] && trap_command= trap_string=
+
+    # Note (#D2021): reload 時に元の trap が保存されていればそれを読み取る。
+    [[ $trap_string ]] || trap_string=${_ble_builtin_trap_handlers_reload[sig]-}
   fi
 
-  [[ :$opts: == *:inactive:* && ! $trap_string ]] ||
+  [[ ! $trap_command || :$opts: == *:inactive:* && ! $trap_string ]] ||
     builtin eval "builtin $trap_command"; local ext=$?
 
   local q=\'

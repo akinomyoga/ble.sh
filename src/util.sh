@@ -5759,6 +5759,132 @@ function ble/term/stty/TRAPEXIT {
                "${_ble_term_stty_flags_leave[@]}"
 }
 
+function ble/term/update-winsize {
+  # (0) checkwinsize による実装 (2167.054 usec/eval)
+  if ((_ble_bash<50200||50300<=_ble_bash)); then
+    function ble/term/update-winsize {
+      if shopt -q checkwinsize; then
+        (:)
+      else
+        shopt -s checkwinsize
+        (:)
+        shopt -u checkwinsize
+      fi 2>&"$_ble_util_fd_stderr"
+    }
+    ble/term/update-winsize
+    return 0
+  fi
+
+  local ret
+
+  # (a) "tput lines cols" または "tput li co" による実装 (2909.052 usec/eval)
+  if ble/bin/.freeze-utility-path tput; then
+    if ble/util/assign-words ret 'ble/bin/tput lines cols' 2>/dev/null &&
+        [[ ${#ret[@]} -eq 2 && ${ret[0]} =~ ^[0-9]+$ && ${ret[1]} =~ ^[0-9]+$ ]]
+    then
+      LINES=${ret[0]} COLUMNS=${ret[1]}
+      function ble/term/update-winsize {
+        local -x ret LINES= COLUMNS=
+        ble/util/assign-words ret 'ble/bin/tput lines cols' 2>/dev/null
+        ble/util/unlocal LINES COLUMNS
+        [[ ${ret[0]} ]] && LINES=${ret[0]}
+        [[ ${ret[1]} ]] && COLUMNS=${ret[1]}
+      }
+      return 0
+    elif ble/util/assign-words ret 'ble/bin/tput li co' 2>/dev/null &&
+        [[ ${#ret[@]} -eq 2 && ${ret[0]} =~ ^[0-9]+$ && ${ret[1]} =~ ^[0-9]+$ ]]
+    then
+      LINES=${ret[0]} COLUMNS=${ret[1]}
+      function ble/term/update-winsize {
+        local -x ret LINES= COLUMNS=
+        ble/util/assign-words ret 'ble/bin/tput li co' 2>/dev/null
+        ble/util/unlocal LINES COLUMNS
+        [[ ${ret[0]} ]] && LINES=${ret[0]}
+        [[ ${ret[1]} ]] && COLUMNS=${ret[1]}
+      }
+      return 0
+    fi
+  fi
+
+  # (b) "stty size" による実装 (2976.172 usec/eval)
+  if ble/util/assign-words ret 'ble/bin/stty size' 2>/dev/null &&
+      [[ ${#ret[@]} -eq 2 && ${ret[0]} =~ ^[0-9]+$ && ${ret[1]} =~ ^[0-9]+$ ]]
+  then
+    LINES=${ret[0]} COLUMNS=${ret[1]}
+    function ble/term/update-winsize {
+      local ret
+      ble/util/assign-words ret 'ble/bin/stty size' 2>/dev/null
+      [[ ${ret[0]} ]] && LINES=${ret[0]}
+      [[ ${ret[1]} ]] && COLUMNS=${ret[1]}
+    }
+    return 0
+  fi
+
+  # (c) "resize" による実装 (3108.696 usec/eval)
+  if ble/bin/.freeze-utility-path resize &&
+      ble/util/assign ret 'ble/bin/resize' &&
+      ble/string#match "$ret" 'COLUMNS=([0-9]+).*LINES=([0-9]+)'
+  then
+    LINES=${BASH_REMATCH[2]} COLUMNS=${BASH_REMATCH[1]}
+    function ble/term/update-winsize {
+      local ret
+      ble/util/assign ret 'ble/bin/resize' 2>/dev/null
+      ble/string#match ret 'COLUMNS=([0-9]+).*LINES=([0-9]+)'
+      [[ ${BASH_REMATCH[2]} ]] && LINES=${BASH_REMATCH[2]}
+      [[ ${BASH_REMATCH[1]} ]] && COLUMNS=${BASH_REMATCH[1]}
+    }
+    return 0
+  fi
+
+  # (d) "bash -O checkwinsize -c ..." による実装 (bash-4.3 以上) (9094.595 usec/eval)
+  function ble/term/update-winsize {
+    local ret script='LINES= COLUMNS=; (:); [[ $COLUMNS && $LINES ]] && builtin echo "$LINES $COLUMNS"'
+    ble/util/assign-words ret '"$BASH" -O checkwinsize -c "$script"' 2>&"$_ble_util_fd_stderr"
+    [[ ${ret[0]} ]] && LINES=${ret[0]}
+    [[ ${ret[1]} ]] && COLUMNS=${ret[1]}
+  }
+  ble/term/update-winsize
+  return 0
+}
+
+# bash-5.2 では "bind -x" 内部で checkwinsize が動作しないので
+# ble/term/stty/enter に於いて自前で端末サイズを取得して LINES COLUMNS を更新す
+# る。
+if ((50200<=_ble_bash&&_ble_bash<50300)); then
+  ## @fn ble/term/update-winsize/.stty-enter.advice
+  ##   ble/term/stty/enter の実装を "stty size" を用いて調節します。
+  ##
+  ##   最初の ble/term/stty/enter の呼び出し時に'stty "${enter_options[@]}"
+  ##   size' が動くか検査し、使えそうならば今後はstty に size を追加して呼び出
+  ##   してそれを元にして LINES, COLUMNS を再設定する様にする。
+  ##
+  ##   テスト自体が stty の設定を変更するので、初回の ble/term/stty/enter の呼
+  ##   び出しの時にテストも含めて調整を実行することにしている。
+  function ble/term/update-winsize/.stty-enter.advice {
+    local ret stderr test_command='ble/bin/stty -echo -nl -icrnl -icanon "${_ble_term_stty_flags_enter[@]}" size'
+    if ble/util/assign stderr 'ble/util/assign-words ret "$test_command" 2>&1' &&
+        [[ ! $stderr ]] &&
+        ((${#ret[@]}==2)) &&
+        [[ ${ret[0]} =~ ^[0-9]+$ && ${ret[1]} =~ ^[0-9]+$ ]]
+    then
+      LINES=${ret[0]} COLUMNS=${ret[1]}
+      function ble/term/stty/enter {
+        [[ $_ble_term_stty_state ]] && return 0
+        local ret
+        ble/util/assign-words ret 'ble/bin/stty -echo -nl -icrnl -icanon "${_ble_term_stty_flags_enter[@]}" size'
+        [[ ${ret[0]} =~ ^[0-9]+$ ]] && LINES=${ret[0]}
+        [[ ${ret[1]} =~ ^[0-9]+$ ]] && COLUMNS=${ret[1]}
+        _ble_term_stty_state=1
+      }
+    else
+      ble/term/update-winsize
+      ble/function#advice before ble/term/stty/enter ble/term/update-winsize
+    fi
+    builtin unset -f "$FUNCNAME"
+  }
+  ble/function#advice before ble/term/stty/enter ble/term/update-winsize/.stty-enter.advice
+fi
+
 
 #---- cursor state ------------------------------------------------------------
 

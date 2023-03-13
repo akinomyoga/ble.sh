@@ -577,13 +577,15 @@
 - global: avoid directly using `/dev/tty` `#D1986` a835b83
 - util: add `ble/util/message` `#D2001` 2a524f34
 - global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` 41faa494
-- global: fix leak variables `#D2018` xxxxxxxx
+- global: fix leak variables `#D2018` 6f5604de
+- edit: handle nested WINCH properly `#D2020` xxxxxxxx
 
 ## Contrib
 
 - prompt-git: detect staged changes `#D1718` 2b48e31
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
+  - config/execmark: add names of exit statuses `#D2019` xxxxxxxx
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - integration/fzf
   - fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b

@@ -258,7 +258,6 @@ bleopt/declare -v line_limit_type none
 
 _ble_app_render_mode=panel
 _ble_app_winsize=()
-_ble_app_render_Processing=
 function ble/application/.set-up-render-mode {
   [[ $1 == "$_ble_app_render_mode" ]] && return 0
   case $1 in
@@ -285,7 +284,20 @@ function ble/application/pop-render-mode {
   ble/array#shift _ble_app_render_mode
 }
 function ble/application/render {
-  local _ble_app_render_Processing=1
+  # 既に未処理の winch がある場合には初めから ble/application/onwinch
+  # 経由で再描画を行う。何れにせよ ble/application/onwinch から改めて
+  # ble/application/render が呼び出されるので onwinch 後は直ぐに抜けて
+  # 良い。
+  #
+  # Note: この文脈でも更に ble/application/onwinch が遅延される場合は、
+  # 更に外側の何処かで最終的に ble/application/onwinch が呼び出される
+  # 手筈になっているので問題ない。
+  if [[ $_ble_app_onwinch_Deferred ]]; then
+    ble/application/onwinch
+    return "$?"
+  fi
+
+  local _ble_app_onwinch_Suppress=1
   {
     local render=$_ble_app_render_mode
     case $render in
@@ -299,9 +311,9 @@ function ble/application/render {
     _ble_app_winsize=("$COLUMNS" "$LINES")
     ble/util/buffer.flush >&2
   }
-  ble/util/unlocal _ble_app_render_Processing
-  if [[ $_ble_application_render_winch ]]; then
-    _ble_application_render_winch=
+  ble/util/unlocal _ble_app_onwinch_Suppress
+
+  if [[ $_ble_app_onwinch_Deferred ]]; then
     ble/application/onwinch
   fi
 }
@@ -356,35 +368,38 @@ function ble/application/onwinch/panel.process-redraw-here {
   return 0
 }
 
+_ble_app_onwinch_Suppress=
+_ble_app_onwinch_Deferred=
 function ble/application/onwinch {
-  if [[ $_ble_app_render_Processing || $_ble_decode_hook_Processing == body || $_ble_decode_hook_Processing == prologue ]]; then
-    # Note #D1762: 別の処理が走っている途中に描画更新すると中途半端な
-    # データに対して処理が実行されてデータが破壊されるので後で処理する。
+  if [[ $_ble_app_onwinch_Suppress || $_ble_decode_hook_Processing == body || $_ble_decode_hook_Processing == prologue ]]; then
+    # Note #D1762: 別の処理が走っている途中に描画更新すると中途半端なデータに対
+    # して処理が実行されてデータが破壊されるので後で処理する。
     #
-    # ble_decode_hook_body=1 の時は EPILOGUE が後で必ず呼び出されるの
-    # でその時に ble/application/render が呼び出される。その中で
-    # _ble_application_render_winch がチェックされて改めてこの関数が呼
-    # び出される。_ble_app_render_Processing=1 の時には、
-    # ble/application/render の末尾でやはりチェックが走ると期待する。
-    _ble_application_render_winch=1
+    # ble_decode_hook_body=1 の時は EPILOGUE が後で必ず呼び出されるのでその時に
+    # ble/application/render が呼び出される。その中で_ble_app_onwinch_Deferred
+    # がチェックされて改めてこの関数が呼び出される。_ble_app_onwinch_Suppress=1
+    # の時には、ble/application/render の末尾でやはりチェックが走ると期待する。
+    _ble_app_onwinch_Deferred=1
     return 0
   fi
 
-  _ble_textmap_pos=()
-  # 処理中に届いた WINCH は失われる様だ。連続的サイズ変化を通知す
-  # る端末の場合、途中のサイズの WINCH の処理中に最終的なサイズの
-  # WINCH を逃して表示が乱れたままになる。対策として描画終了時に処
-  # 理中にサイズ変化が起こっていないか確認する。
+  local _ble_app_onwinch_Suppress=1
+  _ble_app_onwinch_Deferred=
+
+  _ble_textmap_cols=
+  # 処理中に届いた WINCH は失われる様だ。連続的サイズ変化を通知する端末の場合、
+  # 途中のサイズの WINCH の処理中に最終的なサイズのWINCH を逃して表示が乱れたま
+  # まになる。対策として描画終了時に処理中にサイズ変化が起こっていないか確認す
+  # る。
 
   local old_size= i
   for ((i=0;i<20;i++)); do
-    if ((50200<=_ble_bash&&_ble_bash<50300)); then
-      # Note: bash-5.2 では trap string / bind -x 内部で COLUMNS/LINES が更新さ
-      #   れないので "$BASH" を起動して端末サイズを取得する。
-      builtin eval -- "$(ble/util/msleep 50; exec "$BASH" -O checkwinsize -c '(:); [[ $COLUMNS && $LINES ]] && printf %s "COLUMNS=$COLUMNS LINES=$LINES"' 2>&"$_ble_util_fd_stderr")"
-    else
-      # 次の WINCH を待つと共にサブシェルで checkwinsize を誘発
-      (ble/util/msleep 50)
+    # 次の WINCH を待つと共にサブシェルで checkwinsize を誘発。
+    (ble/util/msleep 50)
+    # Bash 5.2 では trap string / bind -x 内部で COLUMNS/LINES が更新されないの
+    # で明示的に ble/term/update-winsize を呼び出す。
+    if ble/util/is-running-in-subshell || ((50200<=_ble_bash&&_ble_bash<50300)); then
+      ble/term/update-winsize
     fi
 
     # trap 中だと bash のバグでジョブが溜まるので逐次捌く
@@ -393,36 +408,37 @@ function ble/application/onwinch {
     [[ $size == "$old_size" ]] && break
     old_size=$size
 
-    local _ble_app_render_Processing=1
-    {
-      local render=$_ble_app_render_mode
-      case $render in
-      (panel)
-        case $bleopt_canvas_winch_action in
-        (clear)
-          # 全消去して一番上から再描画
-          _ble_prompt_trim_opwd=
-          ble/util/buffer "$_ble_term_clear" ;;
-        (redraw-here)
-          ble/application/onwinch/panel.process-redraw-here ;;
-        (redraw-prev)
-          # 前回の開始相対位置が変化していないと仮定して戻って再描画
-          local -a DRAW_BUFF=()
-          ble/canvas/panel#goto.draw 0 0 0
-          ble/canvas/bflush.draw ;;
-        (redraw-safe) ;;
-        esac
-        # 高さの再確保も含めて。
-        ble/canvas/panel/invalidate height ;;
-
-      (forms:*)
-        ble/forms/invalidate "${render#*:}" ;; # NYI
+    local render=$_ble_app_render_mode
+    case $render in
+    (panel)
+      case $bleopt_canvas_winch_action in
+      (clear)
+        # 全消去して一番上から再描画
+        _ble_prompt_trim_opwd=
+        ble/util/buffer "$_ble_term_clear" ;;
+      (redraw-here)
+        ble/application/onwinch/panel.process-redraw-here ;;
+      (redraw-prev)
+        # 前回の開始相対位置が変化していないと仮定して戻って再描画
+        local -a DRAW_BUFF=()
+        ble/canvas/panel#goto.draw 0 0 0
+        ble/canvas/bflush.draw ;;
+      (redraw-safe) ;;
       esac
-    }
-    ble/util/unlocal _ble_app_render_Processing
+      # 高さの再確保も含めて。
+      ble/canvas/panel/invalidate height ;;
+
+    (forms:*)
+      ble/forms/invalidate "${render#*:}" ;; # NYI
+    esac
 
     ble/application/render
   done
+  ble/util/unlocal _ble_app_onwinch_Suppress
+
+  if [[ $_ble_app_onwinch_Deferred ]]; then
+    ble/application/onwinch
+  fi
 }
 
 # canvas.sh 設定
@@ -2631,7 +2647,9 @@ bleopt/declare -n canvas_winch_action redraw-here
 
 function ble-edit/attach/TRAPWINCH {
   # 現在前面に出ていなければ関係ない
-  ((_ble_edit_attached)) && [[ $_ble_term_state == internal ]] || return 0
+  ((_ble_edit_attached)) && [[ $_ble_term_state == internal ]] &&
+    ! ble/edit/is-command-layout && ! ble/util/is-running-in-subshell ||
+      return 0
   ble/application/onwinch 2>&"$_ble_util_fd_stderr"
 }
 
@@ -9560,9 +9578,7 @@ function ble/builtin/read/.set-up-textarea {
 }
 function ble/builtin/read/TRAPWINCH {
   local IFS=$_ble_term_IFS
-  _ble_textmap_pos=()
-  ble/util/buffer "$_ble_term_ed"
-  ble/textarea#redraw
+  ble/application/onwinch
 }
 function ble/builtin/read/.loop {
   # この関数はサブシェルの中で実行される事を前提としている。
@@ -9671,6 +9687,8 @@ function ble/builtin/read/.loop {
   fi
 
   ble/util/buffer.flush >&2
+  ble/term/visible-bell/erase
+
   if ((_ble_edit_read_accept==1)); then
     local q=\' Q="'\''"
     printf %s "__ble_input='${_ble_edit_read_result//$q/$Q}'"
