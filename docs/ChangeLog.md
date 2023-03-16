@@ -500,6 +500,7 @@
 - main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` e2ec89c
 - util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` a5b10e8
 - edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` 5d14cf1
+  - edit: restore `PS1` while processing `bind -x` (reported by adoyle-h) `#D2024` xxxxxxxx
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
 - progcomp: work around slow `nix` completion `#D1997` 2c1aacf
 - complete: suppress error messages from `_adb` (reported by mozirilla213) `#D2005` f2aa32b0

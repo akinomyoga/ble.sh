@@ -6716,6 +6716,12 @@ bash_tips
 
 2023-03-16
 
+  * edit: bind -x で PS1 も一時的に復元する (requested by adoyle-h) [#D2024]
+    https://github.com/akinomyoga/ble.sh/issues/304
+
+    lincheney/fzf-tab-completion で退避中の一時 PS1 が表示されるというから何か
+    と思ったら自分で PS1 を出力しているのだった。
+
   * 2023-03-06 menu-complete: 番号で選択する (requested by bkerin) [#D2023]
     https://github.com/akinomyoga/ble.sh/discussions/284
 

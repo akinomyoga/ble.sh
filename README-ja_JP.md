@@ -328,6 +328,9 @@ $ cp -r ble-0.3.3 /path/to/blesh
 [[ ${BLE_VERSION-} ]] && ble-attach
 ```
 
+`source /path/to/ble.sh` 及び `ble-attach` を呼び出す時は、
+標準ストリーム (`stdin`, `stdout`, `stderr`) が現在のセッションの制御端末とは別の物にリダイレクトされていない様にして下さい。
+`source /path/to/ble.sh` をシェル関数の中から実行するのは避けて下さい。
 この「より確実な設定」が必要になる詳細な条件については [Discussion #254 への回答 (英語)](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757) で説明されています。
 
 ## 1.4 初期化スクリプト `~/.blerc` について

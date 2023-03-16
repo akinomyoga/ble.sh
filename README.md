@@ -57,8 +57,7 @@ place other module files in appropriate places, and strip code comments for shor
 
 Note: This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
 Some people seem to bilindly believe that one always need to use `make` with C/C++/Fortran compilers to generate binaries.
-They complain about `ble.sh`'s make process, which comes from the lack of knowledge on `make`.
-One should learn the general principle of `make`.
+They complain about `ble.sh`'s make process, but it comes from the lack of knowledge on the general principle of `make`.
 C/C++ programs in the repository is used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
 The generated table is included in the repository:
 [`canvas.GraphemeClusterBreak.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.GraphemeClusterBreak.sh),
@@ -308,7 +307,7 @@ The stable versions are significantly old compared to the devel version, so many
 
 ## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
-If you want to load `ble.sh` by default in interactive sessions of `bash`, usually one can just source `ble.sh` in `~/.bashrc`,
+If you want to load `ble.sh` in interactive sessions of `bash` by default, usually one can just source `ble.sh` in `~/.bashrc`,
 but more reliable way is to add the following codes to your `.bashrc` file:
 
 ```bash
@@ -323,6 +322,9 @@ but more reliable way is to add the following codes to your `.bashrc` file:
 [[ ${BLE_VERSION-} ]] && ble-attach
 ```
 
+Basically, when `source /path/to/ble.sh` and `ble-attach` are performed,
+standard streams (`stdin`, `stdout`, and `stderr`) should not be redirected but should be connected to the controlling TTY of the current session.
+Also, please avoid calling `source /path/to/ble.sh` in shell functions.
 The detailed conditions that we need the above *more reliable setup* are explained in [an answer in Discussion #254](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757).
 
 ## 1.4 User settings `~/.blerc`
