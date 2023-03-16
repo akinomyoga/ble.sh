@@ -7454,9 +7454,11 @@ function ble/widget/.EDIT_COMMAND {
   local READLINE_POINT=$_ble_edit_ind
   local READLINE_MARK=$_ble_edit_mark
   ble/widget/.hide-current-line keep-header
+  ble-edit/restore-PS1
   ble/term/leave-for-widget
   builtin eval -- "$command"; local ext=$?
   ble/term/enter-for-widget
+  ble-edit/adjust-PS1
   ble-edit/content/clear-arg
   ((ext==0)) || return 1
 
