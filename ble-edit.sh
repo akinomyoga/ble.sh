@@ -7315,9 +7315,11 @@ function ble/widget/.EDIT_COMMAND {
   local command=$1
   local READLINE_LINE=$_ble_edit_str
   local READLINE_POINT=$_ble_edit_ind
+  ble-edit/restore-PS1
   ble/term/leave-for-widget
   builtin eval -- "$command"; local ext=$?
   ble/term/enter-for-widget
+  ble-edit/adjust-PS1
   ble-edit/content/clear-arg
   ((ext==0)) || return 1
 
