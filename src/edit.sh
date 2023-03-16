@@ -2428,7 +2428,16 @@ function ble/keymap:generic/clear-arg {
   fi
 }
 
+## @fn ble/widget/append-arg [opts]
+## @fn ble/widget/append-arg-or widget [opts]
+##   @param[in] widget
+##   @param[in,opt] opts
+##     enter-menu
+##       修飾なしの数字であっても常に引数として取り扱います。
 function ble/widget/append-arg-or {
+  # ble/widget/complete 直後 (menu 表示時) の引数で menu に入る
+  ble/function#try ble/widget/complete/.select-menu-with-arg "${@:2}" && return 0
+
   local n=${#KEYS[@]}; ((n&&n--))
   local code=$((KEYS[n]&_ble_decode_MaskChar))
   ((code==0)) && return 1
@@ -2451,7 +2460,7 @@ function ble/widget/append-arg-or {
   fi
 }
 function ble/widget/append-arg {
-  ble/widget/append-arg-or self-insert
+  ble/widget/append-arg-or self-insert "$@"
 }
 function ble/widget/universal-arg {
   ble/decode/widget/skip-lastwidget

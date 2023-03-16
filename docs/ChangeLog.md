@@ -140,6 +140,7 @@
 - sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` 56208534
 - complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` 45c76746
 - util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` 7803305f
+- menu-complete: support selection by index (requested by bkerin) `#D2023` xxxxxxxx
 
 ## Changes
 

@@ -688,11 +688,19 @@
 #bleopt complete_menu_maxlines=10
 
 
-## The following setting specifies the prefix for complete_menu_style=linewise.
-## For example, the candidate number can be shown by setting the value "%d".
-## ANSI escape sequences can be used.
+## The following settings specify the prefix of the menu items.  "menu_prefix"
+## specifies the default prefix for any menu-style.
+## "menu_{align,desc,linewise,dense}_prefix" specify the prefixes in the
+## respective menu-styles.  The value is specified by a printf format, where
+## the first argument is the index of the candidate.  ANSI escape sequences can
+## also be used.  For example, the candidate index can be shown by setting the
+## value '%d '.  The default value is empty.
 
-#bleopt menu_linewise_prefix=
+#bleopt menu_align=
+#bleopt menu_align_prefix='\e[1m%d:\e[m '
+#bleopt menu_desc_prefix='\e[1m%d.\e[m '
+#bleopt menu_linewise_prefix='\e[1;36m%d:\e[m '
+#bleopt menu_dense_prefix='\e[1;32m>\e[m '
 
 
 ## The following setting specifies the minimum column width for the multicolumn

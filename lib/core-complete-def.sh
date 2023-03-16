@@ -82,8 +82,6 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/complete/menu-style:linewise/construct-page \
                   ble/complete/menu-style:desc{,-raw}/construct-page
 
-bleopt/declare -v menu_linewise_prefix ''
-bleopt/declare -v menu_desc_multicolumn_width 65
 bleopt/declare -v complete_menu_complete 1
 bleopt/declare -v complete_menu_complete_opts 'insert-selection'
 bleopt/declare -v complete_menu_filter 1
@@ -101,9 +99,15 @@ function ble/complete/.init-bind-readline-variables {
 }
 ble/complete/.init-bind-readline-variables
 
+bleopt/declare -v menu_prefix ''
+bleopt/declare -v menu_align_prefix ''
 bleopt/declare -n menu_align_min 4
 bleopt/declare -n menu_align_max 20
 bleopt/declare -o complete_menu_align menu_align_max
+bleopt/declare -v menu_dense_prefix ''
+bleopt/declare -v menu_linewise_prefix ''
+bleopt/declare -v menu_desc_prefix ''
+bleopt/declare -v menu_desc_multicolumn_width 65
 
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/complete/menu#start \

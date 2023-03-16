@@ -7891,29 +7891,28 @@ function ble-decode/keymap:vi_imap/define {
 
   ble-bind -f 'SP'        'magic-space'
   ble-bind -f '/'         'magic-slash'
-  # ble-bind -f 'M-^'      'history-expand-line'
 
-  # ble-bind -f  'C-c'     'discard-line'
-  ble-bind -f 'C-j'      'accept-line'
-  ble-bind -f 'C-RET'    'accept-line'
-  ble-bind -f 'C-m'      'accept-single-line-or-newline'
-  ble-bind -f 'RET'      'accept-single-line-or-newline'
-  # ble-bind -f  'C-o'     'accept-and-next'
-  # ble-bind -f 'M-#'      'insert-comment'
-  ble-bind -f 'C-x C-e'  'edit-and-execute-command'
-  # ble-bind -f 'M-C-e'    'shell-expand-line'
-  # ble-bind -f 'M-&'      'tilde-expand'
-  ble-bind -f 'C-g'      'bell'
-  ble-bind -f 'C-x C-g'  'bell'
-  # ble-bind -f 'C-M-g'    'bell'
+  # ble-bind -f  'C-c'      'discard-line'
+  ble-bind -f 'C-j'       'accept-line'
+  ble-bind -f 'C-RET'     'accept-line'
+  ble-bind -f 'C-m'       'accept-single-line-or-newline'
+  ble-bind -f 'RET'       'accept-single-line-or-newline'
+  # ble-bind -f  'C-o'      'accept-and-next'
+  ble-bind -f 'C-x C-e'   'edit-and-execute-command'
+  ble-bind -f 'C-g'       'bell'
+  ble-bind -f 'C-x C-g'   'bell'
 
-  ble-bind -f 'C-l'      'clear-screen'
-  # ble-bind -f 'C-M-l'    'redraw-line'
+  ble-bind -f 'C-l'       'clear-screen'
 
-  ble-bind -f 'f1'       'command-help'
-  ble-bind -f 'C-x C-v'  'display-shell-version'
-  ble-bind -c 'C-z'      'fg'
-  # ble-bind -c 'M-z'      'fg'
+  ble-bind -f 'f1'        'command-help'
+  ble-bind -f 'C-x C-v'   'display-shell-version'
+  ble-bind -c 'C-z'       'fg'
+
+  # args
+  local key
+  for key in {,C-}{0..9}; do
+    ble-bind -f "$key"    'append-arg'
+  done
 
   #----------------------------------------------------------------------------
   # vi_imap modifications
@@ -8043,6 +8042,20 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-g'       'complete context=glob'
   ble-bind -f 'M-C-i'     'complete context=dynamic-history'
   ble-bind -f 'M-TAB'     'complete context=dynamic-history'
+
+  #----------------------------------------------------------------------------
+  # from ble-decode/keymap:safe/bind-arg
+
+  ble-bind -f 'M-0'       'append-arg'
+  ble-bind -f 'M-1'       'append-arg'
+  ble-bind -f 'M-2'       'append-arg'
+  ble-bind -f 'M-3'       'append-arg'
+  ble-bind -f 'M-4'       'append-arg'
+  ble-bind -f 'M-5'       'append-arg'
+  ble-bind -f 'M-6'       'append-arg'
+  ble-bind -f 'M-7'       'append-arg'
+  ble-bind -f 'M-8'       'append-arg'
+  ble-bind -f 'M-9'       'append-arg'
 }
 
 #------------------------------------------------------------------------------

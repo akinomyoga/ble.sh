@@ -2040,19 +2040,6 @@ bash_tips
     回復するという事。端末によっては何かそういう様な拡張をしていた様な気がする
     のでそれを有効にする可能性はある。
 
-2023-03-06
-
-  * menu-complete: 番号で選択する
-    https://github.com/akinomyoga/ble.sh/discussions/284
-
-    これは実は実装はそんなに大変ではない気がする。
-
-    LASTWIDGET のチェックは必要?  否、他のものは全て抜けるから関係ない? と思っ
-    たが TAB や cursor key 等の移動コマンドの後も番号はリセットしたい。なのでや
-    はり LASTWIDGET はチェックする。番号が溜まって一致する物がなくなったら一つ
-    ずつ古い文字を削除して一致するものが出るまで削る。一つも一致しなかったら削
-    る前にリセットして新しい文字自体をなかった事にする?
-
 2023-03-02
 
   * menu-complete: C-TAB を連続で押すと仮挿入をそのままに新しい補完が始まる
@@ -6726,6 +6713,70 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-03-16
+
+  * 2023-03-06 menu-complete: 番号で選択する (requested by bkerin) [#D2023]
+    https://github.com/akinomyoga/ble.sh/discussions/284
+
+    これは実は実装はそんなに大変ではない気がする。
+
+    LASTWIDGET のチェックは必要?  否、他のものは全て抜けるから関係ない? と思っ
+    たが TAB や cursor key 等の移動コマンドの後も番号はリセットしたい。なのでや
+    はり LASTWIDGET はチェックする。番号が溜まって一致する物がなくなったら一つ
+    ずつ古い文字を削除して一致するものが出るまで削る。一つも一致しなかったら削
+    る前にリセットして新しい文字自体をなかった事にする?
+
+    試しに実装してみたが操作性に疑問が残る。先ず menu-complete の中に入らないと
+    番号で選択できない。一方で、menu を表示しているだけの場合にも選択しようとす
+    るのが自然の気がする。
+
+    a menu-complete の外からでも M-0 等で選択できる様にするとしても
+      menu-complete に入らずに select しても仕方がない。
+
+      もう一つの問題点は menu が表示されていたらどの文脈であっても M-0 で menu
+      に入ってしまうのかという事。auto-menu を実装していたりすると実質的に M-0
+      は常に menu に入ってしまうという事になり操作できない。或いは、TAB を二回
+      押した時に complete に入るのと同じ様に、LASTWIDGET が complete だった時に
+      M-0 で menu-complete に入るというのは手の気がする。
+
+      更にもう一つの問題点は menu の中に番号を表示していない時でも番号による選
+      択を有効にするのかという事 → これは M-0 等のキーを使っている時点で、実際
+      に番号が表示されているかどうかに関係なく menu-complete に入るという事で良
+      い気がする。
+
+    b 或いは、menu-complete の外で M-0 等で引数を入力し始めたらその場で
+      menu-complete に入るという可能性も考えられる。
+
+    * どの menu-style についても番号を表示する機能が欲しい。
+
+      設定名を変更する?
+
+        bleopt menu_item_prefix
+        bleopt menu_item_prefix_linewise
+        bleopt menu_item_prefix_align
+        bleopt menu_item_prefix_desc
+
+      と思ったが現在の設定名は他の設定と共に menu_STYLE_NAME の形で一貫している。
+      これを壊すのも変な気がするので、既存のルールは保持する。全体の設定を一括
+      で変更するオプションを用意したい気がするが、その名前は何にするか。単に
+      menu_prefix で良いだろうか。
+
+        bleopt menu_prefix
+        bleopt menu_linewise_prefix
+        bleopt menu_align_prefix
+        bleopt menu_desc_prefix
+
+      取り敢えず align と desc について候補番号に対応した。dense は対応していな
+      い。が、完全性を期する為にはやはり dense も対応した方が良い気がする。→対
+      応した。
+
+    * done: wiki, blerc: menu_prefix, menu_{aling,dense,linewise,desc}_prefix
+
+    * 返信
+
+      for key in {0..9}; do ble-bind -m vi_imap -f "$key" 'append-arg enter-menu'; done
+      for key in {0..9}; do ble-bind -m menu_complete -f "$key" 'menu/append-arg always'; done
 
 2023-03-14
 

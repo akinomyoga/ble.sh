@@ -141,6 +141,47 @@ function ble/complete/menu#render-item {
   ret=$sgr0$ret$_ble_term_sgr0
 }
 
+## @fn ble/complete/menu#get-prefix-width format column_width
+##   @param[in] format
+##   @param[in] column_width
+##   @var[out] prefix_width
+##   @var[out] prefix_format
+function ble/complete/menu#get-prefix-width {
+  prefix_width=0
+  prefix_format=${1:-$bleopt_menu_prefix}
+  if [[ $prefix_format ]]; then
+    local prefix1 column_width=$2
+    ble/util/sprintf prefix1 "$prefix_format" "${#menu_items[@]}"
+    local x1 y1 x2 y2
+    LINES=1 COLUMNS=$column_width x=0 y=0 ble/canvas/trace "$prefix1" truncate:measure-bbox
+    if ((x2<=column_width/2)); then
+      prefix_width=$x2
+      ble/string#reserve-prototype "$prefix_width"
+    fi
+  fi
+}
+
+## @fn ble/complete/menu#render-prefix index
+##   @param[in] index
+##   @param[in,opt] column_width
+##   @var[in] prefix_width
+##   @var[in] prefix_format
+##   @var[out] prefix_esc
+function ble/complete/menu#render-prefix {
+  prefix_esc=
+  local index=$1
+  if ((prefix_width)); then
+    local prefix1; ble/util/sprintf prefix1 "$prefix_format" "$((index+1))"
+    local x=0 y=0
+    LINES=1 COLUMNS=$prefix_width ble/canvas/trace "$prefix1" truncate:relative:measure-bbox
+    prefix_esc=$ret$_ble_term_sgr0
+    if ((x<prefix_width)); then
+      prefix_esc=${_ble_string_prototype::prefix_width-x}$prefix_esc
+    fi
+  fi
+}
+
+
 ## @fn ble/complete/menu-style:align/construct/.measure-candidates-in-page
 ##   その頁に入り切る範囲で候補の幅を計測する
 ##   @var[in] begin
@@ -167,10 +208,12 @@ function ble/complete/menu-style:align/construct/.measure-candidates-in-page {
     # 候補の表示幅 w を計算
     local w=${_ble_complete_menu_style_measure[index]%%:*}
     if [[ ! $w ]]; then
-      local x=0 y=0
+      local prefix_esc
+      ble/complete/menu#render-prefix "$index"
+      local x=$prefix_width y=0
       ble/complete/menu#render-item "$item"; esc1=$ret
       local w=$((y*cols+x))
-      _ble_complete_menu_style_measure[index]=$w:${#item}:$item$esc1
+      _ble_complete_menu_style_measure[index]=$w:${#item},${#esc1}:$item$esc1$prefix_esc
     fi
 
     # wcell, ncell 更新
@@ -214,6 +257,9 @@ function ble/complete/menu-style:align/construct/.measure-candidates-in-page {
 function ble/complete/menu-style:align/construct-page {
   x=0 y=0 esc=
 
+  local prefix_width prefix_format
+  ble/complete/menu#get-prefix-width "$bleopt_menu_align_prefix" "$bleopt_menu_align_max"
+
   local wcell=2
   ble/complete/menu-style:align/construct/.measure-candidates-in-page
   (($?==148)) && return 148
@@ -225,7 +271,8 @@ function ble/complete/menu-style:align/construct-page {
 
     local w=${entry%%:*}; entry=${entry#*:}
     local s=${entry%%:*}; entry=${entry#*:}
-    local item=${entry::s} esc1=${entry:s}
+    local len; ble/string#split len , "$s"
+    local item=${entry::len[0]} esc1=${entry:len[0]:len[1]} prefix_esc=${entry:len[0]+len[1]}
 
     local x0=$x y0=$y
     if ((x==0||x+w<cols)); then
@@ -239,14 +286,15 @@ function ble/complete/menu-style:align/construct-page {
         ((x=w%cols,y+=w/cols))
         ((y>=lines&&(x=x0,y=y0,1))) && break
       else
+        ((x+=prefix_width))
         ble/complete/menu#render-item "$item" ||
           ((begin==index)) || # [Note: 少なくとも1個ははみ出ても表示する]
           { x=$x0 y=$y0; break; }; esc1=$ret
       fi
     fi
 
-    _ble_complete_menu_style_icons[index]=$x0,$y0,$x,$y,${#item},${#esc1}:$item$esc1
-    esc=$esc$esc1
+    _ble_complete_menu_style_icons[index]=$((x0+prefix_width)),$y0,$x,$y,${#item},${#esc1}:$item$esc1
+    esc=$esc$prefix_esc$esc1
 
     # 候補と候補の間の空白
     if ((++index<end)); then
@@ -277,13 +325,22 @@ function ble/complete/menu-style:align-nowrap/construct-page {
 
 ## @fn ble/complete/menu-style:dense/construct-page
 ##   @var[in,out] begin end x y esc
+##   @var[in,out] cols lines menu_iloop
 function ble/complete/menu-style:dense/construct-page {
+
+  local prefix_width prefix_format
+  ble/complete/menu#get-prefix-width "$bleopt_menu_dense_prefix" "$cols"
+
   x=0 y=0 esc=
   local item index=$begin N=${#menu_items[@]}
   for item in "${menu_items[@]:begin}"; do
     ble/complete/menu#check-cancel && return 148
 
-    local x0=$x y0=$y esc1
+    local x0=$x y0=$y
+
+    local prefix_esc esc1
+    ble/complete/menu#render-prefix "$index"
+    ((x+=prefix_width,x>cols&&(y+=x/cols,x%=cols)))
     ble/complete/menu#render-item "$item" ||
       ((index==begin)) ||
       { x=$x0 y=$y0; break; }; esc1=$ret
@@ -292,15 +349,17 @@ function ble/complete/menu-style:dense/construct-page {
       if ((y>y0&&x>0||y>y0+1)); then
         ((++y0>=lines)) && break
         esc=$esc$'\n'
-        ((y=y0,x=x0=0))
+        ((y=y0,x0=0,x=prefix_width))
         ble/complete/menu#render-item "$item" ||
           ((begin==index)) ||
           { x=$x0 y=$y0; break; }; esc1=$ret
       fi
     fi
 
-    _ble_complete_menu_style_icons[index]=$x0,$y0,$x,$y,${#item},${#esc1}:$item$esc1
-    esc=$esc$esc1
+    local x1=$((x0+prefix_width)) y1=$y0
+    ((x1>=cols)) && ((y1+=x1/cols,x1%=cols))
+    _ble_complete_menu_style_icons[index]=$x1,$y1,$x,$y,${#item},${#esc1}:$item$esc1
+    esc=$esc$prefix_esc$esc1
 
     # 候補と候補の間の空白
     if ((++index<N)); then
@@ -334,34 +393,18 @@ function ble/complete/menu-style:linewise/construct-page {
   local opts=$1 ret
   local max_icon_width=$((cols-1))
 
-  local prefix_format=$bleopt_menu_linewise_prefix prefix_width=0
-  if [[ $prefix_format ]]; then
-    local prefix1
-    ble/util/sprintf prefix1 "$prefix_format" "${#menu_items[@]}"
-    local x1 y1 x2 y2
-    LINES=1 COLUMNS=$max_icon_width x=0 y=0 ble/canvas/trace "$prefix1" truncate:measure-bbox
-    if ((x2<=max_icon_width/2)); then
-      prefix_width=$x2
-      ble/string#reserve-prototype "$prefix_width"
-    fi
-  fi
+  local prefix_width prefix_format
+  ble/complete/menu#get-prefix-width "$bleopt_menu_linewise_prefix" "$max_icon_width"
 
   local item x0 y0 esc1 index=$begin
   end=$begin x=0 y=0 esc=
   for item in "${menu_items[@]:begin:lines}"; do
     ble/complete/menu#check-cancel && return 148
 
-    # prefix
-    if ((prefix_width)); then
-      local prefix1; ble/util/sprintf prefix1 "$prefix_format" "$((index+1))"
-      LINES=1 COLUMNS=$max_icon_width y=0 ble/canvas/trace "$prefix1" truncate:relative:measure-bbox; esc1=$ret
-      if ((x<prefix_width)); then
-        esc=$esc${_ble_string_prototype::prefix_width-x}$esc1
-        x=$prefix_width
-      else
-        esc=$esc$esc1
-      fi
-    fi
+    local prefix_esc=
+    ble/complete/menu#render-prefix "$index" "$max_icon_width"
+    esc=$esc$prefix_esc
+    ((x=prefix_width))
 
     ((x0=x,y0=y))
     lines=1 cols=$max_icon_width y=0 ble/complete/menu#render-item "$item"; esc1=$ret
@@ -428,8 +471,13 @@ function ble/complete/menu-style:desc/construct-page {
   esac
 
   local wcolumn=$(((available_width-${#colsep}*(ncolumn-1))/ncolumn))
-  local wcand_limit=$(((wcolumn+1)*2/3))
-  ((wcand_limit<10&&(wcand_limit=wcolumn)))
+
+  local prefix_width prefix_format
+  ble/complete/menu#get-prefix-width "$bleopt_menu_desc_prefix" "$wcolumn"
+  ((wcolumn>=prefix_width+15)) || prefix_width=0
+
+  local wcand_limit=$(((wcolumn-prefix_width+1)*2/3))
+  ((wcand_limit<10&&(wcand_limit=wcolumn-prefix_width)))
 
   local -a DRAW_BUFF=()
   local index=$begin icolumn ymax=0
@@ -443,14 +491,14 @@ function ble/complete/menu-style:desc/construct-page {
 
       x=0 y=0
       lines=1 cols=$wcand_limit ble/complete/menu#render-item "$pack"; esc1=$ret
-      ((w=y*wcolumn+x,w>max_width&&(max_width=w)))
+      ((w=y*wcand_limit+x,w>max_width&&(max_width=w)))
 
       ble/array#push measure "$w:${#pack}:$pack$esc1"
     done
 
     local cand_width=$max_width
-    local desc_x=$((cand_width+1)); ((desc_x>wcolumn&&(desc_x=wcolumn)))
-    local desc_prefix=; ((wcolumn-desc_x>30)) && desc_prefix=': '
+    local desc_x=$((prefix_width+cand_width+1)); ((desc_x>wcolumn&&(desc_x=wcolumn)))
+    local desc_prefix=; ((wcolumn-prefix_width-desc_x>30)) && desc_prefix=': '
 
     local xcolumn=$((icolumn*(wcolumn+${#colsep})))
 
@@ -462,6 +510,11 @@ function ble/complete/menu-style:desc/construct-page {
       w=${entry%%:*} entry=${entry#*:}
       s=${entry%%:*} entry=${entry#*:}
       pack=${entry::s} esc1=${entry:s}
+
+      local prefix_esc
+      ble/complete/menu#render-prefix "$index"
+      ble/canvas/put.draw "$prefix_esc"
+      ((x+=prefix_width))
 
       # 候補表示
       ((x0=x,y0=y,x+=w))
@@ -7353,6 +7406,22 @@ function ble/widget/menu-complete {
   ble/widget/complete enter_menu:insert_unique:$opts
 }
 
+function ble/widget/complete/.select-menu-with-arg {
+  [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active ]] || return 1
+
+  local footprint; ble/complete/menu/get-footprint
+  [[ $footprint == "$_ble_complete_menu_footprint" ]] || return 1
+
+  local arg_opts= opts=$1
+  [[ :$opts: == *:enter-menu:* ]] && arg_opts=always
+
+  # 現在のキーが実際に引数の一部として解釈され得る時のみ menu に入る
+  ble/widget/menu/append-arg/.is-argument "$arg_opts" || return 1
+  ble/complete/menu-complete/enter
+  ble/widget/menu/append-arg "$arg_opts"
+  return 0
+}
+
 #------------------------------------------------------------------------------
 # menu-filter
 
@@ -7708,6 +7777,52 @@ function ble-decode/keymap:menu_complete/define {
   ble-bind -f next        'menu/forward-page'
   ble-bind -f home        'menu/beginning-of-page'
   ble-bind -f end         'menu/end-of-page'
+
+  local key
+  for key in {,M-,C-}{0..9}; do
+    ble-bind -f "$key" 'menu/append-arg'
+  done
+}
+
+_ble_complete_menu_arg=
+## @fn ble/widget/menu/append-arg [opts]
+##   @param[in,opt] opts
+function ble/widget/menu/append-arg {
+  [[ ${LASTWIDGET%%' '*} == */append-arg ]] || _ble_complete_menu_arg=
+
+  # 引数入力が開始されていなくて (修飾なしの) 数字キーの時はそのまま通常の数字
+  # 入力として扱う。
+  local i=${#KEYS[@]}; ((i&&i--))
+  local flag=$((KEYS[i]&_ble_decode_MaskFlag))
+  if ! [[ :$1: == *:always:* || flag -ne 0 || $_ble_complete_menu_arg ]]; then
+    ble/widget/menu_complete/exit-default
+    return "$?"
+  fi
+
+  local code=$((KEYS[i]&_ble_decode_MaskChar))
+  ((48<=code&&code<=57)) || return 1
+  local ret; ble/util/c2s "$code"; local ch=$ret
+  ((_ble_complete_menu_arg=10#0$_ble_complete_menu_arg$ch))
+
+  # 番号が範囲内になければ頭から数字を削っていく
+  local count=${#_ble_complete_menu_items[@]}
+  while ((_ble_complete_menu_arg>count)); do
+    ((_ble_complete_menu_arg=10#0${_ble_complete_menu_arg:1}))
+  done
+  ((_ble_complete_menu_arg)) || return 0
+
+  # 移動
+  ble/complete/menu#select "$((_ble_complete_menu_arg-1))"
+}
+
+## @fn ble/widget/menu/append-arg/.is-argument [opts]
+##   @param[in,opt] opts
+function ble/widget/menu/append-arg/.is-argument {
+  local i=${#KEYS[@]}; ((i&&i--))
+  local flag=$((KEYS[i]&_ble_decode_MaskFlag))
+  local code=$((KEYS[i]&_ble_decode_MaskChar))
+  [[ :$1: == *:always:* ]] || ((flag)) || return 1
+  ((48<=code&&code<=57))
 }
 
 #------------------------------------------------------------------------------
