@@ -3304,7 +3304,10 @@ function ble-edit/bind/execute-edit-command {
   local command=$1
   local READLINE_LINE="$_ble_edit_str"
   local READLINE_POINT="$_ble_edit_ind"
-  eval "$command" || return 1
+  ble-edit/restore-PS1
+  builtin eval -- "$command"; local ext=$?
+  ble-edit/adjust-PS1
+  ((ext==0)) || return 1
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
