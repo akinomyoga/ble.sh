@@ -407,8 +407,9 @@ function ble/complete/menu-style:linewise/construct-page {
     ((x=prefix_width))
 
     ((x0=x,y0=y))
-    lines=1 cols=$max_icon_width y=0 ble/complete/menu#render-item "$item"; esc1=$ret
-    _ble_complete_menu_style_icons[index]=$x0,$y0,$x,$y,${#item},${#esc1}:$item$esc1
+    local lines1=1 cols1=$max_icon_width
+    lines=$lines1 cols=$cols1 y=0 ble/complete/menu#render-item "$item"; esc1=$ret
+    _ble_complete_menu_style_icons[index]=$x0,$y0,$x,$y,${#item},${#esc1},"$x0 0 $cols1 $lines1":$item$esc1
     ((index++))
     esc=$esc$esc1
 

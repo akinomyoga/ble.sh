@@ -381,6 +381,7 @@
 - keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` bce2033
 - highlight: fix shifted error marks after delayed `core-syntax` `#D2000` f4145f16
 - syntax: fix unrecognized variable assignment of the form `echo arr[i]+=rhs` `#D2007` 41faa494
+- menu (linewise): fix clipping of long line (reported by bkerin) `#D2025` xxxxxxxx
 
 ## Documentation
 
