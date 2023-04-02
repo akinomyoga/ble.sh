@@ -301,7 +301,7 @@ function ble/util/bgproc#stop/.kill {
 ##
 function ble/util/bgproc#stop {
   local prefix=$1
-  ble/util/idle.cancel "ble/util/bgproc#keepalive/.timeout $prefix"
+  ble/util/bgproc#keepalive/.cancel-timeout "$prefix"
 
   local bgproc bgproc_fname
   ble/util/restore-vars "${prefix}_" bgproc bgproc_fname
@@ -362,6 +362,11 @@ function ble/util/bgproc#keepalive/.timeout {
   ble/util/bgproc#stop "$prefix"
 }
 
+function ble/util/bgproc#keepalive/.cancel-timeout {
+  local prefix=$1
+  ble/function#try ble/util/idle.cancel "ble/util/bgproc#keepalive/.timeout $prefix"
+}
+
 ## @fn ble/util/bgproc#keepalive prefix
 ##   Rest the timeout to stop the background process.
 ##
@@ -374,12 +379,12 @@ function ble/util/bgproc#keepalive {
   ((${#bgproc[@]})) || return 2
   ble/util/bgproc/.alive || return 1
 
-  local timeout_proc="ble/util/bgproc#keepalive/.timeout $1"
-  ble/util/idle.cancel "$timeout_proc"
+  ble/util/bgproc#keepalive/.cancel-timeout "$prefix"
   local ret
   ble/opts#extract-last-optarg "${bgproc[3]}" timeout || return 0; local bgproc_timeout=$ret
   if ((bgproc_timeout>0)); then
-    ble/util/idle.push --sleep="$bgproc_timeout" "$timeout_proc"
+    local timeout_proc="ble/util/bgproc#keepalive/.timeout $1"
+    ble/function#try ble/util/idle.push --sleep="$bgproc_timeout" "$timeout_proc"
   fi
   return 0
 }
@@ -397,7 +402,7 @@ function ble/util/bgproc#close {
 
   local prefix=${1}
   blehook unload-="ble/util/bgproc#close $prefix"
-  ble/util/idle.cancel "ble/util/bgproc#keepalive/.timeout $prefix"
+  ble/util/bgproc#keepalive/.cancel-timeout "$prefix"
 
   # When the callback function "ble/util/bgproc/onclose:PREFIX" is defined, we
   # call the function before starting the closing process.  However, we skip

@@ -140,7 +140,8 @@
 - sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` 56208534
 - complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` 45c76746
 - util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` 7803305f
-- menu-complete: support selection by index (requested by bkerin) `#D2023` xxxxxxxx
+  - util.bgproc: fix use of `ble/util/idle` in bash-3 `#D2026` xxxxxxxx
+- menu-complete: support selection by index (requested by bkerin) `#D2023` b91b8bc8
 
 ## Changes
 
@@ -501,7 +502,7 @@
 - main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` e2ec89c
 - util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` a5b10e8
 - edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` 5d14cf1
-  - edit: restore `PS1` while processing `bind -x` (reported by adoyle-h) `#D2024` xxxxxxxx
+  - edit: restore `PS1` while processing `bind -x` (reported by adoyle-h) `#D2024` 2eadcd5b
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
 - progcomp: work around slow `nix` completion `#D1997` 2c1aacf
 - complete: suppress error messages from `_adb` (reported by mozirilla213) `#D2005` f2aa32b0
@@ -581,14 +582,14 @@
 - util: add `ble/util/message` `#D2001` 2a524f34
 - global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` 41faa494
 - global: fix leak variables `#D2018` 6f5604de
-- edit: handle nested WINCH properly `#D2020` xxxxxxxx
+- edit: handle nested WINCH properly `#D2020` a6b2c078
 
 ## Contrib
 
 - prompt-git: detect staged changes `#D1718` 2b48e31
 - prompt-git: fix a bug that information is not updated on reload `#D1732` 361e9c5
 - config/execmark: show exit status in a separate line `#D1828` 4d24f84
-  - config/execmark: add names of exit statuses `#D2019` xxxxxxxx
+  - config/execmark: add names of exit statuses `#D2019` a6b2c078
 - prompt-git: ignore untracked files in submodules `#D1829` 4d24f84
 - integration/fzf
   - fzf-completion: fix integration (reported by ferdinandyb) `#D1837` 12c022b
@@ -622,7 +623,7 @@
   - histdb: fix `.timeout` not set for background `sqlite3` `#D1982` 20b42fa
   - histdb: suppress color codes in the default `histdb_remarks` `#D1968` 20b42fa
   - histdb: disable timeout of background processes in Bash 3.2 `#D1992` 20b42fa
-  - histdb: rewrite to use `ble/util/bgproc` `#D2017` xxxxxxxx
+  - histdb: rewrite to use `ble/util/bgproc` `#D2017` 7803305f
 - integration: move `fzf` and `bash-preexec` integrations to subdir `#D1939` 86d9467
 
 <!---------------------------------------------------------------------------->

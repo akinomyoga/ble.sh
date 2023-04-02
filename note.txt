@@ -1995,6 +1995,7 @@ bash_tips
 
   * sabbrev: suffix alias in Zsh (拡張子で実行形式を選択)
     コマンド名補間も一緒に対応する必要がある。
+    つまり suffix alias がある時には対応する拡張子を持つファイルも候補に表示する。
 
   * complete: 末尾に不完全な \ がある候補の specialchars フィルタリング?
 
@@ -2023,7 +2024,7 @@ bash_tips
 
     https://www.webfx.com/tools/emoji-cheat-sheet/ に一覧がある。
     然し、emoji リストの難点は思い出すのが大変という事。リストを表示できたら良いのだが。
-    例えば sabbrev -m 経由で挿入するというのが良いかもしれない。
+    例えば sabbrev -m 経由で挿入するというのが良いかもしれない。:: を使う。
 
   * [保留] canvas/panel: 一旦 scroll buffer に行ったものを元に戻す可能性? (motivated by mozirilla213)
 
@@ -2053,6 +2054,10 @@ bash_tips
     て新しく補完し直すべきなのではないか。然し、単なる complete や
     menu-completion や menu-complete backward 等の時には改めて開始するのではな
     くて内部での補完候補の移動を行いたい気もする。
+
+    然しチェックするにしても全ての文字をチェックしていると大変である。と思った
+    が、UTF-8 decode や key decode 等の処理の重さなどを考えたら大した事ないとい
+    えば大したことない。
 
   * menu-complete: suffix もメニュー選択時に表示する機能?
     https://github.com/akinomyoga/ble.sh/discussions/297#discussioncomment-5159146
@@ -5852,6 +5857,11 @@ bash_tips
     様々な形式で記録されている。取り敢えず一番簡単な対応として
     nest に記録されている物を着色するというのが良さそうである。
 
+    2023-03-26 https://github.com/akinomyoga/ble.sh/discussions/308
+
+    対応する request が来た。うーん。もっと最近にも関連した考察をした気がするが、
+    メモに記録があるかどうかは覚えていない。
+
 2018-07-29
 
   * complete: メモ
@@ -6713,6 +6723,14 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-04-02
+
+  * bgproc: bash-3 で idle.cancel がないと表示される [#D2026]
+
+    実装を改めて確認してみたらそもそも bash-3 に対する考慮が全く入っていない。
+    然し、将来的に bash-3 でも idle を使える様にする可能性を考えると単にバージョ
+    ンで判定するのもよくない気がする。結局 function#try で調整する事にする。
 
 2023-03-26
 
