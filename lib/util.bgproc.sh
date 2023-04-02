@@ -274,23 +274,11 @@ function ble/util/bgproc#start {
   return "$_ble_local_ext"
 }
 
-function ble/util/bgproc#stop/.wait {
-  local pid=$1 msec=$2
-  while
-    kill -0 "$pid" 2>/dev/null || return 0
-    ((msec>0))
-  do
-    ble/util/msleep "$((msec>1000?1000:msec))"
-    ((msec-=1000))
-  done
-  return 1
-}
 function ble/util/bgproc#stop/.kill {
   local pid=$1 i close_timeout=$2
-  ble/util/bgproc#stop/.wait "$pid" "$close_timeout" && return 0
-  kill -- "$pid"
-  ble/util/bgproc#stop/.wait "$pid" 10000 && return 0
-  kill -9 "$pid"
+  ble/util/conditional-sync '' '((1))' 1000 progressive-weight:pid="$pid":no-wait-pid:timeout="$close_timeout"
+  kill -0 "$pid" || return 0
+  ble/util/conditional-sync '' '((1))' 1000 progressive-weight:pid="$pid":no-wait-pid:SIGKILL:timeout=10000
 }
 
 ## @fn ble/util/bgproc#stop prefix

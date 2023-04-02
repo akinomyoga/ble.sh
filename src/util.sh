@@ -3638,7 +3638,10 @@ function ble/util/conditional-sync/.kill {
 ##   COMMAND ends.
 ##
 ##   @param[in] command
-##     The command that is evaluated in a subshell
+##     The command that is evaluated in a subshell.  If an empty string is
+##     specified, only the CONDITION is checked for the synchronization and any
+##     background subshell is not started.
+##
 ##   @param[in,opt] condition
 ##     The command to test the condition to continue to run the command.  The
 ##     default condition is "! ble/decode/has-input".  The following local
@@ -3667,6 +3670,15 @@ function ble/util/conditional-sync/.kill {
 ##       The processes are killed by SIGKILL.  When this is unspecified, the
 ##       processes are killed by SIGTERM.
 ##
+##     @opt pid=PID
+##       When COMMAND is empty, the function waits for the exit of the process
+##       specified by PID.  If a negative integer is specified, it is treated
+##       as PGID.  When the condition is unsatisfied or the timeout has been
+##       reached, the specified process will be killed.
+##
+##     @opt no-wait-pid
+##       Do not wait for the exit status of the background process
+##
 function ble/util/conditional-sync {
   local __ble_command=$1
   local __ble_continue=${2:-'! ble/decode/has-input'}
@@ -3680,10 +3692,18 @@ function ble/util/conditional-sync {
     local __ble_weight_max=$__ble_weight __ble_weight=1
 
   local sync_elapsed=0
-  [[ $__ble_timeout ]] && ((__ble_timeout<=0)) && return 142
+  if [[ $__ble_timeout ]] && ((__ble_timeout<=0)); then return 142; fi
   builtin eval -- "$__ble_continue" || return 148
   (
-    builtin eval -- "$__ble_command" & local __ble_pid=$!
+    local __ble_pid=
+    if [[ $__ble_command ]]; then
+      builtin eval -- "$__ble_command" & __ble_pid=$!
+    else
+      local ret
+      ble/opts#extract-last-optarg "$__ble_opts" pid
+      __ble_pid=$ret
+      ble/util/unlocal ret
+    fi
     while
       # check timeout
       if [[ $__ble_timeout ]]; then
@@ -3699,14 +3719,14 @@ function ble/util/conditional-sync {
       ((sync_elapsed+=__ble_weight))
       [[ :$__ble_opts: == *:progressive-weight:* ]] &&
         ((__ble_weight<<=1,__ble_weight>__ble_weight_max&&(__ble_weight=__ble_weight_max)))
-      builtin kill -0 "$__ble_pid" &>/dev/null
+      [[ ! $__ble_pid ]] || builtin kill -0 "$__ble_pid" &>/dev/null
     do
       if ! builtin eval -- "$__ble_continue"; then
         ble/util/conditional-sync/.kill
         return 148
       fi
     done
-    wait "$__ble_pid"
+    [[ ! $__ble_pid || :$__ble_opts: == *:no-wait-pid:* ]] || wait "$__ble_pid"
   )
 }
 

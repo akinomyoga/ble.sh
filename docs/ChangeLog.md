@@ -141,6 +141,7 @@
 - complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` 45c76746
 - util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` 7803305f
   - util.bgproc: fix use of `ble/util/idle` in bash-3 `#D2026` xxxxxxxx
+  - util.bgproc: increase frequency of bgproc termination check (motivated by bkerin) `#D2027` xxxxxxxx
 - menu-complete: support selection by index (requested by bkerin) `#D2023` b91b8bc8
 
 ## Changes
