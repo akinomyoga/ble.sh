@@ -142,6 +142,7 @@
 - util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` 7803305f
   - util.bgproc: fix use of `ble/util/idle` in bash-3 `#D2026` xxxxxxxx
   - util.bgproc: increase frequency of bgproc termination check (motivated by bkerin) `#D2027` xxxxxxxx
+  - util.bgproc: fix an `fd#alloc` failure in bash-4.2 `#D2029` xxxxxxxx
 - menu-complete: support selection by index (requested by bkerin) `#D2023` b91b8bc8
 
 ## Changes

@@ -6726,6 +6726,11 @@ bash_tips
 
 2023-04-02
 
+  * bgproc: bash-4.2 での bgproc#start で {bgproc[0]} は存在しないというエラーメッセージ [#D2029]
+
+    これは exec {fdvar}redirect で発生しているエラーだった。bash-4.1,4.2では
+    {fdvar} の fdvar として配列要素には対応していない。
+
   * bgproc: シェルの終了時に即座に強制終了するオプションをつける? (motivated by bkerin) [#D2028]
     https://github.com/akinomyoga/ble.sh/discussions/309#discussioncomment-5498921
 

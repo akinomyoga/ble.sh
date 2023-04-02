@@ -5,10 +5,10 @@
 ##   calling "ble/util/bgproc#close PREFIX".  The background process is usually
 ##   started on the start of the session and terminated on closing the session.
 ##   In addition, if requested, the background process can be stopped and
-##   started any time in the session.  If the background process is stopped
-##   when it is needed, it is automatically restarted.  If "timeout=TIMEOUT" is
-##   specified in OPTS, the background process is automatically stopped where
-##   there is no access for the time duration specified by TIMEOUT.
+##   started any time in the session.  If the background process is stopped, it
+##   is automatically restarted when it becomes needed.  If "timeout=TIMEOUT"
+##   is specified in OPTS, the background process is automatically stopped
+##   where there is no access for the time duration specified by TIMEOUT.
 ##
 ##   @param[in] prefix
 ##     This names the identifier of the bgproc.  This is actually used as the
@@ -231,11 +231,13 @@ function ble/util/bgproc#start {
   [[ ! ${bgproc[1]-} ]] || ble/fd#close 'bgproc[1]'
 
   # Note: mkfifo may fail in MSYS-1
-  local _ble_local_ext=0
+  local _ble_local_ext=0 _ble_local_bgproc0= _ble_local_bgproc1=
   if ble/util/bgproc/.mkfifo &&
-    ble/fd#alloc 'bgproc[0]' '<> "${bgproc_fname[0]}"' &&
-    ble/fd#alloc 'bgproc[1]' '<> "${bgproc_fname[1]}"'
+    ble/fd#alloc _ble_local_bgproc0 '<> "${bgproc_fname[0]}"' &&
+    ble/fd#alloc _ble_local_bgproc1 '<> "${bgproc_fname[1]}"'
   then
+    bgproc[0]=$_ble_local_bgproc0
+    bgproc[1]=$_ble_local_bgproc1
     # Note: We want to assign a new process group to the background process
     #   without affecting the job table of the main shell so use the subshell
     #   `(...)'.  The process group is later used to kill the process tree in
