@@ -1543,7 +1543,7 @@ function ble/base/clean-up-runtime-directory {
     removed[iremoved++]=$file
   done
   ((iremoved)) && ble/bin/rm -rf "${removed[@]}" 2>/dev/null
-  ((ibgpid)) && ({ ble/bin/sleep 3; kill "${bgpids[@]}"; } & disown) &>/dev/null </dev/null
+  ((ibgpid)) && (ble/util/nohup 'ble/bin/sleep 3; kill "${bgpids[@]}"')
 
   [[ $failglob ]] && shopt -s failglob
   [[ $noglob ]] && set -f

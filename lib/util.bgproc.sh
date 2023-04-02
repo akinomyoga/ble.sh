@@ -237,12 +237,12 @@ function ble/util/bgproc#start {
     ble/fd#alloc 'bgproc[1]' '<> "${bgproc_fname[1]}"'
   then
     # Note: We want to assign a new process group to the background process
-    # without affecting the job table of the main shell so use the subshell
-    # `(...)'.  The process group is later used to kill the process tree in
-    # stopping the background process.  Note that the command substitutions
-    # $(...) do not create a new process group even if we specify `set -m' so
-    # cannot be used for the present purpose.
-    ble/util/assign 'bgproc[4]' '(set -m; ble/util/bgproc/.exec __ble_suppress_joblist__ >/dev/null & ble/util/print "$!")'
+    #   without affecting the job table of the main shell so use the subshell
+    #   `(...)'.  The process group is later used to kill the process tree in
+    #   stopping the background process.  Note that the command substitutions
+    #   $(...) do not create a new process group even if we specify `set -m' so
+    #   cannot be used for the present purpose.
+    ble/util/assign 'bgproc[4]' '(set -m; ble/util/bgproc/.exec __ble_suppress_joblist__ >/dev/null & bgpid=$!; ble/util/print "$bgpid")'
 
     if ble/util/bgproc/.alive; then
       [[ :${bgproc[3]}: == *:no-close-on-unload:* ]] ||
@@ -315,7 +315,7 @@ function ble/util/bgproc#stop {
     if ble/opts#extract-last-optarg "${bgproc[3]}" kill-timeout; then
       close_timeout=$ret
     fi
-    (ble/util/bgproc#stop/.kill "-${bgproc[4]}" "$close_timeout" </dev/null &>/dev/null & disown)
+    (ble/util/nohup 'ble/util/bgproc#stop/.kill "-${bgproc[4]}" "$close_timeout"')
   fi
 
   builtin eval -- "${prefix}_bgproc[0]="

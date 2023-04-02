@@ -327,8 +327,7 @@ if ((_ble_bash>=40000)); then
 
           : >| "$history_tmpfile"
           if [[ $opt_async ]]; then
-            _ble_history_load_bgpid=$(
-              shopt -u huponexit; ble/history:bash/load/.background-initialize </dev/null &>/dev/null & ble/util/print $!)
+            _ble_history_load_bgpid=$(ble/util/nohup 'ble/history:bash/load/.background-initialize' print-bgpid)
 
             function ble/history:bash/load/.background-initialize-completed {
               local history_tmpfile=$_ble_base_run/$$.history.load
@@ -769,8 +768,7 @@ if ((_ble_bash>=30100)); then
 
         : >| "$history_tmpfile"
         if [[ $opt_async ]]; then
-          _ble_history_mlfix_bgpid=$(
-            shopt -u huponexit; ble/history:bash/resolve-multiline/.worker </dev/null &>/dev/null & ble/util/print $!)
+          _ble_history_mlfix_bgpid=$(ble/util/nohup 'ble/history:bash/resolve-multiline/.worker' print-bgpid)
 
           function ble/history:bash/resolve-multiline/.worker-completed {
             local history_tmpfile=$_ble_base_run/$$.history.mlfix.sh

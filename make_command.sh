@@ -1203,10 +1203,9 @@ function sub:scan/bash301bug-array-element-length {
   grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} | grep -Ev '^([^#]*[[:space:]])?#'
 }
 
-function sub:scan/bash501-arith-base {
+function sub:scan/bash401-histexpand-bgpid {
   echo "--- $FUNCNAME ---"
-  # bash-5.1 で $((10#)) の取り扱いが変わった。
-  grc '\b10#\$' --exclude={test,ChangeLog.md}
+  grc '"\$!"' --exclude={test,ChangeLog.md} | grep -Ev '#D2028'
 }
 
 function sub:scan/bash404-no-argument-return {
@@ -1223,6 +1222,12 @@ function sub:scan/bash404-no-argument-return {
       \Z\bwe return\bZd
 
       g'
+}
+
+function sub:scan/bash501-arith-base {
+  echo "--- $FUNCNAME ---"
+  # bash-5.1 で $((10#)) の取り扱いが変わった。
+  grc '\b10#\$' --exclude={test,ChangeLog.md}
 }
 
 function sub:scan/bash502-patsub_replacement {
@@ -1522,6 +1527,7 @@ function sub:scan {
   sub:scan/check-todo-mark
   sub:scan/bash300bug
   sub:scan/bash301bug-array-element-length
+  sub:scan/bash401-histexpand-bgpid
   sub:scan/bash404-no-argument-return
   sub:scan/bash501-arith-base
   sub:scan/bash502-patsub_replacement

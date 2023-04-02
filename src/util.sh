@@ -2200,9 +2200,9 @@ if ((_ble_bash>=40000)); then
   #
   # @remarks 将来的に ${ ...; } に切り替えることになった時に set -m でプロセス
   #   グループが作られるかどうかについて確認が必要。util.broc.sh では «
-  #   ble/util/assign bgpid '(set -m; command & echo "$!")' » でプロセスグルー
-  #   プが作られる事を想定している。例えば $(...) はプロセスグループが作られな
-  #   いので使えない。
+  #   ble/util/assign bgpid '(set -m; command & bgpid=$!; ble/util/print
+  #   "$bgpid")' » でプロセスグループが作られる事を想定している。例えば $(...)
+  #   はプロセスグループが作られないので使えない。
   function ble/util/assign {
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
@@ -2879,6 +2879,47 @@ fi
 ble/fd#alloc _ble_util_fd_null '<> /dev/null' base:inherit
 [[ -c /dev/zero ]] &&
   ble/fd#alloc _ble_util_fd_zero '< /dev/zero' base:inherit
+
+function ble/fd#close-all-tty {
+  local -a fds=()
+  if [[ -d /proc/$$/fd ]]; then
+    ble/util/getpid
+    local fd
+    for fd in /proc/"$BASHPID"/fd/[0-9]*; do
+      ble/array#push fds "${fd##*/}"
+    done
+  else
+    fd=({0..255})
+  fi
+
+  # Note: 0 1 2 及び _ble_util_fd_std{in,out,err} を閉じる事を考えたが、どうも
+  # redirect によって待避されている物などたくさんある様なので全部チェックする事
+  # にした。
+  local fd
+  for fd in "${fds[@]}"; do
+    if ble/string#match "$fd" '^[0-9]+$' && [[ -t $fd ]]; then
+      builtin eval "exec $fd>&- $fd>&$_ble_util_fd_null"
+      ble/array#remove _ble_util_openat_fdlist "$fd"
+    fi
+  done
+}
+## @fn ble/util/nohup command [opts]
+##   @param[in] command
+##   @param[in,opt] opts
+##     @opts print-bgpid
+function ble/util/nohup {
+  if ((!BASH_SUBSHELL)); then
+    (ble/util/nohup "$@")
+    return "$?"
+  fi
+
+  ble/fd#close-all-tty
+  shopt -u huponexit
+  builtin eval -- "$1" &>/dev/null </dev/null & { local pid=$!; disown; }
+  if [[ :$2: == *:print-bgpid:* ]]; then
+    ble/util/print "$pid"
+  fi
+}
 
 function ble/util/print-quoted-command {
   local ret; ble/string#quote-command "$@"
