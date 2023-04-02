@@ -967,6 +967,18 @@ function ble/path#remove-glob {
   _ble_local_script=${_ble_local_script//opts/"$1"}
   builtin eval -- "$_ble_local_script"
 }
+## @fn ble/opts#extract-last-optarg opts key [default_value]
+function ble/opts#extract-last-optarg {
+  ret=
+  local rex='.*:'$2'(=[^:]*)?:'
+  [[ :$1: =~ $rex ]] || return 1
+  if [[ ${BASH_REMATCH[1]} ]]; then
+    ret=${BASH_REMATCH[1]:1}
+  elif [[ ${3+set} ]]; then
+    ret=$3
+  fi
+  return 0
+}
 
 if ((_ble_bash>=40000)); then
   _ble_util_set_declare=(declare -A NAME)
@@ -1785,27 +1797,140 @@ function ble/util/sleep {
 #------------------------------------------------------------------------------
 # ble/util/conditional-sync
 
-## 関数 ble/util/conditional-sync command [condition weight opts]
+function ble/util/conditional-sync/.collect-descendant-pids {
+  local pid=$1 awk_script='
+    $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ {
+      child[$2,child[$2]++]=$1;
+    }
+    function print_recursive(pid, _, n, i) {
+      if (child[pid]) {
+        n = child[pid];
+        child[pid] = 0; # avoid infinite loop
+        for (i = 0; i < n; i++) {
+          print_recursive(child[pid, i]);
+        }
+      }
+      print pid;
+    }
+    END { print_recursive(pid); }
+  '
+  ble/util/assign ret 'ble/bin/ps -A -o pid,ppid'
+  ble/util/assign-array ret 'ble/bin/awk -v pid="$pid" "$awk_script" <<< "$ret"'
+}
+
+## @fn ble/util/conditional-sync/.kill
+##   @var __ble_pid
+##   @var __ble_opts
+function ble/util/conditional-sync/.kill {
+  local kill_pids
+  if [[ :$__ble_opts: == *:killall:* ]]; then
+    ble/util/conditional-sync/.collect-descendant-pids "$__ble_pid"
+    kill_pids=("${ret[@]}")
+  else
+    kill_pids=("$__ble_pid")
+  fi
+
+  if [[ :$__ble_opts: == *:SIGKILL:* ]]; then
+    builtin kill -9 "${kill_pids[@]}" &>/dev/null
+  else
+    builtin kill "${kill_pids[@]}" &>/dev/null
+  fi
+} &>/dev/null
+
+## @fn ble/util/conditional-sync command [condition weight opts]
+##   Evaluate COMMAND and kill it when CONDITION becomes unsatisfied before
+##   COMMAND ends.
+##
+##   @param[in] command
+##     The command that is evaluated in a subshell.  If an empty string is
+##     specified, only the CONDITION is checked for the synchronization and any
+##     background subshell is not started.
+##
+##   @param[in,opt] condition
+##     The command to test the condition to continue to run the command.  The
+##     default condition is "! ble/decode/has-input".  The following local
+##     variables are available from the condition command:
+##
+##     @var sync_elapsed
+##       Accumulated time of sleep in milliseconds.
+##
+##   @param[in,opt] weight
+##     The interval of checking CONDITION in milliseconds.  The default is
+##     "100".
+##   @param[in,opt] opts
+##     A colon-separated list of the following fields to control the detailed
+##     behavior:
+##
+##     @opt progressive-weight
+##       The interval of checking CONDITION is gradually increased and stops
+##       at the value specified by WEIGHT.
+##     @opt timeout=TIMEOUT
+##       When this is specified, COMMAND is unconditionally terminated when
+##       it does not end until the time specified by TIMEOUT in milliseconds
+##     @opt killall
+##       Kill also all the children and descendant processes. When this is
+##       unspecified, only the subshell used to run COMMAND is killed.
+##     @opt SIGKILL
+##       The processes are killed by SIGKILL.  When this is unspecified, the
+##       processes are killed by SIGTERM.
+##
+##     @opt pid=PID
+##       When COMMAND is empty, the function waits for the exit of the process
+##       specified by PID.  If a negative integer is specified, it is treated
+##       as PGID.  When the condition is unsatisfied or the timeout has been
+##       reached, the specified process will be killed.
+##
+##     @opt no-wait-pid
+##       Do not wait for the exit status of the background process
+##
 function ble/util/conditional-sync {
-  local command=$1
-  local cancel=${2:-'! ble-decode/has-input'}
-  local weight=$3; ((weight<=0&&(weight=100)))
-  local opts=$4
-  [[ :$opts: == *:progressive-weight:* ]] &&
-    local weight_max=$weight weight=1
+  local __ble_command=$1
+  local __ble_continue=${2:-'! ble/decode/has-input'}
+  local __ble_weight=$3; ((__ble_weight<=0&&(__ble_weight=100)))
+  local __ble_opts=$4
+
+  local __ble_timeout= __ble_rex=':timeout=([^:]+):'
+  [[ :$__ble_opts: =~ $__ble_rex ]] && ((__ble_timeout=BASH_REMATCH[1]))
+
+  [[ :$__ble_opts: == *:progressive-weight:* ]] &&
+    local __ble_weight_max=$__ble_weight __ble_weight=1
+
+  local sync_elapsed=0
+  if [[ $__ble_timeout ]] && ((__ble_timeout<=0)); then return 142; fi
+  builtin eval -- "$__ble_continue" || return 148
   (
-    eval "$command" & local pid=$!
+    local __ble_pid=
+    if [[ $__ble_command ]]; then
+      builtin eval -- "$__ble_command" & __ble_pid=$!
+    else
+      local ret
+      ble/opts#extract-last-optarg "$__ble_opts" pid
+      __ble_pid=$ret
+      ble/util/unlocal ret
+    fi
     while
-      ble/util/msleep "$weight"
-      [[ :$opts: == *:progressive-weight:* ]] &&
-        ((weight<<=1,weight>weight_max&&(weight=weight_max)))
-      builtin kill -0 "$pid" &>/dev/null
+      # check timeout
+      if [[ $__ble_timeout ]]; then
+        if ((__ble_timeout<=0)); then
+          ble/util/conditional-sync/.kill
+          return 142
+        fi
+        ((__ble_weight>__ble_timeout)) && __ble_weight=$__ble_timeout
+        ((__ble_timeout-=__ble_weight))
+      fi
+
+      ble/util/msleep "$__ble_weight"
+      ((sync_elapsed+=__ble_weight))
+      [[ :$__ble_opts: == *:progressive-weight:* ]] &&
+        ((__ble_weight<<=1,__ble_weight>__ble_weight_max&&(__ble_weight=__ble_weight_max)))
+      [[ ! $__ble_pid ]] || builtin kill -0 "$__ble_pid" &>/dev/null
     do
       if ! eval "$cancel"; then
         builtin kill "$pid" &>/dev/null
         return 148
       fi
     done
+    [[ ! $__ble_pid || :$__ble_opts: == *:no-wait-pid:* ]] || wait "$__ble_pid"
   )
 }
 
