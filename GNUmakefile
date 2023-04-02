@@ -178,12 +178,18 @@ else
   INSDIR_DOC = $(DATA_HOME)/doc/blesh
 endif
 
+ifneq ($(strip_comment),)
+  opt_strip_comment := --strip-comment=$(strip_comment)
+else
+  opt_strip_comment :=
+endif
+
 install: \
   $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) \
   $(outfiles-doc:$(OUTDIR)/doc/%=$(INSDIR_DOC)/%) \
   $(INSDIR)/cache.d $(INSDIR)/run
 $(INSDIR)/%: $(OUTDIR)/%
-	bash make_command.sh install "$<" "$@"
+	bash make_command.sh install $(opt_strip_comment) "$<" "$@"
 $(INSDIR_DOC)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
 $(INSDIR)/cache.d $(INSDIR)/run:

@@ -583,6 +583,7 @@
 - global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` 41faa494
 - global: fix leak variables `#D2018` 6f5604de
 - edit: handle nested WINCH properly `#D2020` a6b2c078
+- make: include the source filenames in the installed files (suggested by bkerin) `#D2027` xxxxxxxx
 
 ## Contrib
 

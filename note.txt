@@ -6726,6 +6726,18 @@ bash_tips
 
 2023-04-02
 
+  * make: インストール時に元のコメントなどの情報への pointer をつける (suggested by bkerin) [#D2027]
+    https://github.com/akinomyoga/ble.sh/discussions/309#discussioncomment-5498921
+
+    make_command.sh install からでは元のソースがどれかは原理的には分からないが、
+    取り敢えず現状では ble.sh 以外は全て対応するファイルが同名で存在しているの
+    で、その仮定の下でファイル名を含める事にした。ble.sh についても ble.pp と
+    src/*.sh を全て含める事にした。
+
+    果たしてコメントを削除しないインストールが本当に必要なのかは謎だが一応機能
+    としてはつけておく事にした。何れにしても元々ある日本語のコメントは個人用の
+    物であって他の人に見せる為のものではない。
+
   * bgproc: bash-3 で idle.cancel がないと表示される [#D2026]
 
     実装を改めて確認してみたらそもそも bash-3 に対する考慮が全く入っていない。

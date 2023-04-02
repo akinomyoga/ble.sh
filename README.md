@@ -52,13 +52,13 @@ make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
-The build process integrates multiple Bash script files into a single Bash script `ble.sh`,
+The build process integrates multiple Bash script files into a single Bash script `ble.sh` with pre-processing,
 place other module files in appropriate places, and strip code comments for shorter initialization time.
 
 Note: This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
 Some people seem to bilindly believe that one always need to use `make` with C/C++/Fortran compilers to generate binaries.
 They complain about `ble.sh`'s make process, but it comes from the lack of knowledge on the general principle of `make`.
-C/C++ programs in the repository is used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
+You may find C/C++ programs in the repository, but they are used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
 The generated table is included in the repository:
 [`canvas.GraphemeClusterBreak.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.GraphemeClusterBreak.sh),
 [`canvas.c2w.musl.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.musl.sh),
@@ -292,6 +292,9 @@ If either the make variables `DESTDIR` or `PREFIX` is supplied, `ble.sh` will be
 Otherwise, if the make variables `INSDIR` is specified, it will be installed directly on `$INSDIR`.
 Otherwise, if the environment variable `$XDG_DATA_HOME` is defined, the install location will be `$XDG_DATA_HOME/blesh`.
 If none of these variables are specified, the default install location is `~/.local/share/blesh`.
+
+The comment lines and blank lines in the script files are stripped in the installation process.
+If you would like to keep these lines in the script files, please specify the argument `strip_comment=no` to `make`.
 
 To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
 
