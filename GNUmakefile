@@ -31,7 +31,7 @@ MWGPP:=$(GAWK) -f make/mwg_pp.awk
 #------------------------------------------------------------------------------
 # ble.sh
 
-FULLVER:=0.4.0-devel3
+FULLVER := 0.4.0-devel4
 
 OUTDIR:=out
 

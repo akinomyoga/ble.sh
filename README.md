@@ -116,7 +116,7 @@ This only requires the corresponding package manager.
 
 - [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.4)
 - [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
-- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel2/) `blesh` (0.4.0-devel2)
+- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel3/) `blesh` (0.4.0-devel3)
 </details>
 
 <details open><summary><b>Update an existing copy of <code>ble.sh</code></b></summary>
@@ -303,7 +303,7 @@ To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
 For download, trial and install, see the description at each release page.
 The stable versions are significantly old compared to the devel version, so many features are unavailable.
 
-- Devel [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
+- Devel [v0.4.0-devel3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel3) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
 - Stable [v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4) (2019-02 fork) Enhanced completions
 - Stable [v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7) (2018-03 fork) Vim mode
 - Stable [v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15) (2015-12 fork) Syntax highlighting

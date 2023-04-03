@@ -1,7 +1,12 @@
 <!---------------------------------------------------------------------------->
+# ble-0.4.0-devel4
+
+2023-04-03... (`#D2030`...) 1a5c451c...
+
+<!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
 
-2020-12-02 -- (`#D1427`...) 276baf2...
+2020-12-02...2023-04-03 (`#D1427`...`#D2030`) 276baf2...1a5c451c
 
 ## New features
 
@@ -140,9 +145,9 @@
 - sabbrev: support inline and linewise sabbre with `ble-sabbrev -il` `#D2012` 56208534
 - complete: add `bleopt complete_source_sabbrev_{opts,ignore}` (motivated by mozirilla213) `#D2013` f95eb0cc `#D2016` 45c76746
 - util.bgproc: separate `ble/util/bgproc` from `histdb` (motivated by bkerin) `#D2017` 7803305f
-  - util.bgproc: fix use of `ble/util/idle` in bash-3 `#D2026` xxxxxxxx
-  - util.bgproc: increase frequency of bgproc termination check (motivated by bkerin) `#D2027` xxxxxxxx
-  - util.bgproc: fix an `fd#alloc` failure in bash-4.2 `#D2029` xxxxxxxx
+  - util.bgproc: fix use of `ble/util/idle` in bash-3 `#D2026` 79a6bd41
+  - util.bgproc: increase frequency of bgproc termination check (motivated by bkerin) `#D2027` 8d623c19
+  - util.bgproc: fix an `fd#alloc` failure in bash-4.2 `#D2029` 7c4ff7bc
 - menu-complete: support selection by index (requested by bkerin) `#D2023` b91b8bc8
 
 ## Changes
@@ -384,7 +389,7 @@
 - keymap/vi (`operator:filter`): do not append newline at the end of line `#D1994` bce2033
 - highlight: fix shifted error marks after delayed `core-syntax` `#D2000` f4145f16
 - syntax: fix unrecognized variable assignment of the form `echo arr[i]+=rhs` `#D2007` 41faa494
-- menu (linewise): fix clipping of long line (reported by bkerin) `#D2025` xxxxxxxx
+- menu (linewise): fix clipping of long line (reported by bkerin) `#D2025` 4c6a4775
 
 ## Documentation
 
@@ -503,7 +508,7 @@
 - term (`terminology`): work around terminal glitches `#D1946` 9a1b4f9
 - main (`ble/bin/awk`): add workaround for macOS `awk-32` `#D1974` e2ec89c
 - util.hook: workaround bash-5.2 bug of nested read by `WINCH` `#D1981` a5b10e8
-  - main (`ble/base/adjust-builtin-wrappers`): fix persistent tempenv `IFS=` in bash-5.0 (reported by pt12lol) `#D2030` xxxxxxxx
+  - main (`ble/base/adjust-builtin-wrappers`): fix persistent tempenv `IFS=` in bash-5.0 (reported by pt12lol) `#D2030` 5baf6f63
 - edit: always adjust the terminal states with `bind -x` (reported by linwaytin) `#D1983` 5d14cf1
   - edit: restore `PS1` while processing `bind -x` (reported by adoyle-h) `#D2024` 2eadcd5b
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
@@ -587,7 +592,7 @@
 - global: normalize bracket expressions to `_a-zA-Z` / `_a-zA-Z0-9` `#D2006` 41faa494
 - global: fix leak variables `#D2018` 6f5604de
 - edit: handle nested WINCH properly `#D2020` a6b2c078
-- make: include the source filenames in the installed files (suggested by bkerin) `#D2027` xxxxxxxx
+- make: include the source filenames in the installed files (suggested by bkerin) `#D2027` 610fab39
 
 ## Contrib
 

@@ -102,7 +102,7 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 
 - [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.4)
 - [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
-- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel2/) `blesh` (0.4.0-devel2)
+- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel3/) `blesh` (0.4.0-devel3)
 </details>
 
 <details open><summary><b>既存の <code>ble.sh</code> を更新</b></summary>
@@ -288,7 +288,7 @@ Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` 
 ダウンロード・試用・インストールの方法については各リリースページの説明を御覧ください。
 現在、安定版は開発版に比べてかなり古いので様々な機能が欠けている事にご注意下さい。
 
-- 開発版 [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
+- 開発版 [v0.4.0-devel3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel3) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
 - 安定版 [v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4) (2019-02 fork) 拡張補完
 - 安定版 [v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7) (2018-03 fork) Vim モード
 - 安定版 [v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15) (2015-12 fork) 構文着色
