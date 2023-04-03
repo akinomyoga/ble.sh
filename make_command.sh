@@ -1244,8 +1244,8 @@ function sub:scan/bash502-patsub_replacement {
       \Z/\$\(\([^()]+\)\)\}Zd
       \Z/\$'\''([^\\]|\\.)+'\''\}Zd
 
-      \Z\$\{[a-zA-Z0-9_]+//(ARR|DICT|PREFIX|NAME)/\$([a-zA-Z0-9_]+|\{[a-zA-Z0-9_#:-]+\})\}Zd
-      \Z\$\{[a-zA-Z0-9_]+//'\''%[dlcxy]'\''/\$[a-zA-Z0-9_]+\}Zd # src/canvas.sh
+      \Z\$\{[_a-zA-Z0-9]+//(ARR|DICT|PREFIX|NAME)/\$([_a-zA-Z0-9]+|\{[_a-zA-Z0-9#:-]+\})\}Zd
+      \Z\$\{[_a-zA-Z0-9]+//'\''%[dlcxy]'\''/\$[_a-zA-Z0-9]+\}Zd # src/canvas.sh
 
       \Z#D1738Zd
       \Z\$\{_ble_edit_str//\$'\''\\n'\''/\$'\''\\n'\''"\$comment_begin"\}Zd # edit.sh
@@ -1482,7 +1482,7 @@ function sub:scan {
       \Ztext = "eval -- \$'\''Zd
       \Zcmd '\''eval -- %q'\''Zd
       \Z\$\(eval \$\(call .*\)\)Zd
-      \Z^[[:space:]]*local rex_[a-zA-Z0-9_]+='\''[^'\'']*'\''[[:space:]]*$Zd
+      \Z^[[:space:]]*local rex_[_a-zA-Z0-9]+='\''[^'\'']*'\''[[:space:]]*$Zd
       \ZLINENO=\$_ble_edit_LINENO evalZd
       g'
   sub:scan/builtin 'unset' |
@@ -1627,13 +1627,21 @@ function sub:release-note/.find-commit-pairs {
     }
     /^__MODE_MASTER__$/ { mode = "master"; next; }
 
+    function reduce_title(str) {
+      str = $2;
+      #if (match(str, /^.*\[(originally: )?(.+: .+)\]$/, m)) str = m[2];
+      gsub(/["`]/, "", str);
+      #print str >"/dev/stderr";
+      return str;
+    }
+
     mode == "head" {
       i = nlist++;
-      titles[i] = $2
+      titles[i] = $2;
       commit_head[i] = $1;
-      title2index[$2] = i;
+      title2index[reduce_title($2)] = i;
     }
-    mode == "master" && (i = title2index[$2]) != "" && commit_master[i] == "" {
+    mode == "master" && (i = title2index[reduce_title($2)]) != "" && commit_master[i] == "" {
       commit_master[i] = $1;
     }
 
@@ -1658,24 +1666,67 @@ function sub:release-note {
 
   local commit_pair
   for commit_pair in "${commits[@]}"; do
-    local a=${commit_pair%%:*}
-    commit_pair=${commit_pair:${#a}+1}
-    local b=${commit_pair%%:*}
-    local c=${commit_pair#*:}
+    local hash=${commit_pair%%:*}
+    commit_pair=${commit_pair:${#hash}+1}
+    local hash_base=${commit_pair%%:*}
+    local title=${commit_pair#*:}
+
+    local rex_hash_base=$hash_base
+    if ((${#hash_base} == 7)); then
+      rex_hash_base=$hash_base[0-9a-f]?
+    elif ((${#hash_base} == 8)); then
+      rex_hash_base=$hash_base?
+    fi
 
     local result=
-    [[ $b ]] && result=$(awk '
+    [[ $hash_base ]] && result=$(awk '
         sub(/^##+ +/, "") { heading = "[" $0 "] "; next; }
-        sub(/\y'"$b"'\y/, "'"$a (master: $b)"'") {print heading $0;}
+        sub(/\y'"$rex_hash_base"'\y/, "'"$hash (master: $hash_base)"'") {print heading $0;}
       ' "$fname_changelog")
     if [[ $result ]]; then
       echo "$result"
-    elif [[ $c ]]; then
-      echo "- $c $a (master: ${b:-N/A}) ■NOT-FOUND■"
+    elif [[ $title ]]; then
+      echo "- $title $hash (master: ${hash_base:-N/A}) ■NOT-FOUND■"
     else
-      echo "■not found $a"
+      echo "■not found $hash"
     fi
   done | tac
+}
+
+# 以下の様な形式のファイルをセクション毎に分けて出力します。
+#
+# [Fixes] - foo bar
+# [New features] - foo bar
+# [Fixes] - foo bar
+# [Fixes] - foo bar
+# ...
+function sub:release-note-sort {
+  local file=$1
+  awk '
+    match($0, /\[[^][]+\]/) {
+      key = substr($0, 1, RLENGTH);
+      gsub(/^\[|]$/, "", key);
+
+      line = substr($0, RLENGTH + 1);
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line);
+      if (line == "") next;
+      if (line !~ /^- /) line = "- " line;
+
+      if (sect[key] == "")
+        keys[nkey++] = key;
+      sect[key] = sect[key] line "\n"
+      next;
+    }
+    {print}
+
+    END {
+      for (i=0;i<nkey;i++) {
+        key = keys[i];
+        print "## " key;
+        print sect[key];
+      }
+    }
+  ' "$file"
 }
 
 #------------------------------------------------------------------------------

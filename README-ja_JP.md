@@ -100,7 +100,7 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 
 この方法では対応するパッケージ管理ツールのみが必要です。
 
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.4)
 - [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
 - [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel2/) `blesh` (0.4.0-devel2)
 </details>
@@ -211,9 +211,9 @@ Vimモードの実装は2017年9月に始まり2018年3月に一先ず完成と�
 現在は漫然とメンテナンスしている所でいつになるかは分かりませんが、以下に挙げるような機能も加えたいと何となく考えています。
 
 - 2013-06 v0.0 -- 実験
-- 2015-12 v0.1 -- 構文着色 [[v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14)]
-- 2018-03 v0.2 -- Vim モード [[v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6)]
-- 2019-02 v0.3 -- 拡張補完 [[v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3)]
+- 2015-12 v0.1 -- 構文着色 [[v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15)]
+- 2018-03 v0.2 -- Vim モード [[v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7)]
+- 2019-02 v0.3 -- 拡張補完 [[v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4)]
 - 20xx-xx v0.4 (plan) -- プログラム着色 [[nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)]
 - 20xx-xx v0.5 (plan) -- TUI設定画面
 - 20xx-xx v0.6 (plan) -- エラー診断?
@@ -289,29 +289,9 @@ Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` 
 現在、安定版は開発版に比べてかなり古いので様々な機能が欠けている事にご注意下さい。
 
 - 開発版 [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
-- 安定版 [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) 拡張補完
-- 安定版 [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) Vim モード
-- 安定版 [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) 構文着色
-
-## 1.2 `ble.sh` をダウンロードして試す (旧バージョン ble-0.3 201902版)<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
-
-`wget` を使う場合:
-```console
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
-$ tar xJf ble-0.3.3.tar.xz
-$ source ble-0.3.3/ble.sh
-```
-`curl` を使う場合:
-```console
-$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
-$ tar xJf ble-0.3.3.tar.xz
-$ source ble-0.3.3/ble.sh
-```
-
-指定したディレクトリに `ble.sh` を配置するには単に `ble-0.1.7` ディレクトリをコピーします。
-```console
-$ cp -r ble-0.3.3 /path/to/blesh
-```
+- 安定版 [v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4) (2019-02 fork) 拡張補完
+- 安定版 [v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7) (2018-03 fork) Vim モード
+- 安定版 [v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15) (2015-12 fork) 構文着色
 
 ## 1.3 `.bashrc` に設定する<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
@@ -710,3 +690,4 @@ GitHub の Issue/PR を通して多くの方からフィードバックを頂き
 - [`@rux616`](https://github.com/rux616) 様には幾つかの問題報告および `.blerc` の既定パス解決のバグ修正をいただきました。
 - [`@timjrd`](https://github.com/timjrd) 様には補完の枠組みの高速化に関する PR をいただきました。
 - [`@3ximus`](https://github.com/3ximus) 様には広範囲に渡る様々な問題について報告いただきました。
+- [`@SuperSandro2000`](https://github.com/SuperSandro2000) 様には NixOS 関係を始め様々なご報告をいただきました。

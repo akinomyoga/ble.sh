@@ -376,7 +376,7 @@
 - complete (action:file): support `ble/syntax-raw` in the filename extraction (reported by qoreQyaS) `#D1921` 32277da
 - decode: fix a bug that the tab completion do not work with bash-4.4 and lower `#D1928` 7da9bce
 - complete: fix non-working ambiguous path completion with `..` and `.` in the path `#D1930` 632e90a
-- main (`ble-reload`): fix failure by non-existent rcfile `#D1931` 0ceb0cb
+- main (`ble-reload`): fix failure by non-existent rcfile `#D1931` b7ae2fa
 - syntax (`ble/syntax/highlight/vartype`): check variable in global scope `#D1932` b7026de
 - menu (linewise): fix layout calculation with variable width of line prefix (reported by bkerin) `#D1979` cc852dc
 - edit (`ble/textarea#render`): fix interleaving outputs to `_ble_util_buffer` and `DRAW_BUFF` `#D1987` 6d61388
@@ -564,6 +564,7 @@
 - make: update lint check `#D1709` 7e26dcd
 - test: save the test log to a file `#D1735` d8e6ea7
 - benchmark: improve determination of the base time `#D1737` ad866c1
+- make: add fallback Makefile for BSD make `#D1805` e5d8d00c
 - main: support `bleopt debug_xtrace` (requested by SuperSandro2000) `#D1810` 022d38b
 - test: clean up check failures by `make check` and `make scan` `#D1812` bb3e0a3
 - util (`fd#alloc`): limit the search range of free fds `#D1813` 43be0e4 4c90072

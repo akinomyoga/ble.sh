@@ -1868,7 +1868,7 @@ function ble/syntax/highlight/vartype/.impl {
   local __ble_name=$1 __ble_opts=$2 __ble_tail=$3
   local __ble_attr; ble/variable#get-attr -v __ble_attr "$__ble_name"
   if [[ ${!__ble_name+set} || $__ble_attr == *[aA]* ]]; then
-    local __ble_rex='^-?[0-9]+(#[0-9a-zA-Z@_]*)?$'
+    local __ble_rex='^-?[0-9]+(#[_a-zA-Z0-9@]*)?$'
     if [[ ${!__ble_name-} && :$__ble_opts: == *:expr:* && ! ( ${!__ble_name} =~ $__ble_rex ) ]]; then
       __ble_vartype_ret=$ATTR_VAR_EXPR
     elif [[ ${!__ble_name+set} && $__ble_attr == *x* ]]; then
@@ -2889,7 +2889,7 @@ function ble/syntax:bash/ctx-expr {
     local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" readvar:expr:global
     ((_ble_syntax_attr[i]=ret,i+=${#rematch}))
     return 0
-  elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
+  elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[_a-zA-Z0-9@]*)?'; [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ATTR_VAR_NUMBER,i+=${#BASH_REMATCH}))
     return 0
   elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}_a-zA-Z0-9]+" 1; then
@@ -2944,7 +2944,7 @@ function ble/syntax:bash/ctx-expr {
 function ble/syntax:bash/check-brace-expansion {
   [[ $tail == '{'* ]] || return 1
 
-  local rex='^\{[-+0-9a-zA-Z.]*(\}?)'
+  local rex='^\{[-+a-zA-Z0-9.]*(\}?)'
   [[ $tail =~ $rex ]]
   local str=$BASH_REMATCH
 
@@ -3454,7 +3454,7 @@ function ble/syntax:bash/ctx-coproc/check-word-end {
   local word=${text:wbegin:wlen}
   local wt=$wtype
 
-  if local rex='^[_a-zA-Z][_a-zA-Z]*$'; [[ $word =~ $rex ]]; then
+  if local rex='^[_a-zA-Z][_a-zA-Z0-9]*$'; [[ $word =~ $rex ]]; then
     if ble/syntax:bash/ctx-coproc/.is-next-compound; then
       # 構文: 変数名 複合コマンド
       local attr=$ATTR_VAR
@@ -5662,7 +5662,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:rhs {
   ble/syntax/completion-context/.check/parameter-expansion
   if ((wlen>=0)); then
     local p=$wbeg
-    local rex='^[a-zA-Z0-9_]+(\+?=|\[)'
+    local rex='^[_a-zA-Z0-9]+(\+?=|\[)'
     ((ctx==CTX_VALR)) && rex='^(\[)'
     if [[ ${text:p:index-p} =~ $rex ]]; then
       if [[ ${BASH_REMATCH[1]} == '[' ]]; then

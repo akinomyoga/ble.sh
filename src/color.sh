@@ -1007,7 +1007,7 @@ fi
 ## @fn ble/color/setface/.check-argument
 ##   @var[out] ext
 function ble/color/setface/.check-argument {
-  local rex='^[a-zA-Z0-9_]+$'
+  local rex='^[_a-zA-Z0-9]+$'
   [[ $# == 2 && $1 =~ $rex && $2 ]] && return 0
 
   local flags=a

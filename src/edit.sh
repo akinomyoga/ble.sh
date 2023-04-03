@@ -2993,6 +2993,7 @@ function ble/textarea#invalidate {
 
 ## @fn ble/textarea#render/.erase-forward-line.draw opts
 ##   @var[in] x cols
+##   @var[out] DRAW_BUFF
 function ble/textarea#render/.erase-forward-line.draw {
   local eraser=$_ble_term_sgr0$_ble_term_el
   if [[ :$render_opts: == *:relative:* ]]; then

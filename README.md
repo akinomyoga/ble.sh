@@ -114,7 +114,7 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 
 This only requires the corresponding package manager.
 
-- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.3)
+- [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.4)
 - [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
 - [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel2/) `blesh` (0.4.0-devel2)
 </details>
@@ -223,9 +223,9 @@ The implementation of vim mode has been started in September, 2017 and completed
 I started working on the enhancement of the completion in August, 2018 and released it in the next February.
 
 - 2013-06 v0.0 -- prototype
-- 2015-12 v0.1 -- Syntax highlighting [[v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14)]
-- 2018-03 v0.2 -- Vim mode [[v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6)]
-- 2019-02 v0.3 -- Enhanced completion [[v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3)]
+- 2015-12 v0.1 -- Syntax highlighting [[v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15)]
+- 2018-03 v0.2 -- Vim mode [[v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7)]
+- 2019-02 v0.3 -- Enhanced completion [[v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4)]
 - 20xx-xx v0.4 (plan) -- programmable highlighting [[nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)]
 - 20xx-xx v0.5 (plan) -- TUI configuration
 - 20xx-xx v0.6 (plan) -- error diagnostics?
@@ -304,9 +304,9 @@ For download, trial and install, see the description at each release page.
 The stable versions are significantly old compared to the devel version, so many features are unavailable.
 
 - Devel [v0.4.0-devel2](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel2) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
-- Stable [v0.3.3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.3) (2019-02 fork) Enhanced completions
-- Stable [v0.2.6](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.6) (2018-03 fork) Vim mode
-- Stable [v0.1.14](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.14) (2015-12 fork) Syntax highlighting
+- Stable [v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4) (2019-02 fork) Enhanced completions
+- Stable [v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7) (2018-03 fork) Vim mode
+- Stable [v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15) (2015-12 fork) Syntax highlighting
 
 ## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
@@ -702,3 +702,4 @@ Among them, the following people have made particularly significant contribution
 - [`@rux616`](https://github.com/rux616) reported several issues and created a PR for fixing the default path of `.blerc`
 - [`@timjrd`](https://github.com/timjrd) suggested and contributed to performance improvements in completion.
 - [`@3ximus`](https://github.com/3ximus) reported many issues for a wide variety of problems.
+- [`@SuperSandro2000`](https://github.com/SuperSandro2000) reported many issues related to NixOS and others

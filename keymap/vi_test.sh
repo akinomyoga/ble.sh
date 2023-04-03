@@ -4,10 +4,10 @@
 function ble/keymap:vi_test/decompose-state {
   local spec=$1
   ind=${spec%%:*} str=${spec#*:}
-  if ((${#ind}==1)) && [[ $ind == [!0-9a-zA-Z] ]]; then
+  if ((${#ind}==1)) && [[ $ind == [!a-zA-Z0-9] ]]; then
     ind=${str%%"$ind"*} ind=${#ind} str=${str::ind}${str:ind+1}
     mark=
-  elif ((${#ind}==2)) && [[ ${ind::1} == [!0-9a-zA-Z] && ${ind:1:1} == [!0-9a-zA-Z] ]]; then
+  elif ((${#ind}==2)) && [[ ${ind::1} == [!a-zA-Z0-9] && ${ind:1:1} == [!a-zA-Z0-9] ]]; then
     local ind1=${ind::1} ind2=${ind:1:1} text
     text=${str//"$ind2"} text=${text%%"$ind1"*} ind=${#text}
     text=${str//"$ind1"} text=${text%%"$ind2"*} mark=${#text}
