@@ -1656,7 +1656,8 @@ if ((_ble_bash>=40000)); then
 else
   function ble/util/readfile { # 465ms for man bash
     [[ -r $2 && ! -d $2 ]] || return 1
-    IFS= ble/bash/read -d '' "$1" < "$2"
+    local IFS=
+    ble/bash/read -d '' "$1" < "$2"
     return 0
   }
   function ble/util/mapfile {
@@ -2216,8 +2217,8 @@ else
   function ble/util/assign {
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
-    local _ble_local_ret=$?
-    IFS= ble/bash/read -d '' "$1" < "$_ble_local_tmpfile"
+    local _ble_local_ret=$? IFS=
+    ble/bash/read -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/.rmtmp
     builtin eval "$1=\${$1%\$_ble_term_nl}"
     return "$_ble_local_ret"
@@ -6666,9 +6667,11 @@ else
 
     local bytes byte
     ble/util/assign bytes '
-      while IFS= ble/bash/read -n 1 byte; do
+      local IFS=
+      while ble/bash/read -n 1 byte; do
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
+      IFS=$_ble_term_IFS
     '
     "ble/encoding:$bleopt_input_encoding/b2c" $bytes
   }

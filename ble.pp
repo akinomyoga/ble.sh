@@ -284,11 +284,15 @@ function ble/base/is-POSIXLY_CORRECT {
   _ble_bash_builtins_adjusted=
   _ble_bash_builtins_save=
 } 2>/dev/null # set -x 対策
+## @fn ble/base/adjust-builtin-wrappers/.assign
+##   @remarks This function may be called with POSIXLY_CORRECT=y
 function ble/base/adjust-builtin-wrappers/.assign {
   if [[ ${_ble_util_assign_base-} ]]; then
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$1" >| "$_ble_local_tmpfile"
-    IFS= ble/bash/read -d '' defs < "$_ble_local_tmpfile"
+    local IFS=
+    ble/bash/read -d '' defs < "$_ble_local_tmpfile"
+    IFS=$_ble_term_IFS
     ble/util/assign/.rmtmp
   else
     defs=$(builtin eval -- "$1")
