@@ -3671,7 +3671,7 @@ function ble/util/conditional-sync/.kill {
   if [[ :$__ble_opts: == *:SIGKILL:* ]]; then
     builtin kill -9 "${kill_pids[@]}" &>/dev/null
   else
-    builtin kill "${kill_pids[@]}" &>/dev/null
+    builtin kill -- "${kill_pids[@]}" &>/dev/null
   fi
 } &>/dev/null
 
@@ -3734,7 +3734,7 @@ function ble/util/conditional-sync {
     local __ble_weight_max=$__ble_weight __ble_weight=1
 
   local sync_elapsed=0
-  if [[ $__ble_timeout ]] && ((__ble_timeout<=0)); then return 142; fi
+  if [[ $__ble_timeout ]] && ((__ble_timeout<0)); then return 142; fi
   builtin eval -- "$__ble_continue" || return 148
   (
     local __ble_pid=
