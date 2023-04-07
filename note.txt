@@ -6840,3 +6840,19 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-04-08
+
+  * util (conditoinal-sync): opts に指定した pid=PID/-PGID が動かない (contributed by bkerin) [#D2031]
+    https://github.com/akinomyoga/ble.sh/discussions/309#discussioncomment-5556211
+    https://github.com/akinomyoga/ble.sh/pull/313
+
+    これは conditional-sync を弄って外部から pid を指定できる様にした時のバグ
+    https://github.com/akinomyoga/ble.sh/commit/8d623c1927c2c4e381bd484bcc51def3213890f6
+
+    先ず PGID を指定すると kill がシグナルと勘違いして動かない。次に timeout=0
+    を一緒に指定すると既存の pid があっても kill を試行せずにそのまま終了してし
+    まう。
+
+    提案では負の時にだけそのまま終了する様になっていたが、負であっても pid が指
+    定されていればちゃんと kill して終了する様にしたい。調整する。

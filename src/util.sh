@@ -3657,9 +3657,10 @@ function ble/util/conditional-sync/.collect-descendant-pids {
 }
 
 ## @fn ble/util/conditional-sync/.kill
-##   @var __ble_pid
-##   @var __ble_opts
+##   @var[in] __ble_pid
+##   @var[in] __ble_opts
 function ble/util/conditional-sync/.kill {
+  [[ $__ble_pid ]] || return 0
   local kill_pids
   if [[ :$__ble_opts: == *:killall:* ]]; then
     ble/util/conditional-sync/.collect-descendant-pids "$__ble_pid"
@@ -3713,10 +3714,11 @@ function ble/util/conditional-sync/.kill {
 ##       processes are killed by SIGTERM.
 ##
 ##     @opt pid=PID
-##       When COMMAND is empty, the function waits for the exit of the process
-##       specified by PID.  If a negative integer is specified, it is treated
-##       as PGID.  When the condition is unsatisfied or the timeout has been
-##       reached, the specified process will be killed.
+##       When specified, COMMAND is not evaluate, and the function instead
+##       waits for the exit of the process specified by PID.  If a negative
+##       integer is specified, it is treated as PGID.  When the condition is
+##       unsatisfied or the timeout has been reached, the specified process
+##       will be killed.
 ##
 ##     @opt no-wait-pid
 ##       Do not wait for the exit status of the background process
@@ -3733,19 +3735,20 @@ function ble/util/conditional-sync {
   [[ :$__ble_opts: == *:progressive-weight:* ]] &&
     local __ble_weight_max=$__ble_weight __ble_weight=1
 
+  # read opt "pid=PID/-PGID"
+  local ret
+  ble/opts#extract-last-optarg "$__ble_opts" pid &&
+  local __ble_pid=$ret
+  ble/util/unlocal ret
+
   local sync_elapsed=0
-  if [[ $__ble_timeout ]] && ((__ble_timeout<0)); then return 142; fi
+  if [[ $__ble_timeout ]] && ((__ble_timeout<=0)); then
+    ble/util/conditional-sync/.kill
+    return 142
+  fi
   builtin eval -- "$__ble_continue" || return 148
   (
-    local __ble_pid=
-    if [[ $__ble_command ]]; then
-      builtin eval -- "$__ble_command" & __ble_pid=$!
-    else
-      local ret
-      ble/opts#extract-last-optarg "$__ble_opts" pid
-      __ble_pid=$ret
-      ble/util/unlocal ret
-    fi
+    [[ $__ble_pid ]] || builtin eval -- "$__ble_command" & __ble_pid=$!
     while
       # check timeout
       if [[ $__ble_timeout ]]; then
