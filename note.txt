@@ -6856,3 +6856,20 @@ bash_tips
 
     提案では負の時にだけそのまま終了する様になっていたが、負であっても pid が指
     定されていればちゃんと kill して終了する様にしたい。調整する。
+
+    ----
+
+    2023-04-09 GitHub CI で Windows が失敗している。手元の cygwin で試すと何故
+    か sleep 10 を kill しても全く効果がない。然し、プロンプトを跨いで kill を
+    実行するとちゃんとその場で動く。色々実験した結果 subshell を少なくとも一回
+    以上立ち上げた後だと kill が効く様である。これは kill -- でも kill -9 でも
+    同様である。
+
+    $ tkill() { kill -9 "$p"; ((count++)); sleep 0.01; }
+    $ sleep 10 & p=$!; count=0
+    $ (true)    # <-- これがあるかないかで必要な kill 回数が変わる
+    $ tkill; while kill -0 "$p"; do tkill; done; date +'%s.%N':$count
+
+    然し、CI test に関しては単に delay を入れるだけで解決してしまった。然し、場
+    合によってはやはり kill できないという状況になると行けないので念の為
+    Windows では subshell を一つ作る事にする。

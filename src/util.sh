@@ -3669,6 +3669,12 @@ function ble/util/conditional-sync/.kill {
     kill_pids=("$__ble_pid")
   fi
 
+  # Note #D2031: In Cygwin/MSYS2 (Windows), we somehow need to fork at least
+  # one process before `kill` to make sure it works.
+  if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
+    (ble/util/setexit 0)
+  fi
+
   if [[ :$__ble_opts: == *:SIGKILL:* ]]; then
     builtin kill -9 "${kill_pids[@]}" &>/dev/null
   else
