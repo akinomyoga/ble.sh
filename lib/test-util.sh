@@ -1691,14 +1691,14 @@ fi
            stdout={1..10}00
   ble/test "ble/util/conditional-sync 'ble/bin/sleep 10' '((time<1000))' 100 progressive-weight" \
            stdout={1,3,7,15,31,63,{1..10}27}
-  ble/test "ble/util/conditional-sync 'ble/bin/sleep 10' '((time<1000))' 100 timeout=10" stdout=10 exit=142
-  ble/test "ble/util/conditional-sync 'echo unexpected' '((time<1000))' 100 timeout=0" stdout= exit=142
+  ble/test "ble/util/conditional-sync 'ble/bin/sleep 10' 'true' 100 timeout=10" stdout=10 exit=142
+  ble/test "ble/util/conditional-sync 'echo unexpected' 'true' 100 timeout=0" stdout= exit=142
   ble/bin/sleep 10 & pid1=$!
-  ble/test "ble/util/conditional-sync 'echo unexpected' '((time<1000))' 100 timeout=0:pid=$pid1" stdout= exit=142
+  ble/test "ble/util/conditional-sync 'echo unexpected' 'true' 100 timeout=0:pid=$pid1" stdout= exit=142
   ble/bin/sleep 10 & pid2=$!
-  ble/test "ble/util/conditional-sync 'echo unexpected' '((time<1000))' 100 timeout=-1:pid=$pid2" stdout= exit=142
+  ble/test "ble/util/conditional-sync 'echo unexpected' 'true' 100 timeout=-1:pid=$pid2" stdout= exit=142
   set -m; ble/bin/sleep 10 & pid3=$!; set +m
-  ble/test "ble/util/conditional-sync 'echo unexpected' '((time<1000))' 100 timeout=0:pid=-$pid3" stdout= exit=142
+  ble/test "ble/util/conditional-sync 'echo unexpected' 'true' 100 timeout=0:pid=-$pid3" stdout= exit=142
 
   # wait for the signal processing for a short moment
   if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
