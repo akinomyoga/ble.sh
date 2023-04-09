@@ -4,17 +4,22 @@
 /dist
 /wiki
 /ext
+/a.func.txt
+/a.line.txt
 
 # edit files
 /COMMIT
 /[a-zA-Z0-9].txt
 /[a-zA-Z0-9].sh
 /\*scratch\*
+/refact.sh
 
 /[A-Z]
+/[a-zA-Z].sh
 
 # test
 /test
+/bashrc
 
 # memo
 /memo/*.exe
@@ -33,3 +38,10 @@
 /make/*.exe
 /make/canvas.c2w.wcwidth.txt
 /make/*.o
+
+# files for unresolved GitHub Issues
+/gh????.*
+/X????.*
+
+# experiment
+/lib/*.so

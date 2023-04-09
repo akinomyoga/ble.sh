@@ -6846,6 +6846,13 @@ bash_tips
 
 2023-04-09
 
+  * chore: 古いテスト用のファイルや説明用のサンプルを保存する [#D2035]
+
+    * gitignore を更新して表示から除外するものを増やした
+    * e.sh は refact.sh に合流。
+
+    未だ幾つか残っているが取り敢えずはそのままにする。
+
   * bgproc, conditional-sync: support opts "kill9-timeout=TIMEOUT" [#D2034]
 
     * fix(conditional-sync): pid が opts で指定されていない時に、グローバルの
