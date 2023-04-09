@@ -922,6 +922,9 @@ bash_tips
     https://wiki.archlinux.jp/index.php/PKGBUILD
     https://wiki.archlinux.jp/index.php/%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E4%BD%9C%E6%88%90#.E9.96.A2.E6.95.B0_pkgver.28.29
 
+    PKGBUILD と一緒に.SRCINFO も更新すること。
+    pkgrel は新しい pkgver に変わったら一緒に 1 に変更する。
+
 2021-05-03
 
   * awk の互換性に関する注意点 [#M0019]
@@ -6840,6 +6843,29 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-04-09
+
+  * bgproc, conditional-sync: support opts "kill9-timeout=TIMEOUT" [#D2034]
+
+    * fix(conditional-sync): pid が opts で指定されていない時に、グローバルの
+      __ble_pid を変更してしまう問題の修正。色々書き換えている時に残ってしまっ
+      た && を削除する。
+
+    ? OK: kill -9 の 9 はシステムに依存しないと思って良いのか?  POSIX の kill
+      によると SIGKILL は 9 であると定められている様だ。なので気にしなくて良い。
+      https://pubs.opengroup.org/onlinepubs/9699919799/utilities/kill.html
+
+    * bgproc: kill9-timeout で SIGKILL までの timeout を指定できる様にした。
+
+  * 2023-04-05 bgproc: exec に関する説明を書く [#D2033]
+    https://github.com/akinomyoga/ble.sh/discussions/309#discussioncomment-5527375
+
+    またサブシェルに fd が継承されるという事についても述べる。
+
+    →色々書き加えた。
+
+  * 2023-04-05 README: Guix package のリンクが壊れている [#D2032]
 
 2023-04-08
 

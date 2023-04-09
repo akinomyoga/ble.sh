@@ -3743,7 +3743,7 @@ function ble/util/conditional-sync {
 
   # read opt "pid=PID/-PGID"
   local ret
-  ble/opts#extract-last-optarg "$__ble_opts" pid &&
+  ble/opts#extract-last-optarg "$__ble_opts" pid
   local __ble_pid=$ret
   ble/util/unlocal ret
 

@@ -3,9 +3,14 @@
 
 2023-04-03... (`#D2030`...) 1a5c451c...
 
+## New features
+
+- bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` xxxxxxxx
+
 ## Fixes
 
-- util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` xxxxxxxx
+- util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` 09f5cec2 `#D2034` xxxxxxxx
+
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

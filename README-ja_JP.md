@@ -102,7 +102,7 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 
 - [AUR (Arch Linux)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-AUR) `blesh-git` (devel), `blesh` (stable 0.3.4)
 - [NixOS (nixpkgs)](https://github.com/akinomyoga/ble.sh/wiki/Manual-A1-Installation#user-content-nixpkgs) `blesh` (devel)
-- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel3/) `blesh` (0.4.0-devel3)
+- [Guix](https://packages.guix.gnu.org/packages/blesh/0.4.0-devel2/) `blesh` (0.4.0-devel2)
 </details>
 
 <details open><summary><b>既存の <code>ble.sh</code> を更新</b></summary>

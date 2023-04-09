@@ -45,12 +45,24 @@
 ##   @param[in] command
 ##     The command to execute.
 ##
-##     Note: If the command wants to access the variable names "bgproc" and
-##     "bgproc_fname" defined outside the command, please save the values in
-##     other names of variables before calling "ble/util/bgproc#open" and
-##     access those alternative variables from inside the command.  The
-##     variable names "bgproc" and "bgproc_fname" are hidden by the local
-##     variables used by ble/util/bgproc itself.
+##     @remarks Use `exec'--The command is started in a subshell.  When an
+##     external command is started (as the last command of the subshell),
+##     please start the command by `exec'.  This will replace the current
+##     process with the external process.  If the external command is not
+##     started with `exec', the external command is created as a child process
+##     of the subshell, and the file descriptors are kept by also the subshell.
+##     This may cause a deadlock in closing the file descriptors because the
+##     file descriptors in the external process are still alive even after the
+##     main Bash subshell closes them because the subshell still keeps the file
+##     descriptor.
+##
+##     @remarks Reserved variables `bgproc' and `bgproc_fname'--If the command
+##     wants to access the variable names "bgproc" and "bgproc_fname" defined
+##     outside the command, please save the values in other names of variables
+##     before calling "ble/util/bgproc#open" and access those alternative
+##     variables from inside the command.  The variable names "bgproc" and
+##     "bgproc_fname" are hidden by the local variables used by ble/util/bgproc
+##     itself.
 ##
 ##   @param[in,opt] opts
 ##     A colon-separated list of options.  The following options can be
@@ -100,12 +112,45 @@
 ##       timeout after closing the file descriptors at the side of the parent
 ##       shell, the background process will receive SIGTERM.  If it does not
 ##       terminate even after sending SIGTERM, it will then receive SIGKILL
-##       after additional 10 seconds.
+##       after additional timeout specified by "kill9-timeout".
+##
+##     kill9-timeout=TIMEOUT
+##       This option specifies the additional timeout after sending SIGTERM
+##       after "kill-timeout".  The default is 10000 (10 seconds).  If the
+##       background process does not terminate within the timeout after sending
+##       SIGTERM, the background process will receive SIGKILL.
 ##
 ##   @exit 0 if the background process is successfully started or "deferred" is
 ##   specified to OPTS.  2 if an invalid prefix value is specified.  3 if the
 ##   system does not support named pipes.  1 if the background process failed
 ##   to be started.
+##
+##   @remarks No FD_CLOEXEC for bgproc file descriptors--Unlike "coproc", the
+##   file descriptors opened by bgproc are not closed in subshells.  This means
+##   that if there are other background processes holding the file descriptors,
+##   even when the main Bash process closes the file descriptors by
+##   `ble/util/bgproc#stop' or `ble/util/bgproc#close', the file descriptors in
+##   the bgproc process can still alive.  If one wants to make it sure that the
+##   file descriptors are closed in the other subshells, one needs to close the
+##   file descriptors
+##
+##   1) by calling eval "exec ${PREFIX_bgproc[0]}>&- ${PREFIX_bgproc[1]}>&-"
+##
+##   2) Or by calling `ble/fd#finalize' (Note that `ble/fd#finalize' closes all
+##     the file descriptors opened by ble.sh including the ones used by
+##     ble/util/msleep)..
+##
+##   3) Or another way is to use the loadable builtin "fdflags" to set
+##     FD_CLOEXEC in `ble/util/bgproc/onstart:PREFIX'.  bgproc[]
+##
+##     # The loadable builtin needs to be loaded in advance.  Please replace
+##     # the path /usr/lib/bash/fdflags based on your installation.
+##     enable -f /usr/lib/bash/fdflags fdflags
+##
+##     function ble/util/bgproc/onstart:PREFIX {
+##       fdflags -s +cloexec "${PREFIX_bgproc[0]}"
+##       fdflags -s +cloexec "${PREFIX_bgproc[1]}"
+##     }
 ##
 ## @fn ble/util/bgproc/onstart:PREFIX
 ##   When this function is defined, this function is called after the new
@@ -119,8 +164,10 @@
 ##   in this hook (in case that the background process does not automatically
 ##   end on the close of the file descriptors, or the file descriptors can be
 ##   shared with other background subshells).  Note that the background process
-##   will receive SIGTERM or SIGKILL if it does not terminate within the
-##   timeout specified by kill-timeout=TIMEOUT.
+##   will receive SIGTERM if it does not terminate within the timeout specified
+##   by "kill-timeout=TIMEOUT" and then will receive SIGKILL if it does not
+##   even terminate within the additional timeout specified by
+##   "kill9-timeout=TIMEOUT".
 ##
 ## @fn ble/util/bgproc/onclose:PREFIX
 ##   When this function is defined, this function is called before the bgproc
@@ -277,10 +324,22 @@ function ble/util/bgproc#start {
 }
 
 function ble/util/bgproc#stop/.kill {
-  local pid=$1 i close_timeout=$2
-  ble/util/conditional-sync '' '((1))' 1000 progressive-weight:pid="$pid":no-wait-pid:timeout="$close_timeout"
+  local pid=$1 opts=$2 ret
+
+  # kill --
+  local timeout=10000
+  if ble/opts#extract-last-optarg "$opts" kill-timeout; then
+    timeout=$ret
+  fi
+  ble/util/conditional-sync '' '((1))' 1000 progressive-weight:pid="$pid":no-wait-pid:timeout="$timeout"
   kill -0 "$pid" || return 0
-  ble/util/conditional-sync '' '((1))' 1000 progressive-weight:pid="$pid":no-wait-pid:SIGKILL:timeout=10000
+
+  # kill -9
+  local timeout=10000
+  if ble/opts#extract-last-optarg "$opts" kill9-timeout; then
+    timeout=$ret
+  fi
+  ble/util/conditional-sync '' '((1))' 1000 progressive-weight:pid="$pid":no-wait-pid:timeout="$timeout":SIGKILL
 }
 
 ## @fn ble/util/bgproc#stop prefix
@@ -313,11 +372,7 @@ function ble/util/bgproc#stop {
   # When the background process is active, kill the process after waiting for
   # the time specified by kill-timeout.
   if ble/util/bgproc/.alive; then
-    local ret close_timeout=10000
-    if ble/opts#extract-last-optarg "${bgproc[3]}" kill-timeout; then
-      close_timeout=$ret
-    fi
-    (ble/util/nohup 'ble/util/bgproc#stop/.kill "-${bgproc[4]}" "$close_timeout"')
+    (ble/util/nohup 'ble/util/bgproc#stop/.kill "-${bgproc[4]}" "${bgproc[3]}"')
   fi
 
   builtin eval -- "${prefix}_bgproc[0]="
