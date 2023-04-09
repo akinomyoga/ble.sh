@@ -3,6 +3,10 @@
 
 2023-04-03... (`#D2030`...) 1a5c451c...
 
+## Fixes
+
+- util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` xxxxxxxx
+
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
 
