@@ -9,8 +9,12 @@
 
 ## Fixes
 
-- util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` 09f5cec2 `#D2034` xxxxxxxx
+- util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` 09f5cec2 `#D2034` 09f5cec2
+- bgproc: return status of bgproc process `#D2036` xxxxxxxx
 
+## Contrib
+
+- fix(histdb): show error message only when bgproc crashed `#D2036` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

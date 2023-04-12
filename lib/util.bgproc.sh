@@ -387,10 +387,16 @@ function ble/util/bgproc#stop {
 ##   @param[in] prefix
 ##     The name to identify the bgproc.
 ##
+##   @exit 2 if the prefix does not define a bgproc.  1 if the bgproc
+##     process is temporarily stopped.  3 if the bgproc process has
+##     crashed.  0 if the process is running.
 function ble/util/bgproc#alive {
-  local bgpid_ref=${1}_bgproc[4]
-  [[ ${!bgpid_ref-} ]] || return 2
-  kill -0 "${!bgpid_ref}" 2>/dev/null
+  local prefix=$1 bgproc
+  ble/util/restore-vars "${prefix}_" bgproc
+  ((${#bgproc[@]})) || return 2
+  [[ ${bgproc[4]-} ]] || return 1
+  kill -0 "${bgproc[4]}" 2>/dev/null || return 3
+  return 0
 }
 
 function ble/util/bgproc#keepalive/.timeout {
