@@ -288,12 +288,12 @@ function ble/base/is-POSIXLY_CORRECT {
 ##   @remarks This function may be called with POSIXLY_CORRECT=y
 function ble/base/adjust-builtin-wrappers/.assign {
   if [[ ${_ble_util_assign_base-} ]]; then
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin eval -- "$1" >| "$_ble_local_tmpfile"
     local IFS=
     ble/bash/read -d '' defs < "$_ble_local_tmpfile"
     IFS=$_ble_term_IFS
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
   else
     defs=$(builtin eval -- "$1")
   fi || ((1))
@@ -782,7 +782,7 @@ function ble/base/read-blesh-arguments {
   local opt_attach=prompt
   local opt_inputrc=auto
 
-  _ble_init_command= # 再解析
+  builtin unset -v _ble_init_command # 再解析
   while (($#)); do
     local arg=$1; shift
     case $arg in
@@ -871,8 +871,12 @@ function ble/base/read-blesh-arguments {
       done
       ;;
     (*)
-      ble/util/print "ble.sh: unrecognized argument '$arg'" >&2
-      opts=$opts:E ;;
+      if [[ ${_ble_init_command-} ]]; then
+        _ble_init_command[${#_ble_init_command[@]}]=$arg
+      else
+        ble/util/print "ble.sh: unrecognized argument '$arg'" >&2
+        opts=$opts:E
+      fi ;;
     esac
   done
 
@@ -987,13 +991,13 @@ function ble/bin/.default-utility-path {
     builtin eval "function ble/bin/$cmd { command $cmd \"\$@\"; }"
   done
 }
-## @fn ble/bin/.freeze-utility-path [-n] commands...
+## @fn ble/bin#freeze-utility-path [-n] commands...
 ##   PATH が破壊された後でも ble が動作を続けられる様に、
 ##   現在の PATH で基本コマンドのパスを固定して ble/bin/* から使える様にする。
 ##
 ##   実装に ble/util/assign を使用しているので ble-core 初期化後に実行する必要がある。
 ##
-function ble/bin/.freeze-utility-path {
+function ble/bin#freeze-utility-path {
   local cmd path q=\' Q="'\''" fail= flags=
   for cmd; do
     if [[ $cmd == -n ]]; then
@@ -1183,7 +1187,7 @@ function ble/bin/awk0.available/test {
 function ble/bin/awk0.available {
   local awk
   for awk in mawk gawk; do
-    if ble/bin/.freeze-utility-path -n "$awk" &&
+    if ble/bin#freeze-utility-path -n "$awk" &&
         ble/bin/awk0.available/test ble/bin/"$awk" &&
         builtin eval -- "function ble/bin/awk0 { ble/bin/$awk -v AWKTYPE=$awk \"\$@\"; }"; then
       function ble/bin/awk0.available { ((1)); }
@@ -1312,7 +1316,7 @@ function ble/util/readlink/.resolve {
 
   if [[ ! $_ble_util_readlink_type ]]; then
     _ble_util_readlink_type=loop
-    ble/bin/.freeze-utility-path readlink ls
+    ble/bin#freeze-utility-path readlink ls
     function ble/util/readlink/.resolve { ble/util/readlink/.resolve-loop; }
   fi
 
@@ -1983,9 +1987,9 @@ BLE_ATTACHED=
 bleopt/declare -v debug_xtrace ''
 bleopt/declare -v debug_xtrace_ps4 '+ '
 
-ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
-ble/bin/.freeze-utility-path man
-ble/bin/.freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
+ble/bin#freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
+ble/bin#freeze-utility-path man
+ble/bin#freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
 
 ble/function#trace trap ble/builtin/trap ble/builtin/trap/finalize
 ble/function#trace ble/builtin/trap/.handler ble/builtin/trap/invoke ble/builtin/trap/invoke.sandbox
@@ -2038,7 +2042,7 @@ time {
 ##   無引数で呼び出した時、現在 ble.sh の内部空間に居るかどうかを判定します。
 ##
 # Bluetooth Low Energy のツールが存在するかもしれない
-ble/bin/.freeze-utility-path ble
+ble/bin#freeze-utility-path ble
 function ble/dispatch/.help {
   ble/util/print-lines \
     'usage: ble [SUBCOMMAND [ARGS...]]' \
@@ -2470,7 +2474,7 @@ function ble/base/sub:test {
   ble-import lib/core-test
 
   if (($#==0)); then
-    set -- main util canvas decode edit syntax complete
+    set -- bash main util canvas decode edit syntax complete
     logfile=$_ble_base_cache/test.$(date +'%Y%m%d.%H%M%S').log
     : >| "$logfile"
     ble/test/log#open "$logfile"
@@ -2532,7 +2536,7 @@ ble/function#trace ble/base/unload
 
 ble-import -f lib/_package
 if [[ $_ble_init_command ]]; then
-  ble/base/sub:"$_ble_init_command"; _ble_init_exit=$?
+  ble/base/sub:"${_ble_init_command[@]}"; _ble_init_exit=$?
   [[ $_ble_init_attached ]] && ble-attach
   ble/util/setexit "$_ble_init_exit"
 else

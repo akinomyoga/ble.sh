@@ -8,7 +8,7 @@
 ##   builtin eval -- "$_ble_getopt_prologue"
 ##   ble/getopt.init myfunc "$@"
 ##   while ble/getopt.next; do
-##     case "$option" in
+##     case $option in
 ##
 ##     #
 ##     # --version, --help (引数を取らないオプション)

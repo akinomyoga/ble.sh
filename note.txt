@@ -455,11 +455,6 @@ bashbug: 実装上で注意するべき事・バグ
     もしかすると何らかの条件が整うと segfault するかもしれないので、
     念のためここに記録に残しておく。
 
-  * bash-4.0 -- 3.0
-
-    $'' 内に \' を入れていると履歴展開が '' の中で起こる?
-    例えば rex='a'$'\'\'''!a' とすると !a の部分が展開される。
-
   * bash-3.2 以下ではプロセス置換に含まれるブレース展開は
     プロセス置換ごと複製してしまう。
     例えば echo <(echo {1..3}) は、
@@ -485,9 +480,6 @@ bashbug: 実装上で注意するべき事・バグ
     exec 34>/dev/null とすると、exec 34>&- としても閉じれないし、
     exec 34>a.txt としても /dev/null に繋がったままになってしまう。
 
-  * bash-3.1 では a=(""); echo "a${a[*]}b" | cat -A とすると
-    a^?b となって謎の文字が入る。echo "a""${a[*]}""b" 等とすれば大丈夫。
-
   * bash-3.1 では declare -f funcname の funcname に + 等の文字を含める事ができない。
     一応 declare -F 等とすれば名前は列挙される様ではある。
     bash-3.2 未満では declare -f ではなく type -t で関数かどうかの確認を行う。
@@ -498,52 +490,13 @@ bashbug: 実装上で注意するべき事・バグ
 
     eval -- "$(bind -sp | awk '/M-\[/{sub(/:$/,"",$1);gsub(/\\M-/,"\\e");print "bind -r " $1}')"
 
-  * bash-3.1
-    呼出先の関数で、呼出元で定義されているのと同名の配列を作っても、中が空になる。
-    > $ function dbg/test2 { local -a hello=(1 2 3); echo "hello=(${hello[*]})";}
-    > $ function dbg/test1 { local -a hello=(3 2 1); dbg/test2;}
-    > $ dbg/test1
-    > hello=()
-
-    これは bash-3.1-patches/bash31-004 で修正されている様だ。
-
-  * bash-3.1
-
-    - ${#arr[n]} は文字数ではなくバイト数を返す様だ。
-
-    - "${var//%d/123}" は動かない。"${var//'%d'/123}" 等とすればOK。
-
-    - bash-3.0, bash-3.1: local GLOBIGNORE すると、
-      関数を出てもパス名展開の時にその影響が残っている。
-      (直接変数の中身を見ても何もない様に見えるが。)
-      unset GLOBIGNORE などとすると直る。
-
-  * bash-3.0
-
-    - ${#param} は文字数ではなくバイト数を返す、という事になっているらしいが、
-      実際に試してみると文字数になっている (bash-3.0.22)。
-      何処かで patch が当たったのだろうか。まあいいか…。
-
-      (※${param:ofs:len} は 3.0-beta1 以降であれば文字数でカウントされる)
-
-    - declare -p A で改行を含む変数を出力すると改行が消える。
-      例: 一見正しく出力されている様に錯覚するが "\ + 改行" は改行のエスケープではなく、
-        長い文字列リテラルを二行に書く為の記法である。つまり、無視される。
-      $ A=$'\n'; declare -p A
-      | A="\
-      | "
-
-    - "${scalar[@]/xxxx}" は全て空になる。変数名が配列である事が保証されている
-      必要がある。
-
-    - "${...#$'...'}" という形を使うと $'...' の展開結果が ... ではなく '...'
-      の様に、余分な引用符が入ってしまう。extquote を設定しても結果は変わらない。
-
   * msys1, msys2: var='^M' とすると CR が消えてなくなる。
     msys2 では var=$'\r' とすれば大丈夫。また変数に入っている物も大丈夫。
     例えば var=$_ble_term_CR はOKである。
     msys1 ではそれでも駄目。local var=$'\r' とすれば大丈夫。
     変数に入っている物でも local を付けないと消滅してしまう。
+
+    Ref #D1270
 
   * msys1 では named pipe が未対応。従ってプロセス置換も使えない。
 
@@ -639,12 +592,7 @@ bashbug 算術式周りのバグと注意点
     $ bash-3.1 -c '((a?(b=123):c?(d=321):1))'
     bash-3.1: ((: a?(b=123):c?(d=321):1: syntax error in expression (error token is "?(d=321):1")
 
-  * bash-3.0
-
-    D1956: 関数定義の一番外側でリダイレクトしてもリダイレクトされない。例えば、
-    function func { ls -l /proc/$BASHPID/fd/{0..2}; } <&"$fd0" >&"$fd1"
-
-bash 配列の宣言に関する仕様・バグと注意点
+bash 配列の宣言に関する注意点
 
   * arr=(1 2 3) func の形式で配列をシェル関数に渡そうとすると、
     export arr='(1 2 3)' で渡されてしまう。
@@ -663,61 +611,6 @@ bash 配列の宣言に関する仕様・バグと注意点
 
     $ (a=1 bash -c 'declare -p a')
     declare -x a="1"
-
-  * BUG bash-4.0, 4.1 (local), bash-3.0 ～ 3.2 (declare)
-
-    a[${#a[*}]=value もしくは ble/array#push a value するとき、
-    その配列を事前に宣言したければ local -a a のように -a を指定する必要がある。
-
-    [問題]
-
-    bash-4.1 以下で関数内で local arr しただけで ${#arr[*]} が 1 になる。
-    その後、要素 #1 を設定しても ${#arr[*]} は 1 のままである。
-    これの所為で以下のコードが破綻する:
-      arr[${#arr[*]}]=...
-    常に要素 #1 にしか代入されない事になる。
-
-    bash-3.2 以下では関数内に限らず declare arr しただけで ${#arr[*]} が 1 になる。
-    但し、要素[1] に設定をすると ${#arr[*]} は 2 に増加する。
-    従って余分な空要素があるものの ble/array#push は失敗しない。
-
-    [解決]
-
-    local -a arr とすれば問題は起きない。
-    ※local arr=() としても問題は起きないがこの記述だと
-      今度は bash-3.0 で文字列 '()' が代入されて問題である。
-
-  * BUG bash-3.0: local a=(...) や declare a=(...) とすると、a="(...)" と同じ事になる。
-    a=() の形式ならば問題ない。
-
-  * BUG bash-3.0: 今まで local -a a=() の形式ならば問題ないと信じてきたが、どうやら
-    local -a a=('1 2') が local -a a=(1 2) と同じ意味になってしまうようだ。
-    a="123 345"; declare -a arr=("$a"); このようにしても駄目だ。
-    a="123 345"; declare -a arr; arr=("$a"); こうする必要がある。
-
-  * BUG bash-3.0: "${var[@]/xxx/yyy}" はスカラー変数に対して空の結果を生む。
-    ${var[@]//xxx/yyy}, ${var[@]/%/yyy}, ${var[@]/#/yyy} についても同様である。
-
-  * 配列要素を連結する時
-
-    動く例:
-      IFS= eval 'value=${arr[*]}'
-      IFS= eval 'value="${arr[*]}"'
-      IFS= eval 'local value="${arr[*]}"'
-
-    動かない例 (間に空白が入ってしまう):
-      IFS= eval 'local value=${arr[*]}'
-
-  * BUG bash-4.0..4.4: ローカルで local -a x; local -A x とすると segfault する。
-    ref http://lists.gnu.org/archive/html/bug-bash/2019-02/msg00047.html, #D0924
-
-    f() { local -a a; local -A a; }; f # これで segfault する
-
-    - 別のスコープで定義された配列を -A とした場合には起こらない。
-    - 同じスコープの場合でも unset a してから local -A a すれば大丈夫。
-    - グローバルでは起こらない。
-
-  * BUG bash-3.0..3.2: ^? や ^A の値が declare -p で ^A^? や ^A^A に変換されてしまう。
 
 その他のバグ
 
@@ -6996,6 +6889,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-07-18
+
+  * docs: styleguide の追加 (motivated by bkerin) [#D2056]
+    https://github.com/akinomyoga/blesh-contrib/pull/12#issuecomment-1507719943
+    https://github.com/akinomyoga/ble.sh/pull/317
 
   * mawk in Ubuntu 16.04 LTS (reported by dongxi8, Frezrik) [#D2055]
     https://github.com/akinomyoga/ble.sh/issues/335

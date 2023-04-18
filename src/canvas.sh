@@ -2037,7 +2037,7 @@ function ble/canvas/trace/.impl {
     elif [[ $tail == [-]* ]]; then
       local s=${tail::1}
       ((i++))
-      case "$s" in
+      case $s in
       ($'\e')
         if [[ $tail =~ $rex_osc ]]; then
           # 各種メッセージ (素通り)

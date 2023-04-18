@@ -4,7 +4,7 @@
 
 _ble_term_tput=
 function ble/init:term/tput { return 1; }
-if ble/bin/.freeze-utility-path tput; then
+if ble/bin#freeze-utility-path tput; then
   ble/bin/tput cuu 1 &>/dev/null && _ble_term_tput=${_ble_term_tput}i
   ble/bin/tput UP  1 &>/dev/null && _ble_term_tput=${_ble_term_tput}c
   if [[ $_ble_term_tput ]]; then

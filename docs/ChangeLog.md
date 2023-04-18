@@ -42,6 +42,10 @@
 - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 
+## Documentation
+
+- docs (CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` xxxxxxxx
+
 ## Internal changes
 
 - refactor: move files `{keymap/ => lib/keymap.}*` f4c973b8

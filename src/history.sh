@@ -456,7 +456,7 @@ else
         else
           gsub(apos, apos "\\" apos apos, line);
 
-#%      # 対策 #D1239: bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
+#%      # 対策 #D1241: bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
         gsub(/\001/, "'"$apos"'${_ble_term_SOH}'"$apos"'", line);
         gsub(/\177/, "'"$apos"'${_ble_term_DEL}'"$apos"'", line);
 
@@ -1425,10 +1425,10 @@ function ble/builtin/history/erasedups/.impl-awk {
   fi
 
   local _ble_local_tmpfile
-  ble/util/assign/.mktmp; local otmp1=$_ble_local_tmpfile
-  ble/util/assign/.mktmp; local otmp2=$_ble_local_tmpfile
-  ble/util/assign/.mktmp; local itmp1=$_ble_local_tmpfile
-  ble/util/assign/.mktmp; local itmp2=$_ble_local_tmpfile
+  ble/util/assign/mktmp; local otmp1=$_ble_local_tmpfile
+  ble/util/assign/mktmp; local otmp2=$_ble_local_tmpfile
+  ble/util/assign/mktmp; local itmp1=$_ble_local_tmpfile
+  ble/util/assign/mktmp; local itmp2=$_ble_local_tmpfile
 
   # Note: ジョブを無効にする為 subshell で実行
   ( ble/util/writearray "${writearray_options[@]}" _ble_history      >| "$itmp1" & local pid1=$!
@@ -1562,10 +1562,10 @@ function ble/builtin/history/erasedups/.impl-awk {
       mapfile -d '' -t _ble_history_edit < "$otmp2"
     fi
   fi
-  _ble_local_tmpfile=$itmp2 ble/util/assign/.rmtmp
-  _ble_local_tmpfile=$itmp1 ble/util/assign/.rmtmp
-  _ble_local_tmpfile=$otmp2 ble/util/assign/.rmtmp
-  _ble_local_tmpfile=$otmp1 ble/util/assign/.rmtmp
+  _ble_local_tmpfile=$itmp2 ble/util/assign/rmtmp
+  _ble_local_tmpfile=$itmp1 ble/util/assign/rmtmp
+  _ble_local_tmpfile=$otmp2 ble/util/assign/rmtmp
+  _ble_local_tmpfile=$otmp1 ble/util/assign/rmtmp
 }
 function ble/builtin/history/erasedups/.impl-ranged {
   local cmd=$1 beg=$2

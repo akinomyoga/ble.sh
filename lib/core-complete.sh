@@ -1577,7 +1577,7 @@ function ble/complete/action/quote-insert.batch/awk {
   '
 }
 function ble/complete/action/quote-insert.batch/proc {
-  local _ble_local_tmpfile; ble/util/assign/.mktmp
+  local _ble_local_tmpfile; ble/util/assign/mktmp
 
   local delim='\n'
   [[ $quote_batch_nulsep ]] && delim='\0'
@@ -1600,7 +1600,7 @@ function ble/complete/action/quote-insert.batch/proc {
     '! ble/complete/check-cancel <&"$_ble_util_fd_stdin"' '' progressive-weight
   local ext=$?
 
-  ble/util/assign/.rmtmp
+  ble/util/assign/rmtmp
   return "$ext"
 }
 ## @fn ble/complete/action/quote-insert.batch
@@ -3281,12 +3281,12 @@ function ble/complete/progcomp/compopt {
   local -a ospec
   while (($#)); do
     local arg=$1; shift
-    case "$arg" in
+    case $arg in
     (-*)
       local ic c
       for ((ic=1;ic<${#arg};ic++)); do
         c=${arg:ic:1}
-        case "$c" in
+        case $c in
         (o)    ospec[${#ospec[@]}]="-$1"; shift ;;
         ([DE]) fDefault=1; break 2 ;;
         (*)    ((ext==0&&(ext=1))) ;;
@@ -3301,7 +3301,7 @@ function ble/complete/progcomp/compopt {
 
   local s
   for s in "${ospec[@]}"; do
-    case "$s" in
+    case $s in
     (-*) comp_opts=${comp_opts//:"${s:1}":/:}${s:1}: ;;
     (+*) comp_opts=${comp_opts//:"${s:1}":/:} ;;
     esac
@@ -3404,7 +3404,7 @@ function ble/complete/progcomp/.parse-complete {
       local ic c
       for ((ic=1;ic<${#arg};ic++)); do
         c=${arg:ic:1}
-        case "$c" in
+        case $c in
         ([abcdefgjksuvE])
           # Note: workaround #D0714 #M0009 #D0870
           case $c in
@@ -3732,13 +3732,13 @@ function ble/complete/progcomp/.compgen {
     # WA for zoxide TAB
     if [[ $comp_func == _z ]]; then
       ble-import -f contrib/integration/zoxide
-      ble/contrib:integration/zoxide/adjust
+      ble/contrib/integration:zoxide/adjust
     fi
 
     # WA for _complete_nix
     if [[ $comp_func == _complete_nix ]]; then
       ble-import -f integration/nix-completion
-      ble/contrib:integration/nix-completion/adjust
+      ble/contrib/integration:nix-completion/adjust
     fi
 
     # https://github.com/akinomyoga/ble.sh/issues/292 (Android Debug Bridge)
@@ -4223,7 +4223,7 @@ function ble/complete/mandb/search-file {
   return 1
 }
 
-if ble/bin/.freeze-utility-path preconv; then
+if ble/bin#freeze-utility-path preconv; then
   function ble/complete/mandb/.preconv { ble/bin/preconv; }
 else
   # macOS では preconv がない

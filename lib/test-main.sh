@@ -35,7 +35,7 @@ ble/test/start-section 'ble/main' 19
     export MSYS
   fi
 
-  ble/bin/.freeze-utility-path readlink ls
+  ble/bin#freeze-utility-path readlink ls
   function ble/test:readlink.impl1 {
     ret=$1
     ble/util/readlink/.resolve-loop

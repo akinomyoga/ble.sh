@@ -57,7 +57,7 @@ print-header 'Q5. readonly を付加した局所変数の場合は局所変数�
 )
 
 function is-global/test { ! local "$1" 2>/dev/null; }
-function is-global() (readonly "$1"; is-global/test "$1")
+function is-global { (readonly "$1"; is-global/test "$1"); }
 print-header 'Q6. is-global は readonly を使って実装できる。'
 (
   v1=1 v2=2

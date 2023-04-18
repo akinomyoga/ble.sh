@@ -51,7 +51,7 @@ function ble/test/log#close {
   fi
 }
 
-if ble/bin/.freeze-utility-path colored; then
+if ble/bin#freeze-utility-path colored; then
   function ble/test/diff.impl {
     ble/bin/colored diff -u "$@"
   }

@@ -6,7 +6,7 @@
 # ble/getopt.init "$0" "$@"
 #
 # while ble/getopt.next; do
-#   case "$option" in
+#   case $option in
 #   (-a|--hoge)
 #     echo hoge ;;
 #   esac
@@ -24,7 +24,7 @@ function command1 {
   ble/getopt.init "$0" "$@"
 
   while ble/getopt.next; do
-    case "$option" in
+    case $option in
     (-b|--bytes)  ble/util/print bytes  ;;
     (-s|--spaces) ble/util/print spaces ;;
     (-w|--width)

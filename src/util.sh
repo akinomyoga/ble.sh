@@ -2177,17 +2177,17 @@ function ble/util/readarray {
 _ble_util_assign_base=$_ble_base_run/$$.util.assign.tmp
 _ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
-  function ble/util/assign/.mktmp {
+  function ble/util/assign/mktmp {
     _ble_local_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
     ((BASH_SUBSHELL)) && _ble_local_tmpfile=$_ble_local_tmpfile.$BASHPID
   }
 else
-  function ble/util/assign/.mktmp {
+  function ble/util/assign/mktmp {
     _ble_local_tmpfile=$_ble_util_assign_base.$((_ble_util_assign_level++))
     ((BASH_SUBSHELL)) && _ble_local_tmpfile=$_ble_local_tmpfile.$RANDOM
   }
 fi
-function ble/util/assign/.rmtmp {
+function ble/util/assign/rmtmp {
   ((_ble_util_assign_level--))
 #%if !release
   if ((BASH_SUBSHELL)); then
@@ -2206,21 +2206,21 @@ if ((_ble_bash>=50300)); then
 elif ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$? _ble_local_arr=
     mapfile -t _ble_local_arr < "$_ble_local_tmpfile"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
     IFS=$'\n' builtin eval "$1=\"\${_ble_local_arr[*]}\""
     return "$_ble_local_ret"
   }
 else
   function ble/util/assign {
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$? IFS=
     ble/bash/read -d '' "$1" < "$_ble_local_tmpfile"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
     builtin eval "$1=\${$1%\$_ble_term_nl}"
     return "$_ble_local_ret"
   }
@@ -2238,41 +2238,41 @@ fi
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
     mapfile -t "$1" < "$_ble_local_tmpfile"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
     return "$_ble_local_ret"
   }
 else
   function ble/util/assign-array {
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
     ble/util/mapfile "$1" < "$_ble_local_tmpfile"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
     return "$_ble_local_ret"
   }
 fi
 
 if ! ((_ble_bash>=40400)); then
   function ble/util/assign-array0 {
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
     mapfile -d '' -t "$1" < "$_ble_local_tmpfile"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
     return "$_ble_local_ret"
   }
 else
   function ble/util/assign-array0 {
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
     local IFS= i=0 _ble_local_arr
     while ble/bash/read -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmpfile"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
     [[ ${_ble_local_arr[--i]} ]] || builtin unset -v "_ble_local_arr[i]"
     ble/util/unlocal i IFS
     builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
@@ -2282,11 +2282,11 @@ fi
 
 ## @fn ble/util/assign.has-output command
 function ble/util/assign.has-output {
-  local _ble_local_tmpfile; ble/util/assign/.mktmp
+  local _ble_local_tmpfile; ble/util/assign/mktmp
   builtin eval -- "$1" >| "$_ble_local_tmpfile"
   [[ -s $_ble_local_tmpfile ]]
   local _ble_local_ret=$?
-  ble/util/assign/.rmtmp
+  ble/util/assign/rmtmp
   return "$_ble_local_ret"
 }
 
@@ -3617,9 +3617,9 @@ elif ((_ble_bash>=40000)) && ble/fd#is-open "$_ble_util_fd_zero"; then
   # する事にする。確認した全ての OS で /dev/zero は存在した (Linux,
   # Cygwin, FreeBSD, Solaris, Minix, Haiku, MSYS2)。
   ble/util/msleep/.use-read-timeout zero.exec1-coreutil
-elif ble/bin/.freeze-utility-path sleepenh; then
+elif ble/bin#freeze-utility-path sleepenh; then
   function ble/util/msleep/.core { ble/bin/sleepenh "$1" &>/dev/null; }
-elif ble/bin/.freeze-utility-path usleep; then
+elif ble/bin#freeze-utility-path usleep; then
   function ble/util/msleep {
     local v=$((1000*$1-_ble_util_msleep_delay))
     ((v<=0)) && v=0
@@ -3832,7 +3832,7 @@ _ble_util_file_stat=
 function ble/file/has-stat {
   if [[ ! $_ble_util_file_stat ]]; then
     _ble_util_file_stat=-
-    if ble/bin/.freeze-utility-path -n stat; then
+    if ble/bin#freeze-utility-path -n stat; then
       # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
       if ble/bin/stat -c %Y / &>/dev/null; then
         _ble_util_file_stat=c
@@ -3875,7 +3875,7 @@ function ble/file#inode {
   # fallback
   function ble/file#inode { ret=; ((0)); } || return 1
 
-  if ble/bin/.freeze-utility-path -n ls &&
+  if ble/bin#freeze-utility-path -n ls &&
       ble/util/assign-words ret 'ble/bin/ls -di /' 2>/dev/null &&
       ((${#ret[@]}==2)) && ble/string#match "$ret" '^[0-9]+$'
   then
@@ -3899,37 +3899,37 @@ function ble/file#hash {
   ble/string#split-words size "$size"
   ble/file#hash/.impl
 }
-if ble/bin/.freeze-utility-path -n git; then
+if ble/bin#freeze-utility-path -n git; then
   function ble/file#hash/.impl {
     ble/util/assign ret 'ble/bin/git hash-object "$file"'
     ret="size:$size;hash:$ret"
   }
-elif ble/bin/.freeze-utility-path -n openssl; then
+elif ble/bin#freeze-utility-path -n openssl; then
   function ble/file#hash/.impl {
     ble/util/assign-words ret 'ble/bin/openssl sha1 -r "$file"'
     ret="size:$size;sha1:$ret"
   }
-elif ble/bin/.freeze-utility-path -n sha1sum; then
+elif ble/bin#freeze-utility-path -n sha1sum; then
   function ble/file#hash/.impl {
     ble/util/assign-words ret 'ble/bin/sha1sum "$file"'
     ret="size:$size;sha1:$ret"
   }
-elif ble/bin/.freeze-utility-path -n sha1; then
+elif ble/bin#freeze-utility-path -n sha1; then
   function ble/file#hash/.impl {
     ble/util/assign-words ret 'ble/bin/sha1 -r "$file"'
     ret="size:$size;sha1:$ret"
   }
-elif ble/bin/.freeze-utility-path -n md5sum; then
+elif ble/bin#freeze-utility-path -n md5sum; then
   function ble/file#hash/.impl {
     ble/util/assign-words ret 'ble/bin/md5sum "$file"'
     ret="size:$size;md5:$ret"
   }
-elif ble/bin/.freeze-utility-path -n md5; then
+elif ble/bin#freeze-utility-path -n md5; then
   function ble/file#hash/.impl {
     ble/util/assign-words ret 'ble/bin/md5 -r "$file"'
     ret="size:$size;md5:$ret"
   }
-elif ble/bin/.freeze-utility-path -n cksum; then
+elif ble/bin#freeze-utility-path -n cksum; then
   function ble/file#hash/.impl {
     ble/util/assign-words ret 'ble/bin/cksum "$file"'
     ret="size:$size;cksum:$ret"
@@ -4238,7 +4238,7 @@ function ble/util/save-editing-mode {
 ##   @param varname 編集モードを記録した変数の変数名を指定します。
 ##
 function ble/util/restore-editing-mode {
-  case "${!1}" in
+  case ${!1} in
   (emacs) set -o emacs ;;
   (vi) set -o vi ;;
   (none) set +o emacs ;;
@@ -5869,7 +5869,7 @@ function ble/term/update-winsize {
   local ret
 
   # (a) "tput lines cols" または "tput li co" による実装 (2909.052 usec/eval)
-  if ble/bin/.freeze-utility-path tput; then
+  if ble/bin#freeze-utility-path tput; then
     if ble/util/assign-words ret 'ble/bin/tput lines cols' 2>/dev/null &&
         [[ ${#ret[@]} -eq 2 && ${ret[0]} =~ ^[0-9]+$ && ${ret[1]} =~ ^[0-9]+$ ]]
     then
@@ -5912,7 +5912,7 @@ function ble/term/update-winsize {
   fi
 
   # (c) "resize" による実装 (3108.696 usec/eval)
-  if ble/bin/.freeze-utility-path resize &&
+  if ble/bin#freeze-utility-path resize &&
       ble/util/assign ret 'ble/bin/resize' &&
       ble/string#match "$ret" 'COLUMNS=([0-9]+).*LINES=([0-9]+)'
   then

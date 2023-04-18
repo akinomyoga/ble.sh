@@ -14,12 +14,12 @@ fi
 
 function measure1 {
   wtype=1 atype=-1
-  function greater.w0 () { [[ wtype -ge 0 ]]; }
-  function greater.w1 () { ((wtype>=0)); }
-  function greater.w2 () { let 'wtype>=0'; }
-  function greater.a0 () { [[ atype -ge 0 ]]; }
-  function greater.a1 () { ((atype>=0)); }
-  function greater.a2 () { let 'atype>=0'; }
+  function greater.w0 { [[ wtype -ge 0 ]]; }
+  function greater.w1 { ((wtype>=0)); }
+  function greater.w2 { let 'wtype>=0'; }
+  function greater.a0 { [[ atype -ge 0 ]]; }
+  function greater.a1 { ((atype>=0)); }
+  function greater.a2 { let 'atype>=0'; }
 
   ble-measure 'greater.w0' #  19.20 usec/eval
   ble-measure 'greater.w1' #  16.50 usec/eval
@@ -39,10 +39,10 @@ function measure1 {
 function measure2 {
   arr=(1 2 3)
   wtype=1 atype=-1
-  function greater.w0 () { [[ wtype -ge 0 && ${arr[wtype]} ]]; }
-  function greater.w1 () { ((wtype>=0)) && [[ ${arr[wtype]} ]]; }
-  function greater.a0 () { [[ atype -ge 0 && ${arr[atype]} ]]; }
-  function greater.a1 () { ((atype>=0)) && [[ ${arr[atype]} ]]; }
+  function greater.w0 { [[ wtype -ge 0 && ${arr[wtype]} ]]; }
+  function greater.w1 { ((wtype>=0)) && [[ ${arr[wtype]} ]]; }
+  function greater.a0 { [[ atype -ge 0 && ${arr[atype]} ]]; }
+  function greater.a1 { ((atype>=0)) && [[ ${arr[atype]} ]]; }
   
   ble-measure 'greater.w0' #  29.30 usec/eval
   ble-measure 'greater.w1' #  30.20 usec/eval
@@ -62,10 +62,10 @@ function measure2 {
 
 function measure3 {
   a=2 b=3 c=4
-  function assign.d1 () { ((x=a*2+b*3-c*4)); }
-  function assign.d2 () { x=$((a*2+b*3-c*4)); }
-  function assign.c1 () { x=0; ((x+=a*2+b*3-c*4)); }
-  function assign.c2 () { x=0; x=$((x+a*2+b*3-c*4)); }
+  function assign.d1 { ((x=a*2+b*3-c*4)); }
+  function assign.d2 { x=$((a*2+b*3-c*4)); }
+  function assign.c1 { x=0; ((x+=a*2+b*3-c*4)); }
+  function assign.c2 { x=0; x=$((x+a*2+b*3-c*4)); }
 
   ble-measure 'assign.d1' # 22.10 usec/eval
   ble-measure 'assign.d2' # 23.20 usec/eval
@@ -91,9 +91,9 @@ measure3
 function measure4 {
   arr=(1 2 3)
   ref='arr[1]'
-  function element.0 () { ((arr[1]>=1)); }
-  function element.1 () { ((ref>=1)); }
-  function element.2 () { val=${arr[1]}; ((val>=1)); }
+  function element.0 { ((arr[1]>=1)); }
+  function element.1 { ((ref>=1)); }
+  function element.2 { val=${arr[1]}; ((val>=1)); }
   ble-measure 'element.0' # 19.80 usec/eval
   ble-measure 'element.1' # 20.10 usec/eval
   ble-measure 'element.2' # 29.50 usec/eval
@@ -110,20 +110,20 @@ function measure4 {
 #
 function measure5 {
   value=3
-  function compare.1 () { [[ $value == 3 ]]; }
-  function compare.2 () { ((value==3)); }
+  function compare.1 { [[ $value == 3 ]]; }
+  function compare.2 { ((value==3)); }
   ble-measure 'compare.1' # 17.40 usec/eval
   ble-measure 'compare.2' # 16.80 usec/eval
 
   lhs=3 rhs=3
-  function compare.a1 () { [[ $lhs == "$rhs" ]]; }
-  function compare.a2 () { ((lhs==rhs)); }
+  function compare.a1 { [[ $lhs == "$rhs" ]]; }
+  function compare.a2 { ((lhs==rhs)); }
   ble-measure 'compare.a1' # 20.10 usec/eval
   ble-measure 'compare.a2' # 17.60 usec/eval
 
   atext=1234 btext=4321
-  function compare.b1 () { [[ ${#atext} == ${#btext} ]]; }
-  function compare.b2 () { ((${#atext}==${#btext})); }
+  function compare.b1 { [[ ${#atext} == ${#btext} ]]; }
+  function compare.b2 { ((${#atext}==${#btext})); }
   ble-measure 'compare.b1' # 27.60 usec/eval
   ble-measure 'compare.b2' # 27.90 usec/eval
 }
@@ -139,12 +139,12 @@ function measure5 {
 
 function measure6 {
   value=3
-  function cond-assign.a1 () { c=4; ((c>value&&(bar=c))); }
-  function cond-assign.a2 () { c=4; ((c>value)) && ((bar=c)); }
-  function cond-assign.a3 () { c=4; ((c>value)) && bar=$c; }
-  function cond-assign.b1 () { c=3; ((c>value&&(bar=c))); }
-  function cond-assign.b2 () { c=3; ((c>value)) && ((bar=c)); }
-  function cond-assign.b3 () { c=3; ((c>value)) && bar=$c; }
+  function cond-assign.a1 { c=4; ((c>value&&(bar=c))); }
+  function cond-assign.a2 { c=4; ((c>value)) && ((bar=c)); }
+  function cond-assign.a3 { c=4; ((c>value)) && bar=$c; }
+  function cond-assign.b1 { c=3; ((c>value&&(bar=c))); }
+  function cond-assign.b2 { c=3; ((c>value)) && ((bar=c)); }
+  function cond-assign.b3 { c=3; ((c>value)) && bar=$c; }
   ble-measure 'cond-assign.a1' # 29.10 usec/eval
   ble-measure 'cond-assign.a2' # 32.90 usec/eval
   ble-measure 'cond-assign.a3' # 31.30 usec/eval

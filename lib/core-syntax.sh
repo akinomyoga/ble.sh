@@ -287,7 +287,7 @@ function ble/syntax/tree-enumerate-children {
   local TE_i=$tchild
   ble/syntax/tree-enumerate/.impl "$@"
 }
-function ble/syntax/tree-enumerate-break () ((tprev=-1))
+function ble/syntax/tree-enumerate-break { ((tprev=-1)); }
 
 ## @fn ble/syntax/tree-enumerate command...
 ##   現在の解析状態 _ble_syntax_tree に基いて、
@@ -1424,12 +1424,12 @@ function ble/syntax:bash/simple-word/eval/.impl {
     [[ $__ble_sync_timeout ]] &&
       __ble_sync_opts=$__ble_sync_opts:timeout=$((__ble_sync_timeout))
 
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     local __ble_simple_word_tmpfile=$_ble_local_tmpfile
     local __ble_script
     ble/util/assign __ble_script 'ble/util/conditional-sync "$__ble_sync_command" "" "$__ble_sync_weight" "$__ble_sync_opts"' &>/dev/null; local ext=$?
     builtin eval -- "$__ble_script"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
   else
     builtin eval "ble/syntax:bash/simple-word/eval/.set-result $__ble_word" &>/dev/null; local ext=$?
     builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
@@ -3697,7 +3697,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
       return 0
     elif ((stat_wt!=CTX_CMDXV)); then # Note: 変数代入の直後はキーワードは処理しない
       local processed=
-      case "$word_expanded" in
+      case $word_expanded in
       ('[[')
         # 条件コマンド開始
         ble/syntax/parse/touch-updated-attr "$wbeg"
@@ -6459,7 +6459,7 @@ blehook/eval-after-load color_defface ble/syntax/attr2iface/color_defface.onload
 function ble/syntax/highlight/cmdtype1 {
   type=$1
   local cmd=$2
-  case "$type:$cmd" in
+  case $type:$cmd in
   (builtin::|builtin:.)
     # 見にくいので太字にする
     ((type=ATTR_CMD_BOLD)) ;;

@@ -1094,7 +1094,8 @@ function sub:update-GeneralCategory {
 # sub:check-all
 
 function sub:check {
-  bash out/ble.sh --test
+  local bash=${1-bash}
+  "$bash" out/ble.sh --test
 }
 function sub:check-all {
   local -x _ble_make_command_check_count=0
@@ -1180,11 +1181,13 @@ function sub:scan/bash300bug {
   echo "--- $FUNCNAME ---"
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
-  grc 'local [_a-zA-Z]+=\(' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md
+  grc '(local|declare|typeset) [_a-zA-Z]+=\(' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md --color |
+    grep -v '#D0184'
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
-  grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh
+  grc '(local|declare|typeset) -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh --color |
+    grep -v '#D0525'
 
   # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
   grc '\$\{[_a-zA-Z0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
@@ -1200,12 +1203,23 @@ function sub:scan/bash301bug-array-element-length {
   echo "--- $FUNCNAME ---"
   # bash-3.1 で ${#arr[index]} を用いると、
   # 日本語の文字数が変になる。
-  grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} | grep -Ev '^([^#]*[[:space:]])?#'
+  grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} --color |
+    grep -Ev '^([^#]*[[:space:]])?#' |
+    grep -v '#D0182'
+}
+
+function sub:scan/bash400bug {
+  echo "--- $FUNCNAME ---"
+
+  # bash-3.0..4.0 で $'' 内に \' を入れていると '' の入れ子状態が反転して履歴展
+  # 開が '' の内部で起こってしまう。
+  grc '\$'\''([^\'\'']|\\[^'\''])*\\'\''([^\'\'']|\\.|'\''([^\'\'']|\\*)'\'')*![^=[:space:]]' --exclude={test,ChangeLog.md} --color
 }
 
 function sub:scan/bash401-histexpand-bgpid {
   echo "--- $FUNCNAME ---"
-  grc '"\$!"' --exclude={test,ChangeLog.md} | grep -Ev '#D2028'
+  grc '"\$!"' --exclude={test,ChangeLog.md} --color |
+    grep -Ev '#D2028'
 }
 
 function sub:scan/bash404-no-argument-return {
@@ -1449,7 +1463,7 @@ function sub:scan {
   # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
   #sub:scan/builtin 'history'
-  sub:scan/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp |
+  sub:scan/builtin 'echo' --exclude=./lib/keymap.vi_test.sh --exclude=./ble.pp |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\bstty[[:space:]]+echoZd
       \Zecho \$PPIDZd
@@ -1537,6 +1551,7 @@ function sub:scan {
   sub:scan/check-todo-mark
   sub:scan/bash300bug
   sub:scan/bash301bug-array-element-length
+  sub:scan/bash400bug
   sub:scan/bash401-histexpand-bgpid
   sub:scan/bash404-no-argument-return
   sub:scan/bash501-arith-base

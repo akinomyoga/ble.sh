@@ -5039,7 +5039,7 @@ function ble/keymap:vi/text-object/paragraph.impl {
 ##
 function ble/keymap:vi/text-object.impl {
   local arg=$1 flag=$2 reg=$3 type=$4
-  case "$type" in
+  case $type in
   ([ia][wW]) ble/keymap:vi/text-object/word.impl "$arg" "$flag" "$reg" "$type" ;;
   ([ia][\"\'\`]) ble/keymap:vi/text-object/quote.impl "$arg" "$flag" "$reg" "$type" ;;
   ([ia]['b()']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "$reg" "${type::1}()" ;;

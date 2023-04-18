@@ -161,7 +161,7 @@ function ble/lib/vim-surround.sh/load-template {
 
   # default
 
-  case "$ins" in
+  case $ins in
   (['<tT']*)
     local tag=${ins:1}; tag=${tag//$'\r'/' '}
     if [[ ! $tag ]]; then
@@ -566,7 +566,7 @@ function ble/widget/vim-surround.sh/nmap/csurround.set-delimiter {
   fi
 
   local obj1= obj2=
-  case "$del" in
+  case $del in
   ([wWps])      obj1=i$del obj2=i$del ;;
   ([\'\"\`])    obj1=i$del obj2=a$del arg=1 ;;
   (['bB)}>]t']) obj1=i$del obj2=a$del ;;
@@ -790,7 +790,7 @@ function ble/widget/vim-surround.sh/omap {
 
   local opfunc=${_ble_keymap_vi_opfunc%%:*}$s
   local opflags=${_ble_keymap_vi_opfunc#*:}
-  case "$opfunc" in
+  case $opfunc in
   (y[sS])
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
     _ble_edit_arg=$ARG

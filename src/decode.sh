@@ -350,7 +350,7 @@ function ble-decode-kbd {
   for kspec in "${kspecs[@]}"; do
     code=0
     while [[ $kspec == ?-* ]]; do
-      case "${kspec::1}" in
+      case ${kspec::1} in
       (S) ((code|=_ble_decode_Shft)) ;;
       (C) ((code|=_ble_decode_Ctrl)) ;;
       (M) ((code|=_ble_decode_Meta)) ;;
@@ -1023,7 +1023,7 @@ function ble-decode-char/csi/consume {
   ((_ble_decode_csi_mode==0&&$1!=27&&$1!=155)) && return 1
 
   local char=$1
-  case "$_ble_decode_csi_mode" in
+  case $_ble_decode_csi_mode in
   (0)
     # CSI (155) もしくは ESC (27)
     ((_ble_decode_csi_mode=$1==155?2:1))
@@ -1311,7 +1311,7 @@ function ble-decode-char/.send-modified-key {
       ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return 0
     fi
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
-    case "$1" in
+    case $1 in
     ($_ble_decode_KCODE_SHIFT)
       ble-decode-char/.process-modifier "$_ble_decode_Shft" "$seq" && return 0 ;;
     ($_ble_decode_KCODE_CONTROL)
@@ -1809,7 +1809,7 @@ function ble/decode/keymap#print {
       local cmd=${ent#*:}
 
       local o v
-      case "$cmd" in
+      case $cmd in
       ('ble/widget/.SHELL_COMMAND '*) o=c v=${cmd#'ble/widget/.SHELL_COMMAND '}; builtin eval "v=$v" ;;
       ('ble/widget/.EDIT_COMMAND '*)  o=x v=${cmd#'ble/widget/.EDIT_COMMAND '} ; builtin eval "v=$v" ;;
       ('ble/widget/.MACRO '*)         o=s; ble/util/chars2keyseq ${cmd#*' '}; v=$ret ;;
@@ -3170,7 +3170,7 @@ function ble-bind {
   while (($#)); do
     local arg=$1; shift
     if [[ $arg == --?* ]]; then
-      case "${arg:2}" in
+      case ${arg:2} in
       (color|color=always)
         flags=c${flags//[cn]} ;;
       (color=never)
