@@ -12,7 +12,7 @@
 #   't'     : 'TERMINAL'
 #
 
-ble-import keymap/vi
+ble-import keymap.vi
 ble-import prompt-git
 
 bleopt/declare -n vim_airline_theme dark

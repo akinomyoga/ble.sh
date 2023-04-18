@@ -13,7 +13,7 @@ function ble-edit/bind/load-editing-mode:emacs { :; }
 # 2021-09-23 force update (change to nsearch and bind-history)
 
 # vi functions referenced from core-decode.emacs-rlfunc.txt
-ble/util/autoload "$_ble_base/keymap/vi.sh" \
+ble/util/autoload "$_ble_base/lib/keymap.vi.sh" \
                   ble/widget/vi-rlfunc/{prev,end,next}-word \
                   ble/widget/vi-command/{forward,backward}-{v,u}word \
                   ble/widget/vi-command/forward-{v,u}word-end
@@ -264,7 +264,7 @@ function ble-decode/keymap:emacs/define {
 function ble-decode/keymap:emacs/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.emacs
   if [[ -s $fname_keymap_cache &&
-          $fname_keymap_cache -nt $_ble_base/keymap/emacs.sh &&
+          $fname_keymap_cache -nt $_ble_base/lib/keymap.emacs.sh &&
           $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
     source "$fname_keymap_cache" && return 0
   fi

@@ -61,24 +61,24 @@ src/canvas.emoji.sh:
 	bash make_command.sh generate-emoji-table > $@
 
 #------------------------------------------------------------------------------
-# keymap
-
-outdirs += $(OUTDIR)/keymap
-outfiles += $(OUTDIR)/keymap/emacs.sh
-outfiles += $(OUTDIR)/keymap/vi.sh $(OUTDIR)/keymap/vi_digraph.sh $(OUTDIR)/keymap/vi_digraph.txt $(OUTDIR)/keymap/vi_test.sh
-$(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
-	cp -p $< $@
-$(OUTDIR)/keymap/%.txt: keymap/%.txt | $(OUTDIR)/keymap
-	cp -p $< $@
-
-#------------------------------------------------------------------------------
 # lib
 
 outdirs += $(OUTDIR)/lib
+
+# keymap
+outfiles += $(OUTDIR)/lib/keymap.emacs.sh
+outfiles += $(OUTDIR)/lib/keymap.vi.sh
+outfiles += $(OUTDIR)/lib/keymap.vi_digraph.sh
+outfiles += $(OUTDIR)/lib/keymap.vi_digraph.txt
+outfiles += $(OUTDIR)/lib/keymap.vi_test.sh
+
+# init
 outfiles += $(OUTDIR)/lib/init-term.sh
 outfiles += $(OUTDIR)/lib/init-bind.sh
 outfiles += $(OUTDIR)/lib/init-cmap.sh
 outfiles += $(OUTDIR)/lib/init-msys1.sh
+
+# core
 outfiles += $(OUTDIR)/lib/core-complete.sh
 outfiles += $(OUTDIR)/lib/core-syntax.sh
 outfiles += $(OUTDIR)/lib/core-test.sh
@@ -88,9 +88,13 @@ outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
 outfiles += $(OUTDIR)/lib/core-decode.emacs-rlfunc.txt
 outfiles += $(OUTDIR)/lib/core-decode.vi_imap-rlfunc.txt
 outfiles += $(OUTDIR)/lib/core-decode.vi_nmap-rlfunc.txt
+
+# vim
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
 outfiles += $(OUTDIR)/lib/vim-airline.sh
+
+# test
 outfiles += $(OUTDIR)/lib/test-main.sh
 outfiles += $(OUTDIR)/lib/test-util.sh
 outfiles += $(OUTDIR)/lib/test-canvas.sh
@@ -99,6 +103,7 @@ outfiles += $(OUTDIR)/lib/test-edit.sh
 outfiles += $(OUTDIR)/lib/test-syntax.sh
 outfiles += $(OUTDIR)/lib/test-complete.sh
 outfiles += $(OUTDIR)/lib/util.bgproc.sh
+
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
 $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
@@ -117,6 +122,18 @@ $(OUTDIR)/lib/benchmark.ksh: lib/benchmark.ksh src/benchmark.sh
 #outfiles += $(OUTDIR)/lib/init-msleep.sh
 #$(OUTDIR)/lib/init-msleep.sh: lib/init-msleep.sh lib/init-msleep.c | $(OUTDIR)/lib
 #	$(MWGPP) $< > $@
+
+# いつか削除する
+removedfiles += \
+  keymap/emacs.rlfunc.txt \
+  keymap/emacs.sh \
+  keymap/isearch.sh \
+  keymap/vi.sh \
+  keymap/vi_digraph.sh \
+  keymap/vi_digraph.txt \
+  keymap/vi_imap.rlfunc.txt \
+  keymap/vi_nmap.rlfunc.txt \
+  keymap/vi_test.sh
 
 #------------------------------------------------------------------------------
 # documents

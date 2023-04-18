@@ -9397,11 +9397,11 @@ function ble-edit/bind/load-editing-mode:safe {
   ble/decode/keymap#load safe
 }
 
-ble/util/autoload "keymap/emacs.sh" \
+ble/util/autoload "lib/keymap.emacs.sh" \
                   ble-decode/keymap:emacs/define
-ble/util/autoload "keymap/vi.sh" \
+ble/util/autoload "lib/keymap.vi.sh" \
                   ble-decode/keymap:vi_{i,n,o,x,s,c}map/define
-ble/util/autoload "keymap/vi_digraph.sh" \
+ble/util/autoload "lib/keymap.vi_digraph.sh" \
                   ble-decode/keymap:vi_digraph/define
 
 function ble/widget/.change-editing-mode {
@@ -10475,7 +10475,7 @@ function ble-edit/bind/load-editing-mode {
   if ble/is-function ble-edit/bind/load-editing-mode:"$name"; then
     ble-edit/bind/load-editing-mode:"$name"
   else
-    ble/util/import "$_ble_base/keymap/$name.sh"
+    ble/util/import "$_ble_base/lib/keymap.$name.sh"
   fi
 }
 function ble-edit/bind/clear-keymap-definition-loader {

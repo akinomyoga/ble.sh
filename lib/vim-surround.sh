@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "$_ble_base/keymap/vi.sh"
+ble-import keymap.vi
 
 # surround.vim (https://github.com/tpope/vim-surround) の模倣実装
 #

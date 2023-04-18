@@ -35,7 +35,7 @@ function ble-decode/keymap:vi_digraph/define {
   ble-bind -f __default__ vi_digraph/default
   ble-bind -f __line_limit__ nop
 
-  local lines; ble/util/mapfile lines < "$_ble_base/keymap/vi_digraph.txt"
+  local lines; ble/util/mapfile lines < "$_ble_base/lib/keymap.vi_digraph.txt"
 
   local line field ch1 ch2 code
   for line in "${lines[@]}"; do
@@ -50,8 +50,8 @@ function ble-decode/keymap:vi_digraph/define {
 function ble-decode/keymap:vi_digraph/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi_digraph
   if [[ -s $fname_keymap_cache &&
-          $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.sh &&
-          $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.txt ]]; then
+          $fname_keymap_cache -nt $_ble_base/lib/keymap.vi_digraph.sh &&
+          $fname_keymap_cache -nt $_ble_base/lib/keymap.vi_digraph.txt ]]; then
     source "$fname_keymap_cache"
     return 0
   fi

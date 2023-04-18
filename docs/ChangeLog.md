@@ -16,6 +16,10 @@
 
 - fix(histdb): show error message only when bgproc crashed `#D2036` xxxxxxxx
 
+## Internal changes
+
+- refactor: move files `{keymap/ => lib/keymap.}*` xxxxxxxx
+
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
 
