@@ -149,7 +149,7 @@ function_basename = name ext?                        (* namespace function      
                   | type ':' name ext? ;             (* customization point             *)
 
 name = hyphenated_name extension                     (* public                          *)
-     | '.' hyphenated_name :                         (* private                         *)
+     | '.' hyphenated_name ;                         (* private                         *)
 
 ext = '.hook'                                        (* hook functions for blehook      *)
     | '.draw'                                        (* function operating on DRAW_BUFF *)
