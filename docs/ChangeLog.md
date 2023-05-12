@@ -5,20 +5,24 @@
 
 ## New features
 
-- bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` xxxxxxxx
+- bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 
 ## Fixes
 
 - util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` 09f5cec2 `#D2034` 09f5cec2
-- bgproc: return status of bgproc process `#D2036` xxxxxxxx
+- bgproc: return status of bgproc process `#D2036` 887d92dd
+
+## Compatibility
+
+- main: check `nawk` version explicitly `#D2037` xxxxxxxx
 
 ## Contrib
 
-- fix(histdb): show error message only when bgproc crashed `#D2036` xxxxxxxx
+- fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
 
 ## Internal changes
 
-- refactor: move files `{keymap/ => lib/keymap.}*` xxxxxxxx
+- refactor: move files `{keymap/ => lib/keymap.}*` f4c973b8
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
