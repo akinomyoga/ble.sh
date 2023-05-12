@@ -6924,6 +6924,15 @@ bash_tips
 
 2023-05-12
 
+  * mandb: Ubuntu で echo に対する解析結果でオプションと説明の単語がくっつく (reported by EmilySeville7cfg) [#D2038]
+    https://github.com/akinomyoga/ble.sh/issues/325
+
+    制御文字を全て削除する段階でくっついてしまう様だ。何故か環境によって TAB を
+    使ってオプション名と説明の間を区切っていたりそうでなかったりする様だ。取り
+    敢えず TAB は空白に変換する事にした。空白一つに変換すると距離が近すぎる事に
+    よってオプション引数と間違われる。2つでもオプション引数と解釈する様なので 3
+    つ以上である必要がある。きりの良い 4 空白に置換する事にする。
+
   * main: Ubuntu では nawk という名前で gawk が入っている [#D2037]
     https://github.com/akinomyoga/ble.sh/issues/322#issuecomment-1543766152
 

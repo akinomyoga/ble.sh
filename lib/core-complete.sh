@@ -4284,6 +4284,7 @@ function ble/complete/mandb/.generate-cache-from-man {
   local command=$1
   local ret
   ble/complete/mandb/search-file "$command" || return 1
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
   local path=$ret
   case $ret in
   (*.gz)       ble/bin/gzip -cd "$path" ;;
@@ -4585,6 +4586,7 @@ function ble/complete/mandb/.generate-cache-from-man {
 
       gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
       gsub(/\x1b[ -\/]*[0-~]/, "", line); # ESC seq
+      gsub(/\t/, "    ", line); # HT
       gsub(/.\x08/, "", line); # CHAR BS
       gsub(/\x0E/, "", line); # SO
       gsub(/\x0F/, "", line); # SI
@@ -4689,6 +4691,7 @@ function ble/complete/mandb/.generate-cache-from-man {
     { process_line($0); }
     END { flush_pair(); }
   ' | ble/bin/sort -t "$_ble_term_FS" -k 1
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
 }
 
 ## @fn ble/complete/mandb:help/generate-cache [opts]
@@ -4703,6 +4706,7 @@ function ble/complete/mandb:help/generate-cache {
   local space=$' \t' # for #D1709 (WA gawk 4.0.2)
   local rex_argsep='(\[?[:=]|  ?|\[)'
   local rex_option='[-+](,|[^]:='$space',[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|\[[^][]+\]|[^-[:space:]、。][^[:space:]、。]*))?([,[:space:]]|$)'
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
   ble/bin/awk -F "$_ble_term_FS" '
     BEGIN {
       cfg_help = ENVIRON["cfg_help"];
@@ -4777,6 +4781,7 @@ function ble/complete/mandb:help/generate-cache {
     {
       gsub(/\x1b\[[ -?]*[@-~]/, ""); # CSI seq
       gsub(/\x1b[ -\/]*[0-~]/, ""); # ESC seq
+      gsub(/\t/, "    "); # HT
       gsub(/[\x00-\x1F]/, ""); # Remove all the other C0 chars
     }
 
@@ -4956,6 +4961,7 @@ function ble/complete/mandb:help/generate-cache {
       entries_dump();
     }
   ' | ble/bin/sort -t "$_ble_term_FS" -k 1
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
 }
 
 function ble/complete/mandb:_parse_help/inject {

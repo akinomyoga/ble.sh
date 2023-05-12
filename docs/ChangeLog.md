@@ -11,6 +11,7 @@
 
 - util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` 09f5cec2 `#D2034` 09f5cec2
 - bgproc: return status of bgproc process `#D2036` 887d92dd
+- mandb: replace TAB with 4 spaces before removing control characters (reported by EmilySeville7cfg) `#D2038` xxxxxxxx
 
 ## Compatibility
 
