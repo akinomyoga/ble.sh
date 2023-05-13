@@ -3,10 +3,10 @@
 function ble/cmdspec/initialize { return 0; }
 
 function ble/complete/opts/initialize {
-  ble/cmdspec/opts mandb-help                                    printf
-  ble/cmdspec/opts mandb-disable-man:mandb-help                  bind
-  ble/cmdspec/opts mandb-disable-man:mandb-help:mandb-help-usage complete
-  ble/cmdspec/opts mandb-disable-man:no-options                  : true false
+  ble/cmdspec/opts mandb-help                                        printf
+  ble/cmdspec/opts mandb-disable-man:mandb-help:stop-options-postarg bind cd
+  ble/cmdspec/opts mandb-disable-man:mandb-help:mandb-help-usage     complete
+  ble/cmdspec/opts mandb-disable-man:no-options                      : true false
 
   ble/cmdspec/opts mandb-help=%'help echo':stop-options-unless='^-[neE]+$' echo
 

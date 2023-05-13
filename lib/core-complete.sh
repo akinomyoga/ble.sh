@@ -4008,7 +4008,8 @@ function ble/complete/progcomp {
 # オプション名に現れる事を許す文字の集合 (- と + を除く)
 # Exclude non-ASCII or symbols /[][()<>{}="'\''`]/
 # Note: awk の正規表現内部で使っても大丈夫な様に \ と / をエスケープしている。
-_ble_complete_option_chars='_!#$%&:;.,^~|\\?\/*a-zA-Z0-9'
+# Note (#D2039): @ は cd -@ で使われている
+_ble_complete_option_chars='_!#$%&:;.,^~|\\?\/*a-zA-Z0-9@'
 
 # action:mandb
 #
@@ -4710,9 +4711,11 @@ function ble/complete/mandb:help/generate-cache {
   ble/bin/awk -F "$_ble_term_FS" '
     BEGIN {
       cfg_help = ENVIRON["cfg_help"];
-      g_indent = -1;
-      g_keys_count = 0;
-      g_desc = "";
+      g_help_indent = -1;
+      g_help_score = -1; # score based on indent and the interval between the
+                         # option and desc. smaller is better.
+      g_help_keys_count = 0;
+      g_help_desc = "";
 
       cfg_usage = ENVIRON["cfg_usage"];
       g_usage_count = 0;
@@ -4736,8 +4739,8 @@ function ble/complete/mandb:help/generate-cache {
       if (name ~ /^\+/ && !cfg_plus) return;
 
       if (entries_index[name] != "") {
-        ientry = entries_index[name];
         if (score >= entries_score[name]) return;
+        ientry = entries_index[name];
       } else {
         ientry = entries_count++;
         entries_keys[ientry] = name;
@@ -4857,28 +4860,29 @@ function ble/complete/mandb:help/generate-cache {
       }
       return ret;
     }
-    function flush_data(_, i, desc, prev_opt) {
-      if (g_indent < 0) return;
-      for (i = 0; i < g_keys_count; i++) {
-        desc = g_desc;
+    function help_flush(_, i, desc, prev_opt) {
+      if (g_help_indent < 0) return;
+      for (i = 0; i < g_help_keys_count; i++) {
+        desc = g_help_desc;
 
         # show a short option
-        if (i > 0 && g_keys[i] ~ /^--/) {
-          prev_opt = g_keys[i - 1];
+        if (i > 0 && g_help_keys[i] ~ /^--/) {
+          prev_opt = g_help_keys[i - 1];
           sub(/\034.*/, "", prev_opt);
           if (prev_opt ~ /^-[^-]$/)
             desc = "\033[1m[\033[0;36m" prev_opt "\033[0;1m]\033[m " desc;
         }
 
-        entries_register(g_keys[i] FS desc, g_indent);
+        entries_register(g_help_keys[i] FS desc, g_help_score);
       }
-      g_indent = -1;
-      g_keys_count = 0;
-      g_desc = "";
+      g_help_indent = -1;
+      g_help_keys_count = 0;
+      g_help_desc = "";
     }
-    function register_key(keydef, _, key, keyinfo, keys, nkey, i, optarg) {
-      if (g_desc != "") flush_data();
-      g_indent = get_indent(keydef);
+    function help_start(keydef, _, key, keyinfo, keys, nkey, i, optarg) {
+      if (g_help_desc != "") help_flush();
+      g_help_indent = get_indent(keydef);
+      g_help_score = g_help_indent;
 
       nkey = 0;
       for (;;) {
@@ -4921,15 +4925,15 @@ function ble/complete/mandb:help/generate-cache {
 
       for (i = 0; i < nkey; i++)
         if ((keyinfo = split_option_optarg_suffix(keys[i])) != "")
-          g_keys[g_keys_count++] = keyinfo;
+          g_help_keys[g_help_keys_count++] = keyinfo;
     }
-    function append_desc(desc) {
+    function help_append_desc(desc) {
       gsub(/^[[:space:]]+|[[:space:]]$/, "", desc);
       if (desc == "") return;
-      if (g_desc == "")
-        g_desc = desc;
+      if (g_help_desc == "")
+        g_help_desc = desc;
       else
-        g_desc = g_desc " " desc;
+        g_help_desc = g_help_desc " " desc;
     }
 
     # Note (#D1847): We here restrict the number of spaces between synonymous
@@ -4939,23 +4943,24 @@ function ble/complete/mandb:help/generate-cache {
       key = substr($0, 1, RLENGTH);
       desc = substr($0, RLENGTH + 1);
       if (desc ~ /^,/) next;
-      register_key(key);
-      append_desc(desc);
+      help_start(key);
+      help_append_desc(desc);
+      if (desc !~ /^[[:space:]]/) g_help_score += 100;
       next;
     }
-    g_indent >= 0 {
+    g_help_indent >= 0 {
       sub(/[[:space:]]+$/, "");
       indent = get_indent($0);
-      if (indent <= g_indent)
-        flush_data();
+      if (indent <= g_help_indent)
+        help_flush();
       else
-        append_desc($0);
+        help_append_desc($0);
     }
 
     #--------------------------------------------------------------------------
 
     END {
-      flush_data();
+      help_flush();
       usage_generate();
       generate_plus();
       entries_dump();
@@ -5200,6 +5205,7 @@ function ble/complete/source:option {
 ##     complete. COMPV is, if available, its current value after
 ##     evaluation. The variable "comp_type" contains additional flags
 ##     for the completion context.
+##   @var[ref] cand_iloop
 ##
 function ble/complete/source:option/generate-for-command {
   local cmd=$1 prev_args
@@ -5233,7 +5239,7 @@ function ble/complete/source:option/generate-for-command {
   for entry in "${entries[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
       ble/complete/check-cancel && return 148
-    local CAND=${entry%%$_ble_term_FS*}
+    local CAND=${entry%%$fs*}
     [[ $CAND == "$COMPV"* ]] || continue
     ble/complete/cand/yield mandb "$CAND" "$entry"
     [[ $entry == *"$fs"*"$fs"*"$fs"?* ]] && has_desc=1
@@ -9157,6 +9163,84 @@ function ble-decode/keymap:dabbrev/define {
 #------------------------------------------------------------------------------
 # default cmdinfo/complete
 
+## @fn ble/cmdinfo/complete/yield-flag cmd flags [opts]
+##   "-${flags}X" の X を補完する。
+##   @param[in] cmd
+##     mandb 検索に用いるコマンド名
+##   @param[in] flags
+##     可能なオプション文字の一覧
+##   @param[in,opt] opts
+##     コロン区切りのリスト
+##
+##     dedup[=XFLAGS]
+##       既に指定されている排他的フラグは除外します。XFLAGS には排他的フラグの
+##       集合を指定します。省略または空文字列を指定した場合は全てのフラグが排他
+##       的であると見なします。
+##
+##     cancel-on-empty
+##       候補のフラグがもうない場合に補完候補生成をキャンセルします。既定では、
+##       候補のフラグがもうない場合には現在入力済みの内容で補完確定します。
+##
+##   @var[in] COMPV
+
+ble/complete/action#inherit-from mandb.flag mandb
+function ble/complete/action:mandb.flag/initialize {
+  ble/complete/action:mandb/initialize "$@"
+}
+function ble/complete/action:mandb.flag/init-menu-item {
+  ble/complete/action:mandb/init-menu-item
+  prefix=${CAND::!!PREFIX_LEN}
+}
+
+function ble/cmdinfo/complete/yield-flag {
+  local cmd=$1 flags=$2 opts=$3
+  [[ $COMPV != [!-]* && $COMPV != --* && $flags ]] || return 1
+
+  local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
+  ble/complete/cand/yield.initialize mandb
+
+  # opts dedup
+  if local ret; [[ ${COMPV:1} ]] && ble/opts#extract-last-optarg "$opts" dedup "$flags"; then
+    local specified_flags=${ret//[!"${COMPV:1}"]}
+    flags=${flags//["$specified_flags"]}
+  fi
+
+  if [[ ! $flags ]]; then
+    [[ :$opts: == *:cancel-on-empty:* ]] && return 1
+
+    # 候補のフラグがもうない場合は現在の内容で一意確定
+    local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
+    ble/complete/cand/yield.initialize word
+    ble/complete/cand/yield word "$COMPV"
+    return "$?"
+  fi
+
+  local COMP_PREFIX=$COMPV
+
+  # desc が mandb に見つかればそれを適用する
+  local has_desc=
+  if local ret; ble/complete/mandb/load-cache "$cmd"; then
+    local entry fs=$_ble_term_FS
+    for entry in "${ret[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
+        ble/complete/check-cancel && return 148
+      local option=${entry%%$fs*}
+      [[ $option == -? && ${option:1} == ["$flags"] ]] || continue
+      ble/complete/cand/yield mandb.flag "$COMPV${option:1}" "$entry"
+      [[ $entry == *"$fs"*"$fs"*"$fs"?* ]] && has_desc=1
+      flags=${flags//${option:1}}
+    done
+    [[ $has_desc ]] && bleopt complete_menu_style=desc
+  fi
+
+  # 見つからない場合には説明なしで生成する
+  local i
+  for ((i=0;i<${#flags};i++)); do
+    ble/complete/cand/yield mandb.flag "$COMPV${flags:i:1}"
+  done
+}
+
+
 # action:cdpath (action:file を修正)
 
 function ble/complete/action:cdpath/initialize {
@@ -9209,15 +9293,10 @@ function ble/cmdinfo/complete:cd/.impl {
         ble/complete/cand/yield "$action" -n
       fi ;;
     (*)
-      COMP_PREFIX=$COMPV
-      local -a list=()
-      local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
-      ble/complete/cand/yield.initialize "$action"
-      [[ $COMPV == -* ]] && ble/complete/cand/yield "$action" "${COMPV}"
-      [[ $COMPV != *L* ]] && ble/complete/cand/yield "$action" "${COMPV}L"
-      [[ $COMPV != *P* ]] && ble/complete/cand/yield "$action" "${COMPV}P"
-      ((_ble_bash>=40200)) && [[ $COMPV != *e* ]] && ble/complete/cand/yield "$action" "${COMPV}e"
-      ((_ble_bash>=40300)) && [[ $COMPV != *@* ]] && ble/complete/cand/yield "$action" "${COMPV}@" ;;
+      local list=LP
+      ((_ble_bash>=40200)) && list=${list}e
+      ((_ble_bash>=40300)) && list=${list}@
+      ble/cmdinfo/complete/yield-flag cd "$list" dedup
     esac
     return 0
   fi

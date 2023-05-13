@@ -6,6 +6,7 @@
 ## New features
 
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
+- progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` xxxxxxxx
 
 ## Fixes
 

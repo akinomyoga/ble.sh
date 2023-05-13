@@ -7073,10 +7073,11 @@ function ble/progcolor/@wattr {
 ##   @var[in] wtype
 ##   @var[in] progcolor_*
 function ble/progcolor/word:default/.is-option {
+  # Note: オプションとして許される文字に関しては_ble_complete_option_chars と同期を取る。
   ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_ARGVI)) &&
-    ble/string#match "$1" '^(-[-_a-zA-Z0-9]*)=?' && # 高速な判定を先に済ませる
+    ble/string#match "$1" '^(-[-_a-zA-Z0-9!#$%&:;.,^~|\?/*@]*)=?' && # 高速な判定を先に済ませる
     ble/progcolor/is-option-context &&
-    ble/string#match "$1" '^(-[-_a-zA-Z0-9]*)=?' # 再実行 for BASH_REMATCH
+    ble/string#match "$1" '^(-[-_a-zA-Z0-9!#$%&:;.,^~|\?/*@]*)=?' # 再実行 for BASH_REMATCH
 }
 
 ## @fn ble/progcolor/word:default
