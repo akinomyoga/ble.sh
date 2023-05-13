@@ -1325,6 +1325,8 @@ function sub:scan/unset-variable {
       \Zreadonly -f unsetZd
       \Z'\''\(unset\)'\''Zd
       \Z"\$__ble_proc" "\$__ble_name" unsetZd
+      \Zulimit umask unalias unset waitZd
+      \ZThe variable will be unset initiallyZd
       g'
 }
 function sub:scan/eval-literal {
@@ -1390,6 +1392,7 @@ function sub:scan/check-readonly-unsafe {
       /^\.\/src\/edit.sh:[0-9]+:_dirty=$/d
       /^\.\/src\/history.sh:[0-9]+:_history_index=$/d
       /^\.\/src\/util.sh:[0-9]+:(ARRI|OPEN|TERM)=$/d
+      /^\.\/lib\/core-cmdspec.sh:[0-9]+:OLD=$/d
 
       # (extract only variable names)
       s/^[^:]*:[0-9]+:[[:space:]]*//;
@@ -1450,6 +1453,7 @@ function sub:scan {
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\bstty[[:space:]]+echoZd
       \Zecho \$PPIDZd
+      \Zble/keymap:vi_test/check Zd
       \Zmandb-help=%'\''help echo'\''Zd
       g'
   #sub:scan/builtin '(compopt|type|printf)'
@@ -1459,13 +1463,14 @@ function sub:scan {
       \Zline = "bind"Zd
       \Z'\''  bindZd
       \Z\(bind\)    ble-bindZd
-      \Zble/cmdspec/opts .* bind$Zd
+      \Z^alias bind cd command compgenZd
       \Zoutputs of the "bind" builtinZd
       g'
   sub:scan/builtin 'read' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \ZDo not read Zd
       \Zfailed to read Zd
+      \Zpushd read readonly set shoptZd
       g'
   sub:scan/builtin 'exit' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -1484,6 +1489,7 @@ function sub:scan {
       \Z\$\(eval \$\(call .*\)\)Zd
       \Z^[[:space:]]*local rex_[_a-zA-Z0-9]+='\''[^'\'']*'\''[[:space:]]*$Zd
       \ZLINENO=\$_ble_edit_LINENO evalZd
+      \Z^ble/cmdspec/opts Zd
       g'
   sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -1492,10 +1498,13 @@ function sub:scan {
       \Zunset -f builtinZd
       \Z'\''\(unset\)'\''Zd
       \Z"\$__ble_proc" "\$__ble_name" unsetZd
+      \Zumask unalias unset wait$Zd
+      \ZThe variable will be unset initiallyZd
       g'
   sub:scan/builtin 'unalias' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zbuiltins1=\(.* unalias .*\)Zd
+      \Zumask unalias unset wait$Zd
       g'
 
   #sub:scan/assign
@@ -1511,16 +1520,17 @@ function sub:scan {
       \Z\(trap \| ble/builtin/trap\) .*;;Zd
       \Zble/function#trace trap Zd
       \Z# EXIT trapZd
+      \Zread readonly set shopt trapZd
       g'
 
   sub:scan/builtin 'readonly' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[[:space:]]*#Zd
       \ZWA readonlyZd
-      \Zble/cmdspec/opts Zd
       \Z\('\''declare'\''(\|'\''[a-z]+'\'')+\)Zd
       \Z readonly was blocked\.Zd
       \Z\[\[ \$\{FUNCNAME\[i]} == \*readonly ]]Zd
+      \Zread readonly set shopt trapZd
       g'
 
   sub:scan/a.txt

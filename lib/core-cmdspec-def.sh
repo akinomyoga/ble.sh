@@ -25,6 +25,10 @@ ble/is-function ble/util/idle.push && ble-import -d "$_ble_base/lib/core-cmdspec
 ##    mandb-usage
 ##      mandb 構築の際に $CMD --usage の結果を解析します。
 ##
+##    mandb-exclude=REGEX
+##      mandb で生成されるオプションを除外します。オプション名に対する awk の正
+##      規表現パターンを指定します。
+##
 ##    plus-options
 ##    plus-options=xyzw
 ##      "'+' CHAR" の形式のオプションを受け取る事を示します。
@@ -49,10 +53,22 @@ ble/is-function ble/util/idle.push && ble-import -d "$_ble_base/lib/core-cmdspec
 
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_cmdspec_opts}"
 
+## @fn ble/cmdspec/opts [+]cmdspec_opts command...
+##   指定したコマンドの cmdspec_opts を設定します。
+##   @param[in] opts
+##     "+" が全治されている時は既存の設定に cmdspec_opts を追加します。
+##   @param[in] command...
+##     追加対象のコマンドのリストを指定します。
 function ble/cmdspec/opts {
   local spec=$1 command; shift
   for command; do
-    ble/gdict#set _ble_cmdspec_opts "$command" "$spec"
+    local spec1=$spec
+    if [[ $spec1 == +* ]]; then
+      local ret=
+      ble/gdict#get _ble_cmdspec_opts "$command" "$spec1"
+      spec1=${ret:+$ret:}${spec1:1}
+    fi
+    ble/gdict#set _ble_cmdspec_opts "$command" "$spec1"
   done
 }
 ## @fn ble/cmdspec/opts#load command [default_value]

@@ -6922,6 +6922,42 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-05-13
+
+  * cmdspec: その他の builtin のオプションの対応 (motivated by EmilySeville7cfg) [#D2040]
+    https://github.com/akinomyoga/ble.sh/issues/325#issuecomment-1545474274
+
+    これらは bash builtin なので man で情報を正しく抽出できない。代わりに help
+    builtin で取得する必要があるが、これは明示的に指定する必要がある。
+
+    * reject: builtin コマンドに対する既定の cmdspec を定義する? 或いは type で
+      builtin だったら fallback として builtin 用の cmdspec を既定で適用する可
+      能性? と思ったが ble/cmdspec/opts は補完専用の枠組みという訳でもなく、必
+      要もないのに type で builtin かどうかを確認するのを既定で行うのも憚られる。
+      やはり、一つ一つ全部指定した方が良い様に思われる。
+
+    * done: pushd, popd, dirs の -N/+N の実装
+
+      pushd に関しては既に core-complete の中で cd と一緒に実装していた。それに
+      追加する形で popd と dirs も実装する。
+
+    * mandb-help=@-- が認識されていないのは何故か。どうも明示的に無視されている
+      様である。同じ mandb-help=@ に指定していても -- だけは認識されていない。
+
+      或いは実装上の都合で意図的に -- を除外しているのだったか? と思ったが思い
+      当たる事はない。実際に動作を追っていくと mandb の段階では -- はちゃんと生
+      成されている。何処かで消滅しているという事だろうか。
+
+    取り敢えず対応した。
+
+    x ok: pwd の man-disable-man が効いていない気がする。man pwd から拾ってきた
+      オプションを表示している。と思ったが単にキャッシュが更新されていないだけ
+      だった。
+
+    x test の disable-double-hyphen が効いていない。と思ったら
+      disable-double-hyphen は別の用途だった。新しく mandb-exclude という項目を
+      作る事にした。
+
 2023-05-12
 
   * progcomp: cd の short flag 補完で文字そのものを候補として表示しているが分からにくい (requested by EmilySeville7cfg) [#D2039]

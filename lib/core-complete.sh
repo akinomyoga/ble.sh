@@ -5070,9 +5070,22 @@ function ble/complete/mandb/generate-cache {
   done
 
   if [[ $update ]]; then
+    local -x exclude=
+    ble/opts#extract-last-optarg "$cmdspec_opts" mandb-exclude && exclude=$ret
+
     local fs=$_ble_term_FS
     ble/bin/awk -F "$_ble_term_FS" '
-      BEGIN { plus_count = 0; nodesc_count = 0; }
+      BEGIN {
+        plus_count = 0;
+        nodesc_count = 0;
+        exclude = ENVIRON["exclude"];
+      }
+      function emit(name, entry) {
+        hash[name] = entry;
+        if (exclude != "" && name ~ exclude) return;
+        print entry;
+      }
+
       $4 == "" {
         if ($1 ~ /^\+/) {
           plus_name[plus_count] = $1;
@@ -5085,16 +5098,13 @@ function ble/complete/mandb/generate-cache {
         }
         next;
       }
-      !hash[$1] { hash[$1] = $0; print; }
+      !hash[$1] { emit($1, $0); }
 
       END {
         # minus options
-        for (i = 0; i < nodesc_count; i++) {
-          if (!hash[nodesc_name[i]]) {
-            hash[nodesc_name[i]] = nodesc_entry[i];
-            print nodesc_entry[i];
-          }
-        }
+        for (i = 0; i < nodesc_count; i++)
+          if (!hash[nodesc_name[i]])
+            emit(nodesc_name[i], nodesc_entry[i]);
 
         # plus options
         for (i = 0; i < plus_count; i++) {
@@ -5121,8 +5131,7 @@ function ble/complete/mandb/generate-cache {
           }
 
           if (!desc) desc = "reverse of \033[4m" mname "\033[m";
-          hash[name] = name FS optarg FS suffix FS desc;
-          print hash[name];
+          emit(name, name FS optarg FS suffix FS desc);
         }
       }
     ' "${subcaches[@]}" >| "$fcache"
@@ -9181,6 +9190,10 @@ function ble-decode/keymap:dabbrev/define {
 ##       候補のフラグがもうない場合に補完候補生成をキャンセルします。既定では、
 ##       候補のフラグがもうない場合には現在入力済みの内容で補完確定します。
 ##
+##     hasarg=AFLAGS
+##       オプション引数を持つフラグの集合を指定します。この文字集合に含まれる文
+##       字が既に COMPV に指定されている場合にはオプションは補完しません。
+##
 ##   @var[in] COMPV
 
 ble/complete/action#inherit-from mandb.flag mandb
@@ -9200,9 +9213,14 @@ function ble/cmdinfo/complete/yield-flag {
   ble/complete/cand/yield.initialize mandb
 
   # opts dedup
-  if local ret; [[ ${COMPV:1} ]] && ble/opts#extract-last-optarg "$opts" dedup "$flags"; then
+  local ret
+  if [[ ${COMPV:1} ]] && ble/opts#extract-last-optarg "$opts" dedup "$flags"; then
     local specified_flags=${ret//[!"${COMPV:1}"]}
     flags=${flags//["$specified_flags"]}
+  fi
+
+  if ble/opts#extract-last-optarg "$opts" hasarg; then
+    [[ $COMPV == -*["$ret"]* ]] && return 1
   fi
 
   if [[ ! $flags ]]; then
@@ -9283,23 +9301,66 @@ function ble/cmdinfo/complete:cd/.impl {
   local type=$1
   [[ $comps_flags == *v* ]] || return 1
 
-  if [[ $COMPV == -* ]]; then
-    local action=word
-    case $type in
-    (pushd)
-      if [[ $COMPV == - || $COMPV == -n ]]; then
-        local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
-        ble/complete/cand/yield.initialize "$action"
-        ble/complete/cand/yield "$action" -n
-      fi ;;
-    (*)
+  case $type in
+  (pushd|popd|dirs)
+    # todo: -- より後の [-+]* は処理しない
+    # todo: 実は -N/+N はオプションではなく通常引数
+    if [[ $COMPV == [-+]* ]]; then
+      local old_cand_count=$cand_count
+
+      # yield options
+      local flags=n
+      [[ $type == dirs ]] && flags=clpv
+      ble/cmdinfo/complete/yield-flag "$type" "$flags" dedup:hasarg=0123456789:cancel-on-empty
+
+      local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
+      ble/complete/cand/yield.initialize word
+      local ret
+      ble/color/face2sgr-ansi filename_directory
+      local sgr1=$ret sgr0=$'\e[m'
+
+      # yield -N/+N
+      local i n=${#DIRSTACK[@]}
+      for ((i=0;i<n;i++)); do
+        local cand=${COMPV::1}$i
+        [[ $cand == "$COMPV"* ]] || continue
+        local j=$i; [[ $COMPV == -* ]] && j=$((n-1-i))
+        ble/complete/cand/yield word "$cand" "DIRSTACK[$j] $sgr1${DIRSTACK[j]}$sgr0"
+      done
+
+      # yield - and -- for pushd
+      if [[ $type == pushd ]]; then
+        [[ ${OLDPWD:-} && $COMPV == - ]] &&
+          ble/complete/cand/yield word - "OLDPWD $sgr1$OLDPWD$sgr0"
+        [[ -- == "$COMPV"* ]] &&
+          ble/complete/cand/yield word -- '(indicate the end of options)'
+      fi
+
+      ((cand_count!=old_cand_count)) && return 0
+    fi
+    [[ $type == pushd ]] || return 0 ;;
+  (*)
+    # todo: -- より後の [-+]* は処理しない
+    if [[ $COMPV == -* ]]; then
       local list=LP
       ((_ble_bash>=40200)) && list=${list}e
       ((_ble_bash>=40300)) && list=${list}@
       ble/cmdinfo/complete/yield-flag cd "$list" dedup
-    esac
-    return 0
-  fi
+
+      local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
+      ble/complete/cand/yield.initialize word
+      if [[ ${OLDPWD:-} && $COMPV == - ]]; then
+        local ret
+        ble/color/face2sgr-ansi filename_directory
+        local sgr1=$ret sgr0=$'\e[m'
+        ble/complete/cand/yield word - "OLDPWD $sgr1$OLDPWD$sgr0"
+      fi
+      [[ -- == "$COMPV"* ]] &&
+        ble/complete/cand/yield word -- '(indicate the end of options)'
+
+      return 0
+    fi
+  esac
 
   [[ :$comp_type: != *:[maA]:* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
   [[ :$comp_type: == *:[maA]:* && ! $COMPV ]] && return 1
@@ -9377,6 +9438,12 @@ function ble/cmdinfo/complete:cd {
 }
 function ble/cmdinfo/complete:pushd {
   ble/cmdinfo/complete:cd/.impl pushd
+}
+function ble/cmdinfo/complete:popd {
+  ble/cmdinfo/complete:cd/.impl popd
+}
+function ble/cmdinfo/complete:dirs {
+  ble/cmdinfo/complete:cd/.impl dirs
 }
 
 blehook/invoke complete_load

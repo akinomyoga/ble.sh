@@ -7,6 +7,7 @@
 
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` xxxxxxxx
+- cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` xxxxxxxx
 
 ## Fixes
 
