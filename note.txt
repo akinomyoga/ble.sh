@@ -6924,6 +6924,30 @@ bash_tips
 
 2023-05-13
 
+  * progcomp: _parse_help の代わりに新しい _comp_compgen_help に介入 [#D2041]
+
+    新しい実装は _parse_help ではなく新しい関数名に対して advice を仕掛ける必要
+    がある。
+
+    うーん。
+
+    x fixed: 今までの実装で _parse_help - に対しての介入がちゃんと動いているか
+      怪しい。この実装だと本来 _parse_help が読み取る筈だった stdin を盗んでし
+      まうのではないか。キャッシュが一旦出来上がればもう読み取らないので問題な
+      い。
+
+    * ok: 実装チェック。bash-completion 2.11 の iperf -[TAB] が _parse_help -
+      を呼び出す。ちゃんと動いている。その他の場合についても
+
+      $ awk -F "$_ble_term_FS" '{print $1}' "$subcache" >/dev/tty
+      $ echo $(awk -F "$_ble_term_FS" '{print $1}' "$subcache") >/dev/tty
+
+      でチェックする。sed -[TAB] は _longopt で smartctl -[TAB] は _parse_help
+      "$1" のテストになる。bind -[TAB] は _parse_usage のテストになる。取り敢え
+      ず何れも期待どおりに動いている。
+
+      bash-completion 2.12 の方でもちゃんと動く事を確認した。
+
   * cmdspec: その他の builtin のオプションの対応 (motivated by EmilySeville7cfg) [#D2040]
     https://github.com/akinomyoga/ble.sh/issues/325#issuecomment-1545474274
 

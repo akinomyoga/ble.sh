@@ -19,6 +19,7 @@
 ## Compatibility
 
 - main: check `nawk` version explicitly `#D2037` xxxxxxxx
+- mandb: inject in bash-completion-2.12 interfaces `#D2041` xxxxxxxx
 
 ## Contrib
 

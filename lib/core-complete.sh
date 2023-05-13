@@ -3658,7 +3658,10 @@ function ble/complete/progcomp/.compgen {
       ble-import -f contrib/integration/fzf-completion
 
     # bash_completion
-    if ble/is-function _quote_readline_by_ref; then
+    if ble/is-function _comp_initialize; then
+      # bash-completion 2.12
+      ble/complete/mandb:bash-completion/inject
+    elif ble/is-function _quote_readline_by_ref; then
       # https://github.com/scop/bash-completion/pull/492 (fixed in bash-completion 2.12)
       function _quote_readline_by_ref {
         if [[ $1 == \'* ]]; then
@@ -3679,7 +3682,7 @@ function ble/complete/progcomp/.compgen {
       # https://github.com/scop/bash-completion/pull/773 (fixed in bash-completion 2.12)
       ble/function#suppress-stderr _function 2>/dev/null
 
-      ble/complete/mandb:_parse_help/inject
+      ble/complete/mandb:bash-completion/inject
     fi
 
     # cobra GenBashCompletionV2
@@ -4869,8 +4872,12 @@ function ble/complete/mandb:help/generate-cache {
         if (i > 0 && g_help_keys[i] ~ /^--/) {
           prev_opt = g_help_keys[i - 1];
           sub(/\034.*/, "", prev_opt);
-          if (prev_opt ~ /^-[^-]$/)
+          if (prev_opt ~ /^-[^-]$/) {
+            # Note: This particular form of desc is used by
+            # ble/complete/mandb:bash-completion/_parse_help.advice.  When we
+            # change the format, the function also needs to be updated.
             desc = "\033[1m[\033[0;36m" prev_opt "\033[0;1m]\033[m " desc;
+          }
         }
 
         entries_register(g_help_keys[i] FS desc, g_help_score);
@@ -4969,12 +4976,18 @@ function ble/complete/mandb:help/generate-cache {
   ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
 }
 
-function ble/complete/mandb:_parse_help/inject {
-  ble/is-function _parse_help || return 0
-  ble/function#advice before _parse_help 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}"' &&
-    ble/function#advice before _longopt 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}"' &&
-    ble/function#advice before _parse_usage 'ble/complete/mandb:_parse_help/generate-cache "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}" usage' &&
-    function ble/complete/mandb:_parse_help/inject { return 0; }
+function ble/complete/mandb:bash-completion/inject {
+  if ble/is-function _comp_compgen_help; then
+    # bash-completion 2.12
+    ble/function#advice after _comp_compgen_help__get_help_lines 'ble/complete/mandb:bash-completion/_get_help_lines.advice' &&
+      ble/function#advice before _comp_longopt 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}"' &&
+      function ble/complete/mandb:bash-completion/inject { return 0; }
+  elif ble/is-function _parse_help; then
+    ble/function#advice before _parse_help 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}"' &&
+      ble/function#advice before _longopt 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}"' &&
+      ble/function#advice before _parse_usage 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}"' &&
+      function ble/complete/mandb:bash-completion/inject { return 0; }
+  fi
 } 2>/dev/null # _parse_help が別の枠組みで定義されている事がある? #D1900
 
 ## @fn ble/string#hash-pjw text [size shift]
@@ -4994,27 +5007,95 @@ function ble/string#hash-pjw {
   ret=$h
 }
 
-## @fn ble/complete/mandb:_parse_help/generate-cache command [args] [opts]
-function ble/complete/mandb:_parse_help/generate-cache {
-  [[ $_ble_attached ]] || return 0
+## @fn ble/complete/mandb:bash-completion/.alloc-subcache command hash [opts]
+##   @var[out] ret
+function ble/complete/mandb:bash-completion/.alloc-subcache {
+  ret=
+  [[ $_ble_attached ]] || return 1
 
-  local command=$1; [[ $1 == ble*/* ]] || command=${1##*/}
-  local ret; ble/string#hash-pjw "${*:2}" 64; local hash=$ret
+  local command=$1 hash=$2 opts=$3
+  if [[ :$opts: == *:dequote:* ]]; then
+    ble/syntax:bash/simple-word/is-simple "$command" &&
+      ble/syntax:bash/simple-word/eval "$command" noglob &&
+      command=$ret
+  fi
+  [[ $command ]] || return 1
+
+  [[ $command == ble*/* ]] || command=${1##*/}
+  ble/string#hash-pjw "$args" 64; local hash=$ret
   local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
   local mandb_cache_dir=$_ble_base_cache/complete.mandb/${lc_messages//'/'/%}
-  local subcache; ble/util/sprintf subcache '%s.%014x' "$mandb_cache_dir/_parse_help.d/$command" "$hash"
+  ble/util/sprintf ret '%s.%014x' "$mandb_cache_dir/_parse_help.d/$command" "$hash"
 
-  [[ -s $subcache && $subcache -nt $_ble_base/lib/core-complete.sh ]] && return 0
+  [[ -s $ret && $ret -nt $_ble_base/lib/core-complete.sh ]] && return 1
 
-  ble/util/mkd "${subcache%/*}"
-  if [[ $1 == - ]]; then
-    ble/complete/mandb:help/generate-cache "$3"
+  ble/util/mkd "${ret%/*}"
+}
+
+## @fn ble/complete/mandb:bash-completion/_parse_help.advice command args
+function ble/complete/mandb:bash-completion/_parse_help.advice {
+  local cmd=$1 args=$2 func=$ADVICE_FUNCNAME
+  # 現在のコマンド名。 Note: ADVICE_WORDS には実際に現在補完しようとしているコ
+  # マンドとは異なるものが指定される場合があるので (例えば help や - 等) 信用で
+  # きない。
+  local command=${COMP_WORDS[0]-} hash="${ADVICE_WORDS[*]}" ret
+  ble/complete/mandb:bash-completion/.alloc-subcache "$command" "$hash" dequote || return 0
+  local subcache=$ret
+
+  local default_option=--help help_opts=
+  [[ $func == _parse_usage ]] &&
+    default_option=--usage help_opts=mandb-usage
+
+  if [[ ( $func == _parse_help || $func == _parse_usage ) && $cmd == - ]]; then
+    # 標準入力からの読み取り
+    ble/complete/mandb:help/generate-cache "$help_opts" >| "$subcache"
+
+    # Note: _parse_help が読み取る筈だった内容を横取りしたので抽出した内容を標
+    # 準出力に出力する。但し、対応する long option がある short option は除外す
+    # る。
+    LC_ALL= LC_COLLATE=C ble/bin/awk -F "$_ble_term_FS" '
+      BEGIN { entry_count = 0; }
+      {
+        entries[entry_count++] = $1;
+
+        # Assumption: the descriptions of long options have the form
+        # "[short_opt] desc".  The format is defined by
+        # ble/complete/mandb:help/generate-cache.
+        desc = $4;
+        gsub(/\033\[[ -?]*[@-~]/, "", desc);
+        if (match(desc, /^\[[^][:space:][]*\] /) > 0) { # #D1709 safe
+          short_opt = substr(desc, 2, RLENGTH - 3);
+          excludes[short_opt] =1;
+        }
+      }
+      END {
+        for (i = 0; i < entry_count; i++)
+          if (!excludes[entries[i]])
+            print entries[i];
+      }
+    ' "$subcache" 2>/dev/null # suppress locale error #D1440
   else
-    local args default_option=--help
-    [[ :$3: == *:usage:* ]] && default_option=--usage
-    ble/string#split-words args "${2:-$default_option}"
-    "$1" "${args[@]}" 2>&1 | ble/complete/mandb:help/generate-cache "$3"
-  fi >| "$subcache"
+    local cmd_args
+    ble/string#split-words cmd_args "${args:-$default_option}"
+    "$cmd" "${cmd_args[@]}" 2>&1 | ble/complete/mandb:help/generate-cache "$help_opts" >| "$subcache"
+  fi
+}
+
+function ble/complete/mandb:bash-completion/_get_help_lines.advice {
+  ((${#_lines[@]})) || return 0
+
+  # @var cmd
+  #   現在のコマンド名。Note: _comp_command_offset 等によって別のコマンドの補完
+  #   を呼び出している場合があるので ble.sh の用意する comp_words は信用できな
+  #   い。bash-completion の使っている _comp_args[0] または bash-completion が
+  #   上書きしている COMP_WORDS を参照する。
+  local cmd=${_comp_args[0]-${COMP_WORDS[0]-}} hash="${ADVICE_WORDS[*]}"
+  ble/complete/mandb:bash-completion/.alloc-subcache "$cmd" "$hash" dequote || return 0
+  local subcache=$ret
+
+  local help_opts=
+  [[ ${ADVICE_FUNCNAME[1]} == *_usage ]] && help_opts=mandb-usage
+  printf '%s\n' "${_lines[@]}" | ble/complete/mandb:help/generate-cache "$help_opts" >| "$subcache"
 }
 
 ## @fn ble/complete/mandb/generate-cache cmdname
