@@ -6984,6 +6984,18 @@ bash_tips
     ble/progcolor/word:default/.is-option で判定している。正規表現を確認すると
     alnum _ しかチェックしていない。
 
+    x menu-filter による再描画で prefix が表示されず、更に座標位置がずれる。
+
+      どうも menu-filter による再描画の際に prefix が正しく描画されていないのが
+      原因の様である。menu-complete による選択時には問題はない。という事は再描
+      画の際にやはり問題になっているという事。
+
+      →うーん。分かった。一致着色部分を構築する時に local out= を実行してしまっ
+      ている所為で prefix の中身が消えてしまっている。修正した。
+
+      これは 0.3 では影響ないだろうか → うーん。0.3 でも影響がある。修正する必
+      要がある。独立した commit にするべきの気がする。
+
   * mandb: Ubuntu で echo に対する解析結果でオプションと説明の単語がくっつく (reported by EmilySeville7cfg) [#D2038]
     https://github.com/akinomyoga/ble.sh/issues/325
 

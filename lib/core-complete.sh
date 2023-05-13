@@ -6402,7 +6402,7 @@ function ble/complete/menu-complete.class/render-item {
 
   # 一致部分の出力
   if ((${#m[@]})); then
-    local i iN=${#m[@]} p p0=0 out=
+    local i iN=${#m[@]} p p0=0
     for ((i=0;i<iN;i++)); do
       ((p=m[i]))
       if ((p0<p)); then
