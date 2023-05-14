@@ -3512,14 +3512,27 @@ function ble/complete/progcomp/.filter-and-split-compgen {
         next;
       }
 
+      function register_mandb_entry(name, display, entry) {
+        if (name2index[name] != "") {
+          # Remove duplicates after removing trailing /=$/.  If the new
+          # "display" is longer, overwrite the existing one.
+          if (length(display) <= length(name2display[name])) return;
+          name2display[name] = display;
+          entries[name2index[name]] = entry;
+        } else {
+          name2index[name] = mandb_count;
+          name2display[name] = display;
+          entries[mandb_count++] = entry;
+        }
+      }
+
       !hash[$0]++ {
         if (/^$/) next;
 
         name = $0
         sub(/=$/, "", name);
         if (mandb[name]) {
-          mandb_count++;
-          print mandb[name];
+          register_mandb_entry(name, $0, mandb[name]);
           next;
         } else if (sub(/^--no-/, "--", name)) {
 
@@ -3538,8 +3551,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
                 optarg = "";
                 suffix = " ";
               }
-              mandb_count++;
-              print option FS optarg FS suffix FS desc;
+              register_mandb_entry(name, $0, option FS optarg FS suffix FS desc);
             }
             next;
           }
@@ -3549,7 +3561,13 @@ function ble/complete/progcomp/.filter-and-split-compgen {
         print $0;
       }
 
-      END { if (mandb_count) exit 10; }
+      END {
+        if (mandb_count) {
+          for (i = 0; i < mandb_count; i++)
+            print entries[i];
+          exit 10;
+        }
+      }
     '
     ble/util/assign-array "$1" 'ble/bin/awk -F "$_ble_term_FS" "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'
     (($?==10)) && flag_mandb=1

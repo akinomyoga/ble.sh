@@ -15,6 +15,7 @@
 - bgproc: return status of bgproc process `#D2036` 887d92dd
 - mandb: replace TAB with 4 spaces before removing control characters (reported by EmilySeville7cfg) `#D2038` xxxxxxxx
 - menu(desc): fix a bug that prefix is not shown with menu-filter `#D2039` xxxxxxxx
+- progcomp: make option unique after applying mandb description `#D2042` xxxxxxxx
 
 ## Compatibility
 

@@ -1996,6 +1996,15 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2023-05-13
+
+  * complete: sed コマンドの補完
+    [1] https://github.com/akinomyoga/ble.sh/issues/326
+
+    zsh は sed -r[TAB] に対してちゃんと short flags を提示するし、"sed
+    -re[TAB]" に対して sed expression の説明を提示する。これらをbash-completion
+    と協力して実装する事はできない物だろうか。と思っていたら [1] でも要求された。
+
 2023-04-13
 
   * bash は実は補完で pathname expansions の結果を候補として出す
@@ -6921,6 +6930,23 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-05-14
+
+  * progcomp: _parse_help 経由で生成された項目に uniq をかける? [#D2042]
+
+    bash-completion が重複したオプション項目を出した時に ble.sh はそれにそのま
+    ま記述を追加してメニューに表示するので同じ候補が二つ表示されてしまう。
+
+    sed --e[TAB]
+
+    うーん。既に uniq はかけられている。問題は bash-completion が --expression
+    と --expression= を両方出すが、ble.sh が --expression を mandb によって補填
+    して --expression= に変換する事である。そもそも bash-completion が両方出す
+    のも変な事なので、どちらか一方を出力するので問題ない。
+
+    オプション候補に対して説明を付加する時点で = を除いた状態で重複がないかチェッ
+    クして、その上で出力する様に修正する事にした。
 
 2023-05-13
 
