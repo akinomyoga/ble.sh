@@ -17,6 +17,7 @@
 - menu(desc): fix a bug that prefix is not shown with menu-filter `#D2039` xxxxxxxx
 - progcomp: make option unique after applying mandb description `#D2042` xxxxxxxx
 - util (`ble/util/idle`): fix an infinite loop `#D2043` xxxxxxxx
+- main: fix `--inputrc=TYPE` not applied on startup `#D2044` xxxxxxxx
 
 ## Compatibility
 

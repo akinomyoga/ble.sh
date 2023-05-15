@@ -2440,6 +2440,10 @@ function ble/base/process-blesh-arguments {
   local inputrc=$_ble_base_arguments_inputrc
 
   _ble_base_rcfile=$_ble_base_arguments_rcfile
+
+  # reconstruction type of user-bindings
+  _ble_decode_initialize_inputrc=$inputrc
+
 #%if measure_load_time
 time {
 #%end
@@ -2456,9 +2460,6 @@ ble/debug/measure-set-timeformat "blerc: '$_ble_base_rcfile'"; }
   (none) ;;
   (*) ble/util/print "ble.sh: unrecognized attach method --attach='$attach'." ;;
   esac
-
-  # reconstruction type of user-bindings
-  _ble_decode_initialize_inputrc=$inputrc
 }
 
 function ble/base/sub:test {

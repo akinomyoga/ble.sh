@@ -6933,6 +6933,14 @@ bash_tips
 
 2023-05-16
 
+  * main: --inputrc=TYPE の設定を適用する前に read-inputrc を呼んでいる [#D2044]
+
+    osh を実行していて気づいたが --inputrc=none が効いていない。一方で最近の
+    issue のデバグで効果があった様に見えたのは謎である。
+    https://github.com/akinomyoga/ble.sh/issues/322#issuecomment-1539265410
+
+    取り敢えず修正は適用しておく事にする。
+
   * util: idle.do 無限ループ [#D2043]
     Ref #D1980 (2023-02-27)
 
