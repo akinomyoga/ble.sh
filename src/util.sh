@@ -5210,7 +5210,7 @@ if ((_ble_bash>=40000)); then
           sleep_amount=$sleep1
         fi
       fi
-      ((sleep_amount>0))
+      [[ $_ble_idle_running ]] || ((sleep_amount>0))
     do
       # Note: 変数 ble_util_idle_elapsed は
       #   $((bleopt_idle_interval)) の評価時に参照される。

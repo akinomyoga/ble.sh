@@ -7,4 +7,4 @@ ble/util/autoload "$_ble_base/lib/core-debug.sh" \
                   ble/debug/stopwatch/start \
                   ble/debug/stopwatch/stop \
                   ble/debug/profiler/start \
-                  ble/debug/profiler/end
+                  ble/debug/profiler/stop
