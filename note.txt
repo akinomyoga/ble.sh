@@ -6958,6 +6958,9 @@ bash_tips
     * それから core-debug-def.sh が ble/debug/profiler/end を export しているが
       実際に定義されるのは ble/debug/profiler/stop である。修正した。
 
+    2023-05-16 無限ループは直っていない。と思ったら物凄く簡単なミスをしていた。
+    修正する。
+
 2023-05-14
 
   * progcomp: _parse_help 経由で生成された項目に uniq をかける? [#D2042]
