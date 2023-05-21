@@ -2162,15 +2162,18 @@ function ble/util/readarray {
 }
 
 ## @fn ble/util/assign var command
-##   var=$(command) の高速な代替です。
-##   command はサブシェルではなく現在のシェルで実行されます。
+##   var=$(command) の高速な代替です。command はサブシェルではなく現在のシェル
+##   で実行されます。Bash 5.3 の var=${ command; } に等価です。
 ##
 ##   @param[in] var
 ##     代入先の変数名を指定します。
 ##   @param[in] command...
 ##     実行するコマンドを指定します。
 ##
-
+## @remarks util.bgproc.sh では « ble/util/assign bgpid '(set -m; command &
+##   bgpid=$!; ble/util/print "$bgpid")' » でプロセスグループが作られる事を想定
+##   している。例えば bgpid=$(...) はプロセスグループが作られないので使えない。
+##
 _ble_util_assign_base=$_ble_base_run/$$.util.assign.tmp
 _ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
@@ -2196,14 +2199,12 @@ function ble/util/assign/.rmtmp {
   >| "$_ble_local_tmpfile"
 #%end
 }
-if ((_ble_bash>=40000)); then
+if ((_ble_bash>=50300)); then
+  function ble/util/assign {
+    builtin eval "$1=\${ builtin eval -- \"\$2\"; }"
+  }
+elif ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
-  #
-  # @remarks 将来的に ${ ...; } に切り替えることになった時に set -m でプロセス
-  #   グループが作られるかどうかについて確認が必要。util.broc.sh では «
-  #   ble/util/assign bgpid '(set -m; command & bgpid=$!; ble/util/print
-  #   "$bgpid")' » でプロセスグループが作られる事を想定している。例えば $(...)
-  #   はプロセスグループが作られないので使えない。
   function ble/util/assign {
     local _ble_local_tmpfile; ble/util/assign/.mktmp
     builtin eval -- "$2" >| "$_ble_local_tmpfile"

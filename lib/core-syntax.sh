@@ -2034,6 +2034,12 @@ function ble/syntax:bash/check-dollar {
         ((_ble_syntax_attr[i++]=CTX_EXPR))
       fi
       return 0
+    elif ((_ble_bash>=50300)) && [[ $tail == '${'[$' \t\n(|']* ]]; then
+      ((_ble_syntax_attr[i]=CTX_PARAM))
+      ble/syntax/parse/nest-push "$CTX_CMDX" 'cmdsub_nofork'
+      ((i+=2))
+      [[ $tail == '${|'* ]] && ((i++))
+      return 0
     else
       ((_ble_syntax_attr[i]=ATTR_ERR,i+=2))
       return 0
@@ -2756,19 +2762,22 @@ function ble/syntax:bash/ctx-pword-error {
 ##
 ##   対応する nest types (ntype) の一覧
 ##
-##   NTYPE   NEST-PUSH LOCATION       QUOTE  DESC
-##   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-##   '$((' @ check-dollar                 x  算術式展開 $(()) の中身
-##   '$['  @ check-dollar                 x  算術式展開 $[] の中身
-##   '(('  @ .check-delimiter-or-redirect o  算術式評価コマンド (()) の中身
-##   'a['  @ check-variable-assignment    o  a[...]= の中身
-##   'd['  @ ctx-values                   o  a=([...]=) の中身
-##   'v['  @ check-dollar                 o  ${a[...]} の中身
-##   '${'  @ check-dollar                 o  ${v:...} の中身
-##   '"${' @ check-dollar                 x  "${v:...}" の中身
-##   '('   @ .count-paren                 o  () によるネスト (quote 除去有効)
-##   'NQ(' @ .count-paren                 x  () によるネスト (quote 除去無効)
-##   '['   @ .count-bracket               o  [] によるネスト (quote 除去常時有効)
+##   NTYPE             NEST-PUSH LOCATION       QUOTE  DESC
+##   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##   '$(('           @ check-dollar                 x  算術式展開 $(()) の中身
+##   '$['            @ check-dollar                 x  算術式展開 $[] の中身
+##   '(('            @ .check-delimiter-or-redirect o  算術式評価コマンド (()) の中身
+##   'a['            @ check-variable-assignment    o  a[...]= の中身
+##   'd['            @ ctx-values                   o  a=([...]=) の中身
+##   'v['            @ check-dollar                 o  ${a[...]} の中身
+##   '${'            @ check-dollar                 o  ${v:...} の中身
+##   '"${'           @ check-dollar                 x  "${v:...}" の中身
+##   '('             @ .count-paren                 o  () によるネスト (quote 除去有効)
+##   'NQ('           @ .count-paren                 x  () によるネスト (quote 除去無効)
+##   '['             @ .count-bracket               o  [] によるネスト (quote 除去常時有効)
+##   '$('            @ check-dollar                 o  $(command)
+##   'cmdsub_nofork' @ check-dollar                 o  ${ command; }
+##   'cmd_brace'     @ ctx-command/check-word-end   o  { command; }
 ##
 ##   QUOTE = o ... 内部で quote 除去が有効
 ##   QUOTE = x ... 内部で quote 除去は無効
@@ -3636,14 +3645,35 @@ function ble/syntax:bash/ctx-command/check-word-end {
       ('select')             ((ctx=CTX_SARGX1)); processed=begin ;;
       ('case')               ((ctx=CTX_CARGX1)); processed=begin ;;
       ('{')
-        ((ctx=CTX_CMDX1))
+        # 単語属性の再設定
+        ble/syntax/parse/touch-updated-attr "$wbeg"
         if ((stat_wt==CTX_CMDXD||stat_wt==CTX_CMDXD0)); then
-          processed=middle # "for ...; {" などの時
+          attr=$ATTR_KEYWORD_MID # "for ...; {" などの時
         else
-          processed=begin
-        fi ;;
-      ('then'|'elif'|'else'|'do') ((ctx=CTX_CMDX1)) ; processed=middle ;;
-      ('}'|'done'|'fi'|'esac')    ((ctx=CTX_CMDXE)) ; processed=end ;;
+          attr=$ATTR_KEYWORD_BEGIN
+        fi
+        ((_ble_syntax_attr[wbeg]=attr))
+
+        # 単語削除&入れ子&単語再設置
+        ble/syntax/parse/word-cancel
+        ((ctx=CTX_CMDXE))
+        i=$wbeg ble/syntax/parse/nest-push "$CTX_CMDX1" 'cmd_brace'
+        i=$wbeg ble/syntax/parse/word-push "$CTX_CMDI" "$wbeg"
+        ble/syntax/parse/word-pop
+        return 0 ;;
+      ('then'|'elif'|'else'|'do') ((ctx=CTX_CMDX1)); processed=middle ;;
+      ('done'|'fi'|'esac')        ((ctx=CTX_CMDXE)); processed=end ;;
+      ('}')
+        if local ntype; ble/syntax/parse/nest-type; [[ $ntype == 'cmd_brace' ]]; then
+          ble/syntax/parse/touch-updated-attr "$wbeg"
+          ((_ble_syntax_attr[wbeg]=ATTR_KEYWORD_END))
+          ble/syntax/parse/nest-pop
+        else
+          ble/syntax/parse/touch-updated-attr "$wbeg"
+          ((_ble_syntax_attr[wbeg]=ATTR_ERR))
+          ((ctx=CTX_CMDXE))
+        fi
+        return 0 ;;
       ('coproc')
         if ((_ble_bash>=40000)); then
           if ble/syntax:bash/ctx-coproc/.is-next-compound; then
@@ -3977,6 +4007,23 @@ _ble_syntax_bash_command_isARGI[CTX_TARGI1]=1 # -p
 _ble_syntax_bash_command_isARGI[CTX_TARGI2]=1 # --
 _ble_syntax_bash_command_isARGI[CTX_COARGI]=1 # var (coproc の後)
 #%end
+# Detect the end of ${ list; }
+function ble/syntax:bash/ctx-command/.check-funsub-end {
+  ((_ble_bash>=50300)) || return 1
+
+  # 新しいコマンド名が始まる文脈
+  ((wbegin<0&&_ble_syntax_bash_command_BeginCtx[ctx]==CTX_CMDI)) || return 1
+
+  [[ $tail == '}'* ]] || return 1
+
+  local ntype
+  ble/syntax/parse/nest-type
+  [[ $ntype == 'cmdsub_nofork' ]] || return 1
+
+  ((_ble_syntax_attr[i++]=_ble_syntax_attr[inest]))
+  ble/syntax/parse/nest-pop
+  return 0
+}
 function ble/syntax:bash/ctx-command/.check-word-begin {
   if ((wbegin<0)); then
     local octx
@@ -4018,6 +4065,8 @@ function ble/syntax:bash/ctx-command {
 #%end
 
   ble/syntax:bash/check-comment && return 0
+
+  ble/syntax:bash/ctx-command/.check-funsub-end && return 0
 
   local unexpectedWbegin=-1
   ble/syntax:bash/ctx-command/.check-word-begin || ((unexpectedWbegin=i))

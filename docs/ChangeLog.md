@@ -8,6 +8,7 @@
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
+- syntax: support bash-5.3 function subst `${ list; }` `#2045` xxxxxxxx
 
 ## Fixes
 
@@ -17,7 +18,7 @@
 - menu(desc): fix a bug that prefix is not shown with menu-filter `#D2039` e92b78d6
 - progcomp: make option unique after applying mandb description `#D2042` 308ceeed
 - util (`ble/util/idle`): fix an infinite loop `#D2043` 5f4c0afd
-- main: fix `--inputrc=TYPE` not applied on startup `#D2044` 1b15b851 xxxxxxxx
+- main: fix `--inputrc=TYPE` not applied on startup `#D2044` 1b15b851 0adce7c9
 
 ## Compatibility
 
