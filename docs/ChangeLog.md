@@ -19,6 +19,7 @@
 - progcomp: make option unique after applying mandb description `#D2042` 308ceeed
 - util (`ble/util/idle`): fix an infinite loop `#D2043` 5f4c0afd
 - main: fix `--inputrc=TYPE` not applied on startup `#D2044` 1b15b851 0adce7c9
+- stty: suggest `stty sane` after exiting from bash >= 5.2 to non-ble session `#D2046` xxxxxxxx
 
 ## Compatibility
 

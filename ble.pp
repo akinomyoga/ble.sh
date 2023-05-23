@@ -2295,8 +2295,7 @@ function ble/base/unload-for-reload {
 function ble/base/unload {
   ble/util/is-running-in-subshell && return 1
   local IFS=$_ble_term_IFS
-  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
-  ble/term/stty/TRAPEXIT
+  ble/term/stty/TRAPEXIT "$1"
   ble/term/leave
   ble/util/buffer.flush >&2
   blehook/invoke unload
@@ -2306,6 +2305,7 @@ function ble/base/unload {
   ble/util/import/finalize
   ble/fd#finalize
   ble/base/clean-up-runtime-directory finalize
+  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   return 0
 }
 

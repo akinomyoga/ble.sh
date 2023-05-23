@@ -5829,6 +5829,20 @@ function ble/term/stty/TRAPEXIT {
   # exit の場合は echo
   ble/bin/stty echo -nl \
                "${_ble_term_stty_flags_leave[@]}"
+
+  # Note (#D): WA for bash-5.2 stty: bash-5.2 以降では EXIT trap よりも後に readline
+  # が stty を復元しようとするので、セッション終了後に制御端末が壊れた状態にな
+  # る。親プロセスが同じ端末に属していてかつ ble.sh セッションでない場合には、
+  # 入力に支障を来すので制御端末の状態を手動で復元する様に表示を行う。
+  if ((_ble_bash>=50200)) && [[ :$1: == *:EXIT:* && ! -e $_ble_base_run/$PPID.load ]]; then
+    local lines
+    ble/util/assign-array lines 'ble/bin/ps -o tty "$$" "$PPID"'
+    ((${#lines[@]}>=3)) && lines=("${lines[@]:${#lines[@]}-2}")
+    if [[ ${lines[0]} == ${lines[1]} ]]; then
+      local sgr=$_ble_term_bold${_ble_term_setaf[4]} sgr0=$_ble_term_sgr0
+      ble/util/print "ble: Please run \`${sgr}stty sane$sgr0' to recover the correct TTY state." >&"${_ble_util_fd_stderr:-2}"
+    fi
+  fi
 }
 
 function ble/term/update-winsize {

@@ -1010,7 +1010,7 @@ function ble/builtin/trap/.handler {
     # Note #D1797: EXIT に対する ble/base/unload は trap handler のできるだけ最
     # 後に実行する。勝手に削除されても困るし、他の handler が ble.sh の機能を使っ
     # た時に問題が起こらない様にする為。
-    ble/base/unload
+    ble/base/unload EXIT
   elif ((_ble_trap_sig==_ble_builtin_trap_RETURN)); then
     # Note #D1863: RETURN trap の呼び出し元への継承処理を実行する。
     ble/builtin/trap/user-handler#update:RETURN
