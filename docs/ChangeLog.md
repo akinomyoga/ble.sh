@@ -8,7 +8,8 @@
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
-- syntax: support bash-5.3 function subst `${ list; }` `#2045` xxxxxxxx
+- syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 xxxxxxxx
+- complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` xxxxxxxx
 
 ## Fixes
 

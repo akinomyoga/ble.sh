@@ -551,6 +551,17 @@
 #bleopt complete_allow_reduction=1
 
 
+## This option specifies the threshold to simplify the quotation type of the
+## inserted word.  This option is evaluated as an arithmetic expression.  When
+## this option evaluates to a negative value, the simplification of the
+## quotation is disabled.  Otherwise, when the number of characters will be
+## reduced by at least the specified value, the quotation is simplified.  The
+## default is 0, which means that the quotation is simplified unless the number
+## of characters increases by the simplification.
+
+#bleopt complete_requote_threshold=0
+
+
 ## If "complete_auto_history" has non-empty values, auto-complete searches
 ## matching command lines from history.
 

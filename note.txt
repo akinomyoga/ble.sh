@@ -6964,6 +6964,13 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-06-12
+
+  * complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) [#D2048]
+    https://github.com/akinomyoga/ble.sh/issues/332
+
+    本当に必要な機能なのか怪しいが面倒なので実装する事にする。
+
 2023-05-23
 
   * [棄却] builtin: logout コマンドは上書きしなくても大丈夫なのか [#D2047]

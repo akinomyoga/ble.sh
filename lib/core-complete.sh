@@ -1639,6 +1639,9 @@ function ble/complete/action/quote-insert.batch {
 ## @fn ble/complete/action/requote-final-insert
 ##   @var[ref] insert insert_flags
 function ble/complete/action/requote-final-insert {
+  local threshold=$((bleopt_complete_requote_threshold))
+  ((threshold>=0)) || return 0
+
   local comps_prefix= check_optarg=
   if [[ $insert == "$COMPS"* ]]; then
     [[ $comps_flags == *[SEDI]* ]] && return 0
@@ -1678,7 +1681,7 @@ function ble/complete/action/requote-final-insert {
         ((${#ret[@]}==1))
     then
       ble/string#quote-word "$ret" quote-empty
-      ((${#ret}<=${#ins})) || return 0
+      ((${#ret}+threshold<=${#ins})) || return 0
       insert=$comps_prefix$ret
       [[ $insert == "$COMPS"* ]] || insert_flags=r$insert_flags # 遡って書き換えた
     fi
