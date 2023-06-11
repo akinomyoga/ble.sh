@@ -3261,7 +3261,17 @@ function ble/complete/progcomp/.compgen-helper-prog {
     fi
   fi
 }
-# compopt に介入して -o/+o option を読み取る。
+## @fn ble/complete/progcomp/compopt [-o OPTION|+o OPTION]
+##   compopt を上書きして -o/+o option を読み取る為の関数です。
+##
+##   OPTION
+##     ble/syntax-raw
+##       生成した候補をそのまま挿入する事を示します。
+##
+##     ble/no-default
+##       ble.sh の既定の候補生成 (候補が生成されなかった時の既定の候補生成、お
+##       よび、sabbrev 候補生成) を抑制します。
+##
 function ble/complete/progcomp/compopt {
   # Note: Bash補完以外から builtin compopt を呼び出しても
   #  エラーになるので呼び出さない事にした (2019-02-05)
@@ -3791,7 +3801,14 @@ function ble/complete/progcomp/.compgen {
 
   ble/complete/source/test-limit "${#cands[@]}" || return 1
 
-  [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
+  # determine COMP_PREFIX for filenames
+  if [[ $comp_opts == *:filenames:* ]]; then
+    if [[ $comp_opts == *:ble/syntax-raw:* ]]; then
+      [[ $COMPS == */* ]] && COMP_PREFIX=${COMPS%/*}/
+    else
+      [[ $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
+    fi
+  fi
 
   local old_cand_count=$cand_count
 
@@ -5498,7 +5515,9 @@ function ble/complete/source:argument {
   fi
 
   ble/complete/source:argument/generate
-  (($?==148)) && return 148
+  local ext=$?
+  ((ext==148)) && return 148
+  [[ $comp_opts == *:ble/no-default:* ]] && return "$ext"
 
   ble/complete/source:sabbrev
 }

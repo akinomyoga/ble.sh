@@ -6966,6 +6966,41 @@ bash_tips
 
 2023-06-12
 
+  * complete: fzf-completion で生成された path が full path になる (reported by teutat3s) [#D2049]
+    https://github.com/akinomyoga/ble.sh/issues/329
+
+    これは fzf-completion が raw command line を利用して raw insert を意図した
+    候補を生成するからそれに合わせて振る舞いを調整した事に関係している。然し、
+    依然として一部の path 名に関しては bash は PREFIX を取り出して処理する様だ。
+    例えば common prefix を取り出してその / 以前の部分を削除してしまえば良いの
+    だろうか。或いは、COMPS について / 以前の部分を common prefix にしてしまえ
+    ば良い気がする。
+
+    →うーん。調べてみると既に compopt -o filenames が指定されている場合には
+    progcomp 側で自動的に COMP_PREFIX を指定して補完が実行される事になっている。
+    そして、fzf completion 側でも実際に compopt -o filenames を指定している様だ。
+    然し、問題は COMP_PREFIX が COMPV を元にして構築されている為に正しく prefix
+    除去が動いていないという事だった。ble/syntax-raw が指定されている場合には
+    COMPS を元にして COMP_PREFIX を決定する様に変更する。
+
+    x fixed: sabbrev 候補生成が通常候補生成よりも後になっているので、
+      fzf-completion で何も入力がない状態から何か候補を選択したとしても、一意確
+      定せずに sabbrev と fzf-completion で選択した候補の選択画面になってしまう。
+      以前は sabbrev 候補をより前に生成していたので単純に既に生成された候補を全
+      削除すれば良かったが、 #D2011 により候補の生成順序を変更した。
+
+      sabbrev 生成も抑制する仕組みが必要になるのではないか。
+
+      a -o bashdefault に代わる何か? → bashdefault は何も生成されなかった時に
+        既定の補完を行うものなので関係ない。
+
+      b compopt の拡張を行おうとしたら、どうやら既に ble/no-default というオプ
+        ションが実装されている様だ。これは補完候補が生成されなかった時に
+        fallback で既定の補完を実施しないという意味であるが、補完候補が生成され
+        た場合の振る舞いにも拡張する事ができる。これを fzf-completion 側で呼び
+        出させて、sabbrev 候補生成は ble/no-default が指定されなかった時に呼び
+        出す様にすれば良い。
+
   * complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) [#D2048]
     https://github.com/akinomyoga/ble.sh/issues/332
 

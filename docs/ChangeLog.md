@@ -26,6 +26,7 @@
 
 - main: check `nawk` version explicitly `#D2037` 0ff7bca1
 - mandb: inject in bash-completion-2.12 interfaces `#D2041` dabc8553
+- complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` xxxxxxxx
 
 ## Contrib
 
