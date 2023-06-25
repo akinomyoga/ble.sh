@@ -7086,7 +7086,7 @@ function ble/builtin/readonly/.check-variable-name {
   # If the variable starts with "_" but does not start with "_ble", it could be
   # a global variable used by another framework.  We allow such namespaced
   # variables being readonly.
-  if [[ $1 == _* && $1 != _ble*  && $1 != __ble* ]]; then
+  if [[ $1 == _* && $1 != _ble* && $1 != __ble* ]]; then
     return 0
   fi
 
@@ -7151,6 +7151,9 @@ function ble/builtin/readonly/.print-warning {
   return 0
 }
 function ble/builtin/readonly {
+  local _ble_local_set _ble_local_shopt
+  ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
+
   local _ble_local_flags=
   local -a _ble_local_options=()
   local _ble_local_caller= # used by print-warning
@@ -7177,12 +7180,16 @@ function ble/builtin/readonly {
   if [[ $_ble_local_flags == *w* ]]; then
     ble/util/print 'ble.sh: The global variables with unprefixed lowercase names or special names should not be made readonly. It can break arbitrary Bash configurations.' >&2
   fi
+  local _ble_local_ext=0
   if [[ $_ble_local_flags != *v* || $_ble_local_flags == *r* ]]; then
     # We call `builtin readonly' only when no variables are specified
     # (e.g. readonly, readonly --help), or at least one variable are allowed to
     # become readonly.
     builtin readonly "${_ble_local_options[@]}"
+    _ble_local_ext=$?
   fi
+  ble/base/.restore-bash-options _ble_local_set _ble_local_shopt
+  return "$?"
 }
 
 function readonly { ble/builtin/readonly "$@"; }

@@ -5971,7 +5971,7 @@ function ble/builtin/exit {
 
   # 現在、同じ(サブ)シェルでの trap 処理実行中かどうか
   local trap_processing=$_ble_builtin_trap_processing
-  [[ $_ble_builtin_trap_processing != "${BASH_SUBSHELL:-0}"/* ]] && trap_processing=
+  [[ $_ble_builtin_trap_processing == "${BASH_SUBSHELL:-0}"/* ]] || trap_processing=
 
   if [[ ! $trap_processing ]] && { ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; }; then
     (($#)) || set -- "$ext"

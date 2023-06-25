@@ -1996,6 +1996,34 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2023-06-21
+
+  * menu for history entries
+    https://github.com/akinomyoga/ble.sh/issues/258#issuecomment-1599945461
+
+  * mawk in Ubuntu 16.04 LTS
+
+    mawk の version が古い。そして Ubuntu 16.04 LTS はこの古い mawk を使ってい
+    る様だ。mawk が失敗するとどうやら全く操作ができなくなる様だ。これは良くない。
+
+    x reject: 後テストしていて気づいたが --clear-cache が効いていない。
+
+      もしくはそのまま ble.sh が起動してしまう。例えば bash out/ble.sh
+      --clear-cache とするとそのまま新しい interactive session が始まってしまう。
+      何故? chatoyancy 上でやっても再現しない。と思ったが勘違いだった。
+
+      それでも既に ble.sh がロードされているセッションで source out/ble.sh
+      --clear-cache を実行した時に ble.sh をリロードするのかリロードせずに既に
+      ロードされている ble.sh で指定されたコマンドを実行するのかは非自明 → こ
+      れに関しては新しい物をリロードした上でコマンドを実行するという現在の振る
+      舞いで良い気がする。
+
+      ble.sh がロードされていない時にsource out/ble.sh --clear-cache をした時に
+      勝手に attach してしまうのは変だろう、と思ったが実際にはそのような振る舞
+      いはしていなかった。勘違いだった。
+
+      結局何れも勘違いがった。
+
 2023-06-12
 
   * stty: bash-5.2 以上 exit 後の stty 状態を正しく復元する手法?
@@ -6963,6 +6991,26 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-06-26
+
+  * util: ble/builtin/readonly が bash options で壊れる (reported by dongxi8) [#D2050]
+    https://github.com/akinomyoga/ble.sh/issues/335#issuecomment-1598485650
+
+    readonly builtin: readonly BASH_COMPLETION_COMPAT_DIR がエラーになる。これ
+    は何故だろう。Ubuntu 16.04 LTS でも再現しない。
+
+    nocasematch? → これは nocasematch だった。nocasematch に対して耐性のある書
+    き方をするか、或いは ble/builtin/readonly を他の ble/builtin と同じ様に
+    bash オプションの保存・復元を行うかする必要がある。というか、set -xv 等の事
+    を考えるとやはり保存・復元は実行するべきだ。
+
+    ble/builtin/readonly の最初と最後で呼び出す事にした。
+
+    ? 既に adjust-bash-options されている状態で呼び出しても問題ないのか気になる
+      が、既に様々の関数でその様にしている事を思うと問題はないはずである。特に
+      これらの関数は外側の状態を (グローバル変数ではなく) ローカル変数に記録し
+      てそれをまた復元するという形を取っている。なので問題ない筈。
 
 2023-06-12
 
