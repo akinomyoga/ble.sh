@@ -8,8 +8,8 @@
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
-- syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 xxxxxxxx
-- complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` xxxxxxxx
+- syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 71272a4b
+- complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
 
 ## Fixes
 
@@ -20,14 +20,16 @@
 - progcomp: make option unique after applying mandb description `#D2042` 308ceeed
 - util (`ble/util/idle`): fix an infinite loop `#D2043` 5f4c0afd
 - main: fix `--inputrc=TYPE` not applied on startup `#D2044` 1b15b851 0adce7c9
-- stty: suggest `stty sane` after exiting from bash >= 5.2 to non-ble session `#D2046` xxxxxxxx
+- stty: suggest `stty sane` after exiting from bash >= 5.2 to non-ble session `#D2046` b57ab2d6
 - util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` xxxxxxxx
 
 ## Compatibility
 
 - main: check `nawk` version explicitly `#D2037` 0ff7bca1
 - mandb: inject in bash-completion-2.12 interfaces `#D2041` dabc8553
-- complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` xxxxxxxx
+- complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` f16c0d80
+- syntax: allow double-quotes in `$(())` in bash-4.4 (requested by mozirilla213) `#D2051` xxxxxxxx
+- syntax: support version-dependent arithmetic backslash `#D2051` xxxxxxxx
 
 ## Contrib
 

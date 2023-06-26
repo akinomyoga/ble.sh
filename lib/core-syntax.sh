@@ -2083,19 +2083,37 @@ function ble/syntax:bash/check-quotes {
   local rex aqdel=$ATTR_QDEL aquot=$CTX_QUOT
 
   # 字句的に解釈されるが除去はされない場合
-  if ((ctx==CTX_EXPR)); then
+  if ((ctx==CTX_EXPR)) && [[ $tail != \`* ]]; then
     local ntype
     ble/syntax/parse/nest-type
-    if [[ $ntype == '${' || $ntype == '$[' || $ntype == '$((' || $ntype == 'NQ(' ]]; then
-      # $[...] / $((...)) / ${var:...} の中では
-      # 如何なる quote も除去されない (字句的には解釈される)。
-      # 除去されない quote は算術式エラーである。
-      ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
-    elif [[ $ntype == '"${' ]] && ! { [[ $tail == '$'[\'\"]* ]] && shopt -q extquote; }; then
-      # "${var:...}" の中では 〈extquote が設定されている時の $'' $""〉 を例外として
-      # quote は除去されない (字句的には解釈される)。
-      ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
-    fi
+    case $ntype in
+    ('${')
+      # ${var:...} の中では如何なる quote も除去されない (字句的には解釈される)。
+      # 除去されない quote は算術式エラーである。Note: bash >= 5.2 では "..."
+      # と $"..." は許される。
+      if ((_ble_bash<50200)) || [[ $tail == \'* || $tail == \$\'* ]]; then
+        ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
+      fi ;;
+    ('$['|'$(('|expr-paren-ax)
+      if [[ $tail == \'* ]] || ((_ble_bash<40400)); then
+        ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
+      fi ;;
+    ('(('|expr-paren|expr-brack)
+      if [[ $tail == \'* ]] && ((_ble_bash>=50100)); then
+        ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
+      fi ;;
+    ('a['|'v['|expr-paren-ai|expr-brack-ai)
+      if [[ $tail == \'* ]] && ((_ble_bash>=40400)); then
+        ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
+      fi ;;
+    ('"${')
+      if ! { [[ $tail == '$'[\'\"]* ]] && shopt -q extquote; }; then
+        # "${var:...}" の中では 〈extquote が設定されている時の $'' $""〉 を例
+        # 外としてquote は除去されない (字句的には解釈される)。
+        ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
+      fi ;;
+    # ('d['|expr-paren-di|expr-brack-di) ;; # nop
+    esac
   elif ((ctx==CTX_PWORD||ctx==CTX_PWORDE||ctx==CTX_PWORDR)); then
     # "${var ～}" の中では $'' $"" は ! shopt -q extquote の時除去されない。
     if [[ $tail == '$'[\'\"]* ]] && ! shopt -q extquote; then
@@ -2772,9 +2790,14 @@ function ble/syntax:bash/ctx-pword-error {
 ##   'v['            @ check-dollar                 o  ${a[...]} の中身
 ##   '${'            @ check-dollar                 o  ${v:...} の中身
 ##   '"${'           @ check-dollar                 x  "${v:...}" の中身
-##   '('             @ .count-paren                 o  () によるネスト (quote 除去有効)
-##   'NQ('           @ .count-paren                 x  () によるネスト (quote 除去無効)
-##   '['             @ .count-bracket               o  [] によるネスト (quote 除去常時有効)
+##   'expr-paren'    @ .count-paren                 o  () によるネスト (quote 除去有効)
+##   'expr-paren-ax' @ .count-paren                 +  () によるネスト / $(( $[ の内部
+##   'expr-paren-ai' @ .count-paren                 +  () によるネスト / a[ v[ の内部          (unused)
+##   'expr-paren-di' @ .count-paren                 o  () によるネスト / d[ の内部             (unused)
+##   'expr-brack'    @ .count-bracket               o  [] によるネスト (quote 除去常時有効)    (unused)
+##   'expr-brack-ai' @ .count-bracket               +  [] によるネスト / $(( $[ a[ v[ [ の内部
+##   'expr-brack-di' @ .count-bracket               o  [] によるネスト / d[ の内部
+##
 ##   '$('            @ check-dollar                 o  $(command)
 ##   'cmdsub_nofork' @ check-dollar                 o  ${ command; }
 ##   'cmd_brace'     @ ctx-command/check-word-end   o  { command; }
@@ -2802,14 +2825,25 @@ function ble/syntax:bash/ctx-expr/.count-paren {
           _ble_syntax_attr[i++]=_ble_syntax_attr[inest]))
       fi
       return 0
-    elif [[ $ntype == '(' || $ntype == 'NQ(' ]]; then
+    elif [[ $ntype == expr-paren* ]]; then
       ((_ble_syntax_attr[i++]=ctx))
       ble/syntax/parse/nest-pop
       return 0
     fi
   elif [[ $char == '(' ]]; then
-    local ntype2='('
-    [[ $ntype == '$((' || $ntype == 'NQ(' ]] && ntype2='NQ('
+    # determine nested ntype
+    local ntype2=
+    case $ntype in
+    ('((')
+      ntype2=expr-paren ;;
+    ('$((')
+      ntype2=expr-paren-ax ;;
+    (expr-paren|expr-paren-ax|expr-paren-ai|expr-paren-di)
+      ntype2=$ntype ;;
+    ('$['|'a['|'v['|'d['|expr-brack|expr-brack-ai|expr-brack-di|'${'|'"${'|*)
+      ble/util/assert 'false' "unexpected ntype='$ntype' here" ;;
+    esac
+
     ble/syntax/parse/nest-push "$CTX_EXPR" "$ntype2"
     ((_ble_syntax_attr[i++]=ctx))
     return 0
@@ -2823,7 +2857,7 @@ function ble/syntax:bash/ctx-expr/.count-paren {
 ##   @var char  括弧文字を指定します。
 function ble/syntax:bash/ctx-expr/.count-bracket {
   if [[ $char == ']' ]]; then
-    if [[ $ntype == '[' || $ntype == '$[' ]]; then
+    if [[ $ntype == expr-brack* || $ntype == '$[' ]]; then
       # 算術式展開 $[...] や入れ子 ((a[...]=123)) などの場合。
       ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
       ((i++))
@@ -2869,7 +2903,18 @@ function ble/syntax:bash/ctx-expr/.count-bracket {
       return 0
     fi
   elif [[ $char == '[' ]]; then
-    ble/syntax/parse/nest-push "$CTX_EXPR" '['
+    local ntype2=
+    case $ntype in
+    ('$['|'a['|'v[')
+      ntype2=expr-brack-ai ;;
+    ('d[')
+      ntype2=expr-brack-di ;;
+    (expr-brack|expr-brack-ai|expr-brack-di)
+      ntype2=$ntype ;;
+    ('(('|'$(('|expr-paren|expr-paren-ax|expr-paren-ai|expr-paren-di|'${'|'"${'|*)
+      ble/util/assert 'false' "unexpected ntype='$ntype' here" ;;
+    esac
+    ble/syntax/parse/nest-push "$CTX_EXPR" "$ntype2"
     ((_ble_syntax_attr[i++]=ctx))
     return 0
   fi
@@ -2890,6 +2935,31 @@ function ble/syntax:bash/ctx-expr/.count-brace {
 
   return 1
 }
+## @fn ble/syntax:bash/ctx-expr/.check-plain-with-escape rex is_quote
+##   @var[in] ntype
+function ble/syntax:bash/ctx-expr/.check-plain-with-escape {
+  local i0=$i
+  ble/syntax:bash/check-plain-with-escape "$@" || return 1
+
+  if [[ $tail == '\'* ]]; then
+    case $ntype in
+    ('$(('|'$['|expr-paren-ax|'${'|'"${')
+      _ble_syntax_attr[i0]=$ATTR_ERR ;;
+    ('(('|expr-paren|expr-brack)
+      if ((_ble_bash>=50100)); then
+        _ble_syntax_attr[i0]=$ATTR_ERR
+      fi ;;
+    ('a['|'v['|expr-paren-ai|expr-brack-ai)
+      if ((_ble_bash>=40400)); then
+        _ble_syntax_attr[i0]=$ATTR_ERR
+      fi ;;
+    # ('d['|expr-paren-di|expr-brack-di) ;; # d[ (designated init) 内部では常に \ は OK
+    esac
+  fi
+
+  return 0
+}
+
 function ble/syntax:bash/ctx-expr {
   # 式の中身
   local rex
@@ -2901,22 +2971,30 @@ function ble/syntax:bash/ctx-expr {
   elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[_a-zA-Z0-9@]*)?'; [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ATTR_VAR_NUMBER,i+=${#BASH_REMATCH}))
     return 0
-  elif ble/syntax:bash/check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}_a-zA-Z0-9]+" 1; then
+  fi
+
+  local ntype
+  ble/syntax/parse/nest-type
+  if ble/syntax:bash/ctx-expr/.check-plain-with-escape "[^${_ble_syntax_bash_chars[ctx]}_a-zA-Z0-9]+" 1; then
     return 0
   elif [[ $tail == ['][()}']* ]]; then
-    local char=${tail::1} ntype
-    ble/syntax/parse/nest-type
-    if [[ $ntype == *'(' ]]; then
-      # ntype = '(('  # ((...))
-      #       = '$((' # $((...))
-      #       = '('   # 式中の (..)
+    local char=${tail::1}
+    if [[ $ntype == *'(' || $ntype == expr-paren* ]]; then
+      # ntype = '(('            # ((...))
+      #       = '$(('           # $((...))
+      #       = 'expr-paren'    # 式中の (..)
+      #       = 'expr-paren-ax' # $(( $[ 中の (..)
+      #       = 'expr-paren-ai' # a[ v[  中の (..)
+      #       = 'expr-paren-di' # d[     中の (..)
       ble/syntax:bash/ctx-expr/.count-paren && return 0
-    elif [[ $ntype == *'[' ]]; then
-      # ntype = 'a[' # a[...]=
-      #       = 'v[' # ${a[...]}
-      #       = 'd[' # a=([...]=)
-      #       = '$[' # $[...]
-      #       = '['  # 式中の [...]
+    elif [[ $ntype == *'[' || $ntype == expr-brack* ]]; then
+      # ntype = 'a['             # a[...]=
+      #       = 'v['             # ${a[...]}
+      #       = 'd['             # a=([...]=)
+      #       = '$['             # $[...]
+      #       = 'expr-brack'     # 式中の [...]
+      #       = 'expr-brack-ai'  # $(( $[ a[ v[ 中の [...]
+      #       = 'expr-brack-di'  # d[           中の [...]
       ble/syntax:bash/ctx-expr/.count-bracket && return 0
     elif [[ $ntype == '${' || $ntype == '"${' ]]; then
       # ntype = '${'  # ${var:offset:length}
