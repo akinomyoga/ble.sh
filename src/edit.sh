@@ -7046,7 +7046,8 @@ function ble/widget/.newline {
       ble/textarea#invalidate str # (#D0995)
   fi
 
-  _ble_complete_menu_active= ble/widget/.insert-newline "$opts" # #D1800 checked=.newline
+  # 現在のプロンプトの最終描画 & 次の行へ移動
+  _ble_complete_menu_active= _ble_edit_overwrite_mode= ble/widget/.insert-newline "$opts" # #D1800 checked=.newline
 
   # update LINENO
   local ret; ble/string#count-char "$_ble_edit_str" $'\n'

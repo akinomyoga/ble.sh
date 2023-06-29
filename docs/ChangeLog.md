@@ -11,6 +11,10 @@
 - syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 71272a4b
 - complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
 
+## Changes
+
+- edit: clear character highlighting for overwriting mode (requested by mozirilla213) `#D2052` xxxxxxxx
+
 ## Fixes
 
 - util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` 09f5cec2 `#D2034` 09f5cec2

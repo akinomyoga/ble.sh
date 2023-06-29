@@ -7008,6 +7008,26 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-06-29
+
+  * edit (.newline): overwrite mode の表示は消すべき (requested by mozirilla213) [#D2052]
+    https://github.com/akinomyoga/ble.sh/issues/337
+
+    元々 overwrite のマーカーは実際に着色しているつもりでいた。これをカーソルだ
+    と思っているのだとしたら確かに残るのは変だ。これは単に region 着色を解除す
+    れば良いだけだろうか。と思ったが overwrite_mode はまた独立した layer だった。
+    実装方法には二種類ある。
+
+    a overwrite mode を解除してからコマンドを実行する
+
+      overwrite mode は _ble_edit_overwrite_mode で管理されている。
+
+    b もしくは _ble_edit_line_disabled と同様にして再描画の際に無効化するか。と
+      思ったが、_ble_edit_line_disabled は C-c 等で灰色にする場合の物であって、
+      最終描画に使う物ではない。しかも _ble_edit_line_disabled は各 layer を
+      off にする機能ではなくて、disabled という layer を一番上に被せるという形
+      で実装されていた。
+
 2023-06-26
 
   * syntax: $(()) の中で "" が含められないということ (reported by mozirilla213) [#D2051]
