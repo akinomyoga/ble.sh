@@ -928,11 +928,12 @@ fi
 
 ## @fn ble/builtin/history/.initialize opts
 ##   @param[in] opts
-##     skip0 ... 履歴が一件も読み込まれていない時はスキップします。
+##     skip0 ... Bash 初期化処理 (bashrc) を抜け出ていると判定できない状態で、
+##               履歴が一件も読み込まれていない時はスキップします。
 function ble/builtin/history/.initialize {
   [[ $_ble_builtin_history_initialized ]] && return 0
   local line; ble/util/assign line 'builtin history 1'
-  [[ ! $line && :$1: == *:skip0:* ]] && return 1
+  [[ ! $_ble_decode_hook_count && ! $line && :$1: == *:skip0:* ]] && return 1
   _ble_builtin_history_initialized=1
 
   local histnew=$_ble_base_run/$$.history.new
@@ -1074,13 +1075,13 @@ function ble/builtin/history/.write {
     fi
   fi
 
-  if [[ :$opts: != *:fetch:* && -s $histapp ]]; then
-    if [[ ! -e $file ]]; then
-      (umask 077; : >| "$file")
-    elif [[ :$opts: != *:append:* ]]; then
-      : >| "$file"
-    fi
+  if [[ ! -e $file ]]; then
+    (umask 077; : >| "$file")
+  elif [[ :$opts: != *:append:* ]]; then
+    : >| "$file"
+  fi
 
+  if [[ :$opts: != *:fetch:* && -s $histapp ]]; then
     local apos=\'
     < "$histapp" ble/bin/awk '
       BEGIN {

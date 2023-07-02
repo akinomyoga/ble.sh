@@ -13,7 +13,8 @@
 
 ## Changes
 
-- edit: clear character highlighting for overwriting mode (requested by mozirilla213) `#D2052` xxxxxxxx
+- edit: clear character highlighting for overwriting mode (requested by mozirilla213) `#D2052` 1afc616b
+- history (`ble/builtin/history -w`): write file even without any new entries (requested by Jai-JAP) `#D2053` xxxxxxxx
 
 ## Fixes
 
@@ -25,19 +26,20 @@
 - util (`ble/util/idle`): fix an infinite loop `#D2043` 5f4c0afd
 - main: fix `--inputrc=TYPE` not applied on startup `#D2044` 1b15b851 0adce7c9
 - stty: suggest `stty sane` after exiting from bash >= 5.2 to non-ble session `#D2046` b57ab2d6
-- util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` xxxxxxxx
+- util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` 1f3cbc01
 
 ## Compatibility
 
 - main: check `nawk` version explicitly `#D2037` 0ff7bca1
 - mandb: inject in bash-completion-2.12 interfaces `#D2041` dabc8553
 - complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` f16c0d80
-- syntax: allow double-quotes in `$(())` in bash-4.4 (requested by mozirilla213) `#D2051` xxxxxxxx
-- syntax: support version-dependent arithmetic backslash `#D2051` xxxxxxxx
+- syntax: allow double-quotes in `$(())` in bash-4.4 (requested by mozirilla213) `#D2051` 611c1d93
+- syntax: support version-dependent arithmetic backslash `#D2051` 611c1d93
 
 ## Contrib
 
 - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
+- contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` xxxxxxxx
 
 ## Internal changes
 

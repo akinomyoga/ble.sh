@@ -650,11 +650,17 @@ function ble-decode/.hook/adjust-volatile-options {
   fi
 }
 
+## @var _ble_decode_hook_count
+##   これまでに呼び出された ble-decode/.hook の回数を記録する。(同じ
+##   bash プロセス内の前の ble.sh session も含めて) 今までに一度も呼び
+##   出された事がない場合には空文字列を設定する。
+_ble_decode_hook_count=${_ble_decode_hook_count:+0}
 _ble_decode_hook_Processing=
 function ble-decode/.hook {
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" H0-begin
 #%end.i
+  ((_ble_decode_hook_count++))
   if ble/util/is-stdin-ready; then
     ble/array#push _ble_decode_input_buffer "$@"
 
