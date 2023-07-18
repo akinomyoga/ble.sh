@@ -14,7 +14,7 @@
 ## Changes
 
 - edit: clear character highlighting for overwriting mode (requested by mozirilla213) `#D2052` 1afc616b
-- history (`ble/builtin/history -w`): write file even without any new entries (requested by Jai-JAP) `#D2053` xxxxxxxx
+- history (`ble/builtin/history -w`): write file even without any new entries (requested by Jai-JAP) `#D2053` c78e5c9f
 
 ## Fixes
 
@@ -35,11 +35,12 @@
 - complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` f16c0d80
 - syntax: allow double-quotes in `$(())` in bash-4.4 (requested by mozirilla213) `#D2051` 611c1d93
 - syntax: support version-dependent arithmetic backslash `#D2051` 611c1d93
+- util: work around mawk 1.3.3-20090705 regex (reported by dongxi8, Frezrik) `#D2055` xxxxxxxx
 
 ## Contrib
 
 - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
-- contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` xxxxxxxx
+- contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 
 ## Internal changes
 

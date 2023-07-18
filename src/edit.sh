@@ -3849,8 +3849,8 @@ function ble/edit/display-version/check:starship {
 
   local awk_script='
     sub(/^starship /, "") { version = $0; next; }
-    sub(/^branch:/, "") { gsub(/[[:space:]]/, "_"); if ($0 != "") version = version "-" $0; next; }
-    sub(/^commit_hash:/, "") { gsub(/[[:space:]]/, "_"); if ($0 != "") version = version "+" $0; next; }
+    sub(/^branch:/, "") { gsub(/['"$_ble_term_space"']/, "_"); if ($0 != "") version = version "-" $0; next; }
+    sub(/^commit_hash:/, "") { gsub(/['"$_ble_term_space"']/, "_"); if ($0 != "") version = version "+" $0; next; }
     sub(/^build_time:/, "") { build_time = $0; }
     sub(/^build_env:/, "") { build_env = $0; }
     END {
@@ -9856,8 +9856,8 @@ function ble/widget/command-help/.locate-in-man-bash {
   rex='\b$'; [[ $awk == gawk && $cmd_awk =~ $rex ]] && rex_awk=$rex_awk'\y'
   local awk_script='{
     gsub(/'"$rex_esc"'/, "");
-    if (!par && $0 ~ /^[[:space:]]*'"$rex_awk"'/) { print NR; exit; }
-    par = !($0 ~ /^[[:space:]]*$/);
+    if (!par && $0 ~ /^['"$_ble_term_space"']*'"$rex_awk"'/) { print NR; exit; }
+    par = !($0 ~ /^['"$_ble_term_space"']*$/);
   }'
   local awk_out; ble/util/assign awk_out '"$awk" "$awk_script" 2>/dev/null <<< "$man_content"' || return 1 # 206ms (1 fork)
   local iline=${awk_out%$'\n'}; [[ $iline ]] || return 1

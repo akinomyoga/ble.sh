@@ -2012,33 +2012,20 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2023-07-18
+
+  * Grisha が bind -X の出力形式を修正している
+    https://lists.gnu.org/archive/html/bug-bash/2023-07/msg00076.html
+
+    現在の ble.sh は間違っている事を前提として問答無用で前後の "" を削除してい
+    たはず。これの削除をなかった事にする。取り敢えず Grisha は "" で囲まない様
+    に変更している気がする。なので、ble.sh はこのままで大丈夫の筈だが後で振る舞
+    いをチェックする。
+
 2023-06-21
 
   * menu for history entries (requested by auwsom)
     https://github.com/akinomyoga/ble.sh/issues/258#issuecomment-1599945461
-
-  * mawk in Ubuntu 16.04 LTS
-
-    mawk の version が古い。そして Ubuntu 16.04 LTS はこの古い mawk を使ってい
-    る様だ。mawk が失敗するとどうやら全く操作ができなくなる様だ。これは良くない。
-
-    x reject: 後テストしていて気づいたが --clear-cache が効いていない。
-
-      もしくはそのまま ble.sh が起動してしまう。例えば bash out/ble.sh
-      --clear-cache とするとそのまま新しい interactive session が始まってしまう。
-      何故? chatoyancy 上でやっても再現しない。と思ったが勘違いだった。
-
-      それでも既に ble.sh がロードされているセッションで source out/ble.sh
-      --clear-cache を実行した時に ble.sh をリロードするのかリロードせずに既に
-      ロードされている ble.sh で指定されたコマンドを実行するのかは非自明 → こ
-      れに関しては新しい物をリロードした上でコマンドを実行するという現在の振る
-      舞いで良い気がする。
-
-      ble.sh がロードされていない時にsource out/ble.sh --clear-cache をした時に
-      勝手に attach してしまうのは変だろう、と思ったが実際にはそのような振る舞
-      いはしていなかった。勘違いだった。
-
-      結局何れも勘違いがった。
 
 2023-06-12
 
@@ -7007,6 +6994,54 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-07-18
+
+  * mawk in Ubuntu 16.04 LTS (reported by dongxi8, Frezrik) [#D2055]
+    https://github.com/akinomyoga/ble.sh/issues/335
+
+    Ref. #D2037
+
+    mawk の version が古い。そして Ubuntu 16.04 LTS はこの古い mawk を使ってい
+    る様だ。mawk が失敗するとどうやら全く操作ができなくなる様だ。これは良くない。
+
+    x reject: 後テストしていて気づいたが --clear-cache が効いていない。
+
+      もしくはそのまま ble.sh が起動してしまう。例えば bash out/ble.sh
+      --clear-cache とするとそのまま新しい interactive session が始まってしまう。
+      何故? chatoyancy 上でやっても再現しない。と思ったが勘違いだった。
+
+      それでも既に ble.sh がロードされているセッションで source out/ble.sh
+      --clear-cache を実行した時に ble.sh をリロードするのかリロードせずに既に
+      ロードされている ble.sh で指定されたコマンドを実行するのかは非自明 → こ
+      れに関しては新しい物をリロードした上でコマンドを実行するという現在の振る
+      舞いで良い気がする。
+
+      ble.sh がロードされていない時にsource out/ble.sh --clear-cache をした時に
+      勝手に attach してしまうのは変だろう、と思ったが実際にはそのような振る舞
+      いはしていなかった。勘違いだった。
+
+      結局何れも勘違いだった。
+
+    2023-07-18 更にまた別の人からも報告があった。 Ubuntu 18.04 LTS も 1.3.3 を
+    使っているらしい。仕方がないので対応する事にする。
+
+    mawk がダメという事は何処かに記録していた気がするけれど何処かに行ってしまっ
+    た。と思ったが、mawk-regex.sh (2023-05-19 12:09:13) というスクリプトファイ
+    ルが残っていた。此処に#D2037 の時に実験したコードが残っている。
+
+    * ところで ko1nksm さんに確認を取ってみても良いかもしれない。もしかしたら既
+      に記事にしているかもしれない、と思って調べてみたが結局よく分からない。取
+      り敢えず {m,n} については何かの記事に書いていた気がすると思って Qiita で
+      検索したら以下のページが見つかった (Google で検索しても出なかった)。
+
+      https://qiita.com/ko1nksm/items/17b8105f793953dc83c7
+
+      更に Qiita で検索をしていたら以下のページも見つけた。このページには正規表
+      現にまつわる互換性問題がまとめられている。然しここにも {m,n} は言及されて
+      いるけれども、mawk の [:class:] に関しては言及されていない。
+
+      https://qiita.com/ko1nksm/items/53abc144558b9bb5629f
 
 2023-07-03
 

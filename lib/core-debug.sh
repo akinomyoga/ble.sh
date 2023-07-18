@@ -586,8 +586,8 @@ function ble/debug/profiler/stop {
       pids_clear();
     }
 
-    mode == "line_stat" { if ($0 ~ /^[[:space:]]*[^#[:space:]]/) lines_load_line(); next; }
-    mode == "func_stat" { if ($0 ~ /^[[:space:]]*[^#[:space:]]/) funcs_load_line(); next; }
+    mode == "line_stat" { if ($0 ~ /^['"$_ble_term_space"']*[^#'"$_ble_term_space"']/) lines_load_line(); next; }
+    mode == "func_stat" { if ($0 ~ /^['"$_ble_term_space"']*[^#'"$_ble_term_space"']/) funcs_load_line(); next; }
 
     progress_interval && ++iline % progress_interval == 0 {
       print "\x1b[A\rble/debug/profiler: collecting information... " int((iline * 100) / nline) "%" >"/dev/stderr";
@@ -602,7 +602,7 @@ function ble/debug/profiler/stop {
         if (command ~ /^ble-decode\/.hook [0-9]+$/) flush_stack();
 
         label = command;
-        sub(/^[[:space:]]+|[[:space:]].*/, "", label);
+        sub(/^['"$_ble_term_space"']+|['"$_ble_term_space"'].*/, "", label);
         label = sprintf("\x1b[35m%s\x1b[36m:\x1b[32m%s\x1b[36m (%s):\x1b[m", source, lineno, label);
       }
 
@@ -630,12 +630,12 @@ function ble/debug/profiler/stop {
     }
   ' "${awk_args[@]}" &&
     {
-      ble/bin/grep '^#' "$f2.part"
-      ble/bin/grep -v '^#' "$f2.part" | ble/bin/sort -nrk4
+      LANG=C ble/bin/grep '^#' "$f2.part"
+      LANG=C ble/bin/grep -v '^#' "$f2.part" | ble/bin/sort -nrk4
     } >| "$f2" &&
     {
-      ble/bin/grep '^#' "$f4.part"
-      ble/bin/grep -v '^#' "$f4.part" | ble/bin/sort -nrk4
+      LANG=C ble/bin/grep '^#' "$f4.part"
+      LANG=C ble/bin/grep -v '^#' "$f4.part" | ble/bin/sort -nrk4
     } >| "$f4" &&
     ble/bin/rm -f "$f1" "$f2.part" "$f4.part"
 }
