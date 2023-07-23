@@ -140,7 +140,7 @@ function ble/syntax-highlight+test {
       elif rex='^[^ 	"'\'']+([ 	]|$)' && [[ $tail =~ $rex ]]; then
         local cmd="${tail%%[	 ]*}" cmd_type
         ble/util/type cmd_type "$cmd"
-        case "$cmd_type:$cmd" in
+        case $cmd_type:$cmd in
         builtin:*)
           ble/syntax-highlight/append "$i $((i+${#cmd})) fg=red" ;;
         alias:*)
@@ -172,7 +172,7 @@ function ble/syntax-highlight+test {
 function ble/syntax-highlight+default/type {
   type=$1
   local cmd=$2
-  case "$type:$cmd" in
+  case $type:$cmd in
   (builtin::|builtin:.)
     # 見にくいので太字にする
     type=builtin_bold ;;
@@ -254,7 +254,7 @@ function ble/syntax-highlight+default {
           fi
         fi
 
-        case "$type" in
+        case $type in
         (file)
           ble/syntax-highlight/append "$i $((i+${#word})) fg=green" ;;
         (alias)

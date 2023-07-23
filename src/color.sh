@@ -400,7 +400,7 @@ function ble/color/g#compute-bg {
 function ble/color/gspec2g {
   local g=0 entry
   for entry in ${1//,/ }; do
-    case "$entry" in
+    case $entry in
     (bold)      ((g|=_ble_color_gflags_Bold)) ;;
     (underline) ((g|=_ble_color_gflags_Underline)) ;;
     (blink)     ((g|=_ble_color_gflags_Blink)) ;;
@@ -461,7 +461,7 @@ function ble/color/gspec2sgr {
   local sgr=0 entry
 
   for entry in ${1//,/ }; do
-    case "$entry" in
+    case $entry in
     (bold)      sgr="$sgr;${_ble_term_sgr_bold:-1}" ;;
     (underline) sgr="$sgr;${_ble_term_sgr_smul:-4}" ;;
     (blink)     sgr="$sgr;${_ble_term_sgr_blink:-5}" ;;
@@ -513,7 +513,7 @@ function ble/color/.hxx2color {
   ((x=x*255/Unit,
     y=y*255/Unit,
     z=z*255/Unit))
-  case "$((H/120))" in
+  case $((H/120)) in
   (0) local R=$x G=$y B=$z ;;
   (1) local R=$z G=$x B=$y ;;
   (2) local R=$y G=$z B=$x ;;
@@ -579,7 +579,7 @@ function ble/color/.name2color {
       ret=-1
     fi
   else
-    case "$colorName" in
+    case $colorName in
     (black)   ret=0 ;;
     (brown)   ret=1 ;;
     (green)   ret=2 ;;

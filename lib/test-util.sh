@@ -236,7 +236,7 @@ ble/test ble/util/setexit 255 exit=255
 )
 
 # ble/variable#is-global
-function is-global() (builtin readonly "$1"; ! local "$1" 2>/dev/null)
+function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 (
   v1=1 v2=2
   ((_ble_bash>=40200)) &&
@@ -1997,7 +1997,7 @@ fi
 
 # ble/util/{c2keyseq,chars2keyseq,keyseq2chars}
 (
-  check1() {
+  function check1 {
     local char=$1 keyseq=$2
     ble/test "ble/util/c2keyseq $char" ret="$keyseq"
     ble/test "ble/util/chars2keyseq $char" ret="$keyseq"
@@ -2080,7 +2080,7 @@ fi
 
 # ble/util/is-unicode-output
 (
-  clear-locale() { LC_ALL= LANG= LC_CTYPE=; }
+  function clear-locale { LC_ALL= LANG= LC_CTYPE=; }
 
   for lang in {C,en_US,ja{_JP,}}.{UTF-8,utf8} ja_JP.{utf8,UTF-8}@cjk{wide,narrow,single}; do
     clear-locale

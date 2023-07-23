@@ -144,12 +144,14 @@ fi
 # 複数階層の場合に正しく var を掘り出せるか。
 # → OK ちゃんと掘り出せている。
 if [[ $mode == test5a ]]; then
-  function f1a () (
-    while [[ ${var+set} ]]; do
-      echo "    f1a: var=$var"
-      unset -v var
-    done
-  )
+  function f1a {
+    (
+      while [[ ${var+set} ]]; do
+        echo "    f1a: var=$var"
+        unset -v var
+      done
+    )
+  }
 
   function f1b {
     local var=f1b
@@ -182,15 +184,17 @@ fi
 # 途中のローカル変数が -r になっていた時、掘り出せるのか?
 # →駄目。エラーになる。しかも対策しないと無限ループになる。
 if [[ $mode == test5b ]]; then
-  function f1a () (
-    count=0
-    count_max=10
-    while [[ ${var+set} ]]; do
-      ((count++<count_max)) || break
-      echo "   f1a: var=$var"
-      unset -v var
-    done
-  )
+  function f1a {
+    (
+      count=0
+      count_max=10
+      while [[ ${var+set} ]]; do
+        ((count++<count_max)) || break
+        echo "   f1a: var=$var"
+        unset -v var
+      done
+    )
+  }
 
   function f1b {
     local -r var=f1b
@@ -220,12 +224,14 @@ fi
 #
 
 if [[ $mode == test5c ]]; then
-  function f1a () (
-    while [[ ${var+set} ]]; do
-      echo "    f1a: var=$var"
-      unset -v var
-    done
-  )
+  function f1a {
+    (
+      while [[ ${var+set} ]]; do
+        echo "    f1a: var=$var"
+        unset -v var
+      done
+    )
+  }
 
   function f1b {
     local var

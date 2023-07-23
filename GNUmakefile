@@ -95,6 +95,7 @@ outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
 outfiles += $(OUTDIR)/lib/vim-airline.sh
 
 # test
+outfiles += $(OUTDIR)/lib/test-bash.sh
 outfiles += $(OUTDIR)/lib/test-main.sh
 outfiles += $(OUTDIR)/lib/test-util.sh
 outfiles += $(OUTDIR)/lib/test-canvas.sh

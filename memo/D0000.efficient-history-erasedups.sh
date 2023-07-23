@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function erasedupA.1 () {
+function erasedupA.1 {
   local line="$1" i j
   for((i=0;i<${#hist[@]};i++)); do
     if test "${hist[$i]}" != "$line"; then

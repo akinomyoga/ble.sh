@@ -878,7 +878,7 @@ function ble/prompt/.process-backslash {
   # \\ の次の文字
   local c=${tail:1:1} pat='][#!$\'
   if [[ $c == ["$pat"] ]]; then
-    case "$c" in
+    case $c in
     (\[) ble/canvas/put.draw $'\001' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
     (\]) ble/canvas/put.draw $'\002' ;;
     ('#') # コマンド番号 (本当は history に入らない物もある…)
@@ -1974,7 +1974,7 @@ function ble/edit/info/.construct-content {
   x=0 y=0 content=
 
   local type=$1 text=$2
-  case "$1" in
+  case $1 in
   (clear) ;;
   (ansi|esc)
     local trace_opts=truncate
@@ -3747,10 +3747,10 @@ function ble/edit/display-version/git-hash-object {
     ble/util/assign ret 'git hash-object "$file"'
     ret="hash:$ret, $size bytes"
   elif ble/bin#has sha1sum; then
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     { printf 'blob %d\0' "$size"; ble/bin/cat "$file"; } >| "$_ble_local_tmpfile"
     blob_data=$_ble_local_tmpfile ble/util/assign ret 'sha1sum "$blob_data"'
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
 
     ble/string#split-words ret "$ret"
     ret="sha1:$ret, $size bytes"
@@ -6547,17 +6547,17 @@ function _ble_builtin_trap_DEBUG__initialize {
   if [[ $_ble_builtin_trap_DEBUG_userTrapInitialized ]]; then
     # Note: 既に ble/builtin/trap:DEBUG 等によって user trap が設定されている場
     # 合は改めて読み取る事はしない (読み取っても TRAPDEBUG が見えるだけ)。
-    builtin eval -- "function $FUNCNAME() ((1))"
+    builtin eval -- "function $FUNCNAME { ((1)); }"
     return 0
   elif [[ $1 == force ]] || ble/function/is-global-trace-context; then
     _ble_builtin_trap_DEBUG_userTrapInitialized=1
-    builtin eval -- "function $FUNCNAME() ((1))"
+    builtin eval -- "function $FUNCNAME { ((1)); }"
 
     # Note: ble/util/assign は DEBUG を継承しないのでその場で trap -p で出力する
-    local _ble_local_tmpfile; ble/util/assign/.mktmp
+    local _ble_local_tmpfile; ble/util/assign/mktmp
     builtin trap -p DEBUG >| "$_ble_local_tmpfile"
     local content; ble/util/readfile content "$_ble_local_tmpfile"
-    ble/util/assign/.rmtmp
+    ble/util/assign/rmtmp
 
     # ble.sh の設定した DEBUG trap は無視する。
     case ${content#"trap -- '"} in
@@ -9816,11 +9816,11 @@ function read { ble/builtin/read "$@"; }
 ## @fn ble/widget/command-help/.read-man
 ##   @var[out] man_content
 function ble/widget/command-help/.read-man {
-  local -x _ble_local_tmpfile; ble/util/assign/.mktmp
+  local -x _ble_local_tmpfile; ble/util/assign/mktmp
   local pager="sh -c 'cat >| \"\$_ble_local_tmpfile\"'"
   MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
   ble/util/readfile man_content "$_ble_local_tmpfile" # 80ms
-  ble/util/assign/.rmtmp
+  ble/util/assign/rmtmp
   return "$ext"
 }
 
@@ -10103,7 +10103,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
         ble/util/readfile content "$file"
         : >| "$file"
         for cmd in $content; do
-          case "$cmd" in
+          case $cmd in
           (eof)
             # C-d
             ble-decode/.hook 4

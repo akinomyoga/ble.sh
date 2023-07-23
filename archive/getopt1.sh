@@ -46,7 +46,7 @@ function .ble-getopt.next-argument {
   fi
 
   # check
-  case "$type" in
+  case $type in
   [nefdhcbpugkrwxsv])
     if [ ! -$type "$oarg" ]; then
       ble/util/print "$getopt_cmd: the argument of the option \`${optargs[0]}' is empty string (oarg=$oarg)." 1>&2
