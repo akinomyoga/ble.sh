@@ -35,7 +35,8 @@
 - complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` f16c0d80
 - syntax: allow double-quotes in `$(())` in bash-4.4 (requested by mozirilla213) `#D2051` 611c1d93
 - syntax: support version-dependent arithmetic backslash `#D2051` 611c1d93
-- util: work around mawk 1.3.3-20090705 regex (reported by dongxi8, Frezrik) `#D2055` xxxxxxxx
+- util: work around mawk 1.3.3-20090705 regex (reported by dongxi8, Frezrik) `#D2055` 4089c4e1
+- complete: update a workaround for cobra-1.5.0 (reported by 3ximus) `#D2056` xxxxxxxx
 
 ## Contrib
 
@@ -44,7 +45,7 @@
 
 ## Documentation
 
-- docs (CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` xxxxxxxx
+- docs (CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
 
 ## Internal changes
 

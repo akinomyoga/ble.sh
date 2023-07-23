@@ -6888,6 +6888,49 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-07-24
+
+  * complete: cobraV2 の対策が動いていない (reported by 3ximus)
+    https://github.com/akinomyoga/ble.sh/issues/348
+
+    添付された生成コードを観察してみると completions に生成された候補が入ってい
+    る。一方で core-complete.sh の .cobraV2.patch は out に生成されたデータが入っ
+    ているという前提になっていて、out を修正しているが completions は修正してい
+    ない。
+
+    何処かの時点でコード生成が変更されたという事だろうか。cobra の方の実装を確
+    認する必要がある。調べてみると [1] で変更が加えられている。
+    __XX_extract_activeHelp が定義されている時に振る舞いを変更する様にすれば良
+    さそうだ。
+
+    [1] https://github.com/spf13/cobra/pull/1482/files#diff-ccbad943e447c0dbcf310892446819dea78bd471093c627e4aeb211c6ebb1b63
+
+    実際に bb というコマンドを持っていないので正確には動作確認できないが適当に
+    bb の出力を真似て実行してみた所、問題が再現できるという事と、対策したコード
+    で問題が再現しない事を確認した。
+
+    | --- gh348.sh~^I2023-07-24 06:31:13.884693063 +0900
+    | +++ gh348.sh^I2023-07-24 07:00:07.415045133 +0900
+    | @@ -57,6 +57,11 @@
+    |      fi
+    |      __bb_debug "The completion directive is: ${directive}"
+    |      __bb_debug "The completions are: ${out}"
+    | +
+    | +out='hello^I(fdsafdsafdsa)
+    | +world^I(test test test)
+    | +aaaaa^Ixxxxxxx
+    | +fdsafdsa'
+    |  }
+    |
+    |  __bb_process_completion_results() {
+
+    ? 問題が発生するのは desc がついていない候補も一緒に生成された時だけだが、
+      報告では desc がついていない候補は生成されていない様に見える。何故だろう
+      か?
+
+      例えば空の候補が生成されている可能性? → 取り敢えず末尾に空行が含まれてい
+      る場合にも問題が再現するという事は確認した。
+
 2023-07-18
 
   * docs: styleguide の追加 (motivated by bkerin) [#D2056]

@@ -3591,6 +3591,12 @@ function ble/complete/progcomp/.filter-and-split-compgen {
 } 2>/dev/null
 
 function ble/complete/progcomp/.cobraV2.patch {
+  local cobra_version=$1
+  if ((cobra_version<10500)); then
+    local -a completions
+    completions=("${out[@]}")
+  fi
+
   local prefix=$cur
   [[ $comps_flags == *v* ]] && prefix=$COMPV
   local unprocessed has_desc=
@@ -3605,14 +3611,19 @@ function ble/complete/progcomp/.cobraV2.patch {
         [[ $cand == "$prefix"* ]] || continue
         ble/complete/cand/yield word "$cand" "$desc"
         has_desc=1
-      else
+      elif [[ $line ]]; then
         ble/array#push unprocessed "$line"
       fi
     done
   done
+
   [[ $has_desc ]] && bleopt complete_menu_style=desc
   if ((${#unprocessed[@]})); then
-    out=("${unprocessed[@]}")
+    if ((cobra_version>=10500)); then
+      completions=("${unprocessed[@]}")
+    else
+      out=("${unprocessed[@]}")
+    fi
     ble/function#advice/do
   fi
 }
@@ -3719,8 +3730,13 @@ function ble/complete/progcomp/.compgen {
     # cobra GenBashCompletionV2
     if [[ $comp_func == __start_* ]]; then
       local target=__${comp_func#__start_}_handle_completion_types
-      ble/is-function "$target" &&
-        ble/function#advice around "$target" ble/complete/progcomp/.cobraV2.patch
+      if ble/is-function "$target"; then
+        local cobra_version=
+        if ble/is-function "__${comp_func#__start_}_extract_activeHelp"; then
+          cobra_version=10500 # v1.5.0 (Release 2022-06-21)
+        fi
+        ble/function#advice around "$target" "ble/complete/progcomp/.cobraV2.patch $cobra_version"
+      fi
     fi
 
     # WA for dnf completion
