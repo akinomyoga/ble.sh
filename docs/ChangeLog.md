@@ -37,7 +37,7 @@
 - syntax: support version-dependent arithmetic backslash `#D2051` 611c1d93
 - util: work around mawk 1.3.3-20090705 regex (reported by dongxi8, Frezrik) `#D2055` 4089c4e1
 - complete: update a workaround for cobra-1.5.0 (reported by 3ximus) `#D2057` a24435d3
-- make: work around ecryptfs bug `#D2058` xxxxxxxx
+- make: work around ecryptfs bug (reported by juanejot) `#D2058` 969a763e xxxxxxxx
 
 ## Contrib
 
