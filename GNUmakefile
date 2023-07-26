@@ -28,6 +28,13 @@ endif
 
 MWGPP:=$(GAWK) -f make/mwg_pp.awk
 
+# Note (): we had used "cp -p xxx out/xxx" to copy files to the build
+# directory, but some filesystem (ecryptfs) has a bug that the subsecond
+# timestamps are truncated causing an issue: make every time copies all the
+# files into the subdirectory `out`.  We give up using `cp -p` and instead copy
+# the file with `cp` with the timestamps being the copy time.
+CP := cp
+
 #------------------------------------------------------------------------------
 # ble.sh
 
@@ -106,9 +113,9 @@ outfiles += $(OUTDIR)/lib/test-complete.sh
 outfiles += $(OUTDIR)/lib/util.bgproc.sh
 
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
-	cp -p $< $@
+	$(CP) $< $@
 $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
-	cp -p $< $@
+	$(CP) $< $@
 $(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh lib/core-syntax-ctx.def | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 $(OUTDIR)/lib/init-msys1.sh: lib/init-msys1.sh lib/init-msys1-helper.c | $(OUTDIR)/lib
@@ -147,10 +154,10 @@ outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
 outfiles-doc += $(OUTDIR)/doc/ChangeLog.md
 outfiles-doc += $(OUTDIR)/doc/Release.md
 $(OUTDIR)/doc/%: % | $(OUTDIR)/doc
-	cp -p $< $@
+	$(CP) $< $@
 
 $(OUTDIR)/doc/%: docs/% | $(OUTDIR)/doc
-	cp -p $< $@
+	$(CP) $< $@
 
 #------------------------------------------------------------------------------
 # contrib
