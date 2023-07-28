@@ -15,6 +15,7 @@
 
 - edit: clear character highlighting for overwriting mode (requested by mozirilla213) `#D2052` 1afc616b
 - history (`ble/builtin/history -w`): write file even without any new entries (requested by Jai-JAP) `#D2053` c78e5c9f
+- auto-complete: overwrite subsequent characters with self-insert in overwrite mode `#D2059` xxxxxxxx
 
 ## Fixes
 

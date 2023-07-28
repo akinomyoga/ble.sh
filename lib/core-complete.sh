@@ -8351,7 +8351,7 @@ function ble/widget/auto_complete/self-insert/.is-magic-space {
 }
 
 function ble/widget/auto_complete/self-insert {
-  if ble/widget/auto_complete/self-insert/.is-magic-space; then
+  if [[ $_ble_edit_overwrite_mode ]] || ble/widget/auto_complete/self-insert/.is-magic-space; then
     ble/widget/auto_complete/cancel-default
     return "$?"
   fi
