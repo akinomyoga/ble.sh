@@ -136,3 +136,8 @@ function bleopt/check:complete_source_sabbrev_ignore {
 
 ble/color/defface auto_complete bg=254,fg=238
 ble/color/defface cmdinfo_cd_cdpath fg=26,bg=155
+
+# ble/color/defface menu_filter_fixed bg=247,bold
+# ble/color/defface menu_filter_input bg=147,bold
+ble/color/defface menu_filter_fixed bold
+ble/color/defface menu_filter_input fg=16,bg=229

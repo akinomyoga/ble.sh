@@ -6888,6 +6888,19 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-08-11
+
+  * complete: faces menu_filter_* を設定しようとすると見つからない (reported by anuramat) [#D2060]
+    https://github.com/akinomyoga/ble.sh/issues/352
+
+    これは complete がロードされてから設定しなければならない。と思ったが、他の
+    complete の face はロードする前でもちゃんと動く様になっている。という事は
+    menu_filter_* についてもメインのファイルに移動する事にした方が良い気がする。
+
+    その他には ble.sh の外で defface しているのは vim-airline だけである。これ
+    についてはちゃんと vim-airline が読み込まれてから設定を行う様に
+    blerc.template に書かれているので大丈夫のはず。
+
 2023-07-27
 
   * auto-complete: overwrite mode の時に self-insert が後続の文字を消去しない [#D2059]

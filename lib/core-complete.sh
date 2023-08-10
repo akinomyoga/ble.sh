@@ -7689,11 +7689,6 @@ function ble/highlight/layer/buff#set-explicit-sgr {
   builtin eval "$BUFF[index]=\$ret\${_ble_highlight_layer_plain_buff[index]}"
 }
 
-# ble/color/defface menu_filter_fixed bg=247,bold
-# ble/color/defface menu_filter_input bg=147,bold
-ble/color/defface menu_filter_fixed bold
-ble/color/defface menu_filter_input fg=16,bg=229
-
 _ble_highlight_layer_menu_filter_buff=()
 _ble_highlight_layer_menu_filter_beg=
 _ble_highlight_layer_menu_filter_end=
