@@ -6888,6 +6888,43 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-08-13
+
+  * history: bash-5.3 history -anrw で何処にも書き込まない [#D2061]
+    https://lists.gnu.org/archive/html/bug-bash/2023-07/msg00165.html
+    https://lists.gnu.org/archive/html/bug-bash/2023-08/msg00007.html
+
+    bash/ChangeLog
+    |                     8/2
+    |                     ---
+    | [...]
+    | doc/{bash.1,bashref.texi},lib/readline/doc/hsuser.texi
+    |     - history: document that if filename is not supplied, and HISTFILE is
+    |       unset or null, the [-anrw] options have no effect
+
+    と思ったが元からそういう振る舞いになっていた。議論を参照してみるとどうやら
+    これまでの bash では何も設定されていないと ~/.history というファイルを勝手
+    に作って其処に書き込む様になっていた様だ。
+
+    * reject: 今までの bash の振る舞いを再現する様に書き換えるという手もあるか
+      もしれないが振る舞いとしてやはり不自然なので ble.sh では bash-5.3 以降と
+      同様に何も書き込まない事にする。
+
+    * reject: history -anrw で HISTFILE が空の時にはエラーも出力しない?  ble.sh
+      では HISTFILE が設定されていなくて -anrw を呼び出した時にエラーメッセージ
+      を出力する様になっているが、bash-5.3 では何も出力しない様である。これにつ
+      いてはやはりエラーメッセージを出力する方が自然の気がするので取り敢えずは
+      エラーメッセージは表示する事にする。ユーザーが何かエラーメッセージを出力
+      しない前提の使い方をしているという報告があった時にまた考える事にする。
+
+    * done: エラーメッセージが常に history -a になっている。-anrw に応じて適切
+      なオプション名を表示するべきではないか → FUNCNAME[1] の最後の文字から抽
+      出する様に修正した。
+
+    * done: ble/builtin/history/.get-histfile: 制御パス的に必ず true になる場所
+      で [[ $histfile ]] で終了ステータスを設定している → 単純に削除する事にし
+      た。
+
 2023-08-11
 
   * complete: faces menu_filter_* を設定しようとすると見つからない (reported by anuramat) [#D2060]

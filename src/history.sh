@@ -1264,14 +1264,15 @@ function ble/builtin/history/option:d {
 function ble/builtin/history/.get-histfile {
   histfile=${1:-${HISTFILE-}}
   if [[ ! $histfile ]]; then
+    local opt=-a
+    [[ ${FUNCNAME[1]} == *:[!:] ]] && opt=-${FUNCNAME[1]##*:}
     if [[ ${1+set} ]]; then
-      ble/util/print 'ble/builtin/history -a: the history filename is empty.' >&2
+      ble/util/print "ble/builtin/history $opt: the history filename is empty." >&2
     else
-      ble/util/print 'ble/builtin/history -a: the history file is not specified.' >&2
+      ble/util/print "ble/builtin/history $opt: the history file is not specified." >&2
     fi
     return 1
   fi
-  [[ $histfile ]]
 }
 ## @fn ble/builtin/history/option:a [filename]
 function ble/builtin/history/option:a {

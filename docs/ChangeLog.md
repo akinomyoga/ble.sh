@@ -16,7 +16,7 @@
 - edit: clear character highlighting for overwriting mode (requested by mozirilla213) `#D2052` 1afc616b
 - history (`ble/builtin/history -w`): write file even without any new entries (requested by Jai-JAP) `#D2053` c78e5c9f
 - auto-complete: overwrite subsequent characters with self-insert in overwrite mode `#D2059` 7044b2db
-- complete: move face definitions `menu_filter_*` to `core-complete-def.sh` `#D2060`
+- complete: move face definitions `menu_filter_*` to `core-complete-def.sh` `#D2060` af022266
 
 ## Fixes
 
@@ -29,6 +29,7 @@
 - main: fix `--inputrc=TYPE` not applied on startup `#D2044` 1b15b851 0adce7c9
 - stty: suggest `stty sane` after exiting from bash >= 5.2 to non-ble session `#D2046` b57ab2d6
 - util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` 1f3cbc01
+- history (`ble/builtin/history`): fix error message on the empty `HISTFILE` `#D2061` xxxxxxxx
 
 ## Compatibility
 
