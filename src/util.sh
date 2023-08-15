@@ -3951,15 +3951,17 @@ function ble/util/buffer.print {
 }
 function ble/util/buffer.flush {
   IFS= builtin eval 'local text="${_ble_util_buffer[*]-}"'
+  _ble_util_buffer=()
+  [[ $text ]] || return 0
 
-  # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal 途中
+  # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal など途中
   # のカーソル移動も無理やり表示しようとする端末に対する対策。
   [[ $_ble_term_state == internal ]] &&
     [[ $_ble_term_cursor_hidden_internal != hidden ]] &&
+    [[ $text != *"$_ble_term_civis"* && $text != *"$_ble_term_cvvis"* ]] &&
     text=$_ble_term_civis$text$_ble_term_cvvis
 
   ble/util/put "$text"
-  _ble_util_buffer=()
 }
 function ble/util/buffer.clear {
   _ble_util_buffer=()
@@ -6401,6 +6403,11 @@ function ble/term/modifyOtherKeys/.update {
         ble/term/modifyOtherKeys/.supported || method=disabled
       fi ;;
     esac
+
+    # Note #D2062: mc の内部にいる時は外側の端末に関係なく modifyOtherKeys は無
+    # 効化する。C-o が効かなくなるし、その他の mc に対するコマンドも効かなくな
+    # る可能性がある。
+    [[ $MC_SID ]] && method=disabled
 
     # 別の方式で有効化されている時は先に解除しておく。
     if ((previous>=2)) &&

@@ -7089,13 +7089,57 @@ function ble-edit/hist_expanded.update {
   fi
 }
 
+_ble_edit_integration_mc_precmd_stop=1
+function ble/widget/accept-line/.is-mc-init {
+  [[ $MC_SID == $$ ]] && ((_ble_edit_LINENO<=5)) || return 1
+
+  # Note #D2062: mc-4.8.29 以前は最初の行だけ不完全かチェックすれば良かった
+  ((_ble_edit_LINENO==0)) && return 0
+
+  # Note #D2062: mc-4.8.29 以降では複数行の初期化スクリプトを送信してくる。特に
+  # 4行目が不完全な状態で C-j を送信してくるので不完全な状態で実行されエラーに
+  # なる。不完全な状態のものについてはコマンド実行ではなく改行挿入に変換する。
+  #
+  # ---- mc の初期化入力スクリプト例 ----
+  #  mc_print_command_buffer () { printf "%s\\n" "$READLINE_LINE" >&13; }
+  #  bind -x '"\e_":"mc_print_command_buffer"'
+  #  bind -x '"\e+":"echo $BASH_VERSINFO:$READLINE_POINT >&18"'
+  #  PROMPT_COMMAND=${PROMPT_COMMAND:+$PROMPT_COMMAND
+  #  }'pwd>&16;kill -STOP $$'
+  # PS1='\u@\h:\w\$ '
+  # -------------------------------------
+  if [[ $_ble_edit_str == *'PROMPT_COMMAND=${PROMPT_COMMAND:+$PROMPT_COMMAND'* ]]; then
+    ble/string#match "$_ble_edit_str" 'pwd>&[0-9]+;kill -STOP \$\$' &&
+      _ble_edit_integration_mc_precmd_stop=1
+    return 0
+  fi
+
+  # Note #D2062: mc-4.8.29 は C-o C-o で mc 画面に戻る直前に M-_ M-+ を送信して
+  # 現在の状態を抽出する。この時の最後の画面の状態を記録して、更に次に C-o が押
+  # された時にそれを復元する。ところが ble.sh と一緒に使っているとこの復元がで
+  # きない。M-+ における内容送信の直前で ble/textarea#redraw &
+  # ble/util/buffer.flush を実行しておけば回避できる。M-+ の束縛を書き換える。
+  if ble/string#match "$_ble_edit_str" 'bind -x '\''"\\e\+":"([^"'\'']+)"'\'''; then
+    function ble/widget/.mc_exec_command {
+      ble/textarea#redraw
+      ble/util/buffer.flush >&2
+      builtin eval -- "$1"
+    }
+    local str=${_ble_edit_str//"$BASH_REMATCH"/"ble-bind -f M-+ '.mc_exec_command '\''${BASH_REMATCH[1]}'\'''"} &&
+      [[ $str != "$_ble_edit_str" ]] &&
+      ble-edit/content/reset-and-check-dirty "$str"
+  fi
+
+  return 1
+}
+
 function ble/widget/accept-line {
   ble/decode/widget/keymap-dispatch "$@"
 }
 function ble/widget/default/accept-line {
   # 文法的に不完全の時は改行挿入
   # Note: mc (midnight commander) が改行を含むコマンドを書き込んでくる #D1392
-  if [[ :$1: == *:syntax:* || $MC_SID == $$ && $_ble_edit_LINENO == 0 ]]; then
+  if [[ :$1: == *:syntax:* ]] || ble/widget/accept-line/.is-mc-init; then
     ble-edit/content/update-syntax
     if ! ble/syntax:bash/is-complete; then
       ble/widget/newline
