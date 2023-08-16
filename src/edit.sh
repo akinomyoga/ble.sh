@@ -7089,7 +7089,7 @@ function ble-edit/hist_expanded.update {
   fi
 }
 
-_ble_edit_integration_mc_precmd_stop=1
+_ble_edit_integration_mc_precmd_stop=
 function ble/widget/accept-line/.is-mc-init {
   [[ $MC_SID == $$ ]] && ((_ble_edit_LINENO<=5)) || return 1
 
