@@ -186,7 +186,7 @@ ifneq ($(INSDIR),)
   ifeq ($(INSDIR_DOC),)
     INSDIR_DOC := $(INSDIR)/doc
   endif
-  ifeq ($(INSDIR_LICENSE,)
+  ifeq ($(INSDIR_LICENSE),)
     INSDIR_LICENSE := $(INSDIR)/doc
   endif
 else
