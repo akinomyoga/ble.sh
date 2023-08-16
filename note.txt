@@ -1940,9 +1940,6 @@ bash_tips
     く分からない。kpup などに翻訳されているという事だろうか。また再現した時に
     keylog でどのような受信・翻訳になっているかを確認する事にする。
 
-  * bash-3.2 初期化で無限ループになる。bash --norc で開始した後に source
-    out/ble.sh しても問題は発生しない。
-
 2023-07-18
 
   * Grisha が bind -X の出力形式を修正している
@@ -6925,6 +6922,21 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-08-16
+
+  * PKGBUILD: 色々とけちがついているので修正する (requested by willemw) [#D2063]
+    https://aur.archlinux.org/packages/blesh-git#comment-929483
+
+    * provides & conflicts を修正した
+    * depends & makedepends の修正
+    * /usr/share/licenses/blesh に配置するライセンス
+
+  * external: bash-3.2 初期化で無限ループになる。bash --norc で開始した後に
+    source out/ble.sh しても問題は発生しない。
+
+    →これは単に ~/.bashrc の方のバグだった。ble/util/idle.push のサポートが無
+    い時に ble-import -d 経由で無限ループが明示的にできていた。
 
 2023-08-15
 

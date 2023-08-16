@@ -149,10 +149,10 @@ removedfiles += \
 outdirs += $(OUTDIR)/doc
 outfiles-doc += $(OUTDIR)/doc/README.md
 outfiles-doc += $(OUTDIR)/doc/README-ja_JP.md
-outfiles-doc += $(OUTDIR)/doc/LICENSE.md
 outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
 outfiles-doc += $(OUTDIR)/doc/ChangeLog.md
 outfiles-doc += $(OUTDIR)/doc/Release.md
+outfiles-license += $(OUTDIR)/doc/LICENSE.md
 $(OUTDIR)/doc/%: % | $(OUTDIR)/doc
 	$(CP) $< $@
 
@@ -174,7 +174,7 @@ include contrib/contrib.mk
 $(outdirs):
 	mkdir -p $@
 
-build: contrib/contrib.mk $(outfiles) $(outfiles-doc)
+build: contrib/contrib.mk $(outfiles) $(outfiles-doc) $(outfiles-license)
 .PHONY: build
 
 all: build
@@ -185,6 +185,9 @@ all: build
 ifneq ($(INSDIR),)
   ifeq ($(INSDIR_DOC),)
     INSDIR_DOC := $(INSDIR)/doc
+  endif
+  ifeq ($(INSDIR_LICENSE,)
+    INSDIR_LICENSE := $(INSDIR)/doc
   endif
 else
   ifneq ($(filter-out %/,$(DESTDIR)),)
@@ -201,6 +204,7 @@ else
 
   INSDIR = $(DATA_HOME)/blesh
   INSDIR_DOC = $(DATA_HOME)/doc/blesh
+  INSDIR_LICENSE = $(DATA_HOME)/doc/blesh
 endif
 
 ifneq ($(strip_comment),)
@@ -212,20 +216,25 @@ endif
 install: \
   $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) \
   $(outfiles-doc:$(OUTDIR)/doc/%=$(INSDIR_DOC)/%) \
+  $(outfiles-license:$(OUTDIR)/doc/%=$(INSDIR_LICENSE)/%) \
   $(INSDIR)/cache.d $(INSDIR)/run
 $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install $(opt_strip_comment) "$<" "$@"
 $(INSDIR_DOC)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
+ifneq ($(INSDIR_DOC),$(INSDIR_LICENSE))
+$(INSDIR_LICENSE)/%: $(OUTDIR)/doc/%
+	bash make_command.sh install "$<" "$@"
+endif
 $(INSDIR)/cache.d $(INSDIR)/run:
 	mkdir -p $@ && chmod a+rwxt $@
 .PHONY: install
 
 clean:
-	-rm -rf $(outfiles) $(OUTDIR)/ble.dep
+	-rm -rf $(outfiles) $(outfiles-doc) $(outfiles-license) $(OUTDIR)/ble.dep
 .PHONY: clean
 
-dist: $(outfiles)
+dist: $(outfiles) $(outfiles-doc) $(outfiles-license)
 	FULLVER=$(FULLVER) bash make_command.sh dist $^
 .PHONY: dist
 
