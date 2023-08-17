@@ -153,7 +153,22 @@ outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
 outfiles-doc += $(OUTDIR)/doc/ChangeLog.md
 outfiles-doc += $(OUTDIR)/doc/Release.md
 outfiles-license += $(OUTDIR)/doc/LICENSE.md
-$(OUTDIR)/doc/%: % | $(OUTDIR)/doc
+
+# Note #D2065: make-3.81 のバグにより以下の様に記述すると、より長く一致するパター
+# ンを持った規則よりも優先されてしまう。3.82 では問題は発生しない。% の代わりに
+# %.md にしたとしても、%.md が contrib/README.md 等に一致してしまう。仕方がない
+# ので $(OUTDIR)/doc/%: % に対応するファイルに関しては明示的に一つずつ記述する
+# 事にする。
+#
+#   $(OUTDIR)/doc/%: % | $(OUTDIR)/doc
+#   	$(CP) $< $@
+#
+# Workaround for make-3.81:
+$(OUTDIR)/doc/README.md: README.md | $(OUTDIR)/doc
+	$(CP) $< $@
+$(OUTDIR)/doc/README-ja_JP.md: README-ja_JP.md | $(OUTDIR)/doc
+	$(CP) $< $@
+$(OUTDIR)/doc/LICENSE.md: LICENSE.md | $(OUTDIR)/doc
 	$(CP) $< $@
 
 $(OUTDIR)/doc/%: docs/% | $(OUTDIR)/doc

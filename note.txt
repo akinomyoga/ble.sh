@@ -6923,17 +6923,41 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-08-17
+
+  * Makefile: github/workflows の macos-latest で失敗する [#D2065]
+
+    色々実験した結果、どうやら make-3.81 では以下の規則があった時に三つ目に合致
+    するファイル名の時であっても、一つ目の規則を適用してしまう様である。3.82 で
+    はちゃんと問題なく動作する。
+
+    | $(OUTDIR)/doc/%: % | $(OUTDIR)/doc
+    | 	$(CP) $< $@
+    | $(OUTDIR)/doc/%: docs/% | $(OUTDIR)/doc
+    | 	$(CP) $< $@
+    | $(OUTDIR)/doc/contrib/%.md: contrib/%.md | $(OUTDIR)/doc/contrib
+    | 	$(CP) $< $@
+
+    よく見てみるとこの make-3.81 における問題は contrib.mk にも既に書かれていた。
+    contrib.mk における回避方法は三番目の規則をより詳しくすると言う物だったが、
+    実は一つ目の規則を消して代わりにファイルを一つずつ記述する方が現実的の気が
+    する。その様に変更する事にする。
+
+    x contrib.mk で定義されているマクロ名に綴り間違いがある。序でにこれも修正し
+      ておく。
+
 2023-08-16
 
-  * PKGBUILD: 色々とけちがついているので修正する (requested by willemw) [#D2063]
+  * PKGBUILD: 色々とけちがついているので修正する (requested by willemw) [#D2064]
     https://aur.archlinux.org/packages/blesh-git#comment-929483
 
     * provides & conflicts を修正した
     * depends & makedepends の修正
     * /usr/share/licenses/blesh に配置するライセンス
 
-  * external: bash-3.2 初期化で無限ループになる。bash --norc で開始した後に
-    source out/ble.sh しても問題は発生しない。
+  * external: bash-3.2 初期化で無限ループになる  [#D2063]
+
+    bash --norc で開始した後に source out/ble.sh しても問題は発生しない。
 
     →これは単に ~/.bashrc の方のバグだった。ble/util/idle.push のサポートが無
     い時に ble-import -d 経由で無限ループが明示的にできていた。
