@@ -10,6 +10,7 @@
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
 - syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 71272a4b
 - complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
+- menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` xxxxxxxx
 
 ## Changes
 
@@ -17,7 +18,7 @@
 - history (`ble/builtin/history -w`): write file even without any new entries (requested by Jai-JAP) `#D2053` c78e5c9f
 - auto-complete: overwrite subsequent characters with self-insert in overwrite mode `#D2059` 7044b2db
 - complete: move face definitions `menu_filter_*` to `core-complete-def.sh` `#D2060` af022266
-- make: add `INSDIR_LICENSE` for install location of licenses (reported by willemw) `#D2064` d39998f0 xxxxxxxx
+- make: add `INSDIR_LICENSE` for install location of licenses (reported by willemw) `#D2064` d39998f0 acf3b091
 
 ## Fixes
 
@@ -43,7 +44,7 @@
 - complete: update a workaround for cobra-1.5.0 (reported by 3ximus) `#D2057` a24435d3
 - make: work around ecryptfs bug (reported by juanejot) `#D2058` 969a763e dc0cdb30
 - edit: update mc-4.8.29 integration (reported by mooreye) `#D2062` 2c4194a2 68c5c5c4
-- make: work around `make-3.81` bug of pattern rules `#D2065` xxxxxxxx
+- make: work around `make-3.81` bug of pattern rules `#D2065` f7ec170b
 
 ## Contrib
 

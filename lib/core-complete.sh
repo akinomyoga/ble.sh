@@ -7573,6 +7573,7 @@ function ble/widget/complete/.select-menu-with-arg {
 
   local arg_opts= opts=$1
   [[ :$opts: == *:enter-menu:* ]] && arg_opts=always
+  [[ :$opts: == *:bell:* ]] && arg_opts=$arg_opts:bell
 
   # 現在のキーが実際に引数の一部として解釈され得る時のみ menu に入る
   ble/widget/menu/append-arg/.is-argument "$arg_opts" || return 1
@@ -7941,6 +7942,15 @@ function ble-decode/keymap:menu_complete/define {
 _ble_complete_menu_arg=
 ## @fn ble/widget/menu/append-arg [opts]
 ##   @param[in,opt] opts
+##     A colon-separated list of the options:
+##
+##     always
+##       When a numeric argument is not started, the normal digit is by default
+##       treated as normal user input.  This option makes the normal digit
+##       always start a numeric argument.
+##     bell
+##       Call edit bell when no corresponding item is found.
+##
 function ble/widget/menu/append-arg {
   [[ ${LASTWIDGET%%' '*} == */append-arg ]] || _ble_complete_menu_arg=
 
@@ -7963,7 +7973,11 @@ function ble/widget/menu/append-arg {
   while ((_ble_complete_menu_arg>count)); do
     ((_ble_complete_menu_arg=10#0${_ble_complete_menu_arg:1}))
   done
-  ((_ble_complete_menu_arg)) || return 0
+  if ! ((_ble_complete_menu_arg)); then
+    [[ :$1: == *:bell:* ]] &&
+      ble/widget/.bell 'menu: out of range'
+    return 0
+  fi
 
   # 移動
   ble/complete/menu#select "$((_ble_complete_menu_arg-1))"
