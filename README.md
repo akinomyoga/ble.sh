@@ -390,7 +390,7 @@ Here, some of the settings for `~/.blerc` are picked up.
 You can find useful settings also in [Q\&A](https://github.com/akinomyoga/ble.sh/wiki/Q&A),
 [Recipes](https://github.com/akinomyoga/ble.sh/wiki/Recipes)
 and [`contrib` repository](https://github.com/akinomyoga/blesh-contrib).
-The complete list of setting items can be found in the template [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc).
+The complete list of setting items can be found in the file [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template).
 For detailed explanations please refer to [Manual](https://github.com/akinomyoga/ble.sh/wiki).
 
 ## 2.1 Vim mode
