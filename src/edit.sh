@@ -5923,10 +5923,6 @@ function ble-edit/exec/.adjust-eol {
     ble/canvas/put-cuf.draw "$advance"
   fi
   ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
-
-  # bleopt prompt_ruler
-  ble/prompt/print-ruler.draw "$_ble_edit_exec_BASH_COMMAND"
-
   ble/canvas/bflush.draw
 }
 
@@ -6848,6 +6844,11 @@ function ble-edit/exec:gexec/.epilogue {
     x=0 y=0 g=0 LINES=1 ble/canvas/trace "$msg" confine:truncate
     ble/util/buffer.print "$ret"
   fi
+
+  # bleopt prompt_ruler
+  local -a DRAW_BUFF=()
+  ble/prompt/print-ruler.draw "$_ble_edit_exec_BASH_COMMAND"
+  ble/canvas/bflush.draw
 }
 function ble-edit/exec:gexec/.setup {
   # コマンドを _ble_decode_bind_hook に設定してグローバルで評価する。

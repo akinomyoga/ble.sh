@@ -6936,6 +6936,18 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-09-14
+
+  * prompt: prompt ruler の位置は elapsed marker よりも後であるべきでは (motivated by U-Labs) [#D2067]
+    https://www.youtube.com/watch?v=OS3I1cCCw_Q
+
+    * ok: というか printf EOF などに対する振る舞いもちゃんとしているのだろうか?
+      → これは試してみた所ちゃんと処理されている。
+
+    これは ble-edit/exec/.adjust-eol の中で 呼び出しているのが問題である。呼び
+    出し箇所を変更することにした。 ble-edit/exec/.adjust-eol は一箇所でしか呼び
+    出されていないのでその呼出元に移動すれば十分である。
+
 2023-08-26
 
   * menu: append-arg で対応する項目がない時 bell (motivated by bkerin) [#D2066]
