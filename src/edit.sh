@@ -2435,12 +2435,12 @@ function ble/keymap:generic/clear-arg {
 ##     enter-menu
 ##       補完 menu が表示されている時、menu に入ってから menu 選択を行います。
 ##       修飾なしの数字であっても常に引数として取り扱います。
-##     bell
-##       補完 menu に入った後で対応する項目がなかった時に bell を鳴らします。
+##     nobell
+##       補完 menu に入った後で対応する項目がなかった時に bell を鳴らしません。
 ##
 function ble/widget/append-arg-or {
   # ble/widget/complete 直後 (menu 表示時) の引数で menu に入る
-  ble/function#try ble/widget/complete/.select-menu-with-arg "${@:2}" && return 0
+  ble/function#try ble/widget/complete/.select-menu-with-arg "${2-}" && return 0
 
   local n=${#KEYS[@]}; ((n&&n--))
   local code=$((KEYS[n]&_ble_decode_MaskChar))
@@ -2460,7 +2460,7 @@ function ble/widget/append-arg-or {
     ble/decode/widget/skip-lastwidget
     _ble_edit_arg=$_ble_edit_arg$ch
   else
-    ble/widget/"$@"
+    ble/widget/"$1"
   fi
 }
 function ble/widget/append-arg {

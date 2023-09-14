@@ -6960,6 +6960,8 @@ bash_tips
   * menu: append-arg で対応する項目がない時 bell (motivated by bkerin) [#D2066]
     https://github.com/akinomyoga/ble.sh/issues/354
 
+    2023-09-14 色々考えたがやはり bell を鳴らすのを既定の動作とする事にした。
+
 2023-08-17
 
   * Makefile: github/workflows の macos-latest で失敗する [#D2065]

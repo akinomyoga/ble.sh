@@ -10,7 +10,7 @@
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
 - syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 71272a4b
 - complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
-- menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` xxxxxxxx
+- menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` 3f31be18 xxxxxxxx
 - make: support `make uninstall` `#D2068` xxxxxxxx
 
 ## Changes
