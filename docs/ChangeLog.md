@@ -47,6 +47,7 @@
 - make: work around ecryptfs bug (reported by juanejot) `#D2058` 969a763e dc0cdb30
 - edit: update mc-4.8.29 integration (reported by mooreye) `#D2062` 2c4194a2 68c5c5c4
 - make: work around `make-3.81` bug of pattern rules `#D2065` f7ec170b
+- decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` xxxxxxxx
 
 ## Contrib
 
@@ -55,7 +56,8 @@
 
 ## Documentation
 
-- docs (CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
+- docs(CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
+- docs(README): fix dead links to blerc.template (fixed by weskeiser) e0f3ac28
 
 ## Internal changes
 

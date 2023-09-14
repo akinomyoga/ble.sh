@@ -979,7 +979,11 @@ fi
 # check environment
 
 # will be overwritten by src/util.sh
-function ble/util/assign { builtin eval "$1=\$(builtin eval -- \"\$2\")"; }
+if ((_ble_bash>=50300)); then
+  function ble/util/assign { builtin eval "$1=\${ builtin eval -- \"\$2\"; }"; }
+else
+  function ble/util/assign { builtin eval "$1=\$(builtin eval -- \"\$2\")"; }
+fi
 
 # ble/bin
 
@@ -1073,6 +1077,41 @@ function ble/init/check-environment {
 
   if [[ ! ${LANG-} ]]; then
     ble/util/print "ble.sh: suspicious environment: \$LANG is empty." >&2
+  fi
+
+  # Check locale and work around `convert-meta on' in bash >= 5.2
+  if ((_ble_bash>=50200)); then
+    # Note #D2069: In bash >= 5.2, when the specified locale does not exist,
+    # the readline setting `convert-meta' is automatically turned on when
+    # Readline is first initialized.  This interferes with ble.sh's trick to
+    # distinguish isolated ESCs from meta ESCs, i.e., the combination "ESC ["
+    # is converted to "<C0> <9B> [" by ble.sh's macro, <C0> is converted to
+    # "ESC @" by `convert-meta', and "ESC @" is again converted to "<C0> <9B>
+    # @".  This forms an infinite loop.  ble.sh tries to adjust `convert-meta',
+    # but Readline's adjustment takes place at a random timing which is not
+    # controllable.  To work around this, we need to forcibly initialize
+    # Readline before ble.sh adjusts `convert-meta'.
+
+    local error
+    # Note: We check if the current locale setting produces an error message.
+    # We try the workaround only when the locale appears to be broken because
+    # the workaround may have a side effect of consuming user's input.
+    ble/util/assign error '{ LC_ALL= LC_CTYPE=C ble/util/put; } 2>&1'
+    if [[ $error ]]; then
+      ble/util/print "$error" >&2
+      ble/util/print "ble.sh: please check the locale settings (LANG and LC_*)." >&2
+
+      # Note: Somehow, the workaround of using "read -et" only works after
+      # running `LC_ALL= LC_CTYPE=C cmd'.  In bash < 5.3, ble/util/assign at
+      # this point is executed under a subshell, so we need to run `LC_ALL=
+      # LC_CTYPE=C ble/util/put' again in the main shell
+      ((_ble_bash>=50300)) || { LC_ALL= LC_CTYPE=C ble/util/put; } 2>/dev/null
+
+      # We here forcibly initialize locales of Readline to make Readline's
+      # adjustment of convert-meta take place here.
+      local dummy
+      builtin read -et 0.000001 dummy </dev/tty
+    fi
   fi
 
   # 暫定的な ble/bin/$cmd 設定

@@ -1905,6 +1905,77 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2023-09-13
+
+  * bash-5.2 "\e[\000"
+
+    Ref #D2069
+
+    * bash-5.2 で "\e[\000": "<C0><9B>[" という macro になっているのが気になる。
+      本来此処には \000 は存在するべきではない。これは実際に内部的に \000 があ
+      るのかそれとも出力する時の問題で \000 となっているのか。然し、これは既に
+      bash-dev では修正されているし、またそれにもかかわらず bash-dev でも今回の
+      問題が起こっているので、これは今回の問題には関係ない。
+
+      これは以前にも気付いていた事の気がする。探してみたら 2021-11-05 に項目が
+      あってしかも放置されている。何れにしても 5.3 では修正されている。実際の振
+      る舞いに影響があるのかどうかは不明である。
+
+      うーん。これは bash-5.2 のソースコードを使って何が起こっているか確認する
+      べきなのかもしれない。或いは bisect を実行する。bind に使っているスクリプ
+      トはどこかに出力する事ができる筈である。或いはキャッシュになっている →
+      キャッシュにあった。確認すると builtin bind '"\e[":"\xC0\x9B["' で bind
+      しているので実行するコマンド自体が壊れていたとかそういう事ではないはず。
+
+2023-09-03
+
+  * complete: copilot
+    https://github.com/akinomyoga/ble.sh/issues/358
+
+    * copilot completion bash
+      https://aws.github.io/copilot-cli/ja/docs/commands/completion/これは公式
+      の copilot for shell の様な気がする。一番初めにチェックするべきはこれの気
+      がする。copilot バイナリは何処で手に入るのかと思ったが standalone binary
+      がある。
+      https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+
+    * これは GPT に質問をしてコマンドを生成させるという事をしている。
+      https://github.com/tom-doerr/zsh_codex/tree/main
+
+      現在の文脈情報について含めることができるのだろうか。例えば、現在のディレ
+      クトリの内容は云々だとか、README の内容は云々だとか。README の内容を普通
+      に書き込むとその中に書かれていることも直接 GPT に対する司令だと勘違いして
+      しまう可能性もあるのではないか。具体的にどのようにしたら良いのかの例はあ
+      るのだろうか。
+
+    * github-copilot-cli (fish)
+      https://zenn.dev/tunefs/articles/b284d532ed5460
+      これは github-copilot-cli というのを呼び出しているみたいがだが、
+      github-copilot-cli は入力中のプロンプトの編集を手伝ってくれるのではなくて、
+      呼び出すと独自のインターフェイスに入ってコマンドを実行してくれるだけである。
+      https://www.npmjs.com/package/@githubnext/github-copilot-cli
+
+2023-09-02
+
+  * tmux の外側の端末が取得できていない
+    https://github.com/akinomyoga/ble.sh/issues/359
+
+    自分の手元でも問題は再現する。何処かの時点で tmux の振る舞いが変わったとい
+    う事なのだろうか。padparadscha の tmux 2.9a ではちゃんと動いている。
+    chatoyancy の tmux 3.3a では動いていない。これは tmux version の問題だろう
+    か。調べると 3.1, 3.2 では動いている。3.3 の CHANGES を見ていたら
+    passthrough sequence を既定で off にしたと書かれている。以下の commit
+
+    https://github.com/tmux/tmux/commit/eabbc80b75ef8e02653c2728d7f646fc6a8f558f
+
+    なので set -g allow-passthrough on にしてもらわないと外側の端末を検出する事
+    ができないのである。とは言いつつもし DECSCUSR をちゃんと tmux が外側に伝播
+    するのであれば問題は起きないはず。と思ったが、どうもDECSCUSR に関しては 3.1
+    でもちゃんと動いていない気がする。微妙に外側にカーソル形状変更が伝わってい
+    るが一旦ブロックになると元に戻らない。この振る舞いは遡っても変わらない (2.6
+    20170830 まで試した)。screen の中では動いている。更に 3.3 になると次のコマ
+    ンドラインに行ってもカーソル形状は復元されなくなっている。
+
 2023-08-17
 
   * ext: Android OS コンパイル環境での問題
@@ -2000,6 +2071,51 @@ bash_tips
       b 或いは stdin を潰してしまえばその場で終了するのではないか? と思ったがそ
         の場合に正しく端末の状態が復元されるのかは非自明である。更に exit に指
         定した exit status を反映させる方法が存在しない。
+
+2023-05-19
+
+  * osh のテスト上で bash が失敗している。何故だろう。
+    http://travis-ci.oilshell.org/github-jobs/
+    http://travis-ci.oilshell.org/github-jobs/4035/app-tests.wwz/_tmp/soil/logs/ble-test-bash.txt
+
+    * 先ず mawk が正規表現を正しく処理できていない。然し手元の mawk では特に問
+      題がある様には見えない。arch 等でも問題が見られた記憶はない。最新の mawk
+      で試してみる価値はある。
+
+      > mawk: line 37: regular expression compile failed (missing operand)
+      > ^('[^']*'|\$'([^\\']|\\.)*'|\$?"([^\\"]|\\.)*"|\\.|[^[:space:]"'`;&|()])*
+
+      確認してみたが少なくとも Fedora に載っている mawk は Debian の最新の mawk
+      と同じである。という事は最新の mawk で問題があるという訳では無い様に思わ
+      れる。では逆に古い mawk で問題があるという可能性?
+
+      と思ったが mawk のページには最近幾つかの新しい version が公開されている。
+      これらを試す価値はある。改めて最新の物を試してみたが問題は再現しない。
+      2010 の物を試してみたが再現しない。念の為、最も古い物を試してみる。と思っ
+      たら再現した。2008 の物である。これは mawk のバグだと思って良いだろう。
+
+    もしかしたらテストの失敗もこの mawk によって引き起こされているのかもしれな
+    い。mawk を上書きした状態でテストを実行したらどうなるかについて確認する。うー
+    ん。実際にやってみるとテストに新しく2箇所失敗する。然しながら oilshell ci
+    上で見られたエラーは確認されていない。これはまた別の古い awk 実装によって問
+    題が発生している可能性があるだろうか。更に試してみるとこの2個のエラーは正規
+    表現のエラーとは関係ない様だ。
+
+
+    ? mawk の version check をする? テスト上で問題が発生しないのは 20090705 以
+      降である。また初期化時の正規表現のエラーが発生しないのは 20090710 以降で
+      ある。
+
+      ところが mawk が現在のバージョン表記に切り替えたのは mawk 1.3.3 20090721
+      以降の様である。それ以前は "mawk 1.3.3 Nov 1996" という文字列固定で表示さ
+      れている。バージョン表記に関しては mawk 1.3.4 以降であるか、または mawk
+      1.3.3 20?????? 的な形式をしていれば良いという事にする?
+
+      然し、このチェックを行う為だけでも初期化コストがかかる。そもそもこの様な
+      古い mawk を使っている場合というのは限られているのでそもそも判定しなくて
+      も良いのではないか。
+
+    todo: mawk のテストも test-bash に追加する事にする。
 
 2023-05-13
 
@@ -2294,7 +2410,7 @@ bash_tips
 
 2023-03-01
 
-  * [保留] decode: M-S-o と M-O のどちらか一方でに強制的に揃える?
+  * [保留] decode: M-S-o と M-O のどちらか一方に強制的に揃える?
 
     現状では二つの形式に同じ binding を与える様に設定しているがわざわざ両方設定
     するのは大変である。一方で、CapsLock 等を考慮に入れると両者は実は互換ではな
@@ -6937,6 +7053,316 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-09-14
+
+  * bashbug: "convert-meta on" の時 job 関連の bash の警告が出る [#D2070]
+    Ref #D2069
+
+    bash: DEBUG warning: mark_dead_jobs_as_notified: ndead (0) != js.j_ndead (1)
+
+    色々試してみたがどうも bash-bisect の中でビルドすると問題が発生しなくて、
+    bash-dev の中でビルドすると問題が発生する。何が悪いのだろうか。と思ったが、
+    そうではない。release ビルドにしているから問題が発生しないのである。という
+    事はそもそもこの問題がどこで発生するようになったのかも定かではない。もしか
+    すると bash-5.2 の時点でも問題として存在しているのかもしれない。
+
+    そもそもこのエラーはどのタイミングで発生するのだろうか。問題発生のテストケー
+    スを最小化する事は可能だろうか。
+
+    うーん。convert-meta が関係しているというのも何だか不思議な事である。単に
+    locale が間違っているという事で起きているのではない。locale が間違っていて
+    も convert-meta が off であればこのエラーは生じない。convert-meta on で
+    bind 関連の問題が生じている時に限ってこの警告が発生する。
+
+    最小ケースを作るか或いは bash に直接修正を入れるかのどちらかという事になる。
+    先ずエラーが検出されているのは mark_dead_jobs_as_notified (jobs.c:4858) で
+    あり、変数の値の不一致である。しかしこの不一致がどの時点で発生したのかとい
+    うのは明らかではない。更に、convert-meta の関連性は更に不明である。或いは
+    convert-meta がうまく行かない時の無限ループに関係があるのだろうか。意図的に
+    マクロの convert-meta を介した無限ループを作ってみたら readline: maximum
+    macro execution nesting level exceeded というメッセージが表示される。うーん。
+
+    ? マクロ無限ループのメッセージが出たらそれに対して vbell を出そうとしてそれ
+      で job のエラーが表示されているという可能性はあるだろうか。受け取った CSI
+      の数 (19) と比べてみようと思ったがそれよりは警告が出る回数 (14) は少ない
+      様である。visible-bell を潰してもやはり問題は出る。なので visible-bell は
+      関係ないだろう。
+
+    ? 次に確認するべきことは果たしてどのタイミングでメッセージが表示されている
+      のかという事。文字列の受信が始まってから問題が発生している様な気がする。
+      ble-decode/.hook -> ble-decode/EPILOGUE -> ble-edit/bind/.tail ->
+      ble/util/idle.do -> ble/complete/auto-complete.idle ->
+      ble/complete/auto-complete.impl ->
+      ble/complete/auto-complete/source:syntax ->
+      ble/complete/candidates/generate ->
+      ble/complete/candidates/generate-with-filter substr ->
+      ble/complete/source:command -> ble/complete/source:command/gen ->
+      ble/complete/source:command/gen.1 -> ble/util/conditional-sync
+
+      うーん。どうやら ble/util/assign の中で conditional-sync を実行しようとす
+      ると問題が生じる様子である。更に言うと locale は関係ない。
+
+    取り敢えず最小再現は以下まで小さくなった。この設定で C-t を二回押すと問題が
+    再現する。locale などは関係ない。
+
+      source out/ble.sh --norc --attach=none
+      builtin bind -x '"\C-t": v=${ sleep 0.1 & }'
+
+    以下が最小再現コードである。ble.sh と関係なく再現する。ここから少しでも減ら
+    そうとすると何か変な事が起こる。謎である。
+
+      enable -f /home/murase/opt/bash/dev/lib/bash/sleep sleep
+      function f1 {
+        for a; do :; done
+        builtin sleep 0.1
+      }
+      builtin bind -x '"\C-t": v=${ f1 a & }'
+
+      job error caused by funsub + bind + loadable builtin
+
+    これに関して言えば ble.sh の側でできる事はないし、そもそも bash-5.3 はリリー
+    スされていないし、問題はデバグ中に発生しただけで実際の構成では発生しないの
+    で気にしなくて良い。
+
+  * decode: "convert-meta on" in bash >= 5.2 with broken locale (reported by 3ximus) [#D2069]
+    https://github.com/akinomyoga/ble.sh/issues/361
+
+    kalilinux で存在しない locale を使っていると left/right が使えない
+
+    そもそもこれは kalilinux 特有の問題なのだろうか。或いは locale が壊れていた
+    ら常に起こる問題なのだろうか。一つの可能性は locale が見つからない事によっ
+    て bash readline の meta 云々の設定が変わってしまって、それが理由で矢印キー
+    が認識されなくなっている可能性。
+
+    自分の手元の Arch で問題を再現することができた。起こっている現象としては
+    ESC (27) が全く受信できていないという事。ble/decode/.hook の呼び出しを直接
+    観察しても受信されていない。
+
+    * reject: 実行した初回の bind -spX の出力が違う C-? C-u C-w がちゃんと bind
+      されていない。然しこれは関係があるのだろうか。
+
+      --- debug.0.txt^I2023-09-14 06:09:29.718861055 +0900
+      +++ debug.1.txt^I2023-09-14 06:08:15.982192253 +0900
+      @@ -5,7 +5,7 @@
+       # arrow-key-prefix (not bound)
+       # backward-byte (not bound)
+       # backward-char (not bound)
+      -# backward-delete-char (not bound)
+      +"\C-?": backward-delete-char
+       # backward-kill-line (not bound)
+       # backward-kill-word (not bound)
+       # backward-word (not bound)
+      @@ -112,7 +112,7 @@
+       # undo (not bound)
+       # universal-argument (not bound)
+       # unix-filename-rubout (not bound)
+      -# unix-line-discard (not bound)
+      +"\C-u": unix-line-discard
+       # unix-word-rubout (not bound)
+       # upcase-word (not bound)
+       # vi-append-eol (not bound)
+      @@ -162,7 +162,7 @@
+       # vi-subst (not bound)
+       # vi-tilde-expand (not bound)
+       # vi-undo (not bound)
+      -# vi-unix-word-rubout (not bound)
+      +"\C-w": vi-unix-word-rubout
+       # vi-yank-arg (not bound)
+       # vi-yank-pop (not bound)
+       # vi-yank-to (not bound)
+
+      うーん。正常に動いている場合でも最初はこの様な状態になっている様なのでこ
+      れは関係ないという気がする。
+
+    起動した後に LANG='en_CA.UTF-8' を設定しても特に問題は発生しない。やはり起
+    動時の初回のプロンプトで問題が起こるという事なのだろうか。
+
+
+    * 更に手元の chatoyancy でも単に以下の bashrc で起動するだけで再現する。
+
+      LANG='en_XY.UTF-8'
+      source out/ble.sh --norc
+
+      更に bash-4.0..5.1 まで問題は発生しない。bash-5.2 で実行すると core dump
+      する。システムの bash で発生する。bash-dev でも同じ問題が発生している (そ
+      れに加えて job 関連の警告が locale によって出る)。
+
+      問題発生ケースの最小化について。これは bind 関係の問題だから bind を何と
+      か色々やる事で再現できないだろうか。しかし、一回コマンドを実行すると直る
+      事などを考えると単純ではない様に思われる。何らかの発生条件があるというこ
+      と。取り敢えず手動 attach した時にも再現するかどうかを確認する。
+
+      →手動 attach でも再現する。prompt の中で実行するとちゃんと受信できないと
+      かそういう事なのだろうか? と思ったがそれも変だ。一文字でも入力したら
+      prompt attach であっても PROMPT_COMMAND の外側に出てちゃんと bind の中で
+      処理をする様になるので。
+
+      という事を考えると、一回コマンドを実行すると問題が発生しなくなるという所
+      に重点を置いて調べるべきだろうか。
+
+      * 取り敢えず空のコマンドを実行しても問題は継続する。
+      * C-x C-v で表示を行っても問題は継続している。
+      * execute-command 経由でコマンドを実行すると直るが、これは普通にコマンド
+        として実行するのと同じ様なものであるので、新しいことがわかったとは言え
+        ない。
+
+        或いは具体的に bash の中で何が起こっているのか追跡するべきなのかも知れ
+        ない。特に keymap 関連の処理で受信された 27 がどの様に消えてしまうのか
+        を確認する。コマンドを実行すると直るという事はやはり keymap のデータ構
+        造が壊れているとかそういう事なのだろうか。或いは、コマンド実行時に戻し
+        きれていない何らかの設定が存在している?
+
+      * external-command を実行した時にどうなるかも確認する → 実は
+        external-command を実行した場合でも問題は再現しなくなる。
+      * ble/term/{leave,enter} の実行だけでも問題はなくなる。
+      * ble/term/rl-convert-meta/{leave,enter} で問題が解消する。
+
+        然し何故問題が発生するのだろうか。_ble_term_rl_convert_meta_adjusted の
+        値はちゃんと最初から 1 になっている。つまりどこかで adjust が実行された
+        筈ということ。PROMPT_COMMAND の内部から attach した時は readline の設定
+        が復元して戻ってしまうという事だろうか。
+
+        実際に振る舞いを確認してみると初回だけ convert-meta on になっていた。
+        bash-5.1 以下ではちゃんと off になっている。
+
+        prompt attach でも直 attach でも問題は発生する。つまり、attach のタイミ
+        ングで回避できる物ではない様に思われる。
+
+      うーん。これを回避する為には最初のキーの受信の時点で convert-meta off を
+      明示的に実行するべきだろうか。然しそうだとしても最初の最初のキーが 27 の
+      時にそれが欠けてしまうという問題が残る。或いは attach した直後に
+      convert-meta off を実行すれば問題はなくなるのだろうか? と思ったが実際に
+      attach の時に ble/term/enter を実行している筈なのでちゃんと convert-meta
+      off は実行されている筈である。
+
+      _ble_term_rl_convert_meta_adjusted の初期値は? → OK。ちゃんと空である。
+      つまり、1 が設定されていた時点で何処かでちゃんと convert-meta off が実行
+      されていたという事。それにも関わらず convert-meta が何らかのタイミングで
+      on になってしまう。
+
+      ? 特に、手動 attach をした場合でも問題が再現するというのは変だ。更にわかっ
+        た事は、ble-bind -f C-t ... を実行していると手動 attach では問題が発生
+        しなくなるが、prompt attach では問題が継続するという事。ble-bind を実行
+        しているかしていないかで変わるというのも不思議な挙動である。
+
+      ? もうひとつ不思議なのは convert-meta 絡みなのに LANG=C の時には問題が生
+        じていないという事。locale の初期化に失敗した時にだけ勝手に
+        convert-meta on になるという事なのだろうか。
+
+      readline 最初の locale の初期化の際にエラーが起こると convert-meta を設定
+      するという動作になっているのだろうか。その時点で convert-meta を off に戻
+      す必要があるが、readline が最初に受け取った byte というのが消滅するのであ
+      ればそれをスクリプトの設定の側から検出する事ができない。最初に受け取った
+      文字を見て勝手に 27 が前に存在していたという事を推測するのは堅牢でない。
+      ユーザーが入力した文字を勘違いする可能性がある。
+
+      a bash に対する修正要求をする? 或いは過去に convert-meta を設定したのであ
+        れば後で bash が勝手に convert-meta を変更するのは変だという事にはなら
+        ないか。例えば convert-meta の状態を内部的には auto on off の３つにして
+        おいて、既定値は auto で、ユーザーから一回でも指定があったら on/off に
+        して、locale 失敗時には auto の場合にのみ convert-meta を再設定する。
+
+        或いは、auto on off は保持しておいて、内部的な既定値を locale 失敗時に
+        設定する。auto の時には内部的な既定値を参照する。という具合の実装に
+        bash が変更してくれれば問題は解決する。
+
+      b 別の方法としては readline の locale の初期化を強制的に実行する方法を考
+        える。その後であれば勝手に convert-meta が設定される事もないだろう。
+
+        と思ったが本当だろうか。普通に開始したとしても壊れた locale を設定した
+        直後は readline の振る舞いが変になるのではないか → 少なくともユーザー
+        コマンドとして LANG=en_ZZ.utf8 などの値を設定しても特に振る舞いが壊れる
+        という事もないようだ。
+
+        a read -e xxx </dev/null 等として強制的に readline の locale の初期化を
+          済ませられないかと思って試してみたが振る舞いに変化はなかった。と思っ
+          たが、よく考えたら read -e は ble.sh が上書きして subshell の内部で自
+          前の read loop で実行するので何れにしても readline は呼び出さない様に
+          なっている
+
+        b 今度は builtin read -e xxx </dev/null として見たがそれでも駄目。
+
+        c builtin read -e xxx <<< yyy としてみても駄目。一応変数 xxx には期待し
+          た文字列が格納されている。 -e を指定しても読み取り元が tty でなければ
+          readline は初期化されないという事なのかもしれない。
+
+        d 今度は builtin read -et 0.1 xxx としてみたらどうやら動く様になった。
+          builtin read -et 0.000001 でもちゃんと動く。builtin read -et 0.000001
+          </dev/tty でも動く。
+
+          但し、ble-bind -f ... で何かを設定しないとちゃんとは動かない。
+          ble-bind -f を指定する事によって何かが初期化されてそれとの順番との兼
+          ね合いだろうか。うーん。builtin read -et 0.000001 よりも前に ble-bind
+          -f を実行している必要がある。順番を逆にするとやはり問題が発生する。
+          ble-bind の中の何らかの操作が関係しているのだろうと思って調べてみると、
+          単に ble/decode/initialize だった。然し、ble/decode/initialize が
+          bash の振る舞いに影響を与えるというのも不思議といえば不思議である。更
+          に調べると _ble_decode_initialize_inputrc=none だと
+          ble/decode/initialize を呼び出しても問題が継続する。diff にすると収ま
+          る。ble/builtin/bind/read-user-settings を呼び出すと収まる。
+          ble/builtin/bind/read-user-settings/.reconstruct を呼び出すと収まる。
+          然し、ble/builtin/bind/read-user-settings/.collect を呼び出しても収ま
+          らない。不思議だ。と思ったら、.reconstruct の中で呼び出している
+          LC_ALL= LC_CTYPE=C ble/bin/awk なのかもしれない → これだった。単に
+          LC_ALL= LC_CTYPE=C で何かのコマンドを呼び出せばよかった様だ。
+
+        e 今度は builtin read -et 0 xxx とした場合には動かない
+
+      うーん。遅延で手動で attach する場合には、最初から convert-meta on になっ
+      ていて、自分で convert-meta off に設定してから ble-attach すれば問題は生
+      じない。
+
+      まとめると最初のプロンプトを表示した後に locale の初期化とそれに応じた
+      convert-meta の設定が行われる様である(本当か?)。
+
+      存在しない locale が設定されている時に何処かのタイミングで convert-meta
+      on に設定されるのが問題である。
+
+      ? convert-meta on が設定されている時に ESC (もしくは ESC [ の組み合わせ)
+        が完全に消滅するのは何故なのか。
+
+        | 別の形で受信される等の事も起こっていない。素直に考えると M-[ という組
+        | み合わせの文字に変換されても良い気がするのに、それすらも受信されない。
+        |
+        | 実は bash-5.1 以下では M-[ という形で受信できている可能性もある? と思っ
+        | て確かめてみたが bash-5.1 以下では最初から convert-meta off になって
+        | いた。やはり convert-meta on の時には ESC [ が受信ができない状態になっ
+        | ていると考えるべき。
+        |
+        | 取り敢えず bash のソースコードを調べてみると convert-meta on の時はど
+        | うも M-[ を ESC [ に分解する機能なのではないかという気がする。だとす
+        | ると、そもそも ble/decode/.hook で 27 を受信できないという問題は独立
+        | の様な気がする。何故振る舞いが変わるのだろうか。そもそも本当に
+        | convert-meta は bash の _rl_convert_meta_chars_to_ascii に対応してい
+        | るのだろうか? → bind.c を確認してみる限りはちゃんと対応している筈。
+        |
+        | 参照している箇所を少しずつ潰して行った所
+        | _rl_function_of_keyseq_internal での取り扱いが振る舞いに影響を与えて
+        | いる様だ (然し blame で見る限りこの部分は 12 年間変更されていないので
+        | 他の部分の変更が波及してここでの振る舞いに変化をもたらしていると考え
+        | られる)。うーん。readline.c の中の convert_meta を参照している所
+        | (_rl_dispatch_subseq) も同時に振る舞いに影響を与えている。どちらか一
+        | 方だけ潰しても問題は発生しない。両方をコメントあうとした時に問題が生
+        | じなくなる。
+        |
+        | →分かった気がする。ble.sh は isolated ESC を区別する為に ESC ... を
+        | C0 9B ... に変換して受信している。この時 convert-meta on だと C0 が変
+        | な風に分解されてしまう (というか無限ループになる?)。結果として何も受
+        | 信できずに終わるということの気がする。
+        |
+        | つまり "ESC [" → "C0 9B [" → "ESC @ 9B [" → "C0 9B @ 9B [" → …
+        | という具合に無限ループになって恐らく中断されて何も受信できないという
+        | 事になっている。
+
+        ble.sh は isolated ESC と区別する為に ESC [ を C0 9B [ に変換している。
+        一方で C0 は convert-meta の時には ESC @ に分解される
+        (_rl_dispatch_subseq)。ESC @ は isolated ESC と区別する為に C0 9B @ に
+        変換される。というのを繰り返して先頭の文字に対して無限の展開が起こって
+        しまう。恐らくこれが強制的に中断される結果として ESC [ が全く受信されな
+        いのだろうと思われる。_rl_function_of_keyseq_internal の中でも同様にし
+        て C0 が ESC @ に分解される事によって振る舞いが変になっている。
+
+    取り敢えず半ば偶然ではあるが workaround が見つかったのでそれを実装する事に
+    する。これは ble.pp の環境確認の段階で実行するのが良さそうである。
 
   * make uninstall を提供するべきではないか [#D2068]
 

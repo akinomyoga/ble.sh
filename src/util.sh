@@ -5200,7 +5200,7 @@ if ((_ble_bash>=40000)); then
     [[ $_ble_idle_running ]] && return 0
     local isfirst=1
     while
-      # ファイル等他の条件を待っている時は一回だけで外に戻り確認する状態確認
+      # ファイル等他の条件を待っている時は一回だけで外に戻り状態確認する
       [[ $_ble_idle_waiting && ! $isfirst ]] && break
 
       local sleep_amount=
