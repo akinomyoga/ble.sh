@@ -6938,6 +6938,13 @@ bash_tips
 
 2023-09-14
 
+  * make uninstall を提供するべきではないか [#D2068]
+
+    そしてそれはそんなに難しくないはず。インストール対象は全て変数に入っている。
+    ただし、INSDIR, PREFIX 等の変数を指定した時には、インストール時と全く同じ設
+    定を覚えておく必要がある。然し、変数に依存するとしても対応するのは自然の気
+    がする。
+
   * prompt: prompt ruler の位置は elapsed marker よりも後であるべきでは (motivated by U-Labs) [#D2067]
     https://www.youtube.com/watch?v=OS3I1cCCw_Q
 

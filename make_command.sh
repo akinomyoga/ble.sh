@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 umask 022
+shopt -s nullglob
 
 function mkd {
   [[ -d $1 ]] || mkdir -p "$1"
@@ -110,6 +111,22 @@ function sub:install {
 }
 function sub:install/help {
   printf '  install src dst\n'
+}
+
+function sub:uninstall {
+  rm -rf "$@"
+
+  local file children
+  for file; do
+    while
+      file=${file%/*}
+      [[ -d $file ]] || break
+      children=("$file"/* "$file"/.*)
+      ((${#children[@]} == 0))
+    do
+      rmdir "$file"
+    done
+  done
 }
 
 function sub:dist {

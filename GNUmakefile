@@ -228,11 +228,16 @@ else
   opt_strip_comment :=
 endif
 
-install: \
+install-files := \
   $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) \
   $(outfiles-doc:$(OUTDIR)/doc/%=$(INSDIR_DOC)/%) \
   $(outfiles-license:$(OUTDIR)/doc/%=$(INSDIR_LICENSE)/%) \
   $(INSDIR)/cache.d $(INSDIR)/run
+install: $(install-files)
+uninstall:
+	bash make_command.sh uninstall $(install-files)
+.PHONY: install uninstall
+
 $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install $(opt_strip_comment) "$<" "$@"
 $(INSDIR_DOC)/%: $(OUTDIR)/doc/%
@@ -243,7 +248,6 @@ $(INSDIR_LICENSE)/%: $(OUTDIR)/doc/%
 endif
 $(INSDIR)/cache.d $(INSDIR)/run:
 	mkdir -p $@ && chmod a+rwxt $@
-.PHONY: install
 
 clean:
 	-rm -rf $(outfiles) $(outfiles-doc) $(outfiles-license) $(OUTDIR)/ble.dep
