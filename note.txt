@@ -7054,6 +7054,13 @@ bash_tips
 
 2023-09-17
 
+  * global: make scan したら問題が沢山出ている [#D2072]
+
+    久しぶりに実行したら問題が沢山あるので修正する。今まで test-*.sh を検査の対
+    象にしていなかったのを含めたのが原因の一つである。ble/test に指定しているコ
+    マンドの中では builtin の使用に対するチェックを省略する事にした。他に累積で
+    様々の見落としができていたので修正した。
+
   * github: windows-latest で CI テストが失敗する問題 [#D2071]
     https://github.com/akinomyoga/ble.sh/pull/363 test
 

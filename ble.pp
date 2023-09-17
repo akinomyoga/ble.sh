@@ -23,7 +23,7 @@ function ble/debug/measure-set-timeformat {
 $"leakvar"=__t1wJltaP9nmow__
 #%%end.i
 function ble/bin/grep { command grep "$@"; }
-function ble/util/print { printf '%s\n' "$*"; }
+function ble/util/print { printf '%s\n' "$1"; }
 source "${BASH_SOURCE%/*}/lib/core-debug.sh"
 #%end
 #%define inc

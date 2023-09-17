@@ -511,7 +511,7 @@ function ble/keymap:vi/update-mode-indicator {
   # ないので mc の中では imap に対しては mode indicator は表示しない様にする。
   if [[ $_ble_edit_integration_mc_precmd_stop && $keymap == vi_imap ]]; then
     ble/edit/info/clear
-    return
+    return 0
   fi
 
   ble/edit/info/default ansi "$str" # 6ms

@@ -498,7 +498,7 @@ ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.t
 
   function ble/test:canvas/GraphemeClusterBreak/find-previous-boundary {
     local ans=${1%%:*} str=${1#*:}
-    eval "local s=\$'$str'"
+    builtin eval "local s=\$'$str'"
     ble/string#split ans , "$ans"
     local k=0 b=0
     for k in "${!ans[@]}"; do

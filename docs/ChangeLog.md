@@ -67,6 +67,7 @@
 ## Internal changes
 
 - refactor: move files `{keymap/ => lib/keymap.}*` f4c973b8
+- global: fix coding style `#D2072` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

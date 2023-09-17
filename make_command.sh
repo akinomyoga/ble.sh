@@ -1173,7 +1173,11 @@ function sub:scan/builtin {
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
-    sed -E 'h;s/'"$_make_rex_escseq"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g'
+    sed -E 'h;s/'"$_make_rex_escseq"'//g
+        \Z^\./lib/test-[^:]+\.sh:[0-9]+:.*ble/test Zd
+      s/^[^:]*:[0-9]+:[[:space:]]*//
+        \Z(\.awk|push|load|==|#(push|pop)) \b'"$command"'\bZd
+      g'
 }
 
 function sub:scan/check-todo-mark {
@@ -1186,11 +1190,13 @@ function sub:scan/a.txt {
     sed -E 'h;s/'"$_make_rex_escseq"'//g
       \Z^\./memo/Zd
       \Zgithub302-perlre-server\.bashZd
+      \Z^\./contrib/integration/fzf-git.bash:[0-9]+:Zd
     s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[[:space:]]*#Zd
       \ZDEBUG_LEAKVARZd
       \Z\[\[ -t 4 && -t 5 ]]Zd
       \Z^ble/fd#alloc .*Zd
+      \Zbuiltin read -et 0.000001 dummy </dev/ttyZd
       g'
 }
 
@@ -1230,7 +1236,8 @@ function sub:scan/bash400bug {
 
   # bash-3.0..4.0 で $'' 内に \' を入れていると '' の入れ子状態が反転して履歴展
   # 開が '' の内部で起こってしまう。
-  grc '\$'\''([^\'\'']|\\[^'\''])*\\'\''([^\'\'']|\\.|'\''([^\'\'']|\\*)'\'')*![^=[:space:]]' --exclude={test,ChangeLog.md} --color
+  grc '\$'\''([^\'\'']|\\[^'\''])*\\'\''([^\'\'']|\\.|'\''([^\'\'']|\\*)'\'')*![^=[:space:]]' --exclude={test,ChangeLog.md} --color |
+    grep -v '9f0644470'
 }
 
 function sub:scan/bash401-histexpand-bgpid {
@@ -1396,7 +1403,7 @@ function sub:scan/word-splitting-number {
   echo "--- $FUNCNAME ---"
   # #D1835 一般には IFS に整数が含まれるている場合もあるので ${#...} や
   # $((...)) や >&$fd であってもちゃんと quote する必要がある。
-  grc '[<>]&\$|([[:space:]]|=\()\$(\(\(|\{#|\?)' --exclude={docs,mwg_pp.awk} |
+  grc '[<>]&\$|([[:space:]]|=\()\$(\(\(|\{#|\?)' --exclude={docs,mwg_pp.awk,memo} |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[^#]*(^|[[:space:]])#Zd
       \Z^([^"]|"[^\#]*")*"[^"]*([& (]\$)Zd
@@ -1486,6 +1493,7 @@ function sub:scan {
       \Zecho \$PPIDZd
       \Zble/keymap:vi_test/check Zd
       \Zmandb-help=%'\''help echo'\''Zd
+      \Zalias aaa4='\''echo'\''Zd
       g'
   #sub:scan/builtin '(compopt|type|printf)'
   sub:scan/builtin 'bind' |
@@ -1496,6 +1504,7 @@ function sub:scan {
       \Z\(bind\)    ble-bindZd
       \Z^alias bind cd command compgenZd
       \Zoutputs of the "bind" builtinZd
+      \Zif ble/string#match "\$_ble_edit_str" '\''bindZd
       g'
   sub:scan/builtin 'read' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
@@ -1539,7 +1548,7 @@ function sub:scan {
       g'
 
   #sub:scan/assign
-  sub:scan/builtin trap |
+  sub:scan/builtin 'trap' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z_ble_trap_handler="trap -- '\''\$\{_ble_trap_handler//\$q/\$Q}'\'' \$nZd
       \Zline = "bind"Zd
@@ -1552,6 +1561,7 @@ function sub:scan {
       \Zble/function#trace trap Zd
       \Z# EXIT trapZd
       \Zread readonly set shopt trapZd
+      \Zble/util/print "custom trap"Zd
       g'
 
   sub:scan/builtin 'readonly' |
