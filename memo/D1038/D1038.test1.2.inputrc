@@ -1,0 +1,5 @@
+# inputrc test1 -*- mode: fundamental -*-
+
+set keymap vi-command
+
+"C": "from 2.inputrc"

@@ -1,0 +1,58 @@
+diff --git a/lib/keymap.vi.sh b/lib/keymap.vi.sh
+index 73ff1e51..692bc637 100644
+--- a/lib/keymap.vi.sh
++++ b/lib/keymap.vi.sh
+@@ -506,6 +506,11 @@ function ble/keymap:vi/update-mode-indicator {
+     str=$str${str:+' '}$'\e[1;31mREC\e[m'
+   fi
+ 
++  if [[ $_ble_edit_integration_mc_precmd_hook && $keymap == vi_imap ]]; then
++    ble/edit/info/clear
++    return
++  fi
++
+   ble/edit/info/default ansi "$str" # 6ms
+ }
+ blehook internal_PRECMD!=ble/keymap:vi/update-mode-indicator
+diff --git a/src/edit.sh b/src/edit.sh
+index b9d53219..f6e780b6 100644
+--- a/src/edit.sh
++++ b/src/edit.sh
+@@ -3477,6 +3477,16 @@ function ble/textarea#render {
+       "${_ble_textarea_cur[@]}"
+       "$_ble_textarea_gendx" "$_ble_textarea_gendy")
+   fi
++
++  # Note: mc-4.8.29 以降は PROMPT_COMMAND で kill -STOP を呼び出して、その後
++  # bash がプロンプトを表示してから停止する瞬間を見てプロンプトを抽出している。
++  # 一方で、ble.sh は PROMPT_COMMAND で kill -STOP を実行された瞬間に停止してし
++  # まう。なので、PROMPT_COMMAND に仕掛けられた kill -STOP を削除して代わりに描
++  # 画した後で自前で kill -STOP $$ を実行する。
++  if [[ $_ble_edit_integration_mc_precmd_event ]]; then
++    _ble_edit_integration_mc_precmd_event=
++    builtin eval -- "$_ble_edit_integration_mc_precmd_hook"
++  fi
+ }
+ function ble/textarea#redraw {
+   ble/textarea#invalidate
+@@ -7089,6 +7099,8 @@ function ble-edit/hist_expanded.update {
+   fi
+ }
+ 
++_ble_edit_integration_mc_precmd_hook=
++_ble_edit_integration_mc_precmd_event=
+ function ble/widget/accept-line/.is-mc-init {
+   [[ $MC_SID == $$ ]] || return 1
+ 
+@@ -7106,6 +7118,11 @@ function ble/widget/accept-line/.is-mc-init {
+   # PS1='\u@\h:\w\$ '
+   # -------------------------------------
+   if ((_ble_edit_LINENO<=5)) && [[ $_ble_edit_str == *'PROMPT_COMMAND=${PROMPT_COMMAND:+$PROMPT_COMMAND'* ]]; then
++    if ble/string#match "$_ble_edit_str" 'pwd>&[0-9]+;kill -STOP \$\$'; then
++      _ble_edit_integration_mc_precmd_hook=$BASH_REMATCH
++      local str=${_ble_edit_str//"$BASH_REMATCH"/'_ble_edit_integration_mc_precmd_event=1'}
++      ble-edit/content/reset-and-check-dirty "$str"
++    fi
+     return 0
+   fi
+ 

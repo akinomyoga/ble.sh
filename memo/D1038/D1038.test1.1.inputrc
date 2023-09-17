@@ -1,0 +1,9 @@
+# inputrc test1 -*- mode: fundamental -*-
+
+set keymap vi-insert
+
+"B": "from 1.inputrc"
+
+$include D1038.test1.2.inputrc
+
+"D": "from 1.inputrc"

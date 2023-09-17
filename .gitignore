@@ -24,11 +24,11 @@
 # memo
 /memo/*.exe
 /memo/D0702.HISTFILE*
-/memo/D0727.bind.*
-/memo/D0857.unbind
-/memo/D0857.bind
-/memo/D0857.pipe
-/memo/D0857.stderr
+/memo/D0727/D0727.bind.*
+/memo/D0857/D0857.unbind
+/memo/D0857/D0857.bind
+/memo/D0857/D0857.pipe
+/memo/D0857/D0857.stderr
 /memo/D1881/pr227.*.txt
 /memo/D1881/pr227.*.hist
 /memo/D1881/pr227-sleep-delay.pdf

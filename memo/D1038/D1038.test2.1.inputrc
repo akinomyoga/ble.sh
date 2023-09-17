@@ -1,0 +1,5 @@
+# inputrc test2 -*- mode: fundamental -*-
+
+# re-read-init-file に於いて外側の keymap が見えるか?
+
+"B": "from 2.1.inputrc"

@@ -1,0 +1,89 @@
+diff --git a/src/subshell/common.c b/src/subshell/common.c
+index 3ea4b5ff7..b63678ca3 100644
+--- a/src/subshell/common.c
++++ b/src/subshell/common.c
+@@ -702,6 +702,33 @@ clear_subshell_prompt_string (void)
+ static void
+ parse_subshell_prompt_string (const char *buffer, int bytes)
+ {
++  {
++    int i;
++    FILE* f = fopen("a.txt", "a");
++    fprintf(f, "data: ");
++    for (i = 0; i < bytes; i++) {
++      char c = buffer[i];
++      if (c < 0x20 || c >= 0x7F) {
++        const char* name = NULL;
++        switch (c) {
++        case 0x1B: name = "ESC"; break;
++        case 0x0D: name = "CR"; break;
++        case 0x0A: name = "LF"; break;
++        default:
++        }
++        if (name)
++          fprintf(f, "\x1b[7m%s\x1b[m", name);
++        else
++          fprintf(f, "\x1b[7mx%02X\x1b[m", (unsigned)buffer[i]);
++      } else
++        fprintf(f, "%c", c);
++    }
++    fprintf(f, "\nhex:");
++    for (i = 0; i < bytes; i++) fprintf(f, " %02x", (unsigned)buffer[i]);
++    fprintf(f, "\n");
++    fclose(f);
++  }
++
+     int i;
+ 
+     if (mc_global.mc_run_mode != MC_RUN_FULL)
+@@ -748,6 +775,12 @@ feed_subshell (int how, gboolean fail_on_error)
+     struct timeval wtime;       /* Maximum time we wait for the subshell */
+     struct timeval *wptr;
+ 
++    if (should_read_new_subshell_prompt)
++      {
++        FILE* file = fopen("/dev/pts/9", "w");
++        fprintf(file, "should_read_new_subshell_prompt clear\n");
++        fclose(file);
++      }
+     should_read_new_subshell_prompt = FALSE;
+ 
+     /* have more than enough time to run subshell:
+@@ -820,6 +853,12 @@ feed_subshell (int how, gboolean fail_on_error)
+             if (how == VISIBLY)
+                 write_all (STDOUT_FILENO, pty_buffer, bytes);
+ 
++            if (should_read_new_subshell_prompt)
++              {
++                FILE* file = fopen("/dev/pts/9", "w");
++                fprintf(file, "should_read_new_subshell_prompt\n");
++                fclose(file);
++              }
+             if (should_read_new_subshell_prompt)
+                 parse_subshell_prompt_string (pty_buffer, bytes);
+         }
+@@ -842,6 +881,11 @@ feed_subshell (int how, gboolean fail_on_error)
+ 
+             clear_subshell_prompt_string ();
+             should_read_new_subshell_prompt = TRUE;
++            {
++              FILE* file = fopen("/dev/pts/9", "w");
++              fprintf(file, "cwd: %s\n", subshell_cwd);
++              fclose(file);
++            }
+             subshell_ready = TRUE;
+             if (subshell_state == RUNNING_COMMAND)
+             {
+@@ -853,6 +897,12 @@ feed_subshell (int how, gboolean fail_on_error)
+         else if (FD_ISSET (STDIN_FILENO, &read_set))
+             /* Read from stdin, write to the subshell */
+         {
++            if (should_read_new_subshell_prompt)
++              {
++                FILE* file = fopen("/dev/pts/9", "w");
++                fprintf(file, "should_read_new_subshell_prompt unset\n");
++                fclose(file);
++              }
+             should_read_new_subshell_prompt = FALSE;
+             bytes = read (STDIN_FILENO, pty_buffer, sizeof (pty_buffer));
+             if (bytes <= 0)

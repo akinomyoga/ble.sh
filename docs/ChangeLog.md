@@ -10,8 +10,8 @@
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
 - syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 71272a4b
 - complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
-- menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` 3f31be18 xxxxxxxx
-- make: support `make uninstall` `#D2068` xxxxxxxx
+- menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` 3f31be18 bbf3fed3
+- make: support `make uninstall` `#D2068` a39a4a89
 
 ## Changes
 
@@ -20,7 +20,7 @@
 - auto-complete: overwrite subsequent characters with self-insert in overwrite mode `#D2059` 7044b2db
 - complete: move face definitions `menu_filter_*` to `core-complete-def.sh` `#D2060` af022266
 - make: add `INSDIR_LICENSE` for install location of licenses (reported by willemw) `#D2064` d39998f0 acf3b091
-- prompt: show prompt ruler after markers (motivated by U-Labs) `#D2067` xxxxxxxx
+- prompt: show prompt ruler after markers (motivated by U-Labs) `#D2067` e4a90378
 
 ## Fixes
 
@@ -47,7 +47,7 @@
 - make: work around ecryptfs bug (reported by juanejot) `#D2058` 969a763e dc0cdb30
 - edit: update mc-4.8.29 integration (reported by mooreye) `#D2062` 2c4194a2 68c5c5c4
 - make: work around `make-3.81` bug of pattern rules `#D2065` f7ec170b
-- decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` xxxxxxxx
+- decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` 226f9718
 
 ## Contrib
 
@@ -61,13 +61,14 @@
 
 ## Test
 
-- test(bash): fix condition for bash bug of history expansion `#D2071` xxxxxxxx
-- test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` xxxxxxxx
+- test(bash): fix condition for bash bug of history expansion `#D2071` aacf1462
+- test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` aacf1462
 
 ## Internal changes
 
 - refactor: move files `{keymap/ => lib/keymap.}*` f4c973b8
-- global: fix coding style `#D2072` xxxxxxxx
+- global: fix coding style `#D2072` bdcecbbf
+- memo: add recent configs and create directories `#D2073` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
