@@ -317,25 +317,32 @@ ble/test/start-section 'bash' 38
 
 # Other bugs
 (
-  # BUG bash-3.0..5.2 (3.0..4.0?)
+  # BUG bash-3.0..4.0 (3.0..5.2 in 非対話セッション)
 
   # $'' 内に \' を入れていると履歴展開が '' の中で起こる? 例えば
   # rex='a'$'\'\'''!a' とすると !a の部分が展開される。
   #
-  # →実は history -p だとどのバージョンでも問題は再現する様だ。因みに対応する
-  # 履歴がない場合には 4.1 以下でエラーメッセージが表示される。遡ってみるとこの
-  # 項目は memo.txt に commit 9f064447 (2015-03-08) で追加されている。但し対応
-  # する項目は memo.txt には記述されていない。#D0206 が近いが微妙に異なることを
-  # 議論している。
+  # 因みに対応する履歴がない場合には 4.1 以下でエラーメッセージが表示される。
+  #
+  # Note: bash -c や独立したスクリプト実行の中だと 3.0..5.2 および devel の全バー
+  # ジョンで問題は再現する。対話セッションや set +H を指定した場合には問題は
+  # 3.0..4.0 でしか発生しない。
+  #
+  # Note: 遡ってみるとこの項目は memo.txt に commit 9f064447 (2015-03-08) で追
+  # 加されている。但し対応する項目は memo.txt には記述されていない。#D0206 が近
+  # いが微妙に異なることを議論している。
+  #
   q=\' line='$'$q'\'$q'!!'$q'\'$q
   ble/util/assign ret '(builtin history -s histentry; builtin history -p "$line")'
   if ((_ble_bash<30100)); then
+    # 3.0 ではそもそも失敗する。
     ble/test code:'' ret=
-  else
+  elif ((_ble_bash<40100)) || [[ $- != *[iH]* ]]; then
+    # 非対話セッション または 3.1..4.0 では意図せず展開が起こる
     ble/test code:'' ret="${line//!!/histentry}"
-
-    # 本来は以下になって欲しい
-    #ble/test code:'' ret="$line"
+  else
+    # 期待した振る舞い
+    ble/test code:'' ret="$line"
   fi
   ble/test '(builtin history -c; builtin history -p "$line")' stdout=
 

@@ -1117,7 +1117,7 @@ function sub:check {
 function sub:check-all {
   local -x _ble_make_command_check_count=0
   local bash rex_version='^bash-([0-9]+)\.([0-9]+)$'
-  for bash in $(compgen -c -- bash- | grep -E '^bash-[0-9]+\.[0-9]+$' | sort -Vr); do
+  for bash in $(compgen -c -- bash- | grep -E '^bash-(dev|[0-9]+\.[0-9]+)$' | sort -Vr); do
     [[ $bash =~ $rex_version && ${BASH_REMATCH[1]} -ge 3 ]] || continue
     "$bash" out/ble.sh --test || return 1
     ((_ble_make_command_check_count++))

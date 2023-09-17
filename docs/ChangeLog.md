@@ -59,6 +59,11 @@
 - docs(CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
 - docs(README): fix dead links to blerc.template (fixed by weskeiser) e0f3ac28
 
+## Test
+
+- test(bash): fix condition for bash bug of history expansion `#D2071` xxxxxxxx
+- test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` xxxxxxxx
+
 ## Internal changes
 
 - refactor: move files `{keymap/ => lib/keymap.}*` f4c973b8

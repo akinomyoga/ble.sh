@@ -31,8 +31,7 @@ ble/test/start-section 'ble/main' 19
 # ble/util/readlink
 (
   if [[ $OSTYPE == msys* ]]; then
-    ble/path#append MSYS winsymlinks
-    export MSYS
+    export MSYS=${MSYS:+$MSYS }winsymlinks
   fi
 
   ble/bin#freeze-utility-path readlink ls

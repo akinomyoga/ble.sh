@@ -7052,6 +7052,140 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-09-17
+
+  * github: windows-latest で CI テストが失敗する問題 [#D2071]
+    https://github.com/akinomyoga/ble.sh/pull/363 test
+
+    symbolic link の振る舞いが変わってしまっている。手元の mingw を更新して振る
+    舞いを確認してみることにする。msys2 で pacman で最新版に更新する。エラーは
+    発生しない。という事は github のテスト環境だけで起こる問題なのだろうか。
+
+    * それとは別に interactive session で ble check bash すると履歴展開の振る舞
+      いで結果が異なる事に気付いた。これについても修正しなければならない。
+      interactive session と外で history -p の振る舞いが違うのだろうか。
+
+      $ export q=\' line='$'$q'\'$q'!!'$q'\'$q
+      $ bash -Hc 'builtin history -s histentry; builtin history -p "$line"'
+      $'\'!!'\'
+      $ bash -c 'builtin history -s histentry; builtin history -p "$line"'
+      $'\'histentry'\'
+      $ (set -H; builtin history -s histentry; builtin history -p "$line")
+      $'\'!!'\'
+      $ (set +H; builtin history -s histentry; builtin history -p "$line")
+      $'\'!!'\'
+      $ builtin history -s histentry; builtin history -p "$line"
+      $'\'!!'\'
+      $ set +H; builtin history -s histentry; builtin history -p "$line"; set -H
+      $'\'!!'\'
+
+      よく分からないが -H のコマンド実行の時にだけ問題が生じる様だ。他の文脈で
+      は -H をつけても外しても問題の振る舞いは見られない。
+
+      更に別の version も調べてみたら振る舞いは色々の様だ。
+
+      bash -c xxx  3.0 展開失敗; 3.1..dev 展開
+      bash -Hc xxx 3.0 展開失敗; 3.1..4.0 展開, 4.1..None
+      (xxx)        3.0 現在コマンドに展開; 3.1..4.0 展開; 4.1..None
+      (set +H;xxx) 3.0 現在コマンドに展開; 3.1..4.0 展開; 4.1..None
+
+      xxx = builtin history -s histentry; builtin history -p "$line"
+
+      Note: bash -c '(xxx)' および bash -Hc '(xxx)' はそれぞれ () のない場合と
+      振る舞いは同じだった。
+
+      然し、この振る舞いは現在観測している振る舞いと一致していない? と思ったが、
+      スクリプトとして実行する場合にはちゃんと動いているというという事はスクリ
+      プトとして実行している時は bash -c と一緒の振る舞いということで、これは自
+      然である。一方で、ble session で ble check した時に失敗するのは ble
+      session の中では常に展開されずに !! のままだということで、これも
+      consistent である。
+
+      さて、この振る舞いの違いが何処から来るのかについて確認したい。単に
+      interactive かどうかで判定するだけでは駄目である。 bash -Hc の時にも振る
+      舞いが変化する。逆に set +H の時に振る舞いが変わるという訳でもない。シェ
+      ルかサブシェルかでは切り替わらない様に見える。今の所分かっている条件は i
+      も H もない場合にのみ 4.1..dev で展開が発生する。
+
+    [原因]
+
+    | GitHub の blesh-test repository (private) を使ってまたテストを実行する事
+    | にした。どうもそもそも symbolic link 自体が作られていない気がする。find
+    | で見る限りは ln で作ったファイルが全て通常のファイルになってしまっている。
+    |
+    | 調べてみたが msys2 や Git for Windows 辺りで最近 symbolic link 周りが変更
+    | されたという話も見当たらない。
+    |
+    | a msys2 ではなくて Windows の ln ls readlink find 等のツールを拾ってしまっ
+    |   ている? と思って type -p でパスを確認してみたがちゃんと msys のを呼び出
+    |   している気がする。(そもそも windows のものを呼び出していたら、使い方が
+    |   違うので、別のエラーメッセージが発生しそうなものである)
+    |
+    | b 一方で Git for Windows の release note を見ると winsymlinks に加えて
+    |   sysfile または nativestrict を指定する必要がある様な感じに書かれている。
+    |   然し、sysfile を追加しても振る舞いに変化はない。
+    |   https://github.com/git-for-windows/build-extra/blob/main/ReleaseNotes.md
+    |
+    | c 或いは一旦システムを開始した後に個々のコマンドで振る舞いを変更したい場
+    |   合は MSYSTEM という環境変数を使えという話が以下のリンクで言及されていた。
+    |
+    |   https://github.com/msys2/MSYS2-packages/issues/3941#issuecomment-1680093862
+    |
+    |   これは最近のコメント (2023-08-16) だが最近変更でもあったのだろうか。其
+    |   処で MSYSTEM にも MSYS の値をコピーして試してみたが振る舞いに変化はない。
+    |
+    |   そもそもこの Issue の報告者は lnk を MSYS に指定している。
+    |
+    |   https://github.com/msys2/MSYS2-packages/issues/3941
+    |
+    |   これはどういう意味だろうか。試しに lnk を追加してみたがやはり振る舞いに
+    |   変化はない。
+    |
+    | d また Git for Windows の release note に戻ると winsymilnks:nativestrict
+    |   (NTFS junction を用いた物) についても言及されていたのでそれも試してみた
+    |   がやはり振る舞いは変わらない。
+    |
+    | 突然動かなくなったがこれはどういう事だろうか。取り敢えず test3.sh の中に
+    | は ble.sh の中で最近変更した物は含まれていない様に思われる。それに問題は
+    | 明らかに windows において ln がリンクを作れていない事によっている。その他
+    | の要素がこの振る舞いに影響しているとは思えない。念の為 windows-2019 で振
+    | る舞いが変わるかどうか確認する。
+    |
+    | e もう一つの可能性は MSYS はコロン区切りの筈だけれど、実際には何故か : が
+    |   入っていると winsymlinks はちゃんと動かない。そして、今までは MSYS が空
+    |   だったので問題が起こっていなかったが、新しく disable_pcon が追加された
+    |   事で正しく認識されなくなってしまった?
+    |
+    |   →実際に MSYS=winsymlinks を試してみたら動く様になった。謎である。lnk,
+    |   sysfile, nativestrict 等と組み合わせて指定してもちゃんと動く。
+    |   hello_world という存在しない設定を指定しても動く。何と
+    |   winsymlinks:disable_pcon の順番でもちゃんと動く。これが意味する所は
+    |   MSYS の winsymlinks が設定されているかどうかをチェックする部分のコード
+    |   が間違っているのではないかという事。念の為 disable_pcon:winsymlinks を
+    |   自分で代入した場合も試してみる。期待通り動かない。sysfile:winsymlinks
+    |   の場合でも動かない。
+    |
+    |   本体のテストの方は ble/path#append ではなくて ble/path#prepend を使えば
+    |   何とかなりそうだ。
+    |
+    |   一方で、手元の msys2 では disable_pcon を MSYS に設定していても別にテス
+    |   トは失敗しない。中では disable_pcon:winsymlinks の様な形になっている筈
+    |   である。
+    |
+    | 取り敢えず workaround は分かったが winsymlinks の指定位置で振る舞いが変化
+    | するのは理解できない。この振る舞いを制御しているのは何処だろうか。どうも
+    | Cygwin のソースの中自体に winsymlinks というのが隠れている?
+    |
+    | 実は CYGWIN 環境変数は : 区切りではなくて ' ' 区切りの可能性?
+
+    環境変数 MSYS (そして upstream の CYGWIN) は実はコロン区切りではなくて空白
+    区切りである。今までの GitHub workflow では MSYS が空だったので単に
+    winsymlinks が追加される形になって問題は発生していなかった。所が、最近 MSYS
+    として disable_pcon が既定で設定される様になった。ここで winsymlinks を追加
+    する為に : を使用した為にちゃんと winsymlinks が認識されなくなったのが問題
+    の原因であった。この為にそもそも全く symbolic links が作られなくなったのが
+    テストが失敗する様になった原因であった。
+
 2023-09-14
 
   * bashbug: "convert-meta on" の時 job 関連の bash の警告が出る [#D2070]
