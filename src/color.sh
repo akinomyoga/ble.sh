@@ -1453,7 +1453,7 @@ function ble-face {
 #------------------------------------------------------------------------------
 # ble/highlight/layer
 
-_ble_highlight_layer__list=(plain)
+_ble_highlight_layer_list=(plain)
 
 ## @fn ble/highlight/layer/update text opts [DMIN DMAX DMAX0]
 ##   @param[in] text opts DMIN DMAX DMAX0
@@ -1468,9 +1468,9 @@ function ble/highlight/layer/update {
   local PREV_UMIN=-1
   local PREV_UMAX=-1
   local layer player=plain LEVEL
-  local nlevel=${#_ble_highlight_layer__list[@]}
+  local nlevel=${#_ble_highlight_layer_list[@]}
   for ((LEVEL=0;LEVEL<nlevel;LEVEL++)); do
-    layer=${_ble_highlight_layer__list[LEVEL]}
+    layer=${_ble_highlight_layer_list[LEVEL]}
 
     "ble/highlight/layer:$layer/update" "$text" "$player"
     # echo "PREV($LEVEL) $PREV_UMIN $PREV_UMAX" >> 1.tmp
@@ -1508,7 +1508,7 @@ function ble/highlight/layer/update/getg {
   g=
   local LEVEL=$LEVEL
   while ((--LEVEL>=0)); do
-    "ble/highlight/layer:${_ble_highlight_layer__list[LEVEL]}/getg" "$1"
+    "ble/highlight/layer:${_ble_highlight_layer_list[LEVEL]}/getg" "$1"
     [[ $g ]] && return 0
   done
   g=0
@@ -1518,15 +1518,19 @@ function ble/highlight/layer/update/getg {
 ##   @param[in] index
 ##   @var[out] g
 function ble/highlight/layer/getg {
-  LEVEL=${#_ble_highlight_layer__list[*]} ble/highlight/layer/update/getg "$1"
+  LEVEL=${#_ble_highlight_layer_list[*]} ble/highlight/layer/update/getg "$1"
 }
 
 ## レイヤーの実装
 ##   先ず作成するレイヤーの名前を決めます。ここでは <layerName> とします。
 ##   次に、以下の配列変数と二つの関数を用意します。
 ##
-## @arr _ble_highlight_layer_<layerName>_buff=()
+## @arr _ble_highlight_layer_<layerName>_VARNAMES
+##   レイヤーの動的な状態を保持する変数の一覧です。ble/textarea#save-state で参
+##   照されます。もしこの配列が定義されていない場合は、代わりに
+##   _ble_highlight_layer_<layerName>_ で始まる変数名を全て記録します。
 ##
+## @arr _ble_highlight_layer_<layerName>_buff=()
 ##   グローバルに定義する配列変数です。
 ##   後述の ble/highlight/layer:<layerName>/update が呼ばれた時に更新します。
 ##
@@ -1661,6 +1665,301 @@ function ble/highlight/layer:plain/getg {
 }
 
 #------------------------------------------------------------------------------
+# abstract layer {selection}
+
+# This layer supports multiple selections with different gflags.
+
+function ble/highlight/layer:{selection}/declare {
+  local layer_name=$1
+  local layer_prefix=_ble_highlight_layer_${layer_name}_
+  builtin eval -- "
+    ${layer_prefix}VARNAMES=(
+      ${layer_prefix}buff
+      ${layer_prefix}osel
+      ${layer_prefix}ogflags)"
+  ble/highlight/layer:{selection}/initialize-vars "$layer_name"
+}
+
+## @fn ble/highlight/layer:{selection}/initialize-vars layer_name
+##   レイヤーで内部使用する配列を初期化します。
+##   @arr[out] _ble_highlight_layer_<layer_name>_buff
+##   @arr[out] _ble_highlight_layer_<layer_name>_osel
+##     前回の選択範囲の端点を保持する配列です。
+##   @arr[out] _ble_highlight_layer_<layer_name>_ogflags
+##     前回の選択範囲の着色を保持します。
+##
+function ble/highlight/layer:{selection}/initialize-vars {
+  local layer_name=$1
+  local layer_prefix=_ble_highlight_layer_${layer_name}_
+  builtin eval -- "
+    ${layer_prefix}buff=()
+    ${layer_prefix}osel=()
+    ${layer_prefix}ogflags=()"
+}
+
+## @fn ble/highlight/layer:{selection}/.invalidate a b
+##   Include the range [a, b) (or [b, a) for the reversed range) in the dirty
+##   range (i.e., the range of the command line that needs to be re-rendered
+##   because of the updates).
+##
+##   @param[in] a b
+##   @var[in,out] umin umax
+function ble/highlight/layer:{selection}/.invalidate {
+  local a=$1 b=$2 p q
+  ((a==b)) && return 0
+  (((a<b?(p=a,q=b):(p=b,q=a)),
+    (umin<0||umin>p)&&(umin=p),
+    (umax<0||umax<q)&&(umax=q)))
+}
+
+## @fn ble/highlight/layer:{selection}/update layer_name text
+##
+##   @param[in] layer_name
+##     This is used to save/restore the layer information.  All the related
+##     data are stored in the variables of the names:
+##     `_ble_highlight_layer_${layer_name}_${name}`.
+##   @arr[in] sel gflags
+##     The caller should prepare the list of the selection and the
+##     corresponding gflags.  The array `sel` contains two elements for each
+##     selection while `gflags` contains one for each.  The content of `sel` is
+##     (<selection1-begin> <selection1-end> <selection2-begin> <selection2-end>
+##     ... <selectionN-begin> <selectionN-end>) where <selectionX-begin/end>
+##     are integers specifying indices in the command-line string.  The content
+##     of `gflags` is (<selection1-gflags> <selection2-gflags>
+##     ... <selectionN-gflags>) where <selectionX-gflags> are integers
+##     specifying the highlighting style in gflags.
+##
+##     When `sel` is set to -1, it means that the selections do not change from
+##     its previous state.
+function ble/highlight/layer:{selection}/update {
+  local layer_name=$1
+  local layer_prefix=_ble_highlight_layer_${layer_name}_
+  shift
+
+  local IFS=$_ble_term_IFS
+
+  # Retrieve the previous selections and adjust positions by the insertion and
+  # deletion of substrings in the command line.
+  local omin=-1 omax=-1 osel ogflags olen
+  ble/util/restore-vars "$layer_prefix" osel ogflags
+  olen=${#osel[@]}
+  if ((olen)); then
+    if ((DMIN>=0)); then
+      local k
+      for ((k=0;k<olen;k++)); do
+        if ((DMAX0<=osel[k])); then
+          ((osel[k]+=DMAX-DMAX0))
+        elif ((DMIN<osel[k])); then
+          ((osel[k]=DMIN))
+        fi
+      done
+    fi
+    omin=${osel[0]}
+    omax=${osel[olen-1]}
+  fi
+
+  # Retrieve the new selections.  The array `sel` and `gflags` are supposed to
+  # be specified by the caller.
+  if ((sel==-1)); then
+    sel=("${osel[@]}")
+    gflags=("${ogflags[@]}")
+  fi
+  local rlen=${#sel[@]}
+
+  # 変更がない時はそのまま通過
+  if ((DMIN<0&&(PREV_UMIN<0||rlen>=2&&sel[0]<=PREV_UMIN&&PREV_UMAX<=sel[1]))); then
+    if [[ ${sel[*]} == "${osel[*]}" && ${gflags[*]} == "${ogflags[*]}" ]]; then
+      [[ ${sel[*]} ]] && PREV_BUFF=${layer_prefix}buff
+      return 0
+    fi
+  else
+    [[ ! ${sel[*]} && ! ${osel[*]} ]] && return 0
+  fi
+
+  local umin=-1 umax=-1
+  if ((rlen)); then
+    # 選択範囲がある時
+    local rmin=${sel[0]}
+    local rmax=${sel[rlen-1]}
+
+    # 描画文字配列の更新
+    local -a buff=()
+    local g ret
+    local k=0 inext iprev=0
+    for inext in "${sel[@]}"; do
+      if ((inext>iprev)); then
+        if ((k==0)); then
+          ble/array#push buff "\"\${$PREV_BUFF[@]::$inext}\""
+        elif ((k%2)); then
+          ble/color/g2sgr "${gflags[k/2]}"
+          ble/array#push buff "\"$ret\${_ble_highlight_layer_plain_buff[@]:$iprev:$((inext-iprev))}\""
+        else
+          ble/highlight/layer/update/getg "$iprev"
+          ble/color/g2sgr "$g"
+          ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev:$((inext-iprev))}\""
+        fi
+      fi
+      ((iprev=inext,k++))
+    done
+    ble/highlight/layer/update/getg "$iprev"
+    ble/color/g2sgr "$g"
+    ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev}\""
+    builtin eval -- "${layer_prefix}buff=(${buff[*]})"
+    PREV_BUFF=${layer_prefix}buff
+
+    # (Dirty range 1) DMIN-DMAX の間
+    if ((DMIN>=0)); then
+      ble/highlight/layer:{selection}/.invalidate "$DMIN" "$DMAX"
+    fi
+
+    # (Dirty range 2) 選択範囲の変更
+    if ((olen==2&&rlen==2)); then
+      # Optimized code for the case where both osel and sel are single
+      # selections (i.e., the next `if ((omin>=0))` branch is general and
+      # should also work for this specific case).
+      #
+      # Note: The following two branches are currently equivalent because
+      # `.invalidate` manages only a single covering range [umin, umax), but
+      # these are semantically different when multiple ranges would be managed
+      # by `.invalidate`.
+      if [[ ${gflags[0]} != "${ogflags[0]}" ]]; then
+        # 色が変化する場合
+        ble/highlight/layer:{selection}/.invalidate "$omin" "$omax"
+        ble/highlight/layer:{selection}/.invalidate "$rmin" "$rmax"
+      else
+        # 端点の移動による再描画
+        ble/highlight/layer:{selection}/.invalidate "$omin" "$rmin"
+        ble/highlight/layer:{selection}/.invalidate "$omax" "$rmax"
+      fi
+    elif ((omin>=0)); then
+      # Find the first and last non-matching selection boundaries and update
+      # the dirty range.
+      local k m
+      local min_len=$((olen<rlen?olen:rlen))
+      local max_len=$((olen>rlen?olen:rlen))
+      for ((k=0;k<max_len;k++)); do
+        # Compare each selection in `sel` and `osel` and advance `k` as far as
+        # the selections match.  If there is no corresponding selection or the
+        # color is different or the boundary is different, process the later
+        # part of the loop.  Otherwise, skip this loop and try next `k`.
+        if ((k<min_len)); then
+          [[ k%2 -eq 0 && ${gflags[k/2]} != "${ogflags[k/2]}" ]] ||
+            ((sel[k]!=osel[k])) ||
+            continue
+        fi
+        local smin=$((sel[k]<osel[k]?sel[k]:osel[k]))
+
+        for ((m=0;m<max_len;m++)); do
+          local rind=$((rlen-m-1)) oind=$((olen-m-1))
+          # Compare each selection from the end of the list (where `m` is the
+          # offset from the end) and increment `m` as far as the selections
+          # match.  If there is no correponding selection or the color is
+          # different or the boundary is different, process the later part of
+          # the loop.  Otherwise, skip this loop and try next `m`.
+          if ((m==min_len)); then
+            [[ m%2 -eq 0 && ${gflags[rind/2]} != "${ogflags[oind/2]}" ]] ||
+              ((sel[rind]!=osel[oind])) ||
+              continue
+          fi
+          local smax=$((sel[rind]>osel[oind]?sel[rind]:osel[oind]))
+
+          ((smin<smax)) &&
+            ble/highlight/layer:{selection}/.invalidate "$smin" "$smax"
+          break
+        done
+        break
+      done
+    else
+      # 新規選択
+      ble/highlight/layer:{selection}/.invalidate "$rmin" "$rmax"
+    fi
+
+    # (Dirty range 3) 下層の変更 (rmin ～ rmax は表には反映されない)
+    local pmin=$PREV_UMIN pmax=$PREV_UMAX
+    if ((rlen==2)); then
+      # Optimized code for the single-selection case (i.e., the next `if
+      # ((rlen))` branch is general and should also work for this specific
+      # case).
+      ((rmin<=pmin&&pmin<rmax&&(pmin=rmax),
+        rmin<pmax&&pmax<=rmax&&(pmax=rmin)))
+    elif ((rlen)); then
+      # この層の選択範囲で隠されている部分は省略可能
+      local k
+      for ((k=0;k<rlen;k+=2)); do
+        if ((pmin<sel[k])); then
+          break
+        elif ((sel[k]<=pmin&&pmin<sel[k+1])); then
+          pmin=${sel[k+1]}
+        fi
+      done
+
+      for ((k=rlen-2;k>=0;k-=2)); do
+        if ((sel[k+1]<pmax)); then
+          break
+        elif ((sel[k]<pmax&&pmax<=sel[k+1])); then
+          pmax=${sel[k]}
+        fi
+      done
+    fi
+    ble/highlight/layer:{selection}/.invalidate "$pmin" "$pmax"
+  else
+    # 選択範囲がない時
+
+    # 下層の変更
+    umin=$PREV_UMIN umax=$PREV_UMAX
+
+    # 選択解除の範囲
+    ble/highlight/layer:{selection}/.invalidate "$omin" "$omax"
+  fi
+
+  osel=("${sel[@]}")
+  ogflags=("${gflags[@]}")
+  ble/util/save-vars "$layer_prefix" osel ogflags
+  ((PREV_UMIN=umin,PREV_UMAX=umax))
+}
+
+function ble/highlight/layer:{selection}/getg {
+  local layer_name=$1
+  local layer_prefix=_ble_highlight_layer_${layer_name}_
+  shift
+
+  local index=$1
+
+  local osel olen
+  ble/util/restore-vars "$layer_prefix" osel
+  olen=${#osel[@]}
+  ((olen)) || return 1
+  ((osel[0]<=index&&index<osel[olen-1])) || return 1
+
+  local isel=
+  if ((olen>=4)); then
+    # When there are multiple selections, we identify the position of `index`
+    # using bisection.
+    local l=0 u=$((olen-1)) m
+    while ((l+1<u)); do
+      ((osel[m=(l+u)/2]<=index?(l=m):(u=m)))
+    done
+
+    # When `l` sits at the end of a selection, check if the next selection
+    # immediately starts.  If it is the case, we increment `l` to pick the
+    # gflags of the next selection.
+    ((l%2&&l+1<olen&&osel[l]==osel[l+1]&&l++))
+
+    ((l%2==0)) && ((isel=l/2))
+  else
+    # When there is only a single selection, the position `index` is always
+    # inside the selection because otherwise we already returned from the
+    # function by an earlier check.
+    isel=0
+  fi
+
+  if [[ $isel ]]; then
+    local ref=${layer_prefix}ogflags[isel]
+    g=${!ref}
+  fi
+}
+
+#------------------------------------------------------------------------------
 # ble/highlight/layer:region
 
 function ble/color/defface.onload {
@@ -1678,47 +1977,17 @@ blehook color_defface_load+=ble/color/defface.onload
 ## @arr _ble_highlight_layer_region_osel
 ##   前回の選択範囲の端点を保持する配列です。
 ##
-## @var _ble_highlight_layer_region_osgr
+## @var _ble_highlight_layer_region_ogflags
 ##   前回の選択範囲の着色を保持します。
 ##
-_ble_highlight_layer_region_VARNAMES=(
-  _ble_highlight_layer_region_buff
-  _ble_highlight_layer_region_osel
-  _ble_highlight_layer_region_osgr)
-function ble/highlight/layer:region/initialize-vars {
-  _ble_highlight_layer_region_buff=()
-  _ble_highlight_layer_region_osel=()
-  _ble_highlight_layer_region_osgr=
-}
-ble/highlight/layer:region/initialize-vars
-
-function ble/highlight/layer:region/.update-dirty-range {
-  local a=$1 b=$2 p q
-  ((a==b)) && return 0
-  (((a<b?(p=a,q=b):(p=b,q=a)),
-    (umin<0||umin>p)&&(umin=p),
-    (umax<0||umax<q)&&(umax=q)))
-}
+ble/highlight/layer:{selection}/declare region
 
 function ble/highlight/layer:region/update {
-  local IFS=$_ble_term_IFS
-  local omin=-1 omax=-1 osgr= olen=${#_ble_highlight_layer_region_osel[@]}
-  if ((olen)); then
-    omin=${_ble_highlight_layer_region_osel[0]}
-    omax=${_ble_highlight_layer_region_osel[olen-1]}
-    osgr=$_ble_highlight_layer_region_osgr
-  fi
-
-  if ((DMIN>=0)); then
-    ((DMAX0<=omin?(omin+=DMAX-DMAX0):(DMIN<omin&&(omin=DMIN)),
-      DMAX0<=omax?(omax+=DMAX-DMAX0):(DMIN<omax&&(omax=DMIN))))
-  fi
-
-  local sgr=
-  local -a selection=()
+  local -a sel=() gflags=()
   if [[ $_ble_edit_mark_active ]]; then
     # 外部定義の選択範囲があるか確認
     #   vi-mode のビジュアルモード (文字選択、行選択、矩形選択) の実装で使用する。
+    local -a selection=()
     if ! ble/function#try ble/highlight/layer:region/mark:"$_ble_edit_mark_active"/get-selection; then
       if ((_ble_edit_mark>_ble_edit_ind)); then
         selection=("$_ble_edit_ind" "$_ble_edit_mark")
@@ -1727,125 +1996,20 @@ function ble/highlight/layer:region/update {
       fi
     fi
 
-    # sgr の取得
+    # gflags の決定
     local face=region
     ble/function#try ble/highlight/layer:region/mark:"$_ble_edit_mark_active"/get-face
-    local ret; ble/color/face2sgr "$face"; sgr=$ret
-  fi
-  local rlen=${#selection[@]}
+    local ret; ble/color/face2g "$face"; local g=$ret
 
-  # 変更がない時はそのまま通過
-  if ((DMIN<0&&(PREV_UMIN<0||${#selection[*]}>=2&&selection[0]<=PREV_UMIN&&PREV_UMAX<=selection[1]))); then
-    if [[ $sgr == "$osgr" && ${selection[*]} == "${_ble_highlight_layer_region_osel[*]}" ]]; then
-      [[ ${selection[*]} ]] && PREV_BUFF=_ble_highlight_layer_region_buff
-      return 0
-    fi
-  else
-    [[ ! ${selection[*]} && ! ${_ble_highlight_layer_region_osel[*]} ]] && return 0
+    sel=("${selection[@]}")
+    ble/array#fill-range gflags 0 "$((${#selection[@]}/2))" "$g"
   fi
 
-  local umin=-1 umax=-1
-  if ((rlen)); then
-    # 選択範囲がある時
-    local rmin=${selection[0]}
-    local rmax=${selection[rlen-1]}
-
-    # 描画文字配列の更新
-    local -a buff=()
-    local g ret
-    local k=0 inext iprev=0
-    for inext in "${selection[@]}"; do
-      if ((inext>iprev)); then
-        if ((k==0)); then
-          ble/array#push buff "\"\${$PREV_BUFF[@]::$inext}\""
-        elif ((k%2)); then
-          ble/array#push buff "\"$sgr\${_ble_highlight_layer_plain_buff[@]:$iprev:$((inext-iprev))}\""
-        else
-          ble/highlight/layer/update/getg "$iprev"
-          ble/color/g2sgr "$g"
-          ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev:$((inext-iprev))}\""
-        fi
-      fi
-      ((iprev=inext,k++))
-    done
-    ble/highlight/layer/update/getg "$iprev"
-    ble/color/g2sgr "$g"
-    ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev}\""
-    builtin eval "_ble_highlight_layer_region_buff=(${buff[*]})"
-    PREV_BUFF=_ble_highlight_layer_region_buff
-
-    # DMIN-DMAX の間
-    if ((DMIN>=0)); then
-      ble/highlight/layer:region/.update-dirty-range "$DMIN" "$DMAX"
-    fi
-
-    # 選択範囲の変更による再描画範囲
-    if ((omin>=0)); then
-      if [[ $osgr != "$sgr" ]]; then
-        # 色が変化する場合
-        ble/highlight/layer:region/.update-dirty-range "$omin" "$omax"
-        ble/highlight/layer:region/.update-dirty-range "$rmin" "$rmax"
-      else
-        # 端点の移動による再描画
-        ble/highlight/layer:region/.update-dirty-range "$omin" "$rmin"
-        ble/highlight/layer:region/.update-dirty-range "$omax" "$rmax"
-        if ((olen>1||rlen>1)); then
-          # 複数範囲選択
-          ble/highlight/layer:region/.update-dirty-range "$rmin" "$rmax"
-        fi
-      fi
-    else
-      # 新規選択
-      ble/highlight/layer:region/.update-dirty-range "$rmin" "$rmax"
-    fi
-
-    # 下層の変更 (rmin ～ rmax は表には反映されない)
-    local pmin=$PREV_UMIN pmax=$PREV_UMAX
-    if ((rlen==2)); then
-      ((rmin<=pmin&&pmin<rmax&&(pmin=rmax),
-        rmin<pmax&&pmax<=rmax&&(pmax=rmin)))
-    fi
-    ble/highlight/layer:region/.update-dirty-range "$pmin" "$pmax"
-  else
-    # 選択範囲がない時
-
-    # 下層の変更
-    umin=$PREV_UMIN umax=$PREV_UMAX
-
-    # 選択解除の範囲
-    ble/highlight/layer:region/.update-dirty-range "$omin" "$omax"
-  fi
-
-  _ble_highlight_layer_region_osel=("${selection[@]}")
-  _ble_highlight_layer_region_osgr=$sgr
-  ((PREV_UMIN=umin,
-    PREV_UMAX=umax))
+  ble/highlight/layer:{selection}/update region "$@"
 }
 
 function ble/highlight/layer:region/getg {
-  if [[ $_ble_edit_mark_active ]]; then
-    local index=$1 olen=${#_ble_highlight_layer_region_osel[@]}
-    ((olen)) || return 1
-    ((_ble_highlight_layer_region_osel[0]<=index&&index<_ble_highlight_layer_region_osel[olen-1])) || return 1
-
-    local flag_region=
-    if ((olen>=4)); then
-      # 複数の region に分かれている時は二分法
-      local l=0 u=$((olen-1)) m
-      while ((l+1<u)); do
-        ((_ble_highlight_layer_region_osel[m=(l+u)/2]<=index?(l=m):(u=m)))
-      done
-      ((l%2==0)) && flag_region=1
-    else
-      flag_region=1
-    fi
-
-    if [[ $flag_region ]]; then
-      local face=region
-      ble/function#try ble/highlight/layer:region/mark:"$_ble_edit_mark_active"/get-face
-      local ret; ble/color/face2g "$face"; g=$ret
-    fi
-  fi
+  ble/highlight/layer:{selection}/getg region "$@"
 }
 
 #------------------------------------------------------------------------------
@@ -1887,6 +2051,9 @@ function ble/highlight/layer:disabled/getg {
     local ret; ble/color/face2g disabled; g=$ret
   fi
 }
+
+#------------------------------------------------------------------------------
+# ble/highlight/layer:overwrite_mode
 
 _ble_highlight_layer_overwrite_mode_VARNAMES=(
   _ble_highlight_layer_overwrite_mode_index
@@ -1964,52 +2131,5 @@ function ble/highlight/layer:overwrite_mode/getg {
 }
 
 #------------------------------------------------------------------------------
-# ble/highlight/layer:RandomColor (sample)
 
-_ble_highlight_layer_RandomColor_VARNAMES=(
-  _ble_highlight_layer_RandomColor_buff)
-function ble/highlight/layer:RandomColor/initialize-vars {
-  _ble_highlight_layer_RandomColor_buff=()
-}
-ble/highlight/layer:RandomColor/initialize-vars
-
-function ble/highlight/layer:RandomColor/update {
-  local text=$1 ret i
-  _ble_highlight_layer_RandomColor_buff=()
-  for ((i=0;i<${#text};i++)); do
-    # _ble_highlight_layer_RandomColor_buff[i] に "<sgr><表示文字>" を設定する。
-    # "<表示文字>" は ${_ble_highlight_layer_plain_buff[i]} でなければならない
-    # (或いはそれと文字幅が同じ物…ただそれが反映される保証はない)。
-    ble/color/gspec2sgr "fg=$((RANDOM%256))"
-    _ble_highlight_layer_RandomColor_buff[i]=$ret${_ble_highlight_layer_plain_buff[i]}
-  done
-  PREV_BUFF=_ble_highlight_layer_RandomColor_buff
-  ((PREV_UMIN=0,PREV_UMAX=${#text}))
-}
-function ble/highlight/layer:RandomColor/getg {
-  # ここでは乱数を返しているが、実際は
-  # PREV_BUFF=_ble_highlight_layer_RandomColor_buff
-  # に設定した物に対応する物を指定しないと表示が変になる。
-  local ret; ble/color/gspec2g "fg=$((RANDOM%256))"; g=$ret
-}
-
-_ble_highlight_layer_RandomColor2_buff=()
-function ble/highlight/layer:RandomColor2/update {
-  local text=$1 ret i x
-  ble/highlight/layer/update/shift _ble_highlight_layer_RandomColor2_buff
-  for ((i=DMIN;i<DMAX;i++)); do
-    ble/color/gspec2sgr "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
-    _ble_highlight_layer_RandomColor2_buff[i]=$ret${_ble_highlight_layer_plain_buff[i]}
-  done
-  PREV_BUFF=_ble_highlight_layer_RandomColor2_buff
-  ((PREV_UMIN=0,PREV_UMAX=${#text}))
-}
-function ble/highlight/layer:RandomColor2/getg {
-  # ここでは乱数を返しているが、実際は
-  # PREV_BUFF=_ble_highlight_layer_RandomColor2_buff
-  # に設定した物に対応する物を指定しないと表示が変になる。
-  local x ret
-  ble/color/gspec2g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"; g=$ret
-}
-
-_ble_highlight_layer__list=(plain syntax region overwrite_mode disabled)
+_ble_highlight_layer_list=(plain syntax region overwrite_mode disabled)

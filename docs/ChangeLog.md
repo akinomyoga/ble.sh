@@ -53,6 +53,7 @@
 
 - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
+- contrib/layer/pattern: add `{pattern}` layer `#D2074` xxxxxxxx
 
 ## Documentation
 
@@ -69,6 +70,7 @@
 - refactor: move files `{keymap/ => lib/keymap.}*` f4c973b8
 - global: fix coding style `#D2072` bdcecbbf
 - memo: add recent configs and create directories `#D2073` xxxxxxxx
+- highlight: generalize `region` layer `#D2074` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

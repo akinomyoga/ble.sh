@@ -2036,7 +2036,7 @@ function ble/keymap:vi/operator:filter {
     _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
     _ble_keymap_vi_cmap_cancel_hook=ble/keymap:vi/operator:filter/cancel.hook
     _ble_syntax_lang=bash
-    _ble_highlight_layer__list=(plain syntax region overwrite_mode)
+    _ble_highlight_layer_list=(plain syntax region overwrite_mode)
     return 147
   fi
 }
@@ -8121,7 +8121,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # syntax, highlight
   _ble_syntax_lang=text
-  _ble_highlight_layer__list=(plain region overwrite_mode)
+  _ble_highlight_layer_list=(plain region overwrite_mode)
 }
 
 function ble/widget/vi_cmap/accept {

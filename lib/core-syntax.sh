@@ -5387,7 +5387,7 @@ function ble/syntax/parse {
 function ble/syntax/highlight {
   local text=$1 lang=${2:-bash} cache_prefix=$3
 
-  local -a _ble_highlight_layer__list=(plain syntax)
+  local -a _ble_highlight_layer_list=(plain syntax)
   local -a vars=()
   ble/array#push vars "${_ble_syntax_VARNAMES[@]}"
   ble/array#push vars "${_ble_highlight_layer_plain_VARNAMES[@]}"

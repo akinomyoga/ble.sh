@@ -3577,10 +3577,16 @@ function ble/textarea#save-state {
   ble/array#push vars "${_ble_textmap_VARNAMES[@]}"
 
   # _ble_highlight_layer_*
-  ble/array#push vars _ble_highlight_layer__list
+  ble/array#push vars _ble_highlight_layer_list
   local layer names
-  for layer in "${_ble_highlight_layer__list[@]}"; do
-    builtin eval "ble/array#push vars \"\${!_ble_highlight_layer_$layer@}\""
+  for layer in "${_ble_highlight_layer_list[@]}"; do
+    local _ble_local_script='
+      if [[ ${_ble_highlight_layer_LAYER_VARNAMES[@]-} ]]; then
+        ble/array#push vars "${_ble_highlight_layer_LAYER_VARNAMES[@]}"
+      else
+        ble/array#push vars "${!_ble_highlight_layer_LAYER_@}"
+      fi'
+    builtin eval -- "${_ble_local_script//LAYER/$layer}"
   done
 
   # _ble_textarea_*
@@ -9633,7 +9639,7 @@ function ble/builtin/read/.set-up-textarea {
 
   # syntax, highlight
   _ble_syntax_lang=text
-  _ble_highlight_layer__list=(plain region overwrite_mode disabled)
+  _ble_highlight_layer_list=(plain region overwrite_mode disabled)
   return 0
 }
 function ble/builtin/read/TRAPWINCH {

@@ -7734,14 +7734,14 @@ function ble/highlight/layer:menu_filter/update {
     PREV_BUFF=$buff_name
 
     if [[ $obeg ]]; then :
-      ble/highlight/layer:region/.update-dirty-range "$beg" "$obeg"
-      ble/highlight/layer:region/.update-dirty-range "$end" "$oend"
+      ble/highlight/layer:{selection}/.invalidate "$beg" "$obeg"
+      ble/highlight/layer:{selection}/.invalidate "$end" "$oend"
     else
-      ble/highlight/layer:region/.update-dirty-range "$beg" "$end"
+      ble/highlight/layer:{selection}/.invalidate "$beg" "$end"
     fi
   else
     if [[ $obeg ]]; then
-      ble/highlight/layer:region/.update-dirty-range "$obeg" "$oend"
+      ble/highlight/layer:{selection}/.invalidate "$obeg" "$oend"
     fi
   fi
   _ble_highlight_layer_menu_filter_beg=$beg
@@ -7769,7 +7769,7 @@ _ble_complete_menu_filter_enabled=
 if ble/is-function ble/util/idle.push-background; then
   _ble_complete_menu_filter_enabled=1
   ble/util/idle.push -n 9999 ble/complete/menu-filter.idle
-  ble/array#insert-before _ble_highlight_layer__list region menu_filter
+  ble/array#insert-before _ble_highlight_layer_list region menu_filter
 fi
 
 #------------------------------------------------------------------------------
