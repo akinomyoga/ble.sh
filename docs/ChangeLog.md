@@ -34,6 +34,7 @@
 - stty: suggest `stty sane` after exiting from bash >= 5.2 to non-ble session `#D2046` b57ab2d6
 - util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` 1f3cbc01
 - history (`ble/builtin/history`): fix error message on the empty `HISTFILE` `#D2061` a2e2c4b6
+- complete: exit auto-complete mode on complete self-insert `#D2075` xxxxxxxx
 
 ## Compatibility
 

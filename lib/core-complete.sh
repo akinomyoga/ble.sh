@@ -8383,7 +8383,7 @@ function ble/widget/auto_complete/self-insert {
       ((_ble_edit_ind+=${#ins}))
 
       # Note: 途中で完全一致した場合は tail を挿入せずに終了する事にする
-      [[ ! $_ble_complete_ac_word ]] && ble/widget/auto_complete/cancel
+      [[ $_ble_complete_ac_word == "$comps_new" ]] && ble/widget/auto_complete/cancel
       processed=1
     fi
   elif [[ $_ble_complete_ac_type == [rmaA] && $ins != [{,}] ]]; then
