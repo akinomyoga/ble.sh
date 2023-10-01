@@ -534,8 +534,25 @@ function bleopt/check:grapheme_cluster {
 
 #%< canvas.GraphemeClusterBreak.sh
 
+# Note #D2076: 多くの端末 (glibc の wcwidth/wcswidth を参照している端末) で以下
+# の文字は Unicode とは違う振る舞いで実装されている。kitty 及び RLogin では独自
+# に Unicode に従って実装している様だが、取り敢えずは大勢に合わせて
+# GraphemeClusterBreak を補正する。
+_ble_unicode_GraphemeClusterBreak_custom[0x1F3FB]=$_ble_unicode_GraphemeClusterBreak_Pictographic
+_ble_unicode_GraphemeClusterBreak_custom[0x1F3FC]=$_ble_unicode_GraphemeClusterBreak_Pictographic
+_ble_unicode_GraphemeClusterBreak_custom[0x1F3FD]=$_ble_unicode_GraphemeClusterBreak_Pictographic
+_ble_unicode_GraphemeClusterBreak_custom[0x1F3FE]=$_ble_unicode_GraphemeClusterBreak_Pictographic
+_ble_unicode_GraphemeClusterBreak_custom[0x1F3FF]=$_ble_unicode_GraphemeClusterBreak_Pictographic
+
+# Note #D2076: 半角カナの濁点と半濁点は Extended Lm だが、端末上の振る舞いは独
+# 立した文字として振る舞っている (xterm, lxterminal, terminology, kitty)。
+_ble_unicode_GraphemeClusterBreak_custom[0xFF9E]=$_ble_unicode_GraphemeClusterBreak_Other
+_ble_unicode_GraphemeClusterBreak_custom[0xFF9F]=$_ble_unicode_GraphemeClusterBreak_Other
+
 function ble/unicode/GraphemeCluster/c2break {
   local code=$1
+  ret=${_ble_unicode_GraphemeClusterBreak_custom[code]}
+  [[ $ret ]] && return 0
   ret=${_ble_unicode_GraphemeClusterBreak[code]}
   [[ $ret ]] && return 0
   ((ret>_ble_unicode_GraphemeClusterBreak_MaxCode)) && { ret=0; return 0; }

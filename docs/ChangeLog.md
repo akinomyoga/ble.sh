@@ -49,6 +49,7 @@
 - edit: update mc-4.8.29 integration (reported by mooreye) `#D2062` 2c4194a2 68c5c5c4
 - make: work around `make-3.81` bug of pattern rules `#D2065` f7ec170b
 - decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` 226f9718
+- canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` xxxxxxxx
 
 ## Contrib
 

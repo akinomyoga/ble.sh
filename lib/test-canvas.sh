@@ -391,6 +391,9 @@ else
 fi
 
 (
+  # Disable terminal-specific tailored grapheme cluster for testing purpose.
+  _ble_unicode_GraphemeClusterBreak_custom=()
+
   bleopt emoji_opts=ri:tpvs:epvs:zwj
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x20))"' ret="$_ble_unicode_GraphemeClusterBreak_Other"
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x41))"' ret="$_ble_unicode_GraphemeClusterBreak_Other"
@@ -491,6 +494,9 @@ fi
 
 ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 3251
 (
+  # Disable terminal-specific tailored grapheme cluster for testing purpose.
+  _ble_unicode_GraphemeClusterBreak_custom=()
+
   bleopt emoji_opts=ri:tpvs:epvs:zwj
   tests_cases=(
 #%< test-canvas.GraphemeClusterTest.sh
