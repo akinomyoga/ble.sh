@@ -753,7 +753,7 @@ function ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ {
   local j=$((i-1)) shift=1
   for ((j=i-1;j>0;j-=shift)); do
     ble/unicode/GraphemeCluster/s2break-left "$text" "$j" shift
-    ((ret==_ble_unicode_GraphemeClusterBreak_Extend)) || break
+    ((_ble_unicode_GraphemeClusterBreak_isExtend[ret])) || break
   done
 
   if ((j==0||ret!=_ble_unicode_GraphemeClusterBreak_Pictographic)); then
@@ -792,6 +792,57 @@ function ble/unicode/GraphemeCluster/find-previous-boundary/.RI {
     return 0
   fi
 }
+## @fn ble/unicode/GraphemeCluster/find-previous-boundary/.InCB
+##   @var[in] text
+##   @var[in,out] i
+##     現在位置 i を指定します。Indic_Conjunct_Break を読み終わった新しい現在位
+##     置を返します。
+##   @var[in] shift
+##     現在位置 i の左にある文字の UTF-8 文字数を指定します。通常は 1 です。未
+##     解決のサロゲートペアがある場合に 2 になります。
+##   @var[in] b1
+##     現在位置 i の左側の GraphemeClusterBreak 値を指定します。
+##   @var[out] ret
+##     境界が見つかった時に境界の位置を返します。
+##   @remarks
+##     shift 及び b1 は現在位置 i に於いて
+##     ble/unicode/GraphemeCluster/s2break-left を呼び出した状態である事を前提
+##     とします。
+function ble/unicode/GraphemeCluster/find-previous-boundary/.InCB {
+  # Grapheme Cluster with InCB is supported by Unicode >= 15.1.0
+  if ((_ble_unicode_c2w_version<17)); then
+    ret=$i
+    return 0
+  fi
+
+  local out=$i j=$i count_linker=0
+  local b1=$b1 shift=$shift
+  while
+    case $b1 in
+    ("$_ble_unicode_GraphemeClusterBreak_InCB_Consonant")
+      if ((count_linker)); then
+        count_linker=0
+        ((out=j-shift))
+      fi ;;
+    ("$_ble_unicode_GraphemeClusterBreak_InCB_Linker")
+      ((count_linker++)) ;;
+    ("$_ble_unicode_GraphemeClusterBreak_InCB_Extend"|"$_ble_unicode_GraphemeClusterBreak_ZWJ") ;;
+    (*) break ;;
+    esac
+    ((j-=shift,j>0))
+  do
+    ble/unicode/GraphemeCluster/s2break-left "$text" "$j" shift
+    b1=$ret
+  done
+
+  if ((out<i)); then
+    i=$out
+    return 1
+  else
+    ret=$out
+    return 0
+  fi
+}
 function ble/unicode/GraphemeCluster/find-previous-boundary {
   local text=$1 i=$2 shift
   if [[ $bleopt_grapheme_cluster ]] && ((i&&--i)); then
@@ -805,6 +856,7 @@ function ble/unicode/GraphemeCluster/find-previous-boundary {
       (2) [[ $bleopt_grapheme_cluster != extended ]] && break; ((i-=shift)) ;;
       (3) ble/unicode/GraphemeCluster/find-previous-boundary/.ZWJ && return 0 ;;
       (4) ble/unicode/GraphemeCluster/find-previous-boundary/.RI && return 0 ;;
+      (6) ble/unicode/GraphemeCluster/find-previous-boundary/.InCB && return 0;;
       (5)
         # surrogate pair の間にいた時は GraphemeClusterBreak を取得し直す
         ((i-=shift))
@@ -827,6 +879,12 @@ _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_LV]=1
 _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_LVT]=1
 _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_Pictographic]=1
 _ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_HighSurrogate]=1
+_ble_unicode_GraphemeClusterBreak_isCore[_ble_unicode_GraphemeClusterBreak_InCB_Consonant]=1
+
+_ble_unicode_GraphemeClusterBreak_isExtend=()
+_ble_unicode_GraphemeClusterBreak_isExtend[_ble_unicode_GraphemeClusterBreak_Extend]=1
+_ble_unicode_GraphemeClusterBreak_isExtend[_ble_unicode_GraphemeClusterBreak_InCB_Extend]=1
+_ble_unicode_GraphemeClusterBreak_isExtend[_ble_unicode_GraphemeClusterBreak_InCB_Linker]=1
 
 ## @fn ble/unicode/GraphemeCluster/extend-ascii text i
 ##   @var[out] extend
@@ -836,12 +894,13 @@ function ble/unicode/GraphemeCluster/extend-ascii {
   local text=$1 iN=${#1} i=$2 ret shift=1
   for ((;i<iN;i+=shift,extend+=shift)); do
     ble/unicode/GraphemeCluster/s2break-right "$text" "$i" shift
-    case $ret in
-    ("$_ble_unicode_GraphemeClusterBreak_Extend"|"$_ble_unicode_GraphemeClusterBreak_ZWJ") ;;
-    ("$_ble_unicode_GraphemeClusterBreak_SpacingMark")
-      [[ $bleopt_grapheme_cluster == extended ]] || break ;;
-    (*) break ;;
-    esac
+    if ((!_ble_unicode_GraphemeClusterBreak_isExtend[ret])); then
+      case $ret in
+      ("$_ble_unicode_GraphemeClusterBreak_SpacingMark")
+        [[ $bleopt_grapheme_cluster == extended ]] || break ;;
+      (*) break ;;
+      esac
+    fi
   done
   ((extend))
 }
@@ -895,17 +954,30 @@ function ble/unicode/GraphemeCluster/match {
   local b0 b1 b2 c0 c2 shift code
   ble/unicode/GraphemeCluster/s2break-right "$text" "$i" code:shift; c0=$code b0=$ret
 
-  local coreb= corec= npre=0 vs= ri=
+  local coreb= corec= npre=0 vs= ri= InCB_state=
   c2=$c0 b2=$b0
   while ((j<iN)); do
     if ((_ble_unicode_GraphemeClusterBreak_isCore[b2])); then
       [[ $coreb ]] || coreb=$b2 corec=$c2
-    elif ((b2==_ble_unicode_GraphemeClusterBreak_Prepend)); then
-      ((npre++))
-    elif ((c2==0xFE0E)); then # Variation selector TPVS
-      vs=tpvs
-    elif ((c2==0xFE0F)); then # Variation selector EPVS
-      vs=epvs
+    else
+      if ((b2==_ble_unicode_GraphemeClusterBreak_Prepend)); then
+        ((npre++))
+      elif ((c2==0xFE0E)); then # Variation selector TPVS
+        vs=tpvs
+      elif ((c2==0xFE0F)); then # Variation selector EPVS
+        vs=epvs
+      fi
+    fi
+
+    # update InCB_state
+    if ((b2==_ble_unicode_GraphemeClusterBreak_InCB_Consonant)); then
+      InCB_state=0
+    elif [[ $InCB_state ]]; then
+      if ((b2==_ble_unicode_GraphemeClusterBreak_InCB_Linker)); then
+        InCB_state=1
+      elif ((b2!=_ble_unicode_GraphemeClusterBreak_InCB_Extend&&b2!=_ble_unicode_GraphemeClusterBreak_ZWJ)); then
+        InCB_state=
+      fi
     fi
 
     ((j+=shift))
@@ -918,6 +990,7 @@ function ble/unicode/GraphemeCluster/match {
     (3) [[ :$bleopt_emoji_opts: == *:zwj:* ]] &&
           ((coreb==_ble_unicode_GraphemeClusterBreak_Pictographic)) || break ;;
     (4) [[ :$bleopt_emoji_opts: == *:ri:* && ! $ri ]] || break; ri=1 ;;
+    (6) ((_ble_unicode_c2w_version>=17&&InCB_state)) || break ;;
     (5)
       # surrogate pair の間にいた時は GraphemeClusterBreak を取得し直す
       ble/unicode/GraphemeCluster/s2break-left "$text" "$((j+shift))" code; c2=$code b2=$ret ;;

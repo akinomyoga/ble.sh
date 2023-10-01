@@ -7067,6 +7067,91 @@ bash_tips
 
 2023-10-01
 
+  * canvas: Unicode 15.1.0 対応 [#D2078]
+
+    対応してみたのは良いが GraphemeCluster でテストが失敗する様になった。U+924
+    がどうも GraphemeClusterBreak では通常文字という事になっているが、test では
+    extend であるかの様な振る舞いを要求する様になっている。どういう事だろうか。
+
+    先ず GraphemeBreakProperty.txt に関しては 15.0.0 と 15.1.0 で変化はない。一
+    方で GraphemeBreakTest.txt に関しては大幅に追加されている。その中で U+924
+    に関しては combining とされている。と思ったが違った。どうも間に挟まっている
+    文字が何か新しい規則に組み込まれた様だ? 何やらおかしな property が割り当て
+    られている気がする。
+
+    Extend_ConjunctLinkingScripts_ConjunctLinker_ExtCccZwj
+
+    うーん。UAX #29 の変化を調べてみると実は 15.1.0 で新しく色々と追加されてい
+    るという事が分かった。これはまた対応に時間がかかりそうだ。
+
+    * InCB=Linker 及び InCB=Extend の直前で切れてしまうのではないか疑惑
+
+      現在の Unicode の定義だとInCB=Consonant | InCB=LinkerEx が離れるし、
+      InCB=LinkerEx | InCB=LinkerEx も離れるのではないか?
+
+      或いはちゃんと InCB=Linker や InCB=Extend は Extend でもあるのだろうか?
+      generate-table.sh では検出できていないから InCB={Linker,Extend} は何の
+      GraphemeClusterBreak も持っていないのではないかと疑われる。ZWJ も
+      InCB=Extend に含まれていそうなのに検出できていないのは何故?
+
+      →と思って改めて確かめて見た所、どうやらちゃんと検出して沢山エラーが発生
+      していた。改めて確認する必要がある。重複は Extend と ZWJ のみで発生してい
+      る。また、全ての InCB=Linker 及び InCB=Extend は同時に Extend または ZWJ
+      でもあった。特に ZWJ は InCB=Extend であった。つまり、以下の様な三種類に
+      分類する事ができる。
+
+      - Extend (1) InCB=None
+      - Extend (2) InCB=Extend
+      - Extend (3) InCB=Linker
+      - ZWJ        InCB=Extend
+
+    * 結局 GraphemeCluster の中に Indic_Conjunct_Break も埋め込まれた形になって
+      しまったので、IndicConjunctBreak のテーブルは最早不要の気がする。
+
+      * 既に実装した分について IndicConjunctBreak を参照しない形に書き換える→
+        書き換えた。簡単だった。
+
+      * 本当に GraphemeClusterBreak だけで実装できるのか確認する。実際に実装し
+        てみる。
+
+      * 以下はもう使わなくなった IndicConjunctBreak を取得するコード。
+
+        後で使いたくなった時の為に何処かに取っておいた方が良いだろうか。うーん。
+        然し、これはほぼ GraphemeCluster/c2break と実装は同じなので敢えて分かり
+        やすい所に取って置く必要もない。なので、ここに残しておくだけにする。
+
+        | #%< canvas.IndicConjunctBreak.sh
+        |
+        | function ble/unicode/IndicConjunctBreak {
+        |   local code=$1
+        |   ret=${_ble_unicode_IndicConjunctBreak[code]}
+        |   [[ $ret ]] && return 0
+        |   ((ret>_ble_unicode_IndicConjunctBreak_MaxCode)) && { ret=0; return 0; }
+        |
+        |   local l=0 u=${#_ble_unicode_IndicConjunctBreak_ranges[@]} m
+        |   while ((l+1<u)); do
+        |     ((_ble_unicode_IndicConjunctBreak_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+        |   done
+        |
+        |   ret=${_ble_unicode_IndicConjunctBreak[_ble_unicode_IndicConjunctBreak_ranges[l]]:-0}
+        |   _ble_unicode_IndicConjunctBreak[code]=$ret
+        |   return 0
+        | }
+        |
+        | ## @fn ble/unicode/IndicConjunctBreak/get-left str index [opts]
+        | ##   @var[ret] InCB 参考特性の値を返します。
+        | ##   他は ble/unicode/GraphemeClusterBreak/s2break-left と同じです。
+        | function ble/unicode/IndicConjunctBreak/get-left {
+        |   local s=$1 i=$2 opts=$3
+        |   if [[ $opts != *:code:* ]]; then
+        |     local code
+        |     opts=$opts:code
+        |   fi
+        |   ble/unicode/GraphemeClusterBreak/s2break-left "$s" "$i" "$opts"; local ext=$?
+        |   ble/unicode/IndicConjunctBreak "$code"
+        |   return "$ext"
+        | }
+
   * ext/fzf: $() は blink-matching-paren on の時 `` より遅い [#D2077]
     https://github.com/junegunn/fzf/commit/e0b29e437be458066fca4dab39b282dfc11466f6
 

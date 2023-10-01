@@ -34,7 +34,7 @@
 - stty: suggest `stty sane` after exiting from bash >= 5.2 to non-ble session `#D2046` b57ab2d6
 - util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` 1f3cbc01
 - history (`ble/builtin/history`): fix error message on the empty `HISTFILE` `#D2061` a2e2c4b6
-- complete: exit auto-complete mode on complete self-insert `#D2075` xxxxxxxx
+- complete: exit auto-complete mode on complete self-insert `#D2075` 2783d3d0
 
 ## Compatibility
 
@@ -49,13 +49,14 @@
 - edit: update mc-4.8.29 integration (reported by mooreye) `#D2062` 2c4194a2 68c5c5c4
 - make: work around `make-3.81` bug of pattern rules `#D2065` f7ec170b
 - decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` 226f9718
-- canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` xxxxxxxx
+- canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` 31d168cc
+- canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` xxxxxxxx xxxxxxxx
 
 ## Contrib
 
 - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
-- contrib/layer/pattern: add `{pattern}` layer `#D2074` xxxxxxxx
+- contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 
 ## Documentation
 
@@ -71,8 +72,8 @@
 
 - refactor: move files `{keymap/ => lib/keymap.}*` f4c973b8
 - global: fix coding style `#D2072` bdcecbbf
-- memo: add recent configs and create directories `#D2073` xxxxxxxx
-- highlight: generalize `region` layer `#D2074` xxxxxxxx
+- memo: add recent configs and create directories `#D2073` 99cb5e81
+- highlight: generalize `region` layer `#D2074` 449d92ca
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

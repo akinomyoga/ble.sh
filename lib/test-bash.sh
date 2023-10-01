@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 38
+ble/test/start-section 'bash' 49
 
 # case $word を quote する必要がある条件は?
 

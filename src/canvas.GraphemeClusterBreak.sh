@@ -1,4 +1,4 @@
-_ble_unicode_GraphemeClusterBreak_Count=15
+_ble_unicode_GraphemeClusterBreak_Count=18
 _ble_unicode_GraphemeClusterBreak_ZWJ=2
 _ble_unicode_GraphemeClusterBreak_LowSurrogate=14
 _ble_unicode_GraphemeClusterBreak_HighSurrogate=13

@@ -59,13 +59,17 @@ $(OUTDIR)/ble.sh: ble.pp GNUmakefile | .git $(OUTDIR)
 	  $(MWGPP) $< >/dev/null
 .DELETE_ON_ERROR: $(OUTDIR)/ble.sh
 
+GENTABLE := bash make/canvas.c2w.generate-table.sh
+
 src/canvas.c2w.sh:
-	bash make_command.sh generate-c2w-table > $@
+	$(GENTABLE) c2w
 src/canvas.c2w.musl.sh: make/canvas.c2w.wcwidth.cpp make/canvas.c2w.wcwidth-musl.cpp
 	+make -C make canvas.c2w.wcwidth.exe
-	make/canvas.c2w.wcwidth.exe table_musl2014 | bash make_command.sh convert-custom-c2w-table _ble_util_c2w_musl > $@
+	make/canvas.c2w.wcwidth.exe table_musl2014 | $(GENTABLE) convert-custom-c2w _ble_util_c2w_musl > $@
 src/canvas.emoji.sh:
-	bash make_command.sh generate-emoji-table > $@
+	$(GENTABLE) emoji
+src/canvas.GraphemeClusterBreak.sh:
+	$(GENTABLE) GraphemeClusterBreak
 
 #------------------------------------------------------------------------------
 # lib

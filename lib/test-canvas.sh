@@ -404,7 +404,7 @@ fi
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x1F))"' ret="$_ble_unicode_GraphemeClusterBreak_Control"
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x80))"' ret="$_ble_unicode_GraphemeClusterBreak_Control"
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x9F))"' ret="$_ble_unicode_GraphemeClusterBreak_Control"
-  ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x0308))"' ret="$_ble_unicode_GraphemeClusterBreak_Extend"
+  ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x0308))"' ret="$_ble_unicode_GraphemeClusterBreak_InCB_Extend"
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x200C))"' ret="$_ble_unicode_GraphemeClusterBreak_Extend" # ZWNJ
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x200D))"' ret="$_ble_unicode_GraphemeClusterBreak_ZWJ"    # ZWJ
   ble/test 'ble/unicode/GraphemeCluster/c2break "$((0x0600))"' ret="$_ble_unicode_GraphemeClusterBreak_Prepend"
@@ -492,9 +492,10 @@ fi
   fi
 )
 
-ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 3251
+ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 6244
 (
   # Disable terminal-specific tailored grapheme cluster for testing purpose.
+  _ble_unicode_c2w_version=17 # Test cases contain 15.1.0 features
   _ble_unicode_GraphemeClusterBreak_custom=()
 
   bleopt emoji_opts=ri:tpvs:epvs:zwj

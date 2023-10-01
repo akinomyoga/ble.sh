@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if ! declare -f ble/unicode/EmojiStatus &>/dev/null; then
+  source out/ble.sh --lib
+fi
+
 # ble/unicode/EmojiStatus 128512; echo $ret
 # ble/unicode/EmojiStatus 128529; echo $ret
 # ble/unicode/EmojiStatus 128533; echo $ret

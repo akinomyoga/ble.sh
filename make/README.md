@@ -8,3 +8,29 @@
 - `mwg_pp.awk` ... This is a preprocessor program written in AWK, which is used to preprocess and combine multiple shell scripts into a single file `ble.sh`.
   The source repository is [`akinomyoga/mwg_pp`](https://github.com/akinomyoga/mwg_pp).
 - `debug.leakvar.exclude-list.txt` ... This is a white list for the global variables.
+
+
+## `canvas.c2w.generate-table.sh`
+
+This script file downloads data of Unicode properties from Unicode database and
+generates various tables.
+
+```bash
+$ make/canvas.c2w.generate-table.sh c2w
+
+src/canvas.c2w.sh
+
+$ make/canvas.c2w.generate-table.sh convert-custom-c2w <array-name> < input > output
+
+src/canvas.c2w.musl.sh
+
+$ make/canvas.c2w.generate-table.sh emoji
+
+src/canvas.emoji.sh
+
+$ make/canvas.c2w.generate-table.sh GraphemeClusterBreak
+
+src/canvas.GraphemeClusterBreak.sh
+lib/test-canvas.GraphemeClusterTest.sh
+
+```
