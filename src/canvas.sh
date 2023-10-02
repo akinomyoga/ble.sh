@@ -189,7 +189,7 @@ function ble/unicode/c2w {
 ## @bleopt emoji_version
 ##
 ##   ファイル src/canvas.emoji.sh は以下のコマンドで生成する。
-##   $ ./make_command.sh update-emoji-database
+##   $ make/canvas.c2w.generate-table.sh emoji
 ##
 #%< canvas.emoji.sh
 
@@ -414,14 +414,14 @@ function ble/util/c2w:auto/test.buff {
       # index=0,1 [EastAsianWidth=A 判定]
       0x25bd 0x25b6
 
-      # index=2..15 [Unicode version 判定] #D1645 #D1668
+      # index=2..16 [Unicode version 判定] #D1645 #D1668
       #   判定用の文字コードは "source
       #   make/canvas.c2w.list-ucsver-detection-codes.sh" を用いて生
       #   成されたリストから選択した。新しい Unicode version が出たら
       #   再びこれを実行して判定コードを書く事になる。
       0x9FBC 0x9FC4 0x31B8 0xD7B0 0x3099
       0x9FCD 0x1F93B 0x312E 0x312F 0x16FE2
-      0x32FF 0x31BB 0x9FFD 0x1B132)
+      0x32FF 0x31BB 0x9FFD 0x1B132 0x2FFC)
 
     _ble_util_c2w_auto_update_processing=${#codes[@]}
     _ble_util_c2w_auto_update_result=()
@@ -466,7 +466,9 @@ function ble/util/c2w/test.hook {
   local ws
   if [[ $bleopt_char_width_version == auto ]]; then
     ws=("${_ble_util_c2w_auto_update_result[@]:2}")
-    if ((ws[13]==2)); then
+    if ((ws[14]==2)); then
+      bleopt char_width_version=15.1
+    elif ((ws[13]==2)); then
       bleopt char_width_version=15.0
     elif ((ws[11]==2)); then
       if ((ws[12]==2)); then
@@ -810,7 +812,7 @@ function ble/unicode/GraphemeCluster/find-previous-boundary/.RI {
 ##     とします。
 function ble/unicode/GraphemeCluster/find-previous-boundary/.InCB {
   # Grapheme Cluster with InCB is supported by Unicode >= 15.1.0
-  if ((_ble_unicode_c2w_version<17)); then
+  if [[ $bleopt_grapheme_cluster != extended ]] || ((_ble_unicode_c2w_version<17)); then
     ret=$i
     return 0
   fi
@@ -990,7 +992,9 @@ function ble/unicode/GraphemeCluster/match {
     (3) [[ :$bleopt_emoji_opts: == *:zwj:* ]] &&
           ((coreb==_ble_unicode_GraphemeClusterBreak_Pictographic)) || break ;;
     (4) [[ :$bleopt_emoji_opts: == *:ri:* && ! $ri ]] || break; ri=1 ;;
-    (6) ((_ble_unicode_c2w_version>=17&&InCB_state)) || break ;;
+    (6) [[ $bleopt_grapheme_cluster == extended ]] &&
+          ((_ble_unicode_c2w_version>=17&&InCB_state)) ||
+            break ;;
     (5)
       # surrogate pair の間にいた時は GraphemeClusterBreak を取得し直す
       ble/unicode/GraphemeCluster/s2break-left "$text" "$((j+shift))" code; c2=$code b2=$ret ;;

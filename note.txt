@@ -7152,6 +7152,16 @@ bash_tips
         |   return "$ext"
         | }
 
+    2023-10-02 push してから気づいたが detection を更新するのを忘れていた。
+
+    2023-10-02 更に emoji table についても更新するのを忘れていた。但し、15.0 と
+    15.1 には本質的な違いは存在しない様だ。
+
+    2023-10-02 blerc.template を更新する。
+
+    2023-10-02 GraphemeCluster が legacy が extended かで conjunctCluster を処
+    理するかどうかも切り替えるべきでは→条件式を追加する事にした。
+
   * ext/fzf: $() は blink-matching-paren on の時 `` より遅い [#D2077]
     https://github.com/junegunn/fzf/commit/e0b29e437be458066fca4dab39b282dfc11466f6
 

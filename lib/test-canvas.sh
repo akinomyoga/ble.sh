@@ -391,6 +391,7 @@ else
 fi
 
 (
+  bleopt grapheme_cluster=extended
   # Disable terminal-specific tailored grapheme cluster for testing purpose.
   _ble_unicode_GraphemeClusterBreak_custom=()
 
@@ -494,8 +495,9 @@ fi
 
 ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 6244
 (
-  # Disable terminal-specific tailored grapheme cluster for testing purpose.
+  bleopt grapheme_cluster=extended
   _ble_unicode_c2w_version=17 # Test cases contain 15.1.0 features
+  # Disable terminal-specific tailored grapheme cluster for testing purpose.
   _ble_unicode_GraphemeClusterBreak_custom=()
 
   bleopt emoji_opts=ri:tpvs:epvs:zwj

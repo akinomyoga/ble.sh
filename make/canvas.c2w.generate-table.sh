@@ -284,7 +284,7 @@ function sub:convert-custom-c2w {
 function sub:emoji {
   local -x name=${1:-_ble_unicode_EmojiStatus}
 
-  local unicode_version=15.0
+  local unicode_version=15.1
   local cache=out/data/unicode-emoji-$unicode_version.txt
   download "https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt" "$cache"
 

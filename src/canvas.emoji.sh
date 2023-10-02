@@ -90,8 +90,9 @@ function ble/unicode/EmojiStatus/version2index {
   (13.1) ret=11 ;;
   (14.0) ret=12 ;;
   (15.0) ret=13 ;;
+  (15.1) ret=14 ;;
   (*) return 1 ;;
   esac
 }
-_ble_unicode_EmojiStatus_version=13
-bleopt/declare -n emoji_version 15.0
+_ble_unicode_EmojiStatus_version=14
+bleopt/declare -n emoji_version 15.1
