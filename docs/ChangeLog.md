@@ -12,6 +12,7 @@
 - complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
 - menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` 3f31be18 bbf3fed3
 - make: support `make uninstall` `#D2068` a39a4a89
+- edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` xxxxxxxx
 
 ## Changes
 
@@ -50,7 +51,7 @@
 - make: work around `make-3.81` bug of pattern rules `#D2065` f7ec170b
 - decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` 226f9718
 - canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` 31d168cc
-- canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 xxxxxxxx
+- canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 9d84b424
 
 ## Contrib
 

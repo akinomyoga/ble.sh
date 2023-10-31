@@ -2327,7 +2327,8 @@ function ble-detach/message {
 function ble/base/unload-for-reload {
   if [[ $_ble_attached ]]; then
     ble-detach/impl
-    ble/util/print "${_ble_term_setaf[12]}[ble: reload]$_ble_term_sgr0" 1>&2
+    local ret
+    ble/edit/marker#instantiate 'reload' && ble/util/print "$ret" 1>&2
     [[ $_ble_edit_detach_flag ]] ||
       _ble_edit_detach_flag=reload
   fi

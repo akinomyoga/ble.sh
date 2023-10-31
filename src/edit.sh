@@ -235,13 +235,110 @@ bleopt/declare -v accept_line_threshold 5
 
 bleopt/declare -v exec_restore_pipestatus ''
 
+bleopt/declare -v edit_marker $'\e[94m[ble: %s]\e[m'
+bleopt/declare -v edit_marker_error $'\e[91m[ble: %s]\e[m'
+
+## @fn ble/edit/marker#get msg opts
+##   @param[in] msg
+##     string shown in the mark
+##   @param[in,opt] opts
+##     A colon-separated list of the following options:
+##
+##     @opt bare
+##       Do not enclose within `edit_marker` and `edit_marker_error` ([ble: %s]
+##       by default).
+##
+##     @opt error
+##       Use `edit_marker_error` instead of `edit_marker` as the default
+##       format.
+##
+##     @opt non-empty
+##       When `edit_marker` or `edit_marker_error` produces the empty result,
+##       use the default value `[ble: %s]` instead of omitting the marker.
+##
+##   @var[out] ret
+function ble/edit/marker#get {
+  local msg=$1 opts=${2-}
+  ret=$msg
+  if [[ :$opts: != *:bare:* ]]; then
+    if [[ :$opts: == *:error:* ]]; then
+      ble/util/sprintf ret "$bleopt_edit_marker_error" "$ret"
+    else
+      ble/util/sprintf ret "$bleopt_edit_marker" "$ret"
+    fi
+  fi
+  if [[ ! $ret && $msg && :$opts: == *:non-empty:* ]]; then
+    if [[ :$opts: == *:error:* ]]; then
+      ret=$'\e[91m[ble: '$msg$']\e[m'
+    else
+      ret=$'\e[94m[ble: '$msg$']\e[m'
+    fi
+  fi
+  [[ $ret ]]
+}
+
+## @fn ble/edit/marker#instantiate msg config
+##   @param[in] msg
+##     string shown in the mark
+##   @param[in,opt] opts
+##     See the description of ble/edit/marker#get.
+##   @var[out] ret
+function ble/edit/marker#instantiate {
+  ble/edit/marker#get "$@"
+  if [[ $ret ]]; then
+    ret=${ret%$'\e[m'}$'\e[m'
+    x=0 y=0 g=0 LINES=1 ble/canvas/trace "$ret" confine:truncate
+  fi
+  [[ $ret ]]
+}
+
+function ble/edit/marker#declare-config {
+  local name=$1 value=$2 opts=$3
+  if [[ :$opts: == *:error:* ]]; then
+    value=$'\e[91m[ble: '$value$']\e[m'
+  else
+    value=$'\e[94m[ble: '$value$']\e[m'
+  fi
+  bleopt/declare -v "$name" "$value"
+}
+
+## @fn ble/edit/marker#get-config config_name
+##   @param[in] config
+##      bleopt config name
+##   @var[out] ret
+function ble/edit/marker#get-config {
+  bleopt/default "$1"
+  local default_value=$ret
+  local current_ref=bleopt_$1
+  local current_value=${!current_ref}
+
+  ret=$current_value
+  if [[ $current_value == "$default_value" ]]; then
+    if ble/string#match "$current_value" $'^\e\[94m\[ble: (.*)]\e\[m$'; then
+      ble/util/sprintf ret "$bleopt_edit_marker" "${BASH_REMATCH[1]}"
+    elif ble/string#match "$current_value" $'^\e\[91m\[ble: (.*)\]\e\[m$'; then
+      ble/util/sprintf ret "$bleopt_edit_marker_error" "${BASH_REMATCH[1]}"
+    fi
+  fi
+  [[ $ret ]]
+}
+
+function ble/edit/marker#instantiate-config {
+  ble/edit/marker#get-config "$1" &&
+    ret=${ret%$'\e[m'}$'\e[m' &&
+    x=0 y=0 g=0 LINES=1 ble/canvas/trace "$ret" confine:truncate
+  [[ $ret ]]
+}
+
 ## @bleopt exec_errexit_mark
 ##   終了ステータスが非零の時に表示するマークの書式を指定します。
 ##   この変数が空の時、終了ステータスは表示しません。
-bleopt/declare -v exec_errexit_mark $'\e[91m[ble: exit %d]\e[m'
+ble/edit/marker#declare-config exec_errexit_mark 'exit %d' error
 
-bleopt/declare -v exec_elapsed_mark $'\e[94m[ble: elapsed %s (CPU %s%%)]\e[m'
+ble/edit/marker#declare-config exec_elapsed_mark 'elapsed %s (CPU %s%%)'
 bleopt/declare -v exec_elapsed_enabled 'usr+sys>=10000'
+
+ble/edit/marker#declare-config exec_exit_mark 'exit'
 
 ## @bleopt line_limit_length
 ##   一括挿入時のコマンドライン文字数の上限を指定します。
@@ -1651,7 +1748,9 @@ if ble/is-function ble/util/idle.push; then
   _ble_prompt_timeout_lineno=
   function ble/prompt/timeout/process {
     ble/util/idle.suspend # exit に失敗した時の為 task を suspend にする
-    local msg="${_ble_term_setaf[12]}[ble: auto-logout]$_ble_term_sgr0 timed out waiting for input"
+
+    ble/edit/marker#instantiate 'auto-logout' non-empty
+    local msg="$ret timed out waiting for input"
     ble/widget/.internal-print-command '
       ble/util/print "$msg"
       builtin exit 0 &>/dev/null
@@ -4974,7 +5073,9 @@ function ble/widget/exit {
       else
         message='There are remaining jobs. Use "exit" to leave the shell.'
       fi
-      ble/widget/internal-command "ble/util/print '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
+      local ret
+      ble/edit/marker#instantiate "$message" non-empty
+      ble/widget/internal-command "ble/util/print '${ret//$q/$Q}'; jobs"
       return "$?"
     fi
   elif [[ :$opts: == *:checkjobs:* ]]; then
@@ -4995,7 +5096,8 @@ function ble/widget/exit {
   local -a DRAW_BUFF=()
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble/canvas/bflush.draw
-  ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
+  ble/edit/marker#instantiate-config exec_exit_mark
+  ble/util/buffer.print "$ret"
   ble/util/buffer.flush >&2
 
   # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
@@ -6035,7 +6137,9 @@ function ble/builtin/exit {
         esac
       done
     fi
-    ble/util/print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+    local ret
+    ble/edit/marker#instantiate-config exec_exit_mark &&
+      ble/util/print "$ret" >&2
   fi
 
   # Note #D1765: Bash 4.4..5.1 では "{ time { exit 2>/dev/tty; } } 2>/dev/null"
@@ -6801,16 +6905,16 @@ function ble-edit/exec:gexec/.epilogue {
   if ((_ble_edit_exec_lastexit)); then
     # ERREXEC処理
     ble-edit/exec:gexec/invoke-hook-with-setexit ERREXEC "$_ble_edit_exec_BASH_COMMAND"
-    if [[ $bleopt_exec_errexit_mark ]]; then
-      local ret
-      ble/util/sprintf ret "$bleopt_exec_errexit_mark" "$_ble_edit_exec_lastexit"
+    if local ret; ble/edit/marker#get-config exec_errexit_mark; then
+      ble/util/sprintf ret "$ret" "$_ble_edit_exec_lastexit"
       msg=$ret
     fi
   fi
 
   if ble/exec/time#mark-enabled; then
-    local format=$bleopt_exec_elapsed_mark
-    if [[ $format ]]; then
+    if local ret; ble/edit/marker#get-config exec_elapsed_mark; then
+      local format=$ret
+
       # ata
       local ata=$((_ble_exec_time_ata/1000))
       if ((ata<1000)); then
@@ -6846,10 +6950,8 @@ function ble-edit/exec:gexec/.epilogue {
     fi
   fi
 
-  if [[ $msg ]]; then
-    x=0 y=0 g=0 LINES=1 ble/canvas/trace "$msg" confine:truncate
-    ble/util/buffer.print "$ret"
-  fi
+  local ret
+  ble/edit/marker#instantiate "$msg" bare && ble/util/buffer.print "$ret"
 
   # bleopt prompt_ruler
   local -a DRAW_BUFF=()
@@ -7203,7 +7305,11 @@ function ble/widget/default/accept-line {
   ble/history/add "$command"
 
   _ble_edit_CMD=$old_cmd ble/widget/.newline # #D1800 register
-  [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $command"
+  if [[ $hist_is_expanded ]]; then
+    local ret
+    ble/edit/marker#instantiate 'expand' non-empty
+    ble/util/buffer.print "$ret $command"
+  fi
 }
 
 function ble/widget/accept-and-next {
@@ -7317,7 +7423,8 @@ function ble/widget/edit-and-execute-command.impl {
   fi
 
   # Note: accept-line を参考にした
-  ble/util/buffer.print "${_ble_term_setaf[12]}[ble: fc]$_ble_term_sgr0 $command"
+  ble/edit/marker#instantiate 'fc' non-empty
+  ble/util/buffer.print "$ret $command"
   ble/history/add "$command"
   ble-edit/exec/register "$command"
 }
@@ -10248,7 +10355,9 @@ function ble-edit/bind/.check-detach {
   if [[ ! -o emacs && ! -o vi ]]; then
     # 実は set +o emacs などとした時点で eval の評価が中断されるので、これを検知することはできない。
     # 従って、現状ではここに入ってくることはないようである。
-    ble/util/print "${_ble_term_setaf[9]}[ble: unsupported]$_ble_term_sgr0 Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
+    local ret
+    ble/edit/marker#instantiate 'unsupported' error:non-empty
+    ble/util/print "$ret Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
     ble-detach
   fi
 
@@ -10267,15 +10376,19 @@ function ble-edit/bind/.check-detach {
       # ※この部分は現在使われていない。
       #   exit 時の処理は trap EXIT を用いて行う事に決めた為。
       #   一応 _ble_edit_detach_flag=exit と直に入力する事で呼び出す事はできる。
-      ble-detach/message "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
+      local ret
+      ble/edit/marker#instantiate-config exec_exit_mark &&
+        ble-detach/message "$ret"
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
       # シグナルハンドラの中から exit すれば stty がそのままの状態で抜けられる様なのでそうする。
       builtin trap 'ble-edit/bind/.exit-TRAPRTMAX' RTMAX
       kill -RTMAX $$
     else
+      local ret
+      ble/edit/marker#instantiate 'detached' non-empty
       ble-detach/message \
-        "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" \
+        ${ret+"$ret"} \
         "Please run \`stty sane' to recover the correct TTY state."
 
       if ((_ble_bash>=40000)); then
@@ -10509,12 +10622,14 @@ function ble-decode/INITIALIZE_DEFMAP {
   fi
 
   # エラーメッセージ
+  ble/edit/marker#instantiate "The definition of the default keymap \"$defmap\" is not found. ble.sh uses \"safe\" keymap instead." error
+  local msg=$ret
+
   ble/edit/enter-command-layout # #D1800 pair=leave-command-layout
   ble/widget/.hide-current-line
+
   local -a DRAW_BUFF=()
-  ble/canvas/put.draw "$_ble_term_cr$_ble_term_el${_ble_term_setaf[9]}"
-  ble/canvas/put.draw "[ble.sh: The definition of the default keymap \"$defmap\" is not found. ble.sh uses \"safe\" keymap instead.]"
-  ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_nl"
+  ble/canvas/put.draw "$_ble_term_cr$_ble_term_el$msg$_ble_term_nl"
   ble/canvas/bflush.draw
   ble/util/buffer.flush >&2
   ble/edit/leave-command-layout # #D1800 pair=enter-command-layout

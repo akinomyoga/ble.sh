@@ -230,8 +230,20 @@
 #bleopt exec_restore_pipestatus=1  # restores PIPESTATUS
 
 
+## "edit_marker" and "edit_marker_error" define the default styles of the
+## markers [ble: ...] used by ble.sh.  "edit_marker" is used for the normal
+## notifications, and "edit_marker_error" is used for the error information.
+## When they are set to an empty string, those markers are disabled (unless
+## additional information other than the markers needs to be output after the
+## markers).  Those default styles can be overridden by specific mark settings,
+## such as `exec_errexit_mark`, `exec_elapsed_mark`, and `exec_exit_mark`.
+
+#bleopt edit_marker=$'\e[94m[ble: %s]\e[m'
+#bleopt edit_marker_error=$'\e[91m[ble: %s]\e[m'
+
+
 ## "exec_errexit_mark" specifies the format of the mark to show the exit status
-## of the command when it is non-zero.  If this setting is an empty string the
+## of the command when it is non-zero.  If this setting is an empty string, the
 ## exit status will not be shown.  The value can contain ANSI escape sequences.
 
 #bleopt exec_errexit_mark=$'\e[91m[ble: exit %d]\e[m'
@@ -254,6 +266,12 @@
 
 #bleopt exec_elapsed_mark=$'\e[94m[ble: elapsed %s (CPU %s%%)]\e[m'
 #bleopt exec_elapsed_enabled='usr+sys>=10000'
+
+
+## "exec_exit_mark" specifies the marker printed when the bash session ends.
+## When an empty string is specified, the marker is disabled.
+
+#bleopt exec_exit_mark=$'\e[94m[ble: exit]\e[m'
 
 
 ## The following setting controls the exit when jobs are remaining. When an

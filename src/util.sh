@@ -28,6 +28,7 @@ function bleopt/.read-arguments/process-option {
 }
 
 ## @fn bleopt/expand-variable-pattern pattern opts
+##   @param[in] pattern
 ##   @var[out] ret
 function bleopt/expand-variable-pattern {
   ret=()
@@ -134,6 +135,11 @@ function bleopt/.read-arguments {
 function bleopt/changed.predicate {
   local cur=$1 def=_ble_opt_def_${1#bleopt_}
   [[ ! ${!def+set} || ${!cur} != "${!def}" ]]
+}
+
+function bleopt/default {
+  local def=_ble_opt_def_${1#bleopt_}
+  ret=${!def}
 }
 
 ## @fn bleopt args...
@@ -2908,7 +2914,7 @@ function ble/fd#close-all-tty {
 ## @fn ble/util/nohup command [opts]
 ##   @param[in] command
 ##   @param[in,opt] opts
-##     @opts print-bgpid
+##     @opt print-bgpid
 function ble/util/nohup {
   if ((!BASH_SUBSHELL)); then
     (ble/util/nohup "$@")
@@ -7340,7 +7346,7 @@ function ble/util/message.process {
       ble/util/message/handler:"$_ble_local_event" "$_ble_local_data"
     done
 
-    ((${#_ble_local_remove[@]})) &&ble/bin/rm -f "${_ble_local_remove[@]}" ;;
+    ((${#_ble_local_remove[@]})) && ble/bin/rm -f "${_ble_local_remove[@]}" ;;
   (*)
     ble/util/print "ble/util/message: unknown event type '$event'" >&2
     return 2 ;;
