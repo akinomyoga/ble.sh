@@ -7079,6 +7079,13 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-11-01
+
+  * github: 寄付に関して (requested by gvlassis) [#D2080]
+    https://github.com/akinomyoga/ble.sh/issues/367
+
+    よく分からないが取り敢えず設定してみた。
+
 2023-10-29
 
   * edit: [ble: exit] を off にしたいという要望 (requested by gvlassis) [#D2079]

@@ -63,6 +63,7 @@
 
 - docs(CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
 - docs(README): fix dead links to blerc.template (fixed by weskeiser) e0f3ac28
+- github: add FUNDING `#D2080` xxxxxxxx
 
 ## Test
 
