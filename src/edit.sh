@@ -5955,6 +5955,49 @@ function ble/widget/transpose-XWORDs { ble/widget/transpose-words.impl XWORD; }
 #%expand 2.r/XWORD/sword/
 #%expand 2.r/XWORD/fword/
 
+function ble/widget/zap-to-char.hook {
+  local code ret char
+  ble/widget/self-insert/.get-code
+  ble/util/c2s "$code"
+  char=$ret
+  
+  # search nth occurrence of `char` and send it to the kill ring
+  local arg; ble-edit/content/get-arg 1
+  if ((arg>=0)); then
+    ((arg==0)) && arg=1
+    if ble/string#index-of "${_ble_edit_str:_ble_edit_ind}" "$char" "$arg"; then
+      ble/widget/.kill-range "$_ble_edit_ind" "$((_ble_edit_ind+ret+${#char}))"
+      return "$?"
+    fi
+  else
+    if ble/string#last-index-of "${_ble_edit_str::_ble_edit_ind}" "$char" "$((-arg))"; then
+      ble/widget/.kill-range "$ret" "$_ble_edit_ind"
+      return "$?"
+    fi
+  fi
+
+  if ((arg>0)); then
+    if ((arg==-1)); then
+      ble/widget/.bell "last char '$char' not found"
+    else
+      ble/widget/.bell "$((-arg))th last char '$char' not found"
+    fi
+  else
+    if ((arg==1)); then
+      ble/widget/.bell "next char '$char' not found"
+    else
+      ble/widget/.bell "$arg-th next char '$char' not found"
+    fi
+  fi
+
+  return 0
+}
+function ble/widget/zap-to-char {
+  _ble_edit_mark_active=
+  _ble_decode_key__hook=ble/widget/zap-to-char.hook
+  return 147
+}
+
 #------------------------------------------------------------------------------
 # **** ble-edit/exec ****                                            @edit.exec
 
@@ -9553,7 +9596,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'f1'       command-help
   ble-bind -f 'C-x C-v'  display-shell-version
   ble-bind -c 'C-z'      fg
-  ble-bind -c 'M-z'      fg
+  ble-bind -f 'M-z'      zap-to-char
 }
 
 function ble-edit/bind/load-editing-mode:safe {

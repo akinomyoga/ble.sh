@@ -7985,7 +7985,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-C-e'     'shell-expand-line'
   ble-bind -f 'M-&'       'tilde-expand'
   ble-bind -f 'C-M-g'     'bell'
-  ble-bind -c 'M-z'       'fg'
+  ble-bind -f 'M-z'       'zap-to-char'
 
   #----------------------------------------------------------------------------
   # from ble-decode/keymap:safe/bind-common

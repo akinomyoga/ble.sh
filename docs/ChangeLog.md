@@ -12,7 +12,8 @@
 - complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
 - menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` 3f31be18 bbf3fed3
 - make: support `make uninstall` `#D2068` a39a4a89
-- edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` xxxxxxxx
+- edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` e4e1c874
+- edit: add widget `zap-to-char` `#D2082` xxxxxxxx
 
 ## Changes
 
@@ -63,7 +64,7 @@
 
 - docs(CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
 - docs(README): fix dead links to blerc.template (fixed by weskeiser) e0f3ac28
-- github: add FUNDING `#D2080` xxxxxxxx
+- github: add FUNDING `#D2080` 3f133936
 
 ## Test
 
