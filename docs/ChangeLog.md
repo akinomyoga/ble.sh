@@ -59,6 +59,7 @@
 - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
+- contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` xxxxxxxx
 
 ## Documentation
 

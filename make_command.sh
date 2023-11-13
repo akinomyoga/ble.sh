@@ -327,7 +327,7 @@ function sub:scan/bash502-patsub_replacement {
       \Z/\$\(\([^()]+\)\)\}Zd
       \Z/\$'\''([^\\]|\\.)+'\''\}Zd
 
-      \Z\$\{[_a-zA-Z0-9]+//(ARR|DICT|PREFIX|NAME)/\$([_a-zA-Z0-9]+|\{[_a-zA-Z0-9#:-]+\})\}Zd
+      \Z\$\{[_a-zA-Z0-9]+//(ARR|DICT|PREFIX|NAME|LAYER)/\$([_a-zA-Z0-9]+|\{[_a-zA-Z0-9#:-]+\})\}Zd
       \Z\$\{[_a-zA-Z0-9]+//'\''%[dlcxy]'\''/\$[_a-zA-Z0-9]+\}Zd # src/canvas.sh
 
       \Z#D1738Zd

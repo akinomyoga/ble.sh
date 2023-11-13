@@ -1951,12 +1951,19 @@ bash_tips
   * complete: copilot
     https://github.com/akinomyoga/ble.sh/issues/358
 
-    * copilot completion bash
-      https://aws.github.io/copilot-cli/ja/docs/commands/completion/これは公式
+    * reject: AWS Copilog CLI (copilot completion bash)
+      https://aws.github.io/copilot-cli/ja/docs/commands/completion/ これは公式
       の copilot for shell の様な気がする。一番初めにチェックするべきはこれの気
       がする。copilot バイナリは何処で手に入るのかと思ったが standalone binary
       がある。
       https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+
+      →うーん。上記の例は単に copilot コマンドのコマンド引数を補完する為の補完
+      設定だった。更に、試してみた所 github-copilot-cli と互換なサブコマンドは
+      提供されていない。そもそも AWS Copilot CLI は AI とは何も関係ない、AWS の
+      コンテナ等を管理する為のコマンド? の様だ。
+
+      全く関係ない物だった。
 
     * これは GPT に質問をしてコマンドを生成させるという事をしている。
       https://github.com/tom-doerr/zsh_codex/tree/main
@@ -1967,12 +1974,20 @@ bash_tips
       しまう可能性もあるのではないか。具体的にどのようにしたら良いのかの例はあ
       るのだろうか。
 
-    * github-copilot-cli (fish)
-      https://zenn.dev/tunefs/articles/b284d532ed5460
-      これは github-copilot-cli というのを呼び出しているみたいがだが、
-      github-copilot-cli は入力中のプロンプトの編集を手伝ってくれるのではなくて、
-      呼び出すと独自のインターフェイスに入ってコマンドを実行してくれるだけである。
-      https://www.npmjs.com/package/@githubnext/github-copilot-cli
+    * GitHub Copilot CLI
+
+      * github-copilot-cli (fish)
+        https://zenn.dev/tunefs/articles/b284d532ed5460
+        これは github-copilot-cli というのを呼び出しているみたいがだが、
+        github-copilot-cli は入力中のプロンプトの編集を手伝ってくれるのではなくて、
+        呼び出すと独自のインターフェイスに入ってコマンドを実行してくれるだけである。
+        https://www.npmjs.com/package/@githubnext/github-copilot-cli
+
+      * 取り敢えず以下の頁を参考にして登録してみる事にした。
+
+        https://zenn.dev/k9i/articles/56920952ce9644
+
+      waitlist で待たなければならない。
 
 2023-09-02
 
@@ -7070,6 +7085,20 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-11-10
+
+  * contrib/integration/fzf-git: エラーメッセージが出る (reported by dgudim) [#D2083]
+
+    どうも fzf-git の一部の binding は自身を独立したシェルスクリプトとして起動
+    して何か処理を実行しようとする様である。元の fzf-git の repository を見ると
+    確かにそういう機能があって、それ自身で呼び出して使っている。使わない機能だ
+    と思って勝手に porting をスキップしたのが駄目だった。
+
+    取り敢えずそのままコピーして来て体裁を整える。
+
+    * 序に元からあった部分で自身のスクリプトの位置 __fzf_git を特定するのに使っ
+      ている readlink を自前の readlink に置き換える事にした。動いている。
 
 2023-11-08
 
