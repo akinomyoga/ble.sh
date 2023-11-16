@@ -53,6 +53,7 @@
 - decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` 226f9718
 - canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` 31d168cc
 - canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 9d84b424
+- complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` xxxxxxxx
 
 ## Contrib
 

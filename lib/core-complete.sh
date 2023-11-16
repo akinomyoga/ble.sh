@@ -3590,7 +3590,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
   return 0
 } 2>/dev/null
 
-function ble/complete/progcomp/.cobraV2.patch {
+function ble/complete/progcomp/patch:cobraV2/extract_activeHelp.patch {
   local cobra_version=$1
   if ((cobra_version<10500)); then
     local -a completions
@@ -3626,6 +3626,21 @@ function ble/complete/progcomp/.cobraV2.patch {
     fi
     ble/function#advice/do
   fi
+}
+
+function ble/complete/progcomp/patch:cobraV2/get_completion_results.advice {
+  local -a orig_words
+  orig_words=("${words[@]}")
+  local -a words
+  words=(ble/complete/progcomp/patch:cobraV2/get_completion_results.invoke "${orig_words[@]:1}")
+  ble/function#advice/do
+}
+function ble/complete/progcomp/patch:cobraV2/get_completion_results.invoke {
+  local -a invoke_args; invoke_args=("$@")
+  local invoke_command="${orig_words[0]} \"\${invoke_args[@]}\""
+  ble/util/conditional-sync \
+    'builtin eval -- "$invoke_command"' \
+    "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall
 }
 
 ## @fn ble/complete/progcomp/.compgen opts
@@ -3735,7 +3750,18 @@ function ble/complete/progcomp/.compgen {
         if ble/is-function "__${comp_func#__start_}_extract_activeHelp"; then
           cobra_version=10500 # v1.5.0 (Release 2022-06-21)
         fi
-        ble/function#advice around "$target" "ble/complete/progcomp/.cobraV2.patch $cobra_version"
+        ble/function#advice around "$target" "ble/complete/progcomp/patch:cobraV2/extract_activeHelp.patch $cobra_version"
+      fi
+
+      # https://github.com/akinomyoga/ble.sh/issues/353#issuecomment-1813801048
+      # Note: Some programs can be slow to generate completions for internet
+      # access or another reason.  Since the go programs called by cobraV2
+      # completions are supposed to be an independent executable file (without
+      # being shell functions), we can safely call them inside a subshell for
+      # ble/util/conditional-sync.
+      local target=__${comp_func#__start_}_get_completion_results
+      if ble/is-function "$target"; then
+        ble/function#advice around "$target" ble/complete/progcomp/patch:cobraV2/get_completion_results.advice
       fi
     fi
 

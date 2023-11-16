@@ -7086,6 +7086,21 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-11-16
+
+  * completino(kubectl): 補完で hang する。timeout は 32s ある (reported by sebhoss) [#D2084]
+    https://github.com/akinomyoga/ble.sh/issues/353#issuecomment-1811985511    
+
+    提供された補完設定を確認する限りは cobraV2 による補完設定の様である。実際に
+    binary を呼んでいる箇所を conditional-sync に置き換えれば十分だろう。binary
+    は words[0] を使って読み取っている。基本的には words[0] を置き換えるだけで
+    処理を摩り替える事ができるだろう。実装した。
+
+    動作確認も行った。kubectl に対しては確認していないが gh に対して gh を
+    sleep 5 に置き換える事によって遅い時の振る舞いのテストを行った。置き換える
+    前はちゃんと動いていて、置き換えた後も補完は動かないが block する事なく入力
+    する事ができる。OK
+
 2023-11-10
 
   * contrib/integration/fzf-git: エラーメッセージが出る (reported by dgudim) [#D2083]
