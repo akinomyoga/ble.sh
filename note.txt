@@ -7088,7 +7088,24 @@ bash_tips
 
 2023-11-16
 
-  * completino(kubectl): 補完で hang する。timeout は 32s ある (reported by sebhoss) [#D2084]
+  * complete: " {," まで入力すると mandb 関連のエラーが表示される [#D2085]
+
+    エラーメッセージは以下の通り
+
+      bash: /home/murase/.mwg/src/ble.sh/out/cache.d/1000/complete.mandb/ja_JP.UTF-8/: ディレクトリです
+
+    これは何処から発生しているエラーだろうか。うーん。調べてみると
+    ble/complete/mandb/generate-cache でコマンド名をファイル名として生成したオ
+    プション一覧をキャッシュしている。そもそも空のコマンド名に対して補完が試み
+    られる理由が分からない…と思ったが "{," でも同様のエラーが発生する様なので
+    現在入力している単語がコマンド名だと思われていて "{,}" の展開結果が空文字列
+    だから空のコマンド名で mandb が呼びされているという事の気がする。
+
+    x と思ったら今度は BASH_ALIASES にて "誤った添字の配列" のエラーになる。こ
+      れらは ble/alias#* 関連について、空のコマンド名についてチェックしてから
+      BASH_ALIASES を確認すれば良い。修正した。動いている。
+
+  * complete(kubectl): 補完で hang する。timeout は 32s ある (reported by sebhoss) [#D2084]
     https://github.com/akinomyoga/ble.sh/issues/353#issuecomment-1811985511    
 
     提供された補完設定を確認する限りは cobraV2 による補完設定の様である。実際に

@@ -13,7 +13,7 @@
 - menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` 3f31be18 bbf3fed3
 - make: support `make uninstall` `#D2068` a39a4a89
 - edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` e4e1c874
-- edit: add widget `zap-to-char` `#D2082` xxxxxxxx
+- edit: add widget `zap-to-char` `#D2082` ce7ce403
 
 ## Changes
 
@@ -37,6 +37,7 @@
 - util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` 1f3cbc01
 - history (`ble/builtin/history`): fix error message on the empty `HISTFILE` `#D2061` a2e2c4b6
 - complete: exit auto-complete mode on complete self-insert `#D2075` 2783d3d0
+- complete: fix error messages on empty command names `#D2085` xxxxxxxx
 
 ## Compatibility
 
@@ -53,14 +54,14 @@
 - decode: work around `convert-meta on` in bash >= 5.2 with broken locale (reported by 3ximus) `#D2069` 226f9718
 - canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` 31d168cc
 - canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 9d84b424
-- complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` xxxxxxxx
+- complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` 595f905b
 
 ## Contrib
 
 - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
-- contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` xxxxxxxx
+- contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
 
 ## Documentation
 

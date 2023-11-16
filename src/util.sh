@@ -2679,11 +2679,11 @@ function ble/util/type {
 
 if ((_ble_bash>=40000)); then
   function ble/is-alias {
-    [[ ${BASH_ALIASES[$1]+set} ]]
+    [[ $1 && ${BASH_ALIASES[$1]+set} ]]
   }
   function ble/alias#active {
     shopt -q expand_aliases &&
-      [[ ${BASH_ALIASES[$1]+set} ]]
+      [[ $1 && ${BASH_ALIASES[$1]+set} ]]
   }
   ## @fn ble/alias#expand word
   ##   @var[out] ret
@@ -2691,7 +2691,7 @@ if ((_ble_bash>=40000)); then
   ##     エイリアス展開が実際に行われた時に成功します。
   function ble/alias#expand {
     ret=$1
-    shopt -q expand_aliases &&
+    shopt -q expand_aliases && [[ $1 ]] &&
       ret=${BASH_ALIASES[$ret]-$ret}
   }
   function ble/alias/list {

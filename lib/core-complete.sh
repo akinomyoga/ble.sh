@@ -5183,6 +5183,7 @@ function ble/complete/mandb:bash-completion/_get_help_lines.advice {
 ##     キャッシュファイル名を返します。
 function ble/complete/mandb/generate-cache {
   local command=${1##*/}
+  [[ $command ]] || return 1
   local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
   local mandb_cache_dir=$_ble_base_cache/complete.mandb/${lc_messages//'/'/%}
   local fcache=$mandb_cache_dir/$command
