@@ -13,7 +13,7 @@ You can freely create an issue using the following links:
 
 ### Pull requests
 
-We always welcome following types of pull requests. Any changes will be considered to be provided under the BSD 3-Clause License.
+We always welcome the following types of pull requests. Any changes will be considered to be provided under the BSD 3-Clause License.
 If you do not know whether your changes would be appropriate for merge, please feel free to create a pull request and let us talk with each other!
 
 - Better translation to English, typo fixes
@@ -43,9 +43,9 @@ which will be sourced after the load of `ble.sh` just before sourcing user's con
 - The function named `ble/base/package:TYPE/update` (where `TYPE`
   matches with a value assigned to `_ble_base_package_type`) may be
   provided to define a custom updating procedure.  The exit status of the function can be
-  - `0` ... when the update successed
+  - `0` ... when the update succeeded
   - `6` ... when the update was skipped because the package was up to date.
-  - `125` ... when it wants to fallback to the built-in updating procedure of `ble.sh`.
+  - `125` ... when it wants to fall back to the built-in updating procedure of `ble.sh`.
   - Other ... when the update failed
 
 An example `lib/_package.sh` might be
@@ -114,7 +114,7 @@ $ bash out/ble.sh --test
 
 ```
 
-Currently test coverage is very small
+Currently, test coverage is very small
 partly because the testing for interactive behavior and terminal rendering results is hard.
 Nevertheless, the tests are defined in the following files:
 
@@ -135,7 +135,7 @@ Nevertheless, it would be useful to follow the styles when you are going to subm
 
 ### Naming convention for functions
 
-The function names roughly has the following structure, but the rule is ambiguous to some extent, and there are also many exceptions in the codebase.
+The function names roughly have the following structure, but the rule is ambiguous to some extent, and there are also many exceptions in the codebase.
 
 ```ebnf
 function_name = (namespace '/')* function_basename ;
@@ -148,7 +148,7 @@ function_basename = name ext?                        (* namespace function      
                   | class '#' class '::' name ext?   (* instance method (override)      *)
                   | type ':' name ext? ;             (* customization point             *)
 
-name = hyphenated_name extension                     (* public                          *)
+name = hyphenated_name                               (* public                          *)
      | '.' hyphenated_name ;                         (* private                         *)
 
 ext = '.hook'                                        (* hook functions for blehook      *)
@@ -170,7 +170,7 @@ word = /[_a-zA-Z0-9]+/ ;
 The function names are basically hyphenated words (such as `foo-bar-baz` instead of `foo_bar_baz`, `fooBarBaz`, or `FooBarBaz`).
 
 **Namespace**--The function names can be prefixed by namespaces of the form `<namespace>/`.
-Except for the functions intended to be called from the command line or the user configuration, all the function should be defined in a namespace.
+Except for the functions intended to be called from the command line or the user configuration, all the functions should be defined in a namespace.
 The interface of the functions defined in a namespace is subject to change in the future.
 A function name can also be used as the namespace name for the helper functions to implement the function.
 For the functions defined in external modules, the following namespace should be used to avoid conflicts:
@@ -229,7 +229,7 @@ The variables defined in external modules should be namespaced by the module nam
 The variables in modules in the `contrib` repository should have the prefix `_ble_contrib_<module_name>_`
 
 - <sup><b>[Note 1]</b></sup> In the initial implementation of ble.sh, the ble.sh options are provided as shell variables `bleopt_*`.
-As remnant or for the backward compatibility, the values of ble.sh options are still stored in the variables of the name `bleopt_*`,
+As remnant or for backward compatibility, the values of ble.sh options are still stored in the variables of the name `bleopt_*`,
 but these variables for the ble.sh options will be renamed in the future.
 
 ### Function interface
@@ -239,28 +239,28 @@ The success/failure states should be returned by the exit status.
 **`ret`**--All the other values should be basically returned through shell variables.
 This is because, if a function returned its result through the standard output,
 the caller would need to capture the results by a command substitution which involves a fork of a subshell and thus is slow.
-Here, the efficiency is the primary interest, so there are exceptions where the standard output can be more efficient:
-For examples, when the output needs to be saved to a file for later use or to pass it to a different process,
-or when the output needs to be processed by the external commands that reads the standard input.
-The variable name to return a value should be basically `ret` unless the purpose of function is to store values.
-When the function basename has the form `get-<name>`, one should consider retruning the result through the shell variable named `<name>`.
-When a function returning multiple values is called from many places, the function may receive an array name as the first argument and stores the result in the specified array.
+Here, efficiency is the primary interest, so there are exceptions where the standard output can be more efficient:
+For example, when the output needs to be saved to a file for later use or to be passed to a different process,
+or when the output needs to be processed by the external commands that read the standard input.
+The variable name to return a value should be basically `ret` unless the purpose of the function is to store values.
+When the function basename has the form `get-<name>`, one should consider returning the result through the shell variable named `<name>`.
+When a function returning multiple values is called from many places, the function may receive an array name as the first argument and store the result in the specified array.
 When the <i>out</i> variable names are specified in the arguments, they should come first in the list of the arguments.
 
 **`opts`**--The argument position should be basically fixed (e.g., never shifted by optional arguments like `-f` or `-o name`).
-The optional arguments can be specified by a colon-separated fields (like `SHELLOPTS` or `BASHOPTS`)
-instead of the unix-style flags and options like `-f` and `-o optarg`.
-This is because usually the parsing of the unix-style arguments (with or without `getopts`) is slow.
+The optional arguments can be specified by colon-separated fields (like `SHELLOPTS` or `BASHOPTS`)
+instead of the Unix-style flags and options like `-f` and `-o optarg`.
+This is because the parsing of the Unix-style arguments (with or without `getopts`) is usually slow.
 The local variable that receives the colon-separated option typically has the name `opts` or `*opts` (e.g. `local opts=$2`).
 A single option has the form `name` or `name=value`,
-where `name` should be a hyphenated words like `foo-bar-baz`.
+where `name` should be hyphenated words like `foo-bar-baz`.
 The former form without the value is called a flag option.
 One can test a flag option by `[[ :$opts: == *:flag-name:* ]]`.
 An option of the form `name=value` can be matched by `ble/opts#extract-first-optarg`, `ble/opts#extract-last-optarg`, or `ble/opts#extract-all-optargs`.
-The function `ble/opts#has` can be used to test if either of `name` or `name=value` is contained
+The function `ble/opts#has` can be used to test if either `name` or `name=value` is contained
 
 **`$*`**--The functions that receive a string should not allow a variable number of arguments that are joined inside the function.
-A variable number of arguments should be only used when each argument is really processed separatedly.
+A variable number of arguments should be used only when each argument is really processed separately.
 If necessary, the joining should be performed at the caller side.
 This is because `IFS` in the caller context affects the joining `$*`, so the handling of `IFS` should be properly done at the caller side.
 Another reason is for the future extension, e.g., to add another optional argument.
@@ -270,7 +270,7 @@ Another reason is for the future extension, e.g., to add another optional argume
 Local variables should be declared by `local` (instead of `declare` or `typeset`).
 Variables should be always initialized before referencing their values. This is because uninitialized variables can have random values when `shopt -s localvar_inherit` is turned on.
 
-The declaration and the initialization of an array variable should be separated as far as the initializer values contain any expansions or any spaces.
+The declaration and the initialization of an array variable should be separated as far as the initializer values contain any expansions or spaces.
 There is a bug in Bash 3.0 that the values are separated by whitespaces even when the values are quoted.
 When the declaration and the initialization of an array variable are made in a single command, the option `-a` needs to be specified.
 Without `-a`, the entire list `(...)` including the surrounding parens will be treated as a scalar string in Bash 3.0.
@@ -306,11 +306,11 @@ unless raw special characters ``[[:space:]|&;<>\`"$]`` are contained in the argu
 **No `-eq` etc**--Basically use arithmetic commands `((expr))`
 instead of the operators `-eq`, `-ne`, `-gt`, `-ge`, `-lt`, and `-le` of the conditional command.
 They might be used when the test is used as a part of complicated conditions in the conditional commands.
-For example, `[[ -f $file || $word && word -eq 0 ]]` can be used instead of `[[ -f $file ]] || { [[ $word ]] && ((word == 0)); }` becausing sticking with the arithmetic command would unnecessarily complicate the code in this case.
+For example, `[[ -f $file || $word && word -eq 0 ]]` can be used instead of `[[ -f $file ]] || { [[ $word ]] && ((word == 0)); }` because sticking with the arithmetic command would unnecessarily complicate the code in this case.
 
 ### Other styles
 
-**Function definition**--There are two forms of function definitions, the POSIX style `func()` and the ksh style `functino func`, as well as the mixed form.
+**Function definition**--There are two forms of function definitions, the POSIX style `func()` and the ksh style `function func`, as well as the mixed form.
 We always use the ksh style of the function definition.
 The reasons are that it is easier to search by the keyword `function ` and that it is protected by the aliases of the same name as the function (unless the user defines an alias with the same name as the keyword `function`).
 The function body is always the compound command `{ ... }` (instead of any other compound commands such as `( ... )`, `for`, `if`, etc.), and the opening brace `{` is placed on the first line.
@@ -327,7 +327,7 @@ This is because the builtin `echo` can change its behavior depending on the shel
 `ble.sh` is intended to work under any possible user options.
 
 **Quote/unquote**--The arguments where the word splitting and pathname expansions can take place need to be always quoted.
-When the subject word of `case` statement and the right-hand sides of variable assignments
+When the subject word of the `case` statement and the right-hand sides of variable assignments
 (including those specified to assignment builtins `declare`, `typeset`, `local`, `export`, and `readonly`)
 contains `$*`, `${arr[*]}`, or raw special characters ``[[:space:]|&;<>\`"$]``, they need to be quoted.
 In other contexts, the subject word of `case` and the right-hand sides of variable assignments should not be quoted.
@@ -341,8 +341,8 @@ The command substitutions `$(...)` are slow because they involve the forks of su
 
 **External commands**--Implement it using built-in Bash features as much as possible.
 If the same result can be obtained by built-in Bash features efficiently, do not use the external commands.
-When the external command is used, first freeeze the path by calling `ble/bin#freeze-utility-path '<cmd>'` and call the commands through `ble/bin/<cmd>`.
+When the external command is used, first freeze the path by calling `ble/bin#freeze-utility-path '<cmd>'` and call the commands through `ble/bin/<cmd>`.
 Or save the path of the external command in a variable, and call the command through the variable as `"$_saved_cmd" args...`.
 The POSIX commands should be basically used. If non-POSIX commands are used, a POSIX fallback should be always prepared.
 Please combine multiple calls of external commands into a single call of the command as much as possible.
-Usually, a single call of `sed` and `awk` are preferred over the chain of simple commands.
+Usually, a single call of `sed` and `awk` is preferred over the chain of simple commands.

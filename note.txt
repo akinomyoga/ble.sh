@@ -7092,6 +7092,11 @@ bash_tips
 
 2023-12-13
 
+  * docs: CONTRIBUTING の BNF に間違いがある [#D2099]
+
+    と思って修正したが他にも英語の間違いがある。これを機に全体的に Grammarly を
+    適用してみたら沢山の間違いがあるので修正する事にした。
+
   * edit: undo が正しくできていない (reported by Darukutsu) [#D2098]
     https://github.com/akinomyoga/ble.sh/issues/377#issuecomment-1852503847
 

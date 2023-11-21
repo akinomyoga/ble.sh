@@ -10,19 +10,19 @@
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash which replaces the default GNU Readline.
 
-Current devel version is 0.4.
-This script supports Bash 3.0 or higher although we recommend to use `ble.sh` with release versions of **Bash 4.0 or higher**.
+The current devel version is 0.4.
+This script supports Bash 3.0 or higher although we recommend using `ble.sh` with release versions of **Bash 4.0 or higher**.
 Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
 
 Disclaimer: The core part of the line editor is written in **pure Bash**, but
 `ble.sh` relies on POSIX `stty` to set up TTY states before and after the execution of user commands.
 It also uses other POSIX utilities for acceleration
-in some part of initialization and cleanup code,
-processing of large data in completions, paste of large data, etc.
+in some parts of initialization and cleanup code,
+processing of large data in completions, pasting large data, etc.
 
-Pronunciation: The easiest pronunciation of `ble.sh` that users use is /blɛʃ/, but you can actually pronounce it as you like.
-I do not specify the canonical way of pronoucing `ble.sh`.
+Pronunciation: The easiest pronunciation of `ble.sh` that users use is /blɛʃ/, but you can pronounce it as you like.
+I do not specify the canonical way of pronouncing `ble.sh`.
 In fact, I personally call it simply /biːɛliː/ or verbosely read it as /biːɛliː dɑt ɛseɪtʃ/ in my head.
 
 ## Quick instructions
@@ -53,10 +53,10 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 The build process integrates multiple Bash script files into a single Bash script `ble.sh` with pre-processing,
-place other module files in appropriate places, and strip code comments for shorter initialization time.
+places other module files in appropriate places, and strips code comments for a shorter initialization time.
 
 Note: This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
-Some people seem to bilindly believe that one always need to use `make` with C/C++/Fortran compilers to generate binaries.
+Some people seem to blindly believe that one always needs to use `make` with C/C++/Fortran compilers to generate binaries.
 They complain about `ble.sh`'s make process, but it comes from the lack of knowledge on the general principle of `make`.
 You may find C/C++ programs in the repository, but they are used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
 The generated table is included in the repository:
@@ -65,7 +65,7 @@ The generated table is included in the repository:
 [`canvas.c2w.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.sh),
 and [`canvas.emoji.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.emoji.sh),
 so there is no need to run these C/C++ programs in the build process.
-Another C file is used as an adapter in a old system MSYS1,
+Another C file is used as an adapter in an old system MSYS1,
 which is used with an old compiler toolchain in Windows, but it will never be used in Unix-like systems.
 Each file used in the build process is explained in [`make/README.md`](make/README.md).
 </details>
@@ -179,7 +179,7 @@ An example `_package.bash` for `AUR` can be found [here](https://aur.archlinux.o
   Extend [completion](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion)
   by **syntax-aware completion**, completion with quotes and parameter expansions in prefix texts, **ambiguous candidate generation**, etc.
   Also, [**menu-complete**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-menu-complete)
-  supports selection of candidates in menu (candidate list) by cursor keys, <kbd>TAB</kbd> and <kbd>S-TAB</kbd>.
+  supports the selection of candidates in the menu (candidate list) by cursor keys, <kbd>TAB</kbd>, and <kbd>S-TAB</kbd>.
   The feature [**auto-complete**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-auto-complete)
   supports the automatic suggestion of completed texts as in `fish` and `zsh-autosuggestions` (with Bash 4.0+).
   The feature [**menu-filter**](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-menu-filter)
@@ -210,17 +210,17 @@ Of course ble.sh can be used in combination with other Bash configurations such 
 
 ## History and roadmap
 
-My little experiment has took place in one corner of my `bashrc` in the end of May, 2013 after I enjoyed some article on `zsh-syntax-highlighting`.
-I initially thought something can be achieved by writing a few hundred of lines of codes
+My little experiment took place in one corner of my `bashrc` at the end of May 2013 after I enjoyed an article on `zsh-syntax-highlighting`.
+I initially thought something could be achieved by writing a few hundred lines of code
 but soon realized that everything needs to be re-implemented for the authentic support of syntax highlighting in Bash.
 I decided to make it as an independent script `ble.sh`.
-The name stemmed from that of Zsh's line editor, *ZLE* (*Zsh Line Editor*), but suffixed with `.sh` for the implication of being written in shell script.
-I'm occasinally asked about the pronunciation of `ble.sh`, but you can actually pronounce it as you like.
+The name stemmed from that of Zsh's line editor, *ZLE* (*Zsh Line Editor*), but suffixed with `.sh` for the implication of being written in a shell script.
+I'm occasionally asked about the pronunciation of `ble.sh`, but you can pronounce it as you like.
 After the two-week experiment, I was satisfied with my conclusion that it is *possible* to implement a full-featured line editor in Bash that satisfies the actual daily uses.
-The real efforts of improving the prototype implementation for the real uses was started in Feburuary, 2015.
+The real efforts to improve the prototype implementation for real uses started in February 2015.
 I released the initial version in the next December. Until then, the basic part of the line editor was completed.
-The implementation of vim mode has been started in September, 2017 and completed in the next March.
-I started working on the enhancement of the completion in August, 2018 and released it in the next February.
+The implementation of vim mode was started in September 2017 and completed in the next March.
+I started working on the enhancement of the completion in August 2018 and released it in the next February.
 
 - 2013-06 v0.0 -- prototype
 - 2015-12 v0.1 -- Syntax highlighting [[v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15)]
@@ -233,14 +233,14 @@ I started working on the enhancement of the completion in August, 2018 and relea
 ## Limitations
 
 There are some limitations due to the way `ble.sh` is implemented.
-Also some user configurations or other Bash frameworks may conflict with ble.sh.
+Also, some user configurations or other Bash frameworks may conflict with ble.sh.
 For example,
 
 - `ble.sh` does not set `PIPESTATUS` for the previous command line by default because it adds extra execution costs.
   Instead, the array `BLE_PIPESTATUS` contains the values of `PIPESTATUS` of the previous command line.
   If you need to access the values directly through the variable `PIPESTATUS`, please use the option `bleopt exec_restore_pipestatus=1`.
 - `ble.sh` assumes that common variable names and environment variables (such as `LC_*`) are not used for the global readonly variables.
-  In Bash, global readonly variables take effect in any scope including the local scope of the function, which means that we cannot even define a local variable that have the same name as a global readonly variable.
+  In Bash, global readonly variables take effect in any scope including the local scope of the function, which means that we cannot even define a local variable that has the same name as a global readonly variable.
   This is not the problem specific to `ble.sh`, but any Bash framework may suffer from the global readonly variables.
   It is generally not recommended to define global readonly variables in Bash except for the security reasoning
   (Refs. [[1]](https://lists.gnu.org/archive/html/bug-bash/2019-03/threads.html#00150), [[2]](https://lists.gnu.org/archive/html/bug-bash/2020-04/threads.html#00200), [[3]](https://mywiki.wooledge.org/BashProgramming?highlight=%28%22readonly%22%20flag,%20or%20an%20%22integer%22%20flag,%20but%20these%20are%20mostly%20useless,%20and%20serious%20scripts%20shouldn%27t%20be%20using%20them%29#Variables)).
@@ -255,7 +255,7 @@ For example,
 
 ### Generate
 
-To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) (in addition to Bash and POSIX standard utilities) is required.
+To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) (in addition to Bash and POSIX standard utilities) are required.
 The file `ble.sh` can be generated using the following commands.
 If you have GNU make installed on `gmake`, please use `gmake` instead of `make`.
 ```bash
@@ -311,7 +311,7 @@ The stable versions are significantly old compared to the devel version, so many
 ## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
 If you want to load `ble.sh` in interactive sessions of `bash` by default, usually one can just source `ble.sh` in `~/.bashrc`,
-but more reliable way is to add the following codes to your `.bashrc` file:
+but a more reliable way is to add the following codes to your `.bashrc` file:
 
 ```bash
 # bashrc
@@ -328,13 +328,13 @@ but more reliable way is to add the following codes to your `.bashrc` file:
 Basically, when `source /path/to/ble.sh` and `ble-attach` are performed,
 standard streams (`stdin`, `stdout`, and `stderr`) should not be redirected but should be connected to the controlling TTY of the current session.
 Also, please avoid calling `source /path/to/ble.sh` in shell functions.
-The detailed conditions that we need the above *more reliable setup* are explained in [an answer in Discussion #254](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757).
+The detailed conditions where the above *more reliable setup* is needed are explained in [an answer in Discussion #254](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757).
 
 ## 1.4 User settings `~/.blerc`
 
 User settings can be placed in the init script `~/.blerc` (or `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh` if `~/.blerc` is not available)
 whose template is available as the file [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template) in the repository.
-The init script is a Bash script which will be sourced during the load of `ble.sh`, so any shell commands can be used in `~/.blerc`.
+The init script is a Bash script that is sourced during the load of `ble.sh`, so any shell commands can be used in `~/.blerc`.
 If you want to change the default path of the init script, you can add the option `--rcfile INITFILE` to `source ble.sh` as the following example:
 
 ```bash
@@ -389,13 +389,13 @@ Basically you can simply delete the installed directory and the settings that th
   installation stage.  When you use the version extracted from a tarball, the
   directory created by extracting the tarball is the installed directory.
 - Remove the cache directory `~/.cache/blesh` if any.
-- Remove the temporary directory `/tmp/blesh` if any [ Only needed when your system does not automatically clears `/tmp` ].
+- Remove the temporary directory `/tmp/blesh` if any [ Only needed when your system does not automatically clear `/tmp` ].
 
 # 2 Basic settings
 
 Here, some of the settings for `~/.blerc` are picked up.
 You can find useful settings also in [Q\&A](https://github.com/akinomyoga/ble.sh/wiki/Q&A),
-[Recipes](https://github.com/akinomyoga/ble.sh/wiki/Recipes)
+[Recipes](https://github.com/akinomyoga/ble.sh/wiki/Recipes),
 and [`contrib` repository](https://github.com/akinomyoga/blesh-contrib).
 The complete list of setting items can be found in the file [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template).
 For detailed explanations please refer to [Manual](https://github.com/akinomyoga/ble.sh/wiki).
@@ -457,10 +457,10 @@ bleopt exec_elapsed_enabled='sys+usr>=10*60*1000' # e.g. ten minutes for total C
 ## 2.3 CJK Width
 
 The option `char_width_mode` controls the width of the Unicode characters with `East_Asian_Width=A` (Ambiguous characters).
-Currently four values `emacs`, `west`, `east`, and `auto` are supported. With the value `emacs`, the default width in emacs is used.
-With `west` all the ambiguous characters have width 1 (Hankaku). With `east` all the ambiguous characters have width 2 (Zenkaku).
-With `auto` the width mode `west` or `east` is automatically chosen based on the terminal behavior.
-The default value is `auto`. Appropriate value should be chosen in accordance with your terminal behavior.
+Currently, four values `emacs`, `west`, `east`, and `auto` are supported. With the value `emacs`, the default width in emacs is used.
+With `west`, all the ambiguous characters have width 1 (Hankaku). With `east`, all the ambiguous characters have width 2 (Zenkaku).
+With `auto`, the width mode `west` or `east` is automatically chosen based on the terminal behavior.
+The default value is `auto`. The appropriate value should be chosen in accordance with your terminal behavior.
 For example, the value can be changed to `west` as:
 
 ```bash
@@ -477,9 +477,9 @@ bleopt input_encoding='C'
 
 ## 2.5 Bell
 
-The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. By default, the audible bell is enabled while the visual bell is disabled.
+The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, the audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, the visual bell is enabled. By default, the audible bell is enabled while the visual bell is disabled.
 
-The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is millisecond. The default value is `2000`.
+The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is a millisecond. The default value is `2000`.
 
 For example, the visual bell can be enabled as:
 ```
@@ -493,7 +493,7 @@ bleopt edit_abell=
 
 ## 2.6 Highlight Colors
 
-The colors and attributes used in the syntax highlighting are controlled by `ble-face` function. The following code reproduces the default configuration:
+The colors and attributes used in the syntax highlighting are controlled by the function `ble-face`. The following code reproduces the default configuration:
 ```bash
 # highlighting related to editing
 ble-face -s region                    bg=60,fg=white
@@ -658,7 +658,7 @@ ble-import -d integration/fzf-key-bindings
 When the command line string contains a newline character, `ble.sh` enters the MULTILINE mode.
 
 By typing <kbd>C-v C-j</kbd> or <kbd>C-q C-j</kbd>, you can insert a newline character in the command line string.
-In the MULTILINE mode, <kbd>RET</kbd> (<kbd>C-m</kbd>) causes insertion of a new newline character.
+In the MULTILINE mode, <kbd>RET</kbd> (<kbd>C-m</kbd>) causes the insertion of a new newline character.
 In the MULTILINE mode, the command can be executed by typing <kbd>C-j</kbd>.
 
 When the shell option `shopt -s cmdhist` is set (which is the default),
@@ -673,8 +673,8 @@ For details, please check [the wiki page](https://github.com/akinomyoga/ble.sh/w
 
 The feature `auto-complete` is available in Bash 4.0 or later. `auto-complete` automatically suggests a possible completion on user input.
 The suggested contents can be inserted by typing <kbd>S-RET</kbd>
-(when the cursor is at the end of the command line, you can also use <kbd>right</kbd>, <kbd>C-f</kbd> or <kbd>end</kbd> to insert the suggestion).
-If you want to insert only first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
+(when the cursor is at the end of the command line, you can also use <kbd>right</kbd>, <kbd>C-f</kbd>, or <kbd>end</kbd> to insert the suggestion).
+If you want to insert only the first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
 If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd>
 (if your terminal does not support special key combinations like <kbd>C-RET</kbd>, please check
 [Manual §3.6.4](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A73-Key-Binding#user-content-sec-modifyOtherKeys-manual)).
@@ -690,7 +690,7 @@ For example, with the following settings, when you type <kbd>SP</kbd> after the 
 ble-sabbrev L='| less'
 ```
 
-The sabbrev names that starts with `\` plus alphabetical letters are also recommended since it is unlikely to conflict with real words that are a part of the executed command.
+The sabbrev names that start with `\` plus alphabetical letters are also recommended since it is unlikely to conflict with real words that are a part of the executed command.
 
 ```bash
 # blerc
@@ -704,8 +704,8 @@ I received many feedbacks from many people in GitHub Issues/PRs.
 I thank all such people for supporting the project.
 Among them, the following people have made particularly significant contributions.
 
-- [`@cmplstofB`](https://github.com/cmplstofB) helped me implementing vim-mode by testing it and giving me a lot of suggestions.
-- [`@dylankb`](https://github.com/dylankb) reported many issues for fzf-integration, initialization, etc.
+- [`@cmplstofB`](https://github.com/cmplstofB) helped me implement vim-mode by testing it and giving me a lot of suggestions.
+- [`@dylankb`](https://github.com/dylankb) reported many issues with the fzf integration, initialization, etc.
 - [`@rux616`](https://github.com/rux616) reported several issues and created a PR for fixing the default path of `.blerc`
 - [`@timjrd`](https://github.com/timjrd) suggested and contributed to performance improvements in completion.
 - [`@3ximus`](https://github.com/3ximus) reported many issues for a wide variety of problems.
