@@ -3450,6 +3450,7 @@ function ble/complete/progcomp/.parse-complete {
             comp_func=${compdef%%' -C '*}
           else
             comp_func=${compdef%' '}
+            ((_ble_bash>=50200)) && builtin eval "comp_func=($comp_func)"
           fi
           compdef=
 
@@ -3701,7 +3702,10 @@ function ble/complete/progcomp/.compgen {
     ble/util/assign compdef 'builtin complete -p -- "$compcmd" 2>/dev/null'
   fi
   # strip -I, -D, or command_name
-  # #D1579 bash-5.1 では空コマンドに限り '' と出力する様である。
+  # Note (#D1579): bash-5.1 では空コマンドに限り '' と出力する様である。
+  # Note (#D2088): bash-5.2 ではコマンド名に特殊文字が含まれている時 '...' と出
+  #   力するが、一方で安全に eval で評価する事ができるのでこの時点でコマンド名
+  #   を削除しなくても良い。
   compdef=${compdef%"${compcmd:-''}"}
   compdef=${compdef%' '}' '
 

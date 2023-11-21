@@ -38,6 +38,7 @@
 - history (`ble/builtin/history`): fix error message on the empty `HISTFILE` `#D2061` a2e2c4b6
 - complete: exit auto-complete mode on complete self-insert `#D2075` 2783d3d0
 - complete: fix error messages on empty command names `#D2085` xxxxxxxx
+- complete: fix parsing the output of `complete -p` in bash-5.2 `#D2088` xxxxxxxx
 
 ## Compatibility
 
