@@ -377,11 +377,18 @@ make INSDIR="$HOME/.local/share/blesh" install
 Basically you can simply delete the installed directory and the settings that the user added.
 
 - Close all the `ble.sh` sessions (the Bash interactive sessions with `ble.sh`)
-- Remove the added lines in `.bashrc`.
-- Remove `blerc` files (`~/.blerc` or `~/.config/blesh/init.sh`) if any.
-- Remove the installed directory.
+- Remove related user data. If you would like to keep them, you can skip these steps.
+  - Remove the added lines in `.bashrc`.
+  - Remove `blerc` files (`~/.blerc` or `~/.config/blesh/init.sh`) if any.
+  - Remove the state directory `~/.local/state/blesh` if any.
+- Remove the directory where `ble.sh` is installed.  When you use `out/ble.sh`
+  inside the working tree of the git repository, the installed directory is the
+  directory of the repository.  When you use `ble.sh` installed by `make
+  install`, the installed directory is `<PREFIX>/share/blesh` where `<PREFIX>`
+  (default: `~/.local`) is the prefix specified to `make install` in the
+  installation stage.  When you use the version extracted from a tarball, the
+  directory created by extracting the tarball is the installed directory.
 - Remove the cache directory `~/.cache/blesh` if any.
-- Remove the state directory `~/.local/state/blesh` if any.
 - Remove the temporary directory `/tmp/blesh` if any [ Only needed when your system does not automatically clears `/tmp` ].
 
 # 2 Basic settings

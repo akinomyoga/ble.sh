@@ -1905,18 +1905,6 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
-2023-12-05
-
-  * wiki,blerc: TAB で auto-complete を確定させる方法
-    https://www.reddit.com/r/fishshell/comments/17xn8zs/comment/kbsrm2e/?utm_source=reddit&utm_medium=web2x&context=3
-
-  * アンインストールする方法
-
-    これは毎回確認を取ってから削除していくのが良い気がする。
-
-    アンインストールのスクリプトは独立したファイルであるべき? でも ble.sh 自体
-    を開きながら bash が処理すると考えれば途中で unlink してもちゃんと動く筈。
-
 2023-10-04
 
   * {,dir/}*.* が failglob エラー着色になる。本来は *.* に対して一致が試みられ
@@ -7063,6 +7051,58 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-12-06
+
+  * reject: 自動アンインストール機能? (motivated by BeastOfCaerbannog) [#D2091]
+    https://askubuntu.com/questions/1493857/powershell-like-history-auto-suggestion-for-bash
+
+    これは毎回確認を取ってから削除していくのが良い気がする。
+
+    アンインストールのスクリプトは独立したファイルであるべき? でも ble.sh 自体
+    を開きながら bash が処理すると考えれば途中で unlink してもちゃんと動く筈。
+
+    と思ったが実装するのは結構面倒そうな気がする。
+
+    x 先ず初めに複数の場所に ble.sh がインストールされていてその内の一つだけを
+      削除したいという時にどうすれば良いのか? 何処にあるのかも分からない他の
+      ble.sh のコピーを見つけるのは困難である。という事を考えると現在の ble.sh
+      コピーに関連する物だけを削除するしかない。
+
+      ユーザーに尋ねるとしてもユーザーは尋ねられれば、他の ble.sh コピーに関係
+      なく削除しても良いと勘違いする可能性もある。
+
+    x また state 等の情報に関しては勝手に削除しない方が良い様に思われる。ユーザー
+      自身が記述した設定に関しても勝手に削除する訳にはいかない。.bashrc の中の
+      記述を勝手に修正するのも困難だし不自然である。結局勝手に削除しても良いと
+      思われるのは ble.sh 本体のディレクトリとキャッシュディレクトリと tmp ディ
+      レクトリである。
+
+    結局 ble.sh 本体のディレクトリを削除する事ぐらいしか安全に自動化できない。
+    インストールディレクトリを検出するぐらいならできるかもしれないが、堅牢に検
+    出できるかわからないしそれ程便利でもない様な気がする。
+
+    取り敢えず README は更新した。
+
+  * wiki,blerc: TAB で auto-complete を確定させる方法 (motivated by TehFunkWagnalls) [#D2090]
+    https://www.reddit.com/r/fishshell/comments/17xn8zs/comment/kbsrm2e/?utm_source=reddit&utm_medium=web2x&context=3
+
+    blerc.template には追記した。一方で wiki の方にはそもそもそういう事を書いて
+    ある記事はない。Edit の中に例として記述するべきか? Vim 関連に関しては vim
+    editing mode 用の記事に書かれている。そもそも Edit は Manual の一部なので具
+    体的な設定の例を載せるのも変な気がする。だとすれば新しい記事を作るべきだろ
+    うか? というか Q&A の頁があった気がする。Q&A のページに書き加えた。
+
+    ? 同時に Q&A にある設定例が blerc に反映されているか、及び逆はどうなのだろ
+      うか。確認してみると共有されている物は一個あったがそれ以外は全く共有され
+      ていない。
+
+      Q&A には複雑な物も含まれているので全てを blerc.template に転記するのは適
+      切でない気がする。取り敢えず RET で accept-line にするのは転記した。他は
+      blerc.template に入れる程のものでもない気がする。
+
+      一方で、blerc.template に含まれている物で Q&A に載せたら良さそうな物はあ
+      るか? →一つ転記した。一方で magic-slash 及び magic-space の無効化に関し
+      てはそういう Q&A がそうそう出てくるとも思えないので取り敢えずは転記しない
+      事にする。
 
   * make: termux 内部でビルドできない (reported by rashil2000) [#D2089]
     https://github.com/akinomyoga/ble.sh/issues/374

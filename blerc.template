@@ -966,6 +966,29 @@
 #ble-bind -f C-w 'kill-region-or kill-uword'
 #ble-bind -f M-w 'copy-region-or copy-uword'
 
+
+## The following keybindings can be used to execute the command by RET even in
+## the multiline mode.
+
+# # For emacs editing mode
+# ble-bind -m emacs -f 'C-m' 'accept-line'
+# ble-bind -m emacs -f 'RET' 'accept-line'
+
+# # For vim editing mode
+# ble-bind -m vi_imap -f 'C-m' 'accept-line'
+# ble-bind -m vi_imap -f 'RET' 'accept-line'
+# ble-bind -m vi_nmap -f 'C-m' 'accept-line'
+# ble-bind -m vi_nmap -f 'RET' 'accept-line'
+
+
+## If you want to accept the suggestion by auto-complete using TAB, please use
+## the following keybindings.  By default, <right> key can be used to accept
+## the suggestion, and <TAB> is assigned to the normal TAB completion which is
+## independent of auto-complete.
+
+# ble-bind -m auto_complete -f C-i auto_complete/insert
+# ble-bind -m auto_complete -f TAB auto_complete/insert
+
 ##-----------------------------------------------------------------------------
 ## Settings for Emacs mode
 

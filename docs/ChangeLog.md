@@ -71,6 +71,7 @@
 - docs(CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
 - docs(README): fix dead links to blerc.template (fixed by weskeiser) e0f3ac28
 - github: add FUNDING `#D2080` 3f133936
+- blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` xxxxxxxx
 
 ## Test
 
