@@ -37,8 +37,9 @@
 - util (`ble/builtin/readonly`): adjust bash options (reported by dongxi8) `#D2050` 1f3cbc01
 - history (`ble/builtin/history`): fix error message on the empty `HISTFILE` `#D2061` a2e2c4b6
 - complete: exit auto-complete mode on complete self-insert `#D2075` 2783d3d0
-- complete: fix error messages on empty command names `#D2085` xxxxxxxx
-- complete: fix parsing the output of `complete -p` in bash-5.2 `#D2088` xxxxxxxx
+- complete: fix error messages on empty command names `#D2085` dab8dd04
+- complete: fix parsing the output of `complete -p` in bash-5.2 (reported by maheis) `#D2088` a7eb5d04
+- make: specify bash to search the awk path using `type -p` (reported by rashil2000) `#D2089` xxxxxxxx
 
 ## Compatibility
 
@@ -56,7 +57,7 @@
 - canvas: adjust GraphemeClusterBreak of hankaku-kana voiced marks `#D2077` 31d168cc
 - canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 9d84b424
 - complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` 595f905b
-- term: add workarounds for `eterm` `#D2087` xxxxxxxx
+- term: add workarounds for `eterm` `#D2087` a643f0ea
 
 ## Contrib
 
