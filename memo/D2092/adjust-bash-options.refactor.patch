@@ -1,0 +1,348 @@
+From 605ab7d6d6aab29402e046b80c64e735364a262c Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Sun, 10 Dec 2023 12:21:00 +0900
+Subject: [PATCH 1/2] [reject] main: skip nested .adjust-bash-options
+
+---
+ ble.pp           | 26 +++++++++++++++-----------
+ src/decode.sh    |  5 +++--
+ src/edit.sh      | 15 ++++++++-------
+ src/history.sh   | 11 ++++++-----
+ src/util.hook.sh | 22 ++++++++++++----------
+ src/util.sh      | 11 ++++++-----
+ 6 files changed, 50 insertions(+), 40 deletions(-)
+
+diff --git a/ble.pp b/ble.pp
+index 028e64a1..89944cbf 100644
+--- a/ble.pp
++++ b/ble.pp
+@@ -475,12 +475,18 @@ function ble/base/xtrace/restore {
+   fi
+ }
+ 
++{
++  _ble_bash_shopt=('' "$-" "${BASHOPTS-}")
++  : "${_ble_bash_options_adjusted=}"
++} 2>/dev/null # set -x 対策
++
+ function ble/base/.adjust-bash-options {
+-  builtin eval -- "$1=\$-"
++  ((_ble_bash_shopt++==0)) || return 0
++  _ble_bash_shopt[1]=$-
+   set +evukT -B
+   ble/base/xtrace/adjust
+ 
+-  [[ $2 == shopt ]] || local shopt
++  local shopt
+   if ((_ble_bash>=40100)); then
+     shopt=$BASHOPTS
+   else
+@@ -489,7 +495,7 @@ function ble/base/.adjust-bash-options {
+     shopt -q extdebug 2>/dev/null && shopt=$shopt:extdebug
+     shopt -q nocasematch 2>/dev/null && shopt=$shopt:nocasematch
+   fi
+-  [[ $2 == shopt ]] || builtin eval -- "$2=\$shopt"
++  _ble_bash_shopt[2]=$shopt
+   shopt -u extdebug
+   shopt -u nocasematch 2>/dev/null
+   return 0
+@@ -497,7 +503,10 @@ function ble/base/.adjust-bash-options {
+ ## @fn ble/base/.restore-bash-options var_set var_shopt
+ ##   @param[out] var_set var_shopt
+ function ble/base/.restore-bash-options {
+-  local set=${!1} shopt=${!2}
++  ((--_ble_bash_shopt<=0)) || return 0
++  _ble_bash_shopt=0
++
++  local set=${_ble_bash_shopt[1]} shopt=${_ble_bash_shopt[2]}
+   [[ :$shopt: == *:nocasematch:* ]] && shopt -s nocasematch
+   [[ :$shopt: == *:extdebug:* ]] && shopt -s extdebug
+   ble/base/xtrace/restore
+@@ -510,16 +519,11 @@ function ble/base/.restore-bash-options {
+   return 0
+ } 2>/dev/null # set -x 対策
+ 
+-{
+-  : "${_ble_bash_options_adjusted=}"
+-  _ble_bash_set=$-
+-  _ble_bash_shopt=${BASHOPTS-}
+-} 2>/dev/null # set -x 対策
+ function ble/base/adjust-bash-options {
+   [[ $_ble_bash_options_adjusted ]] && return 1 || ((1)) # set -e 対策
+   _ble_bash_options_adjusted=1
+ 
+-  ble/base/.adjust-bash-options _ble_bash_set _ble_bash_shopt
++  ble/base/.adjust-bash-options
+ 
+   # Note: expand_aliases はユーザー設定を復元する為に記録する
+   _ble_bash_expand_aliases=
+@@ -571,7 +575,7 @@ function ble/base/restore-bash-options {
+ 
+   [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
+ 
+-  ble/base/.restore-bash-options _ble_bash_set _ble_bash_shopt
++  ble/base/.restore-bash-options
+ } 2>/dev/null # set -x 対策 #D0930 / locale 変更
+ function ble/base/recover-bash-options {
+   # bind -x が終わる度に設定が復元されてしまうので毎回設定し直す #D1526 #D1574
+diff --git a/src/decode.sh b/src/decode.sh
+index 821b7c61..5ba20cdc 100644
+--- a/src/decode.sh
++++ b/src/decode.sh
+@@ -4074,7 +4074,8 @@ function ble/builtin/bind/read-user-settings {
+ }
+ 
+ function ble/builtin/bind {
+-  local set shopt; ble/base/.adjust-bash-options set shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
++  ble/base/.adjust-bash-options
+ 
+   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+     ble/base/adjust-BASH_REMATCH
+@@ -4092,7 +4093,7 @@ function ble/builtin/bind {
+ 
+   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+     ble/base/restore-BASH_REMATCH
+-  ble/base/.restore-bash-options set shopt
++  ble/base/.restore-bash-options
+   return "$ext"
+ }
+ function bind { ble/builtin/bind "$@"; }
+diff --git a/src/edit.sh b/src/edit.sh
+index 81297d4e..4bf4e12a 100644
+--- a/src/edit.sh
++++ b/src/edit.sh
+@@ -6138,13 +6138,14 @@ function ble/builtin/exit {
+     return "$?" # オプションの指定間違いなどで失敗する可能性がある。
+   fi
+ 
+-  local set shopt; ble/base/.adjust-bash-options set shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
++  ble/base/.adjust-bash-options
+   local opt_flags=
+   local -a opt_args=()
+   ble/builtin/exit/.read-arguments "$@"
+   if [[ $opt_flags == *[EH]* ]]; then
+     [[ $opt_flags == *H* ]] && builtin exit --help
+-    ble/base/.restore-bash-options set shopt
++    ble/base/.restore-bash-options
+     return 2
+   fi
+   ((${#opt_args[@]})) || ble/array#push opt_args "$ext"
+@@ -6183,7 +6184,7 @@ function ble/builtin/exit {
+         case $ret in
+         ([yY]|[yY][eE][sS]) break ;;
+         ([nN]|[nN][oO]|'')
+-          ble/base/.restore-bash-options set shopt
++          ble/base/.restore-bash-options
+           return 0 ;;
+         esac
+       done
+@@ -6218,7 +6219,7 @@ function ble/builtin/exit {
+     TIMEFORMAT=
+   fi
+ 
+-  ble/base/.restore-bash-options set shopt
++  ble/base/.restore-bash-options
+   _ble_builtin_exit_processing=1
+   ble/fd#alloc _ble_builtin_exit_stdout '>&1' # EXIT trap で stdin/stdout を復元する
+   ble/fd#alloc _ble_builtin_exit_stderr '>&2'
+@@ -9984,8 +9985,8 @@ function ble/builtin/read {
+     return "$?"
+   fi
+ 
+-  local _ble_local_set _ble_local_shopt
+-  ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
++  ble/base/.adjust-bash-options
+ 
+   # used by core-complete to cancel progcomp
+   [[ $_ble_builtin_read_hook ]] &&
+@@ -9996,7 +9997,7 @@ function ble/builtin/read {
+   ble/builtin/read/.impl "$@"; local __ble_ext=$?
+   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble/base/restore-BASH_REMATCH
+ 
+-  ble/base/.restore-bash-options _ble_local_set _ble_local_shopt
++  ble/base/.restore-bash-options
+   [[ $__ble_command ]] || return "$__ble_ext"
+   # 局所変数により被覆されないように外側で評価
+   builtin eval -- "$__ble_command"
+diff --git a/src/history.sh b/src/history.sh
+index 825df0f8..ef9e3d93 100644
+--- a/src/history.sh
++++ b/src/history.sh
+@@ -1756,7 +1756,8 @@ function ble/builtin/history/option:s {
+   _ble_builtin_history_prevmax=$max
+ }
+ function ble/builtin/history {
+-  local set shopt; ble/base/.adjust-bash-options set shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
++  ble/base/.adjust-bash-options
+   local opt_d= flag_error=
+   local opt_c= opt_p= opt_s=
+   local opt_a= flags=
+@@ -1803,14 +1804,14 @@ function ble/builtin/history {
+   done
+   if [[ $flag_error ]]; then
+     builtin history --usage 2>&1 1>/dev/null | ble/bin/grep ^history >&2
+-    ble/base/.restore-bash-options set shopt
++    ble/base/.restore-bash-options
+     return 2
+   fi
+ 
+   if [[ $flags == *h* ]]; then
+     builtin history --help
+     local ext=$?
+-    ble/base/.restore-bash-options set shopt
++    ble/base/.restore-bash-options
+     return "$ext"
+   fi
+ 
+@@ -1835,7 +1836,7 @@ function ble/builtin/history {
+     flag_processed=1
+   fi
+   if [[ $flag_processed ]]; then
+-    ble/base/.restore-bash-options set shopt
++    ble/base/.restore-bash-options
+     return 0
+   fi
+ 
+@@ -1848,7 +1849,7 @@ function ble/builtin/history {
+ 
+   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+     ble/base/restore-BASH_REMATCH
+-  ble/base/.restore-bash-options set shopt
++  ble/base/.restore-bash-options
+   return "$ext"
+ }
+ function history { ble/builtin/history "$@"; }
+diff --git a/src/util.hook.sh b/src/util.hook.sh
+index ebbc6fcc..2a7dc5b3 100644
+--- a/src/util.hook.sh
++++ b/src/util.hook.sh
+@@ -184,9 +184,9 @@ function blehook/.read-arguments {
+ }
+ 
+ function blehook {
+-  local set shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
+   ble/base/adjust-BASH_REMATCH
+-  ble/base/.adjust-bash-options set shopt
++  ble/base/.adjust-bash-options
+ 
+   local flags print process
+   local rex1='^([_a-zA-Z@][_a-zA-Z0-9@]*)$'
+@@ -199,7 +199,7 @@ function blehook {
+       blehook/.print-help
+     fi
+     [[ $flags != *E* ]]; local ext=$?
+-    ble/base/.restore-bash-options set shopt
++    ble/base/.restore-bash-options
+     ble/base/restore-BASH_REMATCH
+     return "$ext"
+   fi
+@@ -248,7 +248,7 @@ function blehook {
+     blehook/.print "${print[@]}"
+   fi
+ 
+-  ble/base/.restore-bash-options set shopt
++  ble/base/.restore-bash-options
+   ble/base/restore-BASH_REMATCH
+   return "$ext"
+ }
+@@ -611,17 +611,18 @@ function ble/builtin/trap/finalize {
+   done
+ }
+ function ble/builtin/trap {
+-  local set shopt; ble/base/.adjust-bash-options set shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
++  ble/base/.adjust-bash-options
+   local flags command sigspecs
+   ble/builtin/trap/.read-arguments "$@"
+ 
+   if [[ $flags == *h* ]]; then
+     builtin trap --help
+-    ble/base/.restore-bash-options set shopt
++    ble/base/.restore-bash-options
+     return 2
+   elif [[ $flags == *E* ]]; then
+     builtin trap --usage 2>&1 1>/dev/null | ble/bin/grep ^trap >&2
+-    ble/base/.restore-bash-options set shopt
++    ble/base/.restore-bash-options
+     return 2
+   elif [[ $flags == *l* ]]; then
+     builtin trap -l
+@@ -723,7 +724,7 @@ function ble/builtin/trap {
+ 
+   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
+     ble/base/restore-BASH_REMATCH
+-  ble/base/.restore-bash-options set shopt
++  ble/base/.restore-bash-options
+   return 0
+ }
+ function trap { ble/builtin/trap "$@"; }
+@@ -918,7 +919,8 @@ function ble/builtin/trap/.handler {
+   fi
+ 
+   # Adjust trap context
+-  local _ble_trap_set _ble_trap_shopt; ble/base/.adjust-bash-options _ble_trap_set _ble_trap_shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
++  ble/base/.adjust-bash-options
+   local _ble_trap_name=${_ble_builtin_trap_sig_name[_ble_trap_sig]#SIG}
+   local -a _ble_trap_args; _ble_trap_args=("$@")
+   if [[ ! $_ble_trap_bash_command ]] || ((_ble_bash<30200)); then
+@@ -1016,7 +1018,7 @@ function ble/builtin/trap/.handler {
+     ble/builtin/trap/user-handler#update:RETURN
+   fi
+ 
+-  ble/base/.restore-bash-options _ble_trap_set _ble_trap_shopt
++  ble/base/.restore-bash-options
+ }
+ 
+ ## @fn ble/builtin/trap/install-hook sig [opts]
+diff --git a/src/util.sh b/src/util.sh
+index 2eca8d12..7b8c30c3 100644
+--- a/src/util.sh
++++ b/src/util.sh
+@@ -3549,7 +3549,8 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
+   }
+ 
+   function ble/builtin/sleep {
+-    local set shopt; ble/base/.adjust-bash-options set shopt
++    local _ble_bash_shopt=$_ble_bash_shopt
++    ble/base/.adjust-bash-options
+     local frac_scale=100000000000000
+     local a=0 b=0 flags=
+     if (($#==0)); then
+@@ -3595,7 +3596,7 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
+       builtin sleep "$a.$b"
+     fi
+     local ext=$?
+-    ble/base/.restore-bash-options set shopt 1
++    ble/base/.restore-bash-options
+     return "$ext"
+   }
+   function sleep { ble/builtin/sleep "$@"; }
+@@ -7182,8 +7183,8 @@ function ble/builtin/readonly/.print-warning {
+   return 0
+ }
+ function ble/builtin/readonly {
+-  local _ble_local_set _ble_local_shopt
+-  ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
++  local _ble_bash_shopt=$_ble_bash_shopt
++  ble/base/.adjust-bash-options
+ 
+   local _ble_local_flags=
+   local -a _ble_local_options=()
+@@ -7219,7 +7220,7 @@ function ble/builtin/readonly {
+     builtin readonly "${_ble_local_options[@]}"
+     _ble_local_ext=$?
+   fi
+-  ble/base/.restore-bash-options _ble_local_set _ble_local_shopt
++  ble/base/.restore-bash-options
+   return "$?"
+ }
+ 
+-- 
+2.41.0
+

@@ -3154,6 +3154,22 @@ function ble-bind/option:print {
 }
 
 function ble-bind {
+  # Note (#D2092): Reasoning for the check [[ $_ble_bash_options_adjusted ]]:
+  # We expect ble-bind is normally called from .blerc, but ble-bind can also be
+  # interactively called in user commands.  In such a case, we need to adjust
+  # the shell options because they might break the implementation of ble-bind
+  # and related functions.  However, the adjustment has a considerable overhead
+  # of about 0.2-0.3ms for each call, and ble-bind can internally be called
+  # hundreds or thousands times (particularly for the initial cache creation).
+  # We try to reduce the overhead by running the adjustment only when the
+  # current context is outside the ble.sh context.  We neglect the cases where
+  # the user temporarily change shell options inside the ble.sh context and
+  # call ble-bind.
+  local set shopt
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.adjust-bash-options set shopt
+
+  local IFS=$_ble_term_IFS q=\' Q="''\'"
+
   # @var flags
   #   D ... something done
   #   E ... parse error
@@ -3163,8 +3179,6 @@ function ble-bind {
   local flags= kmap=${ble_bind_keymap-} ret
   local -a keymaps; keymaps=()
   ble/decode/initialize
-
-  local IFS=$_ble_term_IFS q=\' Q="''\'"
 
   local arg c
   while (($#)); do
@@ -3293,10 +3307,15 @@ function ble-bind {
     fi
   done
 
-  [[ $flags == *E* ]] && return 2
-  [[ $flags == *R* ]] && return 1
-  [[ $flags == *D* ]] || ble-bind/option:print "${keymaps[@]}"
-  return 0
+  local ext=0
+  case $flags in
+  (*E*) ext=2 ;;
+  (*R*) ext=1 ;;
+  (*D*) ;;
+  (*)   ble-bind/option:print "${keymaps[@]}" ;;
+  esac
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.restore-bash-options set shopt
+  return "$ext"
 }
 
 #------------------------------------------------------------------------------
@@ -3640,10 +3659,10 @@ function ble/builtin/bind/rlfunc2widget {
 
   if [[ $rlfunc_file ]]; then
     local dict script='
-    ((${#DICT[@]})) ||
-      ble/util/mapfile DICT < "$rlfunc_file"
-    dict=("${DICT[@]}")'
-    builtin eval -- "${script//DICT/$rlfunc_dict}"
+      ((${#NAME[@]})) ||
+        ble/util/mapfile NAME < "$rlfunc_file"
+      dict=("${NAME[@]}")
+    '; builtin eval -- "${script//NAME/$rlfunc_dict}"
 
     local line
     for line in "${dict[@]}"; do

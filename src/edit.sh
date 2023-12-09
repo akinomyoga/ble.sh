@@ -4091,6 +4091,9 @@ function ble/edit/display-version/check:zoxide {
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
 
+  local set shopt
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.adjust-bash-options set shopt
+
   local sgrC= sgrF= sgrV= sgrA= sgr2= sgr3= sgr0= bold=
   if [[ -t 1 ]]; then
     bold=$_ble_term_bold
@@ -4161,6 +4164,8 @@ function ble/widget/display-shell-version {
   lines[iline++]=$line
 
   ble/widget/print "${lines[@]}"
+
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.restore-bash-options set shopt
 }
 function ble/widget/readline-dump-functions {
   ble-edit/content/clear-arg

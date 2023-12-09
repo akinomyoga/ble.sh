@@ -1,0 +1,56 @@
+From f3d52a35f78379faf5dfdbed88d225d92d479dfc Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Fri, 8 Dec 2023 20:51:49 +0900
+Subject: [PATCH] later/pattern: work around "nocasematch"
+
+---
+ integration/bash-preexec.bash |  4 ++++
+ layer/pattern.bash            | 14 +++++++-------
+ 2 files changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/integration/bash-preexec.bash b/integration/bash-preexec.bash
+index 366cada..6d47be6 100644
+--- a/integration/bash-preexec.bash
++++ b/integration/bash-preexec.bash
+@@ -98,6 +98,10 @@ function ble/contrib/integration:bash-preexec/attach.hook {
+ 
+     # Remove __bp_install hook from PROMPT_COMMAND
+     if [[ ${PROMPT_COMMAND-} == *"$__bp_install_string"* ]]; then
++      # Note: Although `shopt -s nocasematch' might affect removing the
++      # BP_INSTALL_STRING, it is unlikely to match an unrelated string even
++      # when `nocasematch' is set.  We here do not try to adjust `nocasematch'.
++      # The same applies to the BP_PROMPT_COMMAND_{PREFIX,SUFFIX}.
+       PROMPT_COMMAND="${PROMPT_COMMAND//$BP_INSTALL_STRING[;$'\n']}" # Edge case of appending to PROMPT_COMMAND
+       PROMPT_COMMAND="${PROMPT_COMMAND//$BP_INSTALL_STRING}"
+     fi
+diff --git a/layer/pattern.bash b/layer/pattern.bash
+index 8486566..b74244c 100644
+--- a/layer/pattern.bash
++++ b/layer/pattern.bash
+@@ -71,16 +71,16 @@ function ble/highlight/layer:{pattern}/declare {
+ 
+   # define functions
+   local _ble_local_script='
+-    function ble/highlight/layer:LAYER/initialize-vars {
+-      ble/highlight/layer:{pattern}/initialize-vars LAYER
++    function ble/highlight/layer:NAME/initialize-vars {
++      ble/highlight/layer:{pattern}/initialize-vars NAME
+     }
+-    function ble/highlight/layer:LAYER/update {
+-      ble/highlight/layer:{pattern}/update LAYER "$@"
++    function ble/highlight/layer:NAME/update {
++      ble/highlight/layer:{pattern}/update NAME "$@"
+     }
+-    function ble/highlight/layer:LAYER/getg {
+-      ble/highlight/layer:{pattern}/getg LAYER "$@"
++    function ble/highlight/layer:NAME/getg {
++      ble/highlight/layer:{pattern}/getg NAME "$@"
+     }'
+-  builtin eval -- "${_ble_local_script//LAYER/$layer_name}"
++  builtin eval -- "${_ble_local_script//NAME/$layer_name}"
+ }
+ 
+ function ble/highlight/layer:{pattern}/initialize-vars {
+-- 
+2.41.0
+

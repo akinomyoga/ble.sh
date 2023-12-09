@@ -1049,12 +1049,24 @@ function ble/color/setface/.check-argument {
   ble/color/list-faces "$opts"; ext=$?; return 1
 }
 function ble-color-defface {
-  local ext; ble/color/setface/.check-argument "$@" || return "$ext"
-  ble/color/defface "$@"
+  local set shopt
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.adjust-bash-options set shopt
+  if local ext; ble/color/setface/.check-argument "$@"; then
+    ble/color/defface "$@"
+    ext=$?
+  fi
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.restore-bash-options set shopt
+  return "$ext"
 }
 function ble-color-setface {
-  local ext; ble/color/setface/.check-argument "$@" || return "$ext"
-  ble/color/setface "$@"
+  local set shopt
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.adjust-bash-options set shopt
+  if local ext; ble/color/setface/.check-argument "$@"; then
+    ble/color/setface "$@"
+    ext=$?
+  fi
+  [[ $_ble_bash_options_adjusted ]] || ble/base/.restore-bash-options set shopt
+  return "$ext"
 }
 
 # 遅延関数 (後で上書き)
@@ -1367,12 +1379,20 @@ function ble-face/.reset-face {
     _ble_faces[key]=${_ble_faces_def[key]}
 }
 function ble-face {
+  local set shopt reset=
+  if [[ ! $_ble_bash_options_adjusted ]]; then
+    ble/base/.adjust-bash-options set shopt
+    reset='ble/base/.restore-bash-options set shopt'
+  fi
+
   local flags setface print
   ble-face/.read-arguments "$@"
   if [[ $flags == *H* ]]; then
     ble-face/.print-help
+    builtin eval -- "$reset"
     return 2
   elif [[ $flags == *E* ]]; then
+    builtin eval -- "$reset"
     return 2
   fi
 
@@ -1385,6 +1405,7 @@ function ble-face {
     local ret
     ble/string#quote-command ble-face "${setface[@]}"
     blehook color_setface_load+="$ret"
+    builtin eval -- "$reset"
     return 0
   fi
 
@@ -1447,7 +1468,11 @@ function ble-face {
       fi
     done
   fi
+
   [[ $flags != *E* ]]
+  local ext=$?
+  builtin eval -- "$reset"
+  return "$ext"
 }
 
 #------------------------------------------------------------------------------

@@ -1,0 +1,49 @@
+From 11a202a575bcca1d25eeccc9a644b0da94baff6c Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Sun, 10 Dec 2023 17:03:22 +0900
+Subject: [PATCH] [stub] ble-bind: nocasematch
+
+---
+ src/decode.sh | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/src/decode.sh b/src/decode.sh
+index 5ba20cdc..acb67610 100644
+--- a/src/decode.sh
++++ b/src/decode.sh
+@@ -3164,6 +3164,12 @@ function ble-bind {
+   local -a keymaps; keymaps=()
+   ble/decode/initialize
+ 
++  local nocasematch=
++  if shopt -q nocasematch 2>/dev/null; then
++    shopt -u nocasematch
++    nocasematch=1
++  fi
++
+   local IFS=$_ble_term_IFS q=\' Q="''\'"
+ 
+   local arg c
+@@ -3293,10 +3299,15 @@ function ble-bind {
+     fi
+   done
+ 
+-  [[ $flags == *E* ]] && return 2
+-  [[ $flags == *R* ]] && return 1
+-  [[ $flags == *D* ]] || ble-bind/option:print "${keymaps[@]}"
+-  return 0
++  local ext=0
++  case $flags in
++  (*E*) ext=2 ;;
++  (*R*) ext=1 ;;
++  (*D*) ;;
++  (*)   ble-bind/option:print "${keymaps[@]}" ;;
++  esac
++  [[ $nocasematch ]] && shopt -s nocasematch
++  return "$ext"
+ }
+ 
+ #------------------------------------------------------------------------------
+-- 
+2.41.0
+

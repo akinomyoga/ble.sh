@@ -587,24 +587,24 @@ function ble/array#insert-at {
 ## @fn ble/array#insert-after arr needle elements...
 function ble/array#insert-after {
   local _ble_local_script='
-    local iARR=0 eARR aARR=
-    for eARR in "${ARR[@]}"; do
-      ((iARR++))
-      [[ $eARR == "$2" ]] && aARR=iARR && break
+    local iNAME=0 eNAME aNAME=
+    for eNAME in "${NAME[@]}"; do
+      ((iNAME++))
+      [[ $eNAME == "$2" ]] && aNAME=iNAME && break
     done
-    [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+    [[ $aNAME ]] && ble/array#insert-at "$1" "$aNAME" "${@:3}"
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 ## @fn ble/array#insert-before arr needle elements...
 function ble/array#insert-before {
   local _ble_local_script='
-    local iARR=0 eARR aARR=
-    for eARR in "${ARR[@]}"; do
-      [[ $eARR == "$2" ]] && aARR=iARR && break
-      ((iARR++))
+    local iNAME=0 eNAME aNAME=
+    for eNAME in "${NAME[@]}"; do
+      [[ $eNAME == "$2" ]] && aNAME=iNAME && break
+      ((iNAME++))
     done
-    [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+    [[ $aNAME ]] && ble/array#insert-at "$1" "$aNAME" "${@:3}"
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 ## @fn ble/array#filter arr predicate
 ##   @param[in] predicate
@@ -623,12 +623,12 @@ function ble/array#filter {
   fi
 
   local _ble_local_script='
-    local -a aARR=() eARR
-    for eARR in "${ARR[@]}"; do
-      "$_ble_local_predicate" "$eARR" && ble/array#push "aARR" "$eARR"
+    local -a aNAME=() eNAME
+    for eNAME in "${NAME[@]}"; do
+      "$_ble_local_predicate" "$eNAME" && ble/array#push "aNAME" "$eNAME"
     done
-    ARR=("${aARR[@]}")
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+    NAME=("${aNAME[@]}")
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 function ble/array#filter/not.predicate { ! "$_ble_local_pred" "$1"; }
 function ble/array#remove-if {
@@ -672,40 +672,40 @@ function ble/array#remove {
 ##   @var[out] ret
 function ble/array#index {
   local _ble_local_script='
-    local eARR iARR=0
-    for eARR in "${ARR[@]}"; do
-      if [[ $eARR == "$2" ]]; then ret=$iARR; return 0; fi
-      ((++iARR))
+    local eNAME iNAME=0
+    for eNAME in "${NAME[@]}"; do
+      if [[ $eNAME == "$2" ]]; then ret=$iNAME; return 0; fi
+      ((++iNAME))
     done
     ret=-1; return 1
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 ## @fn ble/array#last-index arr needle
 ##   @var[out] ret
 function ble/array#last-index {
   local _ble_local_script='
-    local eARR iARR=${#ARR[@]}
-    while ((iARR--)); do
-      [[ ${ARR[iARR]} == "$2" ]] && { ret=$iARR; return 0; }
+    local eNAME iNAME=${#NAME[@]}
+    while ((iNAME--)); do
+      [[ ${NAME[iNAME]} == "$2" ]] && { ret=$iNAME; return 0; }
     done
     ret=-1; return 1
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 ## @fn ble/array#remove-at arr index
 function ble/array#remove-at {
   local _ble_local_script='
-    builtin unset -v "ARR[$2]"
-    ARR=("${ARR[@]}")
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+    builtin unset -v "NAME[$2]"
+    NAME=("${NAME[@]}")
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 function ble/array#fill-range {
   ble/array#reserve-prototype "$(($3-$2))"
-  local _ble_script='
-      local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
-      ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")' # WA #D1570 #D1738 checked
+  local _ble_local_script='
+      local -a sNAME; sNAME=("${_ble_array_prototype[@]::$3-$2}")
+      NAME=("${NAME[@]::$2}" "${sNAME[@]/#/$4}" "${NAME[@]:$3}")' # WA #D1570 #D1738 checked
   ((_ble_bash>=40300)) && ! shopt -q compat42 &&
-    _ble_script=${_ble_script//'$4'/'"$4"'}
-  builtin eval -- "${_ble_script//ARR/$1}"
+    _ble_local_script=${_ble_local_script//'$4'/'"$4"'}
+  builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 ## @fn ble/idict#replace arr needle [replacement]
 ##   needle に一致する要素を全て replacement に置換します。
@@ -715,18 +715,18 @@ function ble/array#fill-range {
 ##   @var[in,opt] replacement
 function ble/idict#replace {
   local _ble_local_script='
-    local iARR=0 extARR=1
-    for iARR in "${!ARR[@]}"; do
-      [[ ${ARR[iARR]} == "$2" ]] || continue
-      extARR=0
+    local iNAME=0 extNAME=1
+    for iNAME in "${!NAME[@]}"; do
+      [[ ${NAME[iNAME]} == "$2" ]] || continue
+      extNAME=0
       if (($#>=3)); then
-        ARR[iARR]=$3
+        NAME[iNAME]=$3
       else
-        builtin unset -v '\''ARR[iARR]'\''
+        builtin unset -v '\''NAME[iNAME]'\''
       fi
     done
-    return "$extARR"
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+    return "$extNAME"
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 
 function ble/idict#copy {
@@ -1369,6 +1369,10 @@ function ble/path#remove {
     opts=${opts//:"$2":}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
   _ble_local_script=${_ble_local_script//opts/"$1"}
+  if shopt -q nocasematch 2>/dev/null; then
+    shopt -u nocasematch
+    _ble_local_script=$_ble_local_script';shopt -s nocasematch'
+  fi
   builtin eval -- "$_ble_local_script"
 }
 function ble/path#remove-glob {
@@ -1378,6 +1382,10 @@ function ble/path#remove-glob {
     opts=${opts//:$2:}
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
   _ble_local_script=${_ble_local_script//opts/"$1"}
+  if shopt -q nocasematch 2>/dev/null; then
+    shopt -u nocasematch
+    _ble_local_script=$_ble_local_script';shopt -s nocasematch'
+  fi
   builtin eval -- "$_ble_local_script"
 }
 function ble/path#contains {
@@ -2143,28 +2151,28 @@ function ble/util/readarray {
 
   if ((_ble_bash>=40400)); then
     local _ble_local_script='
-      mapfile -t -d "$_ble_local_delim" ARR'
+      mapfile -t -d "$_ble_local_delim" NAME'
   elif ((_ble_bash>=40000)) && [[ $_ble_local_delim == $'\n' ]]; then
     local _ble_local_script='
-      mapfile -t ARR'
+      mapfile -t NAME'
   else
     local _ble_local_script='
-      local IFS= ARRI=0; ARR=()
-      while ble/bash/read -d "$_ble_local_delim" "ARR[ARRI++]"; do :; done'
+      local IFS= NAMEI=0; NAME=()
+      while ble/bash/read -d "$_ble_local_delim" "NAME[NAMEI++]"; do :; done'
   fi
 
   if [[ $_ble_local_nlfix ]]; then
     _ble_local_script=$_ble_local_script'
-      local ARRN=${#ARR[@]} ARRF ARRI
-      if ((ARRN--)); then
-        ble/string#split-words ARRF "${ARR[ARRN]}"
-        builtin unset -v "ARR[ARRN]"
-        for ARRI in "${ARRF[@]}"; do
-          builtin eval -- "ARR[ARRI]=${ARR[ARRI]}"
+      local NAMEN=${#NAME[@]} NAMEF NAMEI
+      if ((NAMEN--)); then
+        ble/string#split-words NAMEF "${NAME[NAMEN]}"
+        builtin unset -v "NAME[NAMEN]"
+        for NAMEI in "${NAMEF[@]}"; do
+          builtin eval -- "NAME[NAMEI]=${NAME[NAMEI]}"
         done
       fi'
   fi
-  builtin eval -- "${_ble_local_script//ARR/$_ble_local_array}"
+  builtin eval -- "${_ble_local_script//NAME/$_ble_local_array}"
 }
 
 ## @fn ble/util/assign var command

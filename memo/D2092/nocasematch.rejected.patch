@@ -1,0 +1,130 @@
+From abd7b3cad015c13029adb51e7e07d8106c2d1cf3 Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Sun, 10 Dec 2023 03:18:34 +0900
+Subject: [PATCH 1/4] [reject] nocasematch protection (extras)
+
+---
+ contrib              |  2 +-
+ lib/core-complete.sh | 27 ++++++++++++++++++++++-----
+ src/edit.sh          |  8 ++++----
+ 3 files changed, 27 insertions(+), 10 deletions(-)
+
+diff --git a/contrib b/contrib
+index 18d889e1..f3d52a35 160000
+--- a/contrib
++++ b/contrib
+@@ -1 +1 @@
+-Subproject commit 18d889e1906b4b8d3b8a27a320856cbf2f9ae345
++Subproject commit f3d52a35f78379faf5dfdbed88d225d92d479dfc
+diff --git a/lib/core-complete.sh b/lib/core-complete.sh
+index 4520730e..59d8cdf7 100644
+--- a/lib/core-complete.sh
++++ b/lib/core-complete.sh
+@@ -3265,6 +3265,7 @@ function ble/complete/progcomp/.compgen-helper-prog {
+ ##   compopt を上書きして -o/+o option を読み取る為の関数です。
+ ##
+ ##   OPTION
++##
+ ##     ble/syntax-raw
+ ##       生成した候補をそのまま挿入する事を示します。
+ ##
+@@ -3272,6 +3273,9 @@ function ble/complete/progcomp/.compgen-helper-prog {
+ ##       ble.sh の既定の候補生成 (候補が生成されなかった時の既定の候補生成、お
+ ##       よび、sabbrev 候補生成) を抑制します。
+ ##
++##   Note: OPTION は大文字・小文字を区別できない場合でも一意になる様に名前をつ
++##   ける様にする。Bash 4.4 以降で ${var/pat} が shopt -s nocasematch に影響を
++##   受けるため。
+ function ble/complete/progcomp/compopt {
+   # Note: Bash補完以外から builtin compopt を呼び出しても
+   #  エラーになるので呼び出さない事にした (2019-02-05)
+@@ -3820,8 +3824,7 @@ function ble/complete/progcomp/.compgen {
+   # Note #D1760: complete -D 以外の時でも 124 が返された時再試行する。
+   if [[ $progcomp_retry && ! $_ble_complete_retry_guard ]]; then
+     local _ble_complete_retry_guard=1
+-    opts=:$opts:
+-    opts=${opts//:default:/:}
++    ble/opts#remove opts default
+     ble/complete/progcomp/.compgen "$opts"
+     return "$?"
+   fi
+@@ -9389,6 +9392,12 @@ function ble/cmdinfo/complete/yield-flag {
+   local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
+   ble/complete/cand/yield.initialize mandb
+ 
++  local dtor=
++  if shopt -q nocasematch 2>/dev/null; then
++    shopt -u nocasematch
++    dtor='shopt -s nocasematch'
++  fi
++
+   # opts dedup
+   local ret
+   if [[ ${COMPV:1} ]] && ble/opts#extract-last-optarg "$opts" dedup "$flags"; then
+@@ -9397,16 +9406,23 @@ function ble/cmdinfo/complete/yield-flag {
+   fi
+ 
+   if ble/opts#extract-last-optarg "$opts" hasarg; then
+-    [[ $COMPV == -*["$ret"]* ]] && return 1
++    if [[ $COMPV == -*["$ret"]* ]]; then
++      builtin eval -- "$dtor"
++      return 1
++    fi
+   fi
+ 
+   if [[ ! $flags ]]; then
+-    [[ :$opts: == *:cancel-on-empty:* ]] && return 1
++    if [[ :$opts: == *:cancel-on-empty:* ]]; then
++      builtin eval -- "$dtor"
++      return 1
++    fi
+ 
+     # 候補のフラグがもうない場合は現在の内容で一意確定
+     local "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
+     ble/complete/cand/yield.initialize word
+     ble/complete/cand/yield word "$COMPV"
++    builtin eval -- "$dtor"
+     return "$?"
+   fi
+ 
+@@ -9418,7 +9434,7 @@ function ble/cmdinfo/complete/yield-flag {
+     local entry fs=$_ble_term_FS
+     for entry in "${ret[@]}"; do
+       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
+-        ble/complete/check-cancel && return 148
++        ble/complete/check-cancel && { builtin eval -- "$dtor"; return 148; }
+       local option=${entry%%$fs*}
+       [[ $option == -? && ${option:1} == ["$flags"] ]] || continue
+       ble/complete/cand/yield mandb.flag "$COMPV${option:1}" "$entry"
+@@ -9433,6 +9449,7 @@ function ble/cmdinfo/complete/yield-flag {
+   for ((i=0;i<${#flags};i++)); do
+     ble/complete/cand/yield mandb.flag "$COMPV${flags:i:1}"
+   done
++  builtin eval -- "$dtor"
+ }
+ 
+ 
+diff --git a/src/edit.sh b/src/edit.sh
+index 5a6323ed..81297d4e 100644
+--- a/src/edit.sh
++++ b/src/edit.sh
+@@ -3680,12 +3680,12 @@ function ble/textarea#save-state {
+   local layer names
+   for layer in "${_ble_highlight_layer_list[@]}"; do
+     local _ble_local_script='
+-      if [[ ${_ble_highlight_layer_LAYER_VARNAMES[@]-} ]]; then
+-        ble/array#push vars "${_ble_highlight_layer_LAYER_VARNAMES[@]}"
++      if [[ ${_ble_highlight_layer_LNAME_VARNAMES[@]-} ]]; then
++        ble/array#push vars "${_ble_highlight_layer_LNAME_VARNAMES[@]}"
+       else
+-        ble/array#push vars "${!_ble_highlight_layer_LAYER_@}"
++        ble/array#push vars "${!_ble_highlight_layer_LNAME_@}"
+       fi'
+-    builtin eval -- "${_ble_local_script//LAYER/$layer}"
++    builtin eval -- "${_ble_local_script//LNAME/$layer}"
+   done
+ 
+   # _ble_textarea_*
+-- 
+2.41.0
+

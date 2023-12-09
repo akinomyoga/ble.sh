@@ -39,7 +39,7 @@
 - complete: exit auto-complete mode on complete self-insert `#D2075` 2783d3d0
 - complete: fix error messages on empty command names `#D2085` dab8dd04
 - complete: fix parsing the output of `complete -p` in bash-5.2 (reported by maheis) `#D2088` a7eb5d04
-- make: specify bash to search the awk path using `type -p` (reported by rashil2000) `#D2089` xxxxxxxx
+- make: specify bash to search the awk path using `type -p` (reported by rashil2000) `#D2089` 26826354
 
 ## Compatibility
 
@@ -58,6 +58,7 @@
 - canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 9d84b424
 - complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` 595f905b
 - term: add workarounds for `eterm` `#D2087` a643f0ea
+- global: adjust bash options for utilities outside the ble context `#D2092` xxxxxxxx
 
 ## Contrib
 
@@ -71,7 +72,7 @@
 - docs(CONTRIBUTING): add styleguide (motivated by bkerin) `#D2056` 44cf6756
 - docs(README): fix dead links to blerc.template (fixed by weskeiser) e0f3ac28
 - github: add FUNDING `#D2080` 3f133936
-- blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` xxxxxxxx
+- blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` cd069860
 
 ## Test
 

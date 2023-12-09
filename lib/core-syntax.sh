@@ -7347,11 +7347,11 @@ function ble/highlight/layer:syntax/touch-range {
 }
 function ble/highlight/layer:syntax/fill {
   local _ble_local_script='
-    local iARR=0 i1ARR=$2 i2ARR=$3
-    for ((iARR=i1ARR;iARR<i2ARR;iARR++)); do
-      ARR[iARR]=$4
+    local iNAME=0 i1NAME=$2 i2NAME=$3
+    for ((iNAME=i1NAME;iNAME<i2NAME;iNAME++)); do
+      NAME[iNAME]=$4
     done
-  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
 
 _ble_highlight_layer_syntax_VARNAMES=(
