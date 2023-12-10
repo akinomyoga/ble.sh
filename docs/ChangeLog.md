@@ -15,7 +15,7 @@
 - edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` e4e1c874
 - edit: add widget `zap-to-char` `#D2082` ce7ce403
 - keymap/vi: split widget `text-object` into `text-object-{inner,outer}` (requested by Darukutsu) `#D2093` 11cf118a
-- keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` xxxxxxxx
+- keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` 7d80167c
 
 ## Changes
 
@@ -25,7 +25,7 @@
 - complete: move face definitions `menu_filter_*` to `core-complete-def.sh` `#D2060` af022266
 - make: add `INSDIR_LICENSE` for install location of licenses (reported by willemw) `#D2064` d39998f0 acf3b091
 - prompt: show prompt ruler after markers (motivated by U-Labs) `#D2067` e4a90378
-- complete: suffix a space to non-filenames with `compopt -o filenames` (reported by Dominiquini) `#D2096` xxxxxxxx
+- complete: suffix a space to non-filenames with `compopt -o filenames` (reported by Dominiquini) `#D2096` aef8927f
 
 ## Fixes
 
@@ -63,6 +63,7 @@
 - complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` 595f905b
 - term: add workarounds for `eterm` `#D2087` a643f0ea
 - global: adjust bash options for utilities outside the ble context (motivated by jkemp814) `#D2092` 6b144de7
+- decode,syntax: quote `$#` in arguments properly `#D2097` xxxxxxxx
 
 ## Contrib
 

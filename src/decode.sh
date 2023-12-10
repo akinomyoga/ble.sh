@@ -3196,12 +3196,12 @@ function ble-bind {
         flags=D$flags ;;
       (csi)
         flags=D$flags
-        ble-bind/check-argument --csi 2 $# || break
+        ble-bind/check-argument --csi 2 "$#" || break
         ble-bind/option:csi "$1" "$2"
         shift 2 ;;
       (cursor)
         flags=D$flags
-        ble-bind/check-argument --cursor 1 $# || break
+        ble-bind/check-argument --cursor 1 "$#" || break
         ble-bind/.initialize-kmap &&
           ble/decode/keymap#set-cursor "$kmap" "$1"
         shift 1 ;;
@@ -3240,7 +3240,7 @@ function ble-bind {
           fi
           shift 2 ;;
         (m)
-          ble-bind/check-argument -m 1 $# || break
+          ble-bind/check-argument -m 1 "$#" || break
           if ! ble/decode/is-keymap "$1"; then
             ble/util/print "ble-bind: the keymap '$1' is unknown." >&2
             flags=E$flags
@@ -3261,7 +3261,7 @@ function ble-bind {
 
           # 旧形式の指定 -xf や -cf に対応する処理
           [[ $c != f && $arg == f* ]] && arg=${arg:1}
-          ble-bind/check-argument "-$c" 2 $# || break
+          ble-bind/check-argument "-$c" 2 "$#" || break
 
           ble-decode-kbd "$1"; local kbd=$ret
           if [[ $2 && $2 != - ]]; then
@@ -3289,7 +3289,7 @@ function ble-bind {
         (T)
           flags=D$flags
           ble-decode-kbd "$1"; local kbd=$ret
-          ble-bind/check-argument -T 2 $# || break
+          ble-bind/check-argument -T 2 "$#" || break
           ble-bind/.initialize-kmap &&
             ble-decode-key/set-timeout "$kmap" "$kbd" "$2"
           shift 2 ;;

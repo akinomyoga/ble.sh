@@ -474,7 +474,7 @@ function sub:scan/check-readonly-unsafe {
       /^\.\/lib\/init-(cmap|term).sh:[0-9]+:TERM=$/d
       /^\.\/src\/edit.sh:[0-9]+:_dirty=$/d
       /^\.\/src\/history.sh:[0-9]+:_history_index=$/d
-      /^\.\/src\/util.sh:[0-9]+:(ARRI|OPEN|TERM)=$/d
+      /^\.\/src\/util.sh:[0-9]+:(NAMEI|OPEN|TERM)=$/d
       /^\.\/lib\/core-cmdspec.sh:[0-9]+:OLD=$/d
 
       # (extract only variable names)

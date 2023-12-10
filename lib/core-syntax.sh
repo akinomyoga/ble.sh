@@ -7283,7 +7283,7 @@ function ble/progcolor/.compline-rewrite-command {
   ((comp_cword&&(comp_cword+=$#-1)))
 
   # update tree_words
-  ble/array#reserve-prototype $#
+  ble/array#reserve-prototype "$#"
   tree_words=("${tree_words[0]}" "${_ble_array_prototype[@]::$#-1}" "${tree_words[@]:1}")
 }
 ## @fn ble/progcolor cmd opts

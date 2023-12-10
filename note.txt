@@ -7090,6 +7090,14 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-12-13
+
+  * decode,syntax: quote `$#` in arguments properly [#D2097]
+
+    何故か裸の $# が残っていたのでちゃんと quote する。恐らく ${#...}  の形式及
+    び $((...)) の形式しかチェックしていなかったのが原因。他のパターンは取り敢
+    えずすぐには思いつかない。
+
 2023-12-12
 
   * complete: suffix a space to non-filenames with compopt -o filenames (reported by Dominiquini) [#D2096]
@@ -7782,7 +7790,7 @@ bash_tips
 
 2023-11-22
 
-  * complete: 'x?' に対する補完設定読み取りに失敗する (reported by maheis) [#2088]
+  * complete: 'x?' に対する補完設定読み取りに失敗する (reported by maheis) [#D2088]
     https://github.com/akinomyoga/ble.sh/issues/371#issuecomment-1820927585
 
     complete -p の出力の解析に失敗している。
