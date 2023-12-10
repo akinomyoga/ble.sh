@@ -14,6 +14,7 @@
 - make: support `make uninstall` `#D2068` a39a4a89
 - edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` e4e1c874
 - edit: add widget `zap-to-char` `#D2082` ce7ce403
+- keymap/vi: split widget `text-object` into `text-object-{inner,outer}` `#D2093` xxxxxxxx
 
 ## Changes
 

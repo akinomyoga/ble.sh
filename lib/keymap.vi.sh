@@ -5077,11 +5077,16 @@ function ble/keymap:vi/text-object.hook {
   return 0
 }
 
-function ble/keymap:vi/.check-text-object {
-  local n=${#KEYS[@]}; ((n&&n--))
-  ble-decode-key/ischar "${KEYS[n]}" || return 1
+function ble/keymap:vi/.attempt-text-object {
+  local c=${1:-}
+  if [[ ! $c ]]; then
+    # If the type is not specified, it is determined from the last key the user
+    # input (i or a). This is for the backward compatibility.
+    local n=${#KEYS[@]}; ((n&&n--))
+    ble-decode-key/ischar "${KEYS[n]}" || return 1
+    local ret; ble/util/c2s "${KEYS[n]}"; c=$ret
+  fi
 
-  local ret; ble/util/c2s "${KEYS[n]}"; local c=$ret
   [[ $c == [ia] ]] || return 1
 
   [[ $_ble_keymap_vi_opfunc || $_ble_decode_keymap == vi_[xs]map ]] || return 1
@@ -5092,9 +5097,17 @@ function ble/keymap:vi/.check-text-object {
 }
 
 function ble/widget/vi-command/text-object {
-  ble/keymap:vi/.check-text-object && return 0
+  ble/keymap:vi/.attempt-text-object "$@" && return 147
   ble/widget/vi-command/bell
   return 1
+}
+
+function ble/widget/vi-command/text-object-outer {
+  ble/widget/vi-command/text-object a
+}
+
+function ble/widget/vi-command/text-object-inner {
+  ble/widget/vi-command/text-object i
 }
 
 #------------------------------------------------------------------------------
@@ -5724,8 +5737,8 @@ function ble-decode/keymap:vi_omap/define {
   ble-bind -f 'C-[' vi_omap/cancel
   ble-bind -f 'C-c' vi_omap/cancel
 
-  ble-bind -f a   vi-command/text-object
-  ble-bind -f i   vi-command/text-object
+  ble-bind -f a   vi-command/text-object-outer
+  ble-bind -f i   vi-command/text-object-inner
 
   # 範囲の種類の変更 (vim o_v o_V)
   ble-bind -f v      vi_omap/switch-to-charwise
@@ -7584,8 +7597,8 @@ function ble-decode/keymap:vi_xmap/define {
 
   ble-bind -f '"' vi-command/register
 
-  ble-bind -f a vi-command/text-object
-  ble-bind -f i vi-command/text-object
+  ble-bind -f a vi-command/text-object-outer
+  ble-bind -f i vi-command/text-object-inner
 
   ble-bind -f 'C-\ C-n' vi_xmap/cancel
   ble-bind -f 'C-\ C-g' vi_xmap/cancel

@@ -7063,6 +7063,31 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-12-11
+
+  * vi: text-object を別の文字に割り当てようとしている人がいる (requested by Darukutsu) [#D2093]
+    https://github.com/akinomyoga/ble.sh/issues/377
+
+    元々は text-object a も i も同じ一つの widget で処理していてユーザーのキー
+    入力が a か i かに応じて振る舞いを変更していた。然し、別の文字に
+    text-object を割り当てようとすると i でも a でもないのでエラーになってしま
+    う。
+
+    元の Vim script ではどうなっているのか確認したが noremap で設定している限り
+    は、実際に i や a がどう設定されているかどうかに関係なく、 i と指定すれば
+    inner text-object になるし a と指定すれば outer text-object になる。なので、
+    noremap を使っている限りは類似の問題は生じない。
+
+    仕方ないので今回は text-object widget を text-object-inner と
+    text-object-outer に分解する事にする。
+
+    実装を考え直した。text-object をそのまま引数を受け取る様に拡張する方が良い。
+    i と a の binding は分かりやすさの為にそれぞれ text-object-inner と
+    text-object-outer のままにしておくが、text-object.impl という widget を新設
+    するよりは元より text-object で引数に対応する事にして、
+    text-object-{inner,outer} はその widget を呼び出す様にする。こちらの方が無
+    駄な diff がなく良い。
+
 2023-12-08
 
   * ble/array#*: nocasematch の時に _ble_local_script の ARR 置換が arr を誤爆 (reported by jkemp814) [#D2092]
