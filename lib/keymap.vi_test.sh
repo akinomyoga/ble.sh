@@ -201,7 +201,7 @@ function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
   ble/keymap:vi_test/check A1a '@:ab@cd " fghi " jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
   ble/keymap:vi_test/check A1b '@:abcd @" fghi " jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
   ble/keymap:vi_test/check A1c '@:abcd " fghi@ " jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
-  ble/keymap:vi_test/check A1d '@:abcd " fghi @" jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd " fghi "@< jklm >" nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check A1d '@:abcd " fghi @" jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
   # A2. 引数が指定された時、a" が指定された時
   ble/keymap:vi_test/check A2a '@:ab@cd " fghi " jklm " nopq " rstu " vwxyz' 'v 2 i " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
   ble/keymap:vi_test/check A2b '@:ab@cd " fghi " jklm " nopq " rstu " vwxyz' 'v a " S a'   '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'

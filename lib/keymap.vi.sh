@@ -4605,7 +4605,18 @@ function ble/keymap:vi/text-object/word.impl {
   fi
 }
 
+## @fn ble/keymap:vi/text-object:quote/is-closing-quote index
+##   @var[in] quote
+function ble/keymap:vi/text-object:quote/is-closing-quote {
+  local index=${1:-$_ble_edit_ind}
+  [[ ${_ble_edit_str:index:1} == "$quote" ]] || return 1
+  local ret
+  ble-edit/content/find-logical-bol "$index"; local bol=$ret
+  ble/string#count-char "${_ble_edit_str:bol:_ble_edit_ind-bol}" "$quote"
+  ((ret%2==1))
+}
 ## @fn ble/keymap:vi/text-object:quote/.next [index]
+##   @var[in] quote
 ##   @var[out] ret
 function ble/keymap:vi/text-object:quote/.next {
   local index=${1:-$((_ble_edit_ind+1))} nl=$'\n'
@@ -4615,6 +4626,7 @@ function ble/keymap:vi/text-object:quote/.next {
   return 0
 }
 ## @fn ble/keymap:vi/text-object:quote/.prev [index]
+##   @var[in] quote
 ##   @var[out] ret
 function ble/keymap:vi/text-object:quote/.prev {
   local index=${1:-_ble_edit_ind} nl=$'\n'
@@ -4676,6 +4688,8 @@ function ble/keymap:vi/text-object:quote/.expand-xmap-range {
     ((beg++,end--))
   fi
 }
+## @fn ble/keymap:vi/text-object:quote/.xmap
+##   @var[in] quote
 function ble/keymap:vi/text-object:quote/.xmap {
   # 複数行に亘る場合は失敗
   local min=$_ble_edit_ind max=$_ble_edit_mark
@@ -4693,10 +4707,15 @@ function ble/keymap:vi/text-object:quote/.xmap {
   if ((_ble_edit_ind==_ble_edit_mark)); then
     ble/keymap:vi/text-object:quote/.prev "$((_ble_edit_ind+1))" ||
       ble/keymap:vi/text-object:quote/.next "$((_ble_edit_ind+1))" || return 1
-    local beg=$ret
-    ble/keymap:vi/text-object:quote/.next "$((beg+1))" || return 1
-    local end=$ret
-
+    if ble/keymap:vi/text-object:quote/is-closing-quote; then
+      local end=$ret
+      ble/keymap:vi/text-object:quote/.prev "$end" || return 1
+      local beg=$ret
+    else
+      local beg=$ret
+      ble/keymap:vi/text-object:quote/.next "$((beg+1))" || return 1
+      local end=$ret
+    fi
     ble/keymap:vi/text-object:quote/.expand-xmap-range "$inclusive"
     _ble_edit_mark=$beg
     _ble_edit_ind=$((end-1))

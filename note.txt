@@ -1905,6 +1905,33 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2023-12-11
+
+  * keymap.vi_test: テスト項目を ble/test を用いた物に書き換える。
+
+    後 leave-command-layout を呼んでいるのに行が再描画されない。何故? どうも
+    ble/widget/vi-command:check-vi-mode/search を呼び出すと消える様だ。search
+    に使っている info が干渉して内容が消滅する等している可能性? 一応
+    ble/textarea#invalidate を enter-command-layout の後に実行すれば問題はない。
+    うーん。どうやら、search の途中で描画を実行してしまうのでその時点で
+    ble/textarea#invalidate の効果が消えてなくなってしまっているという事だろう。
+
+  * ble-import に関する説明を書く?
+    https://github.com/akinomyoga/blesh-contrib/issues/16
+
+    * ble-import -d の意味と、もし中の関数をすぐに使う必要があるのであれば、-d
+      を指定しないという事を何処かに書いておく (何処かに既に説明を書いた様な気
+      がしたが、改めて contrib README を見てみても -d についての説明は何処にも
+      書かれていない)。
+
+    * また ble/util/import/eval-after-load の interface を ble-import のオプショ
+      ンとして実装する可能性? 然し、これは変な気もする。つまり、オプション -H
+      script を指定する事で、指定した通常引数をロードする代わりに、ロードされた
+      時の付加動作を定義する事になっている。これは混乱の元の気がする。一方で、-q
+      はロードしたかどうかを判定する物になっているので、既に指定したファイル名
+      を必ずしもロードする訳では無い状況にはなっている。何れにしても、指定され
+      た引数はモジュール名という事になっているので或る意味一貫している。
+
 2023-12-10
 
   * main: ble-update, ble-reload, bleopt, ble-sabbrev, ble-palette の adjust-bash-options
@@ -7064,6 +7091,30 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2023-12-11
+
+  * vi: text-object:quote の振る舞いが xmap 内で正確ではない (reported by Darukutsu) [#D2094]
+    https://github.com/akinomyoga/ble.sh/issues/377#issuecomment-1849550762
+
+    vi_xmap for i' の振る舞いが異なるとの事。
+
+    これは実装していない奴ではないかと思ったが、実際に確認してみると実装されて
+    いる。単に手で規則を試した時の漏れという事の気がする。その他の微妙に異なる
+    状況に関してはちゃんと vim の振る舞いを再現できている。
+
+    ? no: 或いは vim の古い version と新しい version で振る舞いが違うという事な
+      のかもしれないと思ったが、Ubuntu 16.04 の vim 7.4 (少なくとも 2013年には
+      あった) の振る舞いを見る限りは、以前からそうであった。という事なのでやは
+      り見落としである。
+
+    修正は意外とコンパクトになった。
+
+    * テスト項目を追加する。と思ったが長らく動かしていなかった。そもそもテスト
+      が動かなくなっているかもしれない。と思って試しに走らせてみたらちょうど今
+      回振る舞いを修正した所でエラーになっている。
+
+      うーん。これは今回新しく修正した事によってテストが失敗する様になったのか?
+      →実際に master で試してみるとテストは全て通る。という事はテスト項目自体
+      が駄目だったという事になる。テスト項目を修正した。
 
   * vi: text-object を別の文字に割り当てようとしている人がいる (requested by Darukutsu) [#D2093]
     https://github.com/akinomyoga/ble.sh/issues/377

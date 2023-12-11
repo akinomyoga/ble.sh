@@ -14,7 +14,7 @@
 - make: support `make uninstall` `#D2068` a39a4a89
 - edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` e4e1c874
 - edit: add widget `zap-to-char` `#D2082` ce7ce403
-- keymap/vi: split widget `text-object` into `text-object-{inner,outer}` `#D2093` xxxxxxxx
+- keymap/vi: split widget `text-object` into `text-object-{inner,outer}` (requested by Darukutsu) `#D2093` 11cf118a
 
 ## Changes
 
@@ -41,6 +41,7 @@
 - complete: fix error messages on empty command names `#D2085` dab8dd04
 - complete: fix parsing the output of `complete -p` in bash-5.2 (reported by maheis) `#D2088` a7eb5d04
 - make: specify bash to search the awk path using `type -p` (reported by rashil2000) `#D2089` 26826354
+- keymap/vi: fix the behavior of text-object for quotes in xmap (reported by Darukutsu) `#D2093` xxxxxxxx
 
 ## Compatibility
 
@@ -59,7 +60,7 @@
 - canvas: update tables and grapheme clusters for Unicode 15.1.0 `#D2078` 503bb38b 9d84b424 9d84b424
 - complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` 595f905b
 - term: add workarounds for `eterm` `#D2087` a643f0ea
-- global: adjust bash options for utilities outside the ble context `#D2092` xxxxxxxx
+- global: adjust bash options for utilities outside the ble context (motivated by jkemp814) `#D2092` 6b144de7
 
 ## Contrib
 
