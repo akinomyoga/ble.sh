@@ -7766,17 +7766,17 @@ function ble-edit/undo/.load {
     local old=$_ble_edit_str new=$str ret
     if [[ $bleopt_undo_point == end ]]; then
       ble/string#common-suffix "${old:_ble_edit_ind}" "$new"; local s1=${#ret}
-      local old=${old::${#old}-s1} new=${new:${#new}-s1}
+      local old=${old::${#old}-s1} new=${new::${#new}-s1}
       ble/string#common-prefix "${old::_ble_edit_ind}" "$new"; local p1=${#ret}
       local old=${old:p1} new=${new:p1}
       ble/string#common-suffix "$old" "$new"; local s2=${#ret}
-      local old=${old::${#old}-s2} new=${new:${#new}-s2}
+      local old=${old::${#old}-s2} new=${new::${#new}-s2}
       ble/string#common-prefix "$old" "$new"; local p2=${#ret}
     else
       ble/string#common-prefix "${old::_ble_edit_ind}" "$new"; local p1=${#ret}
       local old=${old:p1} new=${new:p1}
       ble/string#common-suffix "${old:_ble_edit_ind-p1}" "$new"; local s1=${#ret}
-      local old=${old::${#old}-s1} new=${new:${#new}-s1}
+      local old=${old::${#old}-s1} new=${new::${#new}-s1}
       ble/string#common-prefix "$old" "$new"; local p2=${#ret}
       local old=${old:p2} new=${new:p2}
       ble/string#common-suffix "$old" "$new"; local s2=${#ret}

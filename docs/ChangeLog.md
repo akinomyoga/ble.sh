@@ -44,6 +44,7 @@
 - complete: fix parsing the output of `complete -p` in bash-5.2 (reported by maheis) `#D2088` a7eb5d04
 - make: specify bash to search the awk path using `type -p` (reported by rashil2000) `#D2089` 26826354
 - keymap/vi: fix the behavior of text-object for quotes in xmap (reported by Darukutsu) `#D2094` 5f9a44ec
+- edit(redo): fix broken common prefix/suffix determination (reported by Darukutsu) `#D2098` xxxxxxxx
 
 ## Compatibility
 
