@@ -7092,6 +7092,19 @@ bash_tips
 
 2023-12-12
 
+  * complete: suffix a space to non-filenames with compopt -o filenames (reported by Dominiquini) [#D2096]
+    https://github.com/akinomyoga/ble.sh/issues/378
+
+    一番最初の実装 (ce223f73) から action:file/complete はファイル名だけにしか
+    ' ' や '/' は付加していない。その後に progcomp の compopt -o filenames が指
+    定された時は候補を action:file/complete で処理する様になっていた。変更の歴
+    史の中でも一時的に「全てに空白をつける」みたいな時期はなかったみたいだ (そ
+    んな様な気もしたが気の所為か一時的に実験しただけという事だろうか)。
+
+    分からないが bash の振る舞いが、compopt -o filenames を指定していたとしても
+    非ファイル名に対して空白を挿入しているのでそれと同様になる様に修正する。こ
+    の修正をしただけでちゃんと期待通りに動く様になった。
+
   * keymap/vi: text-object/block.impl を xmap に対応する (requested by Darukutsu) [#D2095]
     https://github.com/akinomyoga/ble.sh/issues/377#issuecomment-1850082254
 

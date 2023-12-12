@@ -25,6 +25,7 @@
 - complete: move face definitions `menu_filter_*` to `core-complete-def.sh` `#D2060` af022266
 - make: add `INSDIR_LICENSE` for install location of licenses (reported by willemw) `#D2064` d39998f0 acf3b091
 - prompt: show prompt ruler after markers (motivated by U-Labs) `#D2067` e4a90378
+- complete: suffix a space to non-filenames with `compopt -o filenames` (reported by Dominiquini) `#D2096` xxxxxxxx
 
 ## Fixes
 

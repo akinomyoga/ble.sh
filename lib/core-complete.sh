@@ -1780,16 +1780,21 @@ function ble/complete/action:file/initialize.batch {
   ble/complete/action/quote-insert.batch
 }
 function ble/complete/action:file/complete {
-  ble/complete/action/requote-final-insert
-
   local ret
   ble/complete/action:file/.get-filename
   if [[ -e $ret || -h $ret ]]; then
     if [[ -d $ret ]]; then
+      ble/complete/action/requote-final-insert
       ble/complete/action/complete.mark-directory
     else
       ble/complete/action:word/complete
     fi
+  else
+    # Note (#D2096): When "compopt -o filenames" is specified by progcomp, the
+    # candidates are processed by action:file/complete.  However, words that
+    # are not local filenames can also be generated.  Such a word would also
+    # want to be suffixed by a space.
+    ble/complete/action:word/complete
   fi
 }
 function ble/complete/action:file/init-menu-item {
