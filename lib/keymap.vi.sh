@@ -4849,35 +4849,68 @@ function ble/keymap:vi/text-object:block/.outer-range {
   fi
 }
 
+## @fn ble/keymap:vi/text-object:block/.search-block min max L R [opts]
+##   @var[out] beg end
+function ble/keymap:vi/text-object:block/.search-block {
+  local ret p1=$1 p2=$2 L=$3 R=$4 opts=$5
+  [[ ${_ble_edit_str:p1:1} == "$L" ]] && ((p1++))
+  if ble/keymap:vi/text-object:block/.prev-matching-lparen "$p1" "$arg"; then
+    # We first attempt to search for "a surrounding pair (...)" at the
+    # specified level of $arg.
+    beg=$ret
+    ble/keymap:vi/text-object:block/.next-matching-rparen "$p1" "$arg" || return 1
+    end=$ret
+
+    if [[ :$opts: == *:reject-empty-here:* ]]; then
+      ((beg+1<end)) || return 1
+    fi
+
+    if [[ :$opts: == *:check-expand:* ]]; then
+      # If the new range is essentially identical (or a prefix) to the current
+      # selection, we try to capture the range upper by one level.
+      local outer_beg outer_end
+      ble/keymap:vi/text-object:block/.outer-range "$p1" "$p2"
+      if ((outer_beg==beg&&outer_end>=end)); then
+        [[ $type == i* ]] && ((p1--))
+        ble/keymap:vi/text-object:block/.expand-one-level "$outer_beg" || return 1
+      fi
+    fi
+  elif ((ret<=0&&arg==1)); then
+    # When we fail to find "the surrounding pair (...)" at the top level, we
+    # next try "the next pair (...)".  This is attempted only when the
+    # specified level is arg=1.
+    p1=$1
+    [[ ${_ble_edit_str:p1:1} == "$R" ]] && ((p1++))
+    ble/keymap:vi/text-object:block/.next-matching-lparen "$p1" || return 1
+    beg=$ret
+    ble/keymap:vi/text-object:block/.next-matching-rparen "$((beg+1))" || return 1
+    end=$ret
+    # Note: In Vim, ((beg+1<end)) check does not seem to be performed here.
+    # See also the next Note in the code comment below.
+
+    if [[ :$opts: == *:check-expand:* ]]; then
+      if [[ $type == i* ]]; then
+        local outer_end=$p2
+        case ${_ble_edit_str:outer_end+1} in
+        ($'\n'"$rparen"*) ((outer_end+=2)) ;;
+        ("$rparen"*) ((outer_end++)) ;;
+        esac
+        ((outer_end<end)) || return 1
+      fi
+    fi
+  else
+    return 1
+  fi
+  return 0
+}
+
 ## @fn ble/keymap:vi/text-object:block/.xmap
 ##   @var[in] lparen rparen
 ##   @var[in] arg
 function ble/keymap:vi/text-object:block/.xmap {
   if ((_ble_edit_ind==_ble_edit_mark)); then
-    local ret p1=$_ble_edit_ind
-    [[ ${_ble_edit_str:p1:1} == "$lparen" ]] && ((p1++))
-    if ble/keymap:vi/text-object:block/.prev-matching-lparen "$p1" "$arg"; then
-      # We first attempt to search for "a surrounding pair (...)" at the
-      # specified level of $arg.
-      local beg=$ret
-      ble/keymap:vi/text-object:block/.next-matching-rparen "$p1" "$arg" || return 1
-      local end=$ret
-      ((beg+1<end)) || return 1
-    elif ((ret<=0&&arg==1)); then
-      # When we fail to find "the surrounding pair (...)" at the top level, we
-      # next try "the next pair (...)".  This is attempted only when the
-      # specified level is arg=1.
-      p1=$_ble_edit_ind
-      [[ ${_ble_edit_str:p1:1} == "$rparen" ]] && ((p1++))
-      ble/keymap:vi/text-object:block/.next-matching-lparen "$p1" || return 1
-      local beg=$ret
-      ble/keymap:vi/text-object:block/.next-matching-rparen "$((beg+1))" || return 1
-      local end=$ret
-      # Note: In Vim, ((beg+1<end)) check does not seem to be performed here.
-      # See also the next Note in the code comment below.
-    else
-      return 1
-    fi
+    local beg end p=$_ble_edit_ind
+    ble/keymap:vi/text-object:block/.search-block "$p" "$p" "$lparen" "$rparen" reject-empty-here || return 1
 
     # i, a に応じて適切に範囲を決定する
     if [[ $type == i* ]]; then
@@ -4895,39 +4928,7 @@ function ble/keymap:vi/text-object:block/.xmap {
   else
     local min=$_ble_edit_mark max=$_ble_edit_ind
     ((min<max)) || local min=$max max=$min
-    local p1=$min p2=$max
-    [[ ${_ble_edit_str:p1:1} == "$rparen" ]] && ((p1++)) # rparen と lparen が逆
-    if ble/keymap:vi/text-object:block/.prev-matching-lparen "$p1" "$arg"; then
-      local beg=$ret
-      ble/keymap:vi/text-object:block/.next-matching-rparen "$p1" "$arg" || return 1
-      local end=$ret
-      ((beg+1<end)) || return 1
-
-      # If the new range is essentially identical (or a prefix) to the current
-      # selection, we try to capture the range upper by one level.
-      local outer_beg outer_end
-      ble/keymap:vi/text-object:block/.outer-range "$p1" "$p2"
-      if ((outer_beg==beg&&outer_end>=end)); then
-        [[ $type == i* ]] && ((p1--))
-        ble/keymap:vi/text-object:block/.expand-one-level "$outer_beg" || return 1
-      fi
-    elif ((ret<=0&&arg==1)); then
-      local p1=$min p2=$max
-      [[ ${_ble_edit_str:p1:1} == "$lparen" ]] && ((p1++))
-      ble/keymap:vi/text-object:block/.next-matching-lparen "$p1" || return 1
-      local beg=$ret
-      ble/keymap:vi/text-object:block/.next-matching-rparen "$((beg+1))" || return 1
-      local end=$ret
-
-      if [[ $type == i* ]]; then
-        local outer_end=$p2
-        case ${_ble_edit_str:outer_end+1} in
-        ($'\n'"$rparen"*) ((outer_end+=2)) ;;
-        ("$rparen"*) ((outer_end++)) ;;
-        esac
-        ((outer_end<end)) || return 1
-      fi
-    fi
+    ble/keymap:vi/text-object:block/.search-block "$min" "$max" "$rparen" "$lparen" reject-empty-here:check-expand || return 1
 
     if [[ $type == i* ]]; then
       ((beg++,end--))
@@ -4952,21 +4953,12 @@ function ble/keymap:vi/text-object/block.impl {
     fi
   fi
 
-  local axis=$_ble_edit_ind
-  [[ ${_ble_edit_str:axis:1} == "$lparen" ]] && ((axis++))
-
-  local ret
-  if ! ble/keymap:vi/text-object:block/.prev-matching-lparen "$axis" "$arg"; then
+  local beg end p=$_ble_edit_ind
+  if ! ble/keymap:vi/text-object:block/.search-block "$p" "$p" "$lparen" "$rparen"; then
     ble/widget/vi-command/bell
     return 1
   fi
-  local beg=$ret
-
-  if ! ble/keymap:vi/text-object:block/.next-matching-rparen "$axis" "$arg"; then
-    ble/widget/vi-command/bell
-    return 1
-  fi
-  local end=$((ret+1))
+  ((end++))
 
   local linewise=
   if [[ $type == *i* ]]; then
@@ -4976,10 +4968,7 @@ function ble/keymap:vi/text-object/block.impl {
     ((beg<end)) && ble-edit/content/bolp "$beg" && ble-edit/content/eolp "$end" && linewise=1
   fi
 
-  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
-    _ble_edit_mark=$beg
-    ble/widget/vi-command/exclusive-goto.impl "$end"
-  elif [[ $linewise ]]; then
+  if [[ $linewise ]]; then
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg" goto_bol
   else
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"

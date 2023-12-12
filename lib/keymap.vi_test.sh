@@ -192,7 +192,7 @@ function ble/widget/vi-command:check-vi-mode/surround {
 
   ble/keymap:vi_test/show-summary
 }
-function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
+function ble/widget/vi-command:check-vi-mode/txtobj_quote_xmap {
   ble/keymap:vi_test/start-section 'xmap text object i" a"'
 
   # A. xmap txtobj i"/a"、開始点と終了点が同じとき
@@ -258,8 +258,60 @@ function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
   ble/keymap:vi_test/show-summary
 }
 
-function ble/widget/vi-command:check-vi-mode/xmap_txtobj_block {
-  ble/keymap:vi_test/start-section 'xmap text object i( a('
+function ble/widget/vi-command:check-vi-mode/txtobj_block_omap {
+  ble/keymap:vi_test/start-section 'txtobj block omap (ib ab)'
+
+  ble/keymap:vi_test/check A1a '@:echo @foo ( bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check A1b '@:echo foo@ ( bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check A1c '@:echo foo @( bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check A1d '@:echo foo (@ bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check A1e '@:echo foo ( @bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check A1f '@:echo foo ( bar@ ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check A1g '@:echo foo ( bar @) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check A1h '@:echo foo ( bar )@ baz (hello) world (vim) xxxx' 'd i b' '@:echo foo ( bar ) baz (@) world (vim) xxxx'
+  ble/keymap:vi_test/check A1i '@:echo foo ( bar ) @baz (hello) world (vim) xxxx' 'd i b' '@:echo foo ( bar ) baz (@) world (vim) xxxx'
+  ble/keymap:vi_test/check A1i '@:echo foo ( bar ) baz (hello) world (vim@) xxxx' 'd i b' '@:echo foo ( bar ) baz (hello) world (@) xxxx'
+  ble/keymap:vi_test/check A1i '@:echo foo ( bar ) baz (hello) world (vim)@ xxxx' 'd i b' '@:echo foo ( bar ) baz (hello) world (vim)@ xxxx'
+  ble/keymap:vi_test/check A1i '@:echo foo ( bar ) baz (hello) world (vim) @xxxx' 'd i b' '@:echo foo ( bar ) baz (hello) world (vim) @xxxx'
+
+  ble/keymap:vi_test/check B1a '@:echo ( @foo ( bar ) baz (hello) world (vim) ) xxxx' 'd i b' '@:echo (@) xxxx'
+  ble/keymap:vi_test/check B1b '@:echo ( foo @( bar ) baz (hello) world (vim) ) xxxx' 'd i b' '@:echo ( foo (@) baz (hello) world (vim) ) xxxx'
+  ble/keymap:vi_test/check B1c '@:echo ( foo ( @bar ) baz (hello) world (vim) ) xxxx' 'd i b' '@:echo ( foo (@) baz (hello) world (vim) ) xxxx'
+  ble/keymap:vi_test/check B1d '@:echo ( foo ( bar @) baz (hello) world (vim) ) xxxx' 'd i b' '@:echo ( foo (@) baz (hello) world (vim) ) xxxx'
+  ble/keymap:vi_test/check B1e '@:echo ( foo ( bar )@ baz (hello) world (vim) ) xxxx' 'd i b' '@:echo (@) xxxx'
+  ble/keymap:vi_test/check B1f '@:echo ( foo ( bar ) baz@ (hello) world (vim) ) xxxx' 'd i b' '@:echo (@) xxxx'
+  ble/keymap:vi_test/check B1g '@:echo ( foo ( bar ) baz @(hello) world (vim) ) xxxx' 'd i b' '@:echo ( foo ( bar ) baz (@) world (vim) ) xxxx'
+  ble/keymap:vi_test/check B2a '@:echo ( @foo ( bar ) baz (hello) world (vim) ) xxxx' 'd 2 i b' '@:echo ( @foo ( bar ) baz (hello) world (vim) ) xxxx'
+  ble/keymap:vi_test/check B2b '@:echo ( foo @( bar ) baz (hello) world (vim) ) xxxx' 'd 2 i b' '@:echo (@) xxxx'
+  ble/keymap:vi_test/check B2c '@:echo ( foo ( @bar ) baz (hello) world (vim) ) xxxx' 'd 2 i b' '@:echo (@) xxxx'
+  ble/keymap:vi_test/check B2d '@:echo ( foo ( bar @) baz (hello) world (vim) ) xxxx' 'd 2 i b' '@:echo (@) xxxx'
+  ble/keymap:vi_test/check B2e '@:echo ( foo ( bar )@ baz (hello) world (vim) ) xxxx' 'd 2 i b' '@:echo ( foo ( bar )@ baz (hello) world (vim) ) xxxx'
+  ble/keymap:vi_test/check B2f '@:echo ( foo ( bar ) baz@ (hello) world (vim) ) xxxx' 'd 2 i b' '@:echo ( foo ( bar ) baz@ (hello) world (vim) ) xxxx'
+  ble/keymap:vi_test/check B2g '@:echo ( foo ( bar ) baz @(hello) world (vim) ) xxxx' 'd 2 i b' '@:echo (@) xxxx'
+
+  ble/keymap:vi_test/check C1a '@:echo ( @foo ( bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo ( @foo ( bar ) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check C1b '@:echo ( foo (@ bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo ( foo (@) baz (hello) world (vim) xxxx'
+  ble/keymap:vi_test/check C2a '@:echo @foo ( bar ) baz (hello) world (vim) ) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) ) xxxx'
+  ble/keymap:vi_test/check C2b '@:echo foo (@ bar ) baz (hello) world (vim) ) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) ) xxxx'
+
+  ble/keymap:vi_test/check D1a '@:echo @vim) test ( quick ) world ( foo )' 'd i b' '@:echo @vim) test ( quick ) world ( foo )'
+  ble/keymap:vi_test/check D1a '@:echo vi@m) test ( quick ) world ( foo )' 'd i b' '@:echo vi@m) test ( quick ) world ( foo )'
+  ble/keymap:vi_test/check D1a '@:echo vim@) test ( quick ) world ( foo )' 'd i b' '@:echo vim) test (@) world ( foo )'
+  ble/keymap:vi_test/check D1a '@:echo vim) @test ( quick ) world ( foo )' 'd i b' '@:echo vim) test (@) world ( foo )'
+  ble/keymap:vi_test/check D1a '@:echo vim) test @( quick ) world ( foo )' 'd i b' '@:echo vim) test (@) world ( foo )'
+
+  ble/keymap:vi_test/check E1a '@:echo @foo () bar' 'd i b' '@:echo foo (@) bar'
+  ble/keymap:vi_test/check E1b '@:echo foo @() bar' 'd i b' '@:echo foo (@) bar'
+  ble/keymap:vi_test/check E1c '@:echo foo (@) bar' 'd i b' '@:echo foo (@) bar'
+  ble/keymap:vi_test/check E1d '@:echo @foo () bar' 'd a b' '@:echo foo @ bar'
+  ble/keymap:vi_test/check E1e '@:echo foo @() bar' 'd a b' '@:echo foo @ bar'
+  ble/keymap:vi_test/check E1f '@:echo foo (@) bar' 'd a b' '@:echo foo @ bar'
+
+  ble/keymap:vi_test/show-summary
+}
+
+function ble/widget/vi-command:check-vi-mode/txtobj_block_xmap {
+  ble/keymap:vi_test/start-section 'txtobj block xmap (ib ab)'
 
   # xmap txtobj i"/a"、開始点と終了点が同じとき
 
@@ -609,10 +661,11 @@ function ble/widget/vi-command:check-vi-mode {
   ble/widget/vi-command:check-vi-mode/increment
   ble/widget/vi-command:check-vi-mode/macro
   ble/widget/vi-command:check-vi-mode/surround
-  ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote
-  ble/widget/vi-command:check-vi-mode/xmap_txtobj_block
-  ble/widget/vi-command:check-vi-mode/op.2018-02-22
+  ble/widget/vi-command:check-vi-mode/txtobj_quote_xmap
+  ble/widget/vi-command:check-vi-mode/txtobj_block_omap
+  ble/widget/vi-command:check-vi-mode/txtobj_block_xmap
   ble/widget/vi-command:check-vi-mode/txtobj_word
+  ble/widget/vi-command:check-vi-mode/op.2018-02-22
 
   #----------------------------------------------------------------------------
 
