@@ -15,6 +15,7 @@
 - edit: support `bleopt {edit_marker{,_error},exec_exit_mark}` `#D2079` e4e1c874
 - edit: add widget `zap-to-char` `#D2082` ce7ce403
 - keymap/vi: split widget `text-object` into `text-object-{inner,outer}` (requested by Darukutsu) `#D2093` 11cf118a
+- keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` xxxxxxxx
 
 ## Changes
 
@@ -41,7 +42,7 @@
 - complete: fix error messages on empty command names `#D2085` dab8dd04
 - complete: fix parsing the output of `complete -p` in bash-5.2 (reported by maheis) `#D2088` a7eb5d04
 - make: specify bash to search the awk path using `type -p` (reported by rashil2000) `#D2089` 26826354
-- keymap/vi: fix the behavior of text-object for quotes in xmap (reported by Darukutsu) `#D2093` xxxxxxxx
+- keymap/vi: fix the behavior of text-object for quotes in xmap (reported by Darukutsu) `#D2094` 5f9a44ec
 
 ## Compatibility
 

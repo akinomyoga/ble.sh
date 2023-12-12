@@ -258,6 +258,181 @@ function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
   ble/keymap:vi_test/show-summary
 }
 
+function ble/widget/vi-command:check-vi-mode/xmap_txtobj_block {
+  ble/keymap:vi_test/start-section 'xmap text object i( a('
+
+  # xmap txtobj i"/a"、開始点と終了点が同じとき
+
+  # 様々な位置で実行した時
+  ble/keymap:vi_test/check A1a '@:echo @( foo ) bar ( baz ) hello ( vim ) world' 'v i b S a' '@:echo (@< foo >) bar ( baz ) hello ( vim ) world'
+  ble/keymap:vi_test/check A1b '@:echo ( @foo ) bar ( baz ) hello ( vim ) world' 'v i b S a' '@:echo (@< foo >) bar ( baz ) hello ( vim ) world'
+  ble/keymap:vi_test/check A1c '@:echo ( foo @) bar ( baz ) hello ( vim ) world' 'v i b S a' '@:echo (@< foo >) bar ( baz ) hello ( vim ) world'
+  ble/keymap:vi_test/check A1d '@:echo ( foo ) @bar ( baz ) hello ( vim ) world' 'v i b S a' '@:echo ( foo ) bar (@< baz >) hello ( vim ) world'
+  ble/keymap:vi_test/check A1e '@:echo ( foo ) bar ( baz ) hello ( vim ) @world' 'v i b S a' '@:echo ( foo ) bar ( baz ) hello ( vim ) @<w>orld'
+
+  # 入れ子になっている時
+  ble/keymap:vi_test/check B1a '@:echo ( @( foo ) bar ( baz ) hello ) ( vim ) world' 'v   i b S a' '@:echo ( (@< foo >) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B1b '@:echo ( @( foo ) bar ( baz ) hello ) ( vim ) world' 'v 1 i b S a' '@:echo ( (@< foo >) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B1c '@:echo ( @( foo ) bar ( baz ) hello ) ( vim ) world' 'v 2 i b S a' '@:echo (@< ( foo ) bar ( baz ) hello >) ( vim ) world'
+  ble/keymap:vi_test/check B1d '@:echo ( @( foo ) bar ( baz ) hello ) ( vim ) world' 'v 3 i b S a' '@:echo ( @<(> foo ) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B2a '@:echo ( ( @foo ) bar ( baz ) hello ) ( vim ) world' 'v   i b S a' '@:echo ( (@< foo >) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B2b '@:echo ( ( @foo ) bar ( baz ) hello ) ( vim ) world' 'v 1 i b S a' '@:echo ( (@< foo >) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B2c '@:echo ( ( @foo ) bar ( baz ) hello ) ( vim ) world' 'v 2 i b S a' '@:echo (@< ( foo ) bar ( baz ) hello >) ( vim ) world'
+  ble/keymap:vi_test/check B2d '@:echo ( ( @foo ) bar ( baz ) hello ) ( vim ) world' 'v 3 i b S a' '@:echo ( ( @<f>oo ) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B3a '@:echo ( ( foo @) bar ( baz ) hello ) ( vim ) world' 'v   i b S a' '@:echo ( (@< foo >) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B3b '@:echo ( ( foo @) bar ( baz ) hello ) ( vim ) world' 'v 1 i b S a' '@:echo ( (@< foo >) bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B3c '@:echo ( ( foo @) bar ( baz ) hello ) ( vim ) world' 'v 2 i b S a' '@:echo (@< ( foo ) bar ( baz ) hello >) ( vim ) world'
+  ble/keymap:vi_test/check B3d '@:echo ( ( foo @) bar ( baz ) hello ) ( vim ) world' 'v 3 i b S a' '@:echo ( ( foo @<)> bar ( baz ) hello ) ( vim ) world'
+  ble/keymap:vi_test/check B4a '@:echo ( ( foo ) @bar ( baz ) hello ) ( vim ) world' 'v   i b S a' '@:echo (@< ( foo ) bar ( baz ) hello >) ( vim ) world'
+  ble/keymap:vi_test/check B4b '@:echo ( ( foo ) @bar ( baz ) hello ) ( vim ) world' 'v 1 i b S a' '@:echo (@< ( foo ) bar ( baz ) hello >) ( vim ) world'
+  ble/keymap:vi_test/check B4c '@:echo ( ( foo ) @bar ( baz ) hello ) ( vim ) world' 'v 2 i b S a' '@:echo ( ( foo ) @<b>ar ( baz ) hello ) ( vim ) world'
+
+  # 閉じていない時1
+  ble/keymap:vi_test/check C1a '@:echo ( ( @foo ) bar ( baz ) hello' 'v i b S a' '@:echo ( (@< foo >) bar ( baz ) hello'
+  ble/keymap:vi_test/check C1b '@:echo ( ( foo ) @bar ( baz ) hello' 'v i b S a' '@:echo ( ( foo ) @<b>ar ( baz ) hello'
+
+  # 閉じていない時2
+  ble/keymap:vi_test/check D1a '@:echo ( @foo bar' 'v i b S a' '@:echo ( @<f>oo bar'
+
+  # 閉じていない時3
+  ble/keymap:vi_test/check E1a '@:echo (vim) test ( quick ) world ( @foo bar' 'v i b S a' '@:echo (vim) test ( quick ) world ( @<f>oo bar'
+  ble/keymap:vi_test/check E1b '@:echo (vim) test ( quick ) @world ( foo bar' 'v i b S a' '@:echo (vim) test ( quick ) @<w>orld ( foo bar'
+  ble/keymap:vi_test/check E1c '@:echo (vim) test ( @quick ) world ( foo bar' 'v i b S a' '@:echo (vim) test (@< quick >) world ( foo bar'
+  ble/keymap:vi_test/check E1d '@:echo (vim) @test ( quick ) world ( foo bar' 'v i b S a' '@:echo (vim) test (@< quick >) world ( foo bar'
+  ble/keymap:vi_test/check E1e '@:echo (@vim) test ( quick ) world ( foo bar' 'v i b S a' '@:echo (@<vim>) test ( quick ) world ( foo bar'
+
+  # 始まりがない時
+  ble/keymap:vi_test/check F1a '@:echo @vim) test ( quick ) world ( foo )' 'v i b S a' '@:echo @<v>im) test ( quick ) world ( foo )'
+  ble/keymap:vi_test/check F1b '@:echo vim@) test ( quick ) world ( foo )' 'v i b S a' '@:echo vim) test (@< quick >) world ( foo )'
+  ble/keymap:vi_test/check F1c '@:echo vim) @test ( quick ) world ( foo )' 'v i b S a' '@:echo vim) test (@< quick >) world ( foo )'
+  ble/keymap:vi_test/check F1d '@:echo vim) test @( quick ) world ( foo )' 'v i b S a' '@:echo vim) test (@< quick >) world ( foo )'
+  ble/keymap:vi_test/check F1e '@:echo vim) test ( quick ) @world ( foo )' 'v i b S a' '@:echo vim) test ( quick ) world (@< foo >)'
+
+  # echo () ... の時。ib と ab の両方テストする
+  ble/keymap:vi_test/check G1a '@:echo @foo () (bar)' 'v i b S a' '@:echo foo @<()> (bar)'
+  ble/keymap:vi_test/check G1b '@:echo foo @() (bar)' 'v i b S a' '@:echo foo @<(>) (bar)'
+  ble/keymap:vi_test/check G1c '@:echo foo (@) (bar)' 'v i b S a' '@:echo foo (@<)> (bar)'
+  ble/keymap:vi_test/check G2a '@:echo @foo () (bar)' 'v a b S a' '@:echo foo @<()> (bar)'
+  ble/keymap:vi_test/check G2b '@:echo foo @() (bar)' 'v a b S a' '@:echo foo @<(>) (bar)'
+  ble/keymap:vi_test/check G2c '@:echo foo (@) (bar)' 'v a b S a' '@:echo foo (@<)> (bar)'
+  ble/keymap:vi_test/check G3a '@:echo @foo () (bar)' 'v i b h S a' '@:echo foo@< ()> (bar)'
+  ble/keymap:vi_test/check G3b '@:echo @foo () (bar)' 'v a b l S a' '@:echo foo @<() >(bar)'
+
+  # 改行が含まれている場合の処理
+  ble/keymap:vi_test/check H1a $'@:echo (\nhello @world\n)'   'v i b S a' $'@:echo (\n@<hello world\n>)'
+  ble/keymap:vi_test/check H2a $'@:echo (\nhello @world\n\n)' 'v i b S a' $'@:echo (\n@<hello world\n\n>)'
+
+  ble/keymap:vi_test/check I1a '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I1b '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 4 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I1c '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 6 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I1d '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 9 l i b S a'   '@:echo @<foo ( bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I1e '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 0 l i b S a' '@:echo @<foo ( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I1f '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 2 l i b S a' '@:echo @<foo ( bar ) b>az (hello) vim (world) this'
+  ble/keymap:vi_test/check I1g '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 6 l i b S a' '@:echo @<foo ( bar ) baz (>hello) vim (world) this'
+  ble/keymap:vi_test/check I1h '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 8 l i b S a' '@:echo @<foo ( bar ) baz (he>llo) vim (world) this'
+  ble/keymap:vi_test/check I2a '@:echo foo @( bar ) baz (hello) vim (world) this' 'v 1 l i b S a'   '@:echo foo @<( >bar ) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I2b '@:echo foo @( bar ) baz (hello) vim (world) this' 'v 2 l i b S a'   '@:echo foo @<( b>ar ) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I2c '@:echo foo @( bar ) baz (hello) vim (world) this' 'v 6 l i b S a'   '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I2d '@:echo foo @( bar ) baz (hello) vim (world) this' 'v 8 l i b S a'   '@:echo foo @<( bar ) b>az (hello) vim (world) this'
+  ble/keymap:vi_test/check I2e '@:echo foo @( bar ) baz (hello) vim (world) this' 'v 1 2 l i b S a' '@:echo foo @<( bar ) baz (>hello) vim (world) this'
+  ble/keymap:vi_test/check I2f '@:echo foo @( bar ) baz (hello) vim (world) this' 'v 1 4 l i b S a' '@:echo foo @<( bar ) baz (he>llo) vim (world) this'
+  ble/keymap:vi_test/check I2g '@:echo foo @( bar ) baz (hello) vim (world) this' 'v 2 0 l i b S a' '@:echo foo @<( bar ) baz (hello) v>im (world) this'
+  ble/keymap:vi_test/check I3a '@:echo foo (@ bar ) baz (hello) vim (world) this' 'v 1 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I3b '@:echo foo (@ bar ) baz (hello) vim (world) this' 'v 4 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I3c '@:echo foo (@ bar ) baz (hello) vim (world) this' 'v 6 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I3d '@:echo foo (@ bar ) baz (hello) vim (world) this' 'v 1 0 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I3e '@:echo foo (@ bar ) baz (hello) vim (world) this' 'v 1 2 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I3f '@:echo foo (@ bar ) baz (hello) vim (world) this' 'v 1 6 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I3g '@:echo foo (@ bar ) baz (hello) vim (world) this' 'v 1 8 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I4a '@:echo foo ( @bar ) baz (hello) vim (world) this' 'v 1 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I4b '@:echo foo ( @bar ) baz (hello) vim (world) this' 'v 4 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I4c '@:echo foo ( @bar ) baz (hello) vim (world) this' 'v 6 l i b S a'   '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I4d '@:echo foo ( @bar ) baz (hello) vim (world) this' 'v 1 0 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I4e '@:echo foo ( @bar ) baz (hello) vim (world) this' 'v 1 2 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I4f '@:echo foo ( @bar ) baz (hello) vim (world) this' 'v 1 6 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I4g '@:echo foo ( @bar ) baz (hello) vim (world) this' 'v 1 8 l i b S a' '@:echo foo (@< bar >) baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5a '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1   l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5b '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 4   l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5c '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 6   l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5d '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 9   l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5e '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 0 l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5f '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 2 l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5g '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 6 l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+  ble/keymap:vi_test/check I5h '@:echo @foo ( bar ) baz (hello) vim (world) this' 'v 1 8 l a b S a' '@:echo foo @<( bar )> baz (hello) vim (world) this'
+
+  ble/keymap:vi_test/check J1a '@:echo ( @foo ( bar ) baz (hello) vim (world) this )' 'v 1 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J1b '@:echo ( @foo ( bar ) baz (hello) vim (world) this )' 'v 2 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J1c '@:echo ( @foo ( bar ) baz (hello) vim (world) this )' 'v 4 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J1d '@:echo ( @foo ( bar ) baz (hello) vim (world) this )' 'v 6 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J1e '@:echo ( @foo ( bar ) baz (hello) vim (world) this )' 'v 1 0 l i b S a' '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J1f '@:echo ( @foo ( bar ) baz (hello) vim (world) this )' 'v 1 2 l i b S a' '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J1g '@:echo ( @foo ( bar ) baz (hello) vim (world) this )' 'v 1 6 l i b S a' '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J2a '@:echo ( foo @( bar ) baz (hello) vim (world) this )' 'v 1 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J2b '@:echo ( foo @( bar ) baz (hello) vim (world) this )' 'v 2 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J2c '@:echo ( foo @( bar ) baz (hello) vim (world) this )' 'v 4 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J2d '@:echo ( foo @( bar ) baz (hello) vim (world) this )' 'v 6 l i b S a'   '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J2e '@:echo ( foo @( bar ) baz (hello) vim (world) this )' 'v 1 0 l i b S a' '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J2f '@:echo ( foo @( bar ) baz (hello) vim (world) this )' 'v 1 2 l i b S a' '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J2g '@:echo ( foo @( bar ) baz (hello) vim (world) this )' 'v 1 6 l i b S a' '@:echo (@< foo ( bar ) baz (hello) vim (world) this >)'
+  ble/keymap:vi_test/check J3a '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 1 l i b S a'   '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+  ble/keymap:vi_test/check J3b '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 2 l i b S a'   '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+  ble/keymap:vi_test/check J3c '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 4 l i b S a'   '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+  ble/keymap:vi_test/check J3d '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 6 l i b S a'   '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+  ble/keymap:vi_test/check J3e '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 1 0 l i b S a' '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+  ble/keymap:vi_test/check J3f '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 1 2 l i b S a' '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+  ble/keymap:vi_test/check J3g '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 1 6 l i b S a' '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+  ble/keymap:vi_test/check J3h '@:echo ( foo ( @bar ) baz (hello) vim (world) this )' 'v 1 8 l i b S a' '@:echo ( foo (@< bar >) baz (hello) vim (world) this )'
+
+  ble/keymap:vi_test/check K1a '@:echo foo @(bar (check) ) world' 'v 1   l i b S a' '@:echo foo (bar (@<check>) ) world'
+  ble/keymap:vi_test/check K1b '@:echo foo @(bar (check) ) world' 'v 4   l i b S a' '@:echo foo (bar (@<check>) ) world'
+  ble/keymap:vi_test/check K1c '@:echo foo @(bar (check) ) world' 'v 5   l i b S a' '@:echo foo (bar (@<check>) ) world'
+  ble/keymap:vi_test/check K1d '@:echo foo @(bar (check) ) world' 'v 7   l i b S a' '@:echo foo (bar (@<check>) ) world'
+  ble/keymap:vi_test/check K1e '@:echo foo @(bar (check) ) world' 'v 9   l i b S a' '@:echo foo (bar (@<check>) ) world'
+  ble/keymap:vi_test/check K1f '@:echo foo @(bar (check) ) world' 'v 1 0 l i b S a' '@:echo foo @<(bar (check>) ) world'
+  ble/keymap:vi_test/check K1g '@:echo foo @(bar (check) ) world' 'v 1 1 l i b S a' '@:echo foo @<(bar (check)> ) world'
+  ble/keymap:vi_test/check K1h '@:echo foo @(bar (check) ) world' 'v 1 2 l i b S a' '@:echo foo @<(bar (check) >) world'
+  ble/keymap:vi_test/check K1i '@:echo foo @(bar (check) ) world' 'v 1 3 l i b S a' '@:echo foo @<(bar (check) )> world'
+
+  ble/keymap:vi_test/check L1a '@:echo foo @(bar () ) world' 'v 1   l i b S a'   '@:echo foo (bar @<()> ) world'
+  ble/keymap:vi_test/check L1b '@:echo foo @(bar () ) world' 'v 1   l i b h S a' '@:echo foo (bar@< ()> ) world'
+  ble/keymap:vi_test/check L1c '@:echo foo @(bar () ) world' 'v 1   l a b S a'   '@:echo foo (bar @<()> ) world'
+  ble/keymap:vi_test/check L1d '@:echo foo @(bar () ) world' 'v 1   l a b l S a' '@:echo foo (bar @<() >) world'
+  ble/keymap:vi_test/check L2a '@:echo foo (bar @() ) world' 'v 1   l i b S a' '@:echo foo (@<bar () >) world'
+  ble/keymap:vi_test/check L2b '@:echo foo (bar @() ) world' 'v 2   l i b S a' '@:echo foo (@<bar () >) world'
+  ble/keymap:vi_test/check L2c '@:echo foo (bar @() ) world' 'v 3   l i b S a' '@:echo foo (@<bar () >) world'
+  ble/keymap:vi_test/check L2d '@:echo foo (bar @() ) world' 'v 4   l i b S a' '@:echo foo (@<bar () >) world'
+  ble/keymap:vi_test/check L3a '@:echo foo (bar (@) ) world' 'v 1   l i b S a' '@:echo foo (@<bar () >) world'
+  ble/keymap:vi_test/check L3b '@:echo foo (bar (@) ) world' 'v 2   l i b S a' '@:echo foo (@<bar () >) world'
+  ble/keymap:vi_test/check L3c '@:echo foo (bar (@) ) world' 'v 3   l i b S a' '@:echo foo (@<bar () >) world'
+  ble/keymap:vi_test/check L3d '@:echo foo (bar (@) ) world' 'v 4   l i b S a' '@:echo foo (@<bar () >) world'
+
+  ble/keymap:vi_test/check M1a '@:echo (foo @(bar (check) ) world) xxxx' 'v 1   l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1b '@:echo (foo @(bar (check) ) world) xxxx' 'v 5   l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1c '@:echo (foo @(bar (check) ) world) xxxx' 'v 7   l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1d '@:echo (foo @(bar (check) ) world) xxxx' 'v 1 1 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1e '@:echo (foo @(bar (check) ) world) xxxx' 'v 1 2 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1f '@:echo (foo @(bar (check) ) world) xxxx' 'v 1 3 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1g '@:echo (foo @(bar (check) ) world) xxxx' 'v 1 4 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1h '@:echo (foo @(bar (check) ) world) xxxx' 'v 2 0 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M1i '@:echo (foo @(bar (check) ) world) xxxx' 'v 2 4 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M2a '@:echo (foo (@bar (check) ) world) xxxx' 'v 1   l i b S a'   '@:echo (foo (@<bar (check) >) world) xxxx'
+  ble/keymap:vi_test/check M2b '@:echo (foo (@bar (check) ) world) xxxx' 'v 4   l i b S a'   '@:echo (foo (@<bar (check) >) world) xxxx'
+  ble/keymap:vi_test/check M2c '@:echo (foo (@bar (check) ) world) xxxx' 'v 6   l i b S a'   '@:echo (foo (@<bar (check) >) world) xxxx'
+  ble/keymap:vi_test/check M2d '@:echo (foo (@bar (check) ) world) xxxx' 'v 1 0 l i b S a'   '@:echo (foo (@<bar (check) >) world) xxxx'
+  ble/keymap:vi_test/check M2e '@:echo (foo (@bar (check) ) world) xxxx' 'v 1 1 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M2f '@:echo (foo (@bar (check) ) world) xxxx' 'v 1 2 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M2g '@:echo (foo (@bar (check) ) world) xxxx' 'v 1 3 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M2h '@:echo (foo (@bar (check) ) world) xxxx' 'v 1 9 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M2i '@:echo (foo (@bar (check) ) world) xxxx' 'v 2 3 l i b S a'   '@:echo (@<foo (bar (check) ) world>) xxxx'
+  ble/keymap:vi_test/check M3a '@:echo (foo (@bar (check) ) world xxxx' 'v 1 4 l i b S a'   '@:echo (foo (@<bar (check) ) w>orld xxxx'
+  ble/keymap:vi_test/check M3b '@:echo foo (@bar (check) ) world) xxxx' 'v 1 4 l i b S a'   '@:echo foo (@<bar (check) ) w>orld) xxxx'
+
+  ble/keymap:vi_test/check N1a $'@:echo ( foo (\n@hello world\n) bar )' 'v $   i b S a'   $'@:echo (@< foo (\nhello world\n) bar >)'
+  ble/keymap:vi_test/check N1b $'@:echo ( foo (\n@hello world\n) bar )' 'v f d i b S a'   $'@:echo (@< foo (\nhello world\n) bar >)'
+
+  ble/keymap:vi_test/show-summary
+}
+
 function ble/widget/vi-command:check-vi-mode/txtobj_word {
   ble/keymap:vi_test/start-section 'txtobj word omap'
 
@@ -435,6 +610,7 @@ function ble/widget/vi-command:check-vi-mode {
   ble/widget/vi-command:check-vi-mode/macro
   ble/widget/vi-command:check-vi-mode/surround
   ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote
+  ble/widget/vi-command:check-vi-mode/xmap_txtobj_block
   ble/widget/vi-command:check-vi-mode/op.2018-02-22
   ble/widget/vi-command:check-vi-mode/txtobj_word
 
