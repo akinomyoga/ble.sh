@@ -16,6 +16,7 @@
 - edit: add widget `zap-to-char` `#D2082` ce7ce403
 - keymap/vi: split widget `text-object` into `text-object-{inner,outer}` (requested by Darukutsu) `#D2093` 11cf118a
 - keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` 7d80167c
+- util: support `ble-import -C callback` (motivated by Dominiquini) `#D2102` xxxxxxxx
 
 ## Changes
 

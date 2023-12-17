@@ -4614,15 +4614,17 @@ function ble/util/import/finalize {
   _ble_util_import_files=()
 }
 ## @fn ble/util/import/.read-arguments args...
-##   @var[out] files not_found
+##   @var[out] files callbacks
 ##   @var[out] flags
 ##     E error
+##     N not_found
 ##     h help
 ##     d delay
 ##     f force
 ##     q query
 function ble/util/import/.read-arguments {
-  flags= files=() not_found=()
+  flags= files=() callbacks=()
+  local -a not_found=()
   while (($#)); do
     local arg=$1; shift
     if [[ $flags != *-* ]]; then
@@ -4636,6 +4638,16 @@ function ble/util/import/.read-arguments {
         (--help)  flags=h$flags ;;
         (--force) flags=f$flags ;;
         (--query) flags=q$flags ;;
+        (--callback=*)
+          ble/array#push callbacks "${arg#*=}" ;;
+        (--callback)
+          if (($#)); then
+            ble/array#push callbacks "$1"
+            shift
+          else
+            ble/util/print "ble-import: missing optarg for '--callback'" >&2
+            flags=E$flags
+          fi ;;
         (*)
           ble/util/print "ble-import: unrecognized option '$arg'" >&2
           flags=E$flags ;;
@@ -4647,6 +4659,17 @@ function ble/util/import/.read-arguments {
           c=${arg:i:1}
           case $c in
           ([dfq]) flags=$c$flags ;;
+          (C)
+            if ((i+1<${#arg})); then
+              ble/array#push callbacks "${arg:i+1}"
+            elif (($#)); then
+              ble/array#push callbacks "$1"
+              shift
+            else
+              ble/util/print "ble-import: missing optarg for '-C'" >&2
+              flags=E$flags
+            fi
+            break ;;
           (*)
             ble/util/print "ble-import: unrecognized option '-$c'" >&2
             flags=E$flags ;;
@@ -4665,12 +4688,15 @@ function ble/util/import/.read-arguments {
   done
 
   # 存在しないファイルがあった時
-  if [[ $flags != *[fq]* ]] && ((${#not_found[@]})); then
-    local file
-    for file in "${not_found[@]}"; do
-      ble/util/print "ble-import: file '$file' not found" >&2
-    done
-    flags=E$flags
+  if ((${#not_found[@]})); then
+    flags=N$flags
+    if [[ $flags != *[fq]* ]]; then
+      local file
+      for file in "${not_found[@]}"; do
+        ble/util/print "ble-import: file '$file' not found" >&2
+      done
+      flags=E$flags
+    fi
   fi
 
   return 0
@@ -4694,9 +4720,9 @@ function ble/util/import {
   return "$ext"
 }
 ## @fn ble/util/import/option:query
-##   @var[in] files not_found
+##   @var[in] files flags
 function ble/util/import/option:query {
-  if ((${#not_found[@]})); then
+  if [[ $flags == *N* ]]; then
     return 127
   elif ((${#files[@]})); then
     local file
@@ -4711,22 +4737,30 @@ function ble/util/import/option:query {
 }
 
 function ble-import {
-  local files flags not_found
+  local files flags callbacks
   ble/util/import/.read-arguments "$@"
   if [[ $flags == *[Eh]* ]]; then
     [[ $flags == *E* ]] && ble/util/print
     ble/util/print-lines \
-      'usage: ble-import [-dfq|--delay|--force|--query] [--] [SCRIPTFILE...]' \
+      'usage: ble-import [-dfq|--delay|--force|--query]' \
+      '          [-C CALLBACK|--callback=CALLBACK]+ [--] [SCRIPTFILE...]' \
       'usage: ble-import --help' \
-      '    Search and source script files that have not yet been loaded.' \
+      '' \
+      '    Search and source script files that have not yet been loaded.  When none of' \
+      '    -q, --query, -d, --delay, -C, --callback is specified, SCRIPTFILEs are' \
+      '    sourced.' \
       '' \
       '  OPTIONS' \
       '    --help        Show this help.' \
-      '    -d, --delay   Delay actual loading of the files if possible.' \
+      '    -d, --delay   Register SCRIPTFILEs for later loading in idle time.' \
       '    -f, --force   Ignore non-existent files without errors.' \
       '    -q, --query   When SCRIPTFILEs are specified, test if all of these files' \
       '                  are already loaded.  Without SCRIPTFILEs, print the list of' \
       '                  already imported files.' \
+      '    -C, --callback=CALLBACK' \
+      '                  Specify a command that will be evaluated when all of' \
+      '                  SCRIPTFILEs are loaded.  If all of SCRIPTFILESs are already' \
+      '                  loaded, the callback is immediately evaluated.' \
       '' \
       >&2
     [[ $flags == *E* ]] && return 2
@@ -4744,6 +4778,21 @@ function ble-import {
     return 2
   fi
 
+  if ((${#callbacks[@]})); then
+    local file i q=\' Q="'\''"
+    for file in "${files[@]}"; do
+      ble/util/import/is-loaded "$file" && continue
+      for i in "${!callbacks[@]}"; do
+        callbacks[i]="ble/util/import/eval-after-load '${file//$q/$Q}' '${callbacks[i]//$q/$Q}'"
+      done
+    done
+
+    local cb
+    for cb in "${callbacks[@]}"; do
+      builtin eval -- "$cb"
+    done
+  fi
+
   if [[ $flags == *d* ]] && ble/is-function ble/util/idle.push; then
     local ret
     ble/string#quote-command ble/util/import "${files[@]}"
@@ -4751,7 +4800,7 @@ function ble-import {
     return 0
   fi
 
-  ble/util/import "${files[@]}"
+  ((${#callbacks[@]})) || ble/util/import "${files[@]}"
 }
 
 _ble_util_import_onload_count=0
