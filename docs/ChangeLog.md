@@ -44,8 +44,8 @@
 - complete: fix parsing the output of `complete -p` in bash-5.2 (reported by maheis) `#D2088` a7eb5d04
 - make: specify bash to search the awk path using `type -p` (reported by rashil2000) `#D2089` 26826354
 - keymap/vi: fix the behavior of text-object for quotes in xmap (reported by Darukutsu) `#D2094` 5f9a44ec
-- edit(redo): fix broken common prefix/suffix determination (reported by Darukutsu) `#D2098` xxxxxxxx
-- keymap/vi: improve text-object in omap for brackets (reported by Darukutsu) `#D2100` xxxxxxxx
+- edit(redo): fix broken common prefix/suffix determination (reported by Darukutsu) `#D2098` c920ea65
+- keymap/vi: improve text-object in omap for brackets (reported by Darukutsu) `#D2100` d1a1d538
 
 ## Compatibility
 
@@ -65,7 +65,7 @@
 - complete: use conditional-sync for cobraV2 completions (reported by sebhoss) `#D2084` 595f905b
 - term: add workarounds for `eterm` `#D2087` a643f0ea
 - global: adjust bash options for utilities outside the ble context (motivated by jkemp814) `#D2092` 6b144de7
-- decode,syntax: quote `$#` in arguments properly `#D2097` xxxxxxxx
+- decode,syntax: quote `$#` in arguments properly `#D2097` 40a625d3
 
 ## Contrib
 
@@ -80,7 +80,7 @@
 - docs(README): fix dead links to blerc.template (fixed by weskeiser) e0f3ac28
 - github: add FUNDING `#D2080` 3f133936
 - blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` cd069860
-- docs: apply Grammarly and fix typos `#D2099` xxxxxxxx
+- docs: apply Grammarly and fix typos `#D2099` 8b3f6f8c
 
 ## Test
 
@@ -93,6 +93,7 @@
 - global: fix coding style `#D2072` bdcecbbf
 - memo: add recent configs and create directories `#D2073` 99cb5e81
 - highlight: generalize `region` layer `#D2074` 449d92ca
+- keymap/vi: integrate vi tests into the test framework `#D2101` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

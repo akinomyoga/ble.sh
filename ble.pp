@@ -2514,7 +2514,7 @@ function ble/base/sub:test {
   ble-import lib/core-test
 
   if (($#==0)); then
-    set -- bash main util canvas decode edit syntax complete
+    set -- bash main util canvas decode edit syntax complete keymap.vi
     logfile=$_ble_base_cache/test.$(date +'%Y%m%d.%H%M%S').log
     : >| "$logfile"
     ble/test/log#open "$logfile"

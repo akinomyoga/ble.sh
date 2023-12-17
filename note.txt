@@ -1907,15 +1907,6 @@ bash_tips
 
 2023-12-11
 
-  * keymap.vi_test: テスト項目を ble/test を用いた物に書き換える。
-
-    後 leave-command-layout を呼んでいるのに行が再描画されない。何故? どうも
-    ble/widget/vi-command:check-vi-mode/search を呼び出すと消える様だ。search
-    に使っている info が干渉して内容が消滅する等している可能性? 一応
-    ble/textarea#invalidate を enter-command-layout の後に実行すれば問題はない。
-    うーん。どうやら、search の途中で描画を実行してしまうのでその時点で
-    ble/textarea#invalidate の効果が消えてなくなってしまっているという事だろう。
-
   * ble-import に関する説明を書く?
     https://github.com/akinomyoga/blesh-contrib/issues/16
 
@@ -7089,6 +7080,19 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-12-16
+
+  * 2023-12-11 keymap.vi_test: テスト項目を ble/test を用いた物に書き換える [#D2101]
+
+    後 leave-command-layout を呼んでいるのに行が再描画されない。何故? どうも
+    ble/widget/vi-command:check-vi-mode/search を呼び出すと消える様だ。search
+    に使っている info が干渉して内容が消滅する等している可能性? 一応
+    ble/textarea#invalidate を enter-command-layout の後に実行すれば問題はない。
+    うーん。どうやら、search の途中で描画を実行してしまうのでその時点で
+    ble/textarea#invalidate の効果が消えてなくなってしまっているという事だろう。
+
+    そもそも通常のテストの一部として取り組む事はできないか?
 
 2023-12-13
 

@@ -344,7 +344,7 @@ ble/test/end-section
 
 #------------------------------------------------------------------------------
 
-ble/test/start-section 'ble/textmap#update' 5
+ble/test/start-section 'ble/canvas/textmap' 5
 
 function ble/test:canvas/textmap {
   local text=$1
@@ -373,7 +373,7 @@ function ble/test:canvas/textmap {
 #------------------------------------------------------------------------------
 # Grapheme_Cluster_Break
 
-ble/test/start-section 'ble/unicode/GraphemeCluster/c2break' 77
+ble/test/start-section 'ble/canvas/GraphemeCluster/c2break' 77
 
 if (LC_ALL=C.UTF-8 builtin eval "s=\$'\\U1F6D1'"; ((${#s}==2))) 2>/dev/null; then
   function ble/test:canvas/GraphemeCluster/.locate-code-point {
@@ -493,7 +493,7 @@ fi
   fi
 )
 
-ble/test/start-section 'ble/unicode/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 6244
+ble/test/start-section 'ble/canvas/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 6244
 (
   bleopt grapheme_cluster=extended
   _ble_unicode_c2w_version=17 # Test cases contain 15.1.0 features

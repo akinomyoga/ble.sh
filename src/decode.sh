@@ -3920,12 +3920,12 @@ function ble/builtin/bind/read-user-settings/.collect {
     ble/util/print "${cache_content%$_ble_term_nl}"
     if ((_ble_bash>=40300)); then
       ble/util/print __BINDX__
-      builtin bind -m "$map" -X
+      builtin bind -m "$map" -X 2>/dev/null
     fi
     ble/util/print __BINDS__
-    builtin bind -m "$map" -s
+    builtin bind -m "$map" -s 2>/dev/null
     ble/util/print __BINDP__
-    builtin bind -m "$map" -p
+    builtin bind -m "$map" -p 2>/dev/null
     ble/util/print __PRINT__
   done
 }
@@ -4072,7 +4072,11 @@ function ble/builtin/bind/read-user-settings {
   if [[ $_ble_decode_bind_state == none ]]; then
     [[ $_ble_builtin_bind_user_settings_loaded ]] && return 0
     _ble_builtin_bind_user_settings_loaded=1
-    builtin bind # inputrc を読ませる
+
+    # Note: We here let readline read inputrc.  We redirect stderr to /dev/null
+    # in order to suppress the warning `line editing not enabled'.
+    builtin bind 2>/dev/null
+
     local settings
     ble/util/assign settings ble/builtin/bind/read-user-settings/.reconstruct
     [[ $settings ]] || return 0

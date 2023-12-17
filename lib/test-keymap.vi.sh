@@ -1,4 +1,8 @@
-#!/bin/bash
+# -*- mode: sh; mode: sh-bash -*-
+
+ble-import lib/core-test
+ble-import lib/keymap.vi
+ble-import lib/vim-surround
 
 ## @var[out] str ind mark
 function ble/keymap:vi_test/decompose-state {
@@ -16,7 +20,7 @@ function ble/keymap:vi_test/decompose-state {
 }
 
 function ble/keymap:vi_test/start-section {
-  section=$1 nsuccess=0 ntest=0
+  ble/test/start-section "ble/keymap.vi/$1" "$2"
 }
 
 function ble/keymap:vi_test/check {
@@ -25,29 +29,32 @@ function ble/keymap:vi_test/check {
   ble/keymap:vi_test/decompose-state "$initial"; local i=$ind in=$str ima=$mark
   ble/keymap:vi_test/decompose-state "$final"; local f=$ind fin=$str fma=$mark
   
-  local nl=$'\n' nl_rep=$'\e[7m^J\e[m'
+  local nl=$'\n' nl_rep=$'\e[7m^J\e[27m'
   ble-edit/content/reset "$in" edit
   _ble_edit_ind=$i
   [[ $ima ]] && _ble_edit_mark=$ima
   local ret
   ble-decode-kbd "$kspecs"
+  ble/string#split-words ret "$ret"
   local ble_decode=${_ble_keymap_vi_test_ble_decode:-ble-decode-key}
-  "$ble_decode" $ret &>/dev/null
+  "$ble_decode" "${ret[@]}" &>/dev/null
 
-  # check results
-  [[ $_ble_edit_ind == "$f" && $_ble_edit_str == "$fin" && ( ! $fma || $_ble_edit_mark == "$fma" ) ]]; local ext=$?
-  if ((ext==0)); then
-    ((ntest++,nsuccess++))
-  else
-    ((ntest++))
-    local esc_in=${in//$nl/"$nl_rep"}
-    local esc_fin=${fin//$nl/"$nl_rep"}
-    local esc_str=${_ble_edit_str//$nl/"$nl_rep"}
-    ble/util/print "test($section/$id): keys = ($kspecs)"
-    ble/util/print "  initial  = \"$i:$esc_in\""
-    ble/util/print "  expected = \"$f:$esc_fin\""
-    ble/util/print "  result   = \"$_ble_edit_ind:$esc_str\""
-  fi >&2
+  # construct result
+  local esc_in=${in//$nl/"$nl_rep"}
+  local section=${_ble_test_section_title#'ble/keymap.vi/'}
+  local title="$section/$id i=$i${ima:+ m=$ima} str=$esc_in keys=($kspecs)"
+  local ind_expect=ind=$f
+  local ind_result=ind=$_ble_edit_ind
+  if [[ $fma ]]; then
+    ind_expect=$ind_expect,mark=$fma
+    ind_result=$ind_result,mark=$_ble_edit_mark
+  fi
+  local str_expect=$fin
+  local str_result=$_ble_edit_str
+
+  ble/test --display-code="$title" ret="$ind_expect" stdout="$str_expect[EOF]" \
+           code:'ret=$ind_result; ble/util/put "$str_result[EOF]"'
+  local ext=$?
 
   # restore states
   case $_ble_decode_keymap in
@@ -58,31 +65,23 @@ function ble/keymap:vi_test/check {
   return "$ext"
 }
 
-function ble/keymap:vi_test/show-summary {
-  local title=$section
-  if ((nsuccess==ntest)); then
-    local tip=$'\e[32mpassed\e[m'
-  else
-    local tip=$'\e[31mfailed\e[m'
-  fi
-  ble/util/print "# $title test: result $((nsuccess))/$((ntest)) $tip"
-}
-
 #------------------------------------------------------------------------------
 # tests
 
-function ble/widget/vi-command:check-vi-mode/space {
-  ble/keymap:vi_test/start-section '<space>'
+# <space>
+function ble/keymap:vi_test/section:space {
+  ble/test/start-section "ble/keymap.vi/space" 2
 
   local str=$'    1234\n567890ab\n'
   ble/keymap:vi_test/check 1 "4:$str" '4 SP' "9:$str"
   ble/keymap:vi_test/check 2 "4:$str" 'd 4 SP' $'3:    \n567890ab\n'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/cw {
-  ble/keymap:vi_test/start-section 'cw'
+# cw
+function ble/keymap:vi_test/section:cw {
+  ble/test/start-section "ble/keymap.vi/cw" 30
 
   # provided by cmplstofB
   ble/keymap:vi_test/check A1 '@:cp ./foo.txt   @        /tmp/' 'c w' '@:cp ./foo.txt   @/tmp/'
@@ -119,11 +118,13 @@ function ble/widget/vi-command:check-vi-mode/cw {
   ble/keymap:vi_test/check C9 $'@:123 4@56   \n\n\n789\nabc' '2 c w' $'@:123 4@\nabc'
   ble/keymap:vi_test/check C9 $'@:123 456   \n\n@' '2 c w' $'@:123 456   \n\n@'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/search {
-  ble/keymap:vi_test/start-section '/ ? n N'
+
+# / ? n N
+function ble/keymap:vi_test/section:search {
+  ble/test/start-section "ble/keymap.vi/search" 10
   ble/keymap:vi_test/check A1a '@:ech@o abc abc abc' '/ a b c RET'       '@:echo @abc abc abc'
   ble/keymap:vi_test/check A1b '@:ech@o abc abc abc' '/ a b c RET n'     '@:echo abc @abc abc'
   ble/keymap:vi_test/check A1c '@:ech@o abc abc abc' '/ a b c RET 2 n'   '@:echo abc abc @abc'
@@ -134,11 +135,12 @@ function ble/widget/vi-command:check-vi-mode/search {
   ble/keymap:vi_test/check A3a '@:echo abc@ abc abc' '? a b c RET' '@:echo @abc abc abc'
   ble/keymap:vi_test/check A3b '@:echo abc @abc abc' '? a b c RET' '@:echo @abc abc abc'
   ble/keymap:vi_test/check A3c '@:echo abc a@bc abc' '? a b c RET' '@:echo abc @abc abc'
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/increment {
-  ble/keymap:vi_test/start-section '<C-a>, <C-x>'
+# <C-a>, <C-x>
+function ble/keymap:vi_test/section:increment {
+  ble/test/start-section "ble/keymap.vi/increment" 19
 
   ble/keymap:vi_test/check A1a '@:@123' 'C-a' '@:12@4'
   ble/keymap:vi_test/check A1b '@:@123' 'C-x' '@:12@2'
@@ -163,21 +165,22 @@ function ble/widget/vi-command:check-vi-mode/increment {
 
   ble/keymap:vi_test/check A4a '@:-@0' 'C-a' '@:@1'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/macro {
+# qx..q
+function ble/keymap:vi_test/section:macro {
   # enable ble-decode/keylog for automatic ble-decode-key
   local _ble_decode_keylog_depth=0
   local _ble_keymap_vi_test_ble_decode=ble-decode-char
   local ble_decode_char_sync=1
-  ble/keymap:vi_test/start-section 'qx..q'
+  ble/test/start-section "ble/keymap.vi/macro" 1
   ble/keymap:vi_test/check A1 '@:@123' 'q a A SP h e l l o @ESC q @ a' '@:123 hello hell@o'
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/surround {
-  ble/keymap:vi_test/start-section 'surround'
+function ble/keymap:vi_test/section:surround {
+  ble/test/start-section "ble/keymap.vi/surround" 7
 
   # ys の時は末端の空白を除く
   ble/keymap:vi_test/check A1a '@:abcd @fghi jklm nopq' 'y s e a'     '@:abcd @<fghi> jklm nopq'
@@ -190,10 +193,12 @@ function ble/widget/vi-command:check-vi-mode/surround {
   ble/keymap:vi_test/check A2b '@:abcd @fghi jklm nopq' 'v 4 l S a'   '@:abcd @<fghi >jklm nopq'
   ble/keymap:vi_test/check A2c '@:abcd @fghi jklm nopq' 'h v 5 l S a' '@:abcd@< fghi >jklm nopq'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
-function ble/widget/vi-command:check-vi-mode/txtobj_quote_xmap {
-  ble/keymap:vi_test/start-section 'xmap text object i" a"'
+
+# (xmap) i" a"
+function ble/keymap:vi_test/section:txtobj_quote_xmap {
+  ble/test/start-section "ble/keymap.vi/txtobj_quote_xmap" 45
 
   # A. xmap txtobj i"/a"、開始点と終了点が同じとき
 
@@ -255,11 +260,12 @@ function ble/widget/vi-command:check-vi-mode/txtobj_quote_xmap {
   ble/keymap:vi_test/check C3e '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v h a " S a' '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'
   ble/keymap:vi_test/check C3f '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v 5 h a " S a' '@:abcd @<" fghi " jklm> " nopq " rstu " vwxyz'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/txtobj_block_omap {
-  ble/keymap:vi_test/start-section 'txtobj block omap (ib ab)'
+# (omap) ib ab
+function ble/keymap:vi_test/section:txtobj_block_omap {
+  ble/test/start-section "ble/keymap.vi/txtobj_block_omap" 41
 
   ble/keymap:vi_test/check A1a '@:echo @foo ( bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
   ble/keymap:vi_test/check A1b '@:echo foo@ ( bar ) baz (hello) world (vim) xxxx' 'd i b' '@:echo foo (@) baz (hello) world (vim) xxxx'
@@ -307,11 +313,12 @@ function ble/widget/vi-command:check-vi-mode/txtobj_block_omap {
   ble/keymap:vi_test/check E1e '@:echo foo @() bar' 'd a b' '@:echo foo @ bar'
   ble/keymap:vi_test/check E1f '@:echo foo (@) bar' 'd a b' '@:echo foo @ bar'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/txtobj_block_xmap {
-  ble/keymap:vi_test/start-section 'txtobj block xmap (ib ab)'
+# (xmap) ib ab
+function ble/keymap:vi_test/section:txtobj_block_xmap {
+  ble/test/start-section "ble/keymap.vi/txtobj_block_xmap" 145
 
   # xmap txtobj i"/a"、開始点と終了点が同じとき
 
@@ -482,11 +489,12 @@ function ble/widget/vi-command:check-vi-mode/txtobj_block_xmap {
   ble/keymap:vi_test/check N1a $'@:echo ( foo (\n@hello world\n) bar )' 'v $   i b S a'   $'@:echo (@< foo (\nhello world\n) bar >)'
   ble/keymap:vi_test/check N1b $'@:echo ( foo (\n@hello world\n) bar )' 'v f d i b S a'   $'@:echo (@< foo (\nhello world\n) bar >)'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/txtobj_word {
-  ble/keymap:vi_test/start-section 'txtobj word omap'
+# iw aw
+function ble/keymap:vi_test/section:txtobj_word {
+  ble/test/start-section "ble/keymap.vi/txtobj_word_omap" 79
 
   # A. omap iw/aw
   ble/keymap:vi_test/check A1/iw  '@:echo he@llo world "hello" "world"' 'd i w' '@:echo @ world "hello" "world"'
@@ -579,9 +587,7 @@ function ble/widget/vi-command:check-vi-mode/txtobj_word {
   ble/keymap:vi_test/check A9.1/ciw $'@:@    \necho'                 'c i w' $'@:@\necho'
   ble/keymap:vi_test/check A9.2/ciw $'@:@\n    echo'                 'c i w' $'@:@\n    echo'
 
-  ble/keymap:vi_test/show-summary
-
-  ble/keymap:vi_test/start-section 'txtobj word xmap'
+  ble/test/start-section "ble/keymap.vi/txtobj_word_xmap" 34
 
   # B. xmap iw/aw (mark == ind の時)
   ble/keymap:vi_test/check B1/viw.1  '@:echo he@llo world "hello" "world"' 'v i w S a' '@:echo @<hello> world "hello" "world"'
@@ -621,11 +627,11 @@ function ble/widget/vi-command:check-vi-mode/txtobj_word {
   ble/keymap:vi_test/check Bn/viw $'@:@echo hello\necho world'     'v $ o $ i w c' $'@:echo hell@echo world'
   ble/keymap:vi_test/check Bn/viw $'@:@echo hello    \necho world' 'v $ o $ i w c' $'@:echo hello@\necho world'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
-function ble/widget/vi-command:check-vi-mode/op.2018-02-22 {
-  ble/keymap:vi_test/start-section 'op.2018-02-22'
+function ble/keymap:vi_test/section:op.2018-02-22 {
+  ble/test/start-section "ble/keymap.vi/op.2018-02-22" 4
 
   # 行指向のコピー&貼り付け #D0674
   ble/keymap:vi_test/check A0 $'@:12@345\n67890\n' 'y y p' $'@:12345\n@12345\n67890\n'
@@ -637,52 +643,85 @@ function ble/widget/vi-command:check-vi-mode/op.2018-02-22 {
   # blockwise operator d の書き直し #D0673
   ble/keymap:vi_test/check C $'@:\n12@34567\n1あ2345\n12い345\n123う45\n1234え5\n' 'C-v 4 j l d' $'@:\n12@567\n1 345\n12345\n12 45\n12え5\n'
 
-  ble/keymap:vi_test/show-summary
+  ble/test/end-section
 }
 
 #------------------------------------------------------------------------------
 
-function ble/widget/vi-command:check-vi-mode {
-  # save
+function ble/keymap:vi_test/run-tests {
+  ble/keymap:vi_test/section:space
+  ble/keymap:vi_test/section:cw
+  ble/keymap:vi_test/section:search
+  ble/keymap:vi_test/section:increment
+  ble/keymap:vi_test/section:macro
+  ble/keymap:vi_test/section:surround
+  ble/keymap:vi_test/section:txtobj_quote_xmap
+  ble/keymap:vi_test/section:txtobj_block_omap
+  ble/keymap:vi_test/section:txtobj_block_xmap
+  ble/keymap:vi_test/section:txtobj_word
+  ble/keymap:vi_test/section:op.2018-02-22
+}
+
+if [[ $1 == bind ]]; then
+  function ble/widget/vi-command/check-vi-mode {
+    # save
+    local original_str=$_ble_edit_str
+    local original_ind=$_ble_edit_ind
+    local original_mark=$_ble_edit_mark
+    local original_mark_active=$_ble_edit_mark_active
+    _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
+    ble/util/buffer.flush >&2
+
+    ble/keymap:vi_test/run-tests
+
+    # restore
+    ble-edit/content/reset "$original_str" edit
+    _ble_edit_ind=$original_ind
+    _ble_edit_mark=$original_mark
+    _ble_edit_mark_active=$original_mark_active
+    ble/edit/leave-command-layout # #D1800 pair=.insert-newline
+    return 0
+  }
+
+  function ble/widget/vi_imap/check-vi-mode {
+    ble/widget/vi_imap/normal-mode
+    ble/widget/vi-command/check-vi-mode
+    return 0
+  }
+
+  ble-bind -m vi_imap -f 'C-\ C-\' vi_imap/check-vi-mode
+  ble-bind -m vi_nmap -f 'C-\ C-\' vi-command:check-vi-mode
+fi
+
+function ble/keymap:vi_test/main {
+  # initialize
+  _ble_decode_initialize_inputrc=none
+  ble/decode/initialize
+  [[ ${_ble_decode_keymap-} ]] ||
+    ble/decode/reset-default-keymap
+
+  # setup
+  ble/decode/keymap/push vi_imap
+  ble/widget/vi_imap/normal-mode
   local original_str=$_ble_edit_str
   local original_ind=$_ble_edit_ind
   local original_mark=$_ble_edit_mark
   local original_mark_active=$_ble_edit_mark_active
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
+
+  # test
   ble/util/buffer.flush >&2
-
-  local section ntest nsuccess
-
-  #----------------------------------------------------------------------------
-
-  ble/widget/vi-command:check-vi-mode/space
-  ble/widget/vi-command:check-vi-mode/cw
-  ble/widget/vi-command:check-vi-mode/search
-  ble/widget/vi-command:check-vi-mode/increment
-  ble/widget/vi-command:check-vi-mode/macro
-  ble/widget/vi-command:check-vi-mode/surround
-  ble/widget/vi-command:check-vi-mode/txtobj_quote_xmap
-  ble/widget/vi-command:check-vi-mode/txtobj_block_omap
-  ble/widget/vi-command:check-vi-mode/txtobj_block_xmap
-  ble/widget/vi-command:check-vi-mode/txtobj_word
-  ble/widget/vi-command:check-vi-mode/op.2018-02-22
-
-  #----------------------------------------------------------------------------
+  ble/keymap:vi_test/run-tests
 
   # restore
   ble-edit/content/reset "$original_str" edit
   _ble_edit_ind=$original_ind
   _ble_edit_mark=$original_mark
   _ble_edit_mark_active=$original_mark_active
-  ble/edit/leave-command-layout # #D1800 pair=.insert-newline
+  while [[ $_ble_decode_keymap != vi_imap ]]; do
+    ble/decode/keymap/pop
+  done
+  ble/decode/keymap/pop
   return 0
 }
 
-function ble/widget/vi_imap/check-vi-mode {
-  ble/widget/vi_imap/normal-mode
-  ble/widget/vi-command:check-vi-mode
-  return 0
-}
-
-ble-bind -m vi_imap -f 'C-\ C-\' vi_imap/check-vi-mode
-ble-bind -m vi_nmap -f 'C-\ C-\' vi-command:check-vi-mode
+ble/keymap:vi_test/main

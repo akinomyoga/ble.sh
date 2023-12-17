@@ -81,7 +81,6 @@ outfiles += $(OUTDIR)/lib/keymap.emacs.sh
 outfiles += $(OUTDIR)/lib/keymap.vi.sh
 outfiles += $(OUTDIR)/lib/keymap.vi_digraph.sh
 outfiles += $(OUTDIR)/lib/keymap.vi_digraph.txt
-outfiles += $(OUTDIR)/lib/keymap.vi_test.sh
 
 # init
 outfiles += $(OUTDIR)/lib/init-term.sh
@@ -114,6 +113,7 @@ outfiles += $(OUTDIR)/lib/test-decode.sh
 outfiles += $(OUTDIR)/lib/test-edit.sh
 outfiles += $(OUTDIR)/lib/test-syntax.sh
 outfiles += $(OUTDIR)/lib/test-complete.sh
+outfiles += $(OUTDIR)/lib/test-keymap.vi.sh
 outfiles += $(OUTDIR)/lib/util.bgproc.sh
 
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
@@ -145,7 +145,8 @@ removedfiles += \
   keymap/vi_digraph.txt \
   keymap/vi_imap.rlfunc.txt \
   keymap/vi_nmap.rlfunc.txt \
-  keymap/vi_test.sh
+  keymap/vi_test.sh \
+  lib/keymap.vi_test.sh
 
 #------------------------------------------------------------------------------
 # documents
