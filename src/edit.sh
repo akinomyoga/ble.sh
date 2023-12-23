@@ -742,7 +742,7 @@ function ble/prompt/initialize {
     if [[ $WINDIR == [a-zA-Z]:\\* ]]; then
       local bsl='\' sl=/
       local c=${WINDIR::1} path=${WINDIR:3}
-      if [[ $c == [A-Z] ]]; then
+      if ble/string#isupper "$c"; then
         if ((_ble_bash>=40000)); then
           c=${c,?}
         else

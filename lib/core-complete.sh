@@ -6993,6 +6993,13 @@ function ble/complete/insert-braces/.compose {
       return substr(str, 1, length(head)) == head;
     }
 
+    # Note: value ~ /[[:lower:]]/ cannot be used in mawk. value ~ /[a-z]/ may
+    # match uppercase characters in some strange locales, e.g., en_US.UTF-8 in
+    # Ubuntu 16.04 LTS.
+    function islower(s) {
+      return s == tolower(s);
+    }
+
     BEGIN {
       RS = '"$char_RS"';
       rex_atom = ENVIRON["rex_atom"];
@@ -7104,7 +7111,7 @@ function ble/complete/insert-braces/.compose {
       for (i = 0; i < ikey; i++) {
         while (dict[value = keys[i]]--) {
           if (value ~ /^([a-zA-Z])$/) {
-            alpha = (value ~ /^[a-z]$/) ? lower : upper;
+            alpha = islower(value) ? lower : upper;
             beg = end = value;
             b = e = index(alpha, value);
             while (b > 1 && dict[tmp = substr(alpha, b - 1, 1)]) {

@@ -87,10 +87,10 @@ function ble/keymap:vi/string#encode-rot13 {
   local -a buff=() ch
   for ((i=0;i<${#text};i++)); do
     ch=${text:i:1}
-    if [[ $ch == [A-Z] ]]; then
+    if ble/string#isupper "$ch"; then
       ch=${_ble_util_string_upper_list%%"$ch"*}
       ch=${_ble_util_string_upper_list:(${#ch}+13)%26:1}
-    elif [[ $ch == [a-z] ]]; then
+    elif ble/string#islower "$ch"; then
       ch=${_ble_util_string_lower_list%%"$ch"*}
       ch=${_ble_util_string_lower_list:(${#ch}+13)%26:1}
     fi

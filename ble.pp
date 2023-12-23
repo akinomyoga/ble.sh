@@ -2128,7 +2128,7 @@ function ble/dispatch {
   (version|--version) ble/util/print "ble.sh, version $BLE_VERSION (noarch)" ;;
   (check|--test) ble/base/sub:test "$@" ;;
   (*)
-    if ble/string#match "$cmd" '^[-a-z0-9]+$' && ble/is-function "ble-$cmd"; then
+    if ble/string#match "$cmd" '^[-a-zA-Z0-9]+$' && ble/is-function "ble-$cmd"; then
       "ble-$cmd" "$@"
     elif ble/is-function ble/bin/ble; then
       ble/bin/ble "$cmd" "$@"

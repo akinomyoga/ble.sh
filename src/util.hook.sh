@@ -187,6 +187,7 @@ function blehook {
   local set shopt
   ble/base/adjust-BASH_REMATCH
   ble/base/.adjust-bash-options set shopt
+  local LC_ALL= LC_COLLATE=C 2>/dev/null # suppress locale error #D1440
 
   local flags print process
   local rex1='^([_a-zA-Z@][_a-zA-Z0-9@]*)$'
@@ -199,6 +200,7 @@ function blehook {
       blehook/.print-help
     fi
     [[ $flags != *E* ]]; local ext=$?
+    ble/util/unlocal LC_ALL LC_COLLATE 2>/dev/null # suppress locale error #D1440
     ble/base/.restore-bash-options set shopt
     ble/base/restore-BASH_REMATCH
     return "$ext"
@@ -248,6 +250,7 @@ function blehook {
     blehook/.print "${print[@]}"
   fi
 
+  ble/util/unlocal LC_ALL LC_COLLATE 2>/dev/null # suppress locale error #D1440
   ble/base/.restore-bash-options set shopt
   ble/base/restore-BASH_REMATCH
   return "$ext"

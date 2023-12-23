@@ -2,6 +2,7 @@
 
 umask 022
 shopt -s nullglob
+LC_ALL= LC_COLLATE=C
 
 function mkd {
   [[ -d $1 ]] || mkdir -p "$1"

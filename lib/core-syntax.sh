@@ -1648,7 +1648,7 @@ function ble/syntax:bash/simple-word/detect-separated-path {
   [[ $word ]] || return 1
 
   local rex_url='^[a-z]+://'
-  [[ :$opts: == *:url:* && $word =~ $rex_url ]] && return 1
+  [[ :$opts: == *:url:* ]] && ble/string#match-safe "$word" "$rex_url" && return 1
 
   # read eval options
   local eval_opts=$opts notilde=
@@ -1695,7 +1695,7 @@ function ble/syntax:bash/simple-word/locate-filename/.exists {
     [[ $path == // ]]
   else
     [[ -e $path || -h $path ]]
-  fi || [[ :$opts: == *:url:* && $path =~ $rex_url ]]
+  fi || [[ :$opts: == *:url:* ]] && ble/string#match-safe "$path" "$rex_url"
 }
 ## @fn ble/syntax:bash/simple-word/locate-filename word [sep] [opts]
 ##   @param[in] word

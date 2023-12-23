@@ -7063,6 +7063,119 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-12-22
+
+  * util(readonly): work around non-standard collation order (reported by dongxi8) [#D2103]
+    https://github.com/akinomyoga/ble.sh/issues/335#issuecomment-1598485650
+
+    恐らく中国語の collation order は aAbBcC 的な何かになっている。なので小文字
+    である事を判定するのに [a-z] とすると失敗する。
+
+    他に類似の物があるだろうかと思ったが多くの場合には [a-zA-Z] となっているの
+    で即座に問題は置きない。但し、diacritical marks のついているアルファベット
+    が混ざっている場合は多くあってそれが混入すると困る場合は実は結構ある。そう
+    いう場合には対応しきれていない気がする。
+
+    以下は既に対策済みだった物。よく考えた見たら _ble_util_string_lower_list 等
+    の変数に全てのアルファベットを格納しているのだから単にそれを使って判定すれ
+    ば良い。26文字の一文字ずつについて判定するのが大変に思うかもしれないが、
+    locale の切り替えの方が格段に重いので、寧ろその様にした方が高速である。関数
+    として ble/string#isupper, ble/string#islower を用意する事にした。指定した
+    引数が一文字かつ大文字または小文字であるかを判定する。
+
+      ./src/util.sh:928:[[ $ch == [A-Z] ]]
+      ./src/util.sh:931:[[ $ch == [a-z] ]]
+      ./src/util.sh:955:[[ $ch == [A-Z] ]]
+      ./src/util.sh:969:[[ $ch == [a-z] ]]
+
+    これは encode-rot13 での判定である。そして上と同様なので、単に
+    ble/string#isupper もしくは ble/string#islower を使えば良い。
+
+      ./lib/keymap.vi.sh:93:[[ $ch == [a-z] ]]
+
+    これも ble/string#isupper を用いれば良い。
+
+      ./src/edit.sh:745:[[ $c == [A-Z] ]]
+
+    以下はそれぞれ a または A を除くアルファベットという物だった。範囲の指定の
+    仕方を工夫して予期せぬ一致を回避する事にした。範囲指定を修正した。但し、
+    LC_COLLATE を調整しない限りは diacritical mark のついている変な物も原理上範
+    囲に含まれてしまうが、そもそも一致対象の文字列は declare -p の出力なので変
+    な文字が含まれている可能性は排除して良い。
+
+      ./src/util.sh:515:[b-zA-Z]
+      ./src/util.sh:523:[a-zB-Z]
+
+    これはそもそも使用文脈が限られているので小文字しかチェックしていなかったが
+    大文字が混入しても良いもの。ややこしいので A-Z0-9 も許容する事にする。
+
+      ./src/util.sh:3403:[12])(-[a-z]+)?$'; [[ $msleep_type =~ $rex ]]
+      ./ble.pp:2131:[-a-z0-9]
+
+    これは今回の問題箇所。外側で LC_COLLATE を調整する事で対策した。
+
+      ./src/util.sh:7194:[[ $1 != *[a-z]* ]]
+
+    これらは blehook において lowercase letter が含まれる hook 名は private
+    hook として既定で除外する機能の為に使われている物である。blehook でも
+    LC_COLLATE の調整を行う事にした。
+
+      ./src/util.hook.sh:140:[[ $pat == *[a-z]* || $flags == *a* ]]
+      ./src/util.hook.sh:141:[a-z]
+      ./src/util.hook.sh:164:[[ $pat == *[a-z]* || $flags == *a* ]]
+      ./src/util.hook.sh:165:[a-z]
+      ./src/util.hook.sh:209:[[ $flags == *a* ]] || ble/array#remove-by-glob print '_ble_hook_h_*[a-z]
+
+    これは awk スクリプトに含まれる物だった。他の方法で小文字判定をする事にした。
+
+      ./lib/core-complete.sh:7115:[a-z]
+
+    これは https:// 等の URL 先頭のスキームを検出するのに使っている。大文字を含
+    んでいる物も一致させると C: 等の様な物も一致してしまって不都合である。なの
+    で、小文字に限定したい。然し毎回 LC_COLLATE 等を調整するのは面倒なので
+    ble/string#match-safe という関数を新しく追加する事にした。
+
+      ./lib/core-syntax.sh:1661:[a-z]
+      ./lib/core-syntax.sh:1729:[a-z]
+      ./lib/core-syntax.sh:1754:[a-z]
+
+    これは簡易判定に用いている物であって後でまたちゃんと判定し直しているので気
+    にしなくて良い。
+
+      ./lib/core-syntax.sh:3530:[a-z]+|^\[\[?|^[{}!]'; [[ $tail =~ $rex ]]
+
+    make_command.sh に関してはスクリプト全体で LC_COLLATE=C を設定すれば良い。
+
+      ./make_command.sh:235:[/[:space:]<>"'\''][a-z]\.txt|/dev/(pts/|pty)[0-9]
+      ./make_command.sh:303:[A-Z]
+      ./make_command.sh:491:[A-Z]
+      ./make_command.sh:492:[_A-Z0-9]
+      ./make_command.sh:493:[_A-Z0-9]
+      ./make_command.sh:494:[_A-Z0-9]
+      ./make_command.sh:496:[_A-Z0-9]
+      ./make_command.sh:497:[_A-Z0-9]
+      ./make_command.sh:617:[a-z]
+
+    実験用スクリプトについては気にしない
+
+      ./memo/D1341.locale-and-casematch.sh:7:[[ A == [a-z] ]]
+      ./memo/D1341.locale-and-casematch.sh:27:[[ A == [a-z] ]]
+      ./memo/D1760.fzf-completion-reduced.sh:10:[[a-z0-9.,:-]
+      ./memo/D1760.fzf-completion-reduced.sh:27:[[a-z0-9.,:-]
+      ./memo/benchmark/array-is-array.sh:84:[b-zA-Z]
+
+    これは LC_COLLATE=C を設定する事にした。subshell なので解除しなくて良い。設
+    定する時にはコマンドを何も指定せずに変数代入だけで LC_COLLATE=C 2>/dev/null
+    としてもエラーを抑制できない。代わりに export LC_COLLATE=C という形で指定す
+    る事にした。
+
+      ./lib/test-util.sh:920:[a-zX-Z]
+      ./lib/test-util.sh:921:[a-zX-Z]
+      ./lib/test-util.sh:922:[a-zX-Z]
+      ./lib/test-util.sh:929:[a-zX-Z]
+      ./lib/test-util.sh:930:[a-zX-Z]
+      ./lib/test-util.sh:931:[a-zX-Z]
+
 2023-12-17
 
   * 2023-12-11 ble-import に関する説明を書く? (motivated by Dominiquini) [#D2102]

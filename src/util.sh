@@ -511,13 +511,17 @@ else
   function ble/is-array {
     local "decl$1"
     ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return 1
-    local rex='^declare -[b-zA-Z]*a'
+    # Note: [b-zAB-Z] specifies a letter excluding "a".  For locales where
+    # collation order is "AaBb...Zz", we avoid to use the range [b-zA-Z].
+    local rex='^declare -[b-zAB-Z]*a'
     builtin eval "[[ \$decl$1 =~ \$rex ]]"
   }
   function ble/is-assoc {
     local "decl$1"
     ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return 1
-    local rex='^declare -[a-zB-Z]*A'
+    # Note: [ab-zB-Z] specifies a letter excluding "A".  For locales where
+    # collation order is "aAbB...zZ", we avoid to use the range [a-zB-Z].
+    local rex='^declare -[ab-zB-Z]*A'
     builtin eval "[[ \$decl$1 =~ \$rex ]]"
   }
   ((_ble_bash>=40000)) ||
@@ -915,25 +919,23 @@ function ble/string#last-index-of {
 ##   @var[out] ret
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
 _ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
-function ble/string#toggle-case.impl {
-  local LC_ALL= LC_COLLATE=C
+function ble/string#islower { [[ $1 == ["$_ble_util_string_lower_list"] ]]; }
+function ble/string#isupper { [[ $1 == ["$_ble_util_string_upper_list"] ]]; }
+function ble/string#toggle-case {
   local text=$1 ch i
   local -a buff
   for ((i=0;i<${#text};i++)); do
     ch=${text:i:1}
-    if [[ $ch == [A-Z] ]]; then
+    if ble/string#isupper "$ch"; then
       ch=${_ble_util_string_upper_list%%"$ch"*}
       ch=${_ble_util_string_lower_list:${#ch}:1}
-    elif [[ $ch == [a-z] ]]; then
+    elif ble/string#islower "$ch"; then
       ch=${_ble_util_string_lower_list%%"$ch"*}
       ch=${_ble_util_string_upper_list:${#ch}:1}
     fi
     ble/array#push buff "$ch"
   done
   IFS= builtin eval 'ret="${buff[*]-}"'
-}
-function ble/string#toggle-case {
-  ble/string#toggle-case.impl "$1" 2>/dev/null # suppress locale error #D1440
 }
 ## @fn ble/string#tolower text
 ## @fn ble/string#toupper text
@@ -942,13 +944,12 @@ if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret=${1,,}; }
   function ble/string#toupper { ret=${1^^}; }
 else
-  function ble/string#tolower.impl {
-    local LC_ALL= LC_COLLATE=C
+  function ble/string#tolower {
     local i text=$1 ch
     local -a buff=()
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
-      if [[ $ch == [A-Z] ]]; then
+      if ble/string#isupper "$ch"; then
         ch=${_ble_util_string_upper_list%%"$ch"*}
         ch=${_ble_util_string_lower_list:${#ch}:1}
       fi
@@ -956,25 +957,18 @@ else
     done
     IFS= builtin eval 'ret="${buff[*]-}"'
   }
-  function ble/string#toupper.impl {
-    local LC_ALL= LC_COLLATE=C
+  function ble/string#toupper {
     local i text=$1 ch
     local -a buff=()
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
-      if [[ $ch == [a-z] ]]; then
+      if ble/string#islower "$ch"; then
         ch=${_ble_util_string_lower_list%%"$ch"*}
         ch=${_ble_util_string_upper_list:${#ch}:1}
       fi
       ble/array#push buff "$ch"
     done
     IFS= builtin eval 'ret="${buff[*]-}"'
-  }
-  function ble/string#tolower {
-    ble/string#tolower.impl "$1" 2>/dev/null # suppress locale error #D1440
-  }
-  function ble/string#toupper {
-    ble/string#toupper.impl "$1" 2>/dev/null # suppress locale error #D1440
   }
 fi
 
@@ -1260,6 +1254,14 @@ function ble/string#quote-word {
 }
 
 function ble/string#match { [[ $1 =~ $2 ]]; }
+
+function ble/string#match-safe/.impl {
+  local LC_ALL= LC_COLLATE=C
+  [[ $1 =~ $2 ]]
+}
+function ble/string#match-safe {
+  ble/string#match-safe/.impl "$@" 2>/dev/null # suppress locale error #D1440
+}
 
 ## @fn ble/string#create-unicode-progress-bar/.block value
 ##   @var[out] ret
@@ -3396,7 +3398,7 @@ function ble/util/msleep/.use-read-timeout {
       ! ble/bash/read-timeout "$v" -u "$_ble_util_msleep_fd" v
     } ;;
   (*.*)
-    if local rex='^(fifo|zero|ptmx)\.(open|exec)([12])(-[a-z]+)?$'; [[ $msleep_type =~ $rex ]]; then
+    if local rex='^(fifo|zero|ptmx)\.(open|exec)([12])(-[_a-zA-Z0-9]+)?$'; [[ $msleep_type =~ $rex ]]; then
       local file=${BASH_REMATCH[1]}
       local open=${BASH_REMATCH[2]}
       local direction=${BASH_REMATCH[3]}
@@ -7181,12 +7183,13 @@ function ble/builtin/readonly/.check-variable-name {
 
   # If the variable name is in the black list, the variable cannot be readonly.
   ble/builtin/readonly/.initialize-blacklist
-  if ble/gdict#get _ble_builtin_readonly_blacklist; then
+  if ble/gdict#has _ble_builtin_readonly_blacklist "$1"; then
     return 1
   fi
 
   # Otherwise, the variables that do not contain lowercase characters are
-  # allowed to become readonly.
+  # allowed to become readonly.  Note (#D2103): We adjust LC_COLLATE in
+  # ble/builtin/readonly.
   if [[ $1 != *[a-z]* ]]; then
     return 0
   fi
@@ -7233,6 +7236,7 @@ function ble/builtin/readonly/.print-warning {
 function ble/builtin/readonly {
   local _ble_local_set _ble_local_shopt
   ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
+  local LC_ALL= LC_COLLATE=C 2>/dev/null # suppress locale error #D1440
 
   local _ble_local_flags=
   local -a _ble_local_options=()
@@ -7268,6 +7272,8 @@ function ble/builtin/readonly {
     builtin readonly "${_ble_local_options[@]}"
     _ble_local_ext=$?
   fi
+
+  ble/util/unlocal LC_ALL LC_COLLATE 2>/dev/null # suppress locale error #D1440
   ble/base/.restore-bash-options _ble_local_set _ble_local_shopt
   return "$?"
 }

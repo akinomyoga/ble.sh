@@ -912,6 +912,8 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
     ble/test code:'ret=xyz:xyz:xyz; '$cmd' ret xyz' ret=
   done
 
+  export LC_ALL= LC_COLLATE=C 2>/dev/null # suppress locale error #D1440
+
   ble/test code:'ret=a; ble/path#remove ret \?' ret=a
   ble/test code:'ret=aa; ble/path#remove ret \?' ret=aa
   ble/test code:'ret=a:b; ble/path#remove ret \?' ret=a:b
@@ -1007,7 +1009,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
     $Dict#set $dict banana yellow
     $Dict#set $dict orange orange
     $Dict#set $dict melon green
-  
+
     ret=unchanged
     ble/test $Dict'#has '$dict' banana' ret=unchanged # 先頭
     ble/test $Dict'#has '$dict' apple'  ret=unchanged # 中
@@ -1017,7 +1019,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
     ble/test $Dict'#get '$dict' apple'  ret=red      # 中
     ble/test $Dict'#get '$dict' melon'  ret=green    # 末尾
     ble/test '! '$Dict'#get '$dict' pear' ret=         # 存在しない項目
-  
+
     # 空白類
     ble/test '! '$Dict'#has '$dict' ""' # 末尾空要素で引けるか
     ble/test '! '$Dict'#get '$dict' ""' # 末尾空要素で引けるか
@@ -1034,7 +1036,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
     ble/test $Dict'#has '$dict' apple' # 既存項目を破壊していないか
     ble/test $Dict'#get '$dict' " apple "' ret=' red ' # 空白で trim されないか
     ble/test $Dict'#get '$dict' apple' ret=red # 既存項目を破壊していないか
-  
+
     # FS, colon
     ble/test '! '$Dict'#has '$dict' "${_ble_term_FS}"' # 単一FS
     ble/test '! '$Dict'#has '$dict' ":"' # 単一コロン
@@ -1056,7 +1058,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
     ble/test $Dict'#get '$dict' ":"' ret=Colon # 単一コロン
     ble/test $Dict'#get '$dict' "apple${_ble_term_FS}banana"' ret=RedYellow # FSを含む見出し
     ble/test $Dict'#get '$dict' apple:banana' ret=__red_yellow__ # コロンを含む見出し
-  
+
     # unset
     $Dict#unset $dict banana
     $Dict#unset $dict apple
@@ -1372,7 +1374,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
     ble/util/print [; ble/function#advice/do; ble/util/print ]
     ADVICE_EXIT=99'
   ble/test f1 stdout={A,[,'original quick',],B} exit=99
-  
+
   ble/function#advice remove f1
   ble/test f1 stdout='original' exit=0
   ble/test 'f1 1' stdout='original 1' exit=0
@@ -2048,16 +2050,16 @@ fi
     ble/test "ble/util/chars2keyseq 98 $char 99" ret="b${keyseq}c"
     ble/test "ble/util/keyseq2chars 'b${keyseq}c'; ret=\"\${ret[*]}\"" ret="98 ${3:-$char} 99"
   }
-  check1 '7'   '\a' 
-  check1 '8'   '\b' 
-  check1 '9'   '\t' 
-  check1 '10'  '\n' 
-  check1 '11'  '\v' 
-  check1 '12'  '\f' 
-  check1 '13'  '\r' 
-  check1 '27'  '\e' 
+  check1 '7'   '\a'
+  check1 '8'   '\b'
+  check1 '9'   '\t'
+  check1 '10'  '\n'
+  check1 '11'  '\v'
+  check1 '12'  '\f'
+  check1 '13'  '\r'
+  check1 '27'  '\e'
   check1 '127' '\d'
-  check1 '92'  '\\'   
+  check1 '92'  '\\'
   check1 '28'  '\x1c' # workaround bashbug \C-\, \C-\\
   check1 '156' '\x9c' # workaround bashbug \C-\, \C-\\
 

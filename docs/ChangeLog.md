@@ -67,6 +67,7 @@
 - term: add workarounds for `eterm` `#D2087` a643f0ea
 - global: adjust bash options for utilities outside the ble context (motivated by jkemp814) `#D2092` 6b144de7
 - decode,syntax: quote `$#` in arguments properly `#D2097` 40a625d3
+- global: work around case-interleaving collation (reported by dongxi8) `#D2103` xxxxxxxx
 
 ## Contrib
 
