@@ -16,7 +16,7 @@
 - edit: add widget `zap-to-char` `#D2082` ce7ce403
 - keymap/vi: split widget `text-object` into `text-object-{inner,outer}` (requested by Darukutsu) `#D2093` 11cf118a
 - keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` 7d80167c
-- util: support `ble-import -C callback` (motivated by Dominiquini) `#D2102` xxxxxxxx
+- util: support `ble-import -C callback` (motivated by Dominiquini) `#D2102` 0fdbe3b0
 
 ## Changes
 
@@ -67,7 +67,8 @@
 - term: add workarounds for `eterm` `#D2087` a643f0ea
 - global: adjust bash options for utilities outside the ble context (motivated by jkemp814) `#D2092` 6b144de7
 - decode,syntax: quote `$#` in arguments properly `#D2097` 40a625d3
-- global: work around case-interleaving collation (reported by dongxi8) `#D2103` xxxxxxxx
+- global: work around case-interleaving collation (reported by dongxi8) `#D2103` a3b94bb3
+- nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` xxxxxxxx
 
 ## Contrib
 
@@ -95,7 +96,7 @@
 - global: fix coding style `#D2072` bdcecbbf
 - memo: add recent configs and create directories `#D2073` 99cb5e81
 - highlight: generalize `region` layer `#D2074` 449d92ca
-- keymap/vi: integrate vi tests into the test framework `#D2101` xxxxxxxx
+- keymap/vi: integrate vi tests into the test framework `#D2101` d16b8438
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

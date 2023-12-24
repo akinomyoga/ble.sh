@@ -7063,6 +7063,26 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-12-24
+
+  * edit: history-search-backward に関する振る舞いに対する要望 (reported by blackteahamburger) [#D2104]
+    https://github.com/akinomyoga/ble.sh/issues/382
+
+    実際に自分で適当に以下の設定を試してみた所、空文字列で検索した時であっても
+    (表面上はただの up と同様に振る舞っている様に見えつつも)、二回 enter を押さ
+    ないと反応しない。
+
+      bind '"\e[A": history-search-backward'
+      bind '"\e[B": history-search-forward'
+
+    lib/core-decode.*.rlfunc.txt を確認してみたがちゃんと対応表には
+    empty=emulate-readline が指定されている。然し emulate-readline の実装を見て
+    みても特に immediate-accept は指定されていない。emulate-readline が導入され
+    たのは d68ba6196 (2021-09-23 #D1661 GitHub#139) であるが enter を押した時の
+    振る舞いについては何も議論されていない。因みに immediate-accept は
+    912579585 (2021-04-29 #D1517 GitHub#101,80) で導入されているので、
+    emulate-readline が導入された時には既に存在していた筈。
+
 2023-12-22
 
   * util(readonly): work around non-standard collation order (reported by dongxi8) [#D2103]

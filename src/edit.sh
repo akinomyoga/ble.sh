@@ -9190,7 +9190,7 @@ function ble/widget/history-search {
     (hide-status)
       opts=$opts:hide-status ;;
     (emulate-readline)
-      opts=hide-status:point=end:$opts ;;
+      opts=hide-status:point=end:immediate-accept:$opts ;;
     (previous-search)
       _ble_edit_nsearch_needle=$_ble_edit_nsearch_prev ;;
     esac
