@@ -89,6 +89,7 @@
 
 - test(bash): fix condition for bash bug of history expansion `#D2071` aacf1462
 - test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` aacf1462
+- test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` xxxxxxxx
 
 ## Internal changes
 

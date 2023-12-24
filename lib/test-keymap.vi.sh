@@ -174,6 +174,8 @@ function ble/keymap:vi_test/section:macro {
   local _ble_decode_keylog_depth=0
   local _ble_keymap_vi_test_ble_decode=ble-decode-char
   local ble_decode_char_sync=1
+  ble/function#push ble/util/is-stdin-ready '((0))'
+
   ble/test/start-section "ble/keymap.vi/macro" 1
   ble/keymap:vi_test/check A1 '@:@123' 'q a A SP h e l l o @ESC q @ a' '@:123 hello hell@o'
   ble/test/end-section

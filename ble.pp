@@ -2532,16 +2532,18 @@ function ble/base/sub:test {
   done
   ble/test/log "$line"
 
+  local _ble_test_section_failure_count=0
   local section
   for section; do
     local file=$_ble_base/lib/test-$section.sh
     if [[ -f $file ]]; then
-      source "$file" || error=1
+      source "$file"
     else
       ble/test/log "ERROR: Test '$section' is not defined."
       error=1
     fi
   done
+  ((_ble_test_section_failure_count)) && error=1
 
   if [[ $logfile ]]; then
     ble/test/log#close

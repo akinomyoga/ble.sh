@@ -78,6 +78,7 @@ function ble/test/diff {
 
 #------------------------------------------------------------------------------
 
+_ble_test_section_failure_count=0
 _ble_test_section_fd=
 _ble_test_section_file=
 _ble_test_section_title=section
@@ -121,7 +122,12 @@ function ble/test/end-section {
     local percentage=---.-%
   fi
   ble/test/log "$sgr$percentage$sgr0 [section] $_ble_test_section_title: $sgr$npass/$ntest$sgr0 ($nfail fail, $ncrash crash, $nskip skip)"
-  ((npass==ntest))
+  if ((npass==ntest)); then
+    return 0
+  else
+    ((_ble_test_section_failure_count++))
+    return 1
+  fi
 }
 function ble/test/section#incr {
   local title=$1

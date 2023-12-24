@@ -1865,6 +1865,7 @@ fi
   ble/util/print 'ble/util/print FILE1' >| FILE1.txt
   ble/util/print 'ble/util/print FILE2' >| FILE2.txt
   ble/util/print 'ble/util/print FILE3' >| FILE3.txt
+  ble/function#push ble/util/idle/IS_IDLE '((1))'
 
   # single and double dependencies
   (
