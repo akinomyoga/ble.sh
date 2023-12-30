@@ -69,6 +69,7 @@
 - decode,syntax: quote `$#` in arguments properly `#D2097` 40a625d3
 - global: work around case-interleaving collation (reported by dongxi8) `#D2103` a3b94bb3
 - nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` xxxxxxxx
+- decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` xxxxxxxx
 
 ## Contrib
 

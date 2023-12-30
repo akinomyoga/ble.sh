@@ -2050,16 +2050,6 @@ bash_tips
     く分からない。kpup などに翻訳されているという事だろうか。また再現した時に
     keylog でどのような受信・翻訳になっているかを確認する事にする。
 
-2023-07-18
-
-  * Grisha が bind -X の出力形式を修正している
-    https://lists.gnu.org/archive/html/bug-bash/2023-07/msg00076.html
-
-    現在の ble.sh は間違っている事を前提として問答無用で前後の "" を削除してい
-    たはず。これの削除をなかった事にする。取り敢えず Grisha は "" で囲まない様
-    に変更している気がする。なので、ble.sh はこのままで大丈夫の筈だが後で振る舞
-    いをチェックする。
-
 2023-06-21
 
   * menu for history entries (requested by auwsom)
@@ -7062,6 +7052,78 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2023-12-30
+
+  * 2023-07-18 Grisha が bind -X の出力形式を修正している [#D2106]
+    https://lists.gnu.org/archive/html/bug-bash/2023-07/msg00076.html
+
+    現在の ble.sh は間違っている事を前提として問答無用で前後の "" を削除してい
+    たはず。これの削除をなかった事にする。取り敢えず Grisha は "" で囲まない様
+    に変更している気がする。なので、ble.sh はこのままで大丈夫の筈だが後で振る舞
+    いをチェックする。
+
+    →今確認した所 : が出力されなくなっている。何故? 一方で quote の数は変わっ
+    ていない。元からちゃんと quote されていたという事の気がする。よく分からない
+    が新しい形式として "keyseq" "command" という物が追加された様だ。また、この
+    追加によって今まで可能だった bind -x '"keyseq" : "command"' が動かなくなっ
+    ている
+
+      →そもそも元々のコードでは "keyseq"anything: "command" でも動いていた。こ
+      の振る舞いを潰すという事で考えるのであれば "keyseq" : も同様に潰すという
+      考えでも良い気がする。
+
+    うーん。そもそも色々振る舞いが違うかもしれない。振る舞いについて確認する。
+    調べる限りでは quote して登録する事によって特別に変な事が起こるわけでもない
+    気がする。\C-a 等の escape が削除されたという訳でもない。
+
+    * done: bind -X を dump している箇所の修正は OK
+
+    * done: bind の emulation をしている箇所も修正する必要がある。
+
+      うーん。decompose-pair のインターフェイスを変更する? 目的に応じて振る舞い
+      を変更するしかないのか?
+
+      先ず ble/builtin/bind/.decompose-pair を呼び出しているのは
+      ble/builtin/bind/.initialize-keys-and-value だけである。そして
+      initialize-keys-and-value を呼び出しているのは ble/builtin/bind/option:x
+      と ble/builtin/bind/option:- だけである。value を設定しているのは
+      .decompose-pair であり、.initialize-keys-and-value は value には触ってい
+      ない。option:- では囲みの "..." を除去しているのは option:- の中である。
+      それは "macro" と rlfunc を区別する為に必要である。option:x の場合には最
+      終的に全部文字列として取り扱うのだから関係ない?
+
+      動作確認を行う。
+
+      o ok: "\C-t": "echo hello " の形は大丈夫。元々末尾の空白が削除されていた
+        がそれもちゃんと処理される様になった。
+
+      x fixed: 余分な文字列が末尾にくっついている時に警告を表示する様にしている
+        がそれが表示されない。何故か? どうやら suppress local error をしている
+        為にちゃんと表示されていないという事の様だ。ちゃんと redirect して出力
+        される様にした。
+
+      o ok: "\C-t": "echo \"hello の様に閉じていない場合もちゃんとエラーが出力
+        されている。
+
+      o ok: "\C-t" "echo \"hello\"" などもちゃんとできている。"\C-t": echo
+        \"hello\" もちゃんと動いている。
+
+      ? ok: うーん。ble.sh の実装では "\C-t" "echo \"hello" は 'echo "hello' と
+        解釈されているが bash-dev ではどうだろうか。'echo \"hello' にはならない
+        のか? →試してみた所ちゃんと echo "hello" という感じになっている。echo
+        \"hello\" の様にはなっていない。
+
+      o ok: bind '"\C-t": "self-insert"' 及び bind '"\C-t": self-insert' もチェッ
+        クした。周りに空白がある場合も動作確認した。
+
+    x ok: そもそも ble/builtin/bind/option:x における value の解釈が怪しい。
+      bash は "" の中にある escape をちゃんと処理している気がするが、ble.sh の
+      実装では escape がそのまま残ってしまう。
+
+      →改めて bash の振る舞いを確認してみたが別に処理していなかった。単にコマ
+      ンドを実行する時の eval で処理されているのであって、bind -x で登録された
+      文字列は未だ escape が処理される前の物である。
 
 2023-12-24
 
