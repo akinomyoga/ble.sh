@@ -1084,8 +1084,22 @@ function ble/string#escape-for-bash-double-quote {
   local a b
   a='!' b='"\!"' ret=${ret//"$a"/"$b"} # WA #D1751 checked
 }
+_ble_util_string_escape_string_pairs=(
+  $'\001':'\001' $'\002':'\002' $'\003':'\003' $'\004':'\004'
+  $'\005':'\005' $'\006':'\006' $'\016':'\016' $'\017':'\017'
+  $'\020':'\020' $'\021':'\021' $'\022':'\022' $'\023':'\023'
+  $'\024':'\024' $'\025':'\025' $'\026':'\026' $'\027':'\027'
+  $'\030':'\030' $'\031':'\031' $'\032':'\032' $'\034':'\034'
+  $'\035':'\035' $'\036':'\036' $'\037':'\037' $'\177':'\177'
+)
 function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$1" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
+  if [[ $ret == *[$'\001'-$'\037\177']* ]]; then
+    local pair a b
+    for pair in "${_ble_util_string_escape_string_pairs[@]}"; do
+      a=${pair%%:*} b=${pair#*:} ret=${ret//"$a"/"$b"}
+    done
+  fi
 }
 ## @fn ble/string#escape-for-bash-specialchars text flags
 ##   @param[in] text
@@ -1235,8 +1249,8 @@ function ble/string#quote-word {
     return 0
   fi
 
-  local chars=$'\a\b\e\f\n\r\t\v'
-  if [[ $ret == *["$chars"]* ]]; then
+  local chars=$'\a\b\e\f\n\r\t\v\001-\037\177'
+  if [[ $ret == *[$chars]* ]]; then
     ble/string#escape-for-bash-escape-string "$ret"
     ret=$sgrq\$\'$ret\'$sgr0
     return 0

@@ -3882,30 +3882,35 @@ function ble/builtin/bind/.process {
         flags=e$flags
         continue ;;
       (-*)
-        local i n=${#arg} c
-        for ((i=1;i<n;i++)); do
-          c=${arg:i:1}
+        arg=${arg:1}
+        while [[ $arg ]]; do
+          local c=${arg::1}
+          arg=${arg:1}
           case $c in
           ([lpPsSvVX])
             opt_print=$opt_print$c ;;
           ([mqurfx])
-            if ((!$#)); then
-              ble/util/print "ble.sh (bind): missing option argument for -$c" >&2
-              flags=e$flags
-            else
-              local optarg=$1; shift
-              case $c in
-              (m) ble/builtin/bind/option:m "$optarg" ;;
-              (x) ble/builtin/bind/option:x "$optarg" ;;
-              (r) ble/builtin/bind/option:r "$optarg" ;;
-              (u) ble/builtin/bind/option:u "$optarg" ;;
-              (q) ble/array#push opt_queries "$optarg" ;;
-              (f) ble/decode/read-inputrc "$optarg" ;;
-              (*)
-                ble/util/print "ble.sh (bind): unsupported option -$c $optarg" >&2
-                flags=e$flags ;;
-              esac
-            fi ;;
+            local optarg=$arg
+            arg=
+            if [[ ! $optarg ]]; then
+              if (($#==0)); then
+                ble/util/print "ble.sh (bind): missing option argument for -$c" >&2
+                flags=e$flags
+                break
+              fi
+              optarg=$1; shift
+            fi
+            case $c in
+            (m) ble/builtin/bind/option:m "$optarg" ;;
+            (x) ble/builtin/bind/option:x "$optarg" ;;
+            (r) ble/builtin/bind/option:r "$optarg" ;;
+            (u) ble/builtin/bind/option:u "$optarg" ;;
+            (q) ble/array#push opt_queries "$optarg" ;;
+            (f) ble/decode/read-inputrc "$optarg" ;;
+            (*)
+              ble/util/print "ble.sh (bind): unsupported option -$c $optarg" >&2
+              flags=e$flags ;;
+            esac ;;
           (*)
             ble/util/print "ble.sh (bind): unrecognized option -$c" >&2
             flags=e$flags ;;

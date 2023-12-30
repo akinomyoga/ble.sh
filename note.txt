@@ -7055,6 +7055,28 @@ bash_tips
 
 2023-12-30
 
+  * decode(bind): ble-bind -P に含まれる制御文字・bind の引数解析の修正 [#D2107]
+
+    * fixed: ble-bind -P でコマンドの出力時に制御文字をちゃんと $'...' の形式で
+      出力する必要があるのではないか?
+
+      →実装を確認した所ちゃんと ble/string#quote-word を呼び出している。実際に
+      改行等の制御文字については $'...' の形式に切り替わる。どうも、通常の制御
+      文字に関しては対応していない様だ。というか、そもそも
+      ble/string#escape-for-bash-escape-string からして任意の制御文字には対応し
+      ていない。
+
+      ble/string#escape-for-bash-escape-string 及び ble/string#quote-word の両
+      方とも一般の制御文字 (C0 および DEL) の escape に対応する事にした。C1 に
+      ついては少なくとも今は対応しない。
+
+    * fixed: 現在の実装だと bind -x'"\C-t": ...' を正しく処理できていない。bash
+      はちゃんと処理できている。真面目に実装する必要がある。
+
+      うーん。これは独立した項目にして backport した方が良い気がする。という事
+      を考えると前の項目の ble/string#quote-word も同様である。修正した。そんな
+      に難しくなかった。
+
   * 2023-07-18 Grisha が bind -X の出力形式を修正している [#D2106]
     https://lists.gnu.org/archive/html/bug-bash/2023-07/msg00076.html
 

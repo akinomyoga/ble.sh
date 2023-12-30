@@ -47,6 +47,7 @@
 - keymap/vi: fix the behavior of text-object for quotes in xmap (reported by Darukutsu) `#D2094` 5f9a44ec
 - edit(redo): fix broken common prefix/suffix determination (reported by Darukutsu) `#D2098` c920ea65
 - keymap/vi: improve text-object in omap for brackets (reported by Darukutsu) `#D2100` d1a1d538
+- decode(bind): fix command-line argument parsing `#D2107` xxxxxxxx
 
 ## Compatibility
 
