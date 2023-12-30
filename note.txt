@@ -7053,7 +7053,159 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2023-12-31
+
+  * [棄却] PREEXEC で一定時間以上時間をかけるとコマンド実行前後に 0.1ms の遅延が生じる [#D2108]
+
+    Note: これはどうしようもない気がするので気にしない事にする。
+
+    atuin による時間計測を観察していて気づいた。atuin がなくても以下の簡単な設
+    定で観察できる。sleep 0.1 の時間を縮めて行くと突然遅延はなくなる。また
+    sleep 0.1 の時間を長くして行っても遅延が長くなる訳ではない。直後のコマンド
+    実行にのみ影響を与える様である。
+
+    $ blehook PREEXEC='sleep 0.1'
+    $ blehook POSTEXEC='echo beg=$_ble_exec_time_beg:ret=$ret:end=$_ble_exec_time_end:ata=$_ble_exec_time_ata'
+    $ ret=$EPOCHREALTIME
+
+    色々詳細に時間を計測すると ble-edit/exec:gexec/.restore-lastarg から抜ける
+    時に時間がかかっている様に見える。うーん。何に時間がかかっているのか本当に
+    気になる。
+
+    bash の execute_cmd.c (execute_function) に DPF を埋め込んでそれぞれのコー
+    ドの呼び出し時間を計測する。
+
+               | w/PREEXEC           | w/o PREEXEC
+      ---------+---------------------+---------------------
+      b1  まで | 33,31,30    avg 31  | 8,9,8,9     avg 9
+      b2  まで | 55,62,64    avg 60  | 20,20,21,21 avg 21
+      b3  まで | 32,36,39    avg 35  | 11,11,11,12 avg 11
+      b4  まで | 31,34,34    avg 32  | 11,10,10,10 avg 10
+      c4  まで | 30,33,33    avg 32  | 10,11,10,10 avg 10
+      c3  まで | 45,31.33    avg 36  | 11,10,11,11 avg 11
+      c31 まで | 32,39,33    avg 35  | 11,11,10,11 avg 11
+      c32 まで | 69,75,76    avg 73  | 25,24,24,24 avg 24
+      c2  まで | 34,42,54    avg 43  | 13,12,13,13 avg 13
+      c1  まで | 35,53,51    avg 46  | 11,11,11,10 avg 11
+      実行まで | ?                   |
+      end まで | 265,323,291 avg 293 | 57,59,56,56 avg 57
+
+    分かる事は全体に遅くなっているという事。これは OS レベルの話なのだろうか。
+    また、b2 と c32 が元より遅くて、更にとても遅くなっているという事。然し、b2
+    は単に result = return_catch_value; という文を実行しているだけである。一方
+    で、c32 は run_unwind_frame ("function_calling") を実行している。
+
+    うーん。何処かに特に問題があるというよりは全体に遅くなっているという事。こ
+    れはどういう事なのか謎である。何か CPU のキャッシュの問題だろうか。外部プロ
+    セスから復帰した瞬間は色々メモリアクセスが遅くなっているという可能性? しか
+    しそうだとしても DPF が毎回 10us かかっていてその速度が回数を重ねても改善し
+    ないのは変だ。だとするとメモリアクセスは関係ない?
+
+      | --- a/execute_cmd.c
+      | +++ b/execute_cmd.c
+      | @@ -5292,13 +5292,18 @@ execute_function (SHELL_VAR *var, WORD_LIST *words, int flags, struct fd_bitmap
+      |    return_catch_flag++;
+      |    return_val = setjmp_nosigs (return_catch);
+      |
+      | +int dbg1 = strcmp(var->name, "ble-edit/exec:gexec/.restore-lastarg")==0;
+      |    if (return_val)
+      |      {
+      | +if (dbg1) DPF("b1 %s", var->name);
+      |        result = return_catch_value;
+      |        /* Run the RETURN trap in the function's context. */
+      | +if (dbg1) DPF("b2 %s", var->name);
+      |        save_current = currently_executing_command;
+      | +if (dbg1) DPF("b3 %s", var->name);
+      |        if (from_return_trap == 0)
+      |  ^Irun_return_trap ();
+      | +if (dbg1) DPF("b4 %s", var->name);
+      |        currently_executing_command = save_current;
+      |      }
+      |    else
+      | @@ -5308,6 +5313,7 @@ execute_function (SHELL_VAR *var, WORD_LIST *words, int flags, struct fd_bitmap
+      |        showing_function_line = 1;
+      |        save_current = currently_executing_command;
+      |        result = run_debug_trap ();
+      | +if (dbg1) DPF("a %s", var->name);
+      |  #if defined (DEBUGGER)
+      |        /* In debugging mode, if the DEBUG trap returns a non-zero status, we
+      |  ^I skip the command. */
+      | @@ -5315,7 +5321,9 @@ execute_function (SHELL_VAR *var, WORD_LIST *words, int flags, struct fd_bitmap
+      |  ^I{
+      |  ^I  showing_function_line = 0;
+      |  ^I  currently_executing_command = save_current;
+      | +if (dbg1) DPF("a1 %s", var->name);
+      |  ^I  result = execute_command_internal (fc, 0, NO_PIPE, NO_PIPE, fds_to_close);
+      | +if (dbg1) DPF("a2 %s", var->name);
+      |
+      |  ^I  /* Run the RETURN trap in the function's context */
+      |  ^I  save_current = currently_executing_command;
+      | @@ -5332,13 +5340,18 @@ execute_function (SHELL_VAR *var, WORD_LIST *words, int flags, struct fd_bitmap
+      |        showing_function_line = 0;
+      |      }
+      |
+      | +if (dbg1) DPF("c4");
+      |    /* If we have a local copy of OPTIND, note it in the saved getopts state. */
+      |    gv = find_variable ("OPTIND");
+      |    if (gv && gv->context == variable_context)
+      |      gs->gs_flags |= 1;
+      |
+      | -  if (subshell == 0)
+      | +if (dbg1) DPF("c3 %d", subshell);
+      | +  if (subshell == 0) {
+      | +if (dbg1) DPF("c31");
+      |      run_unwind_frame ("function_calling");
+      | +if (dbg1) DPF("c32");
+      | +  }
+      |  #if defined (ARRAY_VARS)
+      |    else
+      |      {
+      | @@ -5349,7 +5362,9 @@ execute_function (SHELL_VAR *var, WORD_LIST *words, int flags, struct fd_bitmap
+      |      }
+      |  #endif
+      |
+      | +if (dbg1) DPF("c2 %s", var->name);
+      |    function_misc_cleanup ();
+      | +if (dbg1) DPF("c1 %s", var->name);
+      |    return (result);
+      |  }
+
+    謎に包まれている。bash-5.0 でも同様の現象がある。bash-4.4 以前については
+    EPOCHREALTIME が存在していないので振る舞いを調べる事はできない。また、
+    version で違うという事を期待する理由もない気がする。
+
 2023-12-30
+
+  * 2023-12-26 gexec: LINENO が更新されなくなっている [#D2108]
+
+    LINENO=... eval '...' では駄目なのか? どうも調べてみるとこれでは eval の一
+    番最初のコマンドしか LINENO が適用されない様である。やはり unset -v するし
+    かないのだろうか。todo にこの事は記録されていないのか? → 検索する限りは残
+    されていない。
+
+    と思ったら #D1824 に書かれていた。どうもこれは bash のバグである。他の変数
+    でも全く同じ現象を再現できた。これに依存している他の全ての変数について問題
+    が生じるのではないか? これを回避する方法はないのか? 例えば二重に eval した
+    ら? → 駄目だった。
+
+    - このバグを最初に見つけたのは f1 help の表示で LESS だか MANPATH だかを指
+      定した物だった筈。更に今回のこれ。他にも declare 関係であった気がする。
+
+    * 現状の対策としてはやはり LINENO は unset して明示的に設定するという事。但
+      し、他の BASH_COMMAND 等については対策できない。
+
+    改めて #D1824 を読んでみると builtin eval ではなく eval を使うと書いてある。
+    対応する commit は f629698e5 (2022-06-27) である。確かに確認してみると
+    builtin を外している。然し、現在の master を見ると builtin eval になってい
+    る。つまり、この変更を導入した時点ではちゃんとこの問題について意識していて
+    その対策をしたという事。しかし、後で make scan か何かの結果を見て上書きして
+    しまったという事。
+
+    調べてみると #D1938 (commit 00cae745b2023-02-03) で書き換えられている。
+    LINENO として ble.sh 内部の変数を直接参照していたために、コマンド発行時の値
+    ではない値になるという問題があって、コマンド発行時に記録した lineno を使う
+    様に変更したのだった。その時に builtin が抜けていると思って再度 builtin を
+    追加してしまったのが問題である。
 
   * decode(bind): ble-bind -P に含まれる制御文字・bind の引数解析の修正 [#D2107]
 

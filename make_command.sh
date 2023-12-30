@@ -574,7 +574,7 @@ function sub:scan {
       \Zcmd '\''eval -- %q'\''Zd
       \Z\$\(eval \$\(call .*\)\)Zd
       \Z^[[:space:]]*local rex_[_a-zA-Z0-9]+='\''[^'\'']*'\''[[:space:]]*$Zd
-      \ZLINENO=\$_ble_edit_LINENO evalZd
+      \ZLINENO='\''\$lineno'\'' evalZd
       \Z^ble/cmdspec/opts Zd
       g'
   sub:scan/builtin 'unset' |

@@ -48,6 +48,7 @@
 - edit(redo): fix broken common prefix/suffix determination (reported by Darukutsu) `#D2098` c920ea65
 - keymap/vi: improve text-object in omap for brackets (reported by Darukutsu) `#D2100` d1a1d538
 - decode(bind): fix command-line argument parsing `#D2107` xxxxxxxx
+- edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` xxxxxxxx
 
 ## Compatibility
 

@@ -7056,7 +7056,9 @@ function ble-edit/exec:gexec/.setup {
       #   後にそのままコマンドを実行しないと無駄な出力がされてしまう。
       # Note: restore-lastarg の $_ble_edit_exec_lastarg は $_ を設定するための
       #   ものである。
-      buff[ibuff++]='{ time LINENO='$lineno' builtin eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
+      # Note #D1824, #D2108: LINENO について vanishing tempenv bug を避ける為に
+      #   builtin eval ではなく eval を意図的に使っている。
+      buff[ibuff++]='{ time LINENO='$lineno' eval -- "ble-edit/exec:gexec/.restore-lastarg \"\$_ble_edit_exec_lastarg\"'
       buff[ibuff++]='$_ble_edit_exec_BASH_COMMAND_eval'
       # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
