@@ -3718,6 +3718,7 @@ function ble/builtin/bind/rlfunc2widget {
     local line
     for line in "${dict[@]}"; do
       [[ $line == "$rlfunc "* ]] || continue
+      [[ $OSTYPE == msys* ]] && line=${line%$'\r'}
       local rl widget; ble/bash/read rl widget <<< "$line"
       if [[ $widget == - ]]; then
         ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'." >&2

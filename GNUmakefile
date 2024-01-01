@@ -28,7 +28,7 @@ endif
 
 MWGPP:=$(GAWK) -f make/mwg_pp.awk
 
-# Note (): we had used "cp -p xxx out/xxx" to copy files to the build
+# Note (#D2058): we had used "cp -p xxx out/xxx" to copy files to the build
 # directory, but some filesystem (ecryptfs) has a bug that the subsecond
 # timestamps are truncated causing an issue: make every time copies all the
 # files into the subdirectory `out`.  We give up using `cp -p` and instead copy

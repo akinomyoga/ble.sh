@@ -7333,6 +7333,36 @@ bash_tips
     end-section でない時に正しく失敗が検出できていなかった。end-section 毎に失
     敗 section 数をインクリメントする事にした。
 
+    2024-01-01 未だ失敗している。macos で失敗している。windows では一応成功はし
+    ているが変なエラーが発生している。macos の方については単に bash-3.2 だった
+    ので ble/util/idle.do が空実装になっていてそれを使ったテストが通っていない
+    だけだった。
+
+    windows の方についてはどうも rlfunc.txt の各行の末尾に \r がついているのが
+    原因の様だ。然し、調べてみるとその他のファイルについても全部 \r がついてい
+    る様に見える。何故問題になっていないのか。bash が読み取る時にいい具合にして
+    くれるという事なのだろうか。
+
+    ? その他の自前で読み書きしているファイルについては大丈夫なのだろうか?  →調
+      べてみた所、自前で生成したファイルについては大丈夫だった。
+
+      注意しなければならないファイルは rlfunc.txt, ignoreeof-messages.txt,
+      vi_digraph.txt である。rlfunc.txt については対策はできた。
+      ignoreeof-messages.txt については行内の何処かに一致していれば良いという作
+      戦なので、余分な \r がついていてもちゃんと動作する。vi_digraph.txt につい
+      ては mapfile で読み取っているのでちゃんと調整が必要になる。
+
+    ? 或いは読み取る時の方法によって \r が除去されたりされなかったりする等の事
+      があるのだろうか? もし mapfile だけで問題が起きるのだとしたらそれについて
+      もちゃんと対策をする必要が出てくる。
+
+      既存のファイル keymap.vi_digraph.txt を使って確かめてみる事にした。実際に
+      keymap.vi_digraph.txt の中身も \r が付加されていて、更に read で読み取っ
+      たとしても \r が混入してしまうという事が確認できた。つまり、mapfile を使っ
+      たから悪いという訳ではない。
+
+    修正した。
+
   * edit: history-search-backward に関する振る舞いに対する要望 (reported by blackteahamburger) [#D2104]
     https://github.com/akinomyoga/ble.sh/issues/382
 

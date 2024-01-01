@@ -1875,7 +1875,9 @@ fi
     ble-import FILE1.txt FILE2.txt -C 'ble/util/print both1' -C 'ble/util/print both2'
 
     (
-      ble/test 'ble/util/idle.do' stdout=
+      if ble/is-function ble/util/idle.push; then
+        ble/test 'ble/util/idle.do' stdout=
+      fi
       ble/test 'ble-import FILE1.txt' stdout=$'FILE1\nloaded1\nloaded2\nloaded3\nloaded4'
       ble/test 'ble-import FILE2.txt' stdout=$'FILE2\nboth1\nboth2'
     )
@@ -1894,10 +1896,12 @@ fi
   )
 
   # with -d option
-  (
-    ble-import FILE1.txt FILE2.txt -dC 'ble/util/print both'
-    ble/test 'ble/util/idle.do' stdout=$'FILE1\nFILE2\nboth'
-  )
+  if ble/is-function ble/util/idle.push; then
+    (
+      ble-import FILE1.txt FILE2.txt -dC 'ble/util/print both'
+      ble/test 'ble/util/idle.do' stdout=$'FILE1\nFILE2\nboth'
+    )
+  fi
 
   ble/test/rmdir
 )

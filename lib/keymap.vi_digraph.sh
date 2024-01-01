@@ -40,6 +40,7 @@ function ble-decode/keymap:vi_digraph/define {
   local line field ch1 ch2 code
   for line in "${lines[@]}"; do
     [[ $line == ??' '* ]] || continue
+    [[ $OSTYPE == msys* ]] && line=${line%$'\r'}
     ch1=${line::1}
     ch2=${line:1:1}
     code=${line:3}

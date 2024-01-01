@@ -47,8 +47,8 @@
 - keymap/vi: fix the behavior of text-object for quotes in xmap (reported by Darukutsu) `#D2094` 5f9a44ec
 - edit(redo): fix broken common prefix/suffix determination (reported by Darukutsu) `#D2098` c920ea65
 - keymap/vi: improve text-object in omap for brackets (reported by Darukutsu) `#D2100` d1a1d538
-- decode(bind): fix command-line argument parsing `#D2107` xxxxxxxx
-- edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` xxxxxxxx
+- decode(bind): fix command-line argument parsing `#D2107` 57a13c3c
+- edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` b5776596
 
 ## Compatibility
 
@@ -70,8 +70,9 @@
 - global: adjust bash options for utilities outside the ble context (motivated by jkemp814) `#D2092` 6b144de7
 - decode,syntax: quote `$#` in arguments properly `#D2097` 40a625d3
 - global: work around case-interleaving collation (reported by dongxi8) `#D2103` a3b94bb3
-- nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` xxxxxxxx
-- decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` xxxxxxxx
+- nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` 870ecef7
+- decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
+- decode, vi_digraph: trim CR of text resources in MSYS `#D2105` xxxxxxxx
 
 ## Contrib
 
@@ -92,7 +93,7 @@
 
 - test(bash): fix condition for bash bug of history expansion `#D2071` aacf1462
 - test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` aacf1462
-- test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` xxxxxxxx
+- test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` 23a05827 xxxxxxxx
 
 ## Internal changes
 
