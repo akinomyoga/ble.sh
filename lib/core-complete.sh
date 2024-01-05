@@ -4451,7 +4451,7 @@ function ble/complete/mandb/.generate-cache-from-man {
 
     #--------------------------------------------------------------------------
     # Format #5: [.PP \n key \n .RS \n desc \n .RE]
-    # used by "ping".
+    # used by "ping" and "git".
 
     REQ == "PP" {
       flush_topic();
@@ -4468,7 +4468,7 @@ function ble/complete/mandb/.generate-cache-from-man {
         else if (/^\.RE([^_a-zA-Z0-9]|$)/)
           fmt5_state = "none";
         else
-          fmt5_key = (fmt5_key ? "\n" : "") $0;
+          fmt5_key = (fmt5_key ? fmt5_key "\n" : "") $0;
       } else if (fmt5_state == "desc") {
         if (/^\.RE([^_a-zA-Z0-9]|$)/) {
           register_key(fmt5_key);
@@ -4476,7 +4476,7 @@ function ble/complete/mandb/.generate-cache-from-man {
           flush_topic();
           fmt5_state = "";
         } else
-          fmt5_desc = (fmt5_desc ? "\n" : "") $0;
+          fmt5_desc = (fmt5_desc ? fmt5_desc "\n" : "") $0;
       }
     }
 

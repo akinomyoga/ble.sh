@@ -49,6 +49,7 @@
 - keymap/vi: improve text-object in omap for brackets (reported by Darukutsu) `#D2100` d1a1d538
 - decode(bind): fix command-line argument parsing `#D2107` 57a13c3c
 - edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` b5776596
+- mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2109` xxxxxxxx
 
 ## Compatibility
 
@@ -72,7 +73,7 @@
 - global: work around case-interleaving collation (reported by dongxi8) `#D2103` a3b94bb3
 - nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` 870ecef7
 - decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
-- decode, vi_digraph: trim CR of text resources in MSYS `#D2105` xxxxxxxx
+- decode, vi_digraph: trim CR of text resources in MSYS `#D2105` 6f4badf4
 
 ## Contrib
 
@@ -93,7 +94,7 @@
 
 - test(bash): fix condition for bash bug of history expansion `#D2071` aacf1462
 - test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` aacf1462
-- test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` 23a05827 xxxxxxxx
+- test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` 23a05827 6f4badf4
 
 ## Internal changes
 
