@@ -1905,6 +1905,13 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-01-05
+
+  * mc 的な TUI を自前で実装しても良いのではないか? どうも mc を使っている人は
+    結構いるようである。更に、dylanaraps/fff 等の機能も参考にしても良いのかもしれない。と
+    思ったが、fff はデモを見る限りは大した機能はないのではないのかという気がす
+    る。
+
 2023-12-10
 
   * main: ble-update, ble-reload, bleopt, ble-sabbrev, ble-palette の adjust-bash-options
@@ -1915,7 +1922,7 @@ bash_tips
     ble-reload に関しては内部で source するのだとしたら無理やり状態を復元保存し
     ようとするのは問題がある気がする。特に ble-reload で adjust した後の状態を
     グローバル変数に記録してしまうのではないか。そう思うと ble-reload は待避の
-    対称ではない気がする。そういう場合もあるという事を考えると ble で一括で待避
+    対象ではない気がする。そういう場合もあるという事を考えると ble で一括で待避
     するというのも実は柔軟性に書けるという事になるのかもしれない。
 
 2023-10-04
@@ -7054,6 +7061,50 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-01-05
+
+  * mandb: git のオプションの説明は man git-subcommand から取得するべき (motivated by bkerin) [#D2111]
+    https://github.com/akinomyoga/ble.sh/issues/386
+
+    果たしてこれが報告者の意図していた事かは分からないがその様に読めなくもない。
+    何れにしてもこれは対応できる様な気がするので対応する事にする。
+
+    ? 先ず、mandb から説明を補填するかどうかの判定条件に $compcmd ==
+      ${comp_words[0]} がある。これは一体何を意味しているのか。compcmd の初期化
+      を辿ってみると、先ず -D や -I の特別な場合を除き ${comp_words[0]}} を代入
+      している。そして、その後で simple-word の時には eval した値で置き換えてい
+      る。eval したかどうかで振る舞いを変えるというのは変な気がするので、これは
+      単に -D や -I ではないという事を確認する為の物だろうか。
+
+      一応コードの履歴を確認する事にする。判定は c1cd666b で最初に progcomp に
+      対する説明付加が導入された時から存在しているが、大した議論は残っていない。
+      特に意図があってこの様な判定にしたという訳でもない気がするので、気にしな
+      い事にする。単に -D または -I ではないという事を確認する為のコードと思う
+      事にする。
+
+      然し、-D だったとしても man ${comp_words[0]} で候補を探索しても良いのでは
+      ないか? うーん。改めて ${comp_words[0]} を展開しなおしてしまっても良いの
+      では?
+
+    うーん。取り敢えず progcomp で生成したオプションに説明を付加する部分と、
+    source:option の generate-for-command で対応した。
+
+    x ok: generate-for-command の alias 展開 & 変数代入読み飛ばし部分で
+      words[iret] になっていた。修正した。
+
+    * done: ble/complete/mandb:bash-completion/inject の対象である
+      _comp_longopt は _comp_complete_longopt に改名された。一応両方に対応でき
+      る様にしておく。
+
+      また __load_completion は _comp_load -D に変わった。今回の場合には -D は
+      欲しくないので _comp_load で呼び出す (わざわざ -D を bash-completion で導
+      入したのは ble.sh を使う事を念頭に置いての物)。
+
+    x done: git format-patch --output-directory に関しては元々は = が入っていた
+      が、man git-format-patch には = が含まれていない為に単なる空白に変わって
+      しまっている。git が suggest する内容に = が含まれている場合には = を保持
+      する様にできないか? → その様に修正した。
+
+    * done: simple-word/safe-eval を使える箇所は置き換える。
 
   * progcomp: git の補完するオプションで --option= の後に空白が挿入される (reported by bkerin) [#D2110]
     https://github.com/akinomyoga/ble.sh/issues/387

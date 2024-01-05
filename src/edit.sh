@@ -10171,8 +10171,8 @@ function ble/widget/command-help/.type/.resolve-alias {
     builtin unalias "$command"
     builtin eval "alias_def=${alias_def#*=}" # remove quote
     literal=${alias_def%%["$_ble_term_IFS"]*} command= type=
-    ble/syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
-    local ret; ble/syntax:bash/simple-word/eval "$literal"; command=$ret
+    local ret; ble/syntax:bash/simple-word/safe-eval "$literal" nonull || break # Note: type=
+    command=$ret
     ble/util/type type "$command"
     [[ $type ]] || break # Note: type=
 
@@ -10207,8 +10207,7 @@ function ble/widget/command-help/.type/.resolve-alias {
 function ble/widget/command-help/.type {
   local literal=$1
   type= command=
-  ble/syntax:bash/simple-word/is-simple "$literal" || return 1
-  local ret; ble/syntax:bash/simple-word/eval "$literal"; command=$ret
+  local ret; ble/syntax:bash/simple-word/safe-eval "$literal" nonull || return 1; command=$ret
   ble/util/type type "$command"
 
   # alias の時はサブシェルで解決

@@ -1217,7 +1217,7 @@ function ble/syntax:bash/simple-word/evaluate-last-brace-expansion {
   ret=$out simple_ibrace=$iopen:$((${#out}-no_brace_length))
 }
 
-## @fn ble/syntax:bash/simple-word/reconstruct-incomplete-word
+## @fn ble/syntax:bash/simple-word/reconstruct-incomplete-word word
 ##   word について不完全なブレース展開と不完全な引用符を閉じ、
 ##   更にブレース展開を実行して最後の単語を取得します。
 ##
@@ -1550,6 +1550,35 @@ function ble/syntax:bash/simple-word/eval {
     fi
   fi
   return "$ext"
+}
+
+## @fn ble/syntax:bash/simple-word/eval word [opts]
+##   @param[in,opt] opts
+##     A colon-separated list of options.  In addition to the values supported
+##     by ble/syntax:bash/simple-word/eval, the following value is available:
+##
+##     @opt reconstruct
+##       Try to reconstruct the full word using
+##       ble/syntax:bash/simple-word/reconstruct-incomplete-word when there is
+##       no closing quote corresponding to an opening one in the word.
+##
+##     @opt nonull
+##       Fails when no word is generated.  This may happen with e.g. an
+##       expansion an empty array "${arr[@]}" or unmatching glob pattern with
+##       nullglob.
+##
+##   @arr[out] ret
+##
+function ble/syntax:bash/simple-word/safe-eval {
+  if [[ :$2: == *:reconstruct:* ]]; then
+    local simple_flags simple_ibrace
+    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$1" || return 1
+    ble/util/unlocal simple_flags simple_ibrace
+  else
+    ble/syntax:bash/simple-word/is-simple "$1" || return 1
+  fi
+  ble/syntax:bash/simple-word/eval "$1" &&
+    { [[ :$2: != *:nonull:* ]] || ((${#ret[@]})); }
 }
 
 ## @fn ble/syntax:bash/simple-word/get-rex_element sep
