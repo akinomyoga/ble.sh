@@ -74,6 +74,7 @@
 - nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` 870ecef7
 - decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
 - decode, vi_digraph: trim CR of text resources in MSYS `#D2105` 6f4badf4
+- progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2110` xxxxxxxx
 
 ## Contrib
 

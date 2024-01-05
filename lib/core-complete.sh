@@ -3844,7 +3844,8 @@ function ble/complete/progcomp/.compgen {
   local use_workaround_for_git=
   if [[ $comp_func == __git* && $comp_opts == *:nospace:* ]]; then
     use_workaround_for_git=1
-    comp_opts=${comp_opts//:nospace:/:}
+    ble/string#match "$compgen" $'(^|\n|[^[:space:]])(\n|$)' ||
+      comp_opts=${comp_opts//:nospace:/:}
   fi
 
   local cands flag_mandb=

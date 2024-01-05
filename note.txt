@@ -7055,6 +7055,19 @@ bash_tips
 
 2024-01-05
 
+  * progcomp: git の補完するオプションで --option= の後に空白が挿入される (reported by bkerin) [#D2110]
+    https://github.com/akinomyoga/ble.sh/issues/387
+
+    調べてみるとそもそも git の補完に関してはどの程度 quote したら良いかも不明
+    という事なので、末尾の空白を消してその後に空白を付加するという実装になって
+    いる。特に git の補完が付加した compopt -o nospace を除去している。これを生
+    成された候補に応じて nospace を保持する様にするべきなのでは?
+
+    一つでも末尾空白がない物があれば nospace を保持するのか、或いは全ての生成候
+    補について末尾空白がない場合に nospace を保持するのか、どちらが良いか? 曖昧
+    である場合には付加しないという観点から言えば一つでも末尾空白がない物があれ
+    ば nospace を保持するべきである。
+
   * mandb: git の説明の抽出が変 (reported by bkerin) [#D2109]
     https://github.com/akinomyoga/ble.sh/issues/386
 
