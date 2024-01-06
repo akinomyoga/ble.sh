@@ -91,6 +91,7 @@
 - github: add FUNDING `#D2080` 3f133936
 - blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` cd069860
 - docs: apply Grammarly and fix typos `#D2099` 8b3f6f8c
+- docs(README): add sabbrev example for named directories `#D2115` xxxxxxxx
 
 ## Test
 

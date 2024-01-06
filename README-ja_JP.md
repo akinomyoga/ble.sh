@@ -687,6 +687,15 @@ ble-sabbrev L='| less'
 ble-sabbrev '\L'='| less'
 ```
 
+`~` で始まる静的略語展開は <kbd>/</kbd> でも展開されます。これは Zsh の名前付きディレクトリ (named directories) に模した使い方ができます。
+例えば、以下の設定の下で `~mybin/` と入力すると、`/home/user/bin/` など (`HOME=/home/user` の場合) に展開されます。
+
+```bash
+# blerc
+
+ble-sabbrev "~mybin=$HOME/bin"
+```
+
 # 4 謝辞
 
 GitHub の Issue/PR を通して多くの方からフィードバックを頂き、皆様に本当に感謝しております。

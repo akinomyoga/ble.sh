@@ -697,6 +697,14 @@ The sabbrev names that start with `\` plus alphabetical letters are also recomme
 ble-sabbrev '\L'='| less'
 ```
 
+The sabbrevs starting with `~` can be expanded also by <kbd>/</kbd>.  This can be used to approximate Zsh's named directories.
+For example, with the following settings, typing `~mybin/` expands it to e.g. `/home/user/bin/` (where we assumed `HOME=/home/user`).
+
+```bash
+# blerc
+
+ble-sabbrev "~mybin=$HOME/bin"
+```
 
 # 4 Contributors
 

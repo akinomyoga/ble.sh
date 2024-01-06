@@ -1905,12 +1905,23 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-01-06
+
+  * complete: blesh completion source のAPI整理および定義方法の docs
+    https://github.com/akinomyoga/ble.sh/issues/157#issuecomment-1867622494
+
+    そもそも API 自体も再考する可能性がある。既に yield などは使っているプロジェ
+    クトやユーザーが幾つかある様な気もする (rsteube/carapace など) が、それに関
+    しては個別に GitHub 上で探索して報告する事にする。それと同時に後方互換性は
+    できるだけ保つ。
+
 2024-01-05
 
   * mc 的な TUI を自前で実装しても良いのではないか? どうも mc を使っている人は
-    結構いるようである。更に、dylanaraps/fff 等の機能も参考にしても良いのかもしれない。と
-    思ったが、fff はデモを見る限りは大した機能はないのではないのかという気がす
-    る。
+    結構いるようである。更に、dylanaraps/fff 等の機能も参考にしても良いのかもし
+    れない。と思ったが、fff はデモを見る限りは大した機能はないのではないのかと
+    いう気がする。ranger/ranger も参考になるかもしれない。何れにしても自分的に
+    は余り使わない気がする。
 
 2023-12-10
 
@@ -7061,6 +7072,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-01-07
+
+  * README: magic-slash について追記する (motivated by dgudim) [#D2115]
+    https://github.com/akinomyoga/ble.sh/issues/388
+
+    * wiki も inline sabbrev 等の種別について記述する。
 
   * global: 再び leakvar が幾つか出ているので修正する [#D2114]
 
