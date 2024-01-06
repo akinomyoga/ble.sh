@@ -3563,10 +3563,10 @@ function ble/builtin/bind/.decompose-pair.impl {
   elif [[ ! $keyseq ]]; then
     ble/util/print "ble.sh (bind): empty keyseq in spec: '${spec//$q/$Q}'" >&3
     return 1
-  elif rex='^"([^\"]|\\.)*$'; [[ $keyseq =~ $rex ]]; then
+  elif ble/string#match "$keyseq" '^"([^\"]|\\.)*$'; then
     ble/util/print "ble.sh (bind): no closing '\"' in keyseq: '${keyseq//$q/$Q}'" >&3
     return 1
-  elif rex='^"([^\"]|\\.)*"'; [[ $keyseq =~ $rex ]]; then
+  elif ble/string#match "$keyseq" '^"([^\"]|\\.)*"'; then
     local rematch=${BASH_REMATCH[0]}
     if ((${#rematch}<${#keyseq})); then
       local fragment=${keyseq:${#rematch}}

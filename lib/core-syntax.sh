@@ -1776,6 +1776,7 @@ function ble/syntax:bash/simple-word/locate-filename {
   for ((i=0;i<${#seppos[@]};i++)); do
     local j0=$i
     [[ :$opts: == *:greedy:* ]] && j0=${#seppos[@]}-1
+    local j
     for ((j=j0;j>=i;j--)); do
       local f1=0 f2=${seppos[j]}
       ((i)) && ((f1=seppos[i-1]+1))

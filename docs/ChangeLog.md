@@ -106,6 +106,7 @@
 - memo: add recent configs and create directories `#D2073` 99cb5e81
 - highlight: generalize `region` layer `#D2074` 449d92ca
 - keymap/vi: integrate vi tests into the test framework `#D2101` d16b8438
+- global(leakvar): fix variable leak `#D2114` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

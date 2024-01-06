@@ -7062,6 +7062,32 @@ bash_tips
 
 2024-01-07
 
+  * global: 再び leakvar が幾つか出ているので修正する [#D2114]
+
+    isubcmd を見返して気づいた。序でなので改めて調べる。
+
+    ble/debug/leakvar#list で確認してみると version が leak している。histdb で
+    一箇所 local 忘れがあって直したがそれでも未だ version がある (変数の内容は
+    変化したので histdb からも leak していたのは間違いない)。"assign version"
+    で検索したら ble.pp の awk version 検出部分で local 忘れしている箇所が見つ
+    かった。
+
+    その他、description を表示すると g x1 x2 y1 y2 が leak している→これは
+    menu prefix の処理が問題だった。幅を計測する関数と実際に描画シーケンスを生
+    成する関数の二つがあったが、両方で g が leak していた。x1 x2 y1 y2 について
+    は描画する関数の方では使わないので measure-bbox をつけていたのが余分だった。
+    修正した。
+
+    他に j と insert_flags が怪しい。j に関しては core-syntax.sh に於いて
+    locate-filenames の中のループ変数に対応する local j が抜けていた。
+    insert_flags に関しては auto-complete/source:syntax に於いて
+    ble/complete/action:"$ACTION"/complete を呼び出しているが、insert_flags や
+    insert_beg, insert_end 等の変数を宣言していなかった。何れも修正した。
+
+    rex も leak している箇所がある様だ。内容を見ると ^"([^\"]|\\.)*" になってい
+    る。このコードが自体は古いものだが rex が leak する様になったのは最近の修正
+    によってそれより前にあった rex を修正・改名したからである。
+
   * test: CI で未だ bind 関連の警告が発生している [#D2113]
 
     何処かの bind でちゃんと stderr を抑えきれていない。改めて何処で発生してい

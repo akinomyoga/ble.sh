@@ -157,12 +157,20 @@
 --------------------------------------------------------------------------------
 # /etc/profile.d/debuginfod.sh
 ^DEBUGINFOD_URLS=
-# /etc/profile.d/gmpopenh264.sh
-^MOZ_GMP_PATH=
 # /etc/profile.d/flatpak.sh
 ^new_dirs=
+# /etc/profile.d/gmpopenh264.sh
+^MOZ_GMP_PATH=
+# /etc/profile.d/guestfish.sh
+^GUESTFISH_INIT=
+^GUESTFISH_OUTPUT=
+^GUESTFISH_PS1=
+^GUESTFISH_RESTORE=
 # /etc/profile.d/nano-default-editor.sh
 ^EDITOR=
+# /etc/profile.d/snapd.sh
+^snap_bin_path=
+^snap_xdg_path=
 --------------------------------------------------------------------------------
 # dev
 ^CPLUS_INCLUDE_PATH=
@@ -187,6 +195,11 @@
 ^__(git|dnf|gitcomp)_[[:alnum:]_]+=
 ^_scp_path_esc=
 ^_comp_[[:alnum:]_]+=
+# /etc/bash_completion.d/perf
+^preload__ltrim_colon_completions=
+^preload_get_comp_words_by_ref=
+# /etc/bash_completion.d/cargo
+^__cargo_commands_cache=
 --------------------------------------------------------------------------------
 # dotfiles
 ^_dotfiles_[[:alnum:]_]+=
@@ -203,6 +216,9 @@
 --------------------------------------------------------------------------------
 # ble.sh internal variables
 ^_?(BLE|ble)[[:alnum:]_]+=
+--------------------------------------------------------------------------------
+# cargo env variables
+^CARGO_HOME=
 --------------------------------------------------------------------------------
 # leakvar checks
 =__t1wJltaP9nmow__$

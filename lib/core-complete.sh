@@ -152,7 +152,7 @@ function ble/complete/menu#get-prefix-width {
   if [[ $prefix_format ]]; then
     local prefix1 column_width=$2
     ble/util/sprintf prefix1 "$prefix_format" "${#menu_items[@]}"
-    local x1 y1 x2 y2
+    local x1 y1 x2 y2 g=0
     LINES=1 COLUMNS=$column_width x=0 y=0 ble/canvas/trace "$prefix1" truncate:measure-bbox
     if ((x2<=column_width/2)); then
       prefix_width=$x2
@@ -172,8 +172,8 @@ function ble/complete/menu#render-prefix {
   local index=$1
   if ((prefix_width)); then
     local prefix1; ble/util/sprintf prefix1 "$prefix_format" "$((index+1))"
-    local x=0 y=0
-    LINES=1 COLUMNS=$prefix_width ble/canvas/trace "$prefix1" truncate:relative:measure-bbox
+    local x=0 y=0 g=0
+    LINES=1 COLUMNS=$prefix_width ble/canvas/trace "$prefix1" truncate:relative
     prefix_esc=$ret$_ble_term_sgr0
     if ((x<prefix_width)); then
       prefix_esc=${_ble_string_prototype::prefix_width-x}$prefix_esc
@@ -3531,6 +3531,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
     # "git-SUBCMD".
     local man_page=${cmd##*/}
     if [[ $man_page == git ]]; then
+      local isubcmd
       for ((isubcmd=1;isubcmd<comp_cword;isubcmd++)); do
         local subcmd=${comp_words[isubcmd]} ret
         if ble/syntax:bash/simple-word/safe-eval "$subcmd"; then
@@ -8311,6 +8312,7 @@ function ble/complete/auto-complete/source:syntax {
   if ble/is-function ble/complete/action:"$ACTION"/complete; then
     local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
     ble/complete/cand/unpack "${cand_pack[0]}"
+    local insert_beg=$COMP1 insert_end=$COMP2 insert_flags=
     ble/complete/action:"$ACTION"/complete
   fi
 

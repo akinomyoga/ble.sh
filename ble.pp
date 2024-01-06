@@ -1135,6 +1135,7 @@ function ble/bin/awk/.instantiate {
     # Note: Some distribution (like Ubuntu) provides gawk as "nawk" by
     # default. To avoid wrongly picking gawk as nawk, we need to check the
     # version output from the command.
+    local version
     ble/util/assign version '"$path" -W version' 2>/dev/null </dev/null
     if [[ $version != *'GNU Awk'* && $version != *mawk* ]]; then
       builtin eval "function ble/bin/nawk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }"
