@@ -17,7 +17,7 @@
 - keymap/vi: split widget `text-object` into `text-object-{inner,outer}` (requested by Darukutsu) `#D2093` 11cf118a
 - keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` 7d80167c
 - util: support `ble-import -C callback` (motivated by Dominiquini) `#D2102` 0fdbe3b0
-- mandb: look for git subcommands (motivated by bkerin) `#D2111` xxxxxxxx
+- mandb: look for git subcommands (motivated by bkerin) `#D2112` 9641c3b8
 
 ## Changes
 
@@ -50,7 +50,7 @@
 - keymap/vi: improve text-object in omap for brackets (reported by Darukutsu) `#D2100` d1a1d538
 - decode(bind): fix command-line argument parsing `#D2107` 57a13c3c
 - edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` b5776596
-- mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2109` xxxxxxxx
+- mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2110` 90a992cc
 
 ## Compatibility
 
@@ -75,7 +75,7 @@
 - nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` 870ecef7
 - decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
 - decode, vi_digraph: trim CR of text resources in MSYS `#D2105` 6f4badf4
-- progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2110` xxxxxxxx
+- progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2111` 2c7cca2f
 
 ## Contrib
 
@@ -97,6 +97,7 @@
 - test(bash): fix condition for bash bug of history expansion `#D2071` aacf1462
 - test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` aacf1462
 - test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` 23a05827 6f4badf4
+- test(vi): suppress warnings for non-interactive sessions `#D2113` xxxxxxxx
 
 ## Internal changes
 

@@ -7060,9 +7060,24 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-01-07
+
+  * test: CI で未だ bind 関連の警告が発生している [#D2113]
+
+    何処かの bind でちゃんと stderr を抑えきれていない。改めて何処で発生してい
+    るか確かめる事にする。恐らく read-user-settings 関連である → 確かめた所や
+    はり再構築したユーザー設定の eval の場所でエラーメッセージが表示されている。
+    再構築したユーザー設定は単に bind -m ... '...' の連続である。eval 全体を
+    2>/dev/null してしまって良い気がする。
+
+    その他にも bash: no job control in this shell というエラーメッセージが出て
+    いる→これは bash の既定の keymap を取得する時に起動している bash -i から出
+    ていた。一緒に出ていた ioctl だとか controlling terminial のエラーも此処か
+    ら発生していた。
+
 2024-01-05
 
-  * mandb: git のオプションの説明は man git-subcommand から取得するべき (motivated by bkerin) [#D2111]
+  * mandb: git のオプションの説明は man git-subcommand から取得するべき (motivated by bkerin) [#D2112]
     https://github.com/akinomyoga/ble.sh/issues/386
 
     果たしてこれが報告者の意図していた事かは分からないがその様に読めなくもない。
@@ -7106,7 +7121,7 @@ bash_tips
 
     * done: simple-word/safe-eval を使える箇所は置き換える。
 
-  * progcomp: git の補完するオプションで --option= の後に空白が挿入される (reported by bkerin) [#D2110]
+  * progcomp: git の補完するオプションで --option= の後に空白が挿入される (reported by bkerin) [#D2111]
     https://github.com/akinomyoga/ble.sh/issues/387
 
     調べてみるとそもそも git の補完に関してはどの程度 quote したら良いかも不明
@@ -7119,7 +7134,7 @@ bash_tips
     である場合には付加しないという観点から言えば一つでも末尾空白がない物があれ
     ば nospace を保持するべきである。
 
-  * mandb: git の説明の抽出が変 (reported by bkerin) [#D2109]
+  * mandb: git の説明の抽出が変 (reported by bkerin) [#D2110]
     https://github.com/akinomyoga/ble.sh/issues/386
 
     コードを見たら物凄く単純なミスだった。man ping の解析をする為に導入したコー
@@ -7136,7 +7151,7 @@ bash_tips
 
 2023-12-31
 
-  * [棄却] PREEXEC で一定時間以上時間をかけるとコマンド実行前後に 0.1ms の遅延が生じる [#D2108]
+  * [棄却] PREEXEC で一定時間以上時間をかけるとコマンド実行前後に 0.1ms の遅延が生じる [#D2109]
 
     Note: これはどうしようもない気がするので気にしない事にする。
 

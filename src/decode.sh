@@ -3965,7 +3965,7 @@ function ble/builtin/bind/read-user-settings/.collect {
   for map in vi-insert vi-command emacs; do
     local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
     if ! [[ -s $cache && $cache -nt $_ble_base/ble.sh ]]; then
-      INPUTRC=/dev/null "$BASH" --noprofile --norc -i -c "builtin bind -m $map -p" |
+      INPUTRC=/dev/null "$BASH" --noprofile --norc -i -c "builtin bind -m $map -p" 2>/dev/null |
         LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' >| "$cache.part" &&
         ble/bin/mv "$cache.part" "$cache" || continue
     fi
@@ -4145,11 +4145,11 @@ function ble/builtin/bind/read-user-settings {
       if ble/builtin/bind/read-user-settings/.cache-alive; then
         ble/builtin/bind/read-user-settings/.cache-load
       else
-        builtin eval -- "$settings"
+        builtin eval -- "$settings" 2>/dev/null # suppress "line editing not enabled"
         ble/builtin/bind/read-user-settings/.cache-save
       fi
     else
-      builtin eval -- "$settings"
+      builtin eval -- "$settings" 2>/dev/null # suppress "line editing not enabled"
     fi
   fi
 }
