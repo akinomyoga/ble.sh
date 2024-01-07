@@ -6760,7 +6760,7 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
   local -a BLE_PIPESTATUS
   BLE_PIPESTATUS=("${_ble_edit_exec_PIPESTATUS[@]}")
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  LINENO=$_ble_edit_LINENO \
+  LINENO=${_ble_edit_LINENO:-${BASH_LINENO[${#BASH_LINENO[@]}-1]}} \
     BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     blehook/invoke "$@"
 } >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"

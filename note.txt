@@ -7073,6 +7073,35 @@ bash_tips
 
 2024-01-07
 
+  * main: set -u で外側の文脈で ble-import integration/bash-preexec すると unset エラーが出る [#D2116]
+
+    bash: _ble_bash_BASH_REMATCH: 未割り当ての変数です
+    bash: _ble_edit_LINENO: 未割り当ての変数です
+
+    これらを直接 integration/bash-preexec で参照している訳ではない。ble-import
+    の際の save/restore が関係しているのではないか。
+
+    うーん。一つ目に関しては ble-import 時の待避が関係している。後者はもっと後
+    で発生している様だ。
+
+    * 結局前者は ble/base/restore-BASH_REMATCH の実装に於いて
+      _ble_bash_BASH_REMATCH の最初の要素を参照するつもりで直接書いていたのが駄
+      目だった。配列 _ble_bash_BASH_REMATCH 自体は存在していても、前回の一致が
+      失敗した時には空の配列になるので ${_ble_bash_BASH_REMATCH} で参照しようと
+      すると nounset に引っかかる。
+
+    x fixed: またテストしていて気づいたが _ble_bash_BASH_REMATCH の待避に関して
+      は bash-5.1 以降で単純に保存・復元するだけにしたつもりだったが _ble_bash
+      を初期化する前に参照していたので常に古い実装が使われていた。_ble_bash を
+      使わない version 判定にする。
+
+    * 後者に関しては _ble_edit_LINENO が最初に設定されるのは
+      ble-edit/attach/.attach の瞬間である。それよりも前にこれを参照している箇
+      所があるという事だろうか。うーん。attach するより前に
+      invoke-hook-with-setexit を呼び出していて、この関数は既に attach している
+      事を想定にしているという事。内部で行番号を参照している。attach する前は
+      BASH_LINENO の最後の要素を参照する事にした。
+
   * README: magic-slash について追記する (motivated by dgudim) [#D2115]
     https://github.com/akinomyoga/ble.sh/issues/388
 

@@ -76,6 +76,7 @@
 - decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
 - decode, vi_digraph: trim CR of text resources in MSYS `#D2105` 6f4badf4
 - progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2111` 2c7cca2f
+- main: fix initialization errors with `set -u` `#D2116` xxxxxxxx
 
 ## Contrib
 

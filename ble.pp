@@ -628,7 +628,7 @@ function ble/init/restore-IFS {
   builtin unset -v _ble_init_original_IFS
 }
 
-if ((_ble_bash>=50100)); then
+if ((BASH_VERSINFO[0]>5||BASH_VERSINFO[0]==5&&BASH_VERSINFO[1]>=1)); then
   _ble_bash_BASH_REMATCH_level=0
   _ble_bash_BASH_REMATCH=()
   function ble/base/adjust-BASH_REMATCH {
@@ -733,7 +733,7 @@ else
   function ble/base/restore-BASH_REMATCH {
     ((_ble_bash_BASH_REMATCH_level>0&&
         --_ble_bash_BASH_REMATCH_level==0)) || return 0
-    [[ $_ble_bash_BASH_REMATCH =~ $_ble_bash_BASH_REMATCH_rex ]]
+    [[ ${_ble_bash_BASH_REMATCH-} =~ $_ble_bash_BASH_REMATCH_rex ]]
   }
 fi
 
