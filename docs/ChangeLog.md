@@ -77,6 +77,7 @@
 - decode, vi_digraph: trim CR of text resources in MSYS `#D2105` 6f4badf4
 - progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2111` 2c7cca2f
 - main: fix initialization errors with `set -u` `#D2116` xxxxxxxx
+- progcomp: work around slow `make` completion in large repository (reported by blackteahamburger) `#D2117` xxxxxxxx
 
 ## Contrib
 

@@ -3634,6 +3634,20 @@ function ble/complete/progcomp/.filter-and-split-compgen {
   return 0
 } 2>/dev/null
 
+function ble/complete/progcomp/patch:bash-completion/_comp_cmd_make.advice {
+  if [[ ${BLE_ATTACHED-} ]]; then
+    ble/function#push "${ADVICE_WORDS[1]}" '
+      local -a make_args; make_args=("${ADVICE_WORDS[1]}" "$@")
+      ble/util/conditional-sync \
+        '\''command "${make_args[@]}"'\'' \
+        "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall'
+    ble/function#advice/do
+    ble/function#pop "${ADVICE_WORDS[1]}"
+  else
+    ble/function#advice/do
+  fi
+}
+
 function ble/complete/progcomp/patch:cobraV2/extract_activeHelp.patch {
   local cobra_version=$1
   if ((cobra_version<10500)); then
@@ -3787,6 +3801,10 @@ function ble/complete/progcomp/.compgen {
       ble/function#suppress-stderr _function 2>/dev/null
 
       ble/complete/mandb:bash-completion/inject
+    fi
+
+    if [[ $comp_func == _make || $comp_func == _comp_cmd_make ]] && ble/is-function "$comp_func"; then
+      ble/function#advice around "$comp_func" ble/complete/progcomp/patch:bash-completion/_comp_cmd_make.advice
     fi
 
     # cobra GenBashCompletionV2
