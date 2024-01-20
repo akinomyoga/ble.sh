@@ -5916,15 +5916,27 @@ function ble/term/stty/TRAPEXIT {
   ble/bin/stty echo -nl \
                "${_ble_term_stty_flags_leave[@]}"
 
-  # Note (#D): WA for bash-5.2 stty: bash-5.2 以降では EXIT trap よりも後に readline
-  # が stty を復元しようとするので、セッション終了後に制御端末が壊れた状態にな
-  # る。親プロセスが同じ端末に属していてかつ ble.sh セッションでない場合には、
-  # 入力に支障を来すので制御端末の状態を手動で復元する様に表示を行う。
-  if ((_ble_bash>=50200)) && [[ :$1: == *:EXIT:* && ! -e $_ble_base_run/$PPID.load ]]; then
-    local lines
-    ble/util/assign-array lines 'ble/bin/ps -o tty "$$" "$PPID"'
-    ((${#lines[@]}>=3)) && lines=("${lines[@]:${#lines[@]}-2}")
-    if [[ ${lines[0]} == ${lines[1]} ]]; then
+  # Note (#D2046): WA for bash-5.2 stty: bash-5.2 以降では EXIT trap よりも後に
+  #   readlineが stty を復元しようとするので、セッション終了後に制御端末が壊れ
+  #   た状態になる。親プロセスが同じ端末に属していてかつ ble.sh セッションでな
+  #   い場合には、入力に支障を来すので制御端末の状態を手動で復元する様に表示を
+  #   行う。
+  # Note (#D2118): SHLVL == 1 の時は (ユーザーが SHLVL を上書きしていない限りは)
+  #  対策は不要の筈である。SHLVL にごみの値が入っているかもしれないので算術式で
+  #  はなく文字列比較を行う。
+  if ((_ble_bash>=50200)) && [[ :$1: == *:EXIT:* && ! -e $_ble_base_run/$PPID.load && $SHLVL != 1 ]]; then
+    local tty1= tty2=
+    if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && -e /proc/$$/ctty && -e /proc/$PPID/ctty ]]; then
+      ble/util/mapfile tty1 < "/proc/$$/ctty"
+      ble/util/mapfile tty2 < "/proc/$PPID/ctty"
+    else
+      local lines
+      ble/util/assign-array lines 'ble/bin/ps -o tty "$$" "$PPID"'
+      ((${#lines[@]}>=3)) && lines=("${lines[@]:${#lines[@]}-2}")
+      tty1=${lines[0]}
+      tty2=${lines[1]}
+    fi
+    if [[ $tty1 && $tty1 == $tty2 ]]; then
       local sgr=$_ble_term_bold${_ble_term_setaf[4]} sgr0=$_ble_term_sgr0
       ble/util/print "ble: Please run \`${sgr}stty sane$sgr0' to recover the correct TTY state." >&"${_ble_util_fd_stderr:-2}"
     fi

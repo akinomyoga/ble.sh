@@ -78,6 +78,7 @@
 - progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2111` 2c7cca2f
 - main: fix initialization errors with `set -u` `#D2116` xxxxxxxx
 - progcomp: work around slow `make` completion in large repository (reported by blackteahamburger) `#D2117` xxxxxxxx
+- util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` xxxxxxxx
 
 ## Contrib
 
