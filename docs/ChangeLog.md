@@ -80,6 +80,7 @@
 - main: fix initialization errors with `set -u` `#D2116` xxxxxxxx
 - progcomp: work around slow `make` completion in large repository (reported by blackteahamburger) `#D2117` xxxxxxxx
 - util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` xxxxxxxx
+- progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` xxxxxxxx
 
 ## Contrib
 

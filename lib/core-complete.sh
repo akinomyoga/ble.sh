@@ -3837,7 +3837,7 @@ function ble/complete/progcomp/.compgen {
         "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall' 2>/dev/null
 
     # WA for zoxide TAB
-    if [[ $comp_func == _z ]]; then
+    if [[ $comp_func == _z || $comp_func == __zoxide_z_complete ]]; then
       ble-import -f contrib/integration/zoxide
       ble/contrib/integration:zoxide/adjust
     fi

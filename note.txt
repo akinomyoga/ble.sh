@@ -7071,6 +7071,30 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-01-21
+
+  * complete: zoxide TAB completion が動かない (reported by 6801318d8d) [#D2120]
+    https://github.com/akinomyoga/ble.sh/issues/390
+    Ref #D1907
+
+    core-complete.sh の zoxide の検出コードを見てみたら $comp_func == _z しか確
+    認していない。確認してみると現在 (zoxide 0.9.2) の補完関数の名前は
+    __zoxide_z_complete である。一方で、 contrib/integration/zoxide では既にこ
+    の新しい名前に対応している。恐らく #D1907 だろう。然し、この時に検出コード
+    の方の更新を忘れていたという事である。
+
+    自分の手元の arch で試してみると zoxide の検出ができていない。一方で報告さ
+    れた display-shell-version の結果ではちゃんと zoxide が検出できている。何故
+    だろう。改めて zoxide のチェックを行っている所を見ると何故か使われていない
+    starship バイナリの位置の検出コードが紛れ込んでいる。check:starship の中に
+    あるのと全く同じであって、zoxide 様に調整しているという事もない。starship
+    が存在しないのでこの部分で引っ掛かって zoxide の検出が中断されていたみたい
+    だ。修正した。
+
+    それから starship の検出部分に starship という変数の variable leak がある。
+    check:zoxide の該当部分は消してしまうので問題ないが echeck:starship の方に全
+    く同じコードがあるのでそちらを直す。
+
 2024-01-20
 
   * C-v C-[ a などと入力すると ESC a ではなく \M-a らしき物が入力される [#D2119]

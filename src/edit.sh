@@ -3949,7 +3949,7 @@ function ble/edit/display-version/check:starship {
   ble/function#get-source-and-lineno starship_precmd || return 1
 
   # get starship path
-  local sed_script='s/^[[:space:]]*PS1="\$(\(.\{1,\}\) prompt .*)";\{0,1\}$/\1/p'
+  local starship sed_script='s/^[[:space:]]*PS1="\$(\(.\{1,\}\) prompt .*)";\{0,1\}$/\1/p'
   ble/util/assign-array starship 'declare -f starship_precmd | ble/bin/sed -n "$sed_script"'
   if ! ble/bin#has "$starship"; then
     { builtin eval -- "starship=$starship" && ble/bin#has "$starship"; } ||
@@ -4065,14 +4065,6 @@ function ble/edit/display-version/check:gitstatus {
 }
 function ble/edit/display-version/check:zoxide {
   ble/is-function __zoxide_hook || return 1
-
-  # get starship path
-  local sed_script='s/^[[:space:]]*PS1="\$(\(.\{1,\}\) prompt .*)";\{0,1\}$/\1/p'
-  ble/util/assign-array starship 'declare -f starship_precmd | ble/bin/sed -n "$sed_script"'
-  if ! ble/bin#has "$starship"; then
-    { builtin eval -- "starship=$starship" && ble/bin#has "$starship"; } ||
-      { starship=starship; ble/bin#has "$starship"; } || return 1
-  fi
 
   local path=
   ble/util/assign path 'type -P zoxide 2>/dev/null'
