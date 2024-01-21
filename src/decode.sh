@@ -110,6 +110,34 @@ _ble_decode_IsolatedESC=$((0x07FF))
 _ble_decode_EscapedNUL=$((0x07FE)) # charlog#encode で用いる
 _ble_decode_FunctionKeyBase=0x110000
 
+## @fn ble/decode/mod2flag mod
+##   @param[in] mod
+##   @var[out] ret
+function ble/decode/mod2flag {
+  ret=0
+  local mod=$1
+  # Note: Supr 0x08 以降は独自
+  ((mod&0x01&&(ret|=_ble_decode_Shft),
+    mod&0x02&&(ret|=_ble_decode_Meta),
+    mod&0x04&&(ret|=_ble_decode_Ctrl),
+    mod&0x08&&(ret|=_ble_decode_Supr),
+    mod&0x10&&(ret|=_ble_decode_Hypr),
+    mod&0x20&&(ret|=_ble_decode_Altr)))
+}
+## @fn ble/decode/flag2mod flag
+##   @param[in] flag
+##   @var[out] ret
+function ble/decode/flag2mod {
+  ret=0
+  local flag=$1
+  ((flag&_ble_decode_Shft&&(ret|=0x01),
+    flag&_ble_decode_Meta&&(ret|=0x02),
+    flag&_ble_decode_Ctrl&&(ret|=0x04),
+    flag&_ble_decode_Supr&&(ret|=0x08),
+    flag&_ble_decode_Hypr&&(ret|=0x10),
+    flag&_ble_decode_Altr&&(ret|=0x20)))
+}
+
 ## @fn ble-decode-kbd/.set-keycode keyname key
 ##
 ## @fn ble-decode-kbd/.get-keycode keyname
@@ -429,6 +457,58 @@ function ble-decode-unkbd {
     kspecs[${#kspecs[@]}]=$ret
   done
   ret="${kspecs[*]}"
+}
+
+## @fn ble/decode/keys2chars keys...
+##   指定したキーの列を生成する文字の列を作成します。
+##   @param[in] keys
+##   @arr[out] ret
+function ble/decode/keys2chars {
+  local -a keys=()
+  local key
+  for key; do
+    local flag=$((key&_ble_decode_MaskFlag))
+    local char=$((key&_ble_decode_MaskChar))
+    if ((flag&_ble_decode_Meta)); then
+      ble/array#push keys 27
+      ((flag&=~_ble_decode_Meta))
+    fi
+
+    # C-?, C-@, C-a..C-z, C-[..C-_ は DEL 及び C0 に変換する
+    if ((flag==_ble_decode_Ctrl&&(char==63||char==64||91<=char&&char<=95||97<=char&&char<=122))); then
+      ble/array#push keys "$((char==63?127:(char&0x1F)))"
+      continue
+    fi
+
+    local mod_param=
+    if ((flag)); then
+      ble/decode/flag2mod "$flag"
+      mod_param=$((ret+1))
+    fi
+
+    local csi=${_ble_decode_csimap_dict[char]-}
+    if [[ $csi == tilde:* ]]; then
+      local params=${csi#*:}
+      if [[ $mod_param ]]; then
+        params=$params';'$mod_param
+      fi
+      ble/util/s2chars "$params"
+      ble/array#push keys 27 91 "${ret[@]}" 126
+    elif [[ $csi == alpha:* ]]; then
+      if [[ $mod_param ]]; then
+        ble/util/s2chars "1;$mod_param"
+      else
+        ret=()
+      fi
+      ble/array#push keys 27 91 "${ret[@]}" "${csi#*:}"
+    elif ((flag||char>=_ble_decode_FunctionKeyBase)); then
+      ble/util/s2chars "27;${mod_param:-1};$char"
+      ble/array#push keys 27 91 "${ret[@]}" 126
+    else
+      ble/array#push keys "$char"
+    fi
+  done
+  ret=("${keys[@]}")
 }
 
 # **** ble-decode-byte ****
@@ -810,6 +890,7 @@ _ble_decode_csi_mode=0
 _ble_decode_csi_args=
 _ble_decode_csimap_tilde=()
 _ble_decode_csimap_alpha=()
+_ble_decode_csimap_dict=()
 function ble-decode-char/csi/print/.print-csidef {
   local qalpha qkey ret q=\' Q="'\''"
   if [[ $sgrq ]]; then
@@ -878,13 +959,9 @@ function ble-decode-char/csi/.modify-key {
       fi
     fi
 
-    # Note: Supr 0x08 以降は独自
-    ((mod&0x01&&(key|=_ble_decode_Shft),
-      mod&0x02&&(key|=_ble_decode_Meta),
-      mod&0x04&&(key|=_ble_decode_Ctrl),
-      mod&0x08&&(key|=_ble_decode_Supr),
-      mod&0x10&&(key|=_ble_decode_Hypr),
-      mod&0x20&&(key|=_ble_decode_Altr)))
+    local ret
+    ble/decode/mod2flag "$mod"
+    ((key|=ret))
   fi
 }
 function ble-decode-char/csi/.decode {
@@ -1086,7 +1163,7 @@ _ble_decode_char2_reach_key=
 _ble_decode_char2_reach_seq=
 _ble_decode_char2_modifier=
 _ble_decode_char2_modkcode=
-_ble_decode_char2_modseq=
+_ble_decode_char2_modseq=()
 function ble-decode-char {
   # 入れ子の ble-decode-char 呼び出しによる入力は後で実行。
   if [[ $ble_decode_char_nest && ! $ble_decode_char_sync ]]; then
@@ -1170,12 +1247,12 @@ function ble-decode-char {
         _ble_decode_char2_reach_seq=
         ble-decode-char/csi/clear
 
-        ble-decode-char/.send-modified-key "$key" "$seq"
+        ble/decode/send-unmodified-key "$key" "$seq"
         ((ble_decode_char_total+=${#rest[@]}))
         ((ble_decode_char_rest+=${#rest[@]}))
         chars=("${rest[@]}" "${chars[@]:ichar}") ichar=0
       else
-        ble-decode-char/.send-modified-key "$char" "_$char"
+        ble/decode/send-unmodified-key "$char" "_$char"
       fi
     elif [[ $ent == *_ ]]; then
       # /\d*_/ (_ は続き (1つ以上の有効なシーケンス) がある事を示す)
@@ -1195,7 +1272,7 @@ function ble-decode-char {
       _ble_decode_char2_reach_key=
       _ble_decode_char2_reach_seq=
       ble-decode-char/csi/clear
-      ble-decode-char/.send-modified-key "$ent" "$seq"
+      ble/decode/send-unmodified-key "$ent" "$seq"
     fi
   done
   return 0
@@ -1264,7 +1341,12 @@ function ble-decode-char/.getent {
   # ble/util/assert '[[ $ent =~ ^[0-9]*_?$ ]]'
 }
 
-function ble-decode-char/.process-modifier {
+## @fn ble/decode/send-unmodified-key/.add-modifier mod
+##   @param[in] mod
+##     The modifier flag
+##   @arr[in] seq
+##     The character sequence that generated this modifier.
+function ble/decode/send-unmodified-key/.add-modifier {
   local mflag1=$1 mflag=$_ble_decode_char2_modifier
   if ((mflag1&mflag)); then
     # 既に同じ修飾がある場合は通常と同じ処理をする。
@@ -1278,12 +1360,12 @@ function ble-decode-char/.process-modifier {
     # 重複があったという情報はここで消える。
     ((_ble_decode_char2_modkcode=key|mflag,
       _ble_decode_char2_modifier=mflag1|mflag))
-    _ble_decode_char2_modseq=${_ble_decode_char2_modseq}$2
+    ble/array#push _ble_decode_char2_modseq "${seq[@]}"
     return 0
   fi
 }
 
-## @fn ble-decode-char/.send-modified-key key seq
+## @fn ble/decode/send-unmodified-key key seq
 ##   指定されたキーを修飾して ble-decode-key に渡します。
 ##   key = 0..31,127 は C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ C-? に変換されます。
 ##   ESC は次に来る文字を meta 修飾します。
@@ -1293,9 +1375,14 @@ function ble-decode-char/.process-modifier {
 ##   @param[in] seq
 ##     指定したキーを表現する文字シーケンスを指定します。
 ##     /(_文字コード)+/ の形式の文字コードの列です。
-function ble-decode-char/.send-modified-key {
-  local key=$1 seq=$2
+function ble/decode/send-unmodified-key {
+  local key=$1
   ((key==_ble_decode_KCODE_IGNORE)) && return 0
+
+  # Note: @ESC は現在の実装では seq の先頭にしか来ない筈。
+  local seq
+  ble/string#split-words seq "${2//_/ }"
+  ((seq[0]==_ble_decode_IsolatedESC)) && seq[0]=27
 
   if ((0<=key&&key<32)); then
     ((key|=(key==0||key>26?64:96)|_ble_decode_Ctrl))
@@ -1304,48 +1391,49 @@ function ble-decode-char/.send-modified-key {
   fi
 
   if (($1==27)); then
-    ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return 0
+    ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Meta" && return 0
   elif (($1==_ble_decode_IsolatedESC)); then
     ((key=(_ble_decode_Ctrl|91)))
     if ! ble/decode/uses-isolated-esc; then
-      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return 0
+      ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Meta" && return 0
     fi
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
     case $1 in
     ($_ble_decode_KCODE_SHIFT)
-      ble-decode-char/.process-modifier "$_ble_decode_Shft" "$seq" && return 0 ;;
+      ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Shft" && return 0 ;;
     ($_ble_decode_KCODE_CONTROL)
-      ble-decode-char/.process-modifier "$_ble_decode_Ctrl" "$seq" && return 0 ;;
+      ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Ctrl" && return 0 ;;
     ($_ble_decode_KCODE_ALTER)
-      ble-decode-char/.process-modifier "$_ble_decode_Altr" "$seq" && return 0 ;;
+      ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Altr" && return 0 ;;
     ($_ble_decode_KCODE_META)
-      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return 0 ;;
+      ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Meta" && return 0 ;;
     ($_ble_decode_KCODE_SUPER)
-      ble-decode-char/.process-modifier "$_ble_decode_Supr" "$seq" && return 0 ;;
+      ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Supr" && return 0 ;;
     ($_ble_decode_KCODE_HYPER)
-      ble-decode-char/.process-modifier "$_ble_decode_Hypr" "$seq" && return 0 ;;
+      ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Hypr" && return 0 ;;
     esac
   fi
 
   if [[ $_ble_decode_char2_modifier ]]; then
-    local mflag=$_ble_decode_char2_modifier
-    local mcode=$_ble_decode_char2_modkcode
-    local mseq=$_ble_decode_char2_modseq
+    local mflag mcode mseq
+    mflag=$_ble_decode_char2_modifier
+    mcode=$_ble_decode_char2_modkcode
+    mseq=("${_ble_decode_char2_modseq[@]}")
     _ble_decode_char2_modifier=
     _ble_decode_char2_modkcode=
-    _ble_decode_char2_modseq=
+    _ble_decode_char2_modseq=()
     if ((key&mflag)); then
-      local CHARS
-      ble/string#split-words CHARS "${mseq//_/ }"
+      local _ble_decode_key__chars
+      _ble_decode_key__chars=("${mseq[@]}")
       ble-decode-key "$mcode"
     else
-      seq=$mseq$seq
+      seq=("${mseq[@]}" "${seq[@]}")
       ((key|=mflag))
     fi
   fi
 
-  local CHARS
-  ble/string#split-words CHARS "${seq//_/ }"
+  local _ble_decode_key__chars
+  _ble_decode_key__chars=("${seq[@]}")
   ble-decode-key "$key"
 }
 
@@ -1897,6 +1985,11 @@ function ble/decode/keymap/get-parent {
   fi
 }
 
+## @arr _ble_decode_key__chars
+##   ble-decode-key から参照される配列です。引数に指定したキーを生成した文字シー
+##   ケンスを保持します。
+_ble_decode_key__chars=()
+
 ## @var _ble_decode_key__seq
 ##   今迄に入力された未処理のキーの列を保持します
 ##   /(_\d+)*/ の形式の文字列です。
@@ -1969,6 +2062,9 @@ function ble/widget/__batch_char__.default {
 ##     入力されたキー
 ##
 function ble-decode-key {
+  local CHARS
+  CHARS=("${_ble_decode_key__chars[@]}")
+
   local key
   while (($#)); do
     key=$1; shift
@@ -3096,6 +3192,9 @@ function ble-bind/option:csi {
     #   - CSI <num> @         C-S-kname (rxvt)
     #
     _ble_decode_csimap_tilde[BASH_REMATCH[1]]=$key
+    if [[ ! ${_ble_decode_csimap_dict[key]} ]]; then
+      _ble_decode_csimap_dict[key]=tilde:${BASH_REMATCH[1]}
+    fi
 
     # "CSI <num> $" は CSI sequence の形式に沿っていないので、
     # 個別に登録する必要がある。
@@ -3117,6 +3216,9 @@ function ble-bind/option:csi {
     # --csi '<Ft>' kname
     local ret; ble/util/s2c "$1"
     _ble_decode_csimap_alpha[ret]=$key
+    if [[ ! ${_ble_decode_csimap_dict[key]} ]]; then
+      _ble_decode_csimap_dict[key]=alpha:$ret
+    fi
   else
     ble/util/print "ble-bind --csi: not supported type of csi sequences: CSI \`$1'." >&2
     return 1

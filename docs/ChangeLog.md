@@ -51,6 +51,7 @@
 - decode(bind): fix command-line argument parsing `#D2107` 57a13c3c
 - edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` b5776596
 - mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2110` 90a992cc
+- decode: fix handling of @ESC in quoted-insert `#D2119` xxxxxxxx
 
 ## Compatibility
 

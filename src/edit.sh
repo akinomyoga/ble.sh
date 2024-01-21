@@ -4844,6 +4844,11 @@ function ble/widget/quoted-insert.hook {
     local -a KEYS; KEYS=("$char")
     ble/widget/self-insert
   else
+    if ((${#CHARS[@]}==0)); then
+      local ret
+      ble/decode/keys2chars "${KEYS[@]}"
+      local -a CHARS; CHARS=("${ret[@]}")
+    fi
     local -a KEYS; KEYS=("${CHARS[@]}")
     ble/widget/batch-insert
   fi
