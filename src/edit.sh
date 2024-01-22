@@ -5722,26 +5722,33 @@ function ble/widget/backward-line {
 ## @fn ble/edit/word:uword/setup
 ## @fn ble/edit/word:sword/setup
 ## @fn ble/edit/word:fword/setup
-##   @var[out] word_set word_sep
+##   @var[out] word_class word_set word_sep
 function ble/edit/word:eword/setup {
-  word_set='a-zA-Z0-9'; word_sep="^$word_set"
+  word_class=set2 word_set='a-zA-Z0-9' word_sep="$_ble_term_IFS"
 }
 function ble/edit/word:cword/setup {
-  word_set='_a-zA-Z0-9'; word_sep="^$word_set"
+  word_class=set2 word_set='_a-zA-Z0-9' word_sep="$_ble_term_IFS"
 }
 function ble/edit/word:uword/setup {
-  word_sep="$_ble_term_IFS"; word_set="^$word_sep"
+  word_class=set word_sep="$_ble_term_IFS" word_set="^$word_sep"
 }
 function ble/edit/word:sword/setup {
-  word_sep=$'|&;()<> \t\n'; word_set="^$word_sep"
+  word_class=set word_sep=$'|&;()<> \t\n' word_set="^$word_sep"
 }
 function ble/edit/word:fword/setup {
-  word_sep="/$_ble_term_IFS"; word_set="^$word_sep"
+  word_class=set word_sep="/$_ble_term_IFS" word_set="^$word_sep"
 }
 
 ## @fn ble/edit/word/skip-backward set
 ## @fn ble/edit/word/skip-forward set
-##   @var[in,out] x
+##   @param[in] set
+##     A set of characters to find.
+##   @var[ref] x
+##     A position to start searching is specified.  The resulting position is
+##     returned.  If the search fails, the value is unmodified.
+##   @return
+##     This function succeeds when the current position is moved. Or otherwise,
+##     it fails.
 function ble/edit/word/skip-backward {
   local set=$1 head=${_ble_edit_str::x}
   head=${head##*[$set]}
@@ -5751,6 +5758,76 @@ function ble/edit/word/skip-forward {
   local set=$1 tail=${_ble_edit_str:x}
   tail=${tail%%[$set]*}
   ((x+=${#tail},${#tail}))
+}
+
+## @fn ble/edit/word/class:set2/find-*
+##   This set of functions define the word class `set'.
+##
+##   @var[ref] x
+##   @return
+##     The same as ble/edit/word/skip-backward.
+##
+##   @var[in] word_type
+##     Fixed to "set"
+##   @var[in] word_set
+##     A set of characters that consists in words.
+##   @var[in] word_sep
+##     A set of characters that are not a part of words.
+##
+function ble/edit/word/class:set/find-backward-word {
+  ble/edit/word/skip-backward "$word_set"
+}
+function ble/edit/word/class:set/find-backward-space {
+  ble/edit/word/skip-backward "$word_sep"
+}
+function ble/edit/word/class:set/find-forward-word {
+  ble/edit/word/skip-forward "$word_set"
+}
+function ble/edit/word/class:set/find-forward-space {
+  ble/edit/word/skip-forward "$word_sep"
+}
+
+## @fn ble/edit/word/class:set2/find-*
+##   This set of functions define the word class `set2'.  These functions
+##   handles two types of words.  The primary type of words consist of a
+##   specific set of non-space characters specified by `word_set'.  The
+##   secondary type of words consist of the other non-space characters.  The
+##   secondary type of words are defined by a set of characters that are not
+##   contained in neither `word_set` nor `word_sep`.
+##
+##   @var[ref] x
+##   @return
+##     The same as ble/edit/word/skip-backward.
+##
+##   @var[in] word_type
+##     Fixed to "set2"
+##   @var[in] word_set
+##     A set of characters in the primary type of words.  This set needs to be
+##     a positive set, i.e., not starting with ! or ^ for the negative
+##     character sets.
+##   @var[in] word_sep
+##     A set of characters that are not in any words.  This set needs to be a
+##     positive set.
+##
+function ble/edit/word/class:set2/find-backward-word {
+  ble/edit/word/skip-backward "!$word_sep"
+}
+function ble/edit/word/class:set2/find-backward-space {
+  case ${_ble_edit_str::x} in
+  (*[$word_sep]) return 1 ;;
+  (*[$word_set]) ble/edit/word/skip-backward "!$word_set" ;;
+  (*?) ble/edit/word/skip-backward "$word_set$word_sep" ;;
+  esac
+}
+function ble/edit/word/class:set2/find-forward-word {
+  ble/edit/word/skip-forward "!$word_sep"
+}
+function ble/edit/word/class:set2/find-forward-space {
+  case ${_ble_edit_str:x} in
+  ([$word_sep]*) return 1 ;;
+  ([$word_set]*) ble/edit/word/skip-forward "!$word_set" ;;
+  (?*) ble/edit/word/skip-forward "$word_set$word_sep" ;;
+  esac
 }
 
 ## @fn ble/edit/word/locate-backward x arg
@@ -5765,10 +5842,10 @@ function ble/edit/word/skip-forward {
 function ble/edit/word/locate-backward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
   while ((arg--)); do
-    ble/edit/word/skip-backward "$word_set"; c=$x
-    ble/edit/word/skip-backward "$word_sep"; b=$x
+    ble/edit/word/class:"$word_class"/find-backward-word; c=$x
+    ble/edit/word/class:"$word_class"/find-backward-space; b=$x
   done
-  ble/edit/word/skip-backward "$word_set"; a=$x
+  ble/edit/word/class:"$word_class"/find-backward-word; a=$x
 }
 ## @fn ble/edit/word/locate-forward x arg
 ##   右側の単語の範囲を特定します。
@@ -5782,10 +5859,10 @@ function ble/edit/word/locate-backward {
 function ble/edit/word/locate-forward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
   while ((arg--)); do
-    ble/edit/word/skip-forward "$word_set"; s=$x
-    ble/edit/word/skip-forward "$word_sep"; t=$x
+    ble/edit/word/class:"$word_class"/find-forward-word; s=$x
+    ble/edit/word/class:"$word_class"/find-forward-space; t=$x
   done
-  ble/edit/word/skip-forward "$word_set"; u=$x
+  ble/edit/word/class:"$word_class"/find-forward-word; u=$x
 }
 
 ## @fn ble/edit/word/forward-range arg
@@ -5827,7 +5904,7 @@ function ble/widget/word.impl {
   local operator=$1 direction=$2 wtype=$3
 
   local arg; ble-edit/content/get-arg 1
-  local word_set word_sep; ble/edit/word:"$wtype"/setup
+  local word_class word_set word_sep; ble/edit/word:"$wtype"/setup
 
   local x=$_ble_edit_ind y=$_ble_edit_ind
   ble/function#try ble/edit/word/"$direction"-range "$arg"
@@ -5858,32 +5935,32 @@ function ble/widget/word.impl {
 
 function ble/widget/transpose-words.impl1 {
   local wtype=$1 arg=$2
-  local word_set word_sep; ble/edit/word:"$wtype"/setup
+  local word_class word_set word_sep; ble/edit/word:"$wtype"/setup
   if ((arg==0)); then
     local x=$_ble_edit_ind
-    ble/edit/word/skip-forward "$word_set"
-    ble/edit/word/skip-forward "$word_sep"; local e1=$x
-    ble/edit/word/skip-backward "$word_sep"; local b1=$x
+    ble/edit/word/class:"$word_class"/find-forward-word
+    ble/edit/word/class:"$word_class"/find-forward-space; local e1=$x
+    ble/edit/word/class:"$word_class"/find-backward-space; local b1=$x
     local x=$_ble_edit_mark
-    ble/edit/word/skip-forward "$word_set"
-    ble/edit/word/skip-forward "$word_sep"; local e2=$x
-    ble/edit/word/skip-backward "$word_sep"; local b2=$x
+    ble/edit/word/class:"$word_class"/find-forward-word
+    ble/edit/word/class:"$word_class"/find-forward-space; local e2=$x
+    ble/edit/word/class:"$word_class"/find-backward-space; local b2=$x
   else
     local x=$_ble_edit_ind
-    ble/edit/word/skip-backward "$word_set"
-    ble/edit/word/skip-backward "$word_sep"; local b1=$x
-    ble/edit/word/skip-forward "$word_sep"; local e1=$x
+    ble/edit/word/class:"$word_class"/find-backward-word
+    ble/edit/word/class:"$word_class"/find-backward-space; local b1=$x
+    ble/edit/word/class:"$word_class"/find-forward-space; local e1=$x
     if ((arg>0)); then
       x=$e1
-      ble/edit/word/skip-forward "$word_set"; local b2=$x
-      while ble/edit/word/skip-forward "$word_sep" || return 1; ((--arg>0)); do
-        ble/edit/word/skip-forward "$word_set"
+      ble/edit/word/class:"$word_class"/find-forward-word; local b2=$x
+      while ble/edit/word/class:"$word_class"/find-forward-space || return 1; ((--arg>0)); do
+        ble/edit/word/class:"$word_class"/find-forward-word
       done; local e2=$x
     else
       x=$b1
-      ble/edit/word/skip-backward "$word_set"; local e2=$x
-      while ble/edit/word/skip-backward "$word_sep" || return 1; ((++arg<0)); do
-        ble/edit/word/skip-backward "$word_set"
+      ble/edit/word/class:"$word_class"/find-backward-word; local e2=$x
+      while ble/edit/word/class:"$word_class"/find-backward-space || return 1; ((++arg<0)); do
+        ble/edit/word/class:"$word_class"/find-backward-word
       done; local b2=$x
     fi
   fi
@@ -5920,7 +5997,7 @@ function ble/widget/filter-word.impl {
     local arg; ble-edit/content/get-arg 1
   fi
 
-  local word_set word_sep; ble/edit/word:"$xword"/setup
+  local word_class word_set word_sep; ble/edit/word:"$xword"/setup
   local x=$_ble_edit_ind s t u
   ble/edit/word/locate-forward "$x" "$arg"
   if ((x==t)); then
