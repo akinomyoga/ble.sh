@@ -5361,6 +5361,10 @@ if ((_ble_bash>=40000)); then
     done
     [[ $removed ]]
   }
+  function ble/util/idle.clear {
+    ((${#_ble_util_idle_task[@]})) || return 1
+    _ble_util_idle_task=()
+  }
 
   function ble/util/is-running-in-idle {
     [[ ${ble_util_idle_status+set} ]]

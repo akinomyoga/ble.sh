@@ -136,6 +136,7 @@ function ble/keymap:vi_test/section:search {
   ble/keymap:vi_test/check A3b '@:echo abc @abc abc' '? a b c RET' '@:echo @abc abc abc'
   ble/keymap:vi_test/check A3c '@:echo abc a@bc abc' '? a b c RET' '@:echo abc @abc abc'
   ble/test/end-section
+  ble/textarea#invalidate
 }
 
 # <C-a>, <C-x>
@@ -179,6 +180,8 @@ function ble/keymap:vi_test/section:macro {
   ble/test/start-section "ble/keymap.vi/macro" 1
   ble/keymap:vi_test/check A1 '@:@123' 'q a A SP h e l l o @ESC q @ a' '@:123 hello hell@o'
   ble/test/end-section
+
+  ble/function#pop ble/util/is-stdin-ready
 }
 
 function ble/keymap:vi_test/section:surround {

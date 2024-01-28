@@ -344,7 +344,7 @@ ble/test/start-section 'bash' 49
     # 期待した振る舞い
     ble/test code:'' ret="$line"
   fi
-  ble/test '(builtin history -c; builtin history -p "$line")' stdout=
+  ble/test '(set -H; builtin history -c; builtin history -p "$line")' stdout="$line"
 
   # BUG bash-3.0 [Ref #D1956]
   #   関数定義の一番外側でリダイレクトしてもリダイレクトされない。例えば、

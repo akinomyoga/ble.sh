@@ -53,7 +53,7 @@
 - decode(bind): fix command-line argument parsing `#D2107` 57a13c3c
 - edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` b5776596
 - mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2110` 90a992cc
-- decode: fix handling of @ESC in quoted-insert `#D2119` xxxxxxxx
+- decode: fix handling of @ESC in quoted-insert `#D2119` 0bbc3639
 
 ## Compatibility
 
@@ -79,10 +79,10 @@
 - decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
 - decode, vi_digraph: trim CR of text resources in MSYS `#D2105` 6f4badf4
 - progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2111` 2c7cca2f
-- main: fix initialization errors with `set -u` `#D2116` xxxxxxxx
-- progcomp: work around slow `make` completion in large repository (reported by blackteahamburger) `#D2117` xxxxxxxx
-- util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` xxxxxxxx
-- progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` xxxxxxxx
+- main: fix initialization errors with `set -u` `#D2116` b503887a
+- progcomp: work around slow `make` completion in large repository (reported by blackteahamburger) `#D2117` 5f3a0010
+- util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` a7f604e1
+- progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` 29cd8f10
 
 ## Contrib
 
@@ -98,14 +98,16 @@
 - github: add FUNDING `#D2080` 3f133936
 - blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` cd069860
 - docs: apply Grammarly and fix typos `#D2099` 8b3f6f8c
-- docs(README): add sabbrev example for named directories `#D2115` xxxxxxxx
+- docs(README): add sabbrev example for named directories `#D2115` a9a21a0e
 
 ## Test
 
 - test(bash): fix condition for bash bug of history expansion `#D2071` aacf1462
 - test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` aacf1462
 - test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` 23a05827 6f4badf4
-- test(vi): suppress warnings for non-interactive sessions `#D2113` xxxxxxxx
+- test(vi): suppress warnings for non-interactive sessions `#D2113` b8b7ba0c
+- test(bash,util): fix tests in interactive session `#D2123` xxxxxxxx
+- test(vi): fix broken states after test `#D2123` xxxxxxxx
 
 ## Internal changes
 
@@ -114,7 +116,7 @@
 - memo: add recent configs and create directories `#D2073` 99cb5e81
 - highlight: generalize `region` layer `#D2074` 449d92ca
 - keymap/vi: integrate vi tests into the test framework `#D2101` d16b8438
-- global(leakvar): fix variable leak `#D2114` xxxxxxxx
+- global(leakvar): fix variable leak `#D2114` d3e1232d
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
