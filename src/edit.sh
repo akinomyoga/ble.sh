@@ -4080,6 +4080,23 @@ function ble/edit/display-version/check:zoxide {
   ble/util/import/is-loaded contrib/integration/zoxide && integ=$label_integration
   ble/edit/display-version/add-line "${sgrF}zoxide${sgr0}, version $sgrV$version$sgr0 ($path)$integ"
 }
+function ble/edit/display-version/check:atuin {
+  # Atuin supported Bash in 7b5c3d543, where `_atuin_precmd` was defined.  The
+  # function name has been changed to `__atuin_precmd` in commit 31653ed99.
+  ble/is-function _atuin_precmd || ble/is-function __atuin_precmd || return 1
+
+  local path=
+  ble/util/assign path 'type -P atuin 2>/dev/null'
+  [[ $path ]] || return 1
+
+  local version=
+  ble/util/assign-array version '\command atuin --version'
+  [[ $version ]] || return 1
+  version=${version#atuin }
+  version=${version#v}
+
+  ble/edit/display-version/add-line "${sgrF}atuin${sgr0}, version $sgrV$version$sgr0 ($path)"
+}
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
 
@@ -4128,6 +4145,7 @@ function ble/widget/display-shell-version {
   ble/edit/display-version/check:sbp
   ble/edit/display-version/check:gitstatus
   ble/edit/display-version/check:zoxide
+  ble/edit/display-version/check:atuin
 
   # locale
   local q=\'

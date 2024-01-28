@@ -18,6 +18,7 @@
 - keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` 7d80167c
 - util: support `ble-import -C callback` (motivated by Dominiquini) `#D2102` 0fdbe3b0
 - mandb: look for git subcommands (motivated by bkerin) `#D2112` 9641c3b8
+- edit (`display-shell-version`): show the `atuin` version `#D2124` xxxxxxxx
 
 ## Changes
 

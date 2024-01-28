@@ -7073,6 +7073,11 @@ bash_tips
 
 2024-01-27
 
+  * edit: display-shell-version に atuin を追加する [#D2124]
+
+    特に ble.sh との相互運用が強くなってきたので問題が起こった時に情報として含
+    まれていた方が良い。
+
   * test: interactive での ble check が正しく動いていない [#D2123]
 
     test-bash で振る舞いが異なる物がある。また util の途中で hang して応答がな
