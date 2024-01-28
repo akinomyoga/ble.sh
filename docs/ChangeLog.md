@@ -84,6 +84,7 @@
 - progcomp: work around slow `make` completion in large repository (reported by blackteahamburger) `#D2117` 5f3a0010
 - util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` a7f604e1
 - progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` 29cd8f10
+- progcomp: pass original command path to completion functions (reported by REmerald) `#D2125` xxxxxxxx
 
 ## Contrib
 

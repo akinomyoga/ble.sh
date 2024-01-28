@@ -3706,10 +3706,12 @@ function ble/complete/progcomp/patch:cobraV2/get_completion_results.invoke {
 ##     コロン区切りのオプションリストです。
 ##
 ##     initial ... 最初の単語 (コマンド名) の補完に用いる関数を指定します。
+##     default ... 既定の補完設定 (complete -D) を用います。
 ##
 ##   @param[in,opt] cmd
-##     プログラム補完規則を検索するのに使う名前を指定します。
-##     省略した場合 ${comp_words[0]} が使われます。
+##     プログラム補完規則を検索するのに使う名前を指定します。省略した場合
+##     ${comp_words[0]} が使われます。opts に initial または default が指定され
+##     ている場合は使われません。
 ##
 ##   @var[out] comp_opts
 ##
@@ -3743,7 +3745,7 @@ function ble/complete/progcomp/.compgen {
       compcmd=_DefaultCmD_
     fi
   else
-    compcmd=${comp_words[0]}
+    compcmd=${cmd:-${comp_words[0]}}
   fi
 
   local compdef
@@ -4104,16 +4106,23 @@ function ble/complete/progcomp {
       "ble/cmdinfo/complete:${ucmd##*/}" "$opts"
       return "$?"
     elif builtin complete -p -- "$ucmd" &>/dev/null; then
+      cmd=$ucmd
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
     elif [[ $ucmd == */?* ]] && builtin complete -p -- "${ucmd##*/}" &>/dev/null; then
-      ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
+      # Note (#D2125): Even when we find the completion settings through the
+      # basename of the command path, we pass the full path to the completion
+      # function since some completions seem to try to call the command name
+      # (that is not supposed to be in PATH) to the completion function.
+      cmd=${ucmd##*/}
+      ble/string#quote-word "$ucmd"; qcmds[0]=$ret
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
     elif ble/complete/progcomp/.try-load-completion "${ucmd##*/}"; then
-      ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
+      cmd=${ucmd##*/}
+      ble/string#quote-word "$ucmd"; qcmds[0]=$ret
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
