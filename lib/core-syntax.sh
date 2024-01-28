@@ -688,7 +688,9 @@ function ble/syntax/parse/serialize-stat {
 ## @fn ble/syntax/parse/set-lookahead count
 ##
 ##   @param[in] count
-##     現在位置の何文字先まで参照して動作を決定したかを指定します。
+##     現在位置の何文字先まで参照して動作を決定したかを指定します。文字列が終端
+##     している事を確認した時、そこに可能性として存在し得た1文字を参照した事に
+##     なるので、その文字列終端も1文字に数える必要があります。
 ##   @var[out] i
 ##   @var[out] ilook
 ##
@@ -3867,7 +3869,12 @@ function ble/syntax:bash/ctx-command/check-word-end {
           i+=${#rematch2}))
       else
         # case: /hoge */ 恐らくコマンド
-        ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#rematch1}))
+
+        # Note (#D2126): 実装当初 e1e87c2c (2015-02-26) から長らく解析中断点を
+        # 置かずに一気に読み取っていたが、補完文脈生成で正しい文脈を再構築する
+        # のが困難になるので、やはり解析中断点を単語末尾に置く事にする。正しく
+        # lookahead を設定している限りは問題にならない筈。
+        ble/syntax/parse/set-lookahead "$((${#rematch1}+1))"
       fi
     fi
 
