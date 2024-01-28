@@ -3790,7 +3790,7 @@ function ble/util/conditional-sync {
   fi
   builtin eval -- "$__ble_continue" || return 148
   (
-    [[ $__ble_pid ]] || builtin eval -- "$__ble_command" & __ble_pid=$!
+    [[ $__ble_pid ]] || { builtin eval -- "$__ble_command" & __ble_pid=$!; }
     while
       # check timeout
       if [[ $__ble_timeout ]]; then

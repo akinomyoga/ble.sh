@@ -3695,9 +3695,8 @@ function ble/complete/progcomp/patch:cobraV2/get_completion_results.advice {
 }
 function ble/complete/progcomp/patch:cobraV2/get_completion_results.invoke {
   local -a invoke_args; invoke_args=("$@")
-  local invoke_command="${orig_words[0]} \"\${invoke_args[@]}\""
   ble/util/conditional-sync \
-    'builtin eval -- "$invoke_command"' \
+    "${orig_words[0]} \"\${invoke_args[@]}\"" \
     "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall
 }
 

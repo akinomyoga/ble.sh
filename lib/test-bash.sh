@@ -371,4 +371,25 @@ ble/test/start-section 'bash' 49
   ble/test 'test1 f3' stdout=hello
 )
 
+# Quirks
+(
+  # (#D2123) In all the Bash versions 1.14..5.3, expand_aliases inside
+  # "compond-command &" are disabled in interactive sessions.
+  shopt -s expand_aliases
+  alias e='echo hello'
+  ble/test 'eval "e"' stdout=hello
+  ble/test 'true && eval "e"' stdout=hello
+  ble/test 'eval "e" & wait' stdout=hello
+  if [[ $- == *i* ]]; then
+    ble/test '(eval "e") & wait' stdout=
+    ble/test '{ eval "e"; } & wait' stdout=
+    ble/test 'true && eval "e" & wait' stdout=
+  else
+    ble/test '(eval "e") & wait' stdout=hello
+    ble/test '{ eval "e"; } & wait' stdout=hello
+    ble/test 'true && eval "e" & wait' stdout=hello
+  fi
+  unalias e
+)
+
 ble/test/end-section

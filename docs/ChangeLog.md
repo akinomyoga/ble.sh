@@ -33,6 +33,7 @@
 ## Fixes
 
 - util (`conditional-sync`): fix bugs when `pid=PID` is specified (contributed by bkerin) `#D2031` 09f5cec2 `#D2034` 09f5cec2
+  - util (`conditional-sync`): fix wrong command grouping overwriting `pid=PID` (reported by dragonde, georglauterbach) `#D2122`
 - bgproc: return status of bgproc process `#D2036` 887d92dd
 - mandb: replace TAB with 4 spaces before removing control characters (reported by EmilySeville7cfg) `#D2038` 313cfb25
 - menu(desc): fix a bug that prefix is not shown with menu-filter `#D2039` e92b78d6
