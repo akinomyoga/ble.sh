@@ -7073,6 +7073,206 @@ bash_tips
 
 2024-01-31
 
+  * 2024-01-26 Konsole shell integration (reported by mcarans) [#D2128]
+    https://github.com/akinomyoga/ble.sh/issues/391
+
+    Konsole と DomTerm でそもそも設定が異なる様に思われる。なのに何故動いたとい
+    う報告になっているのだろうか。そもそもこの shell integration については統一
+    された仕様が存在するのだろうか。また DomTerm では動くのだろうか。
+
+    PS1='\[\e]133;L\a\]\[\e]133;D;$?\]\[\e]133;A\a\]'$PS1'\[\e]133;B\a\]';
+    PS2='\[\e]133;A\a\]'$PS2'\[\e]133;B\a\]';
+    PS0='\[\e]133;C\a\]'
+
+    先ず使用が存在しないか探す事にする。先ず紹介されたページだがこれは Konsole
+    の機能紹介のページであって、制御シーケンスなどの実装の詳細については何も書
+    いていない。
+
+      https://docs.kde.org/stable5/en/konsole/konsole/semantic-shell-integration.html
+
+    semantic shell integration で調べると Konsole のページが一番最初に出てくる。
+
+      https://www.reddit.com/r/kde/comments/zf1ehj/psa_konsole_2208_now_supports_semantic_shell/
+
+    tmux の Issue に feature request が出ているが対応しているのかしていないのか
+    よく分からない感じで閉じられている。多分、要求されたとおりには実装していな
+    いのだろう。
+
+      https://github.com/tmux/tmux/issues/3064
+
+    "The spec can be found here" として示されているのが DomTerm の作者が TWG に
+    作成した以下の文書である。というか proposal 段階なのに "spec" と言っている
+    のは駄目な事である。確かに spec ではあるが、authoritative な物ではないとい
+    う事に注意するべきである。
+
+      https://gitlab.freedesktop.org/Per_Bothner/specifications/blob/master/proposals/semantic-prompts.md
+
+    実際の振る舞いを確認してみようと思ったがそもそも plain bash でも動かない。
+    Konsole の version が古いからだろうか。然し、C-M-] でちゃんと出力されるので
+    semantic integration に関してはすでに対応しているはずである。或いはクリック
+    して移動できる機能というのは、もっと新しい ver でないと駄目なのだろうか。或
+    いは有効化するオプションが別に存在する可能性?
+
+      取り敢えず手元のバージョンは konsole 23.08.4 である。
+
+    * 最初の対応 (22.08) の時の reddit の投稿では click したら移動できるという
+      様な話は書いていない。というかそもそも詳細について何も述べていないのでこ
+      の時点で何に対応していたのかは不明である。
+
+    ---------------------------------------------------------------------------
+
+    向こうの報告を見て改めてテストしてみたら konsole の変な振る舞いについて確認
+    できた。konsole をビルドして確認してみる。konsole をビルドしようとしたら
+    konsole が依存しているライブラリが新しすぎて Fedora の toolchain では駄目の
+    様だ。仕方がないので konsole の version を巻き戻して確認してみる事にする。
+    fedora の konsole は 23.08 なので、release/23.08 をビルドしてみる。
+
+    $ mkdir build
+    $ cd build
+    $ cmake ..
+
+    とすると依存関係のエラーが発生する。dnf で以下をインストールした。
+
+      kf5-kbookmarks-devel
+      kf5-kconfig-devel
+      kf5-kconfigwidgets-devel
+      kf5-kcoreaddons-devel
+      kf5-kcrash-devel
+      kf5-kdbusaddons-devel
+      kf5-kguiaddons-devel
+      kf5-ki18n-devel
+      kf5-kiconthemes-devel
+      kf5-kio-devel
+      kf5-knewstuff-devel
+      kf5-knotifications-devel
+      kf5-knotifyconfig-devel
+      kf5-kparts-devel
+      kf5-kservice-devel
+      kf5-ktextwidgets-devel
+      kf5-kwidgetsaddons-devel
+      kf5-kwindowsystem-devel
+      kf5-kxmlgui-devel
+
+    更に以下も追加で入れたらコンパイルできた。
+
+      kf5-kglobalaccel-devel
+      kf5-kpty-devel
+
+    自前でビルドした物でも問題を再現できた。調べてみると Profile の読み取りはで
+    きている。マウスをクリックした時の判定もちゃんと動いている。
+
+    改めて返答があって plain Bash でも echo を最初に実行しない限り問題が発生す
+    るとの事。自分で試してみると確かにそうだ。もしかすると端末の最初の行だと動
+    かないのではと思って試して見たらそうだった。初期化順序の問題かと思って
+    Konsole のソースコードに printf を仕込んで色々振る舞いを見てみたが、ちゃん
+    と初期化はされてイベントは検出・送信されている。しかし、途中で範囲チェック
+    で引っかかって無視されている。関数の想定する座標の原点が (0,0) か (1,1) か
+    でずれている様だ。最初に submit された時からずれている。その時から範囲チェッ
+    クがあったので最初から動かなかったのだろう。色々調べた結果は GitHub の方に
+    書き込んだ。Konsole の方に MR を提出した。
+
+    https://invent.kde.org/utilities/konsole/-/merge_requests/951
+
+    ---------------------------------------------------------------------------
+    https://github.com/akinomyoga/ble.sh/issues/391#issuecomment-1915834867
+
+    [症状]
+
+    * 初期化順序の問題で動いたり動かなかったりするらしい。当然の事ながら
+      ble-attach はプロンプトや precmd に対して修正が入るよりも前でなければなら
+      ない。
+
+    * また bash-it の loading だと動かないそうだ。bash-it の blesh はどういう初
+      期化をしているのかと確認してみたが別にその場で ble-attach している訳では
+      ない。prompt attach を明示的に指定している。
+
+    [再現]
+
+    bash-preexec とのロードの順番についても過去にちゃんと動く様にした筈である。
+    これは取り敢えず実験する必要がある。自分の手元で試す限りは問題は発生しない
+    様である。と思ったら一回コマンドを実行した後で問題が起こるらしい。調べてみ
+    ると preexc/precmd がそれぞれ2回ずつ実行されていて問題が再現する。
+
+    [原因]
+
+    少なくとも二重に実行されているのは修正する必要がある。bash-preexec は検出さ
+    れてちゃんと integration/bash-preexec はロードされているみたいだ。一方で、
+    既存の bash-preexec が正しく除去できていないのが問題の様に思われる。
+
+    ? 以前これは bash-preexec をどの順番で初期化しても動く様にした筈である。そ
+      の時から何が変わったのか。bash-preexec 対応を行ったのは #D1744 (e85f52cb)
+      である。
+
+      うーん。e85f52cb もちゃんと動いていない。具体的には source ble.sh してか
+      ら source bash-preexec すると二重に実行される様になる。prompt attach でも
+      manual attach でも同様である。bash-preexec の変更によって正しく動作しなく
+      なったという事だろうか
+
+      →どうやらその様だ。古い bash-preexec だとちゃんと一回ずつに修正が入って
+      いる。但し、二回目のプロンプトでは preexec が二重に実行されている。
+      bash-preexec 7ad48e1 の修正以降で二重に実行される様になった様だ。というか
+      これは自分が提出した修正である。何が起こっているのか確認する必要がある。
+
+    別に bash-preexec 7ad48e1 の修正によって毎回強制的に PROMPT_COMMAND を調整
+    するという処理が入っているという訳でもない (それにもし bash-preexec を適切
+    に除去する事ができているのだとしたら、そもそも PROMPT_COMMAND を再調整する
+    という処理すら入らないはずである)。代わりにインストールの構成が変化したので
+    あった。単に、PROMPT_COMMAND に登録する仕方が変化しただけである。uninstall
+    がいけないのか或いは検出部分がいけないのか分からないが確認する。
+
+    検出に関しては bash-preexec のチェックを ATTACH と POSTEXEC で行っている。
+    うーん。bash-preexec の除去は bashrc の末尾ではちゃんとできている様に見える
+    (配列である事を除けば)。最初のコマンド実行の時点でもちゃんと PROMPT_COMMAND
+    は空になっている様だ。然し、１つ目のコマンドを実行する時点で中身が復活する。
+    何故?
+
+    と思ったら PROMPT_COMMAND の内容が _ble_edit_PROMPT_COMMAND に待避されてい
+    る様だ。ble-edit/adjust-PS1 が保存している。うーん。つまり、ble.sh 内部
+    (hook を含む) から PROMPT_COMMAND を弄れない仕組みになっている。これは何故?
+    #D1772 ec2a67aa7 で待避の振る舞いが追加されている。
+
+    これが意味する所は ble.sh の hook からは PROMPT_COMMAND が変更できないとい
+    う事なのではないか? と思ったが、恐らく POSTEXEC や PRECMD 等基本的な物に関
+    しては大丈夫の筈。うーん。PRECMD と PREEXEC に関してはちゃんと PS1,
+    PROMPT_COMMAND に干渉できるが、POSTEXEC では干渉できない様になっている。
+    adjust された状態で POSTEXEC が呼び出されている。ERREXEC についてもそうであ
+    る。少なくとも PS1 にはアクセスできるべきなので これらは修正するべきである。
+
+    * done: POSTEXEC 及び ERREXEC が restore-PS1 context で実行される様にする。
+
+    然し、それとは別にそもそも PROMPT_COMMAND を待避している理由は何なのかとそ
+    れが本当に必要なのかという事。#D1772 の状況はとても複雑の様に見える。うーん。
+    何れにしてもユーザーの hook が実行される瞬間というのは PS1 も見えているべき
+    なので、adjust-PS1 文脈で hook を呼び出すのは間違っている気がする。という事
+    を考えれば余り考えずに単に restore-PS1 を ATTACH 及び POSTEXEC の前で実行す
+    るべきの気がする。
+
+    * done: ATTACH も restore-PS1 context で実行する様にする。
+
+    * done: __bp_imported 及び bash_preexec_imported を
+      integration/bash-preexec.bash で設定してしまうべきなのではないか。これが
+      一番簡単な解の様な気がする。但し、実際に共存してしまった時の対策もちゃん
+      としておきたい。
+
+      と思ったが、そもそも bash-preexec がロードされるまでは
+      integration/bash-preexec.bash もロードされないのでこれは動かない。
+
+      然し一方で二重にロードされるのを防ぐという意味では良いのではないか? と思っ
+      たが bash-preexec 自身の二重ロードチェックがちゃんと動いている限りは気に
+      しなくて良いのでは。うーん。でもユーザーが手動で integration/bash-preexec
+      を導入している場合にはやはり guard があった方が良い気がする。
+
+      一方で integration/bash-preexec で __bp_imported などを定義する様にすると、
+      今度は bash-preexec.sh が新しくロードされた事をどの様に検出するのかという
+      問題が生じる。或いは、一度 integration/bash-preexec がロードされたら
+      bash-preexec.sh は決してロードされないという様に仮定して良いか?
+
+      うーん。ble-reload の時に何が起こるのかについては考えるべき。或いは無駄に
+      attach.hook が実行されても問題がないかという事。恐らく問題はない。
+
+    試してみたら綺麗に動く様になった。初期化時に preexec/precmd が重複するかも
+    しれないと思ったがそういう事もなくちゃんと期待された回数だけ動いている。
+
   * complete: auto-complete の部分 accept をする他の関数 (requested by Tommimon) [#D2127]
     https://github.com/akinomyoga/ble.sh/issues/397
 

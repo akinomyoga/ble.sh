@@ -7039,7 +7039,6 @@ function ble-edit/exec:gexec/.epilogue {
   ble/base/adjust-BASH_REMATCH
   ble-edit/adjust-IGNOREEOF
   ble-edit/adjust-READLINE
-  ble-edit/adjust-PS1
   ble/exec/time#restore-TIMEFORMAT
   ble/exec/time#end
   ble/util/reset-keymap-of-editing-mode
@@ -7058,6 +7057,10 @@ function ble-edit/exec:gexec/.epilogue {
       msg=$ret
     fi
   fi
+
+  # This needs to be performed after POSTEXEC and ERREXEC because the user
+  # hooks might want to access PS1 and PROMPT_COMMAND.
+  ble-edit/adjust-PS1
 
   if ble/exec/time#mark-enabled; then
     if local ret; ble/edit/marker#get-config exec_elapsed_mark; then

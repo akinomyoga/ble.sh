@@ -2273,7 +2273,12 @@ ble/debug/leakvar#check $"leakvar" A7b1
 ble/debug/leakvar#check $"leakvar" A8-history
 #%end.i
 
+  # We here temporarily restore PS1 and PROMPT_COMMAND for the user hooks
+  # registered to ATTACH.  Note that in this context, ble-edit/adjust-PS1 is
+  # already performed by the above ble-edit/attach.
+  ble-edit/restore-PS1
   blehook/invoke ATTACH
+  ble-edit/adjust-PS1
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A9-ATTACH
 #%end.i
