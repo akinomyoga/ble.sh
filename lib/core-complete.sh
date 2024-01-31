@@ -8575,17 +8575,26 @@ function ble/widget/auto_complete/insert-on-end {
     ble/widget/auto_complete/cancel-default
   fi
 }
-function ble/widget/auto_complete/insert-word {
-  local breaks=${bleopt_complete_auto_wordbreaks:-$_ble_term_IFS}
-  local rex='^['$breaks']*([^'$breaks']+['$breaks']*)?'
+
+function ble/widget/auto_complete/.insert-prefix {
+  local ins
   if [[ $_ble_complete_ac_type == [ch] ]]; then
-    local ins=${_ble_edit_str:_ble_edit_ind:_ble_edit_mark-_ble_edit_ind}
-    [[ $ins =~ $rex ]]
-    if [[ $BASH_REMATCH == "$ins" ]]; then
+    ins=${_ble_edit_str:_ble_edit_ind:_ble_edit_mark-_ble_edit_ind}
+  else
+    ins=$_ble_complete_ac_insert
+  fi
+
+  local ret
+  ble/complete/auto-complete/insert-prefix:"$1" "$ins" "${@:2}"
+  local prefix=$ret
+  [[ $prefix || ! $ins ]] || return 1
+
+  if [[ $_ble_complete_ac_type == [ch] ]]; then
+    if [[ $prefix == "$ins" ]]; then
       ble/widget/auto_complete/insert
       return 0
     else
-      local ins=$BASH_REMATCH
+      local ins=$prefix
 
       # Note: 以下の様に _ble_edit_ind だけずらす。
       #   <C>he<I>llo world<M> → <C>hello <I>world<M>
@@ -8602,13 +8611,11 @@ function ble/widget/auto_complete/insert-word {
       return 0
     fi
   elif [[ $_ble_complete_ac_type == [rmaA] ]]; then
-    local ins=$_ble_complete_ac_insert
-    [[ $ins =~ $rex ]]
-    if [[ $BASH_REMATCH == "$ins" ]]; then
+    if [[ $prefix == "$ins" ]]; then
       ble/widget/auto_complete/insert
       return 0
     else
-      local ins=$BASH_REMATCH
+      local ins=$prefix
 
       # Note: 以下の様に内容を書き換える。
       #   <C>hll<I> [hello world] <M> → <C>hello <I>world<M>
@@ -8632,6 +8639,32 @@ function ble/widget/auto_complete/insert-word {
   fi
   return 1
 }
+
+function ble/complete/auto-complete/insert-prefix:word {
+  local breaks=${bleopt_complete_auto_wordbreaks:-$_ble_term_IFS}
+  local rex='^['$breaks']*([^'$breaks']+['$breaks']*)?'
+  [[ $1 =~ $rex ]]
+  ret=$BASH_REMATCH
+}
+
+function ble/widget/auto_complete/insert-word {
+  ble/widget/auto_complete/.insert-prefix word
+}
+
+function ble/complete/auto-complete/insert-prefix:xword {
+  local wtype=$2 word_class word_set word_sep
+  ble/edit/word:"$wtype"/setup
+  local x=0 y=0
+  _ble_edit_str=$1 ble/edit/word/forward-range 1
+  ret=${1::y?y:${#1}}
+}
+
+function ble/widget/auto_complete/insert-eword { ble/widget/auto_complete/.insert-prefix xword eword; }
+function ble/widget/auto_complete/insert-cword { ble/widget/auto_complete/.insert-prefix xword cword; }
+function ble/widget/auto_complete/insert-uword { ble/widget/auto_complete/.insert-prefix xword uword; }
+function ble/widget/auto_complete/insert-sword { ble/widget/auto_complete/.insert-prefix xword sword; }
+function ble/widget/auto_complete/insert-fword { ble/widget/auto_complete/.insert-prefix xword fword; }
+
 function ble/widget/auto_complete/accept-line {
   ble/widget/auto_complete/insert
   ble-decode-key 13
@@ -8652,7 +8685,8 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f right       auto_complete/insert-on-end
   ble-bind -f C-e         auto_complete/insert-on-end
   ble-bind -f end         auto_complete/insert-on-end
-  ble-bind -f M-f         auto_complete/insert-word
+  ble-bind -f M-f         auto_complete/insert-cword
+  ble-bind -f C-right     auto_complete/insert-cword
   ble-bind -f M-right     auto_complete/insert-word
   ble-bind -f C-j         auto_complete/accept-line
   ble-bind -f C-RET       auto_complete/accept-line

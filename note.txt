@@ -7071,6 +7071,21 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-01-31
+
+  * complete: auto-complete の部分 accept をする他の関数 (requested by Tommimon) [#D2127]
+    https://github.com/akinomyoga/ble.sh/issues/397
+
+    forward-xword に対応する一連の widget を追加しても良いのでは。
+    auto_complete/insert-{e,c,u,s,f}word を追加した。動作テストもした。取り敢え
+    ず動いている気がする。
+
+    binding に関しては C-right は insert-cword で登録する。edit.sh の方で他にそ
+    れらしい forward-xword は登録しているか? 確認すると forward-sword と
+    forward-cword しかない。また、M-f は forward-cword である。一貫性を考えると
+    M-f は forward-cword に変更するべきである。変更する事にする。幸い Q&A や
+    Manual (complete_auto_wordbreaks)などでは [M-f] については言及していない。
+
 2024-01-28
 
   * complete: "'bin'/cmd [TAB]" で単語が補完されない [#D2126]
