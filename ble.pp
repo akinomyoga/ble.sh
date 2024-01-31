@@ -182,6 +182,12 @@ if [[ ! $_ble_init_command ]]; then
     return 1 2>/dev/null || builtin exit 1
   fi
 
+  # We here check the cases where we do not want a line editor.  We first check
+  # the cases that Bash provides.  We also check the cases where other
+  # frameworks try to do a hack using an interactive Bash.  We honestly do not
+  # want to add exceptions for every random framework that tries to do a naive
+  # hack using interactive sessions, but it is easier than instructing users to
+  # add a proper workaroud/check by themselves.
   if ((BASH_SUBSHELL)); then
     builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&3
     return 1 2>/dev/null || builtin exit 1
@@ -193,6 +199,13 @@ if [[ ! $_ble_init_command ]]; then
     return 1 2>/dev/null || builtin exit 1
   elif ! [[ -t 4 && -t 5 ]] && ! ((1)) >/dev/tty; then
     builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
+    return 1 2>/dev/null || builtin exit 1
+  elif [[ ${NRF_CONNECT_VSCODE-} && ! -t 2 ]]; then
+    # Note #D2129: VS Code Extension "nRF Connect" tries to extract an
+    # interactive setting by sending multiline commands to an interactive
+    # session.  We may turn off accept_line_threshold for an nRF Connect
+    # session as we do for Midnight Commander, but we do not need to enable the
+    # line editor for nRF Connect in the first place.
     return 1 2>/dev/null || builtin exit 1
   fi
 fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930

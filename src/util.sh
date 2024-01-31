@@ -2838,8 +2838,7 @@ function ble/fd#alloc {
   fi
 
   if [[ :$3: == *:share:* ]]; then
-    local _ble_local_ret='[<>]&['$_ble_term_IFS']*([0-9]+)['$_ble_term_IFS']*$'
-    if [[ $2 =~ $rex ]]; then
+    if ble/string#match "$2" '[<>]&['"$_ble_term_IFS"']*([0-9]+)['"$_ble_term_IFS"']*$'; then
       builtin eval -- "$1=${BASH_REMATCH[1]}"
       return 0
     fi

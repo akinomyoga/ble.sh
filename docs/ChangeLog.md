@@ -87,6 +87,7 @@
 - util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` a7f604e1
 - progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` 29cd8f10
 - progcomp: pass original command path to completion functions (reported by REmerald) `#D2125` xxxxxxxx
+- main: work around nRF Connect initialization (requested by liyafe1997) `#D2129` xxxxxxxx
 
 ## Contrib
 
