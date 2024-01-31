@@ -18,7 +18,7 @@
 - keymap/vi: implement text-object in xmap for brackets (requested by Darukutsu) `#D2095` 7d80167c
 - util: support `ble-import -C callback` (motivated by Dominiquini) `#D2102` 0fdbe3b0
 - mandb: look for git subcommands (motivated by bkerin) `#D2112` 9641c3b8
-- edit (`display-shell-version`): show the `atuin` version `#D2124` xxxxxxxx
+- edit (`display-shell-version`): show the `atuin` version `#D2124` 9045fb87
 - complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` xxxxxxxx
 
 ## Changes
@@ -30,7 +30,7 @@
 - make: add `INSDIR_LICENSE` for install location of licenses (reported by willemw) `#D2064` d39998f0 acf3b091
 - prompt: show prompt ruler after markers (motivated by U-Labs) `#D2067` e4a90378
 - complete: suffix a space to non-filenames with `compopt -o filenames` (reported by Dominiquini) `#D2096` aef8927f
-- edit: distinguish space and delimiters in `cword` and `eword` `#D2121` xxxxxxxx
+- edit: distinguish space and delimiters in `cword` and `eword` `#D2121` 4f453710
 
 ## Fixes
 
@@ -56,7 +56,7 @@
 - edit(gexec): fix a bug that `LINENO` is vanishing `#D2108` b5776596
 - mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2110` 90a992cc
 - decode: fix handling of @ESC in quoted-insert `#D2119` 0bbc3639
-- syntax: save stat after command name for consistent completion-context `#D2126` xxxxxxxx
+- syntax: save stat after command name for consistent completion-context `#D2126` 50d6f1bb
 - term: fix control sequences for hiding cursor (reported by n87) `#D3230` xxxxxxxx
 
 ## Compatibility
@@ -87,7 +87,7 @@
 - progcomp: work around slow `make` completion in large repository (reported by blackteahamburger) `#D2117` 5f3a0010
 - util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` a7f604e1
 - progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` 29cd8f10
-- progcomp: pass original command path to completion functions (reported by REmerald) `#D2125` xxxxxxxx
+- progcomp: pass original command path to completion functions (reported by REmerald) `#D2125` 0cf0383a
 - main: work around nRF Connect initialization (requested by liyafe1997) `#D2129` xxxxxxxx
 
 ## Contrib
@@ -113,8 +113,9 @@
 - test(main): fix delimiter of `MSYS` in adding `winsymlinks` `#D2071` aacf1462
 - test(util,vi): adjust `ble/util/is-stdin-ready` while testing `#D2105` 23a05827 6f4badf4
 - test(vi): suppress warnings for non-interactive sessions `#D2113` b8b7ba0c
-- test(bash,util): fix tests in interactive session `#D2123` xxxxxxxx
-- test(vi): fix broken states after test `#D2123` xxxxxxxx
+- test(bash,util): fix tests in interactive session `#D2123` 06ad3a6c
+- test(vi): fix broken states after test `#D2123` 06ad3a6c
+- test(bash): fix test cases for history expansion `#D2131` xxxxxxxx
 
 ## Internal changes
 

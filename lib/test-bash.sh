@@ -333,18 +333,22 @@ ble/test/start-section 'bash' 49
   # いが微妙に異なることを議論している。
   #
   q=\' line='$'$q'\'$q'!!'$q'\'$q
-  ble/util/assign ret '(builtin history -s histentry; builtin history -p "$line")'
+  code='(builtin history -s histentry; builtin history -p "$line")'
   if ((_ble_bash<30100)); then
     # 3.0 ではそもそも失敗する。
-    ble/test code:'' ret=
+    ble/test "$code" stdout=
   elif ((_ble_bash<40100)) || [[ $- != *[iH]* ]]; then
     # 非対話セッション または 3.1..4.0 では意図せず展開が起こる
-    ble/test code:'' ret="${line//!!/histentry}"
+    ble/test "$code" stdout="${line//!!/histentry}"
   else
     # 期待した振る舞い
-    ble/test code:'' ret="$line"
+    ble/test "$code" stdout="$line"
   fi
-  ble/test '(set -H; builtin history -c; builtin history -p "$line")' stdout="$line"
+  if ((_ble_bash<40100)); then
+    ble/test '(set -H; builtin history -c; builtin history -p "$line")' stdout= exit=1
+  else
+    ble/test '(set -H; builtin history -c; builtin history -p "$line")' stdout="$line"
+  fi
 
   # BUG bash-3.0 [Ref #D1956]
   #   関数定義の一番外側でリダイレクトしてもリダイレクトされない。例えば、
@@ -376,7 +380,7 @@ ble/test/start-section 'bash' 49
   # (#D2123) In all the Bash versions 1.14..5.3, expand_aliases inside
   # "compond-command &" are disabled in interactive sessions.
   shopt -s expand_aliases
-  alias e='echo hello'
+  alias e='ble/util/print hello'
   ble/test 'eval "e"' stdout=hello
   ble/test 'true && eval "e"' stdout=hello
   ble/test 'eval "e" & wait' stdout=hello
@@ -389,7 +393,7 @@ ble/test/start-section 'bash' 49
     ble/test '{ eval "e"; } & wait' stdout=hello
     ble/test 'true && eval "e" & wait' stdout=hello
   fi
-  unalias e
+  builtin unalias e
 )
 
 ble/test/end-section
