@@ -1088,6 +1088,15 @@ function ble/init/check-environment {
   fi
   _ble_base_env_HOSTNAME=$HOSTNAME
 
+  if [[ ! ${HOME-} ]]; then
+    ble/util/print "ble.sh: insane environment: \$HOME is empty." >&2
+    local home
+    if home=$(getent passwd 2>/dev/null | awk -F : -v UID="$UID" '$3 == UID {print $6}') && [[ -d $home || ! -e $home ]]; then
+      export HOME=$home
+      ble/util/print "ble.sh: modified HOME=$HOME" >&2
+    fi
+  fi
+
   if [[ ! ${LANG-} ]]; then
     ble/util/print "ble.sh: suspicious environment: \$LANG is empty." >&2
   fi

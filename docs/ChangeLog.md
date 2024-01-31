@@ -57,6 +57,7 @@
 - mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2110` 90a992cc
 - decode: fix handling of @ESC in quoted-insert `#D2119` 0bbc3639
 - syntax: save stat after command name for consistent completion-context `#D2126` xxxxxxxx
+- term: fix control sequences for hiding cursor (reported by n87) `#D3230` xxxxxxxx
 
 ## Compatibility
 

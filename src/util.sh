@@ -3987,8 +3987,8 @@ function ble/util/buffer.flush {
   # のカーソル移動も無理やり表示しようとする端末に対する対策。
   [[ $_ble_term_state == internal ]] &&
     [[ $_ble_term_cursor_hidden_internal != hidden ]] &&
-    [[ $text != *"$_ble_term_civis"* && $text != *"$_ble_term_cvvis"* ]] &&
-    text=$_ble_term_civis$text$_ble_term_cvvis
+    [[ $text != *"$_ble_term_civis"* && $text != *"$_ble_term_rmcivis"* ]] &&
+    text=$_ble_term_civis$text$_ble_term_rmcivis
 
   ble/util/put "$text"
 }
@@ -6127,7 +6127,7 @@ function ble/term/cursor-state/.update-hidden {
   if [[ $state == hidden ]]; then
     ble/util/buffer "$_ble_term_civis"
   else
-    ble/util/buffer "$_ble_term_cvvis"
+    ble/util/buffer "$_ble_term_rmcivis"
   fi
 
   _ble_term_cursor_hidden_current=$state

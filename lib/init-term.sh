@@ -177,20 +177,47 @@ function ble/init:term/initialize {
   [[ $TERM == minix ]] && _ble_term_sc= _ble_term_rc=
   # Note: TERM=sun{,-color}: terminfo にはないが \e7 \e8 が使える。
 
-  # Cursors
+  # Cursor Style
   ble/init:term/define-cap _ble_term_Ss '' Ss:Ss 123 # DECSCUSR
   _ble_term_Ss=${_ble_term_Ss//123/@1}
-  ble/init:term/define-cap _ble_term_cvvis $'\e[?25h' cvvis:vs
-  ble/init:term/define-cap _ble_term_civis $'\e[?25l' civis:vi
-  [[ $TERM == minix ]] && _ble_term_cvvis= _ble_term_civis=
-  # xterm の terminfo が点滅まで勝手に変更するので消す。
-  [[ $_ble_term_cvvis == $'\e[?12;25h' || $_ble_term_cvvis == $'\e[?25;12h' ]] &&
-    _ble_term_cvvis=$'\e[?25h'
-  # 何故か screen の terminfo が壊れている(非対称になっている)ので対称化する。
-  [[ $_ble_term_cvvis == $'\e[34l'* && $_ble_term_civis != *$'\e[34h'* ]] &&
-    _ble_term_civis=$_ble_term_civis$'\e[34h'
-  [[ $_ble_term_civis == $'\e[?25l'* && $_ble_term_cvvis != *$'\e[?25h'* ]] &&
-    _ble_term_cvvis=$_ble_term_cvvis$'\e[?25h'
+
+  # Cursor Visibility
+  ble/init:term/define-cap _ble_term_civis '' civis:vi
+  ble/init:term/define-cap _ble_term_cnorm '' cnorm:ve
+  ble/init:term/define-cap _ble_term_cvvis '' cvvis:vs
+  # Note: terminfo contains three different entries, "civis", "cvvis", and
+  # "cnorm".  Entry civis hides the cursor.  Entry cvvis makes the cursor "very
+  # visible", yet its meaning is unclear.  In fact, cvvis can mean the blinking
+  # cursor in XTerm or can mean "Normal Cursor Visibility" according to the
+  # manual of GNU Screen.  Entry cnorm cancels the effects of both.  There is
+  # no way based on these terminfo entries to cancel the effect of civis
+  # without affecting the unknown "cvvis" property.  Therefore, we only use
+  # terminfo's civis when it has a known form.
+  ble/init:term/register-varname _ble_term_rmcivis
+  if ble/string#match "$_ble_term_civis" $'^(\e\\[[<=>?]?[0-9]+)[hl]$'; then
+    # When terminfo's civis has the form of the ANSI sequence SM/RM, we revert
+    # it to cancel civis.
+    if [[ $_ble_term_civis == *l ]]; then
+      _ble_term_rmcivis=${BASH_REMATCH[1]}h
+    else
+      _ble_term_rmcivis=${BASH_REMATCH[1]}l
+    fi
+  elif [[ $_ble_term_civis == *$'\e[?25l'* || ! $_ble_term_civis && $TERM != minix ]]; then
+    # When terminfo's civis contains DECRST(25) or is an empty string, we use
+    # DECSET(25) to reveal the cursor.  It should bascailly be safe to send
+    # SM/RM with modes unsupported by the terminal because typical terminals
+    # just ignore them.  We exclude the minix console because it does not
+    # ignore unsupported modes.  Some historical terminals use Mode ?25 for a
+    # different switch, such as Beehive's ATL-008 and Research, Inc.'s Teleray
+    # Model 16, but I expect recent terminals would not try to produce
+    # unnecessary conflicts.
+    _ble_term_rmcivis=$'\e[?25h'
+  else
+    # In the other cases, we give up hiding the cursor because we do not have a
+    # way to recover it safely.
+    _ble_term_civis=
+    _ble_term_rmcivis=
+  fi
 
   # Alternate Screen Buffer
   ble/init:term/define-cap _ble_term_smcup '' smcup:ti # \e[?1049h

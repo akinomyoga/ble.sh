@@ -7073,6 +7073,50 @@ bash_tips
 
 2024-01-31
 
+  * term: カーソルが設定していないのに点滅する (reported by n87) [#D2130]
+    https://github.com/akinomyoga/ble.sh/issues/393
+
+    報告を受けた Q4 の設定で問題が再現した。cursor-state/.update を潰しても問題
+    は発生する。他のカーソル関係の出力を全て消しても問題は発生する。何故だろう?
+    ble/util/buffer に介入して実際に出力したシーケンスをそのまま cat しても問題
+    は再現するのか? → 再現した。どんどん短くしていくと \e[34l というシーケンス
+    が残った。screen-256color の infocmp 的には cvvis である。
+
+    うーん。大体何が起こっているのかは分かった。先ず初めに \e[34l は二種類の意
+    味が歴史的にある様だという事。点滅と非表示。screen, screen-256color では
+    cvvis として \e[34l が割り当てられている。そして tmux は恐らく 34l を点滅と
+    して解釈する。
+
+    一方で tput cvvis は更に微妙。xterm や alacritty では \e[?12;25h という物が
+    割り当てられているが、これは 25 で表示すると共に 12 で点滅もつけている。一
+    方で xterm と alacritty の中の tmux で \e[?25h を実行した時には別に点滅が
+    on になる事はない。つまり、tmux は terminfo cvvis を信用していないという事。
+    そもそも cvvis は何かと思って確認してみると make cursor very visible となっ
+    ている。実は civis-cnorm-cvvis の組になっている様だ。
+
+    screen
+    - civis ^[[?25l
+    - cvvis ^[[34l
+    - cnorm ^[[34h^[[?25h
+
+    xterm
+    - civis ^[[?25l
+    - cvvis ^[[?12;25h
+    - cnorm ^[[?12l^[[?25h
+
+    うーん。非対称になっている理由が分かって来た。つまり表示・非表示を制御した
+    ければ civis とその逆を使うべきであって cvvis は無視するべきという事。
+
+    _ble_term_cvvis は _ble_term_civis から決定する事にした。分からない時はカー
+    ソルを隠す機能自体を諦める。うーん。実は _ble_term_cvvis という名前はやめる
+    べきの気がする。これは将来的に混乱を起こす元である。うーん。reset_civis だ
+    ろうか。或いは rm_civis, rmivis, rstivis, rmcivis, rstcivis 等 → rmcivis
+    を使う事にした。
+
+    * 提示されたテストケースの env -i に於いて HOME が空である為に変な所にディ
+      レクトリを作ろうとしている。これは良くないので初期化時に HOME が空であれ
+      ば取り敢えずの HOME を設定する事にする。
+
   * main: nRF Connect workaround (requested by liyafe1997) [#D2129]
     https://github.com/akinomyoga/ble.sh/issues/392
 
