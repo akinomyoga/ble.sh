@@ -9,9 +9,21 @@
 ##     数字を指定したときはその値をタブの幅として用います。
 bleopt/declare -v tab_width ''
 function bleopt/check:tab_width {
+  local old_width=${bleopt_tab_width:-$_ble_term_it}
   if [[ $value ]] && (((value=value)<=0)); then
     ble/util/print "bleopt: an empty string or a positive value is required for tab_width." >&2
     return 1
+  fi
+
+  # In case the tab width is changed while editing, we induce redraw by setting
+  # the dirty range.
+  if ((value!=old_width)); then
+    local ret
+    if ble/string#index-of "$_ble_edit_str" $'\t'; then
+      local beg=$ret
+      ble/string#last-index-of "$_ble_edit_str" $'\t'
+      ble-edit/content/.update-dirty-range "$beg" "$ret" "$ret" tab_width
+    fi
   fi
 }
 

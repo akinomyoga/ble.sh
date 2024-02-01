@@ -1633,6 +1633,7 @@ ble/highlight/layer:plain/initialize-vars
 
 ## @fn ble/highlight/layer:plain/update/.getch
 ##   @var[in,out] ch
+##   @var[in] it
 function ble/highlight/layer:plain/update/.getch {
   [[ $ch == [' '-'~'] ]] && return 0
   if [[ $ch == [$'\t\n\177'] ]]; then
@@ -1665,7 +1666,7 @@ function ble/highlight/layer:plain/update {
     ble/highlight/layer/update/shift _ble_highlight_layer_plain_buff
 
     local i text=$1 ch
-    local it=$_ble_term_it
+    local it=${bleopt_tab_width:-$_ble_term_it}
     for ((i=DMIN;i<DMAX;i++)); do
       ch=${text:i:1}
 

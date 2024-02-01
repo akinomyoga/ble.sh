@@ -1849,7 +1849,7 @@ function ble/keymap:vi/string#measure-width {
 ##
 function ble/keymap:vi/string#fold/.get-interval {
   local text=$1 x=$2
-  local it=${bleopt_tab_width:-${_ble_term_it:-8}}
+  local it=${bleopt_tab_width:-$_ble_term_it}
 
   local i=0 iN=${#text}
   for ((i=0;i<iN;i++)); do
