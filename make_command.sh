@@ -180,7 +180,7 @@ function sub:scan/grc-source {
   grc "${options[@]}" "$@"
 }
 function sub:scan/list-command {
-  local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk})
+  local -a options=(--color --exclude=./{test,memo,ext,wiki,[TD]????.*} --exclude=\*.{md,awk})
 
   # read arguments
   local flag_exclude_this= flag_error=
@@ -534,7 +534,7 @@ function sub:scan {
   # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
   #sub:scan/builtin 'history'
-  sub:scan/builtin 'echo' --exclude=./lib/keymap.vi_test.sh --exclude=./ble.pp |
+  sub:scan/builtin 'echo' --exclude=./ble.pp |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\bstty[[:space:]]+echoZd
       \Zecho \$PPIDZd
@@ -596,7 +596,14 @@ function sub:scan {
 
   #sub:scan/assign
   sub:scan/builtin 'trap' |
-    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+    sed -E 'h;s/'"$_make_rex_escseq"'//g
+
+      # Exceptions in each file
+      \Z^\./contrib/integration/bash-preexec\.bash:[0-9]+:.*\btrap -p? DEBUG\bZd
+      \Z^\./contrib/integration/bash-preexec\.bash:[0-9]+:.*\[\[ \$trap_string == "trap -- Zd
+      \Z^\./contrib/snake\.sh:[0-9]+:Zd
+
+    s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z_ble_trap_handler="trap -- '\''\$\{_ble_trap_handler//\$q/\$Q}'\'' \$nZd
       \Zline = "bind"Zd
       \Ztrap_command=["'\'']trap -- Zd

@@ -19,7 +19,7 @@
 - util: support `ble-import -C callback` (motivated by Dominiquini) `#D2102` 0fdbe3b0
 - mandb: look for git subcommands (motivated by bkerin) `#D2112` 9641c3b8
 - edit (`display-shell-version`): show the `atuin` version `#D2124` 9045fb87
-- complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` xxxxxxxx
+- complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` 0c4b6772
 
 ## Changes
 
@@ -58,7 +58,7 @@
 - mandb: fix extraction of option description in format 5 (reported by bkerin) `#D2110` 90a992cc
 - decode: fix handling of @ESC in quoted-insert `#D2119` 0bbc3639
 - syntax: save stat after command name for consistent completion-context `#D2126` 50d6f1bb
-- term: fix control sequences for hiding cursor (reported by n87) `#D2130` xxxxxxxx
+- term: fix control sequences for hiding cursor (reported by n87) `#D2130` f9b9aea8
 - highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` xxxxxxxx
 
 ## Compatibility
@@ -90,7 +90,7 @@
 - util(TRAPEXIT): fix condition for `stty sane` in Cygwin `#D2118` a7f604e1
 - progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` 29cd8f10
 - progcomp: pass original command path to completion functions (reported by REmerald) `#D2125` 0cf0383a
-- main: work around nRF Connect initialization (requested by liyafe1997) `#D2129` xxxxxxxx
+- main: work around nRF Connect initialization (requested by liyafe1997) `#D2129` 2df3b109
 
 ## Contrib
 
@@ -98,7 +98,7 @@
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
-- contrib/bash-preexec: support the latest version of `bash-preexec` (reported by mcarans) `#D2128` xxxxxxxx
+- contrib/bash-preexec: support the latest version of `bash-preexec` (reported by mcarans) `#D2128` 50af4d9c
 
 ## Documentation
 
@@ -117,7 +117,7 @@
 - test(vi): suppress warnings for non-interactive sessions `#D2113` b8b7ba0c
 - test(bash,util): fix tests in interactive session `#D2123` 06ad3a6c
 - test(vi): fix broken states after test `#D2123` 06ad3a6c
-- test(bash): fix test cases for history expansion `#D2131` xxxxxxxx
+- test(bash): fix test cases for history expansion `#D2131` 838b4652
 
 ## Internal changes
 
@@ -128,6 +128,7 @@
 - keymap/vi: integrate vi tests into the test framework `#D2101` d16b8438
 - global(leakvar): fix variable leak `#D2114` d3e1232d
 - util: add `ble/util/{time,timeval,mktime}` `#D2133` xxxxxxxx
+- make(scan): apply builtin checks to `contrib` `#D2135` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

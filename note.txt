@@ -7073,6 +7073,12 @@ bash_tips
 
 2024-02-04
 
+  * make: make scan で contrib の中のファイルについて検出できていない? [#D2135]
+
+    確認してみたら実は list-command の段階で contrib を除外していたのだった。除
+    外しているのを外してみるとたくさん見つかったが今までチェックしていなかった
+    割には少なかった。適用した。
+
   * prompt: invalidate status line on the change of face prompt_status_line (motivated by Vosjedev) [#D2134]
     https://github.com/akinomyoga/ble.sh/issues/400#issuecomment-1924495499
 
