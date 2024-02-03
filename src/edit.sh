@@ -6523,12 +6523,13 @@ function ble/exec/time#start {
     (printf) ;;
     (uptime|SECONDS)
       # これらの原点は unix epoch でないので補正する。
-      ble/util/assign _ble_exec_time_CLOCK_base 'ble/bin/date +%s000000'
-      local ret; ble/util/clock
+      local ret
+      ble/util/time; _ble_exec_time_CLOCK_base=${ret}000000
+      ble/util/clock
       ((_ble_exec_time_CLOCK_base-=ret*1000)) ;;
     (date)
       # どうせファイルコマンドを使うのであればより精度の良い物を使う。
-      if ble/util/assign ret 'ble/bin/date +%6N' 2>/dev/null && [[ $ret ]]; then
+      if ble/util/assign ret 'ble/bin/date +%6N' 2>/dev/null && ble/string#match "$ret" '^[0-9]+$'; then
         function ble/exec/time#start {
           ble/exec/time/times.start
           _ble_exec_time_CLOCK_beg=

@@ -3283,6 +3283,67 @@ function ble/util/isprint+ {
 # suppress locale error #D1440
 ble/function#suppress-stderr ble/util/isprint+
 
+## @fn ble/util/mktime Y m d H M S z
+## @fn ble/util/mktime 'Y-m-d H:M:S z'
+##   @param[in] Y m d H M S
+##     These specify year, month, day, hour, minute, and second, respectively.
+##   @param[in,opt] z
+##     This specifies the time zone in the format [-+]HHMM.  If `z` is
+##     unspecified, the local time zone is used, but this implementation does
+##     not consider the summer time currently.  We assume that the time
+##     difference with respect to UTC would be the same as the current one
+##     while the conversion.
+_ble_util_mktime_tzdelta=
+function ble/util/mktime {
+  if (($#==6||$#==7)); then
+    local tz=${7-}
+    if [[ ! $tz ]]; then
+      # TODO: summer time
+      # if ble/is-function ble/bin/gawk; then
+      #   local mktime_str
+      #   ble/util/sprintf mktime_str 'mktime("%04d %02d %02d %02d %02d %02d")' "${@:1:6}"
+      #   ble/util/assign ret "ble/bin/gawk 'BEGIN{print $mktime_str; exit}'"
+      # elif ble/is-function ble/bin/mawk; then
+      #   local mktime_str
+      #   ble/util/sprintf mktime_str 'mktime("%04d %02d %02d %02d %02d %02d")' "${@:1:6}"
+      #   ble/util/assign ret "ble/bin/mawk 'BEGIN{print $mktime_str; exit}'"
+      # else
+      #   # if date supports +%s and -d DATE.
+      #   ble/bin/date -d "$1-$2-$3 $4:$5:$6" +%s
+      # fi
+      if [[ ! ${_ble_util_mktime_tzdelta-} ]]; then
+        # Note: Currently, the time difference is calculated for the current
+        # time.  This does not consider the summer time of the specified time.
+        # If needed, we need to specify the time to the date command using the
+        # GNU extension "-d time" every time.  We cannot cache the time
+        # difference in this case.
+        ble/util/assign _ble_util_mktime_tzdelta 'ble/bin/date +%z'
+      fi
+      tz=$_ble_util_mktime_tzdelta
+    fi
+
+    local tzdelta
+    if ble/string#match "$tz" '^[-+]([0-9]{1,2})([0-9]{2})$'; then
+      tzdelta=${tz::1}$(((10#0${BASH_REMATCH[1]}*60+10#0${BASH_REMATCH[2]})*60))
+    else
+      tzdelta=0
+    fi
+
+    local Y=$((10#0$1)) m=$((10#0$2)) d=$((10#0$3))
+    local H=$((10#0$4)) M=$((10#0$5)) S=$((10#0$6))
+
+    ((m<3)) && ((Y--,m+=12))
+    local day_delta=$((365*(Y-1970)+(Y/4-Y/100+Y/400-477)+(m+1)*306/10-63+(d-1)))
+    ((ret=((day_delta*24+H)*60+M)*60+S-tzdelta))
+    return 0
+  elif ble/string#match "${1-}" '^([0-9]{4})-([01]?[0-9])-([0-3][0-9]?) ([0-2]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9])( ([-+][0-9]{3,4}))?$'; then
+    ble/util/mktime "${BASH_REMATCH[@]:1:6}" "${BASH_REMATCH[8]-}"
+  else
+    ble/util/print "$FUNCNAME: invalid argument '${1-}'" >&2
+    return 2
+  fi
+}
+
 if ((_ble_bash>=40200)); then
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
@@ -3295,11 +3356,43 @@ else
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
       local fmt=$3 time=$4
-      ble/util/assign "$2" 'ble/bin/date +"$fmt" $time'
+      ble/util/assign "$2" "ble/bin/date +\"\$fmt\" $time"
     else
       ble/bin/date +"$1" $2
     fi
   }
+fi
+
+## @fn ble/util/time
+## @fn ble/util/timeval
+##   現在の UNIX 時刻を取得します。ble/util/time は秒を単位とし、
+##   ble/util/timeval はマイクロ秒を単位とします。Bash 5.0 未満では秒単位の分解
+##   能しかありません。
+if ((_ble_bash>=50000)); then
+  function ble/util/time { ret=$EPOCHSECONDS; }
+  function ble/util/timeval { ret=${EPOCHREALTIME//[!0-9]}; }
+else
+  function ble/util/time {
+    if ble/util/strftime -v ret '%s' 2>/dev/null && ble/string#match '^[0-9]{3,}$'; then
+      function ble/util/time { ble/util/strftime -v ret '%s'; }
+    else
+      function ble/util/time {
+        ble/util/strftime -v ret '%F %T %z'
+        ble/util/mktime "$ret"
+      }
+      ble/util/time
+    fi
+
+    # In Bash >= 4.2, we continue to use printf %(...)T.  In Bash < 4.2, we use
+    # the internal clock SECONDS relative to the origin _ble_util_time_base.
+    if ((_ble_bash<40200)) && ble/string#match "${SECONDS-}" '^[0-9]+$'; then
+      builtin readonly SECONDS
+      _ble_util_time_base=$((ret-SECONDS))
+      function ble/util/time { ((_ble_util_time_base+SECONDS)); }
+    fi
+  }
+  function ble/util/timeval { ble/util/time; ((ret*=1000000)); }
+
 fi
 
 #%< util.hook.sh
@@ -3881,11 +3974,11 @@ function ble/file/has-stat {
 ##
 ##   @var[out] ret
 ##     時刻を Unix Epoch で取得します。
-##     秒以下の少数も取得できる場合には ret[1] に小数部を格納します。
+##     秒以下の小数も取得できる場合には ret[1] に小数部を格納します。
 ##
 function ble/file#mtime {
   # fallback: print current time
-  function ble/file#mtime { ble/util/strftime -v ret '%s %N'; ble/string#split-words ret "$ret"; ((0)); } || return 1
+  function ble/file#mtime { ble/util/time; ret=("$ret"); } || return 1
 
   if ble/bin/date -r / +%s &>/dev/null; then
     function ble/file#mtime { local file=$1; ble/util/assign-words ret 'ble/bin/date -r "$file" +"%s %N"' 2>/dev/null; }
@@ -4979,12 +5072,14 @@ function ble/util/clock/.initialize {
       ((ret=integral*1000+10#0$fraction))
     }
   elif ((_ble_bash>=40200)); then
-    printf -v _ble_util_clock_base '%(%s)T' -1
+    local ret
+    ble/util/time
+    _ble_util_clock_base=$ret
     _ble_util_clock_reso=1000
     _ble_util_clock_type=printf
     function ble/util/clock {
-      local now; printf -v now '%(%s)T' -1
-      ((ret=(now-_ble_util_clock_base)*1000))
+      ble/util/time
+      ((ret=(ret-_ble_util_clock_base)*1000))
     }
   elif [[ $SECONDS && ! ${SECONDS//[0-9]} ]]; then
     builtin readonly SECONDS
@@ -4996,11 +5091,13 @@ function ble/util/clock/.initialize {
       ((ret=(now-_ble_util_clock_base)*1000))
     }
   else
-    ble/util/strftime -v _ble_util_clock_base '%s'
+    local ret
+    ble/util/time
+    _ble_util_clock_base=$ret
     _ble_util_clock_reso=1000
     _ble_util_clock_type=date
     function ble/util/clock {
-      ble/util/strftime -v ret '%s'
+      ble/util/time
       ((ret=(ret-_ble_util_clock_base)*1000))
     }
   fi

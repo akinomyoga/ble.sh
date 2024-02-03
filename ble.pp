@@ -2065,16 +2065,8 @@ ble/builtin/trap/install-hook RETURN inactive
 function ble/base/initialize-session {
   [[ $_ble_base_session == */"$$" ]] && return 0
 
-  local start_time=
-  if ((_ble_bash>=50000)); then
-    start_time=${EPOCHREALTIME//[!0-9]}
-  elif ((_ble_bash>=40200)); then
-    printf -v start_time '%(%s)T' -1
-    ((start_time*=1000000))
-  else
-    ble/util/assign start_time 'ble/bin/date +%s'
-    ((start_time*=1000000))
-  fi
+  local ret
+  ble/util/timeval; local start_time=$ret
   ((start_time-=SECONDS*1000000))
 
   _ble_base_session=${start_time::${#start_time}-6}.${start_time:${#start_time}-6}/$$

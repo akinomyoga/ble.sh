@@ -552,12 +552,9 @@ if ((_ble_bash>=30100)); then
   ##
   ##   @var[in] tmpfile_base
   function ble/history:bash/resolve-multiline/.awk {
-    if ((_ble_bash>=50000)); then
-      local -x epoch=$EPOCHSECONDS
-    elif ((_ble_bash>=40400)); then
-      local -x epoch
-      ble/util/strftime -v epoch %s
-    fi
+    local ret
+    ble/util/time
+    local -x epoch=$ret
 
     local -x reason=$1
     local apos=\'

@@ -126,6 +126,7 @@
 - highlight: generalize `region` layer `#D2074` 449d92ca
 - keymap/vi: integrate vi tests into the test framework `#D2101` d16b8438
 - global(leakvar): fix variable leak `#D2114` d3e1232d
+- util: add `ble/util/{time,timeval,mktime}` `#D2133` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
