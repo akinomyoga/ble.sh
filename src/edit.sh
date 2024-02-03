@@ -1501,11 +1501,17 @@ function ble/prompt/.instantiate {
     x=0 y=0 g=0 lc=32 lg=0
     esc=$expanded
   elif
+    local ret g0=0
+    if ble/string#match ":$opts:" ':g0=([^:]+):'; then
+      ((g0=BASH_REMATCH[1]))
+    elif ble/string#match ":$opts:" ':face0=([^:]+):'; then
+      ble/color/face2g "${BASH_REMATCH[1]}" && g0=$ret
+    fi
     local rows=${prompt_rows:-${LINES:-25}}
     local cols=${prompt_cols:-${COLUMNS:-80}}
     local color=$_ble_color_g2sgr_version
     local bleopt=$bleopt_char_width_mode,$bleopt_char_width_version,$bleopt_emoji_version,$bleopt_emoji_opts
-    trace_hash=$opts#$rows,$cols,$color#$bleopt#$expanded
+    trace_hash=$opts#$rows,$cols,$color,$g0#$bleopt#$expanded
     [[ $trace_hash != "$trace_hash0" ]]
   then
     local trace_opts=$opts:prompt
@@ -1680,6 +1686,7 @@ function ble/prompt/unit:_ble_prompt_term_status/update {
 function ble/prompt/unit:_ble_prompt_status/update {
   ble/prompt/unit/add-hash '$bleopt_prompt_status_align'
   ble/prompt/unit/add-hash '$bleopt_prompt_status_line'
+  ble/prompt/unit/add-hash '$((_ble_faces[_ble_faces__prompt_status_line]))'
   local ps=$bleopt_prompt_status_line
   local cols=$COLUMNS; ((_ble_term_xenl||cols--))
   local trace_opts=confine:relative:measure-bbox:noscrc:face0=prompt_status_line

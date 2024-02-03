@@ -46,11 +46,17 @@
 ## controls the position of vbell. The value "left" (default) specifies that
 ## the vbell should be shown up on the top left corner of the terminal. The
 ## values "center" and "right" specify that the vbell is shown on the top
-## center and the top right corner, respectively.
+## center and the top right corner, respectively.  The faces "vbell",
+## "vbell_erase", and "vbell_flash" specify the graphic style of the vbell, the
+## one after vbell is erased, and the one used to blink the vbell,
+## respectively.
 
 #bleopt vbell_default_message=' Wuff, -- Wuff!! '
 #bleopt vbell_duration=2000
 #bleopt vbell_align=right
+#ble-face vbell='reverse'
+#ble-face vbell_erase='bg=252'
+#ble-face vbell_flash='fg=green,reverse'
 
 
 ##-----------------------------------------------------------------------------
@@ -181,10 +187,12 @@
 ## The following settings control the status line.  "prompt_status_line"
 ## specifies the content of the status line.  If its value is empty, the status
 ## line is not shown.  "prompt_status_align" controls the position of the
-## content in the status line.
+## content in the status line.  The face "prompt_status_line" specifies the
+## default graphic style of the status line.
 
 #bleopt prompt_status_line=
 #bleopt prompt_status_align=left
+#ble-face prompt_status_line='fg=231,bg=240'
 
 
 ## "prompt_eol_mark" specifies the contents of the mark used to indicate the
@@ -592,6 +600,16 @@
 #bleopt complete_auto_delay=100
 
 
+## The face "auto_complete" can be used to specify the graphic style of the
+## suggestion by auto-complete.  The default style is choosed just to make it
+## work in both the terminals with light and dark backgrounds.  A better style
+## can be specified based on the user's preference.
+
+#ble-face auto_complete='fg=238,bg=254'           # default
+#ble-face auto_complete='fg=white,bg=69'          # blue background
+#ble-face auto_complete='fg=240,underline,italic' # darker background
+
+
 ## The setting "complete_auto_wordbreaks" is used as the delimiters for
 ## identifying words for M-right (auto-complete/insert-word).  The default
 ## value is $' \t\n'.  If the empty value is set, the default value is used.
@@ -608,6 +626,14 @@
 ##   is disabled after TAB completions.
 
 #bleopt complete_auto_complete_opts=suppress-after-complete
+
+
+## The faces "menu_filter_fixed" and "menu_filter_input" can be used to specify
+## the graphic styles of the part of the text that is used to filter the menu
+## items by the menu-filter feature.
+
+#ble-face menu_filter_fixed='bold'
+#ble-face menu_filter_input='fg=16,bg=229'
 
 
 ## The setting "complete_auto_menu" controls the delay of "auto-menu".  When a
@@ -857,7 +883,8 @@
 #bleopt syntax_eval_polling_interval=50
 
 
-## The following settings specify graphic styles of each faces.
+## The following settings specify graphic styles of corresponding faces.  Faces
+## used for specific features are described in the respective sections.
 
 #ble-face -s region                    fg=white,bg=60
 #ble-face -s region_insert             fg=blue,bg=252
@@ -865,13 +892,6 @@
 #ble-face -s region_target             fg=black,bg=153
 #ble-face -s disabled                  fg=242
 #ble-face -s overwrite_mode            fg=black,bg=51
-#ble-face -s auto_complete             fg=238,bg=254
-#ble-face -s menu_filter_fixed         bold
-#ble-face -s menu_filter_input         fg=16,bg=229
-#ble-face -s vbell                     reverse
-#ble-face -s vbell_erase               bg=252
-#ble-face -s vbell_flash               fg=green,reverse
-#ble-face -s prompt_status_line        fg=231,bg=240
 
 #ble-face -s syntax_default            none
 #ble-face -s syntax_command            fg=brown

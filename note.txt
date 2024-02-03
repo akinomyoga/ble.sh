@@ -7073,6 +7073,34 @@ bash_tips
 
 2024-02-04
 
+  * prompt: invalidate status line on the change of face prompt_status_line (motivated by Vosjedev) [#D2134]
+    https://github.com/akinomyoga/ble.sh/issues/400#issuecomment-1924495499
+
+    face prompt_status_line の設定がすぐに反映されない。
+    _ble_face__prompt_status_line も _ble_prompt_status の hash に加えるべきの
+    気がする → 加えたが反映されない。どうも trace_hash も更新を阻害している様
+    だ。展開後の文字列が全く同じなので、更新しなくても良いと判断している。g0 の
+    設定も trace 結果に影響を与えるのだから、g0 も trace_hash に加えるべきであ
+    る。加えたら動く様になった。
+
+    * wiki の bleopt prompt_status_line の項目で face prompt_status_line も言及
+      するべきではないか。と思ったが既に連続して並んでいるし、次の項目
+      prompt_status_align を言及せずに face だけ言及するのも変である。然しだか
+      らと言ってすぐ隣にある物に言及するのも変だし、今度はその他の項目から
+      bleopt prompt_status_line を言及しないのかという話になる。うーん。
+
+      取り敢えず seel also で参照してくおく事にした。実は将来的には全て関連する
+      物を cross link しても良いのかもしれない。或いは status line だけ一つの
+      subsection に分けるという手もなくはないが、そうするとその他の prompt につ
+      いても同じレベルの subsection を作らなければならなくなるが、大体一項目し
+      かないので都合が悪い。
+
+    2024-02-05 https://github.com/akinomyoga/ble.sh/issues/400#issuecomment-1925795331
+
+    blerc.template になかったから無いと思ったと言っている。一応 face 一覧の箇所
+    に載せてはいるが prompt_status_line の場所になければないと思うのは自然であ
+    る。そもそも face を一箇所にまとめて置く必要もないので移動する事にする。
+
   * util: add "ble/util/{time,timeval,mktime}" [#D2133]
 
     histdb の色々な機能を実装する上で時刻の関数を整理したい。また、今まで使って

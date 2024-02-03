@@ -31,6 +31,7 @@
 - prompt: show prompt ruler after markers (motivated by U-Labs) `#D2067` e4a90378
 - complete: suffix a space to non-filenames with `compopt -o filenames` (reported by Dominiquini) `#D2096` aef8927f
 - edit: distinguish space and delimiters in `cword` and `eword` `#D2121` 4f453710
+- prompt: update status line on face change (motivated by Vosjedev) `#D2134` xxxxxxxx
 
 ## Fixes
 
