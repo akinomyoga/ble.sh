@@ -136,6 +136,7 @@
 - decode: change Isolated ESC to U+07FC `#D2138` 82bfa665
 - edit: introduce `selection` keymap for more flexible shift selection `#D2139` xxxxxxxx
 - util: support `bleopt connect_tty` `#D2140` xxxxxxxx
+- main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

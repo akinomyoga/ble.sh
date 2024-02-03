@@ -1610,12 +1610,15 @@ function ble/base/clean-up-runtime-directory {
     if [[ $file == *.pid && -s $file ]]; then
       local run_pid IFS=
       ble/bash/read run_pid < "$file"
-      if [[ $run_pid && ! ${run_pid//[0-9]} ]]; then
+      if ble/string#match "$run_pid" '^-?[0-9]+$' && kill -0 "$run_pid" &>/dev/null; then
         if ((pid==$$)); then
           # 現セッションの背景プロセスの場合は遅延させる
-          kill -0 "$run_pid" &>/dev/null && bgpids[ibgpid++]=$run_pid
+          bgpids[ibgpid++]=$run_pid
         else
-          kill "$run_pid"
+          builtin kill -- "$run_pid" &>/dev/null
+          ble/util/msleep 50
+          builtin kill -0 "$run_pid" &>/dev/null &&
+            (ble/util/nohup "ble/util/conditional-sync '' '((1))' 100 progressive-weight:pid=$run_pid:no-wait-pid:timeout=3000:SIGKILL")
         fi
       fi
     fi
@@ -1623,15 +1626,12 @@ function ble/base/clean-up-runtime-directory {
     removed[iremoved++]=$file
   done
   ((iremoved)) && ble/bin/rm -rf "${removed[@]}" 2>/dev/null
-  ((ibgpid)) && (ble/util/nohup 'ble/bin/sleep 3; kill "${bgpids[@]}"')
+  ((ibgpid)) && (ble/util/nohup 'ble/bin/sleep 3; builtin kill -- "${bgpids[@]}" &>/dev/null')
 
   [[ $failglob ]] && shopt -s failglob
   [[ $noglob ]] && set -f
   return 0
 }
-
-# initialization time = 9ms (for 70 files)
-ble/base/clean-up-runtime-directory
 
 ##
 ## @var _ble_base_cache
@@ -2089,6 +2089,9 @@ ble/base/initialize-session
 #%x inc.r|@|lib/core-debug-def|
 #%x inc.r|@|contrib/integration/bash-preexec-def|
 
+# initialization time = 9ms (for 70 files)
+ble/function#try ble/util/idle.push ble/base/clean-up-runtime-directory
+
 bleopt -I
 #------------------------------------------------------------------------------
 #%if measure_load_time
@@ -2371,8 +2374,8 @@ function ble/base/unload {
   ble-edit/bind/clear-keymap-definition-loader
   ble/builtin/trap/finalize "$1"
   ble/util/import/finalize
-  ble/fd#finalize
   ble/base/clean-up-runtime-directory finalize
+  ble/fd#finalize
   builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   return 0
 } 0<&"$_ble_util_fd_tui_stdin" 1>&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
