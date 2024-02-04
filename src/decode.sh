@@ -2873,6 +2873,7 @@ function ble/decode/cmap/decode-chars {
   local _ble_decode_char2_reach_seq=
   local _ble_decode_char2_modifier=
   local _ble_decode_char2_modkcode=
+  local -a _ble_decode_char2_modseq=()
 
   # suppress unrelated triggers
   local _ble_decode_char__hook=
@@ -2893,9 +2894,12 @@ function ble/decode/cmap/decode-chars {
   local -a ble_decode_bind_keys=()
   local _ble_decode_key__hook=ble/decode/cmap/decode-chars.hook
   local ble_decode_char_sync=1 # ユーザ入力があっても中断しない
-  ble-decode-char "$@"
+  ble-decode-char "$@" "$_ble_decode_KCODE_IGNORE"
 
   keys=("${ble_decode_bind_keys[@]}")
+  if [[ $_ble_decode_char2_modkcode ]]; then
+    ble/array#push keys "$_ble_decode_char2_modkcode"
+  fi
 }
 
 #------------------------------------------------------------------------------

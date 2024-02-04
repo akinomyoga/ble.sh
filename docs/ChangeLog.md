@@ -60,6 +60,7 @@
 - syntax: save stat after command name for consistent completion-context `#D2126` 50d6f1bb
 - term: fix control sequences for hiding cursor (reported by n87) `#D2130` f9b9aea8
 - highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` xxxxxxxx
+- decode: consume incomplete keyseq in macros `#D2137` xxxxxxxx
 
 ## Compatibility
 
