@@ -7073,6 +7073,16 @@ bash_tips
 
 2024-02-04
 
+  * contrib: execmark が colorglass に対応していない [#D2136]
+
+    確認してみた所、これは元々 trace を使って一気に error と elapsed を処理して
+    いたのをやはり二行に分ける事にして、然しその時に error の方を直接出力する様
+    に変更したのが原因だった。
+
+    error の方は ansi ではなくて直接端末用の sgr を構築しようと思ったが、SGR 解
+    除等を使っている為面倒な事になる。trace はその辺りを全部やってくれていたの
+    で良かった。やはり error の方も一旦 trace にかける事にした。
+
   * make: make scan で contrib の中のファイルについて検出できていない? [#D2135]
 
     確認してみたら実は list-command の段階で contrib を除外していたのだった。除

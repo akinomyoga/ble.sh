@@ -99,6 +99,7 @@
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
 - contrib/bash-preexec: support the latest version of `bash-preexec` (reported by mcarans) `#D2128` 50af4d9c
+- contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` xxxxxxxx
 
 ## Documentation
 
