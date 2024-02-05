@@ -1417,6 +1417,10 @@ function ble/opts#has {
 function ble/opts#remove {
   ble/path#remove "$@"
 }
+## @fn ble/opts#append-unique opts value
+function ble/opts#append-unique {
+  [[ :${!1}: == *:"$2":* ]] || ble/util/set "$1" "${!1:+${!1}:}$2"
+}
 
 ## @fn ble/opts#extract-first-optarg opts key [default_value]
 function ble/opts#extract-first-optarg {
@@ -2786,6 +2790,38 @@ fi
 ##   指定したファイルディスクリプタが開いているかどうか判定します。
 function ble/fd#is-open { builtin : >&"$1"; } 2>/dev/null
 
+function ble/fd/.validate-shared-fds {
+  # We first check if the exported fds are still valid.  If an exported fd is
+  # invalidated by e.g. closing the other end point, the fd becomes invalid and
+  # another stream can be later assigned to the same number.  Using the
+  # re-assigned number as if it was the inherited fd causes problems.  Before
+  # performing any redirections, we here explicitly close the invalidated fds
+  # and unset the environment variables.
+  if [[ ${_ble_util_fdlist_cloexit-} ]]; then
+    local ret var
+    ble/string#split ret : "$_ble_util_fdlist_cloexit"
+    for var in "${ret[@]}"; do
+      if [[ $var ]] && ! ble/fd#is-open "${!var}"; then
+        builtin eval -- "exec ${!var}>&-"
+        builtin unset -v "$var"
+      fi
+    done
+  fi
+
+  # We also close all the fds marked as "cloexec" that were inherited by the
+  # parent ble.sh session.
+  if [[ ${_ble_util_fdvars_export-} ]]; then
+    local ret fd
+    ble/string#split ret : "$_ble_util_fdvars_export"
+    for fd in "${ret[@]}"; do
+      [[ $fd ]] && builtin eval -- "exec $fd>&-"
+    done
+  fi
+}
+ble/fd/.validate-shared-fds
+export _ble_util_fdvars_export=
+export _ble_util_fdlist_cloexit=
+
 _ble_util_openat_nextfd=
 function ble/fd#alloc/.nextfd {
   [[ $_ble_util_openat_nextfd ]] ||
@@ -2818,57 +2854,95 @@ function ble/fd#alloc/.nextfd {
 ##   @param[in] redirect
 ##     リダイレクトを指定します。
 ##   @param[in,opt] opts
-##     export
-##       指定した変数を export します。
-##     inherit
-##       既に fdvar が存在して有効な fd であれば何もしません。新しく fd を確保
-##       した場合には終了処理を登録しません。また上記の export を含みます。
-##     share
-##       >&NUMBER の形式のリダイレクトの場合に fd を複製する代わりに単に NUMBER
-##       を fdvar に代入します。
-##     overwrite
-##       既に fdvar が存在する場合その fd を上書きします。
-_ble_util_openat_fdlist=()
+##     A colon-separated list of the options.  These control how the new file
+##     descriptor should be allocated:
+##
+##     @opt inherit
+##       If the variable already contains a valid fd, we skip the allocation of
+##       the new fd.  "export" is implied.
+##     @opt inherit-tty
+##       If the variable already contains a valid fd connected to TTY, we skip
+##       the allocation of the new fd.  "export" is implied.
+##     @opt share
+##       When the redirection has the form ">&NUMBER", we assign the number to
+##       the variable instead of actually duplicating the fd.  This can be
+##       safely used only when the stream associated with the number will never
+##       be changed.
+##     @opt overwrite
+##       If the variable already contains a number, we perform the redirection
+##       on the number.
+##     @opt base
+##       When a new number needs to be assigned, we determine the number based
+##       on "bleopt openat_base" instead of using Bash's {fd}<> redirections.
+##
+##     These control how the file descriptors are closed on the session end or
+##     exported to the child sessions:
+##
+##     @opt export
+##       The specified variable is exported to the child processes.  This
+##       suppresses "cloexec". Also, "preserve" is implied.
+##     @opt preserve
+##       By default, ble.sh closes all the file descriptors allocated by
+##       ble/fd#alloc on the session end.  It also closes all the file
+##       descriptors allocated by the parent or previous ble.sh session.  This
+##       option supresses the auto closing of the file descriptor allocated by
+##       this call.
 function ble/fd#alloc {
-  local _ble_local_preserve=
-  if [[ :$3: == *:inherit:* ]]; then
-    [[ ${!1-} ]] &&
-      ble/fd#is-open "${!1}" &&
-      return 0
+  local _ble_local_opts=$3
+  if [[ :$_ble_local_opts: == *:inherit:* ]]; then
+    [[ ${!1-} ]] && ble/fd#is-open "${!1}" && return 0
+    _ble_local_opts=$_ble_local_opts:export
+  elif [[ :$_ble_local_opts: == *:inherit-tty:* ]]; then
+    [[ ${!1-} && -t ${!1-} ]] && return 0
+    _ble_local_opts=$_ble_local_opts:export
   fi
 
-  if [[ :$3: == *:share:* ]]; then
+  if [[ :$_ble_local_opts: == *:share:* ]]; then
     if ble/string#match "$2" '[<>]&['"$_ble_term_IFS"']*([0-9]+)['"$_ble_term_IFS"']*$'; then
       builtin eval -- "$1=${BASH_REMATCH[1]}"
       return 0
     fi
   fi
 
-  if [[ ${!1-} && :$3: == *:overwrite:* ]]; then
-    _ble_local_preserve=1
-    builtin eval "exec ${!1}$2"
-  elif ((_ble_bash>=40100)) && [[ :$3: != *:base:* ]]; then
+  if [[ ${!1-} && :$_ble_local_opts: == *:overwrite:* ]]; then
+    # When we overwrite or replace an existing fd stored in the variable, we do
+    # not register it for the auto-closing on unload.  This is because an
+    # existing code may want to use the fd, or we might have already register
+    # it for the auto-closing.
+    _ble_local_opts=$_ble_local_opts:preserve
+
+    builtin eval "exec ${!1}>&- ${!1}$2"
+  elif ((_ble_bash>=40100)) && [[ :$_ble_local_opts: != *:base:* ]]; then
     builtin eval "exec {$1}$2"
   else
     ble/fd#alloc/.nextfd "$1"
-    # Note: Bash 3.2/3.1 のバグを避けるため、
-    #   >&- を用いて一旦明示的に閉じる必要がある #D0857
+    # Note (#D0857): Bash 3.2/3.1 のバグを避けるため、>&- を用いて一旦明示的に
+    # 閉じる必要がある。10 以上の fd は、既に使われている場合、
+    # 15>... (disable=#D0857) 等とリダイレクトしても無視される。
     builtin eval "exec ${!1}>&- ${!1}$2"
   fi; local _ble_local_ext=$?
 
-  if [[ :$3: == *:inherit:* || :$3: == *:export:* ]]; then
-    export "$1"
-  elif [[ ! $_ble_local_preserve ]]; then
-    ble/array#push _ble_util_openat_fdlist "${!1}"
+  if ((_ble_local_ext==0)); then
+    if [[ :$_ble_local_opts: == *:export:* ]]; then
+      export "$1"
+      ble/opts#append-unique _ble_util_fdlist_cloexit "$1"
+    elif [[ :$_ble_local_opts: != *:preserve:* ]]; then
+      ble/opts#append-unique _ble_util_fdvars_export "${!1}"
+    fi
   fi
   return "$_ble_local_ext"
 }
 function ble/fd#finalize {
-  local fd
-  for fd in "${_ble_util_openat_fdlist[@]}"; do
-    builtin eval "exec $fd>&-"
+  local fds fd
+  ble/string#split fds : "$_ble_util_fdvars_export"
+  for fd in "${fds[@]}"; do
+    [[ $fd ]] || continue
+    builtin eval -- "exec $fd>&-"
   done
-  _ble_util_openat_fdlist=()
+  _ble_util_fdvars_export=
+}
+function ble/fd#is-cloexit {
+  [[ :$_ble_util_fdvars_export: == *:"$fd":* ]]
 }
 ## @fn ble/fd#close fd
 ##   指定した fd を閉じます。
@@ -2876,37 +2950,76 @@ function ble/fd#close {
   set -- "$(($1))"
   (($1>=3)) || return 1
   builtin eval "exec $1>&-"
-  ble/array#remove _ble_util_openat_fdlist "$1"
+  ble/opts#remove _ble_util_fdvars_export "$1"
   return 0
 }
 
-## @var _ble_util_fd_stdout
-## @var _ble_util_fd_stderr
+bleopt/declare -v connect_tty ''
+export bleopt_connect_tty
+
+## @var[export,opt] _ble_util_fd_tty_stdin
+## @var[export,opt] _ble_util_fd_tty_stdout
+## @var[export,opt] _ble_util_fd_tty_stderr
+## @var[export]     _ble_util_fd_cmd_stdin
+## @var[export]     _ble_util_fd_cmd_stdout
+## @var[export]     _ble_util_fd_cmd_stderr
+## @var             _ble_util_fd_tui_stdin
+## @var             _ble_util_fd_tui_stdout
+## @var             _ble_util_fd_tui_stderr
+##   We keep three different sets of standard streams. "tty" is to inherit and
+##   maintain the standard streams connected to TTY to child processes. "tui"
+##   is used for the interactive interface of ble.sh, and "cmd" is used for the
+##   user commands.
+function ble/fd/.initialize-standard-stream {
+  local var_tty=_ble_util_fd_tty_$1
+  local var_cmd=_ble_util_fd_cmd_$1
+  local var_tui=_ble_util_fd_tui_$1
+  local fd=${2::1} redir=${2:1}
+
+  # For "cmd" (the stream used by the user commands), we always use the initial
+  # standard stream on the startup.  We duplicate the fd to assign a new number
+  # for "cmd".  This is because "cmd" can be later independently redirected by
+  # the user commands using "exec".
+  ble/fd#alloc "$var_cmd" "$redir&$fd" base
+
+  if [[ -t $fd ]]; then
+    # When the specified fd is a TTY, we keep it in another fd and use it for
+    # everything.  We *reuse* the number recorded in "tty" if any, or
+    # otherwise, we assign a new number to "tty".  We duplicate the original fd
+    # to the number in "tty" and copy the number to "tui".
+    ble/fd#alloc "$var_tty" "$redir&$fd" base:overwrite:export
+    ble/util/set "$var_tui" "${!var_tty}"
+    return 0
+  fi
+
+  if [[ ! $_ble_init_command && $bleopt_connect_tty ]]; then
+    if ble/fd#alloc "$var_tty" "$redir /dev/tty" base:inherit-tty; then
+      # When connect_tty is enabled and we succeed to get the fd to TTY, we
+      # save the number in "tty" and "tui" and redirect the target fd to the
+      # duplicated one.
+      ble/util/set "$var_tui" "${!var_tty}"
+      builtin eval -- "exec $fd$redir&${!var_tui}"
+      return 0
+    else
+      # When the existing "tty" fd is invalid or we failed to connect to the
+      # TTY, we remove it.
+      builtin unset -v "$var_tty"
+    fi
+  fi
+
+  # When connect_tty is unavailable, we use the common streams as the user
+  # commands for ble.sh's interface.  This means that when a user command
+  # redirects any standard streams by "exec", ble.sh's interface is also
+  # affected.  We keep the existing value of "tty", which may be initialized by
+  # the parent session.
+  ble/util/set "$var_tui" "${!var_cmd}"
+}
+ble/fd/.initialize-standard-stream stdin  '0<'
+ble/fd/.initialize-standard-stream stdout '1>'
+ble/fd/.initialize-standard-stream stderr '2>'
+
 ## @var _ble_util_fd_null
 ## @var _ble_util_fd_zero
-##   既に定義されている場合は継承する
-if [[ $_ble_init_command ]]; then
-  # コマンドモードで実行している時には標準ストリームはそのまま使う。
-  _ble_util_fd_stdin=0
-  _ble_util_fd_stdout=1
-  _ble_util_fd_stderr=2
-else
-  if [[ -t 0 ]]; then
-    ble/fd#alloc _ble_util_fd_stdin '<&0' base:overwrite:export
-  else
-    ble/fd#alloc _ble_util_fd_stdin '< /dev/tty' base:inherit
-  fi
-  if [[ -t 1 ]]; then
-    ble/fd#alloc _ble_util_fd_stdout '>&1' base:overwrite:export
-  else
-    ble/fd#alloc _ble_util_fd_stdout '> /dev/tty' base:inherit
-  fi
-  if [[ -t 2 ]]; then
-    ble/fd#alloc _ble_util_fd_stderr '>&2' base:overwrite:export
-  else
-    ble/fd#alloc _ble_util_fd_stderr ">&$_ble_util_fd_stdout" base:inherit:share
-  fi
-fi
 ble/fd#alloc _ble_util_fd_null '<> /dev/null' base:inherit
 [[ -c /dev/zero ]] &&
   ble/fd#alloc _ble_util_fd_zero '< /dev/zero' base:inherit
@@ -2930,7 +3043,7 @@ function ble/fd#close-all-tty {
   for fd in "${fds[@]}"; do
     if ble/string#match "$fd" '^[0-9]+$' && [[ -t $fd ]]; then
       builtin eval "exec $fd>&- $fd>&$_ble_util_fd_null"
-      ble/array#remove _ble_util_openat_fdlist "$fd"
+      ble/opts#remove _ble_util_fdvars_export "$fd"
     fi
   done
 }
@@ -3534,7 +3647,7 @@ function ble/util/msleep/.use-read-timeout {
         _ble_util_msleep_fd=$_ble_util_msleep_tmp
         _ble_util_msleep_read='! ble/bash/read-timeout "$v" -u "$_ble_util_msleep_fd" v'
       elif [[ $open == exec ]]; then
-        ble/fd#alloc _ble_util_msleep_fd "$redir \"\$_ble_util_msleep_tmp\""
+        ble/fd#alloc _ble_util_msleep_fd "$redir \"\$_ble_util_msleep_tmp\"" base
         _ble_util_msleep_read='! ble/bash/read-timeout "$v" -u "$_ble_util_msleep_fd" v'
       else
         _ble_util_msleep_read='! ble/bash/read-timeout "$v" v '$redir' "$_ble_util_msleep_tmp"'
@@ -5606,7 +5719,7 @@ function ble/term:cygwin/initialize.hook {
   # Note: Cygwin console では何故か RI (ESC M) が
   #   1行スクロールアップとして実装されている。
   #   一方で CUU (CSI A) で上にスクロールできる。
-  printf '\eM\e[B' >&"$_ble_util_fd_stderr"
+  printf '\eM\e[B' >&"$_ble_util_fd_tui_stderr"
   _ble_term_ri=$'\e[A'
 
   # DLの修正
@@ -6038,7 +6151,7 @@ function ble/term/stty/TRAPEXIT {
     fi
     if [[ $tty1 && $tty1 == $tty2 ]]; then
       local sgr=$_ble_term_bold${_ble_term_setaf[4]} sgr0=$_ble_term_sgr0
-      ble/util/print "ble: Please run \`${sgr}stty sane$sgr0' to recover the correct TTY state." >&"${_ble_util_fd_stderr:-2}"
+      ble/util/print "ble: Please run \`${sgr}stty sane$sgr0' to recover the correct TTY state." >&"${_ble_util_fd_tui_stderr:-2}"
     fi
   fi
 }
@@ -6053,7 +6166,7 @@ function ble/term/update-winsize {
         shopt -s checkwinsize
         (:)
         shopt -u checkwinsize
-      fi 2>&"$_ble_util_fd_stderr"
+      fi 2>&"$_ble_util_fd_tui_stderr"
     }
     ble/term/update-winsize
     return 0
@@ -6123,7 +6236,7 @@ function ble/term/update-winsize {
   # (d) "bash -O checkwinsize -c ..." による実装 (bash-4.3 以上) (9094.595 usec/eval)
   function ble/term/update-winsize {
     local ret script='LINES= COLUMNS=; (:); [[ $COLUMNS && $LINES ]] && builtin echo "$LINES $COLUMNS"'
-    ble/util/assign-words ret '"$BASH" -O checkwinsize -c "$script"' 2>&"$_ble_util_fd_stderr"
+    ble/util/assign-words ret '"$BASH" -O checkwinsize -c "$script"' 2>&"$_ble_util_fd_tui_stderr"
     [[ ${ret[0]} ]] && LINES=${ret[0]}
     [[ ${ret[1]} ]] && COLUMNS=${ret[1]}
   }

@@ -241,7 +241,7 @@ function sub:scan/a.txt {
       \Z^[[:space:]]*#Zd
       \ZDEBUG_LEAKVARZd
       \Z\[\[ -t 4 && -t 5 ]]Zd
-      \Z^ble/fd#alloc .*Zd
+      \Z^if ble/fd#alloc .*Zd
       \Zbuiltin read -et 0.000001 dummy </dev/ttyZd
       g'
 }
@@ -268,8 +268,17 @@ function sub:scan/bash300bug {
 
 }
 
-function sub:scan/bash301bug-array-element-length {
+function sub:scan/bash301bug {
   echo "--- $FUNCNAME ---"
+  # bash-3.1, 3.2 では 10 以上の fd は既に使われている場合、リダイレクトに失敗
+  # する。
+  grc ' [0-9]{2}&?[<>]' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md --color |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      /#D0857/d
+      / [0-9]{2}[<>]&- [0-9]{2}&?[<>]/d
+      g'
+
+  # array-element-length
   # bash-3.1 で ${#arr[index]} を用いると、
   # 日本語の文字数が変になる。
   grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} --color |
@@ -631,7 +640,7 @@ function sub:scan {
   sub:scan/a.txt
   sub:scan/check-todo-mark
   sub:scan/bash300bug
-  sub:scan/bash301bug-array-element-length
+  sub:scan/bash301bug
   sub:scan/bash400bug
   sub:scan/bash401-histexpand-bgpid
   sub:scan/bash404-no-argument-return

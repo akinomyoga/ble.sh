@@ -27,7 +27,7 @@ function ble/function#get-source-and-lineno {
       declare -ft "$_ble_util_function_name"
       builtin trap 'ble/function#get-source-and-lineno/.extract && return 0' DEBUG
       "$_ble_util_function_name"
-    ) 11>&1 12>&2
+    ) 11>&- 11>&1 12>&- 12>&2
   fi
 }
 

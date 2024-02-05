@@ -16,8 +16,8 @@ function test1 {
   local fb=$prefix.b.pipe
   rm -f "$fa" "$fb"
   mkfifo "$fa" "$fb"
-  exec 36<> "$fa"
-  exec 37<> "$fb"
+  exec 36>&- 36<> "$fa"
+  exec 37>&- 37<> "$fb"
   _test1_a=36
   _test1_b=37
 

@@ -1280,6 +1280,17 @@ blehook/eval-after-load keymap_vi blerc/vim-load-hook
 ##-----------------------------------------------------------------------------
 ## Internal settings
 
+
+## When the option "connect_tty" is set to a non-empty value, ble.sh in the
+## child interactive Bash processes tries to connect to /dev/tty for its user
+## interface when the initial standard streams of Bash are redirected to
+## non-TTY streams.  The standard streams for the user command executions are
+## kept to be the original ones.  This does not affect the behavior of the
+## current session.
+
+#bleopt connect_tty=1
+
+
 ## This option sets the interval of checking new user inputs.  The value is
 ## evaluated as an arithmetic expression.  On the evaluation, a shell variable
 ## "ble_util_idle_elapsed" is provided for the time since the last user input

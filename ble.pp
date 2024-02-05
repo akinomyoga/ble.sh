@@ -197,10 +197,14 @@ if [[ ! $_ble_init_command ]]; then
     esac &&
       builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
     return 1 2>/dev/null || builtin exit 1
-  elif ! [[ -t 4 && -t 5 ]] && ! ((1)) >/dev/tty; then
-    builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
+  elif ! [[ -t 4 && -t 5 ]] && ! { [[ ${bleopt_connect_tty-} ]] && ((1)) >/dev/tty; } then
+    if [[ ${bleopt_connect_tty-} ]]; then
+      builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
+    else
+      builtin echo "ble.sh: stdout/stdin are not connected to TTY/PTY." >&3
+    fi
     return 1 2>/dev/null || builtin exit 1
-  elif [[ ${NRF_CONNECT_VSCODE-} && ! -t 2 ]]; then
+  elif [[ ${NRF_CONNECT_VSCODE-} && ! -t 3 ]]; then
     # Note #D2129: VS Code Extension "nRF Connect" tries to extract an
     # interactive setting by sending multiline commands to an interactive
     # session.  We may turn off accept_line_threshold for an nRF Connect

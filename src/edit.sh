@@ -851,7 +851,7 @@ function ble/prompt/unit#update/.update-dependencies {
       local ble_prompt_unit_processing=1
       "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}" # WA #D1570 checked
     elif ble/set#contains ble_prompt_unit_mark "$unit"; then
-      ble/util/print "ble/prompt: FATAL: detected cyclic dependency ($unit required by $ble_prompt_unit_parent)" >&"$_ble_util_fd_stderr"
+      ble/util/print "ble/prompt: FATAL: detected cyclic dependency ($unit required by $ble_prompt_unit_parent)" >&"$_ble_util_fd_tui_stderr"
       return 1
     fi
     local ble_prompt_unit_parent=$unit
@@ -1763,7 +1763,7 @@ if ble/is-function ble/util/idle.push; then
       builtin exit 0 &>/dev/null
       builtin exit 0 &>/dev/null' pre-flush
     return 1 # exit に失敗した時
-  } >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
+  } >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
   function ble/prompt/timeout/check {
     [[ $_ble_edit_lineno == "$_ble_prompt_timeout_lineno" ]] && return 0
     _ble_prompt_timeout_lineno=$_ble_edit_lineno
@@ -2769,7 +2769,7 @@ function ble-edit/attach/TRAPWINCH {
   ((_ble_edit_attached)) && [[ $_ble_term_state == internal ]] &&
     ! ble/edit/is-command-layout && ! ble/util/is-running-in-subshell ||
       return 0
-  ble/application/onwinch 2>&"$_ble_util_fd_stderr"
+  ble/application/onwinch 2>&"$_ble_util_fd_tui_stderr"
 }
 
 ## called by ble-edit/attach
@@ -6420,7 +6420,7 @@ function ble/exec/time/times.parse-time {
   local msc=$((10#0${BASH_REMATCH[3]#?}))
   ((ret=(min*60+sec)*1000+msc))
   return 0
-} 2>&"$_ble_util_fd_stderr"
+} 2>&"$_ble_util_fd_tui_stderr"
 function ble/exec/time/times.start {
   builtin times >| "$_ble_exec_time_TIMES"
 }
@@ -6511,7 +6511,7 @@ function ble/exec/time#start {
       local -a hist=()
       local i
       for i in {00..99}; do
-        { builtin eval -- "$script" 2>&"$_ble_util_fd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"
+        { builtin eval -- "$script" 2>&"$_ble_util_fd_tui_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"
         ble/exec/time#restore-TIMEFORMAT
         local beg=${_ble_exec_time_EPOCHREALTIME_beg//[!0-9]}
         local end=${_ble_exec_time_EPOCHREALTIME_end//[!0-9]}
@@ -6775,13 +6775,13 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
       local sep=${_ble_term_setaf[6]}:
       local lineno=${_ble_term_setaf[2]}${BLE_TRAP_LINENO[0]}
       local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${BLE_TRAP_FUNCNAME[0]}${1:+ $1}${_ble_term_setaf[6]}')'
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >&"$_ble_util_fd_stderr"
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >&"$_ble_util_fd_tui_stderr"
       _ble_builtin_trap_postproc[_ble_trap_sig]="{ return $_ble_edit_exec_TRAPDEBUG_INT || break; } &>/dev/null"
     elif ((depth==0)) && ! ble/string#match "$_ble_trap_bash_command" '^ble-edit/exec:gexec/\.'; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
       local source=${_ble_term_setaf[5]}global
       local sep=${_ble_term_setaf[6]}:
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $_ble_trap_bash_command" >&"$_ble_util_fd_stderr"
+      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $_ble_trap_bash_command" >&"$_ble_util_fd_tui_stderr"
       _ble_builtin_trap_postproc[_ble_trap_sig]="break &>/dev/null"
     fi
 
@@ -6888,7 +6888,7 @@ function ble-edit/exec:gexec/.TRAPINT {
     _ble_edit_exec_TRAPDEBUG_INT=$ext
     ble-edit/exec:gexec/.TRAPDEBUG/trap
   else
-    _ble_builtin_trap_postproc="{ return $ext || break; } 2>&$_ble_util_fd_stderr"
+    _ble_builtin_trap_postproc="{ return $ext || break; } 2>&$_ble_util_fd_tui_stderr"
   fi
 }
 function ble-edit/exec:gexec/.TRAPINT/reset {
@@ -6901,7 +6901,7 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
   LINENO=${_ble_edit_LINENO:-${BASH_LINENO[${#BASH_LINENO[@]}-1]}} \
     BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
     blehook/invoke "$@"
-} >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
+} >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
 
 function ble-edit/exec:gexec/.TRAPERR {
   if [[ $_ble_attached ]]; then
@@ -7020,7 +7020,7 @@ function ble-edit/exec:gexec/.prologue {
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit internal_PREEXEC "$_ble_edit_exec_BASH_COMMAND"
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$_ble_edit_exec_BASH_COMMAND"
-  ble-edit/exec/print-PS0 >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"
+  ble-edit/exec/print-PS0 >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
 
   ble/exec/time#start
   ble/base/restore-BASH_REMATCH
@@ -7057,6 +7057,16 @@ function ble-edit/exec:gexec/.save-lastarg {
   builtin eval -- "$_ble_bash_FUNCNEST_adjust"
   ble/base/adjust-bash-options
   ble/exec/time#adjust-TIMEFORMAT
+
+  # Note: We here update the file descriptors for the user commands.  The file
+  # descriptors may be changed by the `exec` buitlin.  Note that stdout (1) and
+  # stderr (2) are redirected to /dev/null to suppress "set -x" messages in
+  # this context.  Instead, we use 4 and 5 because stdout and stderr are copied
+  # to 4 and 5, respectively, by the caller.
+  ble/fd#alloc _ble_util_fd_cmd_stdin  '<&0' base:overwrite
+  ble/fd#alloc _ble_util_fd_cmd_stdout '>&4' base:overwrite
+  ble/fd#alloc _ble_util_fd_cmd_stderr '>&5' base:overwrite
+
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.epilogue {
@@ -7091,7 +7101,7 @@ function ble-edit/exec:gexec/.epilogue {
   ble-edit/exec/.adjust-eol
   _ble_edit_exec_inside_prologue=
 
-  ble/util/buffer.flush >&"$_ble_util_fd_stderr"
+  ble/util/buffer.flush >&"$_ble_util_fd_tui_stderr"
   ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC "$_ble_edit_exec_BASH_COMMAND"
 
   local msg=
@@ -7204,8 +7214,8 @@ function ble-edit/exec:gexec/.setup {
       # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
       #   る時に eval の最終引数になってしまう)。
-      buff[ibuff++]='{ ble-edit/exec:gexec/.save-lastarg; } &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
-      buff[ibuff++]='" 2>&"$_ble_util_fd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"'
+      buff[ibuff++]='{ ble-edit/exec:gexec/.save-lastarg; } 4>&1 5>&2 &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
+      buff[ibuff++]='" 0<&"$_ble_util_fd_cmd_stdin" 1>&"$_ble_util_fd_cmd_stdout" 2>&"$_ble_util_fd_cmd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"'
       buff[ibuff++]='{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null'
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
@@ -10392,7 +10402,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr
 
   function ble-edit/bind/stdout.on {
-    exec 2>&"$_ble_util_fd_stderr"
+    exec 2>&"$_ble_util_fd_tui_stderr"
   }
   function ble-edit/bind/stdout.off {
     ble/util/buffer.flush >&2

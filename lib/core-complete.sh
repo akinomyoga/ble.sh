@@ -1597,7 +1597,7 @@ function ble/complete/action/quote-insert.batch/proc {
   local fname_cands=$_ble_local_tmpfile
   ble/util/conditional-sync \
     'ble/complete/action/quote-insert.batch/awk < "$fname_cands"' \
-    '! ble/complete/check-cancel <&"$_ble_util_fd_stdin"' '' progressive-weight
+    '! ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin"' '' progressive-weight
   local ext=$?
 
   ble/util/assign/rmtmp
@@ -2693,7 +2693,7 @@ function ble/complete/util/eval-pathname-expansion {
       return 148
     fi
     builtin eval -- "$def"
-  fi 2>&"$_ble_util_fd_stderr"
+  fi 2>&"$_ble_util_fd_tui_stderr"
 
   ble/util/invoke-hook dtor
   return 0
@@ -2871,8 +2871,6 @@ function ble/complete/source:tilde {
 }
 
 function ble/complete/source:fd {
-  IFS=: builtin eval 'local fdlist=":${_ble_util_openat_fdlist[*]}:"'
-
   [[ $comp_filter_type == none ]] &&
     local comp_filter_type=head
 
@@ -2888,7 +2886,7 @@ function ble/complete/source:fd {
     for fd in "${ret[@]}"; do
       fd=${fd#/proc/self/fd/}
       [[ ${fd//[0-9]} ]] && continue
-      [[ $fdlist == *:"$fd":* ]] && continue
+      ble/fd#is-cloexit "$fd" && continue
       ble/complete/cand/yield "$action" "$fd"
       ble/complete/cand/yield "$action" "$fd-"
     done
@@ -3316,7 +3314,7 @@ function ble/complete/progcomp/compopt {
 function ble/complete/progcomp/.check-limits {
   # user-input check
   ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
-    [[ ! -t 0 ]] && ble/complete/check-cancel <&"$_ble_util_fd_stdin" &&
+    [[ ! -t 0 ]] && ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin" &&
     return 148
   ble/complete/source/test-limit "$((progcomp_read_count++))"
   return "$?"
@@ -3339,7 +3337,7 @@ function ble/complete/progcomp/.compgen-helper-func {
     if [[ " ${FUNCNAME[*]} " == *" ble/complete/progcomp/.compgen "* ]]; then
       local -a args; args=("$@")
       ble/util/conditional-sync "exec ssh \"\${args[@]}\"" \
-        "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall
+        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall
     else
       ble/function#push/call-top "$@"
     fi'
@@ -3348,7 +3346,7 @@ function ble/complete/progcomp/.compgen-helper-func {
   #   completion functions
   ble/function#push command_not_found_handle
 
-  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&"$_ble_util_fd_stdout" 2>&"$_ble_util_fd_stderr"; local ret=$?
+  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"; local ret=$?
 
   ble/function#pop command_not_found_handle
   ble/function#pop ssh
@@ -3640,7 +3638,7 @@ function ble/complete/progcomp/patch:bash-completion/_comp_cmd_make.advice {
       local -a make_args; make_args=("${ADVICE_WORDS[1]}" "$@")
       ble/util/conditional-sync \
         '\''command "${make_args[@]}"'\'' \
-        "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall'
+        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall'
     ble/function#advice/do
     ble/function#pop "${ADVICE_WORDS[1]}"
   else
@@ -3697,7 +3695,7 @@ function ble/complete/progcomp/patch:cobraV2/get_completion_results.invoke {
   local -a invoke_args; invoke_args=("$@")
   ble/util/conditional-sync \
     "${orig_words[0]} \"\${invoke_args[@]}\"" \
-    "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall
+    "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall
 }
 
 ## @fn ble/complete/progcomp/.compgen opts
@@ -3835,7 +3833,7 @@ function ble/complete/progcomp/.compgen {
     ble/function#advice around _dnf_commands_helper '
       ble/util/conditional-sync \
         ble/function#advice/do \
-        "! ble/complete/check-cancel <&$_ble_util_fd_stdin" 128 progressive-weight:killall' 2>/dev/null
+        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall' 2>/dev/null
 
     # WA for zoxide TAB
     if [[ $comp_func == _z || $comp_func == __zoxide_z_complete ]]; then
