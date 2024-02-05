@@ -53,6 +53,7 @@
 # 2020-04-29 cmap キャッシュ生成バグ修正に伴う更新 (2)
 # 2021-07-12 __detach__ 追加
 # 2024-01-21 _ble_decode_csimap_dict 追加に伴う更新
+# 2024-02-07 @ESC, @NUL コード変更に伴う更新
 
 function ble/init:cmap/bind-single-csi {
   ble-bind -k "ESC [ $1" "$2"

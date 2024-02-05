@@ -52,7 +52,7 @@ function ble/keymap:vi_test/check {
   local str_expect=$fin
   local str_result=$_ble_edit_str
 
-  ble/test --display-code="$title" ret="$ind_expect" stdout="$str_expect[EOF]" \
+  ble/test --depth=1 --display-code="$title" ret="$ind_expect" stdout="$str_expect[EOF]" \
            code:'ret=$ind_result; ble/util/put "$str_result[EOF]"'
   local ext=$?
 

@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 49
+ble/test/start-section 'bash' 61
 
 # case $word を quote する必要がある条件は?
 
@@ -298,6 +298,48 @@ ble/test/start-section 'bash' 49
     ble/test ret='1 2 3'
   fi
 
+  # BUG bash-3.0
+  #   IFS がデフォルト以外の時 declare -a arr2=("${arr1[@]}") (disbale=#D0525)
+  #   も正しく動かない。
+  a=(1 2 3)
+  IFS=x
+  declare -a a1=("${a[@]}") # disable=#D0525
+  a2=("${a[@]}") # disable=#D0525
+  IFS=$' \t\n'
+  if ((_ble_bash<30100)); then
+    ble/test code:'ret=$a1' ret=1x2x3
+    ble/test code:'ret=$a2' ret=1
+  else
+    ble/test code:'ret=$a1' ret=1
+    ble/test code:'ret=$a2' ret=1
+  fi
+
+  # BUG bash-3.0
+  #   IFS がデフォルト以外の時 declare -a arr2=($v) による split は動かない。代
+  #   わりに空白で分割される。
+  IFS=x
+  v=1x2x3
+  declare -a a1=($v)
+  a2=($v)
+  if ((_ble_bash<30100)); then
+    ble/test code:'ret=$a1' ret=1x2x3
+    ble/test code:'ret=$a2' ret=1
+  else
+    ble/test code:'ret=$a1' ret=1
+    ble/test code:'ret=$a2' ret=1
+  fi
+  v='1 2 3'
+  declare -a a1=($v)
+  a2=($v)
+  if ((_ble_bash<30100)); then
+    ble/test code:'ret=$a1' ret=1
+    ble/test code:'ret=$a2' ret='1 2 3'
+  else
+    ble/test code:'ret=$a1' ret='1 2 3'
+    ble/test code:'ret=$a2' ret='1 2 3'
+  fi
+  IFS=$' \t\n'
+
   # BUG bash-3.0 [Ref #D1570]
   #   * "${var[@]/xxx/yyy}" (#D1570) はスカラー変数に対して空の結果を生む。
   #     ${var[@]//xxx/yyy}, ${var[@]/%/yyy}, ${var[@]/#/yyy} (#D1570) について
@@ -378,7 +420,7 @@ ble/test/start-section 'bash' 49
 # Quirks
 (
   # (#D2123) In all the Bash versions 1.14..5.3, expand_aliases inside
-  # "compond-command &" are disabled in interactive sessions.
+  # "compound-command &" are disabled in interactive sessions.
   shopt -s expand_aliases
   alias e='ble/util/print hello'
   ble/test 'eval "e"' stdout=hello

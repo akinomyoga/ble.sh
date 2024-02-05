@@ -65,6 +65,7 @@
 - highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` f9072c40
 - decode: consume incomplete keyseq in macros `#D2137` 27e6309e
 - keymap/vi: fix conflicting binding to <kbd>C-RET</kbd> in `vi_imap` `#D2146` xxxxxxxx
+- decode: force updating cache for <kbd>@ESC</kbd> `#D2148` xxxxxxxx
 
 ## Compatibility
 
@@ -106,6 +107,7 @@
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
 - contrib/bash-preexec: support the latest version of `bash-preexec` (reported by mcarans) `#D2128` 50af4d9c
 - contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` 64cdcd01
+- histdb: suppress outputs from `PRAGMA quick_check;` `#D2147` xxxxxxxx
 
 ## Documentation
 
@@ -125,6 +127,7 @@
 - test(bash,util): fix tests in interactive session `#D2123` 06ad3a6c
 - test(vi): fix broken states after test `#D2123` 06ad3a6c
 - test(bash): fix test cases for history expansion `#D2131` 838b4652
+- test(bash): add tests for bash array bugs `#D2149` xxxxxxxx
 
 ## Internal changes
 
