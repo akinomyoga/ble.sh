@@ -182,8 +182,8 @@ function ble/init:bind/generate-binder {
         # ENCODING: UTF-8
         ble/init:bind/append-macro '\e' "$altdqs27"
       elif ((esc1B==3)); then
-        # ENCODING: UTF-8 (_ble_decode_IsolatedESC U+07FF)
-        ble/init:bind/append-macro '\e' '\xDF\xBF' # C-[
+        # ENCODING: UTF-8 (_ble_decode_IsolatedESC U+07FC)
+        ble/init:bind/append-macro '\e' '\xDF\xBC' # C-[
       fi
     else
       # Note: Bash-5.0 では \C-\\ で bind すると変な事になる #D1162 #D1078

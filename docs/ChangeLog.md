@@ -130,6 +130,7 @@
 - global(leakvar): fix variable leak `#D2114` d3e1232d
 - util: add `ble/util/{time,timeval,mktime}` `#D2133` xxxxxxxx
 - make(scan): apply builtin checks to `contrib` `#D2135` xxxxxxxx
+- decode: change Isolated ESC to U+07FC `#D2138` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

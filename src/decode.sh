@@ -106,8 +106,8 @@ _ble_decode_Macr=0x20000000
 _ble_decode_Flag3=0x10000000 # unused
 _ble_decode_FlagA=0x00200000 # unused
 
-_ble_decode_IsolatedESC=$((0x07FF))
-_ble_decode_EscapedNUL=$((0x07FE)) # charlog#encode で用いる
+_ble_decode_IsolatedESC=$((0x07FC))
+_ble_decode_EscapedNUL=$((0x07FB)) # charlog#encode で用いる
 _ble_decode_FunctionKeyBase=0x110000
 
 ## @fn ble/decode/mod2flag mod
@@ -756,10 +756,11 @@ ble/debug/leakvar#check $"leakvar" H0-begin
       # その場で標準入力を読み切る
       local char=${_ble_decode_input_buffer[buflen-1]}
       if ((_ble_bash<40000||char==0xC0||char==0xDF)); then
-        # Note: これらの文字は bind -s マクロの非終端文字。
-        # 現在マクロの処理中である可能性があるので標準入力から
-        # 読み取るとバイトの順序が変わる可能性がある。
-        # 従って読み取りは行わない。
+        # Note: これらの文字は bind -s マクロの非終端文字 (0xC0 for two-byte
+        # representations of C0 characters in the form \xC0\x??, 0xDF for
+        # Isolated ESC U+07FC represented as \xDF\xBC)。現在マクロの処理中であ
+        # る可能性があるので標準入力から読み取るとバイトの順序が変わる可能性が
+        # ある。従って読み取りは行わない。
         builtin eval -- "$_ble_decode_show_progress_hook"
       else
         while ble/util/is-stdin-ready; do
@@ -4424,7 +4425,7 @@ function ble/encoding:UTF-8/generate-binder { :; }
 # ##   lib/init-bind.sh の中から呼び出される。
 # function ble/encoding:UTF-8/generate-binder {
 #   ble/init:bind/bind-s '"\C-@":"\xC0\x80"'
-#   ble/init:bind/bind-s '"\e":"\xDF\xBF"' # isolated ESC (U+07FF)
+#   ble/init:bind/bind-s '"\e":"\xDF\xBC"' # isolated ESC (U+07FC)
 #   local i ret
 #   for i in {0..255}; do
 #     ble/decode/c2dqs "$i"
@@ -4481,7 +4482,7 @@ function ble/encoding:UTF-8/c2bc {
 ##   lib/init-bind.sh の中から呼び出される。
 function ble/encoding:C/generate-binder {
   ble/init:bind/bind-s '"\C-@":"\x9B\x80"'
-  ble/init:bind/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FF)
+  ble/init:bind/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FC) に後で変換
   local i ret
   for i in {0..255}; do
     ble/decode/c2dqs "$i"
@@ -4495,7 +4496,7 @@ function ble/encoding:C/generate-binder {
 ##   但し、bind の都合 (bashbug の回避) により以下の変換を行う。
 ##
 ##   \x9B\x80 (155 128) → C-@
-##   \x9B\x8B (155 139) → isolated ESC \u07FF (2047)
+##   \x9B\x8B (155 139) → isolated ESC U+07FC (2044)
 ##   \x9B\x9B (155 155) → ESC
 ##
 ##   実際にこの組み合わせの入力が来ると誤変換されるが、
@@ -4518,7 +4519,7 @@ function ble/encoding:C/decode {
       case $b in
       (155) A[i++]=27 # ESC
             continue ;;
-      (139) A[i++]=2047 # isolated ESC
+      (139) A[i++]=2044 # isolated ESC U+07FC
             continue ;;
       (128) A[i++]=0 # C-@
             continue ;;
