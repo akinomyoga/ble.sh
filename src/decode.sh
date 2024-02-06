@@ -2402,9 +2402,9 @@ function ble/decode/widget/suppress-widget {
 }
 
 ## @fn ble/decode/widget/redispatch-by-keys
-##   @var[in] KEYS
 ##   @var[out] _ble_decode_keylog_depth
 function ble/decode/widget/redispatch-by-keys {
+  ble/decode/widget/skip-lastwidget
   if ((_ble_decode_keylog_depth==1)); then
     # Note: 一旦 pop してから _ble_decode_keylog_depth=0
     #   で ble-decode-key を呼び出す事により再記録させる。
@@ -2415,6 +2415,13 @@ function ble/decode/widget/redispatch-by-keys {
   fi
   ble-decode-key "$@"
 }
+## @fn ble/decode/widget/redispatch
+##   @var[in] KEYS
+##   @var[out] _ble_decode_keylog_depth
+function ble/decode/widget/redispatch {
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+}
+
 function ble/decode/widget/skip-lastwidget {
   _ble_decode_widget_last=$LASTWIDGET
 }

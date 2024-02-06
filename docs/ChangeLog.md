@@ -31,7 +31,7 @@
 - prompt: show prompt ruler after markers (motivated by U-Labs) `#D2067` e4a90378
 - complete: suffix a space to non-filenames with `compopt -o filenames` (reported by Dominiquini) `#D2096` aef8927f
 - edit: distinguish space and delimiters in `cword` and `eword` `#D2121` 4f453710
-- prompt: update status line on face change (motivated by Vosjedev) `#D2134` xxxxxxxx
+- prompt: update status line on face change (motivated by Vosjedev) `#D2134` f3e7e386
 
 ## Fixes
 
@@ -59,8 +59,8 @@
 - decode: fix handling of @ESC in quoted-insert `#D2119` 0bbc3639
 - syntax: save stat after command name for consistent completion-context `#D2126` 50d6f1bb
 - term: fix control sequences for hiding cursor (reported by n87) `#D2130` f9b9aea8
-- highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` xxxxxxxx
-- decode: consume incomplete keyseq in macros `#D2137` xxxxxxxx
+- highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` f9072c40
+- decode: consume incomplete keyseq in macros `#D2137` 27e6309e
 
 ## Compatibility
 
@@ -100,7 +100,7 @@
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
 - contrib/bash-preexec: support the latest version of `bash-preexec` (reported by mcarans) `#D2128` 50af4d9c
-- contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` xxxxxxxx
+- contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` 64cdcd01
 
 ## Documentation
 
@@ -129,9 +129,10 @@
 - highlight: generalize `region` layer `#D2074` 449d92ca
 - keymap/vi: integrate vi tests into the test framework `#D2101` d16b8438
 - global(leakvar): fix variable leak `#D2114` d3e1232d
-- util: add `ble/util/{time,timeval,mktime}` `#D2133` xxxxxxxx
-- make(scan): apply builtin checks to `contrib` `#D2135` xxxxxxxx
-- decode: change Isolated ESC to U+07FC `#D2138` xxxxxxxx
+- util: add `ble/util/{time,timeval,mktime}` `#D2133` 34a886fe
+- make(scan): apply builtin checks to `contrib` `#D2135` 2f16d985
+- decode: change Isolated ESC to U+07FC `#D2138` 82bfa665
+- edit: introduce `selection` keymap for more flexible shift selection `#D2139` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

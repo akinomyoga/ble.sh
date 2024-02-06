@@ -8041,8 +8041,7 @@ function ble/widget/menu_complete/accept {
 }
 function ble/widget/menu_complete/exit-default {
   ble/widget/menu_complete/exit
-  ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+  ble/decode/widget/redispatch
 }
 
 function ble-decode/keymap:menu_complete/define {
@@ -8478,8 +8477,7 @@ function ble/widget/auto_complete/insert {
 }
 function ble/widget/auto_complete/cancel-default {
   ble/widget/auto_complete/cancel
-  ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+  ble/decode/widget/redispatch
 }
 
 ## @fn ble/widget/auto_complete/self-insert/.is-magic-space
@@ -8563,8 +8561,7 @@ function ble/widget/auto_complete/self-insert {
     return 0
   else
     ble/widget/auto_complete/cancel
-    ble/decode/widget/skip-lastwidget
-    ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+    ble/decode/widget/redispatch
   fi
 }
 
@@ -9467,8 +9464,7 @@ function ble/widget/dabbrev/exit {
 }
 function ble/widget/dabbrev/exit-default {
   ble/widget/dabbrev/exit
-  ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+  ble/decode/widget/redispatch
 }
 function ble/widget/dabbrev/accept-line {
   ble/widget/dabbrev/exit

@@ -116,7 +116,6 @@ function ble/widget/vi_imap/__default__ {
 
     local esc=27 # ESC
     # local esc=$((_ble_decode_Ctrl|0x5b)) # もしくは C-[
-    ble/decode/widget/skip-lastwidget
     ((flag&=~_ble_decode_Meta))
     ((flag==_ble_decode_Shft&&0x61<=code&&code<=0x7A&&(flag=0,code-=0x20)))
     ble/decode/widget/redispatch-by-keys "$esc" "$((flag|code))" "${KEYS[@]:1}"
@@ -139,7 +138,6 @@ function ble/widget/vi-command/decompose-meta {
   # メタ修飾付きの入力 M-key は ESC + key に分解する
   if ((flag&_ble_decode_Meta)); then
     local esc=$((_ble_decode_Ctrl|0x5b)) # C-[ (もしくは esc=27 ESC?)
-    ble/decode/widget/skip-lastwidget
     ((flag&=~_ble_decode_Meta))
     ((flag==_ble_decode_Shft&&0x61<=code&&code<=0x7A&&(flag=0,code-=0x20)))
     ble/decode/widget/redispatch-by-keys "$esc" "$((flag|code))" "${KEYS[@]:1}"
@@ -8180,6 +8178,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
 
   #----------------------------------------------------------------------------
   # from ble-decode/keymap:safe/bind-common
+  # from ble-decode/keymap:selection/bind-shift
 
   ble-bind -f 'M-C-m'     'newline'
   ble-bind -f 'M-RET'     'newline'
@@ -8190,8 +8189,8 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-Y'       'yank-pop backward'
   ble-bind -f 'M-\'       'delete-horizontal-space'
 
-  ble-bind -f 'M-right'   '@nomarked forward-sword'
-  ble-bind -f 'M-left'    '@nomarked backward-sword'
+  ble-bind -f 'M-right'   'forward-sword'
+  ble-bind -f 'M-left'    'backward-sword'
   ble-bind -f 'S-M-right' '@marked forward-sword'
   ble-bind -f 'S-M-left'  '@marked backward-sword'
   ble-bind -f 'M-d'       'kill-forward-cword'
@@ -8202,8 +8201,8 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-C-h'     'copy-backward-sword'
   ble-bind -f 'M-BS'      'copy-backward-sword'
 
-  ble-bind -f 'M-f'       '@nomarked forward-cword'
-  ble-bind -f 'M-b'       '@nomarked backward-cword'
+  ble-bind -f 'M-f'       'forward-cword'
+  ble-bind -f 'M-b'       'backward-cword'
   ble-bind -f 'M-F'       '@marked forward-cword'
   ble-bind -f 'M-B'       '@marked backward-cword'
   ble-bind -f 'M-S-f'     '@marked forward-cword'
@@ -8213,7 +8212,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-u'       'upcase-eword'
   ble-bind -f 'M-t'       'transpose-ewords'
 
-  ble-bind -f 'M-m'       '@nomarked non-space-beginning-of-line'
+  ble-bind -f 'M-m'       'non-space-beginning-of-line'
   ble-bind -f 'M-S-m'     '@marked non-space-beginning-of-line'
   ble-bind -f 'M-M'       '@marked non-space-beginning-of-line'
 

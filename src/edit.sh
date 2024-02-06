@@ -3766,7 +3766,6 @@ function ble/widget/do-lowercase-version {
   local flag=$((KEYS[n]&_ble_decode_MaskFlag))
   local char=$((KEYS[n]&_ble_decode_MaskChar))
   if ((65<=char&&char<=90)); then
-    ble/decode/widget/skip-lastwidget
     ble/decode/widget/redispatch-by-keys "$((flag|char+32))" "${KEYS[@]:1}"
   else
     return 125
@@ -4250,18 +4249,62 @@ function ble/widget/exchange-point-and-mark {
   local m=$_ble_edit_mark p=$_ble_edit_ind
   _ble_edit_ind=$m _ble_edit_mark=$p
 }
+
 function ble/widget/@marked {
-  if [[ $_ble_edit_mark_active != S ]]; then
-    _ble_edit_mark=$_ble_edit_ind
+  local index=$_ble_edit_ind
+  ble/decode/widget/dispatch "$@"
+  if ((_ble_edit_ind!=index)); then
+    _ble_edit_mark=$index
     _ble_edit_mark_active=S
+    ble/decode/keymap/push selection
   fi
-  ble/decode/widget/dispatch "$@"
 }
-function ble/widget/@nomarked {
-  if [[ $_ble_edit_mark_active == S ]]; then
-    _ble_edit_mark_active=
-  fi
-  ble/decode/widget/dispatch "$@"
+
+function ble/widget/selection/exit-default {
+  _ble_edit_mark_active=
+  ble/decode/keymap/pop
+  ble/decode/widget/redispatch
+}
+
+function ble-decode/keymap:selection/bind-shift {
+  local marked=${1:+$1 }
+
+  ble-decode/keymap:safe/.bind 'S-C-f'     "${marked}forward-char"
+  ble-decode/keymap:safe/.bind 'S-right'   "${marked}forward-char"
+  ble-decode/keymap:safe/.bind 'S-C-b'     "${marked}backward-char"
+  ble-decode/keymap:safe/.bind 'S-left'    "${marked}backward-char"
+
+  ble-decode/keymap:safe/.bind 'S-C-right' "${marked}forward-cword"
+  ble-decode/keymap:safe/.bind 'M-F'       "${marked}forward-cword"
+  ble-decode/keymap:safe/.bind 'M-S-f'     "${marked}forward-cword"
+  ble-decode/keymap:safe/.bind 'S-C-left'  "${marked}backward-cword"
+  ble-decode/keymap:safe/.bind 'M-B'       "${marked}backward-cword"
+  ble-decode/keymap:safe/.bind 'M-S-b'     "${marked}backward-cword"
+
+  ble-decode/keymap:safe/.bind 'M-S-right' "${marked}forward-sword"
+  ble-decode/keymap:safe/.bind 'M-S-left'  "${marked}backward-sword"
+
+  ble-decode/keymap:safe/.bind 'S-C-a'     "${marked}beginning-of-line"
+  ble-decode/keymap:safe/.bind 'S-home'    "${marked}beginning-of-line"
+  ble-decode/keymap:safe/.bind 'S-C-e'     "${marked}end-of-line"
+  ble-decode/keymap:safe/.bind 'S-end'     "${marked}end-of-line"
+
+  ble-decode/keymap:safe/.bind 'S-C-p'     "${marked}backward-line"
+  ble-decode/keymap:safe/.bind 'S-up'      "${marked}backward-line"
+  ble-decode/keymap:safe/.bind 'S-C-n'     "${marked}forward-line"
+  ble-decode/keymap:safe/.bind 'S-down'    "${marked}forward-line"
+
+  ble-decode/keymap:safe/.bind 'S-C-home'  "${marked}beginning-of-text"
+  ble-decode/keymap:safe/.bind 'S-C-end'   "${marked}end-of-text"
+
+  ble-decode/keymap:safe/.bind 'M-S-m'     "${marked}non-space-beginning-of-line"
+  ble-decode/keymap:safe/.bind 'M-M'       "${marked}non-space-beginning-of-line"
+}
+
+function ble-decode/keymap:selection/define {
+  ble-bind -f __default__ 'selection/exit-default'
+  ble-bind -f __line_limit__ nop
+  ble-decode/keymap:selection/bind-shift
 }
 
 ## @fn ble/widget/.process-range-argument P0 P1; p0 p1 len ?
@@ -4468,8 +4511,7 @@ function ble/widget/yankpop/cancel {
 }
 function ble/widget/yankpop/exit-default {
   ble/widget/yankpop/exit
-  ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+  ble/decode/widget/redispatch
 }
 function ble-decode/keymap:yankpop/define {
   ble-decode/keymap:safe/bind-arg yankpop/exit-default
@@ -4659,8 +4701,7 @@ function ble/widget/lastarg/cancel {
 }
 function ble/widget/lastarg/exit-default {
   ble/widget/lastarg/exit
-  ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+  ble/decode/widget/redispatch
 }
 function ble/highlight/layer:region/mark:insert/get-face {
   face=region_insert
@@ -5991,10 +6032,7 @@ function ble/widget/transpose-words.impl1 {
   fi
 
   ((b1>b2)) && local b1=$b2 e1=$e2 b2=$b1 e2=$e1
-  if ! ((b1<e1&&e1<=b2&&b2<e2)); then
-    ble/widget/.bell
-    return 1
-  fi
+  ((b1<e1&&e1<=b2&&b2<e2)) || return 1
 
   local word1=${_ble_edit_str:b1:e1-b1}
   local word2=${_ble_edit_str:b2:e2-b2}
@@ -8863,8 +8901,10 @@ function ble/widget/isearch/exit.impl {
 }
 function ble/widget/isearch/exit-with-region {
   ble/widget/isearch/exit.impl
-  [[ $_ble_edit_mark_active ]] &&
+  if [[ $_ble_edit_mark_active ]]; then
     _ble_edit_mark_active=S
+    ble/decode/keymap/push selection
+  fi
 }
 function ble/widget/isearch/exit {
   ble/widget/isearch/exit.impl
@@ -8891,8 +8931,7 @@ function ble/widget/isearch/cancel {
 }
 function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit-with-region
-  ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+  ble/decode/widget/redispatch
 }
 function ble/widget/isearch/accept-line {
   if ((${#_ble_util_fiberchain[@]})); then
@@ -9394,8 +9433,7 @@ function ble/widget/nsearch/exit {
 }
 function ble/widget/nsearch/exit-default {
   ble/widget/nsearch/.exit
-  ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
+  ble/decode/widget/redispatch
 }
 function ble/widget/nsearch/cancel {
   if ((${#_ble_util_fiberchain[@]})); then
@@ -9481,18 +9519,22 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-S-y'     'yank-pop backward'
   ble-decode/keymap:safe/.bind 'M-Y'       'yank-pop backward'
 
+  # CUA cut/copy/paste
+  ble-decode/keymap:safe/.bind 'S-delete'  'kill-region-or kill-backward-uword'
+  ble-decode/keymap:safe/.bind 'C-insert'  'copy-region-or copy-backward-uword'
+  ble-decode/keymap:safe/.bind 'S-insert'  'yank'
+
   # spaces
   ble-decode/keymap:safe/.bind 'M-\'       'delete-horizontal-space'
 
+  ble-decode/keymap:selection/bind-shift @marked
+
   # charwise operations
-  ble-decode/keymap:safe/.bind 'C-f'       '@nomarked forward-char'
-  ble-decode/keymap:safe/.bind 'C-b'       '@nomarked backward-char'
-  ble-decode/keymap:safe/.bind 'right'     '@nomarked forward-char'
-  ble-decode/keymap:safe/.bind 'left'      '@nomarked backward-char'
-  ble-decode/keymap:safe/.bind 'S-C-f'     '@marked forward-char'
-  ble-decode/keymap:safe/.bind 'S-C-b'     '@marked backward-char'
-  ble-decode/keymap:safe/.bind 'S-right'   '@marked forward-char'
-  ble-decode/keymap:safe/.bind 'S-left'    '@marked backward-char'
+  ble-decode/keymap:safe/.bind 'C-f'       'forward-char'
+  ble-decode/keymap:safe/.bind 'C-b'       'backward-char'
+  ble-decode/keymap:safe/.bind 'right'     'forward-char'
+  ble-decode/keymap:safe/.bind 'left'      'backward-char'
+
   ble-decode/keymap:safe/.bind 'C-d'       'delete-region-or delete-forward-char'
   ble-decode/keymap:safe/.bind 'delete'    'delete-region-or delete-forward-char'
   ble-decode/keymap:safe/.bind 'C-?'       'delete-region-or delete-backward-char'
@@ -9502,14 +9544,10 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'C-t'       'transpose-chars'
 
   # wordwise operations
-  ble-decode/keymap:safe/.bind 'C-right'   '@nomarked forward-cword'
-  ble-decode/keymap:safe/.bind 'C-left'    '@nomarked backward-cword'
-  ble-decode/keymap:safe/.bind 'M-right'   '@nomarked forward-sword'
-  ble-decode/keymap:safe/.bind 'M-left'    '@nomarked backward-sword'
-  ble-decode/keymap:safe/.bind 'S-C-right' '@marked forward-cword'
-  ble-decode/keymap:safe/.bind 'S-C-left'  '@marked backward-cword'
-  ble-decode/keymap:safe/.bind 'M-S-right' '@marked forward-sword'
-  ble-decode/keymap:safe/.bind 'M-S-left'  '@marked backward-sword'
+  ble-decode/keymap:safe/.bind 'C-right'   'forward-cword'
+  ble-decode/keymap:safe/.bind 'C-left'    'backward-cword'
+  ble-decode/keymap:safe/.bind 'M-right'   'forward-sword'
+  ble-decode/keymap:safe/.bind 'M-left'    'backward-sword'
   ble-decode/keymap:safe/.bind 'M-d'       'kill-forward-cword'
   ble-decode/keymap:safe/.bind 'M-h'       'kill-backward-cword'
   ble-decode/keymap:safe/.bind 'C-delete'  'delete-forward-cword'
@@ -9522,12 +9560,8 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-C-h'     'copy-backward-sword'
   ble-decode/keymap:safe/.bind 'M-BS'      'copy-backward-sword'
 
-  ble-decode/keymap:safe/.bind 'M-f'       '@nomarked forward-cword'
-  ble-decode/keymap:safe/.bind 'M-b'       '@nomarked backward-cword'
-  ble-decode/keymap:safe/.bind 'M-F'       '@marked forward-cword'
-  ble-decode/keymap:safe/.bind 'M-B'       '@marked backward-cword'
-  ble-decode/keymap:safe/.bind 'M-S-f'     '@marked forward-cword'
-  ble-decode/keymap:safe/.bind 'M-S-b'     '@marked backward-cword'
+  ble-decode/keymap:safe/.bind 'M-f'       'forward-cword'
+  ble-decode/keymap:safe/.bind 'M-b'       'backward-cword'
 
   ble-decode/keymap:safe/.bind 'M-c'       'capitalize-eword'
   ble-decode/keymap:safe/.bind 'M-l'       'downcase-eword'
@@ -9535,33 +9569,20 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-t'       'transpose-ewords'
 
   # linewise operations
-  ble-decode/keymap:safe/.bind 'C-a'       '@nomarked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'C-e'       '@nomarked end-of-line'
-  ble-decode/keymap:safe/.bind 'home'      '@nomarked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'end'       '@nomarked end-of-line'
-  ble-decode/keymap:safe/.bind 'S-C-a'     '@marked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'S-C-e'     '@marked end-of-line'
-  ble-decode/keymap:safe/.bind 'S-home'    '@marked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'S-end'     '@marked end-of-line'
-  ble-decode/keymap:safe/.bind 'M-m'       '@nomarked non-space-beginning-of-line'
-  ble-decode/keymap:safe/.bind 'M-S-m'     '@marked non-space-beginning-of-line'
-  ble-decode/keymap:safe/.bind 'M-M'       '@marked non-space-beginning-of-line'
-  ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line' # overwritten by bind-history
-  ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line' # overwritten by bind-history
-  ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line'  # overwritten by bind-history
-  ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line'  # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'C-a'       'beginning-of-line'
+  ble-decode/keymap:safe/.bind 'C-e'       'end-of-line'
+  ble-decode/keymap:safe/.bind 'home'      'beginning-of-line'
+  ble-decode/keymap:safe/.bind 'end'       'end-of-line'
+  ble-decode/keymap:safe/.bind 'M-m'       'non-space-beginning-of-line'
+  ble-decode/keymap:safe/.bind 'C-p'       'backward-line' # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'up'        'backward-line' # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'C-n'       'forward-line'  # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'down'      'forward-line'  # overwritten by bind-history
   ble-decode/keymap:safe/.bind 'C-k'       'kill-forward-line'
   ble-decode/keymap:safe/.bind 'C-u'       'kill-backward-line'
 
-  ble-decode/keymap:safe/.bind 'S-C-p'     '@marked backward-line'
-  ble-decode/keymap:safe/.bind 'S-up'      '@marked backward-line'
-  ble-decode/keymap:safe/.bind 'S-C-n'     '@marked forward-line'
-  ble-decode/keymap:safe/.bind 'S-down'    '@marked forward-line'
-
-  ble-decode/keymap:safe/.bind 'C-home'    '@nomarked beginning-of-text'
-  ble-decode/keymap:safe/.bind 'C-end'     '@nomarked end-of-text'
-  ble-decode/keymap:safe/.bind 'S-C-home'  '@marked beginning-of-text'
-  ble-decode/keymap:safe/.bind 'S-C-end'   '@marked end-of-text'
+  ble-decode/keymap:safe/.bind 'C-home'    'beginning-of-text'
+  ble-decode/keymap:safe/.bind 'C-end'     'end-of-text'
 
   # macros
   ble-decode/keymap:safe/.bind 'C-x ('     'start-keyboard-macro'
@@ -9580,10 +9601,10 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'M->'       'history-end'
   ble-decode/keymap:safe/.bind 'C-prior'   'history-beginning'
   ble-decode/keymap:safe/.bind 'C-next'    'history-end'
-  ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line history'
-  ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line history'
-  ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line history'
-  ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line history'
+  ble-decode/keymap:safe/.bind 'C-p'       'backward-line history'
+  ble-decode/keymap:safe/.bind 'up'        'backward-line history'
+  ble-decode/keymap:safe/.bind 'C-n'       'forward-line history'
+  ble-decode/keymap:safe/.bind 'down'      'forward-line history'
   ble-decode/keymap:safe/.bind 'prior'     'history-search-backward' # bash-5.2
   ble-decode/keymap:safe/.bind 'next'      'history-search-forward'  # bash-5.2
   ble-decode/keymap:safe/.bind 'C-x C-p'   'history-search-backward'

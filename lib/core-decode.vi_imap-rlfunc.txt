@@ -2,14 +2,14 @@ abort                             bell
 accept-line                       accept-single-line-or-newline
 alias-expand-line                 alias-expand-line
 arrow-key-prefix                  -
-backward-byte                     @nomarked backward-byte
-backward-char                     @nomarked backward-char
+backward-byte                     backward-byte
+backward-char                     backward-char
 backward-delete-char              vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char
 backward-kill-line                kill-backward-line
 backward-kill-word                kill-backward-cword
-backward-word                     @nomarked backward-sword
+backward-word                     backward-sword
 beginning-of-history              history-beginning
-beginning-of-line                 @nomarked beginning-of-line
+beginning-of-line                 beginning-of-line
 bracketed-paste-begin             vi_imap/bracketed-paste
 call-last-kbd-macro               call-keyboard-macro
 capitalize-word                   capitalize-eword
@@ -43,13 +43,13 @@ edit-and-execute-command          edit-and-execute-command
 emacs-editing-mode                emacs-editing-mode
 end-kbd-macro                     end-keyboard-macro
 end-of-history                    history-end
-end-of-line                       @nomarked end-of-line
+end-of-line                       end-of-line
 exchange-point-and-mark           exchange-point-and-mark
 forward-backward-delete-char      delete-forward-backward-char
-forward-byte                      @nomarked forward-byte
-forward-char                      @nomarked forward-char
+forward-byte                      forward-byte
+forward-char                      forward-char
 forward-search-history            history-isearch-forward
-forward-word                      @nomarked forward-uword
+forward-word                      forward-uword
 glob-complete-word                complete context=glob
 glob-expand-word                  complete context=glob:insert-all
 glob-list-expansions              complete context=glob:show_menu
@@ -70,7 +70,7 @@ magic-space                       magic-space
 menu-complete                     menu-complete
 menu-complete-backward            menu-complete backward
 next-history                      history-next
-next-screen-line                  @nomarked forward-graphical-line
+next-screen-line                  forward-graphical-line
 non-incremental-forward-search-history        history-nsearch-forward
 non-incremental-forward-search-history-again  history-nsearch-forward-again
 non-incremental-reverse-search-history        history-nsearch-backward
@@ -85,7 +85,7 @@ possible-hostname-completions     complete show_menu:context=hostname
 possible-username-completions     complete show_menu:context=username
 possible-variable-completions     complete show_menu:context=variable
 previous-history                  history-prev
-previous-screen-line              @nomarked backward-graphical-line
+previous-screen-line              backward-graphical-line
 print-last-kbd-macro              print-keyboard-macro
 quoted-insert                     vi_imap/quoted-insert
 re-read-init-file                 re-read-init-file
@@ -95,9 +95,9 @@ revert-line                       -
 self-insert                       self-insert
 set-mark                          set-mark
 shell-backward-kill-word          kill-backward-sword
-shell-backward-word               @nomarked backward-sword
+shell-backward-word               backward-sword
 shell-expand-line                 shell-expand-line
-shell-forward-word                @nomarked forward-sword
+shell-forward-word                forward-sword
 shell-kill-word                   kill-forward-sword
 shell-transpose-words             transpose-swords
 skip-csi-sequence                 <IGNORE>

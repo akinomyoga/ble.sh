@@ -7071,6 +7071,115 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-02-06
+
+  * edit: CUA copy/cut/paste keybindings 及び selection mode [#D2139]
+    https://en.wikipedia.org/wiki/IBM_Common_User_Access
+
+    どうも CUA copy/cut/paste は C-insert S-delete S-insert らしい。何れも現在
+    の ble.sh では使っていないので普通に含めても良い気がする。
+
+    然し一方で C-c C-x C-v という組み合わせもあって、これを CUA と勘違いしてい
+    る人もいる様だ。というか Emacs の cua mode なる物は C-c C-x C-v を CUA だと
+    思っている様だ。
+
+    https://superuser.com/questions/1293908/
+    https://ayatakesi.github.io/emacs/26.1/html/CUA-Bindings.html
+
+    これについては既存の機能と conflict するので例えば contrib/config の中で提
+    供する事も可能である。但し名前をどうするのかは謎。或いは中途半端に
+    contrib/config を作るのではなく新しい独立した keymap としてしまっても良い様
+    な気がする。nano editor mode とかいう名前でも良い。
+
+    * superuser.com のコメントで選択がある時にだけ C-c/C-x を有効にするという提
+      案がされている。
+
+      うーん。これでもやはり Emacs binding と矛盾する気がするが、その選択が
+      shift 移動によって行われた物である時に限って C-c / C-x で copy/cut をする
+      という様に変更しても良い気がする。同様に、 C-c/C-x で copy/cut した物が
+      kill ring にいる時に限って C-v を paste として扱うという具合にして良い気
+      がする。うーん。これは実装するべき。
+
+      と、思ったが C-x は prefix key なので binding は単純ではない。或いは S-移
+      動 を開始した時点で特別のモードに入るべきなのかもしれない。そちらの方が自
+      然ではないか? どうせ @nomarked をつけるぐらいならば @marked を集めた
+      keymap にすれば良い気がする。
+
+      x うーん。問題になるのは一度 cua copy をしてしまうとその他の kill の仕方
+        をしない限り C-v が quoted-insert に戻る事はないという事。
+
+      x また逆にユーザーが想定しない形で kill が発生して C-x した内容が失われて
+        しまうといった事態になる可能性もある。
+
+      x そもそも C-y と別に対して機能として違いがある訳では無い。コピーが M-w
+        である事と比べたらキーボードによらずに C-y は押しやすい方である。
+
+      うーん。やはり実装しても混乱の元の様な気がする。そもそも他にも物凄く色々
+      な振る舞いの違いがある。C-a で全選択、C-z/C-y で元に戻す・やり直す、など。
+      C-x C-c C-v だけ中途半端に似せても余り嬉しくない様な気がする。C-s で保存
+      とか。
+
+      これは別項目として残しておく事にする。
+
+    * 然し、shift で始めた選択を解除するべきなのに保持している箇所が沢山ありす
+      ぎる気がする。改めて widget を全部確認するべきではないか。本当は、もっと
+      別の枠組みを用意して、デフォルトで解除する様にして例外的に指定した widget
+      だけで keep する様にするべきなのかもしれないが。
+
+      例えば本体の keymap で @marked な物を使うと selection mode に入り、
+      selection mode に存在している widget で移動を行った時にのみモードがキープ
+      される。それ以外の操作については元の keymap に落ちてくると行った具合にす
+      る。そちらの方が自然の気がするし、ユーザーが細かに振る舞いを制御する事が
+      できる。
+
+      この実装に切り替える場合、@nomarked は nop にする? 或いは selection
+      keymap だったら pop をする様にする? うーん。nop に置き換えてしまって良い
+      気がする。
+
+      * reject: .stop-selection in forward-word, transpose-words,
+        transpose-chars, zap-to-char, etc. これらは今までの実装でちゃんと shift
+        selection 解除の事を考えていなかった。これの振る舞いを考える時に選択を
+        解除するかどうかという問題がある。
+
+        うーん。振る舞いの変化として、これまで選択の事を考えていなかった widget
+        で移動や編集が起こった時に選択解除が行われる様になる。これは意図的な変
+        更である。一方で失敗して移動や編集が行われなかった時にも選択解除が起こ
+        るのかどうかというのは非自明である。取り敢えず現在の実装方法だと失敗し
+        たと分かる時には既に解除が行われているので、常に解除するしかない。
+
+        失敗した時に解除されるのは考えてみれば自然な気もするが、もし失敗した時
+        には何も変化がない方が望ましいという場合にはどうするのか? と思ったが別
+        にその場合はユーザーが個別に selection keymap に binding を追加すれば良
+        いのでは?
+
+        うーん。というかそもそも @nomarked な keybinding の時には移動に失敗する
+        場合でも解除されていたのだから、解除されない振る舞いについて考える必要
+        はない。
+
+      ? reject: default の中で S- がついていたら自動的に上の keymap で処理して
+        からまた戻ってくる様にする可能性? → これはやり過ぎである。S-insert 等
+        の場合には S + insert に分解したら全く異なる意味になってしまうし、また、
+        単に @marked を実行しただけで本当に戻ってくる事ができるのかも非自明であ
+        る。
+
+      取り敢えず実装した。
+
+      * wiki を更新する必要がある。取り敢えず @marked に関係する既定の binding
+        は更新した。selection keymap を追加する必要があるだろうか。また、
+        C-insert S-delete S-insert 等について記述する。全部追加した。
+
+      * @nomarked は deprecated か何かに移動する → 移動した。
+
+    ----
+
+    2024-02-09 selection mode で変な選択が時々されると思っていたが
+    isearch/exit-with-region という widget があって、_ble_edit_mark_active=S を
+    設定して抜ける様になっている。これをキャンセルする物がなくなってしまったの
+    が問題か?
+
+    exit-with-region は exit-default から呼び出されている。exit-default は
+    __default__ で呼び出されている。分かった。確かに再現する。
+
 2024-02-05
 
   * decode: Isolated ESC のコードの変更 [#D2138]

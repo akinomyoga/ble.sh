@@ -67,10 +67,6 @@ blehook/declare info_reveal
 blehook/declare exec_register
 blehook/declare exec_end
 
-# deprecated function
-function ble-edit/prompt/print { ble/prompt/print "$@"; }
-function ble-edit/prompt/process-prompt-string { ble/prompt/process-prompt-string "$@"; }
-
 # keymap
 
 blehook/declare keymap_load
@@ -127,6 +123,17 @@ EOF
 }
 
 # Deprecated names
+
+# edit.sh
+
+function ble-edit/prompt/print { ble/prompt/print "$@"; }
+function ble-edit/prompt/process-prompt-string { ble/prompt/process-prompt-string "$@"; }
+
+# This is effetively nop after the selection keymap is introduced.
+function ble/widget/@nomarked { ble/decode/widget/dispatch "$@"; }
+
+# core-complete.sh
+
 function ble/complete/action/inherit-from {
   ble/complete/action#inherit-from "$@"
 }
