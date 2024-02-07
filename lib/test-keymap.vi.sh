@@ -59,7 +59,7 @@ function ble/keymap:vi_test/check {
   # restore states
   case $_ble_decode_keymap in
   (vi_[ixo]map)
-    ble-decode-key "$((_ble_decode_Ctrl|99))" &>/dev/null ;;
+    ble-decode-key "$((_ble_decode_Ctrl|99))" &>/dev/null ;; # C-c
   esac
 
   return "$ext"
@@ -124,6 +124,7 @@ function ble/keymap:vi_test/section:cw {
 
 # / ? n N
 function ble/keymap:vi_test/section:search {
+  local -a _ble_util_buffer=()
   ble/test/start-section "ble/keymap.vi/search" 10
   ble/keymap:vi_test/check A1a '@:ech@o abc abc abc' '/ a b c RET'       '@:echo @abc abc abc'
   ble/keymap:vi_test/check A1b '@:ech@o abc abc abc' '/ a b c RET n'     '@:echo abc @abc abc'

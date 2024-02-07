@@ -93,6 +93,7 @@
 - progcomp: fix the detection of the zoxide completion (reported by 6801318d8d) `#D2120` 29cd8f10
 - progcomp: pass original command path to completion functions (reported by REmerald) `#D2125` 0cf0383a
 - main: work around nRF Connect initialization (requested by liyafe1997) `#D2129` 2df3b109
+- main(unload): redirect streams to work around trap `EXIT` in bash-5.2 (reported by ragnarov) `#D2142` xxxxxxxx
 
 ## Contrib
 

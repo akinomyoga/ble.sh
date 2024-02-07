@@ -2375,7 +2375,7 @@ function ble/base/unload {
   ble/base/clean-up-runtime-directory finalize
   builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   return 0
-}
+} 0<&"$_ble_util_fd_tui_stdin" 1>&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
 
 ## @var _ble_base_attach_from_prompt
 ##   非空文字列の時、PROMPT_COMMAND 経由の ble-attach を現在試みている最中です。
