@@ -32,6 +32,7 @@
 - complete: suffix a space to non-filenames with `compopt -o filenames` (reported by Dominiquini) `#D2096` aef8927f
 - edit: distinguish space and delimiters in `cword` and `eword` `#D2121` 4f453710
 - prompt: update status line on face change (motivated by Vosjedev) `#D2134` f3e7e386
+- decode: specify the default keymap for the keymap load hooks `#D2141` xxxxxxxx
 
 ## Fixes
 

@@ -281,6 +281,6 @@ function ble-decode/keymap:emacs/initialize {
 }
 
 ble-decode/keymap:emacs/initialize
-blehook/invoke keymap_load
-blehook/invoke keymap_emacs_load
+ble_bind_keymap=emacs blehook/invoke keymap_load
+ble_bind_keymap=emacs blehook/invoke keymap_emacs_load
 return 0

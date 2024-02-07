@@ -8431,6 +8431,6 @@ function ble-decode/keymap:vi/initialize {
 }
 
 ble-decode/keymap:vi/initialize
-blehook/invoke keymap_load
-blehook/invoke keymap_vi_load
+ble_bind_keymap=vi_imap blehook/invoke keymap_load
+ble_bind_keymap=vi_imap blehook/invoke keymap_vi_load
 return 0

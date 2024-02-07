@@ -7071,6 +7071,22 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-02-07
+
+  * decode: keymap_*_load hooks に於ける既定の keymap [#D2141]
+
+    Wiki では keymap_*_load の中で ble-bind を実行する様に説明を書いているが、
+    実際の所 keymap のファイルが他の keymap の初期化時に呼び出される可能性もあ
+    る。その時に他の keymap に設定してしまうのではないか?
+
+    うーん。これは keymap_*_load hooks は特別に扱って既定の keymap 指定の上で
+    blehook を呼び出す様にするべきの気がする。
+
+    元々は keymap_*_load hooks は更に廃止して ble-import -C に移行する事を考え
+    ていたが、ble-import -C については単にロード時に呼び出すだけの機能であって
+    ble-bind の既定の keymap を指定する等の処理は別に挿入する必要がある。なので、
+    結局 keymap_*_load hook を使うべきの気がする。
+
 2024-02-06
 
   * main: bleopt connect_tty (fd/tty 管理再考) [#D2140]
