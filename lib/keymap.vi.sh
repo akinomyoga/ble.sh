@@ -8143,12 +8143,10 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f 'SP'        'magic-space'
   ble-bind -f '/'         'magic-slash'
 
-  # ble-bind -f  'C-c'      'discard-line'
   ble-bind -f 'C-j'       'accept-line'
   ble-bind -f 'C-RET'     'accept-line'
   ble-bind -f 'C-m'       'accept-single-line-or-newline'
   ble-bind -f 'RET'       'accept-single-line-or-newline'
-  # ble-bind -f  'C-o'      'accept-and-next'
   ble-bind -f 'C-x C-e'   'edit-and-execute-command'
   ble-bind -f 'C-g'       'bell'
   ble-bind -f 'C-x C-g'   'bell'
@@ -8173,7 +8171,6 @@ function ble-decode/keymap:vi_imap/define {
   # insert
   ble-bind -f 'C-q'       'vi_imap/quoted-insert'
   ble-bind -f 'C-v'       'vi_imap/quoted-insert'
-  ble-bind -f 'C-RET'     'newline'
   ble-bind -f paste_begin 'vi_imap/bracketed-paste'
 
   # charwise operations
@@ -8203,12 +8200,22 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f __before_widget__ vi_imap/__before_widget__
   ble-bind -f __line_limit__    __line_limit__
 
+  # Note: in the typical shells, [C-c] is used to discard the current line,
+  # which is implemented as 'discard-line'.  The choice of ble.sh is to make it
+  # consistent with vi, i.e. drop to the normal mode by [C-c]
   ble-bind -f 'ESC' 'vi_imap/normal-mode'
   ble-bind -f 'C-[' 'vi_imap/normal-mode'
   ble-bind -f 'C-c' 'vi_imap/normal-mode-without-insert-leave'
 
+  # Note: in the emacs editing mode, [C-o] has been 'accept-and-next', which
+  # might be more useful in the command line.
   ble-bind -f 'C-o' 'vi_imap/single-command-mode'
 
+  # Note: these bindings also conflict with the typical binding in
+  # shells. [C-l] can be replaced by ESC or C-c, so we drop it.  [C-k]
+  # conflicts with kill-forward-line.  The digraph inputting is only needed
+  # when the terminal does not support it, so I think we don't need to support
+  # it by default.
   # ble-bind -f 'C-l' vi_imap/normal-mode
   # ble-bind -f 'C-k' vi_imap/insert-digraph
 }

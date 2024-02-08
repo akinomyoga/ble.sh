@@ -64,6 +64,7 @@
 - term: fix control sequences for hiding cursor (reported by n87) `#D2130` f9b9aea8
 - highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` f9072c40
 - decode: consume incomplete keyseq in macros `#D2137` 27e6309e
+- keymap/vi: fix conflicting binding to <kbd>C-RET</kbd> in `vi_imap` `#D2146` xxxxxxxx
 
 ## Compatibility
 

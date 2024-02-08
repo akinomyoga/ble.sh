@@ -7077,6 +7077,16 @@ bash_tips
 
 2024-02-08
 
+  * keymap/vi: vi_imap C-RET が書き換わっている (reported by 10b14224cc) [#D2146]
+    https://github.com/akinomyoga/ble.sh/issues/405
+
+    返信した通り C-RET は最初は history-expand-line になっていたが、vi-mode の
+    実装時に newline に変えて、暫くしてから一括で色々の keymap で共通して
+    accept-line になる様に変えた。然し、後の並び替えで誤って newline に戻ってし
+    まったのではないかと思われる。accept-line に修正した。他にも後で事故りそう
+    な物がコメントになっていたが、それを消してコメントで conflict について記述
+    する事にした。
+
   * rlfunc: vi_nmap shell-expand-line に対応する [#D2145]
 
     fzf の様に闇雲に設定する枠組みが合っても不思議ではない。但し、fzf に関して
