@@ -2526,6 +2526,15 @@ function ble-edit/content/toggle-arg {
   fi
 }
 
+function ble/keymap:generic/get-arg {
+  if [[ $_ble_decode_keymap == vi_[noxs]map ]]; then
+    local ARG FLAG REG
+    ble/keymap:vi/get-arg "$1"
+    arg=$ARG
+  else
+    ble-edit/content/get-arg "$1"
+  fi
+}
 function ble/keymap:generic/clear-arg {
   if [[ $_ble_decode_keymap == vi_[noxs]map ]]; then
     ble/keymap:vi/clear-arg
@@ -4211,6 +4220,29 @@ function ble/widget/re-read-init-file {
 
   # Note: 読み終わった "後" に "既定" に戻す #D1038
   _ble_builtin_bind_keymap=
+}
+
+_ble_edit_rlfunc_history=()
+_ble_edit_rlfunc_history_edit=()
+_ble_edit_rlfunc_history_dirt=()
+_ble_edit_rlfunc_history_index=0
+function ble/widget/execute-named-command/accept.hook {
+  local ret rlfunc error=
+  ble/string#split-words rlfunc "$1"
+  if ble/util/assign error 'ble/builtin/bind/rlfunc2widget "$_ble_decode_keymap" "$rlfunc" 2>&1'; then
+    ble/decode/widget/dispatch "$ret" "${rlfunc[@]:1}"
+  elif [[ $error ]]; then
+    ble/widget/bell "$error"
+  fi
+}
+function ble/widget/execute-named-command {
+  ble/edit/async-read-mode 'ble/widget/execute-named-command/accept.hook'
+  _ble_edit_async_read_before_widget=ble/edit/async-read-mode/empty-cancel.hook
+  ble/history/set-prefix _ble_edit_rlfunc
+  _ble_edit_PS1='!'
+  # _ble_syntax_lang=bash
+  # _ble_highlight_layer_list=(plain region overwrite_mode)
+  return 147
 }
 
 # **** mark, kill, copy ****                                       @widget.mark
@@ -6052,13 +6084,7 @@ function ble/widget/transpose-words.impl {
 function ble/widget/filter-word.impl {
   local xword=$1 filter=$2
 
-  # determine arg
-  if [[ $_ble_decode_keymap == vi_nmap ]]; then
-    local ARG FLAG REG; ble/keymap:vi/get-arg 1
-    local arg=$ARG
-  else
-    local arg; ble-edit/content/get-arg 1
-  fi
+  local arg; ble/keymap:generic/get-arg 1
 
   local word_class word_set word_sep; ble/edit/word:"$xword"/setup
   local x=$_ble_edit_ind s t u
@@ -8177,6 +8203,14 @@ function ble/widget/history-end {
     ble/widget/.bell
   fi
 }
+function ble/widget/history-goto {
+  local arg; ble-edit/content-get-arg 1
+  if ((--arg<0)); then
+    ble/history/initialize
+    ((arg+=_ble_history_COUNT))
+  fi
+  ble-edit/history/goto "$arg"
+}
 
 ## @widget history-expand-line
 ##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
@@ -9603,6 +9637,8 @@ function ble-decode/keymap:safe/bind-common {
   # Note: vi では C-] は sabbrev-expand で上書きされる
   ble-decode/keymap:safe/.bind 'C-]'       'character-search-forward'
   ble-decode/keymap:safe/.bind 'M-C-]'     'character-search-backward'
+
+  ble-decode/keymap:safe/.bind 'M-x'       'execute-named-command'
 }
 function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'C-r'       'history-isearch-backward'
@@ -9787,16 +9823,33 @@ function ble/widget/vi-editing-mode {
 _ble_edit_read_accept=
 _ble_edit_read_result=
 function ble/widget/read/accept {
-  _ble_edit_read_accept=1
-  _ble_edit_read_result=$_ble_edit_str
-  # [[ $_ble_edit_read_result ]] &&
-  #   ble/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
-  ble/decode/keymap/pop
+  if [[ $_ble_edit_async_read_prefix ]]; then
+    local prefix=$_ble_edit_async_read_prefix
+    local hook=${prefix}_accept_hook; hook=${!hook}
+    ble/util/set "${prefix}_accept_hook" ''
+    ble/util/set "${prefix}_cancel_hook" ''
+    ble/util/set "${prefix}_before_widget" ''
+
+    local ret
+    ble/edit/async-read-mode/accept
+    [[ ! $hook ]] || "$hook" "$ret"
+  else
+    _ble_edit_read_accept=1
+    _ble_edit_read_result=$_ble_edit_str
+    # [[ $_ble_edit_read_result ]] &&
+    #   ble/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
+    ble/decode/keymap/pop
+  fi
 }
 function ble/widget/read/cancel {
-  local _ble_edit_line_disabled=1
-  ble/widget/read/accept
-  _ble_edit_read_accept=2
+  if [[ $_ble_edit_async_read_prefix ]]; then
+    local hook=${_ble_edit_async_read_prefix}_cancel_hook
+    ble/util/set "${_ble_edit_async_read_prefix}_accept_hook" "${!hook}"
+    ble/widget/read/accept
+  else
+    ble/widget/read/accept
+    _ble_edit_read_accept=2
+  fi
 }
 function ble/widget/read/delete-forward-char-or-cancel {
   if [[ $_ble_edit_str ]]; then
@@ -9816,6 +9869,12 @@ function ble/widget/read/__line_limit__.edit {
 function ble/widget/read/__line_limit__ {
   ble/widget/__line_limit__ read/__line_limit__.edit
 }
+function ble/widget/read/__before_widget__ {
+  if [[ $_ble_edit_async_read_prefix ]]; then
+    local hook=${_ble_edit_async_read_prefix}_before_widget
+    builtin eval -- "${!hook}"
+  fi
+}
 
 function ble-decode/keymap:read/define {
   local ble_bind_nometa=
@@ -9823,7 +9882,8 @@ function ble-decode/keymap:read/define {
   ble-decode/keymap:safe/bind-history
   # ble-decode/keymap:safe/bind-complete
 
-  ble-bind -f __line_limit__ read/__line_limit__
+  ble-bind -f __before_widget__ read/__before_widget__
+  ble-bind -f __line_limit__    read/__line_limit__
 
   ble-bind -f 'C-c' read/cancel
   ble-bind -f 'C-\' read/cancel
@@ -9955,6 +10015,12 @@ function ble/builtin/read/.loop {
   #   対策として failglob を外す。サブシェルの中なので影響はない筈。
   # ref #D1090
   shopt -u failglob
+
+  # Note: 外側で async-read の読み取りの途中の場合には read widgets の振る舞い
+  # が修正されている。この read の読み取りでは、外側の async-read の処理はした
+  # くないので、async-read mode を無効にする。これは subshell なので外側に影響
+  # はない。
+  _ble_edit_async_read_prefix=
 
   local ret; ble/canvas/panel/save-position; local pos0=$ret
   ble/builtin/read/.set-up-textarea || return 1
@@ -10143,6 +10209,128 @@ function ble/builtin/read {
   builtin eval -- "$__ble_command"
 }
 function read { ble/builtin/read "$@"; }
+
+## @fn ble/edit/async-read-mode hook prefix keymap
+##   Set up the async-read mode
+##   @param[in] hook
+##     The name of the callback function called when the edit is complete.
+##   @param[in,opt] prefix
+##   @param[in,opt] keymap
+##
+##   @var[out] _ble_edit_async_read_prefix
+##     This variable is set to PREFIX.
+##   @var[out] PREFIX_accept_hook
+##     This variable is set to HOOK.  After setting up the async-read mode by
+##     calling ble/edit/async-read-mode, one can dynamically overwrite the
+##     variable with a function name.
+##   @var[out] PREFIX_cancel_hook
+##     This variable is set to an empty string.  After setting up the
+##     async-read mode, one can set a callback that is called on the
+##     cancellation of the edit.
+##   @var[out] PREFIX_before_widget
+##     This variable is set to an empty string.  After setting up the
+##     async-read mode, one can set a callback that is called before processing
+##     any widget from the "read" keymap.  When the value
+##     "ble/edit/async-read-mode/empty-cancel.hook" is set, the input can be
+##     canceled by pressing [backspace].
+##   @var[in] PREFIX_history*
+##     These variables store the history of the accepted strings.  After
+##     setting up the async-read mode, one may change the history prefix by
+##     calling "ble/history/set-prefix <new-prefix>".
+##
+_ble_edit_async_read_prefix=
+_ble_edit_async_read_accept_hook=
+_ble_edit_async_read_cancel_hook=
+_ble_edit_async_read_before_widget=
+_ble_edit_async_read_history=()
+_ble_edit_async_read_history_edit=()
+_ble_edit_async_read_history_dirt=()
+_ble_edit_async_read_history_index=0
+function ble/edit/async-read-mode {
+  local hook=$1 prefix=${2:-_ble_edit_async_read} keymap=${3:-read}
+  ble/util/assert '[[ ! $_ble_edit_async_read_prefix ]]' 'it is already inside the async-read mode.' || return 1
+  _ble_edit_async_read_prefix=$prefix
+
+  # 既定の設定
+  ble/util/set "${prefix}_accept_hook" "$hook"
+  ble/util/set "${prefix}_cancel_hook" ''
+
+  # 記録
+  ble/textarea#render
+  ble/textarea#save-state "$prefix"
+  ble/util/save-vars "$prefix" _ble_canvas_panel_focus
+  ble/util/set "${prefix}_history_prefix" "$_ble_history_prefix"
+
+  # 初期化
+  ble/decode/keymap/push "$keymap"
+  ble/edit/info/default text ''
+
+  # set up textarea
+  _ble_textarea_panel=1
+  _ble_canvas_panel_focus=1
+  ble/textarea#invalidate
+
+  # set up edit/prompt
+  _ble_edit_PS1=$PS2
+  _ble_prompt_ps1_data=(0 '' '' 0 0 0 32 0 '' '')
+
+  # set up edit
+  # Note: ble/widget/.newline/clear-content の中で ble-edit/content/reset が呼
+  # び出され、更に _ble_edit_dirty_observer が呼び出さる。
+  # ble/keymap:vi/mark/shift-by-dirty-range が呼び出されないよう
+  # に、_ble_edit_dirty_observer=() より後である必要がある。
+  _ble_edit_dirty_observer=()
+  ble/widget/.newline/clear-content
+  _ble_edit_arg=
+
+  # set up edit/undo
+  ble-edit/undo/clear-all
+
+  # set up edit/history
+  ble/history/set-prefix "$prefix"
+
+  # set up syntax, highlight
+  _ble_syntax_lang=text
+  _ble_highlight_layer_list=(plain region overwrite_mode)
+  return 147
+}
+
+function ble/edit/async-read-mode/accept {
+  local prefix=$_ble_edit_async_read_prefix
+  ble/util/assert '[[ $prefix ]]' 'it is not inside the async-read mode.' || return 1
+
+  ret=$_ble_edit_str
+  [[ $ret ]] && ble/history/add "$ret" # Note: cancel でも登録する
+
+  # 消去
+  local -a DRAW_BUFF=()
+  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
+  ble/canvas/bflush.draw
+
+  # 復元
+  ble/textarea#restore-state "$prefix"
+  ble/textarea#clear-state "$prefix"
+  ble/util/restore-vars "$prefix" _ble_canvas_panel_focus
+  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
+  local old_history_prefix_ref=${prefix}_history_prefix
+  ble/history/set-prefix "${!old_history_prefix_ref}"
+
+  ble/decode/keymap/pop
+  _ble_edit_async_read_prefix=
+}
+
+## @arr _ble_edit_async_read_is_cancel_key
+##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
+_ble_edit_async_read_is_cancel_key[63|_ble_decode_Ctrl]=1  # C-?
+_ble_edit_async_read_is_cancel_key[127]=1                  # DEL
+_ble_edit_async_read_is_cancel_key[104|_ble_decode_Ctrl]=1 # C-h
+_ble_edit_async_read_is_cancel_key[8]=1                    # BS
+function ble/edit/async-read-mode/empty-cancel.hook {
+  if [[ ! $_ble_edit_str ]] && ((_ble_edit_async_read_is_cancel_key[KEYS[0]])); then
+    ble/widget/read/cancel
+    ble/decode/widget/suppress-widget
+  fi
+}
 
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help

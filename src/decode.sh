@@ -2381,7 +2381,7 @@ ble/debug/leakvar#check $"leakvar" "widget $WIDGET"
 }
 ## @fn ble/decode/widget/dispatch widget args...
 function ble/decode/widget/dispatch {
-  local ret; ble/string#quote-command "ble/widget/$@"
+  local ret; ble/string#quote-words "ble/widget/${1#ble/widget/}" "${@:2}"
   local WIDGET=$ret
   _ble_decode_widget_last=$WIDGET
 #%if leakvar

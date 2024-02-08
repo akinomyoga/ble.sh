@@ -7075,6 +7075,79 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-02-08
+
+  * rlfunc: vi_nmap shell-expand-line に対応する [#D2145]
+
+    fzf の様に闇雲に設定する枠組みが合っても不思議ではない。但し、fzf に関して
+    は一旦 emacs mode に移動してから shell-expand-line を実行するので関係ない。
+
+    或いはその場で vi_imap に移行するべき?
+
+    改めて vi_nmap-rlfunc.txt を見ていたら vi_nmap/@edit という物を使って
+    expand 系統の処理を行っている。なので、shell-expand-line もこれを使ったら良
+    い気がする → その様にした。
+
+    x fixed: 然し実際に試してみると eolfix がされていない気がする。他の widget
+      の実装を見た感じだとやはり必要である。呼び出す事にした。
+      mark/end-edit-area に関しては _ble_edit_ind は参照していない様なのでどち
+      らを先に呼び出しても関係ない。
+
+  * edit: 新しい widgets in 5.3 の対応 [#D2144]
+
+    * そう言えば chet が何か bindable function を呼び出す事ができる widget を追
+      加するとか言っていた気がする、と思って改めて調べてみたが、単に emacs の
+      M-x が実装されただけだった。M-x さえ残っていれば任意の widget を安全に呼
+      び出せるという意味では有用ではある様な気がするが、然し一方で元々の議論で
+      欲しかったスクリプトから widget を呼び出す機能の代替にはならない。
+
+      というか、bind '"\M-x<widget-name>\r": <widget-name>' をしておけば良いだ
+      けの気がするので新しく bindable function として実装する利点は余りないので
+      はないかという気がする。
+
+      追加の入力を受け付ける必要があるので interface を考えなければならない。
+      history-nsearch-backward の実装を確認してみた所、これは read -ep を内部で
+      呼び出していた。うーん。これだと bind のマクロの様な使い方をした時に動か
+      ない。常に標準入力からの読み取りを行おうとするので。代わりに vi の
+      async-command-mode の様にしなければならない。
+
+      * done: emacs でも使える async-command-mode を作る必要がある。その為には
+        keymapを定義しなければならない? と思ったが、実は read を流用すれば良い
+        のでは?
+
+        問題は hook を導入しなければならないという事?
+
+      * done: rlfunc を参照して翻訳する必要がある
+
+      * TODO: completion も対応したい。然しこれは別項目になる気がする。
+
+    * fetch-history
+
+      emacs, vi_imap には既定で用意した。nmap については元々 end-of-history 等
+      も対応していなかった。一方で history-next についてはちゃんと設定されてい
+      る。うーん。どういう事だろうか。history-next がちゃんと動くのであれば
+      end-of-history も動くのではないのか?
+
+      * reject: また既存 widget で ble/history/initialize を呼び出している物と
+        呼び出していない物がある。確認すると ble/history/goto の関数内の一番最
+        初で ble/history/initialize を呼び出しているので、呼び出す必要はない。
+        恐らく昔はなかったけれども後で追加されたという事だろう。取り敢えず無駄
+        に呼び出しているのは削除する事にした。
+
+        と思ったが、_ble_history_INDEX と _ble_history_COUNT を参照する為に必要
+        だったのだ。
+
+      ? fixed: vi-fetch-history は vi-command/history-end で良いのか? 実装を見
+        ると単に rl_fetch_history を呼び出している。修正した。
+
+      * done: adjust-command-mode を呼び出さないと single command mode で imap
+        に落ちないのではないか。失敗した時でもちゃんと呼び出される様に留意する。
+        →これは .bell を vi-command/bell に置き換えれば良かった。他のパスは全
+        て adjust-command-mode を呼び出している。
+
+      * done: keymap:vi/history-goto という名前にしているがこれは
+        vi-command/history-goto 等にするべきなのではないか?
+
 2024-02-07
 
   * main: 残留バックグラウンドプロセスの問題 [#D2143]

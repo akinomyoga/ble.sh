@@ -20,6 +20,8 @@
 - mandb: look for git subcommands (motivated by bkerin) `#D2112` 9641c3b8
 - edit (`display-shell-version`): show the `atuin` version `#D2124` 9045fb87
 - complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` 0c4b6772
+- edit: add widgets `execute-named-command` and `history-goto` `#D2144` xxxxxxxx
+- keymap/vi_nmap: support `shell-expand-line` `#D2145` xxxxxxxx
 
 ## Changes
 

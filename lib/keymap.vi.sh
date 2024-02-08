@@ -2031,7 +2031,7 @@ function ble/keymap:vi/operator:filter {
     ble/keymap:vi/async-commandline-mode 'ble/keymap:vi/operator:filter/.hook'
     _ble_edit_PS1='!'
     ble/history/set-prefix _ble_keymap_vi_filter
-    _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
+    _ble_keymap_vi_cmap_before_widget=ble/keymap:vi/commandline/empty-cancel.hook
     _ble_keymap_vi_cmap_cancel_hook=ble/keymap:vi/operator:filter/cancel.hook
     _ble_syntax_lang=bash
     _ble_highlight_layer_list=(plain syntax region overwrite_mode)
@@ -4059,6 +4059,53 @@ function ble/widget/vi-command/history-end {
   return 0
 }
 
+function ble/widget/vi-command/.history-goto {
+  local new_index=$1 old_index
+  ble/history/get-index -v old_index
+  if ((new_index==old_index)); then
+    ble/widget/vi-command/bell 'already on history !'"$new_index"
+    return 1
+  fi
+
+  ble-edit/history/goto "$new_index"
+
+  # adjust the cursor position
+  local ret
+  if ((new_index<old_index)); then
+    ble-edit/content/find-logical-eol 0 "$((nline-count-1))"
+    ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
+  else
+    ble-edit/content/find-logical-bol 0 "$count"
+  fi
+  _ble_edit_ind=$ret
+
+  ble/keymap:vi/adjust-command-mode
+}
+
+function ble/widget/vi-command/history-next {
+  if [[ $_ble_history_prefix || $_ble_history_load_done ]]; then
+    local ARG FLAG REG; ble/keymap:vi/get-arg 1
+    ble/history/initialize
+    ble/widget/vi-command/.history-goto "$((_ble_history_INDEX+ARG))"
+  else
+    ble/keymap:vi/clear-arg
+    ble/widget/vi-command/bell
+  fi
+}
+function ble/widget/vi-command/history-prev {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble/history/initialize
+  ble/widget/vi-command/.history-goto "$((_ble_history_INDEX-ARG))"
+}
+function ble/widget/vi-command/history-goto {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  if ((--ARG<0)); then
+    ble/history/initialize
+    ((ARG+=_ble_history_COUNT))
+  fi
+  ble/widget/vi-command/.history-goto "$ARG"
+}
+
 # nmap G
 #   Note: vim では G はこの振る舞いだが、blesh では実際には
 #     vi-command/history-end が束縛されるのでこれは既定では使われない。
@@ -5297,14 +5344,8 @@ _ble_keymap_vi_commandline_history_edit=()
 _ble_keymap_vi_commandline_history_dirt=()
 _ble_keymap_vi_commandline_history_index=0
 
-## @arr _ble_keymap_vi_cmap_is_cancel_key
-##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
-_ble_keymap_vi_cmap_is_cancel_key[63|_ble_decode_Ctrl]=1  # C-?
-_ble_keymap_vi_cmap_is_cancel_key[127]=1                  # DEL
-_ble_keymap_vi_cmap_is_cancel_key[104|_ble_decode_Ctrl]=1 # C-h
-_ble_keymap_vi_cmap_is_cancel_key[8]=1                    # BS
-function ble/keymap:vi/commandline/before-command.hook {
-  if [[ ! $_ble_edit_str ]] && ((_ble_keymap_vi_cmap_is_cancel_key[KEYS[0]])); then
+function ble/keymap:vi/commandline/empty-cancel.hook {
+  if [[ ! $_ble_edit_str ]] && ((_ble_edit_async_read_is_cancel_key[KEYS[0]])); then
     ble/widget/vi_cmap/cancel
     ble/decode/widget/suppress-widget
   fi
@@ -5315,7 +5356,7 @@ function ble/widget/vi-command/commandline {
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
   ble/history/set-prefix _ble_keymap_vi_commandline
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
+  _ble_keymap_vi_cmap_before_widget=ble/keymap:vi/commandline/empty-cancel.hook
   return 147
 }
 function ble/widget/vi-command/commandline.hook {
@@ -5647,14 +5688,14 @@ function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
   ble/history/set-prefix _ble_keymap_vi_search
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
+  _ble_keymap_vi_cmap_before_widget=ble/keymap:vi/commandline/empty-cancel.hook
   return 147
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
   ble/history/set-prefix _ble_keymap_vi_search
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
+  _ble_keymap_vi_cmap_before_widget=ble/keymap:vi/commandline/empty-cancel.hook
   return 147
 }
 function ble/widget/vi-command/search-repeat {
@@ -6418,6 +6459,18 @@ function ble/widget/vi-command/backward-byte {
   ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG"
 }
 
+function ble/widget/vi-command/execute-named-command/accept.hook {
+  ble/keymap:vi/update-mode-indicator
+  ble/widget/execute-named-command/accept.hook "$1"
+}
+function ble/widget/vi-command/execute-named-command {
+  ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/execute-named-command/accept.hook'
+  _ble_edit_PS1='!'
+  _ble_keymap_vi_cmap_before_widget=ble/edit/async-read-mode/empty-cancel.hook
+  ble/history/set-prefix _ble_edit_rlfunc
+  return 147
+}
+
 # rlfunc: capitalize-word, downcase-word, upcase-word
 #%define 2
 function ble/widget/vi_nmap/capitalize-XWORD { ble/widget/filter-word.impl XWORD ble/string#capitalize; }
@@ -6435,6 +6488,7 @@ function ble/widget/vi_nmap/@edit {
   ble/keymap:vi/repeat/record
   ble/keymap:vi/mark/start-edit-area
   ble/widget/"$@"
+  ble/keymap:vi/needs-eol-fix && ((_ble_edit_ind--))
   ble/keymap:vi/mark/end-edit-area
   ble/keymap:vi/adjust-command-mode
 }
@@ -8216,6 +8270,8 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-S-m'     '@marked non-space-beginning-of-line'
   ble-bind -f 'M-M'       '@marked non-space-beginning-of-line'
 
+  ble-bind -f 'M-x'       'vi-command/execute-named-command'
+
   #----------------------------------------------------------------------------
   # from ble-decode/keymap:safe/bind-history
 
@@ -8259,9 +8315,9 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
 #------------------------------------------------------------------------------
 # vi_cmap
 
-_ble_keymap_vi_cmap_hook=
+_ble_keymap_vi_cmap_accept_hook=
 _ble_keymap_vi_cmap_cancel_hook=
-_ble_keymap_vi_cmap_before_command=
+_ble_keymap_vi_cmap_before_widget=
 
 # 既定の cmap 履歴
 _ble_keymap_vi_cmap_history=()
@@ -8270,73 +8326,20 @@ _ble_keymap_vi_cmap_history_dirt=()
 _ble_keymap_vi_cmap_history_index=0
 
 function ble/keymap:vi/async-commandline-mode {
-  local hook=$1
-  _ble_keymap_vi_cmap_hook=$hook
-  _ble_keymap_vi_cmap_cancel_hook=
-  _ble_keymap_vi_cmap_before_command=
-
-  # 記録
-  ble/textarea#render
-  ble/textarea#save-state _ble_keymap_vi_cmap
-  ble/util/save-vars _ble_keymap_vi_cmap _ble_canvas_panel_focus
-  _ble_keymap_vi_cmap_history_prefix=$_ble_history_prefix
-
-  # 初期化
-  ble/decode/keymap/push vi_cmap
+  ble/edit/async-read-mode "$1" _ble_keymap_vi_cmap vi_cmap
   ble/keymap:vi/update-mode-indicator
-
-  # textarea
-  _ble_textarea_panel=1
-  _ble_canvas_panel_focus=1
-  ble/textarea#invalidate
-
-  # edit/prompt
-  _ble_edit_PS1=$PS2
-  _ble_prompt_ps1_data=(0 '' '' 0 0 0 32 0 '' '')
-
-  # edit
-  #   Note: ble/widget/.newline/clear-content の中で
-  #   ble-edit/content/reset が呼び出され、更に _ble_edit_dirty_observer が呼び出さる。
-  #   ble/keymap:vi/mark/shift-by-dirty-range が呼び出されないように、
-  #   _ble_edit_dirty_observer=() より後である必要がある。
-  _ble_edit_dirty_observer=()
-  ble/widget/.newline/clear-content
-  _ble_edit_arg=
-
-  # edit/undo
-  ble-edit/undo/clear-all
-
-  # edit/history
-  ble/history/set-prefix _ble_keymap_vi_cmap
-
-  # syntax, highlight
-  _ble_syntax_lang=text
-  _ble_highlight_layer_list=(plain region overwrite_mode)
+  return 147
 }
 
 function ble/widget/vi_cmap/accept {
-  local hook=${_ble_keymap_vi_cmap_hook}
-  _ble_keymap_vi_cmap_hook=
+  local hook=$_ble_keymap_vi_cmap_accept_hook
+  _ble_keymap_vi_cmap_accept_hook=
 
-  local result=$_ble_edit_str
-  [[ $result ]] && ble/history/add "$result" # Note: cancel でも登録する
-
-  # 消去
-  local -a DRAW_BUFF=()
-  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
-  ble/canvas/bflush.draw
-
-  # 復元
-  ble/textarea#restore-state _ble_keymap_vi_cmap
-  ble/textarea#clear-state _ble_keymap_vi_cmap
-  ble/util/restore-vars _ble_keymap_vi_cmap _ble_canvas_panel_focus
-  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
-  ble/history/set-prefix "$_ble_keymap_vi_cmap_history_prefix"
-
-  ble/decode/keymap/pop
+  local ret
+  ble/edit/async-read-mode/accept
   ble/keymap:vi/update-mode-indicator
   if [[ $hook ]]; then
-    builtin eval -- "$hook \"\$result\""
+    builtin eval -- "$hook \"\$ret\""
   else
     ble/keymap:vi/adjust-command-mode
     return 0
@@ -8344,13 +8347,13 @@ function ble/widget/vi_cmap/accept {
 }
 
 function ble/widget/vi_cmap/cancel {
-  _ble_keymap_vi_cmap_hook=$_ble_keymap_vi_cmap_cancel_hook
+  _ble_keymap_vi_cmap_accept_hook=$_ble_keymap_vi_cmap_cancel_hook
   ble/widget/vi_cmap/accept
 }
 
 function ble/widget/vi_cmap/__before_widget__ {
-  if [[ $_ble_keymap_vi_cmap_before_command ]]; then
-    builtin eval -- "$_ble_keymap_vi_cmap_before_command"
+  if [[ $_ble_keymap_vi_cmap_before_widget ]]; then
+    builtin eval -- "$_ble_keymap_vi_cmap_before_widget"
   fi
 }
 

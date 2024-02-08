@@ -252,7 +252,7 @@ function ble/lib/vim-surround.sh/surround {
 function ble/lib/vim-surround.sh/async-read-tagname {
   ble/keymap:vi/async-commandline-mode "$1"
   _ble_edit_PS1='<'
-  _ble_keymap_vi_cmap_before_command=ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook
+  _ble_keymap_vi_cmap_before_widget=ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook
   return 147
 }
 function ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook {

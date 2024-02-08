@@ -189,6 +189,18 @@ function ble/widget/emacs/bracketed-paste.proc {
   ble/keymap:emacs/update-mode-indicator
 }
 
+function ble/widget/emacs/execute-named-command/accept.hook {
+  ble/keymap:emacs/update-mode-indicator
+  ble/widget/execute-named-command/accept.hook "$1"
+}
+function ble/widget/emacs/execute-named-command {
+  ble/edit/async-read-mode 'ble/widget/emacs/execute-named-command/accept.hook'
+  _ble_edit_PS1='!'
+  _ble_edit_async_read_before_widget=ble/edit/async-read-mode/empty-cancel.hook
+  ble/history/set-prefix _ble_edit_rlfunc
+  return 147
+}
+
 #------------------------------------------------------------------------------
 
 function ble-decode/keymap:emacs/define {
@@ -259,6 +271,7 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 'C-q'       emacs/quoted-insert
   ble-bind -f 'C-v'       emacs/quoted-insert
   ble-bind -f paste_begin emacs/bracketed-paste
+  ble-bind -f 'M-x'       emacs/execute-named-command
 }
 
 function ble-decode/keymap:emacs/initialize {
