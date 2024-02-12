@@ -7075,6 +7075,29 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-02-13
+
+  * complete: docker completion bash が遅いかもしれない [#D2150]
+
+    docker completion は __docker_q という関数を持っているみたいなので、この関
+    数に advice を追加すれば良い気がする。既に _dnf_command_helper に対して似た
+    様な修正がされていたので、その修正を関数に分離して docker の場合にはそれを
+    適用する事にした。
+
+    ? 全ての補完で dnf の function#advice を実行するのは非効率である。先に
+      comp_func で条件判定するべきではないか?
+
+      元々 dnf の function#advice を追加した時の議論・文脈もチェックする必要が
+      ある。これは a4a779e4 (#D1807, GitHub#193) にて ssh に対する同様の修正と
+      一緒に追加された物である。dnf は元の報告に含まれてはいなかったが序でに修
+      正した物だ。
+
+      手元にある bash-completion の設定を参照して追加した物と思われる。_dnf は
+      bash-completion 本体で提供している物ではないので _comp_cmd_dnf の様な名前
+      変更の対象ではない。なので、実際に _dnf だけチェックすれば問題ない?
+
+    取り敢えずその様に実装する。
+
 2024-02-09
 
   * test: add tests for bash array bugs [#D2149]

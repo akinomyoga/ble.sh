@@ -3697,6 +3697,22 @@ function ble/complete/progcomp/patch:cobraV2/get_completion_results.invoke {
     "${orig_words[0]} \"\${invoke_args[@]}\"" \
     "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall
 }
+## @fn ble/complete/progcomp/call-by-conditional-sync funcname
+##   This modifies the function to process its task in a subshell using
+##   ble/util/conditional-sync so that the processing can be canceled on the
+##   user inputs.
+##
+##   @var[in] funcname
+##     A function to call through ble/util/conditional-sync.  This function is
+##     going to be run in subshell, so the change to the environment made by
+##     the function becomes unavailable after the modification.
+function ble/complete/progcomp/call-by-conditional-sync {
+  ble/is-function "$1" || return 0
+  ble/function#advice around "$1" '
+    ble/util/conditional-sync \
+      ble/function#advice/do \
+      "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall'
+}
 
 ## @fn ble/complete/progcomp/.compgen opts
 ##
@@ -3829,11 +3845,9 @@ function ble/complete/progcomp/.compgen {
       fi
     fi
 
-    # WA for dnf completion
-    ble/function#advice around _dnf_commands_helper '
-      ble/util/conditional-sync \
-        ble/function#advice/do \
-        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall' 2>/dev/null
+    # conditional-sync for dnf completion
+    [[ $comp_func == _dnf ]] &&
+      ble/complete/progcomp/call-by-conditional-sync _dnf_commands_helper
 
     # WA for zoxide TAB
     if [[ $comp_func == _z || $comp_func == __zoxide_z_complete ]]; then
@@ -3849,6 +3863,12 @@ function ble/complete/progcomp/.compgen {
 
     # https://github.com/akinomyoga/ble.sh/issues/292 (Android Debug Bridge)
     ble/function#suppress-stderr _adb 2>/dev/null
+
+    # conditional-sync for docker and docker-compose
+    [[ $comp_func == _docker ]] &&
+      ble/complete/progcomp/call-by-conditional-sync __docker_q
+    [[ $comp_func == _docker_compose ]] &&
+      ble/complete/progcomp/call-by-conditional-sync __docker_compose_q
   fi
   if [[ $comp_prog ]]; then
     # aws
