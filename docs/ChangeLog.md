@@ -118,7 +118,7 @@
 - main: fix issues in MSYS1 `#D2163` 5f0b88fb
 - util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192
 - decode: fix the problem that key always timed out in bash-3 `#D2173` 0b176e76
-- term: adjust the result of `tput clear` for `ncurses >= 6.1` (reported by cmndrsp0ck) `#D2185`
+- term: adjust the result of `tput clear` for `ncurses >= 6.1` (reported by cmndrsp0ck) `#D2185` 18dd51ab
 
 ## Contrib
 
@@ -156,6 +156,7 @@
 - test(vi): fix broken states after test `#D2123` 06ad3a6c
 - test(bash): fix test cases for history expansion `#D2131` 838b4652
 - test(bash): add tests for bash array bugs `#D2149` 6154d71c
+- github/workflows: update versions of GitHub Actions `#D2186` xxxxxxxx
 
 ## Internal changes
 

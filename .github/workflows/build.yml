@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Build
@@ -27,7 +27,7 @@ jobs:
           mv "ble-${{ env.blesh_build_pkgver }}" ble-nightly
           tar -cJf ble-nightly.tar.xz ble-nightly
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             ble-nightly.tar.xz

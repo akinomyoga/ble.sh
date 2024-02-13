@@ -1977,35 +1977,6 @@ bash_tips
     その場合には複雑な bash の振る舞いを調べて模倣する必要があるが其処までする
     意味があるかは分からない。
 
-2024-02-13
-
-  * github: Node.js 20 に伴う action 更新
-    https://github.com/akinomyoga/ble.sh/actions/runs/7883231577
-
-    テストを覗いたら警告が出ている。checkout@v3 については checkout@v4 にすれば
-    良いらしい。softprops/action-gh-release@v1 に関しては repository に見に行っ
-    たら丁度先週 node20 に切り替えた所らしく、しかし v1 は v1 のままである。
-
-    https://github.com/softprops/action-gh-release
-
-    Issue を見てみたら報告が3日前にある。
-
-    https://github.com/softprops/action-gh-release/issues/410
-
-    一方で merge された側では @v2 にしたらいいとか何とか maintainer が言ってい
-    て、然しそう言いながら何もしていない。それより寧ろ commit id を使う事を提案
-    している。謎だ。
-
-    https://github.com/softprops/action-gh-release/pull/406
-
-    と思ってまた読んだら、maintainer は softprops で、言っている人は自身が
-    action owner と言っている。何れにしてもよく分からないが、softprops が何かを
-    しなければならない。別に softprops は inactive という訳ではない。上記 #406
-    を merge したのは他ならぬ softprops である。
-
-    うーん。これは動きがあるまで暫くは凍結の気がする。返信があった。解雇されて
-    色々と大変だそうだ。これは待つことにする。
-
 2024-02-08
 
   * history: command history 以外についても永続的な履歴が欲しい気がする。state
@@ -7366,6 +7337,37 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-03-10
+
+  * 2024-02-13 github: Node.js 20 に伴う action 更新 [#D2186]
+    https://github.com/akinomyoga/ble.sh/actions/runs/7883231577
+
+    テストを覗いたら警告が出ている。checkout@v3 については checkout@v4 にすれば
+    良いらしい。softprops/action-gh-release@v1 に関しては repository に見に行っ
+    たら丁度先週 node20 に切り替えた所らしく、しかし v1 は v1 のままである。
+
+    https://github.com/softprops/action-gh-release
+
+    Issue を見てみたら報告が3日前にある。
+
+    https://github.com/softprops/action-gh-release/issues/410
+
+    一方で merge された側では @v2 にしたらいいとか何とか maintainer が言ってい
+    て、然しそう言いながら何もしていない。それより寧ろ commit id を使う事を提案
+    している。謎だ。
+
+    https://github.com/softprops/action-gh-release/pull/406
+
+    と思ってまた読んだら、maintainer は softprops で、言っている人は自身が
+    action owner と言っている。何れにしてもよく分からないが、softprops が何かを
+    しなければならない。別に softprops は inactive という訳ではない。上記 #406
+    を merge したのは他ならぬ softprops である。
+
+    うーん。これは動きがあるまで暫くは凍結の気がする。返信があった。解雇されて
+    色々と大変だそうだ。これは待つことにする。
+
+    どうやらタグがついた様なので GitHub Action を更新する事にする。
 
 2024-03-04
 
