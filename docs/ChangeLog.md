@@ -146,6 +146,7 @@
   - edit: fix a regression that delete-selection does not work (reported by cmndrsp0ck) `#D2151` xxxxxxxx
 - util: support `bleopt connect_tty` `#D2140` f940696f
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
+- history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

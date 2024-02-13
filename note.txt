@@ -7077,6 +7077,152 @@ bash_tips
 
 2024-02-13
 
+  * util: bash-5.2 EXIT で stty が効かなかったのは #D2142 で直ったかもしれない [#D2153]
+    https://github.com/akinomyoga/ble.sh/issues/401#issuecomment-1937040118
+    Refs. 2023-06-12, #D2142, #D2046
+
+    だとすると終了時の stty sane は要求しなくても良いかもしれない。
+
+    先ず前のバージョンで問題が再現する事を確認して、それから同じ設定で新しいバー
+    ジョンで sttys sane しなくても問題が再現しない事を確認できれば良い。
+
+    確認してみたが新しいバージョンでもやはり stty sane を実行しないと変な状態に
+    なる。
+
+    ? 或いは、EXIT trap の中で外側の端末を切断してしまえば問題は起こらないので
+      は? 但し、これは EXIT が途中で中断した時に致命的の気もする。
+
+      と思ったが unload は redirection を用いて外側にアクセスしているので切断し
+      ても関数を抜けたらまた繋がってしまう。或いは close-all-tty を用いて絨毯爆
+      撃するしかないのか?
+
+      取り敢えず実験的にじゅうたん爆撃してみる事にする。
+
+      if [[ $1 == EXIT ]]; then
+        ble/fd#close-all-tty
+      fi
+
+      試しに close-all-tty を終了時に呼び出す様にしてみたがそれでも TTY 状態は
+      壊れた儘であった。ls -la /proc/$$/fd >> ~/a.txt をして見たらちゃんと全て
+      /dev/null になっていて tty に繋がっている tty は一つもなくなっていたので
+      え、close-all-tty が呼び出されていなかったり失敗している訳では無い。
+
+      これが意味する事は何だろうか? Bash は現在の端末を /dev/tty から開き直して
+      tty の状態を調節している? 或いは、unload を呼び出すよりも前に stty を実行
+      している? と思ったがもしそうだったら変な状態にそもそもならない筈である。
+      或いは unload は stty に対して何もしていない可能性? 或いは、tty の状態は
+      もっと下層で制御・更新されている? でもだとしたら 5.1 までちゃんと stty 状
+      態が元に戻っていて 5.2 以降で動かなくなった理由が説明できない。
+
+      →うーん。どうもそもそも stty が呼び出されていなかった疑惑が浮上してきた。
+      unload の中で stty sane を実行したら問題は発生しなくなった。
+
+    ? 何故 stty sane に相当する操作が行われていないのか? うーん。やはり呼び出し
+      ている様な気がする。或いは、stty sane を実行する必要があるのだろうか?
+      stty echo では駄目?
+
+      そもそも問題のメッセージは ble/util/stty/TRAPEXIT の中から出力されている
+      ので、この関数が呼び出されていないという事はないだろう。
+
+      うーん。どうも stty sane をより上で実行しても効果がない様だ。つまり、何処
+      かの関数が ble/bin/stty を呼び出して変な設定に直している?
+
+      どうやら blehook/invoke unload を実行した後で stty sane しないと効果がな
+      い。つまり、blehook/unvoke unload が何か変な物を呼び出しているという事。
+      どうも blehook unload='ble/history:bash/unload.hook' の後で問題が発生する。
+
+      うーん。stty -a の出力を見ると実際に unload.hook の呼び出し前後で設定が変
+      わっている。やっている事は履歴項目の登録だけの筈なのに。行まで特定できた
+      がそれ以降が謎だ。
+
+      * builtin history | head の組み合わせだけで起こる。
+      * echo line | head では起こらないし、
+      * builtin history | cat でも起こらない。
+      * echo ' 1 iptables' | head -n 1 でも起こらない。謎に満ちている。
+      * head の代わりに sed '1{p;q;}' や ble/bin/sed -n 'n{p;q;}' でも発生する。
+      * builtin history を subshell の中で実行しても問題は発生する。
+      * builtin history | cat | head -1 でも発生する。
+      * 一旦ファイルに書き出してから読み取った場合には発生しない。
+
+      もしかして history が SIGPIPE を受け取ると発生するという事? うーん。これだ。
+
+      * builtin history | { head -1; cat >/dev/null; } だと問題ない。
+      * builtin history | ble/bin/sed -n 1p でも問題ない。
+
+      次の疑問はこの振る舞いを ble.sh の外で再現する事が可能かという事。
+
+      $ bash --norc
+      $ trap trapexit EXIT
+      $ trapexit() { builtin history | head -1; }
+      $ bind -x '"\C-t": exit'
+
+      うーん。これでは再現しない。
+
+      $ bash --norc
+      $ trap trapexit EXIT
+      $ trapexit() { builtin history | head -1; }
+      $ bind -x '"\C-t": exit'
+      $ bind -x '"\C-u": stty -echo'
+      $ [C-u][C-t]
+
+      これも再現しない。
+
+      $ bash --norc
+      $ trap trapexit EXIT
+      $ trapexit() { builtin history | head -1; }
+      $ bind -x '"\C-t": myexit'
+      $ myexit() { exit; }
+
+      これも再現しない。謎だ。history に対して複雑な事をしている必要があるのか?
+
+      * (ble/fd#close-all-tty; builtin history) | head -1 でも再現する。
+
+      実は C-d で終了した時にのみ問題が発生する。これが意味する所は stty -echo
+      の時に trap exit が発生してそこから終了した時に問題が発生する事という気が
+      する。
+
+    うーん。分からないので bash の中で振る舞いを見る必要がある? 取り敢えず本当
+    に builtin history が問題なのかという疑問もある。subshell が SIGPIPE を起こ
+    したら常にこれが発生するという可能性もなくはない。然し、それをちゃんと確か
+    める方法は謎。
+
+    * OK: { cat ~/a.txt; echo 1; } | head -1 でも再現した。
+
+    つまり builtin history の問題ではない。
+
+    * { cat ~/a.txt; echo 1; } | head -1 でも再現した。
+    * { echo 1; sleep 1; echo 1; } | head -1 でも再現する。
+    * { echo 1; sleep 1; } | head -1 では発生しない。
+    * { sleep 0.5; echo 1; } | true でも再現する。
+
+    うーん。SIGPIPE を subshell が受け取ると stty の状態を変えようとするという
+    事?
+
+    * ({ sleep 0.5; echo 1; } | true) の場合には問題は発生しない。
+
+    だとすると実際に何か変な事をしているのは PIPESTATUS を初期化している親シェ
+    ルの可能性が出てきた。特に、中で close-all-tty を実行しても問題が再現した事
+    から、パイプを作っている親のシェルが怪しい気がする。
+
+    $ grc '\bioctl\b.*TIOCSET' をするとそんなにたくさんの所で呼び出されている訳
+    では無い。なので、これら全てに DPF で引っ掛ければ引っかかるかもしれない。と
+    思ったが全く引っかからない。関係ない場所ですら引っかからない。何故? 捕まえ
+    た。set_tty_state を通過している。どうもコンパイラオプションで違ったりする?
+    或いは別の方法で端末の設定を変えているという事か。問題が起こらない時には
+    set_tty_state を通過しない事も確かめた。つまり、これが原因である。
+
+    jobs.c:3122 で呼び出している。うーん。コメントに色々書かれている。とにかく
+    interactive top-level で pipeline が失敗したら set_tty_state を呼び出すとい
+    う仕様らしい。そしてこのコードは少なくとも 27 年前から存在している。何故こ
+    れまで問題が発生しなかったのかは謎である。
+
+    これは結果として不可解な動作に見えたが、仕様として考えると理解できなくもな
+    い。なので bash の仕様として受け入れるしかない。回避方法としては最後まで読
+    み切るか、或いは subshell で評価するかである。
+
+    * OK 動いている。
+    * Cygwin でも問題ないか確認する必要がある気がする。
+
   * 2024-02-11 histdb: varleak している。ret が時刻を含んでいる [#D2152]
 
     norc では再現しない。histdb が怪しい。後でチェックする → 修正した。その他

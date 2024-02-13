@@ -116,14 +116,31 @@ else
   }
 fi
 
-if ((_ble_bash<40000)); then
+if ((_ble_bash>=50200)); then
   function ble/builtin/history/.get-min {
-    ble/util/assign-words min 'ble/builtin/history/.dump | head -1'
+    if ((${_ble_trap_sig-0}==_ble_builtin_trap_EXIT)); then
+      # Note (#D2153; cf #D2046, #D2118): In Bash >= 5.2, the final TTY state
+      # after EXIT is affected by `set_tty_state` by Bash.  When any process in
+      # the pipeline is terminated by a signal at the top-level interactive
+      # shell, Bash tries to adjust the TTY state by calling "set_tty_state".
+      # This even happens when the pipeline is canceled by SIGPIPE.  The
+      # following command produces SIGPIPE because "head -1" or "sed 1q"
+      # terminates prematurely.  To prevent Bash from changing the TTY state on
+      # exit, we intentionally run the following command in a subshell.
+      ble/string#split min "$(builtin history | ble/bin/sed -n '1{p;q;}')"
+    else
+      ble/util/assign-words min 'builtin history | ble/bin/sed -n "1{p;q;}"'
+    fi
+    min=${min/'*'}
+  }
+elif ((_ble_bash>=40000)); then
+  function ble/builtin/history/.get-min {
+    ble/util/assign-words min 'builtin history | ble/bin/sed -n "1{p;q;}"'
     min=${min/'*'}
   }
 else
   function ble/builtin/history/.get-min {
-    ble/util/assign-words min 'builtin history | head -1'
+    ble/util/assign-words min 'ble/builtin/history/.dump | ble/bin/sed -n "1{p;q;}"'
     min=${min/'*'}
   }
 fi
