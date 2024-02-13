@@ -4293,9 +4293,12 @@ function ble/widget/@marked {
 }
 
 function ble/widget/selection/exit-default {
-  _ble_edit_mark_active=
   ble/decode/keymap/pop
   ble/decode/widget/redispatch
+  local ext=$?
+  [[ $_ble_edit_mark_active == S && $_ble_decode_keymap != selection ]] &&
+    _ble_edit_mark_active=
+  return "$ext"
 }
 
 function ble-decode/keymap:selection/bind-shift {
