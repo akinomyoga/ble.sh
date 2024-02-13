@@ -35,6 +35,7 @@
 - edit: distinguish space and delimiters in `cword` and `eword` `#D2121` 4f453710
 - prompt: update status line on face change (motivated by Vosjedev) `#D2134` f3e7e386
 - decode: specify the default keymap for the keymap load hooks `#D2141` 4a34ccf2
+- progcomp(compopt): refactor the completion option `ble/{no- => }default` `#D2155` xxxxxxxx
 
 ## Fixes
 
@@ -66,6 +67,8 @@
 - decode: consume incomplete keyseq in macros `#D2137` 27e6309e
 - keymap/vi: fix conflicting binding to <kbd>C-RET</kbd> in `vi_imap` `#D2146` 0b18f3c2
 - decode: force updating cache for <kbd>@ESC</kbd> `#D2148` 6154d71c
+- progcomp(compopt): support printing the current options (reported by bkerin) `#D2154` xxxxxxxx
+- progcomp(compopt): properly handle dynamically specified `plusdirs` `#D2156` xxxxxxxx
 
 ## Compatibility
 
