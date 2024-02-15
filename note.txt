@@ -7077,6 +7077,11 @@ bash_tips
 
 2024-02-16
 
+  * util: ble/util/time が bash 4.2 未満で値を返していない [#D2161]
+
+    bash-4.1 以下で histdb の sqlite3 文法エラーが出ると思ったら、ble/util/time
+    が何も値を返していなかった。修正した。
+
   * edit: BLE_COMMAND_ID が 2 から始まっている [#D2160]
 
     何故? 中で BLE_COMMAND_ID を参照しても同様。command id は ++_ble_edit_CMD

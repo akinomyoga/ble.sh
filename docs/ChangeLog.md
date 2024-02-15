@@ -145,6 +145,7 @@
 - global(leakvar): fix variable leak `#D2114` d3e1232d
 - util: add `ble/util/{time,timeval,mktime}` `#D2133` 34a886fe
   - histdb: fix variable leak of `ret` `#D2152` xxxxxxxx
+  - util: fix `ble/util/time` in `bash < 4.2` `#D2161` xxxxxxxx
 - make(scan): apply builtin checks to `contrib` `#D2135` 2f16d985
 - decode: change Isolated ESC to U+07FC `#D2138` 82bfa665
 - edit: introduce `selection` keymap for more flexible shift selection `#D2139` 2cac11ad

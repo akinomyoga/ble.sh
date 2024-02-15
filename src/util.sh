@@ -3775,7 +3775,7 @@ else
     if ((_ble_bash<40200)) && ble/string#match "${SECONDS-}" '^[0-9]+$'; then
       builtin readonly SECONDS
       _ble_util_time_base=$((ret-SECONDS))
-      function ble/util/time { ((_ble_util_time_base+SECONDS)); }
+      function ble/util/time { ((ret=_ble_util_time_base+SECONDS)); }
     fi
   }
   function ble/util/timeval { ble/util/time; ((ret*=1000000)); }
