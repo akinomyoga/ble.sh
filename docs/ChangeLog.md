@@ -149,6 +149,8 @@
 - edit: introduce `selection` keymap for more flexible shift selection `#D2139` 2cac11ad
   - edit: fix a regression that delete-selection does not work (reported by cmndrsp0ck) `#D2151` xxxxxxxx
 - util: support `bleopt connect_tty` `#D2140` f940696f
+  - util: support `ble/fd#add-cloexec` and add `O_CLOEXEC` by default `#D2158` xxxxxxxx
+  - util: fix error of bad file descriptors (reported by ragnarov) `#D2159` xxxxxxxx
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` xxxxxxxx
 

@@ -6432,7 +6432,10 @@ function ble/exec/time#restore-TIMEFORMAT {
     builtin unset -v 'TIMEFORMAT[0]'
   fi
   local tot usr sys dummy
-  IFS=' ' ble/bash/read tot usr sys dummy < "$_ble_exec_time_TIMEFILE"
+  while IFS=' ' ble/bash/read tot usr sys dummy; do
+    # redirection error があるとエラーメッセージが混入する。
+    ble/string#match "$tot" '^[0-9.ms]+$' && break
+  done < "$_ble_exec_time_TIMEFILE"
   ((_ble_exec_time_tot=10#0${tot//[!0-9]}))
   ((_ble_exec_time_usr=10#0${usr//[!0-9]}))
   ((_ble_exec_time_sys=10#0${sys//[!0-9]}))
@@ -7095,6 +7098,9 @@ function ble-edit/exec:gexec/.save-lastarg {
   ble/fd#alloc _ble_util_fd_cmd_stdin  '<&0' base:overwrite
   ble/fd#alloc _ble_util_fd_cmd_stdout '>&4' base:overwrite
   ble/fd#alloc _ble_util_fd_cmd_stderr '>&5' base:overwrite
+  ble/fd#add-cloexec "$_ble_util_fd_cmd_stdin"
+  ble/fd#add-cloexec "$_ble_util_fd_cmd_stdout"
+  ble/fd#add-cloexec "$_ble_util_fd_cmd_stderr"
 
   return "$_ble_edit_exec_lastexit"
 }

@@ -468,6 +468,7 @@ function sub:scan/word-splitting-number {
       \Z \$\{\#[_a-zA-Z0-9]+\[@\]\} -gt 0 \]\]Zd
       \Zcase \$\? inZd
       \Zcase \$\(\(.*\)\) inZd
+      \Z#D1835Zd
       g'
 }
 

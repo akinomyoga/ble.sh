@@ -1286,9 +1286,12 @@ blehook/eval-after-load keymap_vi blerc/vim-load-hook
 ## interface when the initial standard streams of Bash are redirected to
 ## non-TTY streams.  The standard streams for the user command executions are
 ## kept to be the original ones.  This does not affect the behavior of the
-## current session.
+## current session.  If it is set to the value "inherit", ble.sh tries to
+## export the TTY for the child ble.sh sessions.  This might cause an issue in
+## non-closing terminal window when a background process starts in the session.
+## The default value is "1".
 
-#bleopt connect_tty=1
+#bleopt connect_tty=
 
 
 ## This option sets the interval of checking new user inputs.  The value is
