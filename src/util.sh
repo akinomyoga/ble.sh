@@ -2197,7 +2197,7 @@ function ble/util/readarray {
 
 ## @fn ble/util/assign var command
 ##   var=$(command) の高速な代替です。command はサブシェルではなく現在のシェル
-##   で実行されます。Bash 5.3 の var=${ command; } に等価です。
+##   で実行されます。Bash 5.3 の var=${ command; } にほぼ等価です。
 ##
 ##   @param[in] var
 ##     代入先の変数名を指定します。
@@ -2208,6 +2208,11 @@ function ble/util/readarray {
 ##   bgpid=$!; ble/util/print "$bgpid")' » でプロセスグループが作られる事を想定
 ##   している。例えば bgpid=$(...) はプロセスグループが作られないので使えない。
 ##
+## @remarks There is small behavioral differences between the implementation by
+##   the function substitution and the manual implementation using temporary
+##   files.  In the function substitutions, the update of the job list is
+##   suppressed, so the notified dead jobs are not flushed on just running
+##   ble/util/assign jobs jobs.
 _ble_util_assign_base=$_ble_base_run/$$.util.assign.tmp
 _ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
@@ -3995,6 +4000,7 @@ function ble/util/conditional-sync {
   fi
   builtin eval -- "$__ble_continue" || return 148
   (
+    ble/util/joblist/__suppress__
     [[ $__ble_pid ]] || { builtin eval -- "$__ble_command" & __ble_pid=$!; }
     while
       # check timeout
@@ -4342,6 +4348,14 @@ _ble_util_joblist_events=()
 function ble/util/joblist {
   local opts=$1 jobs0
   ble/util/assign jobs0 'jobs'
+
+  # Note (#D2157): ble/util/assign uses the function substitution in bash >=
+  # 5.3.  However, in the function substitution, the update of the joblist is
+  # disabled.  For this reason, reading the output of "jobs" by ble/util/assign
+  # doesn't clear the notified job entries.  To clear job entires, we perform a
+  # dummy call of the jobs builtin without using a function substitution.
+  ((_ble_bash>=50300)) && jobs >/dev/null
+
   if [[ $jobs0 == "$_ble_util_joblist_jobs" ]]; then
     # 前回の呼び出し結果と同じならば状態変化はないものとして良い。終了・強制終
     # 了したジョブがあるとしたら "終了" だとか "Terminated" だとかいう表示にな
@@ -4371,9 +4385,7 @@ function ble/util/joblist {
   if [[ $jobs0 != "$_ble_util_joblist_jobs" ]]; then
     for ijob in "${!list[@]}"; do
       if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]#'['*']'[-+ ]} != "${_ble_util_joblist_list[ijob]#'['*']'[-+ ]}" ]]; then
-        if [[ ${list[ijob]} != *'__ble_suppress_joblist__'* ]]; then
-          ble/array#push _ble_util_joblist_events "${list[ijob]}"
-        fi
+        ble/array#push _ble_util_joblist_events "${list[ijob]}"
         list[ijob]=
       fi
     done
@@ -4390,9 +4402,7 @@ function ble/util/joblist {
       for ijob in "${!list[@]}"; do
         local job0=${list[ijob]}
         if [[ $job0 && ! ${_ble_util_joblist_list[ijob]} ]]; then
-          if [[ $job0 != *'__ble_suppress_joblist__'* ]]; then
-            ble/array#push _ble_util_joblist_events "$job0"
-          fi
+          ble/array#push _ble_util_joblist_events "$job0"
         fi
       done
     fi
@@ -4405,12 +4415,24 @@ function ble/util/joblist {
   joblist=("${_ble_util_joblist_list[@]}")
 } 2>/dev/null
 
+# A dummy function to mark the fore ground subshells by ble.sh.  Since ble.sh
+# works in `bind -x', foreground completed subshells also remain in the job
+# list and can be unexpectedly notified to users.  To avoid it, we mark
+# foreground subshells by including the call to this dummy function.
+function ble/util/joblist/__suppress__ { ((1)); }
+
 function ble/util/joblist.split {
   local arr=$1; shift
   local line ijob= rex_ijob='^\[([0-9]+)\]'
+  local -a out=()
   for line; do
     [[ $line =~ $rex_ijob ]] && ijob=${BASH_REMATCH[1]}
-    [[ $ijob ]] && builtin eval "$arr[ijob]=\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line"
+    [[ $ijob ]] && out[ijob]=${out[ijob]:+${out[ijob]}$_ble_term_nl}$line
+  done
+
+  for ijob in "${!out[@]}"; do
+    [[ ${out[ijob]} != *'ble/util/joblist/__suppress__'* ]] &&
+      builtin eval -- "$arr[ijob]=\${out[ijob]}"
   done
 }
 
@@ -6029,13 +6051,13 @@ function ble/term/visible-bell {
   ble/term/visible-bell/.show "$sgr1" "$show_opts"
 
   local workerfile; ble/term/visible-bell/.create-workerfile
-  # Note: __ble_suppress_joblist__ を指定する事によって、
+  # Note: ble/util/joblist/__suppress__ を指定する事によって、
   #   終了したジョブの一覧に現れない様にする。
   #   対策しないと read の置き換え実装でジョブ一覧が表示されてしまう。
   # Note: 標準出力を閉じて置かないと $() の中で
   #   read を呼び出した時に visible-bell worker がブロックしてしまう。
   # ref #D1000, #D1087
-  ( ble/term/visible-bell/.worker __ble_suppress_joblist__ 1>/dev/null & )
+  ( ble/util/joblist/__suppress__; ble/term/visible-bell/.worker 1>/dev/null & )
 }
 function ble/term/visible-bell/cancel-erasure {
   >| "$_ble_term_visible_bell_ftime"

@@ -291,7 +291,7 @@ function ble/util/bgproc#start {
     #   stopping the background process.  Note that the command substitutions
     #   $(...) do not create a new process group even if we specify `set -m' so
     #   cannot be used for the present purpose.
-    ble/util/assign 'bgproc[4]' '(set -m; ble/util/bgproc/.exec __ble_suppress_joblist__ >/dev/null & bgpid=$!; ble/util/print "$bgpid")'
+    ble/util/assign 'bgproc[4]' '(set -m; ble/util/joblist/__suppress__; ble/util/bgproc/.exec >/dev/null & bgpid=$!; ble/util/print "$bgpid")'
 
     if ble/util/bgproc/.alive; then
       [[ :${bgproc[3]}: == *:no-close-on-unload:* ]] ||
