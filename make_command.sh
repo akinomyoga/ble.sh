@@ -354,6 +354,14 @@ function sub:scan/gawk402bug-regex-check {
   echo "--- $FUNCNAME ---"
   grc --color '\[\^?\][^]]*\[:[^]]*:\].[^]]*\]' --exclude={test,ext,\*.md} | grep -Ev '#D1709 safe'
 }
+function sub:scan/nawk-bug {
+  echo "--- $FUNCNAME ---"
+  # Note (#D2162): nawk in Solaris 2.11 does not support regular expression
+  # starting with "=" in the form /=.../.  This is probably because the lexer
+  # in Solaris 2.11 nawk is confused with the division-assignment operator
+  # "/=".
+  grc --color --exclude={test,ext,\*.md} '(g?sub|match)\(.*/=| !?~ /='
+}
 
 function sub:scan/assign {
   echo "--- $FUNCNAME ---"
@@ -648,6 +656,7 @@ function sub:scan {
   sub:scan/bash501-arith-base
   sub:scan/bash502-patsub_replacement
   sub:scan/gawk402bug-regex-check
+  sub:scan/nawk-bug
   sub:scan/array-count-in-arithmetic-expression
   sub:scan/unset-variable
   sub:scan/eval-literal

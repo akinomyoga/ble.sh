@@ -2131,7 +2131,8 @@ function ble/util/writearray {
 
 #%    # 全体 quote の除去
       if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
-        sub(/='\''\(/, "=(", decl);
+        # Note: nawk in Solaris 2.11 does not allow regex to start with /=.
+        sub(/(=)'\''\(/, "=(", decl);
         sub(/\)'\''$/, ")", decl);
         gsub(/'\'\\\\\'\''/, "'\''", decl);
       }
@@ -3420,7 +3421,8 @@ function ble/util/declare-print-definitions {
       sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
       if (isArray) {
         if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
-          sub(/='\''\(/, "=(", decl);
+          # Note: nawk in Solaris 2.11 does not allow regex to start with /=.
+          sub(/(=)'\''\(/, "=(", decl);
           sub(/\)'\''$/, ")", decl);
           gsub(/'\'\\\\\'\''/, "'\''", decl);
         }
