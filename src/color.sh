@@ -674,27 +674,31 @@ function ble/color/convert-color256-to-color88 {
 ##   @var[out] ret
 function ble/color/convert-rgb24-to-color256 {
   local R=$1 G=$2 B=$3
-  if ((R==G&&G==B)); then
-    # xterm 24 grayscale: 10k+8 (0..238)
-    if ((R<=3)); then
-      # 6x6x6 cube (0,0,0)
-      ret=16
-    elif ((R>=247)); then
-      # 6x6x6 cube (5,5,5)
-      ret=231
-    elif ((R>=92&&(R-92)%40<5)); then
-      # 6x6x6 cube (1,1,1)-(4,4,4)
-      ((ret=59+43*(R-92)/40))
-    else
-      local level=$(((R-3)/10))
-      ((ret=232+(level<=23?level:23)))
-    fi
-  else
+  if ((R!=G||G!=B)); then
     # xterm 6x6x6 cube: k?55+40k:0
-    ((R=R<=47?0:(R<=95?1:(R-35)/40)))
-    ((G=G<=47?0:(G<=95?1:(G-35)/40)))
-    ((B=B<=47?0:(B<=95?1:(B-35)/40)))
-    ((ret=16+36*R+6*G+B))
+    local r=$((R<=47?0:(R<=95?1:(R-35)/40)))
+    local g=$((G<=47?0:(G<=95?1:(G-35)/40)))
+    local b=$((B<=47?0:(B<=95?1:(B-35)/40)))
+    if ((r!=g||g!=b)); then
+      ((ret=16+36*r+6*g+b))
+      return 0
+    fi
+  fi
+
+  # xterm 24 grayscale: 10k+8 (0..238)
+  local W=$(((R+G+B+1)/3))
+  if ((W<=3)); then
+    # 6x6x6 cube (0,0,0)
+    ret=16
+  elif ((W>=247)); then
+    # 6x6x6 cube (5,5,5)
+    ret=231
+  elif ((W>=92&&(W-92)%40<5)); then
+    # 6x6x6 cube (1,1,1)-(4,4,4)
+    ((ret=59+43*(W-92)/40))
+  else
+    local level=$(((W-3)/10))
+    ((ret=232+(level<=23?level:23)))
   fi
 }
 ## @fn ble/color/convert-rgb24-to-color88 R G B
@@ -703,26 +707,30 @@ function ble/color/convert-rgb24-to-color256 {
 ##   @var[out] ret
 function ble/color/convert-rgb24-to-color88 {
   local R=$1 G=$2 B=$3
-  if ((R==G&&G==B)); then
-    # xterm 8 grayscale: 46+25k = 46,71,96,121,146,171,196,221
-    if ((R<=22)); then
-      ret=16 # 4x4x4 cube (0,0,0)=0:0:0
-    elif ((R>=239)); then
-      ret=79 # 4x4x4 cube (3,3,3)=255:255:255
-    elif ((131<=R&&R<=142)); then
-      ret=37 # 4x4x4 cube (1,1,1)=139:139:139
-    elif ((197<=R&&R<=208)); then
-      ret=58 # 4x4x4 cube (2,2,2)=197:197:197
-    else
-      local level=$(((R-34)/25))
-      ((ret=80+(level<=7?level:7)))
-    fi
-  else
+  if ((R!=G||G!=B)); then
     # xterm 4x4x4 cube: (k?81+58k:0) = 0,139,197,255
-    ((R=R<=69?0:(R<=168?1:(R-52)/58)))
-    ((G=G<=69?0:(G<=168?1:(G-52)/58)))
-    ((B=B<=69?0:(B<=168?1:(B-52)/58)))
-    ((ret=16+16*R+4*G+B))
+    local r=$((R<=69?0:(R<=168?1:(R-52)/58)))
+    local g=$((G<=69?0:(G<=168?1:(G-52)/58)))
+    local b=$((B<=69?0:(B<=168?1:(B-52)/58)))
+    if ((r!=g||g!=b)); then
+      ((ret=16+16*r+4*g+b))
+      return 0
+    fi
+  fi
+
+  # xterm 8 grayscale: 46+25k = 46,71,96,121,146,171,196,221
+  local W=$(((R+G+B+1)/3))
+  if ((W<=22)); then
+    ret=16 # 4x4x4 cube (0,0,0)=0:0:0
+  elif ((W>=239)); then
+    ret=79 # 4x4x4 cube (3,3,3)=255:255:255
+  elif ((131<=W&&W<=142)); then
+    ret=37 # 4x4x4 cube (1,1,1)=139:139:139
+  elif ((197<=W&&W<=208)); then
+    ret=58 # 4x4x4 cube (2,2,2)=197:197:197
+  else
+    local level=$(((W-34)/25))
+    ((ret=80+(level<=7?level:7)))
   fi
 }
 

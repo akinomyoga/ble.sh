@@ -3821,7 +3821,7 @@ function ble/util/mktime {
     local day_delta=$((365*(Y-1970)+(Y/4-Y/100+Y/400-477)+(m+1)*306/10-63+(d-1)))
     ((ret=((day_delta*24+H)*60+M)*60+S-tzdelta))
     return 0
-  elif ble/string#match "${1-}" '^([0-9]{4})-([01]?[0-9])-([0-3][0-9]?) ([0-2]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9])( ([-+][0-9]{3,4}))?$'; then
+  elif ble/string#match "${1-}" '^([0-9]{4})-([01]?[0-9])-([0-3]?[0-9]) ([0-2]?[0-9]):([0-5]?[0-9]):([0-5]?[0-9])( ([-+][0-9]{3,4}))?$'; then
     ble/util/mktime "${BASH_REMATCH[@]:1:6}" "${BASH_REMATCH[8]-}"
   else
     ble/util/print "$FUNCNAME: invalid argument '${1-}'" >&2

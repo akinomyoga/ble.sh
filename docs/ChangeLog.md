@@ -35,7 +35,7 @@
 - edit: distinguish space and delimiters in `cword` and `eword` `#D2121` 4f453710
 - prompt: update status line on face change (motivated by Vosjedev) `#D2134` f3e7e386
 - decode: specify the default keymap for the keymap load hooks `#D2141` 4a34ccf2
-- progcomp(compopt): refactor the completion option `ble/{no- => }default` `#D2155` xxxxxxxx
+- progcomp(compopt): refactor the completion option `ble/{no- => }default` `#D2155` 51f9f4f6
 
 ## Fixes
 
@@ -67,9 +67,9 @@
 - decode: consume incomplete keyseq in macros `#D2137` 27e6309e
 - keymap/vi: fix conflicting binding to <kbd>C-RET</kbd> in `vi_imap` `#D2146` 0b18f3c2
 - decode: force updating cache for <kbd>@ESC</kbd> `#D2148` 6154d71c
-- progcomp(compopt): support printing the current options (reported by bkerin) `#D2154` xxxxxxxx
-- progcomp(compopt): properly handle dynamically specified `plusdirs` `#D2156` xxxxxxxx
-- edit: fix `BLE_COMMAND_ID` starting from `2` `#D2160` xxxxxxxx
+- progcomp(compopt): support printing the current options (reported by bkerin) `#D2154` 51f9f4f6
+- progcomp(compopt): properly handle dynamically specified `plusdirs` `#D2156` 51f9f4f6
+- edit: fix `BLE_COMMAND_ID` starting from `2` `#D2160` 8f4bf62a
 
 ## Compatibility
 
@@ -102,21 +102,28 @@
 - progcomp: pass original command path to completion functions (reported by REmerald) `#D2125` 0cf0383a
 - main: work around nRF Connect initialization (requested by liyafe1997) `#D2129` 2df3b109
 - main(unload): redirect streams to work around trap `EXIT` in bash-5.2 (reported by ragnarov) `#D2142` 38a8d571
-- complete: call the `docker` command through `ble/util/conditional-sync` `#D2150` xxxxxxxx
-- util(joblist): fix job detection in Bash 5.3 `#D2157` xxxxxxxx
-- util,complete: work around regex `/=.../` failing in Solaris nawk `#D2162` xxxxxxxx
-- main: fix issues in MSYS1 `#D2163` xxxxxxxx
-- util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` xxxxxxxx
+- complete: call the `docker` command through `ble/util/conditional-sync` `#D2150` 6c3f824a
+- util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
+- util,complete: work around regex `/=.../` failing in Solaris nawk `#D2162` 46fdf44a
+- main: fix issues in MSYS1 `#D2163` 5f0b88fb
+- util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192
 
 ## Contrib
 
-- fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
+- histdb
+  - fix(histdb): show error message only when bgproc crashed `#D2036` 887d92dd
+  - util: add `ble/util/{time,timeval,mktime}` `#D2133` 34a886fe
+  - histdb: suppress outputs from `PRAGMA quick_check;` `#D2147` 6154d71c
+  - histdb: fix variable leak of `ret` `#D2152` 98a2ae15
+  - util: fix `ble/util/time` in `bash < 4.2` `#D2161` 623dba91
+  - histdb: support subcommands `#D2167` xxxxxxxx
+  - histdb: support `top`, `stats`, `calendar`, and `week` `#D2167` xxxxxxxx
+  - histdb: unify the color palette selection `#D2167` xxxxxxxx
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
 - contrib/bash-preexec: support the latest version of `bash-preexec` (reported by mcarans) `#D2128` 50af4d9c
 - contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` 64cdcd01
-- histdb: suppress outputs from `PRAGMA quick_check;` `#D2147` 6154d71c
 
 ## Documentation
 
@@ -146,20 +153,17 @@
 - highlight: generalize `region` layer `#D2074` 449d92ca
 - keymap/vi: integrate vi tests into the test framework `#D2101` d16b8438
 - global(leakvar): fix variable leak `#D2114` d3e1232d
-- util: add `ble/util/{time,timeval,mktime}` `#D2133` 34a886fe
-  - histdb: fix variable leak of `ret` `#D2152` xxxxxxxx
-  - util: fix `ble/util/time` in `bash < 4.2` `#D2161` xxxxxxxx
 - make(scan): apply builtin checks to `contrib` `#D2135` 2f16d985
   - contrib/fzf-git: do not use `ble/util/print` in a script mode (reported by dgudim) `#D2166` 8f0dfe9b
 - decode: change Isolated ESC to U+07FC `#D2138` 82bfa665
 - edit: introduce `selection` keymap for more flexible shift selection `#D2139` 2cac11ad
-  - edit: fix a regression that delete-selection does not work (reported by cmndrsp0ck) `#D2151` xxxxxxxx
+  - edit: fix a regression that delete-selection does not work (reported by cmndrsp0ck) `#D2151` 98a2ae15
 - util: support `bleopt connect_tty` `#D2140` f940696f
-  - util: support `ble/fd#add-cloexec` and add `O_CLOEXEC` by default `#D2158` xxxxxxxx
-  - util: fix error of bad file descriptors (reported by ragnarov) `#D2159` xxxxxxxx
+  - util: support `ble/fd#add-cloexec` and add `O_CLOEXEC` by default `#D2158` 785267e1
+  - util: fix error of bad file descriptors (reported by ragnarov) `#D2159` 785267e1
   - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
-- history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` xxxxxxxx
+- history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

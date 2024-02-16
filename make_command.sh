@@ -451,6 +451,7 @@ function sub:scan/WA-localvar_inherit {
   grc 'local [^;&|()]*"\$\{[_a-zA-Z0-9]+\[@*\]\}"' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Ztest_command='\''ble/bin/stty -echo -nl -icrnl -icanon "\$\{_ble_term_stty_flags_enter\[@]}" size'\''Zd
+      /#D1566/d
       g'
 }
 
