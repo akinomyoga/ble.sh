@@ -6191,7 +6191,7 @@ function ble-edit/exec/register {
     ble/edit/leave-command-layout
     return 1
   fi
-  local command_id=$((++_ble_edit_CMD)) # Exposed to blehook exec_register
+  local command_id=$((_ble_edit_CMD++)) # Exposed to blehook exec_register
   local lineno=$((_ble_edit_LINENO+1))  # Exposed to blehook exec_register
   ble/array#push _ble_edit_exec_lines "$command_id,$lineno:$command"
   blehook/invoke exec_register "$command"

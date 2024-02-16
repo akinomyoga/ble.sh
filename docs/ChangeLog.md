@@ -69,6 +69,7 @@
 - decode: force updating cache for <kbd>@ESC</kbd> `#D2148` 6154d71c
 - progcomp(compopt): support printing the current options (reported by bkerin) `#D2154` xxxxxxxx
 - progcomp(compopt): properly handle dynamically specified `plusdirs` `#D2156` xxxxxxxx
+- edit: fix `BLE_COMMAND_ID` starting from `2` `#D2160` xxxxxxxx
 
 ## Compatibility
 

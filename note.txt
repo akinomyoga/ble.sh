@@ -7075,6 +7075,18 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-02-16
+
+  * edit: BLE_COMMAND_ID が 2 から始まっている [#D2160]
+
+    何故? 中で BLE_COMMAND_ID を参照しても同様。command id は ++_ble_edit_CMD
+    で決定している。初期化はどうなっているかというと _ble_edit_LINENO+1 になっ
+    ている。実際 \# で参照する時はそうなっている筈。
+
+    なので _ble_edit_CMD の値は正しくて、それをコマンドに反映させる時の cmd id
+    が変なのである。++_ble_edit_CMD ではなく _ble_edit_CMD++ に変更した。動いて
+    いる。
+
 2024-02-15
 
   * 2024-02-11 Bad file descriptor 33 のメッセージが出る (reported by ragnarov) [#D2159]
