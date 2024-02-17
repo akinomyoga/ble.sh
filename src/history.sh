@@ -682,7 +682,7 @@ if ((_ble_bash>=30100)); then
       function save_timestamp(line) {
         if (is_resolve) {
           # "history" format
-          if (line ~ /^ *[0-9]+\*? +__ble_time_[0-9]+__/) {
+          if (line ~ /^ *[0-9]+\*? +__ble_time_[0-9]*__/) {
             sub(/^ *[0-9]+\*? +__ble_time_/, "", line);
             sub(/__.*$/, "", line);
             entry_time = line;
@@ -700,7 +700,7 @@ if ((_ble_bash>=30100)); then
       {
         if (is_resolve) {
           save_timestamp($0);
-          if (sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?|.+: invalid timestamp)/, "", $0))
+          if (sub(/^ *[0-9]+\*? +(__ble_time_[0-9]*__|\?\?|.+: invalid timestamp)/, "", $0))
             flush_entry();
           entry_text = ++entry_nline == 1 ? $0 : entry_text "\n" $0;
         } else {
@@ -1126,7 +1126,10 @@ function ble/builtin/history/.write {
         return "#" line;
       }
 
-      /^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?|.+: invalid timestamp)?/ {
+      # Note (#D2163): We match /__ble_time_[0-9]*__/ instead of
+      # /__ble_time_[0-9]+__/ because %s in HISTTIMESTAMP can be expanded to an
+      # empty string in bash-3.1 of msys1.
+      /^ *[0-9]+\*? +(__ble_time_[0-9]*__|\?\?|.+: invalid timestamp)?/ {
         flush_line();
 
         mode = 1;
@@ -1134,7 +1137,7 @@ function ble/builtin/history/.write {
         if (flag_timestamp)
           timestamp = extract_timestamp($0);
 
-        sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?|.+: invalid timestamp)?/, "", $0);
+        sub(/^ *[0-9]+\*? +(__ble_time_[0-9]*__|\?\?|.+: invalid timestamp)?/, "", $0);
       }
       { text = text != "" ? text "\n" $0 : $0; }
       END { flush_line(); }

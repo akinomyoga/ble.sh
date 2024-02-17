@@ -1028,6 +1028,7 @@ function ble/bin#freeze-utility-path {
     [[ $flags == *n* ]] && ble/bin#has "ble/bin/$cmd" && continue
     ble/bin#has "ble/bin/.frozen:$cmd" && continue
     if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
+      [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
     else
       fail=1
@@ -1095,7 +1096,11 @@ function ble/init/check-environment {
   if [[ ! ${HOME-} ]]; then
     ble/util/print "ble.sh: insane environment: \$HOME is empty." >&2
     local home
-    if home=$(getent passwd 2>/dev/null | awk -F : -v UID="$UID" '$3 == UID {print $6}') && [[ -d $home || ! -e $home ]]; then
+    if home=$(getent passwd 2>/dev/null | awk -F : -v UID="$UID" '$3 == UID {print $6}') && [[ $home && -d $home ]] ||
+        { [[ $USER && -d /home/$USER && -O /home/$USER ]] && home=/home/$USER; } ||
+        { [[ $USER && -d /Users/$USER && -O /Users/$USER ]] && home=/Users/$USER; } ||
+        { [[ $home && ! ( -e $home && -h $home ) ]] && ble/bin/mkdir -p "$home" 2>/dev/null; }
+    then
       export HOME=$home
       ble/util/print "ble.sh: modified HOME=$HOME" >&2
     fi
@@ -1158,6 +1163,7 @@ function ble/bin/awk/.instantiate {
   local path q=\' Q="'\''" ext=1
 
   if ble/util/assign path "builtin type -P -- nawk 2>/dev/null" && [[ $path ]]; then
+    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     # Note: Some distribution (like Ubuntu) provides gawk as "nawk" by
     # default. To avoid wrongly picking gawk as nawk, we need to check the
     # version output from the command.
@@ -1173,6 +1179,7 @@ function ble/bin/awk/.instantiate {
   fi
 
   if ble/util/assign path "builtin type -P -- mawk 2>/dev/null" && [[ $path ]]; then
+    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     builtin eval "function ble/bin/mawk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
     if [[ ! $_ble_bin_awk_type ]]; then
       _ble_bin_awk_type=mawk
@@ -1181,6 +1188,7 @@ function ble/bin/awk/.instantiate {
   fi
 
   if ble/util/assign path "builtin type -P -- gawk 2>/dev/null" && [[ $path ]]; then
+    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     builtin eval "function ble/bin/gawk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
     if [[ ! $_ble_bin_awk_type ]]; then
       _ble_bin_awk_type=gawk
@@ -1194,6 +1202,7 @@ function ble/bin/awk/.instantiate {
       _ble_bin_awk_type=xpg4
       function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; } && ext=0
     elif ble/util/assign path "builtin type -P -- awk 2>/dev/null" && [[ $path ]]; then
+      [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       local version
       ble/util/assign version '"$path" -W version || "$path" --version' 2>/dev/null </dev/null
       if [[ $version == *'GNU Awk'* ]]; then
@@ -1269,6 +1278,11 @@ function ble/bin/awk0.available {
 
   function ble/bin/awk0.available { ((0)); }
   return 1
+}
+
+function ble/base/is-msys1 {
+  local cr; cr=$'\r'
+  [[ $OSTYPE == msys && ! $cr ]]
 }
 
 function ble/util/mkd {
@@ -2365,7 +2379,15 @@ function ble/base/unload-for-reload {
 ## @fn ble/base/unload [opts]
 function ble/base/unload {
   ble/util/is-running-in-subshell && return 1
+
+  # Adjust environment
   local IFS=$_ble_term_IFS
+  ble/base/adjust-builtin-wrappers-1
+  ble/base/adjust-bash-options
+  ble/base/adjust-POSIXLY_CORRECT
+  ble/base/adjust-builtin-wrappers-2
+  ble/base/adjust-BASH_REMATCH
+
   ble/term/stty/TRAPEXIT "$1"
   ble/term/leave
   ble/util/buffer.flush >&2

@@ -3239,7 +3239,9 @@ function ble/fd/.initialize-utility-stream {
 }
 ble/fd/.initialize-utility-stream _ble_util_fd_null '<> /dev/null'
 ble/fd#is-open/.bootstrap # use $_ble_util_fd_null for /dev/null with O_CLOEXEC
-[[ -c /dev/zero ]] &&
+
+# Note: MSYS1 somehow does not support duping a file descriptor to /dev/zero
+[[ -c /dev/zero ]] && ! ble/base/is-msys1 &&
   ble/fd/.initialize-utility-stream _ble_util_fd_zero '< /dev/zero' base:inherit
 
 ## @var[export,opt] _ble_util_fd_tty_stdin

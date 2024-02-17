@@ -105,6 +105,7 @@
 - complete: call the `docker` command through `ble/util/conditional-sync` `#D2150` xxxxxxxx
 - util(joblist): fix job detection in Bash 5.3 `#D2157` xxxxxxxx
 - util,complete: work around regex `/=.../` failing in Solaris nawk `#D2162` xxxxxxxx
+- main: fix issues in MSYS1 `#D2163` xxxxxxxx
 
 ## Contrib
 

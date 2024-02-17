@@ -1,9 +1,5 @@
 #!/bin/bash
 
-function ble-edit/io:msys1/is-msys1 {
-  local cr; cr=$'\r'
-  [[ $OSTYPE == msys && ! $cr ]]
-}
 function ble-edit/io:msys1/get-winpid.proc {
   /usr/bin/ps | /usr/bin/gawk -v pid="$1" '
     BEGIN {
@@ -48,7 +44,7 @@ function ble-edit/io:msys1/start-background {
   local basename=$_ble_edit_io_fname2
   local fname_buff=$basename.buff
 
-  ble-edit/io:msys1/is-msys1 || return 1
+  ble/base/is-msys1 || return 1
 
   local helper=$_ble_base_cache/init-msys1-helper.exe
   local helper2=$_ble_base_run/$$.init-msys1-helper.exe

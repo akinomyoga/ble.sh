@@ -264,7 +264,7 @@ function ble/init:term/initialize {
   fi
 
   # SGR colors
-  ble/init:term/define-cap _ble_term_colors 256 colors:Co
+  ble/init:term/define-cap _ble_term_colors 8 colors:Co
   local i
   _ble_term_setaf=()
   _ble_term_setab=()
