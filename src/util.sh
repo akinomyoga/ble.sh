@@ -2805,77 +2805,86 @@ else
 fi
 
 ## @fn ble/fd#is-open fd
-##   指定したファイルディスクリプタが開いているかどうか判定します。
+##   Test if the specified file descriptor is open.
 ##
 _ble_util_fd_is_open_stdout=
 _ble_util_fd_is_open_stderr=
-function ble/fd#is-open/.bootstrap {
-  if ((_ble_bash>=40000)) && [[ -d /proc/$BASHPID/fd ]]; then
-    function ble/fd#is-open { [[ $1 && -e /proc/$BASHPID/fd/$1 ]]; }
-    function ble/fd#is-open/.bootstrap { ((1)); }
-  elif [[ ${_ble_util_fd_null-} && $_ble_util_fd_is_open_stdout && $_ble_util_fd_is_open_stderr ]] &&
-         { ((1)) >&"$_ble_util_fd_null"; } 2>/dev/null
-  then
-    # (3) This is the final version.  To reserve the numbers of the file
-    # descriptors, we duplicate the file descriptor with O_CLOEXEC connected to
-    # /dev/null stored in $_ble_util_fd_null.  After defining this function,
-    # "ble/fd#is-open" needs to be called at least once to replace the file
-    # descriptors with the ones with O_CLOEXEC.
-    local fd1=$_ble_util_fd_is_open_stdout
-    local fd2=$_ble_util_fd_is_open_stderr
+if ((_ble_bash>=40000)) && [[ -d /proc/$BASHPID/fd ]]; then
+  # Bash 3 does not have BASHPID
+  function ble/fd#is-open { [[ $1 && -e /proc/$BASHPID/fd/$1 ]]; }
+  function ble/fd#is-open/.upgrade { builtin unset -f "$FUNCNAME"; }
+else
+  # This is the most primitive but incomplete implementation and will be
+  # overwritten later when "ble/fd#alloc/.nextfd" is ready.  We need this
+  # implementation to make "ble/fd#alloc/.nextfd" work.  This temporary
+  # implementation ensures that the number is not used when it fails, but the
+  # number may not be actually used when it succeeds.  This is because this
+  # function may unexpectedly hit the undo-redirection fd for `2>/dev/null'.
+  function ble/fd#is-open { builtin : 9>&"$1"; } 2>/dev/null
+
+  function ble/fd#is-open/.upgrade {
+    if ! { [[ $_ble_util_fd_null ]] && ((1)) >&"$_ble_util_fd_null"; } 2>/dev/null; then
+      ble/util/print "$FUNCNAME: [FATAL] call this function after \$_ble_util_fd_null is ready" >&2
+      return 1
+    fi
+
+    local fd1 fd2
+    ble/fd#alloc/.nextfd fd1
+    ble/fd#alloc/.nextfd fd2
+    _ble_util_fd_is_open_stdout=$fd1
+    _ble_util_fd_is_open_stderr=$fd2
+
+    # This is the final version.  This implementation uses "exec" to move file
+    # descriptors without creating any "undo-redirection" fds.  To reserve the
+    # numbers of the file descriptors, we duplicate the file descriptor with
+    # O_CLOEXEC connected to /dev/null stored in $_ble_util_fd_null.  After
+    # defining this function, "ble/fd#is-open" needs to be called at least once
+    # to replace the file descriptors with the ones with O_CLOEXEC.
     builtin eval -- "
+      ble/fd#alloc/.exec $fd1 '>/dev/null'             # disable=#D1835
+      ble/fd#alloc/.exec $fd2 '>&$fd1'                 # disable=#D1835
       function ble/fd#is-open {
         ble/string#match \"\$1\" '^[0-9]+$' || return 1
         [[ \$1 == $fd1 || \$1 == $fd2 || \$1 == $_ble_util_fd_null ]] && return 0
-        exec $fd1>&- $fd2>&- $fd2>&2                             # disable=#D1835
-        exec 2>&$_ble_util_fd_null                               # disable=#D1835
-        builtin : $fd1>&\"\$1\"                                  # disable=#D1835
+        ble/fd#alloc/.exec $fd2 '>&2'                  # disable=#D1835
+        exec 2>&$_ble_util_fd_null                     # disable=#D1835
+        ble/fd#alloc/.exec $fd1 \">&\$1\"              # disable=#D1835
         local ext=\$?
-        exec 2>&$fd2                                             # disable=#D1835
-        exec $fd1>&- $fd1>&$_ble_util_fd_null $fd2>&- $fd2>&$fd1 # disable=#D1835
+        exec 2>&$fd2                                   # disable=#D1835
+        ble/fd#alloc/.exec $fd1 '>&$_ble_util_fd_null' # disable=#D1835
+        ble/fd#alloc/.exec $fd2 '>&$fd1'               # disable=#D1835
         return \"\$ext\"
       }
     "
     builtin unset -f "$FUNCNAME"
-  elif ble/is-function ble/fd#alloc/.nextfd; then
-    # (2) This is the second implementation.  We need this implementation to
-    # prepare "_ble_util_fd_null" with O_CLOEXEC by "ble/fd#add-cloexec".  This
-    # implementation uses "exec" to move file descriptors without creating any
-    # "undo-redirection" fds.  This implementation works as expected, but we
-    # don't want to leave the file descriptors used by this implementation in
-    # the child processes.
-    local fd1 fd2
-    ble/fd#alloc/.nextfd fd1
-    ble/fd#alloc/.nextfd fd2
+  }
+fi
+
+function ble/fd#alloc/.close { builtin eval "exec $1<&-"; } # disable=#D2164
+if ((30100<=_ble_bash&&_ble_bash<30200)); then
+  function ble/fd#alloc/.close/.upgrade {
+    if ! { [[ $_ble_util_fd_null ]] && ((1)) >&"$_ble_util_fd_null"; } 2>/dev/null; then
+      ble/util/print "$FUNCNAME: [FATAL] call this function after \$_ble_util_fd_null is ready" >&2
+      return 1
+    fi
+
+    # Bash 3.1 has a bug that the file descriptor (>= 10) cannot be closed by
+    # 33>&-.  We here utilize another bug in Bash 3.1, where 77>&33- fails
+    # halfway when 77 is in use and results in just closing 33.  We use the
+    # file descriptor for /dev/null in place of 77.
     builtin eval -- "
-      exec $fd1>/dev/null $fd2>&$fd1                   # disable=#D1835
-      function ble/fd#is-open {
-        ble/string#match \"\$1\" '^[0-9]+$' || return 1
-        [[ \$1 == $fd1 || \$1 == $fd2 ]] && return 0
-        exec $fd1>&- $fd2>&- $fd2>&2                   # disable=#D1835
-        exec 2>/dev/null
-        builtin : $fd1>&\"\$1\"                        # disable=#D1835
-        local ext=\$?
-        exec 2>&$fd2                                   # disable=#D1835
-        exec $fd1>&- $fd1>/dev/null $fd2>&- $fd2>&$fd1 # disable=#D1835
-        return \"\$ext\"
-      }
-    "
-    _ble_util_fd_is_open_stdout=$fd1
-    _ble_util_fd_is_open_stderr=$fd2
-  else
-    # (1) This is the most primitive implementation and will be overwritten
-    # later when "ble/fd#alloc/.nextfd" is ready.  We need this implementation
-    # to make "ble/fd#alloc/.nextfd" work.  This temporary implementation
-    # ensures that the number is not used when it fails, but the number may not
-    # be actually used when it succeeds.  This is because this function may
-    # unexpectedly hit the undo-redirection fd for `2>/dev/null'.
-    function ble/fd#is-open { builtin : 9>&"$1"; } 2>/dev/null
-  fi
-}
-ble/fd#is-open/.bootstrap
+      function ble/fd#alloc/.close {
+        ((\$1==$_ble_util_fd_null||\$1==2)) && return 1
+        exec $_ble_util_fd_null<&\"\$1\"-
+      } 2>/dev/null"
+    builtin unset -f "$FUNCNAME"
+  }
+else
+  function ble/fd#alloc/.close/.upgrade { builtin unset -f "$FUNCNAME"; }
+fi
 
 function ble/fd/.validate-shared-fds {
+  local -a close_fd=()
   # We first check if the exported fds are still valid.  If an exported fd is
   # invalidated by e.g. closing the other end point, the fd becomes invalid and
   # another stream can be later assigned to the same number.  Using the
@@ -2890,7 +2899,7 @@ function ble/fd/.validate-shared-fds {
       fd=${!var}
       ble/string#match "$fd" '^[0-9]+$' || continue
       if ! ble/fd#is-open "$fd"; then
-        builtin eval -- "exec $fd>&-"
+        ble/array#push close_fd "$fd"
         builtin unset -v "$var"
       fi
     done
@@ -2902,10 +2911,11 @@ function ble/fd/.validate-shared-fds {
       fd=${!var}
       ble/string#match "$fd" '^[0-9]{2,}$' || continue
       if ! ble/fd#is-open "$fd"; then
-        builtin eval -- "exec $fd>&-"
+        ble/array#push close_fd "$fd"
         builtin unset -v "$var"
       fi
     done
+    _ble_util_fdvars_export=
   fi
 
   # We also close all the fds marked as "cloexec" that were inherited by the
@@ -2914,7 +2924,23 @@ function ble/fd/.validate-shared-fds {
     local ret fd
     ble/string#split ret : "$_ble_util_fdlist_cloexit"
     for fd in "${ret[@]}"; do
-      [[ $fd && ! ${fd//[0-9]} ]] && builtin eval -- "exec $fd>&-"
+      [[ $fd && ! ${fd//[0-9]} ]] &&
+        ble/array#push close_fd "$fd"
+    done
+    _ble_util_fdlist_cloexit=
+  fi
+
+  if ((${#close_fd[@]})); then
+    "${_ble_util_set_declare[@]//NAME/mark}" # disable=#D1570
+    local fd
+    for fd in "${close_fd[@]}"; do
+      ble/set#contains mark "$fd" && continue
+      ble/set#add mark "$fd"
+
+      # Note: XXX--At this point, the implementation of ble/fd#alloc/.close
+      # does not work for Bash 3.1.  We give up closing file descriptors in
+      # Bash 3.1.
+      ble/fd#alloc/.close "$fd"
     done
   fi
 }
@@ -2947,15 +2973,71 @@ function ble/fd#alloc/.nextfd {
   done
   if ((_ble_local_nextfd>=_ble_local_limit)); then
     _ble_local_nextfd=$_ble_local_init
-    builtin eval "exec $_ble_local_nextfd>&-"
+    ble/fd#alloc/.close "$_ble_local_nextfd"
   fi
   (($1=_ble_local_nextfd++))
   [[ ${2-} || :${3-}: == *:no-increment:* ]] ||
     _ble_util_openat_nextfd=$_ble_local_nextfd
 }
 
-ble/fd#is-open/.bootstrap # use ble/fd#alloc/.nextfd for fd moving
+## @var _ble_util_fd_null
+##   We open a stream connected to /dev/null for read/write and store the
+##   number in this variable.
+##
+##   @remark We originally initialized this variable using "ble/fd#alloc" after
+##   we define "ble/fd#alloc".  However, because of bash-3.1 bug (#D2164), we
+##   need the file descriptor associated with /dev/null for ble/fd#add-cloexec,
+##   and ble/fd#add-cloexec is needed by ble/fd#alloc.  We give up initializing
+##   _ble_util_fd_null using "ble/fd#alloc" and manually initialize it here.
+##   Some part needs to be performed later after ble/fd#add-cloexec is defined.
+if [[ :$bleopt_connect_tty: == *:inherit:* ]]; then
+  # Initialize the variable as if "ble/fd#alloc _ble_util_fd_null base:inherit"
+  if [[ ! ${_ble_util_fd_null-} ]] || ! ble/fd#is-open "$_ble_util_fd_null"; then
+    builtin eval "exec $_ble_util_fd_null<>/dev/null"
+    ble/opts#append-unique _ble_util_fdvars_export _ble_util_fd_null
+    export _ble_util_fd_null
+    ble/fd#alloc/.nextfd _ble_util_fd_null
+  fi
+else
+  # Initialize the variable as if "ble/fd#alloc _ble_util_fd_null base".
+  # ble/fd#add-cloexec needs to be performed later.
+  ble/fd#alloc/.nextfd _ble_util_fd_null
+  builtin eval "exec $_ble_util_fd_null<>/dev/null"
+  ble/opts#append-unique _ble_util_fdlist_cloexit "$_ble_util_fd_null"
+  # later: ble/fd#add-cloexec "$_ble_util_fd_null"
+fi
 
+# We now switch to the complete implementation of "ble/fd#alloc/.close" relying
+# on $_ble_util_fd_null.
+ble/fd#alloc/.close/.upgrade
+
+## @fn ble/fd#alloc/.exec fddst redir
+##   Performs builtin eval "exec $fddst$redir" with sepcial cares for bugs in
+##   old versions of Bash.
+##   @param fddst
+##     The file descriptor that is supposed to be modified
+##   @param redir
+##     Redirection operator plus arguments
+if ((30100<=_ble_bash&&_ble_bash<40000)); then
+  function ble/fd#alloc/.exec {
+    # Note (#D0857): Bash 3.2/3.1 has a bug for the file descriptors (>= 10).
+    #   When a file descriptor is already used, the redirections of the form
+    #   33>... (disable=#D0857) silently fails.  To work around this bug, we
+    #   first close the file descriptor by ble/fd#alloc/.close.
+    ble/fd#alloc/.close "$1"
+    builtin eval "exec $1$2"
+  }
+else
+  function ble/fd#alloc/.exec {
+    builtin eval "exec $1$2"
+  }
+fi
+
+# We now switch to the complete implementation of "ble/fd#is-open" utlizing
+# "ble/fd#alloc/.nextfd", "ble/fd#alloc/.exec", and "$_ble_util_fd_null".
+ble/fd#is-open/.upgrade
+
+## @fn ble/fd#list
 if [[ -d /proc/$$/fd ]]; then
   ## @fn ble/fd#list/adjust-glob
   ##   @var[out] set shopt gignore
@@ -2982,6 +3064,8 @@ if [[ -d /proc/$$/fd ]]; then
     [[ :$shopt: == *:failglob:* ]] && shopt -s failglob
   }
   ## @fn ble/fd#list [pid]
+  ##   List the file descriptors opend for the specified process.  If PID is
+  ##   not specified, this returns the list for the current process.
   ##   @arr[out] ret
   function ble/fd#list {
     ret=()
@@ -3007,6 +3091,7 @@ if [[ -d /proc/$$/fd ]]; then
   }
 else
   ## @fn ble/fd#list
+  ##   List the file descriptors opend for the current process.
   ##   @arr[out] ret
   function ble/fd#list {
     ret=()
@@ -3022,7 +3107,15 @@ if ((_ble_bash>=40400)) && ble/util/load-standard-builtin fdflags; then
 
   function ble/fd#add-cloexec { builtin fdflags -s +cloexec "$1"; }
   function ble/fd#remove-cloexec { builtin fdflags -s -cloexec "$1"; }
-else
+elif ((_ble_bash>=40000)); then
+  # Implementation of ble/fd#add-cloexec by undo fd.
+  #
+  # In bash >= 4.0, the "undo fd" (i.e., the file descriptor that holds the
+  # original stream of the redirected file descriptor) gets O_CLOEXEC.  If we
+  # can identify the "undo fd", we can duplicate it to another file descriptor
+  # to get O_CLOEXEC version of the original stream.  This can only be used in
+  # bash >= 4.0, because older versions of bash does not give O_CLOEXEC to the
+  # undo fds.
   if [[ -d /proc/$$/fd ]]; then
     # Implementation of ble/fd#add-cloexec by procfs (1588us)
 
@@ -3107,16 +3200,19 @@ else
   function ble/fd#add-cloexec {
     local fd=$1 ret
     ble/fd#add-cloexec/.dup-undo-redirection-fd "$fd" &&
-      builtin eval -- "exec $fd>&- $fd>&$ret $ret>&-"
+      builtin eval -- "exec $fd>&- $fd>&$ret $ret>&-" # disable=#D2164 (here bash4+)
   } 2>/dev/null
   function ble/fd#remove-cloexec {
     local fd=$1
     if ((fd!=0)); then
-      builtin eval -- "exec 0<&$fd $fd<&- $fd<&0" </dev/null
+      builtin eval -- "exec 0<&$fd $fd<&- $fd<&0" </dev/null # disable=#D2164 (here bash4+)
     else
-      builtin eval -- "exec 1>&$fd $fd>&- $fd>&1" >/dev/null
+      builtin eval -- "exec 1>&$fd $fd>&- $fd>&1" >/dev/null # disable=#D2164 (here bash4+)
     fi
   }
+else
+  function ble/fd#add-cloexec { false; }
+  function ble/fd#remove-cloexec { false; }
 fi
 
 ## @fn ble/fd#alloc fdvar redirect [opts]
@@ -3183,15 +3279,12 @@ function ble/fd#alloc {
     # it for the auto-closing.
     _ble_local_opts=$_ble_local_opts:preserve
 
-    builtin eval "exec ${!1}>&- ${!1}$2"
+    ble/fd#alloc/.exec "${!1}" "$2"
   elif ((_ble_bash>=40100)) && [[ :$_ble_local_opts: != *:base:* ]]; then
     builtin eval "exec {$1}$2"
   else
     ble/fd#alloc/.nextfd "$1"
-    # Note (#D0857): Bash 3.2/3.1 のバグを避けるため、>&- を用いて一旦明示的に
-    # 閉じる必要がある。10 以上の fd は、既に使われている場合、
-    # 15>... (disable=#D0857) 等とリダイレクトしても無視される。
-    builtin eval "exec ${!1}>&- ${!1}$2"
+    ble/fd#alloc/.exec "${!1}" "$2"
   fi; local _ble_local_ext=$?
 
   if ((_ble_local_ext==0)); then
@@ -3210,7 +3303,7 @@ function ble/fd#finalize {
   ble/string#split fds : "$_ble_util_fdlist_cloexit"
   for fd in "${fds[@]}"; do
     [[ $fd ]] || continue
-    builtin eval -- "exec $fd>&-"
+    ble/fd#alloc/.close "$fd"
   done
   _ble_util_fdlist_cloexit=
 }
@@ -3222,7 +3315,7 @@ function ble/fd#is-cloexit {
 function ble/fd#close {
   set -- "$(($1))"
   (($1>=3)) || return 1
-  builtin eval "exec $1>&-"
+  ble/fd#alloc/.close "$1"
   ble/opts#remove _ble_util_fdlist_cloexit "$1"
   return 0
 }
@@ -3231,18 +3324,21 @@ bleopt/declare -v connect_tty 1
 export bleopt_connect_tty
 
 ## @var _ble_util_fd_null
-## @var _ble_util_fd_zero
-function ble/fd/.initialize-utility-stream {
-  local alloc_opts=base
-  [[ :$bleopt_connect_tty: == *:inherit:* ]] && alloc_opts=$alloc_opts:inherit
-  ble/fd#alloc "$1" "$2" "$alloc_opts"
-}
-ble/fd/.initialize-utility-stream _ble_util_fd_null '<> /dev/null'
-ble/fd#is-open/.bootstrap # use $_ble_util_fd_null for /dev/null with O_CLOEXEC
+##   The final part of the initialization of _ble_util_fd_null is performed
+##   here.
+ble/fd#add-cloexec "$_ble_util_fd_null"
 
-# Note: MSYS1 somehow does not support duping a file descriptor to /dev/zero
-[[ -c /dev/zero ]] && ! ble/base/is-msys1 &&
-  ble/fd/.initialize-utility-stream _ble_util_fd_zero '< /dev/zero' base:inherit
+## @var _ble_util_fd_zero
+##   @remark MSYS1 somehow does not support duping a file descriptor to
+##   /dev/zero
+_ble_util_fd_zero=
+if [[ -c /dev/zero ]] && ! ble/base/is-msys1; then
+  if [[ :$bleopt_connect_tty: == *:inherit:* ]]; then
+    ble/fd#alloc _ble_util_fd_zero '< /dev/zero' base:inherit
+  else
+    ble/fd#alloc _ble_util_fd_zero '< /dev/zero' base
+  fi
+fi
 
 ## @var[export,opt] _ble_util_fd_tty_stdin
 ## @var[export,opt] _ble_util_fd_tty_stdout
@@ -3319,7 +3415,7 @@ function ble/fd#close-all-tty {
   local fd
   for fd in "${ret[@]}"; do
     if ble/string#match "$fd" '^[0-9]+$' && [[ -t $fd ]]; then
-      builtin eval "exec $fd>&- $fd>&$_ble_util_fd_null"
+      ble/fd#alloc/.exec "$fd" ">&$_ble_util_fd_null"
       ble/opts#remove _ble_util_fdlist_cloexit "$fd"
     fi
   done

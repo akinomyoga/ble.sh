@@ -392,6 +392,48 @@ ble/test/start-section 'bash' 61
     ble/test '(set -H; builtin history -c; builtin history -p "$line")' stdout="$line"
   fi
 
+  # BUG bash-3.1 and 3.2 [Ref #D0857]
+  #   A file descriptor >= 10 cannot be redirected if it is already in use.  In
+  #   bash-3.2, we can first close the file descriptor and then perform the
+  #   redirect.  In bash-3.1, because of the next bug, one cannot simply close
+  #   the file descriptor.  One needs to move the file descriptor to another
+  #   number.
+  if [[ -d /proc/$$/fd ]]; then
+    (
+      exec 7>/dev/null 77>/dev/null # disable=#D0857
+      exec 7>/dev/tty 77>/dev/tty   # disable=#D0857
+      ble/util/getpid
+      if ((30100<=_ble_bash&&_ble_bash<40000)); then
+        # bug
+        ble/test '[[ -t 7 ]]'
+        ble/test '[[ ! -t 77 ]]'
+      else
+        # expected
+        ble/test '[[ -t 7 ]]'
+        ble/test '[[ -t 77 ]]'
+      fi
+    )
+  fi
+
+  # BUG bash-3.1 [Ref #D2164]
+  #   file descriptor >= 10 cannot be closed by exec 77>&-.
+  if [[ -d /proc/$$/fd ]]; then
+    (
+      exec 7>/dev/null 77>/dev/null # disable=#D0857
+      exec 7>&- 77>&-               # disable=#D2164
+      ble/util/getpid
+      if ((30100<=_ble_bash&&_ble_bash<30200)); then
+        # bug
+        ble/test '[[ ! -e /proc/$BASHPID/fd/7 ]]'
+        ble/test '[[ -e /proc/$BASHPID/fd/77 ]]'
+      else
+        # expected
+        ble/test '[[ ! -e /proc/$BASHPID/fd/7 ]]'
+        ble/test '[[ ! -e /proc/$BASHPID/fd/77 ]]'
+      fi
+    )
+  fi
+
   # BUG bash-3.0 [Ref #D1956]
   #   関数定義の一番外側でリダイレクトしてもリダイレクトされない。例えば、
   #   function func { ls -l /proc/$BASHPID/fd/{0..2}; } <&"$fd0" >&"$fd1"

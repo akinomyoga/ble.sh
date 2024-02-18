@@ -274,8 +274,16 @@ function sub:scan/bash301bug {
   # する。
   grc ' [0-9]{2}&?[<>]' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md --color |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      /^#/d
       /#D0857/d
-      / [0-9]{2}[<>]&- [0-9]{2}&?[<>]/d
+      / [0-9]{2}[<>]&-/d
+      g'
+
+  # bash-3.1 では 10 以上の fd は >&- 等で閉じる事ができない。
+  grc ' ([0-9]{2}|\$[a-zA-Z_0-9]+)&?[<>]&-' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md --color |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      /^#/d
+      /#D2164/d
       g'
 
   # array-element-length

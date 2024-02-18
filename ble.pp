@@ -422,11 +422,11 @@ function ble/base/xtrace/adjust {
   fi
   set +x
 
-  ((level==0)) || return 0
+  ((_ble_bash>=40000&&level==0)) || return 0
   _ble_bash_xtrace_debug_enabled=
   if [[ ${bleopt_debug_xtrace:-/dev/null} == /dev/null ]]; then
     if [[ $_ble_bash_xtrace_debug_fd ]]; then
-      builtin eval "exec $_ble_bash_xtrace_debug_fd>&-" || return 0
+      builtin eval "exec $_ble_bash_xtrace_debug_fd>&-" || return 0 # disable=#D2164 (here bash4+)
       _ble_bash_xtrace_debug_filename=
       _ble_bash_xtrace_debug_fd=
     fi
@@ -468,7 +468,7 @@ function ble/base/xtrace/restore {
   fi
   builtin unset -v '_ble_bash_xtrace[level]'
 
-  ((level==0)) || return 0
+  ((_ble_bash>=40000&&level==0)) || return 0
   if [[ $_ble_bash_xtrace_debug_enabled ]]; then
     ble/base/xtrace/.log "$FUNCNAME"
     _ble_bash_xtrace_debug_enabled=
@@ -480,7 +480,7 @@ function ble/base/xtrace/restore {
     if [[ $_ble_bash_XTRACEFD_dup ]]; then
       # BASH_XTRACEFD の fd を元の出力先に繋ぎ直す
       builtin eval "exec $BASH_XTRACEFD>&$_ble_bash_XTRACEFD_dup" &&
-        builtin eval "exec $_ble_bash_XTRACEFD_dup>&-" || ((1))
+        builtin eval "exec $_ble_bash_XTRACEFD_dup>&-" || ((1)) # disble=#D2164 (here bash4+)
     else
       # BASH_XTRACEFD の fd は新しく割り当てた fd なので値上書きで閉じて良い
       if [[ $_ble_bash_XTRACEFD_set ]]; then

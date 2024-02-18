@@ -106,6 +106,7 @@
 - util(joblist): fix job detection in Bash 5.3 `#D2157` xxxxxxxx
 - util,complete: work around regex `/=.../` failing in Solaris nawk `#D2162` xxxxxxxx
 - main: fix issues in MSYS1 `#D2163` xxxxxxxx
+- util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` xxxxxxxx
 
 ## Contrib
 
