@@ -85,11 +85,11 @@ source ble-nightly/ble.sh
 # Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-mkdir -p ~/.local/share/blesh
-cp -Rf ble-nightly/* ~/.local/share/blesh/
-rm -rf ble-nightly
+bash ble-nightly/ble.sh --install ~/.local/share
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
+
+After the installation, the directory `ble-nightly` can be removed.
 </details>
 
 <details><summary><b>Download the nightly build with <code>wget</code></b></summary>
@@ -105,11 +105,11 @@ source ble-nightly/ble.sh
 # Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-mkdir -p ~/.local/share/blesh
-cp -Rf ble-nightly/* ~/.local/share/blesh/
-rm -rf ble-nightly
+bash ble-nightly/ble.sh --install ~/.local/share
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
+
+After the installation, the directory `ble-nightly` can be removed.
 </details>
 
 <details open><summary><b>Install a package using a package manager</b> (currently only a few packages)</summary>

@@ -71,11 +71,11 @@ source ble-nightly/ble.sh
 # インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-mkdir -p ~/.local/share/blesh
-mv -f ble-nightly/* ~/.local/share/blesh/
-rmdir ble-nightly
+bash ble-nightly/ble.sh --install ~/.local/share
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
+
+インストール後はディレクトリ `ble-nightly` は削除して問題ありません。
 </details>
 
 <details><summary><b><code>wget</code> を用いて nightly ビルドをダウンロード</b></summary>
@@ -91,11 +91,11 @@ source ble-nightly/ble.sh
 # インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
-mkdir -p ~/.local/share/blesh
-mv ble-nightly/* ~/.local/share/blesh/
-rmdir ble-nightly
+bash ble-nightly/ble.sh --install ~/.local/share
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
+
+インストール後はディレクトリ `ble-nightly` は削除して問題ありません。
 </details>
 
 <details open><summary><b>パッケージ管理システムを通じてパッケージをインストール</b> (現在限られたパッケージのみ)</summary>

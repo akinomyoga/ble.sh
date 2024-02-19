@@ -70,22 +70,22 @@ jobs:
             ```bash
             # TRIAL
             tar xJf ble-nightly.tar.xz
-            source ble-${{ env.blesh_build_pkgver }}/ble.sh
+            source ble-nightly/ble.sh
 
             # INSTALL (quick)
             tar xJf ble-nightly.tar.xz
-            mkdir -p ~/.local/share/blesh
-            cp -fR ble-${{ env.blesh_build_pkgver }}/* ~/.local/share/blesh/
+            bash ble-nightly/ble.sh --install ~/.local/share
             echo 'source ~/.local/share/blesh' >> ~/.bashrc
+            # Note: After installation, directory ble-${{ env.blesh_build_pkgver }} can be removed.
 
             # INSTALL (more robust)
             tar xJf ble-nightly.tar.xz
-            mkdir -p ~/.local/share/blesh
-            cp -fR ble-${{ env.blesh_build_pkgver }}/* ~/.local/share/blesh/
+            bash ble-nightly/ble.sh --install ~/.local/share
             # Add the following line near the top of ~/.bashrc
             [[ $- == *i* ]] && source ~/.local/share/blesh/ble.sh --attach=none
             # Add the following line at the end of ~/.bashrc
             [[ ${BLE_VERSION-} ]] && ble-attach
+            # Note: After installation, directory ble-${{ env.blesh_build_pkgver }} can be removed.
             ```
   check:
     needs: build

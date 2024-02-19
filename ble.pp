@@ -110,6 +110,8 @@ time {
              '    Update ble.sh and exit' \
              '  --clear-cache' \
              '    Clear ble.sh cache and exit' \
+             '  --install PREFIX' \
+             '    Install ble.sh and exit' \
              '' \
              '  --rcfile=BLERC' \
              '  --init-file=BLERC' \
@@ -151,7 +153,7 @@ time {
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
              '' ;;
-    --test | --update | --clear-cache | --lib) _ble_init_command=1 ;;
+    --test | --update | --clear-cache | --lib | --install) _ble_init_command=1 ;;
     esac
   done
   if [ -n "$_ble_init_exit" ]; then
@@ -848,7 +850,7 @@ function ble/base/read-blesh-arguments {
       opts=$opts:keep-rlvars ;;
     (--debug-bash-output)
       bleopt_internal_suppress_bash_output= ;;
-    (--test | --update | --clear-cache | --lib)
+    (--test | --update | --clear-cache | --lib | --install)
       if [[ $_ble_init_command ]]; then
         ble/util/print "ble.sh ($arg): the option '--$_ble_init_command' has already been specified." >&2
         opts=$opts:E
@@ -1955,6 +1957,22 @@ function ble-update/.download-nightly-build {
   ) &&
     ble-update/.reload
 }
+function ble-update/.check-repository {
+  if [[ ${_ble_base_repository-} && $_ble_base_repository != release:* ]]; then
+    if [[ ! -e $_ble_base_repository/.git ]]; then
+      ble/util/print "ble-update: git repository not found at '$_ble_base_repository'." >&2
+    elif [[ ! -O $_ble_base_repository ]]; then
+      ble/util/print "ble-update: git repository is owned by another user:" >&2
+      ls -ld "$_ble_base_repository"
+    elif [[ ! -r $_ble_base_repository || ! -w $_ble_base_repository || ! -x $_ble_base_repository ]]; then
+      ble/util/print 'ble-update: git repository permission denied:' >&2
+      ls -ld "$_ble_base_repository"
+    else
+      return 0
+    fi
+  fi
+  return 1
+}
 function ble-update {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
@@ -2008,30 +2026,20 @@ function ble-update {
   [[ ! -d $insdir_doc && -d ${_ble_base%/*}/doc/blesh ]] &&
     insdir_doc=${_ble_base%/*}/doc/blesh
 
-  if [[ ${_ble_base_repository-} && $_ble_base_repository != release:* ]]; then
-    if [[ ! -e $_ble_base_repository/.git ]]; then
-      ble/util/print "ble-update: git repository not found at '$_ble_base_repository'." >&2
-    elif [[ ! -O $_ble_base_repository ]]; then
-      ble/util/print "ble-update: git repository is owned by another user:" >&2
-      ls -ld "$_ble_base_repository"
-    elif [[ ! -r $_ble_base_repository || ! -w $_ble_base_repository || ! -x $_ble_base_repository ]]; then
-      ble/util/print 'ble-update: git repository permission denied:' >&2
-      ls -ld "$_ble_base_repository"
-    else
-      ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
-          builtin cd "$_ble_base_repository" &&
-          git pull && git submodule update --recursive --remote &&
-          if [[ $_ble_base == "$_ble_base_repository"/out ]]; then
-            ble-update/.make all
-          elif ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
-            ble-update/.make all
-            ble-update/.make --sudo INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
-          else
-            ble-update/.make INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
-          fi )
-      ble-update/.reload "$?"
-      return "$?"
-    fi
+  if ble-update/.check-repository; then
+    ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
+        builtin cd "$_ble_base_repository" &&
+        git pull && git submodule update --recursive --remote &&
+        if [[ $_ble_base == "$_ble_base_repository"/out ]]; then
+          ble-update/.make all
+        elif ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
+          ble-update/.make all
+          ble-update/.make --sudo INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
+        else
+          ble-update/.make INSDIR="$_ble_base" INSDIR_DOC="$insdir_doc" install
+        fi )
+    ble-update/.reload "$?"
+    return "$?"
   fi
   
   if ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
@@ -2603,6 +2611,53 @@ function ble/base/sub:test {
 function ble/base/sub:update { ble-update; }
 function ble/base/sub:clear-cache {
   (shopt -u failglob; ble/bin/rm -rf "$_ble_base_cache"/*)
+}
+function ble/base/sub:install {
+  local insdir=${1:-${XDG_DATA_HOME:-$HOME/.local/share}}/blesh
+
+  local dir=$insdir sudo=
+  while [[ $dir && ! -d $dir ]]; do
+    dir=${dir%/*}
+  done
+  [[ $dir ]] || dir=/
+  if ! [[ -r $dir && -w $dir && -x $dir ]]; then
+    if ((EUID!=0)) && [[ ! -O $dir ]] && ble/bin#has sudo; then
+      sudo=1
+    else
+      ble/util/print "ble.sh --install: $dir: permission denied" >&2
+      return 1
+    fi
+  fi
+
+  if [[ ${_ble_base_repository-} == release:nightly-* ]]; then
+    if [[ $insdir == "$_ble_base" ]]; then
+      ble/util/print "ble.sh --install: already installed" >&2
+      return 1
+    fi
+    if [[ $sudo ]]; then
+      local ret
+      ble/string#quote-word "$insdir"; local qinsdir=$ret
+      ble/string#quote-word "$_ble_base"; local qbase=$ret
+
+      ble/util/print "\$ sudo mkdir -p $qinsdir"
+      sudo mkdir -p "$insdir"
+      ble/util/print "\$ sudo cp -Rf $qbase/* $qinsdir/"
+      sudo cp -Rf "$_ble_base"/* "$insdir/"
+      ble/util/print "\$ sudo rm -rf $qinsdir/{cache.d,run}"
+      sudo rm -rf "$insdir"/{cache.d,run}
+    else
+      ble/bin/mkdir -p "$insdir"
+      ble/bin/cp -Rf "$_ble_base"/* "$insdir/"
+      ble/bin/rm -rf "$insdir/cache.d"/*
+    fi
+  elif ble-update/.check-repository; then
+    ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
+        builtin cd "$_ble_base_repository" &&
+        ble-update/.make ${sudo:+--sudo} install INSDIR="$insdir" )
+  else
+    ble/util/print "ble.sh --install: not supported." >&2
+    return 1
+  fi
 }
 function ble/base/sub:lib { :; } # do nothing
 

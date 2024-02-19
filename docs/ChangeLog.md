@@ -22,6 +22,7 @@
 - complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` 0c4b6772
 - edit: add widgets `execute-named-command` and `history-goto` `#D2144` aa92b42a
 - keymap/vi_nmap: support `shell-expand-line` `#D2145` aa92b42a
+- main: support `bash ble.sh --install` `#D2169` xxxxxxxx
 
 ## Changes
 
