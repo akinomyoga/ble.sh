@@ -7395,6 +7395,12 @@ bash_tips
 
 2024-02-24
 
+  * util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) [#D2170]
+    https://github.com/akinomyoga/ble.sh/issues/412
+
+    意味不明な設定をしたいから全ての設定を列挙しろと言っているが曖昧である。そ
+    もそも全ての設定が何を意味するのかも謎に満ちている。
+
   * main: source blesh-nightly/ble.sh --install [#D2169]
     instruction が長すぎるので。試しに実装してみたが別に instruction はそんなに
     短くなっていない。でも、少なくとも cp や rm を入力するよりは分かりやすくなっ

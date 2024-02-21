@@ -23,6 +23,7 @@
 - edit: add widgets `execute-named-command` and `history-goto` `#D2144` aa92b42a
 - keymap/vi_nmap: support `shell-expand-line` `#D2145` aa92b42a
 - main: support `bash ble.sh --install` `#D2169` xxxxxxxx
+- util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` xxxxxxxx
 
 ## Changes
 

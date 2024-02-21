@@ -351,7 +351,7 @@ function ble/base/adjust-builtin-wrappers-2 {
   # function :, alias : の保存
   local defs
   ble/base/adjust-builtin-wrappers/.assign 'LC_ALL= LC_MESSAGES=C builtin type :; alias :' || ((1)) # set -e 対策
-  defs=${defs#$': is a function\n'}
+  defs=${defs#$': is a shell builtin\n'}
   _ble_bash_builtins_save=$_ble_bash_builtins_save$'\n'$defs
 
   builtin unset -f :

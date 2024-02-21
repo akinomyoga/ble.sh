@@ -367,6 +367,15 @@
 ## Terminal state control
 
 
+## When the follwoing setting is set to a non-empty value, ble.sh saves the TTY
+## state at the end of the command executation and restores it before the next
+## command execution.  This adds a slight overload of running an extra call of
+## stty.  If this is enabled, when a command breaks the TTY state, the effect
+## remains in later commands.
+
+#bleopt term_stty_restore=1
+
+
 ## The following setting specifies the cursor type when commands are executed.
 ## The cursor type is specified by the argument of the control function
 ## DECSCUSR.

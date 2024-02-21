@@ -250,6 +250,12 @@ For example,
   It allows only uppercase global variables and `_*` to become readonly except `_ble_*`, `__ble_*`, and some special uppercase variables.
 - `ble.sh` overrides Bash's built-in commands (`trap`, `readonly`, `bind`, `history`, `read`, and `exit`) with shell functions to adjust the behavior of each built-in command and prevent them from interfering with `ble.sh`.
   If the user or another framework directly calls the original builtins through `builtin BUILTIN`, or if the user or another framework replaces the shell functions, the behavior is undefined.
+- The shell and terminal settings for the line editor and the command execution
+  are different.  `ble.sh` adjusts them for the line editor and try to restore
+  the settigns for the command execution.  However, there are settings that
+  cannot be restored or are intentionally not restored for various reasons.
+  Some of them are summarlized on [a wiki
+  page](https://github.com/akinomyoga/ble.sh/wiki/Internals#internal-and-external).
 
 # 1 Usage
 

@@ -6440,6 +6440,8 @@ function ble/term/visible-bell/erase {
 #   その場で入力を受信する事ができない。結果として hang した様に見える。
 #   従って、enter で -icanon を設定する事にする。
 
+bleopt/declare -v term_stty_restore ''
+
 ## @var _ble_term_stty_state
 ##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
 ##
@@ -6482,30 +6484,44 @@ function ble/term/stty/.initialize-flags {
 }
 ble/term/stty/.initialize-flags
 
+_ble_term_stty_save=
 function ble/term/stty/initialize {
+  if [[ $bleopt_term_stty_restore ]]; then
+    ble/util/assign _ble_term_stty_save 'ble/bin/stty -g'
+  fi
   ble/bin/stty -ixon -echo -nl -icrnl -icanon \
                "${_ble_term_stty_flags_enter[@]}"
   _ble_term_stty_state=1
 }
 function ble/term/stty/leave {
   [[ ! $_ble_term_stty_state ]] && return 0
-  ble/bin/stty echo -nl icanon \
-               "${_ble_term_stty_flags_leave[@]}"
   _ble_term_stty_state=
+
+  if [[ $bleopt_term_stty_restore && $_ble_term_stty_save ]]; then
+    ble/bin/stty "$_ble_term_stty_save"
+  else
+    ble/bin/stty echo -nl icanon "${_ble_term_stty_flags_leave[@]}"
+  fi
 }
 function ble/term/stty/enter {
   [[ $_ble_term_stty_state ]] && return 0
-  ble/bin/stty -echo -nl -icrnl -icanon \
-               "${_ble_term_stty_flags_enter[@]}"
-  _ble_term_stty_state=1
+  if [[ $bleopt_term_stty_restore ]]; then
+    ble/term/stty/initialize
+  else
+    ble/bin/stty -echo -nl -icrnl -icanon "${_ble_term_stty_flags_enter[@]}"
+    _ble_term_stty_state=1
+  fi
 }
 function ble/term/stty/finalize {
   ble/term/stty/leave
 }
 function ble/term/stty/TRAPEXIT {
   # exit の場合は echo
-  ble/bin/stty echo -nl \
-               "${_ble_term_stty_flags_leave[@]}"
+  if [[ $bleopt_term_stty_restore && $_ble_term_stty_save ]]; then
+    ble/bin/stty "$_ble_term_stty_save"
+  else
+    ble/bin/stty echo -nl "${_ble_term_stty_flags_leave[@]}"
+  fi
 }
 
 function ble/term/update-winsize {
