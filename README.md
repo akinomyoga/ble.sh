@@ -33,6 +33,8 @@ There are two ways to get `ble.sh`: to download and build `ble.sh` using `git`, 
 For the detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
 and [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
 
+**If you would like to use fzf** with `ble.sh`, you need to check [Sec 2.8](#fzf-integration).
+
 <details open><summary><b>Download and generate <code>ble.sh</code> using <code>git</code></b></summary>
 
 This requires the commands `git`, `make` (GNU make), and `gawk` (GNU awk).
@@ -56,7 +58,7 @@ The build process integrates multiple Bash script files into a single Bash scrip
 places other module files in appropriate places, and strips code comments for a shorter initialization time.
 
 Note: This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
-Some people seem to blindly believe that one always needs to use `make` with C/C++/Fortran compilers to generate binaries.
+Some people seem to believe that one always needs to use `make` with C/C++/Fortran compilers to generate binaries.
 They complain about `ble.sh`'s make process, but it comes from the lack of knowledge on the general principle of `make`.
 You may find C/C++ programs in the repository, but they are used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
 The generated table is included in the repository:
@@ -452,6 +454,13 @@ bleopt exec_elapsed_mark=
 bleopt exec_elapsed_mark=$'\e[94m[%ss (%s %%)]\e[m'
 # Tip: you may instead change the threshold of showing the mark
 bleopt exec_elapsed_enabled='sys+usr>=10*60*1000' # e.g. ten minutes for total CPU usage
+
+# Disable exit marker like "[ble: exit]"
+bleopt exec_exit_mark=
+
+# Disable some other markers like "[ble: ...]"
+bleopt edit_marker=
+bleopt edit_marker_error=
 ```
 
 ## 2.3 CJK Width
@@ -635,7 +644,7 @@ function ble/widget/my/example1 {
 ble-bind -f C-t my/example1
 ```
 
-## 2.8 fzf integration
+## 2.8 fzf integration<sup><a id="fzf-integration" href="#get-from-source">†</a></sup>
 
 If you would like to use `fzf` in combination with `ble.sh`, you need to configure `fzf` using [the `contrib/fzf` integration](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration).
 Please follow the instructions in the link for the detailed description.
@@ -644,11 +653,43 @@ Please follow the instructions in the link for the detailed description.
 # blerc
 
 # Note: If you want to combine fzf-completion with bash_completion, you need to
-# load bash_completion earilier than fzf-completion.
+# load bash_completion earilier than fzf-completion.  This is required
+# regardless of whether to use ble.sh or not.
 source /etc/profile.d/bash_completion.sh
 
 ble-import -d integration/fzf-completion
 ble-import -d integration/fzf-key-bindings
+```
+
+The option `-d` of `ble-import` delays the initialization.  In thise way, the
+fzf settings are loaded in background after the prompt is shown.  See
+[`ble-import` - Manual §8](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A78-Miscellaneous#user-content-fn-ble-import)
+for details.  If you would like to additionally configure the fzf settings
+after loading them, there are four options.  The easiest way is to drop the
+`-d` option (Option 1 below).  As another option, you may also delay the
+additional settings with `ble-import -d` [2] or `ble/util/idle.push` [3].  Or,
+you can hook into the loading of the fzf settings by `ble-import -C` [4].
+
+```bash
+# [1] Drop -d
+ble-import integration/fzf-completion
+ble-import integration/fzf-key-bindings
+<settings>
+
+# [2] Use ble-import -d for additional settings
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
+ble-import -d '<filename containing the settings>'
+
+# [3] Use "ble/util/idle.push" for additional settings
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
+ble/util/idle.push '<settings>'
+
+# [4] Use "ble-import -C" for additional settings
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
+ble-import -C '<settings>' integration/fzf-key-bindings
 ```
 
 # 3 Tips

@@ -3023,9 +3023,10 @@ function ble/fd#alloc/.exec {
   #   When a file descriptor is already used, the redirections of the form
   #   33>... (disable=#D0857) silently fails.  To work around this bug, we
   #   first close the file descriptor by ble/fd#alloc/.close.
-  # Note (#D2164): We also need to close the destimation file descriptor before
-  #   performing dup2 in macOS and FreeBSD, if the destimation file descriptor
-  #   is open and given O_CLOEXEC by ble/fd#add-cloexec, the redirection fails.
+  # Note (#D2164): We also need to close the destination file descriptor FD
+  #   before performing "exec FD>...".  When FD is open and has the CLOEXEC
+  #   attribute, the redirection is performed but immediately undone by Bash.
+  #   https://lists.gnu.org/archive/html/bug-bash/2024-02/msg00188.html
   ble/fd#alloc/.close "$1"
   builtin eval "exec $1$2"
 }
@@ -5302,7 +5303,7 @@ function ble/util/import/.read-arguments {
 function ble/util/import {
   local files file ext=0 ret enc
   files=("$@")
-  set -- # Note #D: source によって引数が継承されるのを防ぐ
+  set -- # Note #D1859: source によって引数が継承されるのを防ぐ
   for file in "${files[@]}"; do
     ble/util/import/encode-filename "$file"; enc=$ret
     local guard=ble/util/import/guard:$enc

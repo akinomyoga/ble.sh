@@ -31,6 +31,8 @@
 詳細は、試用またはインストールに関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
 
+`fzf` を `ble.sh` と組み合わせてお使いの場合は [節2.8](#set-up-bashrc) を必ず御覧ください。
+
 <details open><summary><b><code>git</code> を用いてソースを取得し <code>ble.sh</code> を生成</b></summary>
 
 この方法では `git`, `make` (GNU make), 及び `gawk` が必要です。
@@ -437,6 +439,13 @@ bleopt exec_elapsed_mark=
 bleopt exec_elapsed_mark=$'\e[94m[%ss (%s %%)]\e[m'
 # Tip: マーカーを表示する条件を変更することも可能です。
 bleopt exec_elapsed_enabled='sys+usr>=10*60*1000' # 例: 合計CPU時間が 10 分以上の時に表示
+
+# 終了マーカー "[ble: exit]" の無効化
+bleopt exec_exit_mark=
+
+# その他のマーカー "[ble: ...]" の無効化
+bleopt edit_marker=
+bleopt edit_marker_error=
 ```
 
 ## 2.3 曖昧文字幅
@@ -627,7 +636,7 @@ function ble/widget/my/example1 {
 ble-bind -f C-t my/example1
 ```
 
-## 2.8 fzf との統合
+## 2.8 fzf との統合<sup><a id="fzf-integration" href="#get-from-source">†</a></sup>
 
 `fzf` を `ble.sh` と一緒にお使いいただく場合には、[`contrib/fzf` 統合機能](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration) を用いて `fzf` を設定していただく必要があります。
 詳細についてはリンク先の説明を御覧ください。
@@ -636,11 +645,44 @@ ble-bind -f C-t my/example1
 # blerc
 
 # 注意: fzf を bash_completion と組み合わせて使用する場合は、fzf-completion よ
-# りも先に bash_completion をロードしておく必要があります。
+# りも先に bash_completion をロードしておく必要があります。これは ble.sh と関係
+# なく必要です。
 source /etc/profile.d/bash_completion.sh
 
 ble-import -d integration/fzf-completion
 ble-import -d integration/fzf-key-bindings
+```
+
+上記 `ble-import` に指定されているオプション `-d` は指定したファイルの読み込み
+を遅延させます。このように設定した場合、指定したファイルはプロンプトが表示され
+た後にバックグランドで読み込まれます。詳細に関しては [`ble-import` - 説明書
+§8](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A78-Miscellaneous#user-content-fn-ble-import)
+を御覧ください。もし fzf の設定を読み込んだ後で更に設定を行うには、四つの方法が
+ございます。最も単純な方法はオプション `-d` を指定しない方法 [1] です。或いは、
+`ble-import -d` [2] または `ble/util/idle.push` [3] を用いて追加設定も同様に遅
+延させることができます。または、fzf 設定ファイルの読み込み完了に対して
+`ble-import -C` [4] を用いてフックを設定することもできます。
+
+```bash
+# [1] オプション -d を使用しない
+ble-import integration/fzf-completion
+ble-import integration/fzf-key-bindings
+<settings>
+
+# [2] 追加設定も ble-import -d を使う
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
+ble-import -d '<filename containing the settings>'
+
+# [3] 追加設定を ble/util/idle.push で登録
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
+ble/util/idle.push '<settings>'
+
+# [4] 追加設定を ble-import -C で登録
+ble-import -d integration/fzf-completion
+ble-import -d integration/fzf-key-bindings
+ble-import -C '<settings>' integration/fzf-key-bindings
 ```
 
 # 3 ヒント

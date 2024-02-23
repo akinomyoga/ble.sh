@@ -7077,6 +7077,18 @@ bash_tips
 
 2024-02-23
 
+  * integration/fzf-git: "ble/util/print" のエラーが出る (reported by dgudim) [#D2166]
+    https://github.com/akinomyoga/blesh-contrib/issues/18
+
+    これは最近の make scan 修正で不用意に echo を ble/util/print に書き換えたの
+    が問題だった。fzf-git は自分自身をコマンドとしても実行するので
+    ble/util/print の様な物は使えないのだった。代わりに printf '%s\n' を直接使
+    う事にした。ble/contrib/.../print の様なコマンドを定義すると長くなり過ぎる。
+
+    * ok: 最初は ble-import の source で勝手に引数が継承されているのかもしれな
+      いと思ったが、ble/util/import では既にちゃんと対策がされていたので関係な
+      い。
+
   * util: macOS で stderr が消失する問題 (reported by tessus, jon-hotaisle) [#D2165]
 
     macOS で stderr が消滅している。というか、現象的には bash-3.1 で起きていた
@@ -7127,6 +7139,43 @@ bash_tips
       テストをスキップする様にする。修正した。
 
     * fixed: そもそも test-bash のテストカウントがずれている。修正する。
+
+    ----
+
+    2024-02-24 引き続き FreeBSD の上で振る舞いを調べる。strace の結果を元にして
+    簡単なプログラムを書いても変な振る舞いは再現しない。bash-5.2.21 のソースの
+    中で一体どうなっているか見ていく事にする。どうも一旦は dup2 を実行してちゃ
+    んと redirect をしているが、後に undo されている様だ。add_undo_redirect を
+    潰すとちゃんと動く様になるので undo redirect が原因である事は確実。+cloexec
+    がなければ undo は起こらないので、何らかの条件で何かが失敗して、結果として
+    undo が起こるという事?
+
+    どうやら add_undo_redirect で "experimental: ..." if (fd >= SHELL_FD_BASE
+    && ri != r_close_this && clexec_flag) と称している if 文の中で登録されてい
+    る undo redirect が exec の成否に関わらず実行される様だ。
+
+    →然し疑問は何故 Linux でこれが発火しないのかという事。Linux では何らかの条
+    件が満たされずにこの分岐に入らないという事? 然し条件は全部満たす様な気がす
+    る。改めて試してみたら実は Linux でも同様の問題がある? 何故 Linux では OK
+    と思ったのだったか。また、何故実際に問題が表面化していなかったのか。謎であ
+    る。何れにしても Linux で同様の振る舞いだとだとすると他の疑問点は色々解消し
+    てなくなる。
+
+    とにかく問題は O_CLOEXEC のある fd に対しては常に発生する様である。以下が更
+    に単純化した test case である。
+
+      #!/usr/bin/env bash
+      enable -f ~/opt/bash/dev/lib/bash/fdflags fdflags
+      exec 50>1.txt
+      fdflags -s +cloexec 50
+      exec 50>2.txt
+      echo hi >&50
+      ls -l 1.txt 2.txt
+
+    問題はこの bash の振る舞いは修正するべき物なのかそれとも意図的な物なのかと
+    いう事である。うーん。色々説明されているし何らかの意図があるのだろう。面倒
+    なのでこれはこれで良い事にする。但し、macOS/FreeBSD 特有の現象ではない事が
+    分かったのでコメントは修正する必要がある。
 
 2024-02-18
 

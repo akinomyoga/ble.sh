@@ -150,12 +150,14 @@
   - histdb: fix variable leak of `ret` `#D2152` xxxxxxxx
   - util: fix `ble/util/time` in `bash < 4.2` `#D2161` xxxxxxxx
 - make(scan): apply builtin checks to `contrib` `#D2135` 2f16d985
+  - contrib/fzf-git: do not use `ble/util/print` in a script mode (reported by dgudim) `#D2166` 8f0dfe9b
 - decode: change Isolated ESC to U+07FC `#D2138` 82bfa665
 - edit: introduce `selection` keymap for more flexible shift selection `#D2139` 2cac11ad
   - edit: fix a regression that delete-selection does not work (reported by cmndrsp0ck) `#D2151` xxxxxxxx
 - util: support `bleopt connect_tty` `#D2140` f940696f
   - util: support `ble/fd#add-cloexec` and add `O_CLOEXEC` by default `#D2158` xxxxxxxx
   - util: fix error of bad file descriptors (reported by ragnarov) `#D2159` xxxxxxxx
+  - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` xxxxxxxx
 
