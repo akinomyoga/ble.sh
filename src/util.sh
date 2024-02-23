@@ -3018,20 +3018,17 @@ ble/fd#alloc/.close/.upgrade
 ##     The file descriptor that is supposed to be modified
 ##   @param redir
 ##     Redirection operator plus arguments
-if ((30100<=_ble_bash&&_ble_bash<40000)); then
-  function ble/fd#alloc/.exec {
-    # Note (#D0857): Bash 3.2/3.1 has a bug for the file descriptors (>= 10).
-    #   When a file descriptor is already used, the redirections of the form
-    #   33>... (disable=#D0857) silently fails.  To work around this bug, we
-    #   first close the file descriptor by ble/fd#alloc/.close.
-    ble/fd#alloc/.close "$1"
-    builtin eval "exec $1$2"
-  }
-else
-  function ble/fd#alloc/.exec {
-    builtin eval "exec $1$2"
-  }
-fi
+function ble/fd#alloc/.exec {
+  # Note (#D0857): Bash 3.2/3.1 has a bug for the file descriptors (>= 10).
+  #   When a file descriptor is already used, the redirections of the form
+  #   33>... (disable=#D0857) silently fails.  To work around this bug, we
+  #   first close the file descriptor by ble/fd#alloc/.close.
+  # Note (#D2164): We also need to close the destimation file descriptor before
+  #   performing dup2 in macOS and FreeBSD, if the destimation file descriptor
+  #   is open and given O_CLOEXEC by ble/fd#add-cloexec, the redirection fails.
+  ble/fd#alloc/.close "$1"
+  builtin eval "exec $1$2"
+}
 
 # We now switch to the complete implementation of "ble/fd#is-open" utlizing
 # "ble/fd#alloc/.nextfd", "ble/fd#alloc/.exec", and "$_ble_util_fd_null".
@@ -7387,7 +7384,12 @@ if ((_ble_bash>=40200)); then
   # pair in systems where sizeof(wchar_t) == 2.
   function ble/util/.has-bashbug-printf-uffff {
     ((40200<=_ble_bash&&_ble_bash<50000)) || return 1
-    local LC_ALL=C.UTF-8 2>/dev/null # Workaround: CentOS 7 に C.UTF-8 がなかった
+
+    # Note: CentOS 7 に C.UTF-8 がなかったので 2>/dev/null する。macOS にも
+    # C.UTF-8 はない。何れにしてもこれらのシステムでは sizeof(wchar_t) == 2 で
+    # はないので正しく UTF-8 にならなくても良い。
+    local LC_ALL=C.UTF-8 2>/dev/null
+
     local ret
     builtin printf -v ret '\uFFFF'
     ((${#ret}==2))

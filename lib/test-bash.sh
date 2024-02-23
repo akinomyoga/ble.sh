@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 61
+ble/test/start-section 'bash' 65
 
 # case $word を quote する必要がある条件は?
 
@@ -398,7 +398,7 @@ ble/test/start-section 'bash' 61
   #   redirect.  In bash-3.1, because of the next bug, one cannot simply close
   #   the file descriptor.  One needs to move the file descriptor to another
   #   number.
-  if [[ -d /proc/$$/fd ]]; then
+  if [[ -d /proc/$$/fd ]] && { ((1)) >/dev/tty; } 2>/dev/null; then
     (
       exec 7>/dev/null 77>/dev/null # disable=#D0857
       exec 7>/dev/tty 77>/dev/tty   # disable=#D0857
@@ -417,7 +417,7 @@ ble/test/start-section 'bash' 61
 
   # BUG bash-3.1 [Ref #D2164]
   #   file descriptor >= 10 cannot be closed by exec 77>&-.
-  if [[ -d /proc/$$/fd ]]; then
+  if [[ -d /proc/$$/fd ]] && { ((1)) >/dev/tty; } 2>/dev/null; then
     (
       exec 7>/dev/null 77>/dev/null # disable=#D0857
       exec 7>&- 77>&-               # disable=#D2164
