@@ -7395,6 +7395,17 @@ bash_tips
 
 2024-02-24
 
+  * edit: [SIGINT] のメッセージはデフォルトで表示しない様にする (motivated by tessus) [#D2171]
+    https://forum.atuin.sh/t/issues-and-logging-with-bash/156/14
+
+    これは元々 INT/DEBUG が正しく動いているか分からないからそれの確認の為に表示
+    していた。然し、スタックトレースと見るには不完全である。外部コマンドの実行
+    時には結局表示されないし、また、関数内で実行している場合でも DEBUG を用いて
+    いる事から関数内で一番最後のコマンドを実行していた場合には DEBUG が呼び出さ
+    れずに関数を抜けるのでそのフレームは抜ける。RETURN も一緒に trap すれば原理
+    的にはそのフレームの情報を抜き出せるが、其処までする程の事でもない。ユーザー
+    的には別に見てもよく分からないし、既定で off で良い気がする。
+
   * util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) [#D2170]
     https://github.com/akinomyoga/ble.sh/issues/412
 

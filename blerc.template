@@ -1357,13 +1357,20 @@ blehook/eval-after-load keymap_vi blerc/vim-load-hook
 # echo "usage: e.g. source out/ble.sh -o openat_base=30"
 
 
-## It specifies the context of the command execution.  The value "gexec"
-## specifies that the user command is evaluated in global contexts.  The value
-## "exec" (ble-0.3 and before) specified that the user command is evaluated in
-## a function, but the support is removed in ble-0.4 because this is only
-## remained for a debugging purpose and not tested well.
+## This option specifies the context of the command execution.  The value
+## "gexec" specifies that the user command is evaluated in global contexts.
+## The value "exec" (ble-0.3 and before) specified that the user command is
+## evaluated in a function, but the support is removed in ble-0.4 because this
+## is only remained for a debugging purpose and not tested well.
 
 #bleopt internal_exec_type=gexec
+
+
+## If this option has a non-empty value, when the execution of a shell function
+## is interrupted by SIGINT, the processing of SIGINT by the DEBUG trap is
+## printed to stderr.  The default is empty.
+
+#bleopt internal_exec_int_trace=1
 
 
 ## This option sets the message that Bash outputs when "C-d" is input by user.

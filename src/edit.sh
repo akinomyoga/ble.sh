@@ -195,6 +195,8 @@ function bleopt/check:internal_exec_type {
   fi
 }
 
+bleopt/declare -v internal_exec_int_trace ''
+
 ## @bleopt internal_suppress_bash_output (内部使用)
 ##   bash 自体の出力を抑制するかどうかを指定します。
 ## bleopt_internal_suppress_bash_output=1
@@ -6803,17 +6805,21 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
     local depth=${#BLE_TRAP_FUNCNAME[*]}
     if ((depth>=1)) && ! ble/string#match "${BLE_TRAP_FUNCNAME[*]}" '^ble-edit/exec:gexec/\.|(^| )ble/builtin/trap/\.handler'; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
-      local source=${_ble_term_setaf[5]}${BLE_TRAP_SOURCE[0]}
-      local sep=${_ble_term_setaf[6]}:
-      local lineno=${_ble_term_setaf[2]}${BLE_TRAP_LINENO[0]}
-      local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${BLE_TRAP_FUNCNAME[0]}${1:+ $1}${_ble_term_setaf[6]}')'
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >&"$_ble_util_fd_tui_stderr"
+      if [[ ${bleopt_internal_exec_int_trace-} ]]; then
+        local source=${_ble_term_setaf[5]}${BLE_TRAP_SOURCE[0]}
+        local sep=${_ble_term_setaf[6]}:
+        local lineno=${_ble_term_setaf[2]}${BLE_TRAP_LINENO[0]}
+        local func=${_ble_term_setaf[6]}' ('${_ble_term_setaf[4]}${BLE_TRAP_FUNCNAME[0]}${1:+ $1}${_ble_term_setaf[6]}')'
+        ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$lineno$func$_ble_term_sgr0" >&"$_ble_util_fd_tui_stderr"
+      fi
       _ble_builtin_trap_postproc[_ble_trap_sig]="{ return $_ble_edit_exec_TRAPDEBUG_INT || break; } &>/dev/null"
     elif ((depth==0)) && ! ble/string#match "$_ble_trap_bash_command" '^ble-edit/exec:gexec/\.'; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
-      local source=${_ble_term_setaf[5]}global
-      local sep=${_ble_term_setaf[6]}:
-      ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $_ble_trap_bash_command" >&"$_ble_util_fd_tui_stderr"
+      if [[ ${bleopt_internal_exec_int_trace-} ]]; then
+        local source=${_ble_term_setaf[5]}global
+        local sep=${_ble_term_setaf[6]}:
+        ble/util/print "${_ble_term_setaf[9]}[SIGINT]$_ble_term_sgr0 $source$sep$_ble_term_sgr0 $_ble_trap_bash_command" >&"$_ble_util_fd_tui_stderr"
+      fi
       _ble_builtin_trap_postproc[_ble_trap_sig]="break &>/dev/null"
     fi
 
