@@ -7395,6 +7395,13 @@ bash_tips
 
 2024-02-24
 
+  * util(joblist): 5.3 でまた色々沢山 foreground dead jobs が表示される [#D2174]
+
+    5.3 ではより多くの foreground dead jobs が表示される様になってしまった。仕
+    方がないので取り敢えず表示された物から順に __suppress__ を指定していく事に
+    する。色々 todo が溜まっているので小さな変更だが、もう処理してしまう事にす
+    る。
+
   * edit: macOS 3.2 で C-d が効かないという話 (reported by gregwalters) [#D2173]
     https://github.com/akinomyoga/ble.sh/issues/416#event-11897058166
 

@@ -1893,6 +1893,7 @@ function ble-update/.download-nightly-build {
   local tarname=ble-nightly.tar.xz
   local url_tar=$_ble_base_repository_url/releases/download/nightly/$tarname
   (
+    ble/util/joblist/__suppress__
     set +f
     shopt -u failglob nullglob
 

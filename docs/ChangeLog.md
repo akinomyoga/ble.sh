@@ -106,6 +106,7 @@
 - main(unload): redirect streams to work around trap `EXIT` in bash-5.2 (reported by ragnarov) `#D2142` 38a8d571
 - complete: call the `docker` command through `ble/util/conditional-sync` `#D2150` 6c3f824a
 - util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
+  - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` xxxxxxxx
 - util,complete: work around regex `/=.../` failing in Solaris nawk `#D2162` 46fdf44a
 - main: fix issues in MSYS1 `#D2163` 5f0b88fb
 - util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192

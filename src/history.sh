@@ -1001,6 +1001,7 @@ function ble/builtin/history/.check-uncontrolled-change {
     if [[ $filename && :$opts: == *:append:* ]] && ((_ble_builtin_history_wskip<prevmax&&prevmax<max)); then
       # 最後に管理下で追加された事を確認した範囲 wskip..prevmax を書き込む。
       (
+        ble/util/joblist/__suppress__
         ble/builtin/history/.delete-range "$((prevmax+1))" "$max"
         ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append:fetch
       )

@@ -3617,6 +3617,7 @@ function ble/util/for-global-variables {
   local __ble_hidden_only=
   [[ :$__ble_opts: == *:hidden-only:* ]] && __ble_hidden_only=1
   (
+    ble/util/joblist/__suppress__
     ((_ble_bash>=50000)) && shopt -u localvar_unset
     __ble_error=
     __ble_q="'" __ble_Q="'\''"

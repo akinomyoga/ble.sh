@@ -67,6 +67,7 @@ function ble/test/diff {
   local f1=$BASHPID.$1.expect
   local f2=$BASHPID.$1.result
   (
+    ble/util/joblist/__suppress__
     cd "$dir"
     ble/util/print "$2" >| "$f1"
     ble/util/print "$3" >| "$f2"
