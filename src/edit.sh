@@ -6922,7 +6922,9 @@ function ble-edit/exec:gexec/.TRAPINT {
   local ext=130
   ((_ble_bash>=40300)) || ext=128 # bash-4.2 以下は 128
   if [[ $_ble_attached ]]; then
-    ble/util/print "$_ble_term_bold^C$_ble_term_sgr0" >&2
+    if [[ ${bleopt_internal_exec_int_trace-} ]]; then
+      ble/util/print "$_ble_term_bold^C$_ble_term_sgr0" >&"$_ble_util_fd_tui_stderr"
+    fi
     _ble_edit_exec_TRAPDEBUG_INT=$ext
     ble-edit/exec:gexec/.TRAPDEBUG/trap
   else

@@ -1958,6 +1958,32 @@ function ble-update/.download-nightly-build {
   ) &&
     ble-update/.reload
 }
+## @fn ble-update/.check-build-dependencies
+##   @var[out] make
+function ble-update/.check-build-dependencies {
+  # check make
+  make=
+  if ble/bin#has gmake; then
+    make=gmake
+  elif ble/bin#has make && make --version 2>&1 | ble/bin/grep -qiF 'GNU Make'; then
+    make=make
+  else
+    ble/util/print "ble-update: GNU Make is not available." >&2
+    return 1
+  fi
+
+  # check git, gawk
+  if ! ble/bin#has git gawk; then
+    local command
+    for command in git gawk; do
+      ble/bin#has "$command" ||
+        ble/util/print "ble-update: '$command' command is not available." >&2
+    done
+    return 1
+  fi
+  return 0
+}
+## @fn ble-update/.check-repository
 function ble-update/.check-repository {
   if [[ ${_ble_base_repository-} && $_ble_base_repository != release:* ]]; then
     if [[ ! -e $_ble_base_repository/.git ]]; then
@@ -2002,26 +2028,8 @@ function ble-update {
     fi
   fi
 
-  # check make
-  local make=
-  if ble/bin#has gmake; then
-    make=gmake
-  elif ble/bin#has make && make --version 2>&1 | ble/bin/grep -qiF 'GNU Make'; then
-    make=make
-  else
-    ble/util/print "ble-update: GNU Make is not available." >&2
-    return 1
-  fi
-
-  # check git, gawk
-  if ! ble/bin#has git gawk; then
-    local command
-    for command in git gawk; do
-      ble/bin#has "$command" ||
-        ble/util/print "ble-update: '$command' command is not available." >&2
-    done
-    return 1
-  fi
+  local make
+  ble-update/.check-build-dependencies || return 1
 
   local insdir_doc=$_ble_base/doc
   [[ ! -d $insdir_doc && -d ${_ble_base%/*}/doc/blesh ]] &&
@@ -2617,6 +2625,7 @@ function ble/base/sub:install {
   local insdir=${1:-${XDG_DATA_HOME:-$HOME/.local/share}}/blesh
 
   local dir=$insdir sudo=
+  [[ $dir == /* ]] || dir=./$dir
   while [[ $dir && ! -d $dir ]]; do
     dir=${dir%/*}
   done
@@ -2635,11 +2644,10 @@ function ble/base/sub:install {
       ble/util/print "ble.sh --install: already installed" >&2
       return 1
     fi
+    local ret
+    ble/string#quote-word "$insdir"; local qinsdir=$ret
+    ble/string#quote-word "$_ble_base"; local qbase=$ret
     if [[ $sudo ]]; then
-      local ret
-      ble/string#quote-word "$insdir"; local qinsdir=$ret
-      ble/string#quote-word "$_ble_base"; local qbase=$ret
-
       ble/util/print "\$ sudo mkdir -p $qinsdir"
       sudo mkdir -p "$insdir"
       ble/util/print "\$ sudo cp -Rf $qbase/* $qinsdir/"
@@ -2647,11 +2655,14 @@ function ble/base/sub:install {
       ble/util/print "\$ sudo rm -rf $qinsdir/{cache.d,run}"
       sudo rm -rf "$insdir"/{cache.d,run}
     else
+      ble/util/print "\$ mkdir -p $qinsdir"
       ble/bin/mkdir -p "$insdir"
+      ble/util/print "\$ cp -Rf $qbase/* $qinsdir/"
       ble/bin/cp -Rf "$_ble_base"/* "$insdir/"
+      ble/util/print "\$ rm -rf $qinsdir/cache.d/*"
       ble/bin/rm -rf "$insdir/cache.d"/*
     fi
-  elif ble-update/.check-repository; then
+  elif local make; ble-update/.check-build-dependencies && ble-update/.check-repository; then
     ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
         builtin cd "$_ble_base_repository" &&
         ble-update/.make ${sudo:+--sudo} install INSDIR="$insdir" )

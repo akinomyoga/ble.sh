@@ -1905,6 +1905,15 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-02-25
+
+  * コマンド実行時に展開を実施する可能性 (motivated by pl643, bkerin)
+    https://github.com/akinomyoga/ble.sh/discussions/138
+    https://github.com/akinomyoga/ble.sh/issues/406#issuecomment-1939461192
+
+    sabbrev/alias/etc を設定できる様にする? これは履歴展開の処理の箇所で同時に
+    した方が良い。histverify 等も働くので良い。
+
 2024-02-22
 
   * histdb: calendar で実行時間等についても calendar を作れる様にしたい。現在は
@@ -7473,6 +7482,9 @@ bash_tips
     instruction が長すぎるので。試しに実装してみたが別に instruction はそんなに
     短くなっていない。でも、少なくとも cp や rm を入力するよりは分かりやすくなっ
     た気がするので良い事にする。
+
+    テストしていなかった。改めて実行してみたら全然動かなかった。急いで修正を行
+    う。序でに #D2171 の ^C についても省略する様にする変更を適用する。
 
 2024-02-23
 

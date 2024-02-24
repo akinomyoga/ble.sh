@@ -22,8 +22,8 @@
 - complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` 0c4b6772
 - edit: add widgets `execute-named-command` and `history-goto` `#D2144` aa92b42a
 - keymap/vi_nmap: support `shell-expand-line` `#D2145` aa92b42a
-- main: support `bash ble.sh --install` `#D2169` xxxxxxxx
-- util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` xxxxxxxx
+- main: support `bash ble.sh --install` `#D2169` 986d26a3 xxxxxxxx
+- util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` e64b02b7
 
 ## Changes
 
@@ -106,11 +106,11 @@
 - main(unload): redirect streams to work around trap `EXIT` in bash-5.2 (reported by ragnarov) `#D2142` 38a8d571
 - complete: call the `docker` command through `ble/util/conditional-sync` `#D2150` 6c3f824a
 - util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
-  - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` xxxxxxxx
+  - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
 - util,complete: work around regex `/=.../` failing in Solaris nawk `#D2162` 46fdf44a
 - main: fix issues in MSYS1 `#D2163` 5f0b88fb
 - util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192
-- decode: fix the problem that key always timed out in bash-3 `#D2173` xxxxxxxx
+- decode: fix the problem that key always timed out in bash-3 `#D2173` 0b176e76
 
 ## Contrib
 
@@ -120,9 +120,9 @@
   - histdb: suppress outputs from `PRAGMA quick_check;` `#D2147` 6154d71c
   - histdb: fix variable leak of `ret` `#D2152` 98a2ae15
   - util: fix `ble/util/time` in `bash < 4.2` `#D2161` 623dba91
-  - histdb: support subcommands `#D2167` xxxxxxxx
-  - histdb: support `top`, `stats`, `calendar`, and `week` `#D2167` xxxxxxxx
-  - histdb: unify the color palette selection `#D2167` xxxxxxxx
+  - histdb: support subcommands `#D2167` 4d7dd1ee
+  - histdb: support `top`, `stats`, `calendar`, and `week` `#D2167` 4d7dd1ee
+  - histdb: unify the color palette selection `#D2167` 4d7dd1ee
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
@@ -168,7 +168,7 @@
   - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
-- edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` xxxxxxxx
+- edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

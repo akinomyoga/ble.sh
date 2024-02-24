@@ -9344,10 +9344,9 @@ function ble/complete/sabbrev/expand {
   return "$exit"
 }
 function ble/widget/sabbrev-expand {
-  if ! ble/complete/sabbrev/expand; then
-    ble/widget/.bell
-    return 1
-  fi
+  ble/complete/sabbrev/expand; local ext=$?
+  ((ext)) && ble/widget/.bell
+  return "$ext"
 }
 
 # sabbrev の補完候補
