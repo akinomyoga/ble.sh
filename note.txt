@@ -7395,6 +7395,56 @@ bash_tips
 
 2024-02-24
 
+  * edit: macOS 3.2 で C-d が効かないという話 (reported by gregwalters) [#D2173]
+    https://github.com/akinomyoga/ble.sh/issues/416#event-11897058166
+
+    これは tessus の VM があるのでチェックはできるのでは? と思って振る舞いを確
+    認したが tessus の vm 上では問題は再現しない。別に普通に C-d でログアウトで
+    きる。
+
+    * decode: 一方で bash-3.2 では left right の SS3 によるキー入力表現が正しく
+      処理できないという現象が発生している。一方で bash-5 で受信した場合には
+      SS3 による入力でもちゃんと解釈できている。何故だろう。
+
+      bash-3.2$ ble/debug/keylog#end
+      ===== bytes =====
+      192 155 79 68
+
+      ===== chars =====
+      ESC O O D
+
+      ===== keys =====
+      M-O D
+
+      bash-5.2$ ble/debug/keylog#end
+      ===== bytes =====
+      192 155 79 68
+
+      ===== chars =====
+      ESC O D
+
+      ===== keys =====
+      left
+
+      うーん。登録済みの SS3 keyseq に一致する所で失敗している? declare -p
+      _ble_decode_cmap__27_79 を見る限りは 27:79:68 はちゃんと登録されている。
+      うーん。ble-decode/char/.getent で wait-input しているがこれが常に失敗す
+      るので _ble_decode_cmap_* に登録されたキーが全く動かなくなっていた。これ
+      は修正する。is-stdin-ready に既定の終了ステータスを指定できる様にした。
+
+  * [解消] integration/fzf-git: 選択できない branch がある? (reported by dgudim) [#D2172]
+    https://github.com/akinomyoga/blesh-contrib/issues/18#issue-2149755976
+
+    Ref #D2166
+
+    然し自分の手元で試してみる限りは特にそういう事は起きていない様に見える。と
+    思ったが追っての報告でやっぱり大丈夫という話だ。
+
+    https://github.com/akinomyoga/blesh-contrib/issues/18#issuecomment-1961770147
+
+    先の修正で直ったか、それとも何かの勘違いだったのか。恐らく、エラーメッセー
+    ジが表示された事で表示位置がずれて変な物が表示されていたという事なのだろう。
+
   * edit: [SIGINT] のメッセージはデフォルトで表示しない様にする (motivated by tessus) [#D2171]
     https://forum.atuin.sh/t/issues-and-logging-with-bash/156/14
 

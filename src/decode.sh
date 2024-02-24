@@ -2487,7 +2487,7 @@ function ble/decode/wait-input {
     local w=$((timeout<20?timeout:20))
     ble/util/msleep "$w"
     ((timeout-=w))
-    ble/util/is-stdin-ready && return 0
+    ble/util/is-stdin-ready 0 && return 0
   done
   return 1
 }
