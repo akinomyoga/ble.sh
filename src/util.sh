@@ -6333,6 +6333,9 @@ function ble/term/visible-bell/.clear {
   >| "$_ble_term_visible_bell_ftime"
 }
 
+## @fn ble/term/visible-bell/.erase-previous-visible-bell
+##   @var[in] _ble_term_visible_bell_prev
+##   @var[in] sgr0
 function ble/term/visible-bell/.erase-previous-visible-bell {
   local ret workers
   ble/util/eval-pathname-expansion '"$_ble_base_run/$$.visible-bell."*' canonical
@@ -6392,12 +6395,6 @@ function ble/term/visible-bell {
   # 字列の時は設定されていないだけなので表示する。
   ((LINES==1)) && return 0
 
-  if ble/is-function ble/canvas/trace-text; then
-    ble/term/visible-bell:canvas/init "$message"
-  else
-    ble/term/visible-bell:term/init "$message"
-  fi
-
   local sgr0=$_ble_term_sgr0
   local sgr1=${_ble_term_setaf[2]}$_ble_term_rev
   local sgr2=$_ble_term_rev
@@ -6410,6 +6407,12 @@ function ble/term/visible-bell {
 
   local show_opts=
   ble/term/visible-bell/.erase-previous-visible-bell && show_opts=erased
+
+  if ble/is-function ble/canvas/trace-text; then
+    ble/term/visible-bell:canvas/init "$message"
+  else
+    ble/term/visible-bell:term/init "$message"
+  fi
   ble/term/visible-bell/.show "$sgr1" "$show_opts"
 
   local workerfile; ble/term/visible-bell/.create-workerfile

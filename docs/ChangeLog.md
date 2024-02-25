@@ -75,6 +75,7 @@
 - progcomp(compopt): support printing the current options (reported by bkerin) `#D2154` 51f9f4f6
 - progcomp(compopt): properly handle dynamically specified `plusdirs` `#D2156` 51f9f4f6
 - edit: fix `BLE_COMMAND_ID` starting from `2` `#D2160` 8f4bf62a
+- util(vbell): fix previous vbell not fully cleared `#D2181` xxxxxxxx
 
 ## Compatibility
 
