@@ -7385,6 +7385,68 @@ bash_tips
 
 2024-02-25
 
+  * main: BLE_VER 対応 [#D2177]
+
+    wezterm や atuin integration で _ble_version を参照するのも忍びない。かと言っ
+    て BLE_VERSINFO は実際の所使いにくい。変数名は微妙だが __cplusplus や
+    MSCVER や GCCVER の様に一つの整数に纏めた物という事で BLEVER が良さそうな気
+    がする。然し名前空間的に BLE_VER の方が良い。
+
+  * [外部] edit: wezterm で prompt_status_line にカーソルが被さる? [#D2176]
+    https://github.com/akinomyoga/ble.sh/issues/413
+
+    ? yes: PROMPT_COMMAND で改行を出力すると計算がずれる?
+
+      | 最初は wezterm の integration で勝手に改行を挿入するのが悪いと思ったが、
+      | よく考えたら PROMPT_COMMAND で何かメッセージを出力する設定があったらそ
+      | れでも壊れるのではないか。status line を表示するのは PROMPT_COMMAND よ
+      | りも後にしなければならない気がする。
+      |
+      | 実際に問題が起こるかどうかを確認する→と思ったがそうでもない様だ。不思
+      | 議だ。何故 wezterm の中だと問題が起こるのだろうか。何かの同期の都合でず
+      | れているのだろうか。ble.sh は buffering を行っているので、ずれる? と思っ
+      | たが、PROMPT_COMMAND を実行する前に flush している筈だし、wezterm
+      | precmd は直接 printf しているので遅延される事もない筈だ。或いは wezterm
+      | は FreshLineAndStartPrompt に於いて何か特別の事をしているのだろうか?
+      | WezTerm 自体が改行調整を遅延するとは思えない。
+      |
+      | 別に ble.sh は PROMPT_COMMAND から出てくる出力を勝手に buffering したり
+      | はしていない。
+      |
+      | 或いは wezterm の中限定で PROMPT_COMMAND で何か出力するとずれてしまうと
+      | いう事なのか? wezterm の上で試す必要がある気がする。
+
+      色々試して分かった。先ず wezterm での問題は空行に対して RET を押した時に
+      だけ発生する。そして、wezterm でなくても PROMPT_COMMAND の中で何かを出力
+      したりすると同じ現象が発生する。従って、これは wezterm 特有の問題ではない。
+
+    ? そもそも PROMPT_COMMAND 評価は ble.sh を使っていない時には空行に対して発
+      生するのだったか? そこからして振る舞いが違う可能性?
+
+    よく見たら当に bleopt prompt_command_changes_layout というオプションが存在
+    していた。なので本来はこれを指定すれば済む話である。但し、wezterm の場合に
+    は実際にやって見た所、status line を一旦消して PROMPT_COMMAND を評価してま
+    た表示するという具合になって余り滑らかでなくなってしまうのでやはり
+    FreshLine を省略する方向で行けないか質問をする事にする。
+
+    * wezterm: PS1, PS2 がそれぞれ左プロンプト・右プロンプトという具合になって
+      いるが本当か? 実際には使われていない様なので関係ないかもしれないが。また、
+      その他の prompt_status_line についても値を割り当てるべきか。そもそも
+      wezterm は status line の様な変な所に表示するプロンプトの存在を想定してい
+      るか。どの様に使われるのかの説明はあるだろうか。
+
+    * wezterm に於いて _ble_version を参照したいがこれは如何にも内部変数である。
+      スカラー値として BLE_VER なる物を導入して 0.3 にも backport したい気がす
+      る。因みに別に backport していなくても、0.4 以上というチェックであれば問
+      題はない筈。問題は BLE_VER を今導入したとしても少なくとも devel release
+      を一回はして、更にその後暫く待ってからでないと行けないという事。という事
+      を考えると暫くは内部変数ではあるが _ble_version を使う様にした方が良い気
+      がする。
+
+      BLE_ATTACHED を参照する可能性も考えたが、そもそも BLE_VERSION が設定され
+      ている時には bash-preexec が登録されていないので何も動作しない。なので、
+      常に BLE_ATTACHED になっているという想定で良い気がする。
+
   * 2021-09-20 sabbrev: accept-line の時にも展開する可能性について (requested by pl643, bkerin) [#D2175]
     https://github.com/akinomyoga/ble.sh/discussions/138
     https://github.com/akinomyoga/ble.sh/issues/406#issuecomment-1939461192

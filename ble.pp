@@ -937,7 +937,7 @@ local _ble_local_test 2>/dev/null && _ble_bash_loaded_in_function=1
 
 _ble_version=0
 BLE_VERSION=$_ble_init_version
-function ble/base/initialize-version-information {
+function ble/base/initialize-version-variables {
   local version=$BLE_VERSION
 
   local hash=
@@ -955,10 +955,14 @@ function ble/base/initialize-version-information {
   local major=${version%%.*}; version=${version#*.}
   local minor=${version%%.*}; version=${version#*.}
   local patch=${version%%.*}
-  BLE_VERSINFO=("$major" "$minor" "$patch" "$hash" "$status" noarch)
   ((_ble_version=major*10000+minor*100+patch))
+  BLE_VERSINFO=("$major" "$minor" "$patch" "$hash" "$status" noarch)
+  BLE_VER=$_ble_version
 }
-ble/base/initialize-version-information
+function ble/base/clear-version-variables {
+  builtin unset -v _ble_bash _ble_version BLE_VERSION BLE_VERSINFO BLE_VER
+}
+ble/base/initialize-version-variables
 
 #------------------------------------------------------------------------------
 # workarounds for builtin read
@@ -1154,7 +1158,7 @@ function ble/init/check-environment {
 }
 if ! ble/init/check-environment; then
   ble/util/print "ble.sh: failed to adjust the environment. canceling the load of ble.sh." 1>&2
-  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
@@ -1500,7 +1504,7 @@ function ble/base/initialize-base-directory {
 }
 if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
   ble/util/print "ble.sh: ble base directory not found!" 1>&2
-  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
@@ -1576,7 +1580,7 @@ function ble/base/initialize-runtime-directory {
 }
 if ! ble/base/initialize-runtime-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_run." 1>&2
-  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
@@ -1733,7 +1737,7 @@ function ble/base/migrate-cache-directory {
 }
 if ! ble/base/initialize-cache-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
-  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
@@ -1791,7 +1795,7 @@ function ble/base/initialize-state-directory {
 }
 if ! ble/base/initialize-state-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_state." 1>&2
-  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
 fi
@@ -2415,7 +2419,7 @@ function ble/base/unload {
   ble/util/import/finalize
   ble/base/clean-up-runtime-directory finalize
   ble/fd#finalize
-  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
+  ble/base/clear-version-variables
   return 0
 } 0<&"$_ble_util_fd_tui_stdin" 1>&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
 
