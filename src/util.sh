@@ -3408,6 +3408,19 @@ ble/fd/.initialize-standard-stream stdin  '0<'
 ble/fd/.initialize-standard-stream stdout '1>'
 ble/fd/.initialize-standard-stream stderr '2>'
 
+## @fn ble/fd/save-external-standard-streams [fd_in fd_out fd_err]
+##   @var[in,opt] fd_in fd_out fd_err
+##     Specify the source file descriptors that are saved as standard streams
+##     for the external state.
+function ble/fd/save-external-standard-streams {
+  ble/fd#alloc _ble_util_fd_cmd_stdin  "<&${1:-0}" base:overwrite
+  ble/fd#alloc _ble_util_fd_cmd_stdout ">&${2:-1}" base:overwrite
+  ble/fd#alloc _ble_util_fd_cmd_stderr ">&${3:-2}" base:overwrite
+  ble/fd#add-cloexec "$_ble_util_fd_cmd_stdin"
+  ble/fd#add-cloexec "$_ble_util_fd_cmd_stdout"
+  ble/fd#add-cloexec "$_ble_util_fd_cmd_stderr"
+}
+
 function ble/fd#close-all-tty {
   local ret
   ble/fd#list

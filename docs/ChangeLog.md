@@ -171,6 +171,7 @@
   - util: support `ble/fd#add-cloexec` and add `O_CLOEXEC` by default `#D2158` 785267e1
   - util: fix error of bad file descriptors (reported by ragnarov) `#D2159` 785267e1
   - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
+  - main: record external file descriptors on `ble-attach` `#D2183` xxxxxxxx
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
   - history: fix initially shifted history index `#D2180` xxxxxxxx

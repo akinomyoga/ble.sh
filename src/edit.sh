@@ -7133,12 +7133,7 @@ function ble-edit/exec:gexec/.save-lastarg {
   # stderr (2) are redirected to /dev/null to suppress "set -x" messages in
   # this context.  Instead, we use 4 and 5 because stdout and stderr are copied
   # to 4 and 5, respectively, by the caller.
-  ble/fd#alloc _ble_util_fd_cmd_stdin  '<&0' base:overwrite
-  ble/fd#alloc _ble_util_fd_cmd_stdout '>&4' base:overwrite
-  ble/fd#alloc _ble_util_fd_cmd_stderr '>&5' base:overwrite
-  ble/fd#add-cloexec "$_ble_util_fd_cmd_stdin"
-  ble/fd#add-cloexec "$_ble_util_fd_cmd_stdout"
-  ble/fd#add-cloexec "$_ble_util_fd_cmd_stderr"
+  ble/fd/save-external-standard-streams 0 4 5
 
   return "$_ble_edit_exec_lastexit"
 }

@@ -2285,6 +2285,12 @@ ble/debug/leakvar#check $"leakvar" A4b2
 #%end.i
   fi
 
+  # reconnect standard streams
+  ble/fd/save-external-standard-streams
+  exec 0<&"$_ble_util_fd_tui_stdin"
+  exec 1>&"$_ble_util_fd_tui_stdout"
+  exec 2>&"$_ble_util_fd_tui_stderr"
+
   # char_width_mode=auto
   ble/canvas/attach
 #%if leakvar

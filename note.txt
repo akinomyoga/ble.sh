@@ -1955,12 +1955,6 @@ bash_tips
   * bug-bash: bash-3.1..dev exec fd1<&"$var"- で $var の fd が存在しない時のエ
     ラーメッセージが fd1 が存在しない、という物になっている。
 
-2024-02-19
-
-  * _ble_util_fd_cmd_std* は ble-attach の時の物を覚えるべき。prompt attach で
-    はそちらの方が安全。警告メッセージが嫌で source ble.sh 2>/dev/null とする人
-    がいるので。というか ble-attach の時に改めて tui から fd を dup するべき。
-
 2024-02-14
 
   * complete: / の入った関数名で曖昧補完できていない?
@@ -7374,6 +7368,12 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-02-25
+
+  * 2024-02-19 _ble_util_fd_cmd_std* は ble-attach の時の物を覚えるべき [#D2183]
+
+    prompt attach ではそちらの方が安全。警告メッセージが嫌で source ble.sh
+    2>/dev/null とする人がいるので。というか ble-attach の時に改めて tui から
+    fd を dup するべき。
 
   * 2024-02-08 bleopt: wildcard @ は 0文字以上に一致するべきでは [#D2182]
     Ref #D1568 #D1861
