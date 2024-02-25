@@ -26,7 +26,7 @@
 - util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` e64b02b7
 - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
-- edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` xxxxxxxx
+- edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
 
 ## Changes
 
@@ -171,6 +171,7 @@
   - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
+  - history: fix initially shifted history index `#D2180` xxxxxxxx
 - edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 3801a87e
 
 <!---------------------------------------------------------------------------->

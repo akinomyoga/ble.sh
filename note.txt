@@ -1913,10 +1913,6 @@ bash_tips
     が分からなくて見にくくなる。visible-bell で既に表示している物を上書きする時
     は、前に表示していた物を一旦消去してから上書きするべきでは。
 
-  * history: 初期化した瞬間の履歴番号が間違っている気がする。一個多い。履歴がロー
-    ドされた段階で正しいものに置き換わるが瞬間的に何か操作をすると何か変な事に
-    なりそうな気がする。
-
 2024-02-22
 
   * histdb: calendar で実行時間等についても calendar を作れる様にしたい。現在は
@@ -1974,11 +1970,6 @@ bash_tips
     がいるので。というか ble-attach の時に改めて tui から fd を dup するべき。
 
 2024-02-14
-
-  * README: exec_exit_mark も disable features に入れる
-    https://forum.atuin.sh/t/atuin-bash-and-ble-sh/175/12
-
-    fzf についての注記はもっと強調する。
 
   * complete: / の入った関数名で曖昧補完できていない?
 
@@ -2267,6 +2258,16 @@ bash_tips
 
     * TODO: bug-bash で報告する? 最小再現コードを作成しなければならないが面倒そ
       うだ。
+
+    2024-02-25 取り敢えず普通に .bashrc を実行した時に末尾にあるコマンドを拾っ
+    ているだけの様な気がするので、以下のテスト用のコードは .bashrc から削除する
+    事にする。
+
+    if ((BASH_VERSINFO[0]>=4)); then
+      printf '%079d\n' 0
+      printf '[%(%F %T %Z)T] %s\n' -1 "PID=$$ BASHPID=$BASHPID SHLVL=$SHLVL"
+      declare -p FUNCNAME BASH_LINENO BASH_SOURCE
+    fi >> ~/debug.bashrc.txt 2>&1
 
 2024-01-06
 
@@ -7384,6 +7385,22 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-02-25
+
+  * history: 初期化した瞬間の履歴番号が間違っている気がする。一個多い [#D2180]
+    Ref #D2153
+
+    履歴がロードされた段階で正しいものに置き換わるが瞬間的に何か操作をすると何
+    か変な事になりそうな気がする。
+
+    調べると \q{history-index} を使っていて、これは _ble_history_INDEX を使って
+    いる。これは ble/string#split-words の代わりに ble/string#split を間違って
+    使っていたのが悪い。#D2153 の regression である。
+
+  * [解消] 2024-02-14 README: exec_exit_mark も disable features に入れる [#D2179]
+    https://forum.atuin.sh/t/atuin-bash-and-ble-sh/175/12
+    → commit 2635afae で対応済み
+
+    fzf についての注記はもっと強調する。
 
   * edit: support "bleopt edit_magic_accept=verify-syntax" [#D2178]
 

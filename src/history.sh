@@ -127,7 +127,7 @@ if ((_ble_bash>=50200)); then
       # following command produces SIGPIPE because "head -1" or "sed 1q"
       # terminates prematurely.  To prevent Bash from changing the TTY state on
       # exit, we intentionally run the following command in a subshell.
-      ble/string#split min "$(builtin history | ble/bin/sed -n '1{p;q;}')"
+      ble/string#split-words min "$(builtin history | ble/bin/sed -n '1{p;q;}')"
     else
       ble/util/assign-words min 'builtin history | ble/bin/sed -n "1{p;q;}"'
     fi
