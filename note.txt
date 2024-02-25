@@ -1907,12 +1907,15 @@ bash_tips
 
 2024-02-25
 
-  * コマンド実行時に展開を実施する可能性 (motivated by pl643, bkerin)
-    https://github.com/akinomyoga/ble.sh/discussions/138
-    https://github.com/akinomyoga/ble.sh/issues/406#issuecomment-1939461192
+  * vbell: menu-complete のページ番号表示。これ以上進めませんのエラーメッセージ
+    が表示されている内に元のページに戻ると visible-bell erase がキャンセルされ
+    てエラーメッセージが残留する。然し、ページ番号表示の visible-bell との境界
+    が分からなくて見にくくなる。visible-bell で既に表示している物を上書きする時
+    は、前に表示していた物を一旦消去してから上書きするべきでは。
 
-    sabbrev/alias/etc を設定できる様にする? これは履歴展開の処理の箇所で同時に
-    した方が良い。histverify 等も働くので良い。
+  * history: 初期化した瞬間の履歴番号が間違っている気がする。一個多い。履歴がロー
+    ドされた段階で正しいものに置き換わるが瞬間的に何か操作をすると何か変な事に
+    なりそうな気がする。
 
 2024-02-22
 
@@ -3817,28 +3820,6 @@ bash_tips
     で動作を変更するのが楽という可能性はなくはない。
 
     2021-12-11 ble/string#match という関数名で追加した。
-
-2021-09-20
-
-  * sabbrev: accept-line の時にも展開する可能性について (requested by pl643)
-    https://github.com/akinomyoga/ble.sh/discussions/138
-
-    * zsh-abbr の振る舞いについても確認する。
-
-    * 振る舞いについての考察
-
-      a グローバルに全ての合致する単語を置換する。
-
-        x 先ず、意図しない物まで展開されてしまう可能性がある。
-
-        x 展開を意図する単語があったとしても、通常は magic-space によって既に展
-          開されていると期待するべき。なのでわざわざグローバルな展開を試みるま
-          でもない。
-
-      b 或いはその場所にある単語だけを展開する magic-accept 的な物。
-
-      元の要求が結局どのような物だったかは返事がないので不明だが、考えて見るに
-      b の方が良い。
 
 2021-09-15
 
@@ -7401,6 +7382,70 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-02-25
+
+  * 2021-09-20 sabbrev: accept-line の時にも展開する可能性について (requested by pl643, bkerin) [#D2175]
+    https://github.com/akinomyoga/ble.sh/discussions/138
+    https://github.com/akinomyoga/ble.sh/issues/406#issuecomment-1939461192
+
+    * zsh-abbr の振る舞いについても確認する。
+
+    * 振る舞いについての考察
+
+      a グローバルに全ての合致する単語を置換する。
+
+        x 先ず、意図しない物まで展開されてしまう可能性がある。
+
+        x 展開を意図する単語があったとしても、通常は magic-space によって既に展
+          開されていると期待するべき。なのでわざわざグローバルな展開を試みるま
+          でもない。
+
+      b 或いはその場所にある単語だけを展開する magic-accept 的な物。
+
+      元の要求が結局どのような物だったかは返事がないので不明だが、考えて見るに
+      b の方が良い。
+
+
+    2024-02-25 bkerin が似た様な事を Recipes に書いていた。確認を取ったら #138
+    に返信をくれた。なので実装する事にする。やはりその場にある単語だけを展開す
+    る事にする。
+
+    * bleopt edit_magic_accept: 展開の種類 sabbrev/alias/etc を設定できる
+      様にする? これは履歴展開の処理の箇所で同時にした方が良い。shopt -s
+      histverify 等の影響も受ける様にする。と思ったがやはり有効な展開の種類を設
+      定するリストに verify という opt も入れる事にした。
+
+      * done: wiki に追加する
+      * done: blerc.template に追加する
+
+    * done: ble-edit/hist_expanded.update は現在内部で [[ -o histexpand ]] を
+      チェックする事になっている。然し、set -H の設定に関係なく外から呼び出した
+      い。なので、呼び出し元でチェックする様にしないか。
+
+      既存の使用場所は accept-line の他に ble/widget/insert-arg.impl と
+      history-expand-line の系列 (他に history-and-alias-expand-line,
+      history-expand-backward-line) がある。
+
+      * ok: insert-arg に関しては実は set -H の設定に関係なく展開して欲しい状況
+        の気がする。今の実装には問題がある。修正する。
+
+      * ok: history-expand-line に関しては bash の振る舞いを見ると set -H を設
+        定しないと何も実行しないみたいだ。然し、これは実装上の都合なのか意図的
+        な物なのかはよく分からない。というか、明示的に呼び出しているのだから履
+        歴展開を一時的に有効にしても良いのではないかという気がする。
+
+        この際 history-expand-line は set +H でも展開を実施する様に変更する事に
+        する。
+
+      * done: そもそも history -p '!!' は set -H が指定されていないと何も実行し
+        ない様だ。恐らくこれが histexpand のチェックが
+        ble-edit/hist_expanded.update の内部にあった理由だろう。
+
+        自前で set -H を保存・復元する事にする。$- を保存すれば良い。
+
+      * done: 関数名を色々変える。展開結果は hist_expanded ではなく ret を通し
+        て返す様に変更する。hist_expanded がもう残っていないか確認する。
 
 2024-02-24
 

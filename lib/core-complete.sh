@@ -8400,7 +8400,7 @@ function ble/complete/auto-complete/source:history/.search-light {
   local word= expand
   if [[ $text != [-0-9#?!]* ]]; then
     word=${text%%[$wordbreaks]*}
-    command='!'$word ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
+    command='!'$word ble/util/assign expand 'ble/edit/histexpand/run' &>/dev/null || return 1
     if [[ $expand == "$text"* ]]; then
       ret=$expand
       return 0
@@ -8420,7 +8420,7 @@ function ble/complete/auto-complete/source:history/.search-light {
     done
 
     for frag in "${longest_fragments[@]}"; do
-      command='!?'$frag ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
+      command='!?'$frag ble/util/assign expand 'ble/edit/histexpand/run' &>/dev/null || return 1
       [[ $expand == "$text"* ]] || continue
       ret=$expand
       return 0

@@ -133,6 +133,18 @@
 #bleopt edit_magic_opts=
 
 
+## This option specifies the expansions performed on accept-line by a
+## colon-separated list.  The expansion is performed in a similar way as Bash's
+## history expansion.  When "sabbrev", "alias", and "history" is specified, the
+## respective expansions are attempted on the command line.  When "verify" is
+## specified, if sabbrev or alias expansions changed the command line, the
+## execution of the command line is canceled so the user can examine or
+## continue to edit the expanded line.  The history expansion can be controlled
+## by "shopt -s histverify" in a similar manner. The default is empty.
+
+#bleopt edit_magic_accept=sabbrev
+
+
 ## The following option controls the position of the info pane where completion
 ## menu, mode names, and other information are shown.  When the value "top" is
 ## specified, the info pane is shown just below the command line.  When the

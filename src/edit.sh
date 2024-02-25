@@ -94,8 +94,26 @@ bleopt/declare -v undo_point end
 ##
 bleopt/declare -n edit_forced_textmap 1
 
-bleopt/declare -n edit_magic_expand history:sabbrev
-bleopt/declare -v edit_magic_opts   ''
+bleopt/declare -v edit_magic_expand history:sabbrev
+bleopt/declare -v edit_magic_opts ''
+
+## @bleopt edit_magic_accept
+##   @opt sabbrev
+##   @opt alias
+##   @opt history
+##     These enable the corresponding expansions on accept-line.  The history
+##     expansion is equivalent to the shell's history expansion and performed
+##     when "history" is specified here, or the shell option `set -H` (or `set
+##     -o histexpand`) is specified.
+##
+##   @opt verify
+##     When any expansion (except for the history expansion) is performed and
+##     the command line is changed, we update the change in the command line.
+##     We cancel accept-line and let the user continue to edit the command
+##     line.  This is similar to "shopt -s histverify" for the shell's history
+##     expansions.  For the history expansion, "shopt -s histverify" is
+##     referenced instead.
+bleopt/declare -v edit_magic_accept ''
 
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0
@@ -4666,10 +4684,9 @@ function ble/widget/insert-arg.impl {
 
       local entry; ble/history/get-edited-entry "$index"
       builtin history -s -- "$entry"
-      local hist_expanded
-      if ble-edit/hist_expanded.update '!!:'"$nth" &&
-          [[ $hist_expanded != "$original" ]]; then
-        hit=1 lastarg=$hist_expanded
+      local ret
+      if ble/edit/histexpand '!!:'"$nth" && [[ $ret != "$original" ]]; then
+        hit=1 lastarg=$ret
         ble/util/declare-print-definitions hit lastarg
         break
       fi
@@ -7429,27 +7446,32 @@ function ble/widget/discard-line {
   ble/textarea#render
 }
 
-function ble/edit/hist_expanded/.core {
-  ble/builtin/history/option:p "$command"
+function ble/edit/histexpand/run {
+  local shopt=$-
+  set -H
+  ble/builtin/history/option:p "$command"; local ext=$?
+  [[ $shopt == *H* ]] || set +H
+  return "$ext"
 }
-function ble-edit/hist_expanded/.expand {
-  ble/edit/hist_expanded/.core 2>/dev/null; local ext=$?
+function ble/edit/histexpand/.impl {
+  ble/edit/histexpand/run 2>/dev/null; local ext=$?
   ((ext)) && ble/util/print "$command"
   ble/util/put :
   return "$ext"
 }
 
-## @var[out] hist_expanded
-function ble-edit/hist_expanded.update {
+## @fn ble/edit/histexpand str
+##   @var[out] ret
+function ble/edit/histexpand {
   local command=$1
-  if [[ ! -o histexpand || ! ${command//[ 	]} ]]; then
-    hist_expanded=$command
+  if [[ ! ${command//[ 	]} ]]; then
+    ret=$command
     return 0
-  elif ble/util/assign hist_expanded 'ble-edit/hist_expanded/.expand'; then
-    hist_expanded=${hist_expanded%$_ble_term_nl:}
+  elif ble/util/assign ret 'ble/edit/histexpand/.impl'; then
+    ret=${ret%$_ble_term_nl:}
     return 0
   else
-    hist_expanded=$command
+    ret=$command
     return 1
   fi
 }
@@ -7525,29 +7547,54 @@ function ble/widget/default/accept-line {
     return 0
   fi
 
-  # 履歴展開
-  local hist_expanded
-  if ! ble-edit/hist_expanded.update "$command"; then
-    ble/widget/.internal-print-command \
-      'ble/edit/hist_expanded/.core 1>/dev/null' pre-flush # エラーメッセージを表示
-    shopt -q histreedit &>/dev/null || ble/widget/.newline/clear-content
-    return "$?"
+  local is_line_expanded=
+
+  # 静的略語展開
+  if [[ :$bleopt_edit_magic_accept: == *:sabbrev:* ]]; then
+    if ble/complete/sabbrev/expand type-status; then
+      [[ :$bleopt_edit_magic_accept: == *:verify:* ]] && return 0
+      command=$_ble_edit_str
+      is_line_expanded=1
+    elif (($?==147)); then
+      return 147 # We entered menu-complete
+    fi
   fi
 
-  local hist_is_expanded=
-  if [[ $hist_expanded != "$command" ]]; then
-    if shopt -q histverify &>/dev/null; then
-      _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
-      ble-edit/content/reset-and-check-dirty "$hist_expanded"
-      _ble_edit_ind=${#hist_expanded}
-      _ble_edit_mark=0
-      _ble_edit_mark_active=
-      return 0
+  # エイリアス展開
+  if [[ :$bleopt_edit_magic_accept: == *:alias:* ]]; then
+    if ble/complete/alias/expand; then
+      [[ :$bleopt_edit_magic_accept: == *:verify:* ]] && return 0
+      command=$_ble_edit_str
+      is_line_expanded=1
+    fi
+  fi
+
+  # 履歴展開
+  if [[ -o histexpand || :$bleopt_edit_magic_accept: == *:history:* ]]; then
+    if local ret; ble/edit/histexpand "$command"; then
+      local expanded=$ret
+    else
+      ble/widget/.internal-print-command \
+        'ble/edit/histexpand/run 1>/dev/null' pre-flush # エラーメッセージを表示
+      shopt -q histreedit &>/dev/null || ble/widget/.newline/clear-content
+      return "$?"
     fi
 
-    command=$hist_expanded
-    hist_is_expanded=1
+    if [[ $expanded != "$command" ]]; then
+      if shopt -q histverify &>/dev/null; then
+        _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
+        ble-edit/content/reset-and-check-dirty "$expanded"
+        _ble_edit_ind=${#expanded}
+        _ble_edit_mark=0
+        _ble_edit_mark_active=
+        return 0
+      fi
+
+      command=$expanded
+      is_line_expanded=1
+    fi
   fi
+
 
   # 実行を登録
   local old_cmd=$_ble_edit_CMD
@@ -7557,7 +7604,7 @@ function ble/widget/default/accept-line {
   ble/history/add "$command"
 
   _ble_edit_CMD=$old_cmd ble/widget/.newline # #D1800 register
-  if [[ $hist_is_expanded ]]; then
+  if [[ $is_line_expanded ]]; then
     local ret
     ble/edit/marker#instantiate 'expand' non-empty
     ble/util/buffer.print "$ret $command"
@@ -8233,12 +8280,13 @@ function ble/widget/history-goto {
 ##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-line {
   ble-edit/content/clear-arg
-  local hist_expanded
-  ble-edit/hist_expanded.update "$_ble_edit_str" || return 1
-  [[ $_ble_edit_str == "$hist_expanded" ]] && return 1
+  local ret
+  ble/edit/histexpand "$_ble_edit_str" || return 1
+  local expanded=$ret
+  [[ $_ble_edit_str == "$expanded" ]] && return 1
 
-  ble-edit/content/reset-and-check-dirty "$hist_expanded"
-  _ble_edit_ind=${#hist_expanded}
+  ble-edit/content/reset-and-check-dirty "$expanded"
+  _ble_edit_ind=${#expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
   return 0
@@ -8251,14 +8299,15 @@ function ble/widget/history-and-alias-expand-line {
 ##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-backward-line {
   ble-edit/content/clear-arg
-  local prevline=${_ble_edit_str::_ble_edit_ind} hist_expanded
-  ble-edit/hist_expanded.update "$prevline" || return 1
-  [[ $prevline == "$hist_expanded" ]] && return 1
+  local prevline=${_ble_edit_str::_ble_edit_ind} ret
+  ble/edit/histexpand "$prevline" || return 1
+  local expanded=$ret
+  [[ $prevline == "$expanded" ]] && return 1
 
   local ret
-  ble/string#common-prefix "$prevline" "$hist_expanded"; local dmin=${#ret}
+  ble/string#common-prefix "$prevline" "$expanded"; local dmin=${#ret}
 
-  local insert; ble-edit/content/replace-limited "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
+  local insert; ble-edit/content/replace-limited "$dmin" "$_ble_edit_ind" "${expanded:dmin}"
   ((_ble_edit_ind=dmin+${#insert}))
   _ble_edit_mark=0
   _ble_edit_mark_active=

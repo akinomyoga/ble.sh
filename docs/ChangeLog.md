@@ -22,8 +22,9 @@
 - complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` 0c4b6772
 - edit: add widgets `execute-named-command` and `history-goto` `#D2144` aa92b42a
 - keymap/vi_nmap: support `shell-expand-line` `#D2145` aa92b42a
-- main: support `bash ble.sh --install` `#D2169` 986d26a3 xxxxxxxx
+- main: support `bash ble.sh --install` `#D2169` 986d26a3 3801a87e
 - util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` e64b02b7
+- edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` xxxxxxxx
 
 ## Changes
 
@@ -168,7 +169,7 @@
   - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
-- edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 xxxxxxxx
+- edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 3801a87e
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
