@@ -24,8 +24,9 @@
 - keymap/vi_nmap: support `shell-expand-line` `#D2145` aa92b42a
 - main: support `bash ble.sh --install` `#D2169` 986d26a3 3801a87e
 - util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` e64b02b7
-- edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` xxxxxxxx
-- main: support shell variable `BLE_VER` `#D2177` xxxxxxxx
+- edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
+- main: support shell variable `BLE_VER` `#D2177` a12dedab
+- edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` xxxxxxxx
 
 ## Changes
 

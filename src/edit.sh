@@ -106,6 +106,12 @@ bleopt/declare -v edit_magic_opts ''
 ##     when "history" is specified here, or the shell option `set -H` (or `set
 ##     -o histexpand`) is specified.
 ##
+##   @opt history-inline
+##     By default, the result of the history expansion is not applied to the
+##     command line, but it is printed in the form "[ble: expand] <expanded
+##     command>" mimicking the behavior of Bash/Readline.  When this option is
+##     specified, the result of the history expansion replaces the content of
+##     the command line.
 ##   @opt verify
 ##     When any expansion (except for the history expansion) is performed and
 ##     the command line is changed, we update the change in the command line.
@@ -113,7 +119,14 @@ bleopt/declare -v edit_magic_opts ''
 ##     line.  This is similar to "shopt -s histverify" for the shell's history
 ##     expansions.  For the history expansion, "shopt -s histverify" is
 ##     referenced instead.
-bleopt/declare -v edit_magic_accept ''
+##   @opt verify-syntax
+##     If this option is specified, when any expansions change the command, the
+##     syntax check for the resulting command is performed.  If the expanded
+##     result is not a complete shell command, the command execution is
+##     canceled so the user can modify the expanded command.  This implies
+##     "history-inline".
+##
+bleopt/declare -v edit_magic_accept 'verify-syntax'
 
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0
@@ -7523,6 +7536,20 @@ function ble/widget/accept-line/.is-mc-init {
 function ble/widget/accept-line {
   ble/decode/widget/keymap-dispatch "$@"
 }
+
+## @fn ble/widget/default/accept-line/.prepare-verify new_str new_ind
+##   @var[in] old_str old_ind
+function ble/widget/default/accept-line/.prepare-verify {
+  local new_str=$1 new_ind=$2
+  ble-edit/content/reset-and-check-dirty "$old_str"
+  _ble_edit_ind=$old_ind
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
+  ble-edit/content/reset-and-check-dirty "$new_str"
+  _ble_edit_ind=$new_ind
+  _ble_edit_mark=0
+  _ble_edit_mark_active=
+  return 0
+}
 function ble/widget/default/accept-line {
   # 文法的に不完全の時は改行挿入
   # Note: mc (midnight commander) が改行を含むコマンドを書き込んでくる #D1392
@@ -7548,11 +7575,16 @@ function ble/widget/default/accept-line {
   fi
 
   local is_line_expanded=
+  local orig_str=$_ble_edit_str orig_ind=$_ble_edit_ind
 
   # 静的略語展開
   if [[ :$bleopt_edit_magic_accept: == *:sabbrev:* ]]; then
-    if ble/complete/sabbrev/expand type-status; then
-      [[ :$bleopt_edit_magic_accept: == *:verify:* ]] && return 0
+    local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
+    if ble/complete/sabbrev/expand; then
+      if [[ :$bleopt_edit_magic_accept: == *:verify:* ]]; then
+        ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
+        return 0
+      fi
       command=$_ble_edit_str
       is_line_expanded=1
     elif (($?==147)); then
@@ -7562,8 +7594,12 @@ function ble/widget/default/accept-line {
 
   # エイリアス展開
   if [[ :$bleopt_edit_magic_accept: == *:alias:* ]]; then
+    local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
     if ble/complete/alias/expand; then
-      [[ :$bleopt_edit_magic_accept: == *:verify:* ]] && return 0
+      if [[ :$bleopt_edit_magic_accept: == *:verify:* ]]; then
+        ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
+        return 0
+      fi
       command=$_ble_edit_str
       is_line_expanded=1
     fi
@@ -7571,6 +7607,7 @@ function ble/widget/default/accept-line {
 
   # 履歴展開
   if [[ -o histexpand || :$bleopt_edit_magic_accept: == *:history:* ]]; then
+    local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
     if local ret; ble/edit/histexpand "$command"; then
       local expanded=$ret
     else
@@ -7582,19 +7619,31 @@ function ble/widget/default/accept-line {
 
     if [[ $expanded != "$command" ]]; then
       if shopt -q histverify &>/dev/null; then
-        _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
-        ble-edit/content/reset-and-check-dirty "$expanded"
-        _ble_edit_ind=${#expanded}
-        _ble_edit_mark=0
-        _ble_edit_mark_active=
+        ble/widget/default/accept-line/.prepare-verify "$expanded" "${#expanded}"
         return 0
       fi
 
-      command=$expanded
       is_line_expanded=1
+      command=$expanded
+      if [[ :$bleopt_edit_magic_accept: == *:history-inline:* ]]; then
+        ble-edit/content/reset-and-check-dirty "$command"
+        _ble_edit_ind=${#command}
+      fi
     fi
   fi
 
+  if [[ $is_line_expanded && :$bleopt_edit_magic_accept: == *:verify-syntax:* ]]; then
+    if [[ $command != "$_ble_edit_str" ]]; then
+      ble-edit/content/reset-and-check-dirty "$command"
+      _ble_edit_ind=${#command}
+    fi
+    ble-edit/content/update-syntax
+    if ! ble/syntax:bash/is-complete; then
+      local old_str=$orig_str old_ind=$orig_ind
+      ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
+      return 0
+    fi
+  fi
 
   # 実行を登録
   local old_cmd=$_ble_edit_CMD
@@ -7603,8 +7652,10 @@ function ble/widget/default/accept-line {
   # 編集文字列を履歴に追加
   ble/history/add "$command"
 
+  local show_expanded
+  [[ $command != "$_ble_edit_str" ]] && show_expanded=1
   _ble_edit_CMD=$old_cmd ble/widget/.newline # #D1800 register
-  if [[ $is_line_expanded ]]; then
+  if [[ $show_expanded ]]; then
     local ret
     ble/edit/marker#instantiate 'expand' non-empty
     ble/util/buffer.print "$ret $command"

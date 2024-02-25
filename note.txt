@@ -7385,6 +7385,18 @@ bash_tips
 
 2024-02-25
 
+  * edit: support "bleopt edit_magic_accept=verify-syntax" [#D2178]
+
+    履歴展開で文法的におかしな事になる事も結構ある。展開後に文法的に壊れていた
+    ら一旦停止する様にするべきではないか。
+
+    * done: blerc.template
+    * done: wiki
+    * done: これは既定のオプションにする。こうするとbash/readline の振る舞いと
+      異なって、文法チェックの為に必ずコマンドラインが置き換わる形になるが、ま
+      あ元の振る舞いの方が良い訳でもないのでこれで良い。元の振る舞いが良い人は
+      verify-syntax を外してもらう事にする。
+
   * main: BLE_VER 対応 [#D2177]
 
     wezterm や atuin integration で _ble_version を参照するのも忍びない。かと言っ
@@ -7508,6 +7520,24 @@ bash_tips
 
       * done: 関数名を色々変える。展開結果は hist_expanded ではなく ret を通し
         て返す様に変更する。hist_expanded がもう残っていないか確認する。
+
+    ----
+
+    完成したと思ってすぐに push してしまったがテストするのを忘れていた。通常の
+    展開に関してはいい感じに動いているが verify が全く動いていない。どうも
+    magic-space から実装を持ってきた時に type-status を sabbrev/expand に指定し
+    たままになっていたので、常に sabbrev expansion が失敗した取り扱いになってい
+    て、然し sabbrev expansion は inline で _ble_edit_str を書き換えるのでその
+    まま動いている感じになっていたという事。
+
+    * is_line_expanded=1 を設定していたが、これだとインラインで展開してコマンド
+      ラインが既に書き換わっているのに改めて展開結果を表示する形になって変であ
+      る。然しだからと言って _ble_edit_str を展開前に保持したまま、展開結果を味
+      気ない [ble: expand] で表示するのも変な感じがする。なので
+      is_line_expanded=1 は履歴展開だけで有効にする事にした。
+
+    * verify の時に何も起こらずにその場で展開だけ起こるのも少し変な気がするので、
+      履歴展開と同様に次の行に移動する事にした。
 
 2024-02-24
 

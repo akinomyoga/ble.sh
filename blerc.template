@@ -140,7 +140,12 @@
 ## specified, if sabbrev or alias expansions changed the command line, the
 ## execution of the command line is canceled so the user can examine or
 ## continue to edit the expanded line.  The history expansion can be controlled
-## by "shopt -s histverify" in a similar manner. The default is empty.
+## by "shopt -s histverify" in a similar manner.  When "verify-syntax" is
+## specified and any expansions change the command string, a syntax check is
+## performed.  The command execution is canceled when the command string is not
+## syntactically complete.  When "history-line" is specified, the history
+## expansion replaces the command line instead of just printing the expansion
+## result.  The default value of this option is empty.
 
 #bleopt edit_magic_accept=sabbrev
 
