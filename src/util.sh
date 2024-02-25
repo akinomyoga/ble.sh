@@ -33,9 +33,9 @@ function bleopt/.read-arguments/process-option {
 function bleopt/expand-variable-pattern {
   ret=()
   local pattern=$1
-  if [[ $pattern == *@* ]]; then
-    builtin eval -- "ret=(\"\${!${pattern%%@*}@}\")"
-    ble/array#filter-by-glob ret "${pattern//@/?*}"
+  if [[ $pattern == *[@*?]* ]]; then
+    builtin eval -- "ret=(\"\${!${pattern%%[@*?]*}@}\")"
+    ble/array#filter-by-glob ret "${pattern//@/*}"
   elif [[ ${!pattern+set} || :$opts: == :allow-undefined: ]]; then
     ret=("$pattern")
   fi
@@ -79,7 +79,7 @@ function bleopt/.read-arguments {
         esac
       done ;;
     (*)
-      if local rex='^([_a-zA-Z0-9@]+)(:?=|$)(.*)'; [[ $arg =~ $rex ]]; then
+      if local rex='^([_a-zA-Z0-9@*?]+)(:?=|$)(.*)'; [[ $arg =~ $rex ]]; then
         local name=${BASH_REMATCH[1]#bleopt_}
         local var=bleopt_$name
         local op=${BASH_REMATCH[2]}
@@ -87,7 +87,7 @@ function bleopt/.read-arguments {
 
         # check/expand variable names
         if [[ $op == ':=' ]]; then
-          if [[ $var == *@* ]]; then
+          if [[ $var == *[@*?]* ]]; then
             ble/util/print "bleopt: \`${var#bleopt_}': wildcard cannot be used in the definition." >&2
             flags=E$flags
             continue
@@ -178,7 +178,7 @@ function bleopt {
       '    NAME=VALUE  Set the value to the option.' \
       '    NAME:=VALUE Set or create the value to the option.' \
       '' \
-      '  NAME can contain "@" as a wildcard.' \
+      '  NAME can contain "@", "*", and "?" as wildcards.' \
       ''
     return 0
   fi

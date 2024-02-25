@@ -1338,10 +1338,11 @@ function ble-face/.print-help {
     '    -r FACEPAT...' \
     '            Reset faces.  If faces are not specified, all faces are selected.' \
     '' \
-    '  FACEPAT   Specifies a face name.  The character @ in the face name is treated' \
-    '            as a wildcard.' \
+    '  FACEPAT   Specifies a face name.  The characters "@", "*", and "?" in the' \
+    '            face name are treated as wildcards.' \
     '' \
-    '  FACE      Specifies a face name.  Wildcard @ cannot be used.' \
+    '  FACE      Specifies a face name.  The wildcards "@", "*", and "?" cannot be' \
+    '            used.' \
     '' \
     '  TYPE      Specifies the format of SPEC. The following values are available.' \
     '    gspec   Comma separated graphic attribute list' \
@@ -1405,7 +1406,7 @@ function ble-face {
   fi
 
   if ((!${#print[@]}&&!${#setface[@]})); then
-    print=(@)
+    print=('?@')
   fi
 
   ((${#print[@]})) && ble/color/initialize-faces
@@ -1419,7 +1420,7 @@ function ble-face {
 
   local spec
   for spec in "${setface[@]}"; do
-    if local rex='^([_a-zA-Z@][_a-zA-Z0-9@]*)(:?=)(.*)$'; ! [[ $spec =~ $rex ]]; then
+    if local rex='^([_a-zA-Z@*?][_a-zA-Z0-9@*?]*)(:?=)(.*)$'; ! [[ $spec =~ $rex ]]; then
       ble/util/print "ble-face: unrecognized setting '$spec'" >&2
       flags=E$flags
       continue
@@ -1429,8 +1430,8 @@ function ble-face {
     local type=${BASH_REMATCH[2]}
     local value=${BASH_REMATCH[3]}
     if [[ $type == ':=' ]]; then
-      if [[ $var == *@* ]]; then
-        ble/util/print "ble-face: wild card @ cannot be used for face definition ($spec)." >&2
+      if [[ $var == *[@*?]* ]]; then
+        ble/util/print "ble-face: wildcards @*? cannot be used for face definition ($spec)." >&2
         flags=E$flags
       else
         ble/color/defface "$var" "$value"

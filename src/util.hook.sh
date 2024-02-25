@@ -58,7 +58,7 @@ function blehook/.print-help {
     '    NAME+-=COMMAND  Prepend the hook and remove the duplicates.' \
     '' \
     '  NAME:' \
-    '    The hook name.  The character `@'\'' may be used as a wildcard.' \
+    '    The hook name.  The characters "@", "*", and "?" may be used as wildcards.' \
     ''
 }
 
@@ -99,14 +99,14 @@ function blehook/.read-arguments {
         done ;;
       esac
     elif [[ $arg =~ $rex1 ]]; then
-      if [[ $arg == *@* ]] || ble/is-array "_ble_hook_h_$arg"; then
+      if [[ $arg == *[@*?]* ]] || ble/is-array "_ble_hook_h_$arg"; then
         ble/array#push print "$arg"
       else
         ble/util/print "blehook: undefined hook '$arg'." >&2
       fi
     elif [[ $arg =~ $rex2 ]]; then
       local name=${BASH_REMATCH[1]}
-      if [[ $name == *@* ]]; then
+      if [[ $name == *[@*?]* ]]; then
         if [[ ${BASH_REMATCH[2]} == :* ]]; then
           ble/util/print "blehook: hook pattern cannot be combined with '${BASH_REMATCH[2]}'." >&2
           flags=E$flags
@@ -134,7 +134,7 @@ function blehook/.read-arguments {
   # resolve patterns
   local pat ret out; out=()
   for pat in "${print[@]}"; do
-    if [[ $pat == *@* ]]; then
+    if [[ $pat == *[@*?]* ]]; then
       bleopt/expand-variable-pattern "_ble_hook_h_$pat"
       ble/array#filter ret ble/is-array
       [[ $pat == *[a-z]* || $flags == *a* ]] ||
@@ -155,7 +155,7 @@ function blehook/.read-arguments {
   for pat in "${process[@]}"; do
     [[ $pat =~ $rex2 ]]
     local name=${BASH_REMATCH[1]}
-    if [[ $name == *@* ]]; then
+    if [[ $name == *[@*?]* ]]; then
       local type=${BASH_REMATCH[3]}
       local value=${BASH_REMATCH[4]}
 
@@ -190,8 +190,8 @@ function blehook {
   local LC_ALL= LC_COLLATE=C 2>/dev/null # suppress locale error #D1440
 
   local flags print process
-  local rex1='^([_a-zA-Z@][_a-zA-Z0-9@]*)$'
-  local rex2='^([_a-zA-Z@][_a-zA-Z0-9@]*)(:?([-+!]|-\+|\+-)?=)(.*)$'
+  local rex1='^([_a-zA-Z@*?][_a-zA-Z0-9@*?]*)$'
+  local rex2='^([_a-zA-Z@*?][_a-zA-Z0-9@*?]*)(:?([-+!]|-\+|\+-)?=)(.*)$'
   blehook/.read-arguments "$@"
   if [[ $flags == *[HE]* ]]; then
     if [[ $flags == *H* ]]; then

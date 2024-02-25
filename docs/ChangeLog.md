@@ -27,6 +27,7 @@
 - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
+- util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` xxxxxxxx
 
 ## Changes
 
