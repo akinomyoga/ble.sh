@@ -33,7 +33,9 @@ There are two ways to get `ble.sh`: to download and build `ble.sh` using `git`, 
 For the detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
 and [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
 
-**If you would like to use fzf** with `ble.sh`, you need to check [Sec 2.8](#fzf-integration).
+> [!NOTE]
+> If you want to **use fzf with `ble.sh`**, you need to check [Sec
+> 2.8](#fzf-integration).
 
 <details open><summary><b>Download and generate <code>ble.sh</code> using <code>git</code></b></summary>
 

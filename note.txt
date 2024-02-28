@@ -7367,6 +7367,53 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-02-29
+
+  * util: term_stty_restore が動かない (reported by TheFantasticWarrior) [#D2184]
+    https://github.com/akinomyoga/ble.sh/issues/412#issuecomment-1968941175
+
+    #D2170
+
+    Bash 5.2 で試したら確かに自分で設定した stty が反映されない。
+    ble/term/stty/enter を確認したら全く別の実装になっている。検索してみたら、
+    そう言えば Bash 5.2 で checkwinsize が動かない問題の解決の為に
+    ble/term/stty/enter を上書きしていたのだった。この上書きするコードも同時に
+    更新する必要があった。
+
+    自分で試してみたが未だ問題がある。最初の initialize の呼び出しの時点で stty
+    -a の内容が undef になっている。別に internal state で initialize が呼び出
+    されている訳でもない。と思ったが PROMPT_COMMAND で attach している時には
+    readline が用意した internal state で実行されるので stty -a の内容が undef
+    になっているのである。また bashrc で stty -a をした限りだと、 bashrc を実行
+    している段階では stty -a の内容は external になっている。
+    term_stty_restore=1 の時には bashrc の中で external state を保存しておく必
+    要がある気がする。
+
+    x うーん。でも term_stty_restore=1 は blerc で設定されると思うと util.sh の
+      読み込みの時点では term_stty_restore=1 になるか分からないのでその場で読み
+      取る訳には行かない。blerc を実行した後にまたチェックするのもコードが分散
+      して嫌だし、ユーザーが .bashrc で設定を書いた場合に対応できない。
+
+    term_stty_restore=1 の setter に hook すればこれらの問題は解決するが、
+
+    x PROMPT_COMMAND の中で term_stty_restore=1 を実行された場合にはやはり問題
+      が生じる。取り敢えず、PROMPT_COMMAND の中で最初の term_setty_restore=1 を
+      実行する場合は考えない事にする。
+
+    * 最初から term_stty_restore が設定されている場合については bleopt -I を実
+      行した時点で処理される筈。"bleopt -I" は util.sh の読み込みよりも後にある
+      のでOK。
+
+    ble-detach してから stty を変更して再び ble-attach する場合にはまた問題が生
+    じる様な気がするが余り気にしない? 或いは問題は簡単に回避できるだろうか?
+    finalize で clear しておけば問題は生じない。次の initialize の時に設定を読
+    み取るから。しかし、その様にすると source ~/.bashrc して新しい ble.sh
+    session が始まった時にどうなるか不明。うーん。source ~/.bashrc を
+    PROMPT_COMMAND の中で実行されると困るが (そして実際にその様な事をする人が過
+    去にあった)、そうでなければ問題は起きない気がする。
+
+    うーん。一応注意書きは何処かに書いておく事にする。
+
 2024-02-25
 
   * 2024-02-19 _ble_util_fd_cmd_std* は ble-attach の時の物を覚えるべき [#D2183]

@@ -6462,7 +6462,14 @@ function ble/term/visible-bell/erase {
 #   その場で入力を受信する事ができない。結果として hang した様に見える。
 #   従って、enter で -icanon を設定する事にする。
 
+[[ ${_ble_term_stty_save+set} ]] || _ble_term_stty_save=
 bleopt/declare -v term_stty_restore ''
+function bleopt/check:term_stty_restore {
+  if [[ $value && ! $_ble_term_stty_save ]]; then
+    ble/util/assign _ble_term_stty_save 'ble/bin/stty -g'
+  fi
+  return 0
+}
 
 ## @var _ble_term_stty_state
 ##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
@@ -6506,10 +6513,10 @@ function ble/term/stty/.initialize-flags {
 }
 ble/term/stty/.initialize-flags
 
-_ble_term_stty_save=
 function ble/term/stty/initialize {
   if [[ $bleopt_term_stty_restore ]]; then
-    ble/util/assign _ble_term_stty_save 'ble/bin/stty -g'
+    [[ $_ble_term_stty_save ]] ||
+      ble/util/assign _ble_term_stty_save 'ble/bin/stty -g'
   fi
   ble/bin/stty -ixon -echo -nl -icrnl -icanon \
                "${_ble_term_stty_flags_enter[@]}"
@@ -6526,6 +6533,10 @@ function ble/term/stty/leave {
   fi
 }
 function ble/term/stty/enter {
+  # Note (#D2184): This function is overwritten later in Bash 5.2 to work
+  # around the problem that "checkwinsize" does not work in "bind -x" in Bash
+  # 5.2.  The changes to this function needs to be also reflected in the later
+  # overwriting version of "ble/term/stty/enter".
   [[ $_ble_term_stty_state ]] && return 0
   if [[ $bleopt_term_stty_restore ]]; then
     ble/term/stty/initialize
@@ -6536,6 +6547,7 @@ function ble/term/stty/enter {
 }
 function ble/term/stty/finalize {
   ble/term/stty/leave
+  _ble_term_stty_save=
 }
 function ble/term/stty/TRAPEXIT {
   # exit の場合は echo
@@ -6658,10 +6670,15 @@ if ((50200<=_ble_bash&&_ble_bash<50300)); then
       function ble/term/stty/enter {
         [[ $_ble_term_stty_state ]] && return 0
         local ret
-        ble/util/assign-words ret 'ble/bin/stty -echo -nl -icrnl -icanon "${_ble_term_stty_flags_enter[@]}" size'
+        if [[ $bleopt_term_stty_restore ]]; then
+          ble/term/stty/initialize
+          ble/util/assign-words ret 'ble/bin/stty size'
+        else
+          ble/util/assign-words ret 'ble/bin/stty -echo -nl -icrnl -icanon "${_ble_term_stty_flags_enter[@]}" size'
+          _ble_term_stty_state=1
+        fi
         [[ ${ret[0]} =~ ^[0-9]+$ ]] && LINES=${ret[0]}
         [[ ${ret[1]} =~ ^[0-9]+$ ]] && COLUMNS=${ret[1]}
-        _ble_term_stty_state=1
       }
     else
       ble/term/update-winsize
