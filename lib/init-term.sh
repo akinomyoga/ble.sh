@@ -141,6 +141,12 @@ function ble/init:term/initialize {
 
   # CUP+ED (clear_screen)
   ble/init:term/define-cap _ble_term_clear $'\e[H\e[2J' clear:cl
+  # Note: ncurses-6.1 started to produce both "clear" and "E3" for "tput
+  # clear".  To obtain the entry "clear", one needs to specify the "-x" option
+  # to tput.  However, the option "-x" is non-POSIX and cannot be reliably
+  # used.  We instead manually remove "E3" because the control sequence of "E3"
+  # is unlikely to have variations.
+  _ble_term_clear=${_ble_term_clear//$'\e[3J'}
 
   # IL/DL
   ble/init:term/define-cap _ble_term_il $'\e[%dL' il:AL 123

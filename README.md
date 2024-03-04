@@ -652,7 +652,7 @@ function ble/widget/my/example1 {
 ble-bind -f C-t my/example1
 ```
 
-## 2.8 fzf integration<sup><a id="fzf-integration" href="#get-from-source">†</a></sup>
+## 2.8 fzf integration<sup><a id="fzf-integration" href="#fzf-integration">†</a></sup>
 
 If you would like to use `fzf` in combination with `ble.sh`, you need to configure `fzf` using [the `contrib/fzf` integration](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration).
 Please follow the instructions in the link for the detailed description.

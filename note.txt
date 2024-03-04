@@ -7367,6 +7367,22 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-03-04
+
+  * edit: C-l 及び clear が効かなくなる (reported by cmndrsp0ck) [#D2185]
+    https://github.com/akinomyoga/ble.sh/issues/417
+
+    そもそも clear も効かなくなるというのがどういう状況なのか分からない。
+    standard streams が ble-detach / ble-attach が壊れるのが原因かと思ったが、
+    自分の手元では再現しない。そもそも報告だと ble-detach する前から問題があっ
+    た様な書き方になっている。
+
+    これは一体どういう事だろうか。
+
+    と思って次の返答を見たら、どうも scrollback buffer の話をしているらしい。然
+    し、clear を detached state で実行した時には scrollback buffer までは削除さ
+    れないという。不思議だ。
+
 2024-02-29
 
   * util: term_stty_restore が動かない (reported by TheFantasticWarrior) [#D2184]

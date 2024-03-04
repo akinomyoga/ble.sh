@@ -644,7 +644,7 @@ function ble/widget/my/example1 {
 ble-bind -f C-t my/example1
 ```
 
-## 2.8 fzf との統合<sup><a id="fzf-integration" href="#get-from-source">†</a></sup>
+## 2.8 fzf との統合<sup><a id="fzf-integration" href="#fzf-integration">†</a></sup>
 
 `fzf` を `ble.sh` と一緒にお使いいただく場合には、[`contrib/fzf` 統合機能](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration) を用いて `fzf` を設定していただく必要があります。
 詳細についてはリンク先の説明を御覧ください。

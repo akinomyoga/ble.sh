@@ -24,11 +24,11 @@
 - keymap/vi_nmap: support `shell-expand-line` `#D2145` aa92b42a
 - main: support `bash ble.sh --install` `#D2169` 986d26a3 3801a87e
 - util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` e64b02b7
-  - util: update workaround of Bash 5.2 `checkwinsize` for `term_stty_restore` (reported by TheFantasticWarrior) `#D2184` xxxxxxxx
+  - util: update workaround of Bash 5.2 `checkwinsize` for `term_stty_restore` (reported by TheFantasticWarrior) `#D2184` ef8272a4
 - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
-- util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` xxxxxxxx
+- util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 
 ## Changes
 
@@ -77,7 +77,8 @@
 - progcomp(compopt): support printing the current options (reported by bkerin) `#D2154` 51f9f4f6
 - progcomp(compopt): properly handle dynamically specified `plusdirs` `#D2156` 51f9f4f6
 - edit: fix `BLE_COMMAND_ID` starting from `2` `#D2160` 8f4bf62a
-- util(vbell): fix previous vbell not fully cleared `#D2181` xxxxxxxx
+- util(vbell): fix previous vbell not fully cleared `#D2181` 6c740a94
+- decode(rlfunc): fix widget name `vi-command/edit-and-execute-{line => command}` (fixed by alexandregv) 6aa8ba67
 
 ## Compatibility
 
@@ -117,6 +118,7 @@
 - main: fix issues in MSYS1 `#D2163` 5f0b88fb
 - util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192
 - decode: fix the problem that key always timed out in bash-3 `#D2173` 0b176e76
+- term: adjust the result of `tput clear` for `ncurses >= 6.1` (reported by cmndrsp0ck) `#D2185`
 
 ## Contrib
 
@@ -172,10 +174,10 @@
   - util: support `ble/fd#add-cloexec` and add `O_CLOEXEC` by default `#D2158` 785267e1
   - util: fix error of bad file descriptors (reported by ragnarov) `#D2159` 785267e1
   - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
-  - main: record external file descriptors on `ble-attach` `#D2183` xxxxxxxx
+  - main: record external file descriptors on `ble-attach` `#D2183` a508a827
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
-  - history: fix initially shifted history index `#D2180` xxxxxxxx
+  - history: fix initially shifted history index `#D2180` e425dc56
 - edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 3801a87e
 
 <!---------------------------------------------------------------------------->
