@@ -669,7 +669,7 @@ ble-import -d integration/fzf-completion
 ble-import -d integration/fzf-key-bindings
 ```
 
-The option `-d` of `ble-import` delays the initialization.  In thise way, the
+The option `-d` of `ble-import` delays the initialization.  In this way, the
 fzf settings are loaded in background after the prompt is shown.  See
 [`ble-import` - Manual §8](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A78-Miscellaneous#user-content-fn-ble-import)
 for details.  If you would like to additionally configure the fzf settings

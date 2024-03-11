@@ -28,7 +28,7 @@
 - magic expansions
   - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
   - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
-  - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` xxxxxxxx
+  - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` b6344b3b
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 
@@ -158,7 +158,7 @@
 - test(vi): fix broken states after test `#D2123` 06ad3a6c
 - test(bash): fix test cases for history expansion `#D2131` 838b4652
 - test(bash): add tests for bash array bugs `#D2149` 6154d71c
-- github/workflows: update versions of GitHub Actions `#D2186` xxxxxxxx
+- github/workflows: update versions of GitHub Actions `#D2186` 0c42c8bd xxxxxxxx
 
 ## Internal changes
 
