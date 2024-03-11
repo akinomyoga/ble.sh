@@ -9391,7 +9391,7 @@ function ble/complete/source:sabbrev {
   done
 }
 
-function ble/complete/alias/expand {
+function ble/complete/expand:alias {
   local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
   ble/complete/sabbrev/locate-key 'command'
   ((pos<comp_index)) || return 1
@@ -9400,6 +9400,26 @@ function ble/complete/alias/expand {
   local ret; ble/alias#expand "$word"
   [[ $ret != "$word" ]] || return 1
   ble/widget/.replace-range "$pos" "$comp_index" "$ret"
+  return 0
+}
+
+function ble/complete/expand:autocd {
+  local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
+  ble/complete/sabbrev/locate-key 'command'
+  ((pos<comp_index)) || return 1
+
+  local word=${_ble_edit_str:pos:comp_index-pos} ret
+  ble/syntax:bash/simple-word/safe-eval "$word" nonull || return 1
+
+  local dir=$ret
+  [[ $dir && -d $dir ]] && ! ble/bin#has "$dir" || return 1
+
+  if [[ $dir == -* ]]; then
+    dir="cd -- $word"
+  else
+    dir="cd $word"
+  fi
+  ble/widget/.replace-range "$pos" "$comp_index" "$dir"
   return 0
 }
 

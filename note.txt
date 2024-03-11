@@ -7340,6 +7340,13 @@ bash_tips
 
 2024-03-10
 
+  * complete: autocd を magic expansion の一部に組み込む (motivated by Jai-JAP) [#D2187]
+    https://github.com/akinomyoga/ble.sh/discussions/421
+
+    ? cdable_vars を設定している時、ディレクトリ名を含んでいる変数名だけでも移
+      動できたりするか? → 移動できない。なので cdable_vars に関しては気にしな
+      くて良い。
+
   * 2024-02-13 github: Node.js 20 に伴う action 更新 [#D2186]
     https://github.com/akinomyoga/ble.sh/actions/runs/7883231577
 

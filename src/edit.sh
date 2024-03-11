@@ -7588,17 +7588,20 @@ function ble/widget/default/accept-line {
   fi
 
   # エイリアス展開
-  if [[ :$bleopt_edit_magic_accept: == *:alias:* ]]; then
-    local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
-    if ble/complete/alias/expand; then
-      if [[ :$bleopt_edit_magic_accept: == *:verify:* ]]; then
-        ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
-        return 0
+  local expand_type
+  for expand_type in alias autocd; do
+    if [[ :$bleopt_edit_magic_accept: == *:"$expand_type":* ]]; then
+      local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
+      if ble/complete/expand:"$expand_type"; then
+        if [[ :$bleopt_edit_magic_accept: == *:verify:* ]]; then
+          ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
+          return 0
+        fi
+        command=$_ble_edit_str
+        is_line_expanded=1
       fi
-      command=$_ble_edit_str
-      is_line_expanded=1
     fi
-  fi
+  done
 
   # 履歴展開
   if [[ -o histexpand || :$bleopt_edit_magic_accept: == *:history:* ]]; then
@@ -8361,35 +8364,50 @@ function ble/widget/history-expand-backward-line {
 }
 ## @widget magic-space
 ##   履歴展開と静的略語展開を実行してから空白を挿入します。
+function ble/widget/magic-space/.expand {
+  local type=$bleopt_edit_magic_expand
+  local opts=$bleopt_edit_magic_opts
+
+  # (1) history expansion
+  if [[ :$type: == *:history:* ]]; then
+    ble/widget/history-expand-backward-line && return 0
+  fi
+
+  # (2) sabbrev expansion
+  if [[ :$type: == *:sabbrev:* ]]; then
+    ble/complete/sabbrev/expand type-status; local ext=$?
+    if ((ext==0||32<=ext&&ext<=126)); then
+      ((ext==105)) && # 105 = 'i' (inline sabbrev)
+        [[ :$opts: == *:inline-sabbrev-no-insert:* ]] &&
+        opt_noinsert=1
+      return 0
+    elif ((ext==147)); then
+      return 147 # メニュー補完に入った時
+    fi
+  fi
+
+  # (3) alias expansion
+  if [[ :$type: == *:alias:* ]]; then
+    ble/complete/expand:alias && return 0
+  fi
+
+  # (4) autocd
+  if [[ :$type: == *:autocd:* ]]; then
+    ble/complete/expand:autocd && return 0
+  fi
+
+  return 1
+}
 function ble/widget/magic-space {
   # keymap/vi.sh
   [[ $_ble_decode_keymap == vi_imap ]] &&
     local oind=$_ble_edit_ind ostr=$_ble_edit_str
 
   local arg; ble-edit/content/get-arg ''
-  local opts=$bleopt_edit_magic_opts
 
-  local expanded= opt_noinsert=
-  # (1) history expansion
-  if [[ :$bleopt_edit_magic_expand: == *:history:* ]]; then
-    ble/widget/history-expand-backward-line && expanded=1
-  fi
-  # (2) sabbrev expansion
-  if [[ ! $expanded && :$bleopt_edit_magic_expand: == *:sabbrev:* ]]; then
-    ble/complete/sabbrev/expand type-status; local ext=$?
-    if ((ext==0||32<=ext&&ext<=126)); then
-      expanded=1
-      ((ext==105)) && # 105 = 'i' (inline sabbrev)
-        [[ :$opts: == *:inline-sabbrev-no-insert:* ]] &&
-        opt_noinsert=1
-    elif ((ext==147)); then
-      return 147 # メニュー補完に入った時
-    fi
-  fi
-  # (3) alias expansion
-  if [[ ! $expanded && :$bleopt_edit_magic_expand: == *:alias:* ]]; then
-    ble/complete/alias/expand && expanded=1
-  fi
+  local opt_noinsert=
+  ble/widget/magic-space/.expand; local ext=$?
+  ((ext==147)) && return "$ext"
 
   # keymap/vi.sh
   if [[ $_ble_decode_keymap == vi_imap && $ostr != "$_ble_edit_str" ]]; then

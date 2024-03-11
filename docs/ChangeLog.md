@@ -25,9 +25,11 @@
 - main: support `bash ble.sh --install` `#D2169` 986d26a3 3801a87e
 - util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` e64b02b7
   - util: update workaround of Bash 5.2 `checkwinsize` for `term_stty_restore` (reported by TheFantasticWarrior) `#D2184` ef8272a4
-- edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
+- magic expansions
+  - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
+  - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
+  - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` xxxxxxxx
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
-- edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 
 ## Changes

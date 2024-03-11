@@ -117,7 +117,8 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble-decode/keymap:menu_complete/define \
                   ble-decode/keymap:dabbrev/define \
                   ble/complete/sabbrev/expand \
-                  ble/complete/alias/expand
+                  ble/complete/expand:alias \
+                  ble/complete/expand:autocd
 
 bleopt/declare -v complete_source_sabbrev_opts ''
 bleopt/declare -v complete_source_sabbrev_ignore ''
