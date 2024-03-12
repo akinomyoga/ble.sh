@@ -156,11 +156,11 @@ time {
     --test | --update | --clear-cache | --lib | --install) _ble_init_command=1 ;;
     esac
   done
+  unset _ble_init_arg
   if [ -n "$_ble_init_exit" ]; then
-    unset _ble_init_version
-    unset _ble_init_arg
     unset _ble_init_exit
     unset _ble_init_command
+    unset _ble_init_version
     return 0 2>/dev/null || exit 0
   fi
 } 2>/dev/null # set -x 対策 #D0930
@@ -170,48 +170,55 @@ time {
 
 if [ -z "${BASH_VERSION-}" ]; then
   echo "ble.sh: This shell is not Bash. Please use this script with Bash." >&3
+  unset _ble_init_exit
+  unset _ble_init_command
+  unset _ble_init_version
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
   echo "ble.sh: Bash with a version under 3.0 is not supported." >&3
+  unset -v _ble_init_exit _ble_init_command _ble_init_version
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [[ ! $_ble_init_command ]]; then
-  if [[ ${BASH_EXECUTION_STRING+set} ]]; then
-    # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&3
-    return 1 2>/dev/null || builtin exit 1
-  fi
-
   # We here check the cases where we do not want a line editor.  We first check
   # the cases that Bash provides.  We also check the cases where other
   # frameworks try to do a hack using an interactive Bash.  We honestly do not
   # want to add exceptions for every random framework that tries to do a naive
   # hack using interactive sessions, but it is easier than instructing users to
   # add a proper workaroud/check by themselves.
-  if ((BASH_SUBSHELL)); then
+  if [[ ${BASH_EXECUTION_STRING+set} ]]; then
+    # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&3
+    _ble_init_exit=1
+  elif ((BASH_SUBSHELL)); then
     builtin echo "ble.sh: ble.sh cannot be loaded into a subshell." >&3
-    return 1 2>/dev/null || builtin exit 1
+    _ble_init_exit=1
   elif [[ $- != *i* ]]; then
     case " ${BASH_SOURCE[*]##*/} " in
     (*' .bashrc '* | *' .bash_profile '* | *' .profile '* | *' bashrc '* | *' profile '*) ((0)) ;;
     esac &&
       builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
-    return 1 2>/dev/null || builtin exit 1
-  elif ! [[ -t 4 && -t 5 ]] && ! { [[ ${bleopt_connect_tty-} ]] && ((1)) >/dev/tty; } then
+    _ble_init_exit=1
+  elif ! [[ -t 4 && -t 5 ]] && ! { [[ ${bleopt_connect_tty-} ]] && ((1)) >/dev/tty; }; then
     if [[ ${bleopt_connect_tty-} ]]; then
       builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
     else
       builtin echo "ble.sh: stdout/stdin are not connected to TTY/PTY." >&3
     fi
-    return 1 2>/dev/null || builtin exit 1
+    _ble_init_exit=1
   elif [[ ${NRF_CONNECT_VSCODE-} && ! -t 3 ]]; then
     # Note #D2129: VS Code Extension "nRF Connect" tries to extract an
     # interactive setting by sending multiline commands to an interactive
     # session.  We may turn off accept_line_threshold for an nRF Connect
     # session as we do for Midnight Commander, but we do not need to enable the
     # line editor for nRF Connect in the first place.
+    _ble_init_exit=1
+  fi
+
+  if [[ $_ble_init_exit ]]; then
+    builtin unset -v _ble_init_exit _ble_init_command _ble_init_version
     return 1 2>/dev/null || builtin exit 1
   fi
 fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
@@ -765,7 +772,6 @@ function ble/init/clean-up {
 
   # 一時グローバル変数消去
   builtin unset -v _ble_init_version
-  builtin unset -v _ble_init_arg
   builtin unset -v _ble_init_exit
   builtin unset -v _ble_init_command
   builtin unset -v _ble_init_attached
@@ -2102,14 +2108,15 @@ ble/builtin/trap/install-hook RETURN inactive
 # @var _ble_base_session
 # @var BLE_SESSION_ID
 function ble/base/initialize-session {
-  [[ $_ble_base_session == */"$$" ]] && return 0
-
   local ret
+  ble/string#split ret / "${_ble_base_session-}"
+  [[ ${ret[1]} == "$$" ]] && return 0
+
   ble/util/timeval; local start_time=$ret
   ((start_time-=SECONDS*1000000))
 
   _ble_base_session=${start_time::${#start_time}-6}.${start_time:${#start_time}-6}/$$
-  BLE_SESSION_ID=$_ble_base_session
+  export BLE_SESSION_ID=$_ble_base_session
 }
 ble/base/initialize-session
 

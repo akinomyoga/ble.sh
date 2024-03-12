@@ -45,6 +45,7 @@
 - prompt: update status line on face change (motivated by Vosjedev) `#D2134` f3e7e386
 - decode: specify the default keymap for the keymap load hooks `#D2141` 4a34ccf2
 - progcomp(compopt): refactor the completion option `ble/{no- => }default` `#D2155` 51f9f4f6
+- main: export `BLE_SESSION_ID` `#D2188` xxxxxxxx
 
 ## Fixes
 
