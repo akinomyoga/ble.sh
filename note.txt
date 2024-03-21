@@ -7382,6 +7382,83 @@ bash_tips
 
 2024-06-05
 
+  * 2024-03-23 main: SUSE で何故か正しく初期化できない (reported by Anyborr) [#D2220]
+    https://github.com/akinomyoga/ble.sh/issues/424
+
+    SUSE という事なので /etc/inputrc を疑ったが関係なさそうだ。bultin bind -spX
+    の内容を確認したが \C-x\C-x -> 24 という余分な物が含まれている事以外は特に
+    問題は無いように見える。
+
+    * ok: 何故 \C-x\C-x -> 24 になっているのか? emacs editing mode 特有の問題か
+      もしれない → そうだった。emacs editing mode では \C-x\C-x が 24 になって
+      いた。これについては後で振る舞いを確認する必要がある?
+
+      →複数の bash versions で確認した所この現象が起こっているのは bash-4.4 だ
+      けである。以前にこれについて色々試して bash44 では仕方がないとした事の様
+      な気もしないでもない。後で確認する → init-bind.sh を見ると explicit に
+      bash-4.4 で emacs mode の時にだけ C-x C-x に 24 を割り当てている。コメン
+      トに依ると insert dummy entry in cmd_xmap と書いてある。上のコメントの
+      [対処法 3] の部分に説明が書かれている。一旦 \C-x\C-x で 24 を設定してから
+      bind -r で削除するという事らしい。これで timeout で C-x が受け取れる様に
+      なるらしい。builtin bind -X の出力に残っているのは古い bash で cmd_xmap
+      に登録した物が二度と削除されない問題があった為である。
+
+    * どうも受信時はちゃんと 192 になっているが decoder の途中で NUL に化けてし
+      まっている様である。うーん。UTF-8 decoder が壊れているという事? と思った
+      が 192 91 67 を受信している。ESC は 192 ではない。自分の手元 (bash-4.4,
+      emacs editing mode) で試す限りは 192 155 91 65 等が受信される。つまり 155
+      の受信に失敗しているという事。builtin bind -spX を見る限りは特に違いはな
+      い筈なのである。
+
+      うーん。例えば /etc/inputrc でおかしな設定がある事によって状態が壊れて、
+      その上で bind を色々実行しても bultin bind -spX に現れない所で壊れていて
+      ちゃんと動かないという可能性?
+
+      Readline が /etc/inputrc を読み取らない様にする事は可能だろうか?
+
+      * セッションがスタートした後に source ble.sh する場合は手遅れなので何もし
+        ない。
+
+      * まだ readline が初期化されていない状態で INPUTRC=/etc/inputrc を読み込
+        まない様にするにはどうすれば良いか? 最初に builtin bind を実行する時点
+        で INPUTRC=/dev/null を指定しておけば良いのではないか→試してみた所これ
+        で /etc/inputrc は読み込まなくなる。
+
+        | diff --git a/ble.pp b/ble.pp
+        | index 41bde79a..f7ec6efa 100644
+        | --- a/ble.pp
+        | +++ b/ble.pp
+        | @@ -610,7 +610,16 @@ function ble/base/recover-bash-options {
+        |
+        |  { ble/base/adjust-bash-options; } &>/dev/null # set -x 対策 #D0930
+        |
+        | -builtin bind &>/dev/null # force to load .inputrc
+        | +if [[ $OSTYPE == *suse* && -s /etc/inputrc.keys && -r /etc/os-release ]] &&
+        | +     ((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100<50100)) &&
+        | +     [[ $(< /etc/os-release) == *'SUSE'* ]]
+        | +then
+        | +  # Note (#2189): SUSE /etc/inputrc.keys may break even Readline's internal
+        | +  # state, so we suppress loading /etc/inputrc in SUSE by specifying INPUTRC.
+        | +  INPUTRC=/dev/null builtin bind &>/dev/null
+        | +else
+        | +  builtin bind &>/dev/null # force to load .inputrc
+        | +fi
+        |
+        |  # WA #D1534 workaround for msys2 .inputrc
+        |  if [[ $OSTYPE == msys* ]]; then
+
+        x と思ったが、そもそも bashrc の中で source out/ble.sh を実行した時には
+          問題は起こっていない? うーん。不思議だ。そうだとするとこの workaround
+          を追加する意味がない。
+
+    応答がないがこのままだとずっと新しい version を push することができない。元々
+    中途半端な修正で push したくなかったがもう返事もなさそうなので現状の対策で
+    push することにする? と思ったがこの修正自体ほぼ修正も何も含まれていない
+    commit なのでやはり余り push したくない。順番を skip するか?
+
+    2024-06-05 これもずっと pending になっていて返事もないので現状の小さな修正
+    を取り敢えず master に入れる事にする。
+
   * 2024-05-27 zellij で panel が消えない (reported by gvlassis) [#D2219]
     https://github.com/akinomyoga/ble.sh/issues/450
 

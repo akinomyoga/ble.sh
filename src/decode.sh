@@ -4363,7 +4363,7 @@ function ble/decode/initialize/.has-broken-suse-inputrc {
   local content=
   [[ -s /etc/inputrc.keys && -r /etc/os-release ]] &&
     ble/util/readfile content /etc/os-release &&
-    [[ $content == *'openSUSE'* ]] || return 1
+    [[ $content == *'SUSE'* ]] || return 1
 
   # Note #1926: Even after the fix
   # https://github.com/openSUSE/aaa_base/pull/84, "inputrc.keys" causes
