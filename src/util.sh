@@ -5767,8 +5767,8 @@ if ((_ble_bash>=40000)); then
         case ${_ble_idle_status::1} in
         (R) _ble_idle_to_process=1 ;;
         (I) [[ $_ble_idle_is_first ]] && _ble_idle_to_process=1 ;;
-        (S) ble/util/idle/.check-clock "$_ble_idle_status" && _ble_idle_to_process=1 ;;
-        (W) ble/util/idle/.check-clock "$_ble_idle_status" && _ble_idle_to_process=1 ;;
+        (S) ble/util/idle.do/.check-clock "$_ble_idle_status" && _ble_idle_to_process=1 ;;
+        (W) ble/util/idle.do/.check-clock "$_ble_idle_status" && _ble_idle_to_process=1 ;;
         (F) [[ -s ${_ble_idle_status:1} ]] && _ble_idle_to_process=1 ;;
         (E) [[ -e ${_ble_idle_status:1} ]] && _ble_idle_to_process=1 ;;
         (P) ! builtin kill -0 ${_ble_idle_status:1} &>/dev/null && _ble_idle_to_process=1 ;;
@@ -5851,10 +5851,10 @@ if ((_ble_bash>=40000)); then
     fi
     return "$ext"
   }
-  ## @fn ble/util/idle/.check-clock status
+  ## @fn ble/util/idle.do/.check-clock status
   ##   @var[in,out] _ble_idle_next_itime
   ##   @var[in,out] _ble_idle_next_time
-  function ble/util/idle/.check-clock {
+  function ble/util/idle.do/.check-clock {
     local status=$1
     if [[ $status == W* ]]; then
       local next=_ble_idle_next_itime
@@ -5947,7 +5947,9 @@ if ((_ble_bash>=40000)); then
       esac
 
       if [[ $sleep ]]; then
-        local ret; ble/util/idle.clock
+        local ret
+        ble/util/idle.clock/.initialize
+        ble/util/idle.clock
         status=S$((ret+sleep))
       elif [[ $isleep ]]; then
         status=W$((_ble_util_idle_sclock+isleep))

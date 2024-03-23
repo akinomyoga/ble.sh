@@ -82,6 +82,7 @@
 - edit: fix `BLE_COMMAND_ID` starting from `2` `#D2160` 8f4bf62a
 - util(vbell): fix previous vbell not fully cleared `#D2181` 6c740a94
 - decode(rlfunc): fix widget name `vi-command/edit-and-execute-{line => command}` (fixed by alexandregv) 6aa8ba67
+- util(ble/util/idle.push): fix uninitialized `ble/util/idle.clock` (reported by Anyborr) `#D2189` xxxxxxxx
 
 ## Compatibility
 

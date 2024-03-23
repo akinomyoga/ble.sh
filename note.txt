@@ -7338,6 +7338,52 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-03-24
+
+  * util: initialize ble/util/idle.clock (reported by Anyborr) [#D2189]
+    https://github.com/akinomyoga/ble.sh/issues/424#issuecomment-2016531757
+
+    ble/util/idle.clock が見付からないというエラーが生じている様だ。
+    ble/util/idle.clock は idle.do の中で遅延初期化されている。それにも関わらず
+    idle.push やその他の関数から呼び出されている。
+
+    最近 idle.push などの中で ble/util/idle.clock を呼び出す様にしたのが原因だ
+    ろうと思って確認してみたが、新しく ble/util/idle.clock を呼び出す様になった
+    のは idle.push --sleep の中だけである。そして idle.push --sleep 自体は
+    e0566bdc によって新しく追加された機能であり呼び出し元は ble/util/bgproc の
+    みである。そして bgproc は histdb と config/github302-perlre-server でしか
+    使われていない。
+
+    その他の idle.push の呼び出し元は全て idle.do の中で使われる関数のみである。
+
+    * idle.push 以外は idle.do の中から呼び出される事が前提の関数なので気にしな
+      くて良い。idle.push の中で ble/util/idle.clock を呼び出す前に
+      ble/util/idle.clock/.initialize を呼び出す事にした。
+
+    * 報告者の環境で何故エラーが発生しているのか謎である
+
+      報告者は histdb を呼び出しているという事なのだろうか? だとすると何故自分
+      の histdb では問題が起こっていない? → と思ったが自分は ble-import -d
+      histdb で遅延しているから問題が起こっていないのだろう。と思って
+      ble-import histdb で即時読み込む様にしてみたがそれでも問題は発生しない。
+      不思議だ。そもそも histdb ではその場では何も sqlite 関連の処理は行わない。
+      sqlite3.open を idle.push するか、或いは blehook exec_register に登録する
+      だけである。idle.push 経由の場合にはそもそもそれが発火する時点で
+      idle.clock が初期化されるので問題は起こらない。一方で blehook
+      exec_register の場合には即時コマンドを実行する様になっていないと問題は発
+      生しない筈。
+
+      或いは config/github302-perlre-server だろうか? と思ったが、こちらはこち
+      らで初期化した時にメッセージを表示する様になっているみたいなので
+      ble/util/idle.clock が見付からないというエラーメッセージだけ発生するのは
+      変である。
+
+    これも正直に謎に包まれているというか完全に解決したとは言い難い。然しながら、
+    これに関しては少なくとも意味のある修正が含まれているので現時点で push して
+    しまう事にする。と思ったがやはりこの修正は物凄く小さな修正だし、そもそもこ
+    れで報告者の所で発生していたエラーメッセージが解決するのかも分からない。微
+    妙だが取り敢えずは push する事にする。
+
 2024-03-22
 
   * main: BLE_SESSION_ID を export する [#D2188]
