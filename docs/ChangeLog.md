@@ -31,6 +31,7 @@
   - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` b6344b3b
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
+- complete(cd): complete variable names for `cdable_vars` `#D2190` xxxxxxxx
 
 ## Changes
 

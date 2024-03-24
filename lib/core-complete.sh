@@ -9807,6 +9807,25 @@ function ble/complete/action:cdpath/get-desc {
   desc="CDPATH $filename ($desc)"
 }
 
+function ble/cmdinfo/complete:cd/generate-cdable_vars {
+  shopt -q cdable_vars || return 1
+  ble/string#match "$COMPV" '^[_a-zA-Z0-9][_a-zA-Z0-9]*$' || return 1
+  local arr
+  ble/util/assign-array arr 'builtin compgen -vX "_ble*" -- "$COMPV"'
+
+  ble/complete/source/test-limit "${#arr[@]}" || return 1
+
+  local action=file old_cand_count=$cand_count
+  local cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
+  ble/complete/cand/yield.initialize "$action"
+  for cand in "${arr[@]}"; do
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    [[ $cand == "$COMPV"?* && -d ${!cand-} ]] &&
+      ble/complete/cand/yield "$action" "$cand" "$data"
+  done
+  ((cand_count>old_cand_count))
+}
+
 ## @fn ble/cmdinfo/complete:cd/.impl
 ##   @remarks
 ##     この実装は ble/complete/source:file/.impl を元にしている。
@@ -9815,13 +9834,13 @@ function ble/cmdinfo/complete:cd/.impl {
   local type=$1
   [[ $comps_flags == *v* ]] || return 1
 
+  local old_cand_count=$cand_count
+
   case $type in
   (pushd|popd|dirs)
     # todo: -- より後の [-+]* は処理しない
     # todo: 実は -N/+N はオプションではなく通常引数
     if [[ $COMPV == [-+]* ]]; then
-      local old_cand_count=$cand_count
-
       # yield options
       local flags=n
       [[ $type == dirs ]] && flags=clpv
@@ -9880,7 +9899,9 @@ function ble/cmdinfo/complete:cd/.impl {
   [[ :$comp_type: == *:[maA]:* && ! $COMPV ]] && return 1
 
   if [[ ! $CDPATH ]]; then
-    ble/complete/source:dir
+    ble/complete/source:dir || return "$?"
+    ((cand_count>old_cand_count)) && return 0
+    ble/cmdinfo/complete:cd/generate-cdable_vars
     return "$?"
   fi
 
@@ -9921,11 +9942,12 @@ function ble/cmdinfo/complete:cd/.impl {
 
     local flag_source_filter=1
     local cdpath_basedir=$name
-    ble/complete/cand/yield-filenames "$action" "${candidates[@]}"
+    ble/complete/cand/yield-filenames "$action" "${candidates[@]}"; local ext=$?
+    ((ext==148)) && return "$ext"
     [[ $action == cdpath ]] && is_cdpath_generated=1
   done
   [[ $is_cdpath_generated ]] &&
-      bleopt complete_menu_style=desc
+    bleopt complete_menu_style=desc
 
   # Check PWD next
   # カレントディレクトリが CDPATH に含まれていなかった時に限り通常の候補生成
@@ -9944,8 +9966,12 @@ function ble/cmdinfo/complete:cd/.impl {
       ble/array#push candidates "$cand"
     done
     local flag_source_filter=1
-    ble/complete/cand/yield-filenames file "${candidates[@]}"
+    ble/complete/cand/yield-filenames file "${candidates[@]}"; local ext=$?
+    ((ext==148)) && return "$ext"
   fi
+  ((cand_count>old_cand_count)) && return 0
+
+  ble/cmdinfo/complete:cd/generate-cdable_vars
 }
 function ble/cmdinfo/complete:cd {
   ble/cmdinfo/complete:cd/.impl cd

@@ -7340,6 +7340,22 @@ bash_tips
 
 2024-03-24
 
+  * 2024-03-10 complete: cd の補完について cdable_vars に対応するべきではないか? [#D2190]
+
+    現在の所は cdable_vars は参照していない。complete:cd/.impl で実装している。
+    pushd や他のコマンドも同様に cdable_vars が使えるのかどうかは振る舞いを確認
+    する。cdable_vars に対応している bash version は幾つか?
+
+    ? yes: 変数名が quote されていても効くのか? →効く。変数展開などの結果とし
+      て変数名が生成された場合でも効く。
+
+    ? yes: pushd でも効くのか? → pushd でも効くようだ。
+
+    取り敢えず実装した。
+
+    x fixed: 改めて見てみると shopt -s cdable_vars が有効かどうかに関係なく補完
+      している。cdable_vars が有効でない時は変数名が補完しない。
+
   * util: initialize ble/util/idle.clock (reported by Anyborr) [#D2189]
     https://github.com/akinomyoga/ble.sh/issues/424#issuecomment-2016531757
 
