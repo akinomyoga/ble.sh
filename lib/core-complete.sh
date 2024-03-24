@@ -1691,10 +1691,10 @@ function ble/complete/action/requote-final-insert {
 function ble/complete/action#inherit-from {
   local dst=$1 src=$2
   local member srcfunc dstfunc
-  for member in initialize{,.batch} complete getg get-desc; do
+  for member in initialize{,.batch} complete getg get-desc init-menu-item; do
     srcfunc=ble/complete/action:$src/$member
     dstfunc=ble/complete/action:$dst/$member
-    ble/is-function "$srcfunc" && builtin eval "function $dstfunc { $srcfunc; }"
+    ble/is-function "$srcfunc" && builtin eval "function $dstfunc { $srcfunc \"\$@\"; }"
   done
 }
 
@@ -2355,6 +2355,35 @@ function ble/complete/source:wordlist {
 
 # source:command
 
+function ble/complete/action:suffix-sabbrev/initialize {
+  ble/complete/action/quote-insert
+}
+function ble/complete/action:suffix-sabbrev/initialize.batch {
+  ble/complete/action/quote-insert.batch newline
+}
+function ble/complete/action:suffix-sabbrev/complete {
+  ble/complete/action/requote-final-insert
+  ble/complete/action/complete.close-quotation
+}
+function ble/complete/action:suffix-sabbrev/init-menu-item {
+  local ret; ble/color/face2g command_suffix; g=$ret
+}
+function ble/complete/action:suffix-sabbrev/get-desc {
+  local key1= ent1=
+  if [[ $CAND == *.* ]] && ble/complete/sabbrev#match "$CAND" 's'; then
+    local ret
+    ble/string#quote-word "${ent1#*:}" sgrq="$desc_sgrq":sgr0="$desc_sgr0"
+    desc="$desc_sgrt(suffix)$desc_sgr0 .$key1=$ret"
+  else
+    desc="$desc_sgrt(suffix)$desc_sgr0 ??? (unmatching)"
+  fi
+}
+
+function ble/complete/source:command/.is-suffix-sabbrev {
+  [[ $1 =~ $source_file_regex ]] &&
+    ! ble/complete/sabbrev/suffix.is-normal-command "$1"
+}
+
 function ble/complete/source:command/.contract-by-slashes {
   local slashes=${COMPV//[!'/']}
   ble/bin/awk -F / -v baseNF="${#slashes}" '
@@ -2606,6 +2635,14 @@ function ble/complete/source:command {
     cands[icand++]=$cand
   done
   ble/complete/cand/yield.batch "$action"
+
+  # generate candidates for suffix sabbrev
+  local ret
+  if ble/complete/sabbrev/suffix.construct-regex; then
+    local source_file_regex=$ret
+    local source_file_filter=ble/complete/source:command/.is-suffix-sabbrev
+    ble/complete/source:file filter:action=suffix-sabbrev
+  fi
 }
 
 # source:file, source:dir
@@ -2750,7 +2787,23 @@ function ble/complete/source:file/.construct-pathname-pattern {
   ret=$pattern
 }
 
-function ble/complete/source:file/.impl {
+## @fn ble/complete/source:file opts
+##   @param[in,opt] opts
+##     @opt directory
+##       Generate only directory names
+##     @opt no-fd
+##       Exclude filenames that look like file descriptors and -
+##     @opt filter-by-regex
+##       Filter the generated filenames by the regular expression stored in the
+##       shell variable `source_file_regex`.
+##       @var[in] source_file_regex
+##     @opt filter
+##       Filter the generated filenames by the predicate stored specified by
+##       the shell variable `source_file_filter`.
+##       @var[in] source_file_filter
+##     @opt action=ACTION
+##
+function ble/complete/source:file {
   local opts=$1
   [[ $comps_flags == *v* ]] || return 1
   [[ :$comp_type: != *:[maA]:* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
@@ -2781,15 +2834,21 @@ function ble/complete/source:file/.impl {
   [[ :$opts: == *:no-fd:* ]] &&
     ble/array#remove-by-regex candidates '^[0-9]+-?$|^-$'
 
+  [[ :$opts: == *:filter-by-regex:* ]] &&
+    ble/array#filter-by-regex candidates "$source_file_regex"
+  [[ :$opts: == *:filter:* ]] &&
+    ble/array#filter candidates "$source_file_filter"
+
+  local action=file ret=
+  ble/opts#extract-last-optarg "$opts" action
+  [[ $ret ]] && action=$ret
+
   local flag_source_filter=1
-  ble/complete/cand/yield-filenames file "${candidates[@]}"
+  ble/complete/cand/yield-filenames "$action" "${candidates[@]}"
 }
 
-function ble/complete/source:file {
-  ble/complete/source:file/.impl "$1"
-}
 function ble/complete/source:dir {
-  ble/complete/source:file/.impl "directory:$1"
+  ble/complete/source:file "directory:$1"
 }
 
 # source:rhs
@@ -8877,8 +8936,7 @@ function ble-decode/keymap:auto_complete/define {
 
 # The following are variables defined in core-complete-def.sh:
 #
-# @var _ble_complete_sabbrev_wordwise
-# @var _ble_complete_sabbrev_literal
+# @var _ble_complete_sabbrev
 
 function ble/complete/sabbrev/.initialize-print {
   sgr0= sgr1= sgr2= sgr3= sgro=
@@ -8922,16 +8980,11 @@ function ble/complete/sabbrev/.print-definition {
 ##   @var[out] ret
 ##
 
-# Note: _ble_complete_sabbrev_wordwise は core-complete-def.sh で定義
+# Note: _ble_complete_sabbrev は core-complete-def.sh で定義
 function ble/complete/sabbrev/register {
   local key=$1 value=$2
-  if [[ $value == [il]:* ]]; then
-    ble/gdict#set _ble_complete_sabbrev_literal "$key" "$value"
-    ble/gdict#unset _ble_complete_sabbrev_wordwise "$key"
-  else
-    ble/gdict#set _ble_complete_sabbrev_wordwise "$key" "$value"
-    ble/gdict#unset _ble_complete_sabbrev_literal "$key"
-  fi
+  ((_ble_complete_sabbrev_version++))
+  ble/gdict#set _ble_complete_sabbrev "$key" "$value"
 }
 function ble/complete/sabbrev/list {
   local type=$1; shift
@@ -8939,23 +8992,15 @@ function ble/complete/sabbrev/list {
   if ((${#keys[@]}==0)); then
     if [[ $type ]]; then
       # type が指定されている時は、その type の sabbrev だけ表示する
-      local dict=_ble_complete_sabbrev_wordwise
-      case $type in
-      ([wm]) dict=_ble_complete_sabbrev_wordwise ;;
-      ([il]) dict=_ble_complete_sabbrev_literal ;;
-      esac
-
       local ret key
-      ble/gdict#keys "$dict"
+      ble/gdict#keys _ble_complete_sabbrev
       for key in "${ret[@]}"; do
-        ble/gdict#get "$dict" "$key" && [[ $ret == "$type":* ]] || continue
+        ble/gdict#get _ble_complete_sabbrev "$key" && [[ $ret == "$type":* ]] || continue
         ble/array#push keys "$key"
       done
     else
-      ble/gdict#keys _ble_complete_sabbrev_wordwise
+      ble/gdict#keys _ble_complete_sabbrev
       keys=("${ret[@]}")
-      ble/gdict#keys _ble_complete_sabbrev_literal
-      ble/array#push keys "${ret[@]}"
     fi
     ((${#keys[@]})) || return 0
   fi
@@ -8965,9 +9010,7 @@ function ble/complete/sabbrev/list {
 
   local key ext=0
   for key in "${keys[@]}"; do
-    if ble/gdict#get _ble_complete_sabbrev_wordwise "$key"; then
-      ble/complete/sabbrev/.print-definition "$key" "$ret"
-    elif ble/gdict#get _ble_complete_sabbrev_literal "$key"; then
+    if ble/gdict#get _ble_complete_sabbrev "$key"; then
       ble/complete/sabbrev/.print-definition "$key" "$ret"
     else
       ble/util/print "ble-sabbrev: $key: not found." >&2
@@ -8982,41 +9025,87 @@ function ble/complete/sabbrev/reset {
   if (($#)); then
     local key
     for key; do
-      ble/gdict#unset _ble_complete_sabbrev_wordwise "$key"
-      ble/gdict#unset _ble_complete_sabbrev_literal "$key"
+      ble/gdict#unset _ble_complete_sabbrev "$key"
     done
+    ((_ble_complete_sabbrev_version++))
   elif [[ $type ]]; then
     # type が指定されている時は、その type の sabbrev だけ削除する
 
-    local dict=_ble_complete_sabbrev_wordwise
-    case $type in
-    ([wm]) dict=_ble_complete_sabbrev_wordwise ;;
-    ([il]) dict=_ble_complete_sabbrev_literal ;;
-    esac
-
     local ret key
-    ble/gdict#keys "$dict"
-    for key in "${ret[@]}"; do
-      ble/gdict#get "$dict" "$key" && [[ $ret == "$type":* ]] || continue
-      ble/gdict#unset "$dict" "$key"
-    done
+    ble/gdict#keys _ble_complete_sabbrev
+    if ((${#ret[@]})); then
+      for key in "${ret[@]}"; do
+        ble/gdict#get _ble_complete_sabbrev "$key" && [[ $ret == "$type":* ]] || continue
+        ble/gdict#unset _ble_complete_sabbrev "$key"
+      done
+      ((_ble_complete_sabbrev_version++))
+    fi
   else
-    ble/gdict#clear _ble_complete_sabbrev_wordwise
-    ble/gdict#clear _ble_complete_sabbrev_literal
+    ble/gdict#clear _ble_complete_sabbrev
+    ((_ble_complete_sabbrev_version++))
   fi
   return 0
 }
-function ble/complete/sabbrev/wordwise.get {
+## @fn ble/complete/sabbrev#get key [type]
+function ble/complete/sabbrev#get {
   local key=$1
-  ble/gdict#get _ble_complete_sabbrev_wordwise "$key"
+  ble/gdict#get _ble_complete_sabbrev "$key" &&
+    [[ ! ${2-} || $ret == ["$2"]: ]]
 }
+
+## @fn ble/complete/sabbrev#get-keys [type]
+##   @arr[out] keys
+function ble/complete/sabbrev#get-keys {
+  keys=()
+  local type=${1-} ret
+  ble/gdict#keys _ble_complete_sabbrev
+  if [[ $type ]]; then
+    local key
+    for key in "${ret[@]}"; do
+      ble/gdict#get _ble_complete_sabbrev "$key" &&
+        [[ $ret == ["$type"]:* ]] &&
+        ble/array#push keys "$key"
+    done
+  else
+    keys=("${ret[@]}")
+  fi
+}
+
 function ble/complete/sabbrev/wordwise.get-keys {
-  local ret
-  ble/gdict#keys _ble_complete_sabbrev_wordwise
-  keys=("${ret[@]}")
+  ble/complete/sabbrev#get-keys 'wm'
+}
+
+## @fn ble/complete/sabbrev/suffix.construct-regex
+##   Generate a regular expression that matches any of the registered suffix
+##   sabbrevs.
+##   @var[out] ret
+##     Stores the generated regular expressions
+##   @var[ref] _ble_complete_sabbrev_suffix_regex
+##     This array is used to cache the regular expression
+_ble_complete_sabbrev_suffix_regex=()
+function ble/complete/sabbrev/suffix.construct-regex {
+  if [[ ${_ble_complete_sabbrev_suffix_regex[1]} != "$_ble_complete_sabbrev_version" ]]; then
+    local keys out=
+    ble/complete/sabbrev#get-keys 's'
+    if ((${#keys[@]})); then
+      local key
+      for key in "${keys[@]}"; do
+        if [[ $key ]]; then
+          ble/string#escape-for-extended-regex "$key"
+          out=${out:+$out'|'}$ret
+        fi
+      done
+    fi
+    _ble_complete_sabbrev_suffix_regex[0]=${out:+'\.('$out')$'}
+    _ble_complete_sabbrev_suffix_regex[1]=$_ble_complete_sabbrev_version
+  fi
+
+  ret=${_ble_complete_sabbrev_suffix_regex[0]}
+  [[ $ret ]]
 }
 
 ## @fn ble/complete/sabbrev/literal.find str [opts]
+## @fn ble/complete/sabbrev/suffix.find str [opts]
 ##   最長一致するリテラル略語とその値を取得します。
 ##   @param[in] str
 ##   @param[in,opt] opts
@@ -9027,32 +9116,63 @@ function ble/complete/sabbrev/wordwise.get-keys {
 ##       とします。
 ##       @arr[in] patterns
 ##
-##   @var[out] key
-##   @var[out] ret
+##     literal
+##       指定された単語が既に展開済みの値であることを示します。
+##
+##   @var[out] key1 ent1
 ##
 function ble/complete/sabbrev/literal.find {
-  key=
-  local ent= opts=$2 key1 ent1
-  ble/gdict#keys _ble_complete_sabbrev_literal
-  for key1 in "${ret[@]}"; do
-    ((${#key1}>${#key})) || continue
+  local str=$1 opts=$2
+  ble/complete/sabbrev#match "$str" 'il' "$opts"
+}
+function ble/complete/sabbrev/suffix.is-normal-command {
+  type -- "$1" &>/dev/null ||
+    { ble/util/joblist.check; jobs -- "$1" &>/dev/null; } ||
+    { [[ -d $1 ]] && shopt -q autocd &>/dev/null; }
+}
+function ble/complete/sabbrev/suffix.find {
+  key1= ent1=
+  local file=$1 opts=$2 ret
+  [[ :$opts: != *:literal:* ]] &&
+    ble/syntax:bash/simple-word/safe-eval "$file" &&
+    file=$ret
 
-    ble/gdict#get _ble_complete_sabbrev_literal "$key1" || continue; ent1=$ret
-    [[ $1 == *"$key1" ]] || continue
-    if [[ $ent1 == l:* ]]; then
-      ble/string#match "${1%"$key1"}" $'(^|\n)[ \t]*$' || continue
-    fi
+  [[ $file == *.* ]] || return 1
+
+  # If the command name can be interpreted normally, we do not try to expand
+  # the command name.  This is to avoid mistakenly change the files in the
+  # current directory, which accidentally matches a real command.
+  ble/complete/sabbrev/suffix.is-normal-command "$file" && return 1
+
+  ble/complete/sabbrev#match "$file" 's' "$opts"
+}
+
+## @fn ble/complete/sabbrev#match str type [opts]
+function ble/complete/sabbrev#match {
+  key1= ent1=
+  local target=$1 type=$2 opts=$3 keys
+  ble/complete/sabbrev#get-keys "$type"
+  local key2 ent2 ret
+  for key2 in "${keys[@]}"; do
+    ((${#key2}>${#key1})) || continue
+    ble/gdict#get _ble_complete_sabbrev "$key2" || continue; ent2=$ret
+
+    case $ent2 in
+    (i:*) [[ $target == *"$key2" ]] ;;
+    (l:*) [[ $target == *"$key2" ]] && ble/string#match "${target%"$key2"}" $'(^|\n)[ \t]*$' ;;
+    (s:*) [[ $target == *."$key2" ]] ;;
+    (*)   [[ $target == "$key2" ]] ;;
+    esac || continue
 
     [[ :$opts: == *:filter-by-patterns:* ]] &&
       ((${#patterns[@]})) &&
-      ! ble/complete/string#match-patterns "$key1" "${patterns[@]}" &&
+      ! ble/complete/string#match-patterns "$key2" "${patterns[@]}" &&
       continue
 
-    key=$key1 ent=$ent1
+    key1=$key2 ent1=$ent2
   done
 
-  ret=$ent
-  [[ $key ]]
+  [[ $key1 ]]
 }
 
 ## @fn ble/complete/sabbrev/read-arguments/.set-type opt
@@ -9064,6 +9184,7 @@ function ble/complete/sabbrev/read-arguments/.set-type {
   (--type=dynamic  | -m) new_type=m ;;
   (--type=inline   | -i) new_type=i ;;
   (--type=linewise | -l) new_type=l ;;
+  (--type=suffix   | -s) new_type=s ;;
   (*)
     ble/util/print "ble-sabbrev: unknown sabbrev type '${1#--type=}'." >&2
     flags=E$flags
@@ -9119,7 +9240,7 @@ function ble/complete/sabbrev/read-arguments {
         for ((i=1;i<n;i++)); do
           c=${arg:i:1}
           case $c in
-          ([wmil]) ble/complete/sabbrev/read-arguments/.set-type "-$c" ;;
+          ([wmils]) ble/complete/sabbrev/read-arguments/.set-type "-$c" ;;
           (r) flags=r$flags ;;
           (*)
             ble/util/print "ble-sabbrev: unknown option '-$c'." >&2
@@ -9146,9 +9267,9 @@ function ble-sabbrev {
   if [[ $flags == *H* || $flags == *E* ]]; then
     [[ $flags == *E* ]] && ble/util/print
     ble/util/print-lines \
-      'usage: ble-sabbrev [--type=TYPE|-wmil] [KEY=VALUE]...' \
-      'usage: ble-sabbrev [-r|--reset] [--type=TYPE|-wmil|KEY...]' \
-      'usage: ble-sabbrev [--color[=auto|always|never]] [--type=TYPE|-wmil|KEY...]' \
+      'usage: ble-sabbrev [--type=TYPE|-wmils] [KEY=VALUE]...' \
+      'usage: ble-sabbrev [-r|--reset] [--type=TYPE|-wmils|KEY...]' \
+      'usage: ble-sabbrev [--color[=auto|always|never]] [--type=TYPE|-wmils|KEY...]' \
       'usage: ble-sabbrev --help' \
       '     Register sabbrev expansion.' \
       '' \
@@ -9157,6 +9278,7 @@ function ble-sabbrev {
       '  -m, --type=dynamic    run command and replace matching word.' \
       '  -i, --type=inline     replace matching suffix.' \
       '  -l, --type=linewise   replace matching line.' \
+      '  -s, --type=suffix     replace word with extension in the command position.' \
       '' \
       '  -r, --reset           remove specified set of sabbrev.' \
       '' \
@@ -9245,33 +9367,36 @@ function ble/complete/sabbrev/expand {
   local opts=$1
   local comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
 
-  [[ :$opts: == *:wordwise:* || :$opts: == *:literal:* ]] ||
-    opts=$opts:wordwise:literal
+  [[ :$opts: == *:wordwise:* || :$opts: == *:literal:* || :$opts: == *:suffix:* ]] ||
+    opts=$opts:wordwise:literal:suffix
 
   local -a patterns=()
   local ret
   ble/opts#extract-all-optargs "$opts" pattern &&
     patterns=("${ret[@]}")
 
-  # wordwise sabbrev と literal sabbrev を両方検索しより長い一致を選択する
-  local key1= ent1= key2= ent2=
+  # Search matching wordwise/literal/suffix sabbrevs and pick the longest one.
+  # When they have the same lengths, the priority is wordwise > suffix >
+  # literal.
+  local key= ent= pos_wbegin=
   if [[ :$opts: == *:wordwise:* ]]; then
-    local pos key ret
+    local pos key1 ret
     ble/complete/sabbrev/locate-key 'file|command|argument|variable:w|wordlist:.*|sabbrev|rhs' &&
-      key=${_ble_edit_str:pos:comp_index-pos} &&
-      ble/complete/sabbrev/wordwise.get "$key" &&
-      { ((${#patterns[@]}==0)) || ble/complete/string#match-patterns "$key" "${patterns[@]}"; } &&
-      key1=$key ent1=$ret
+      key1=${_ble_edit_str:pos:comp_index-pos} &&
+      ble/complete/sabbrev#get "$key1" 'wm' &&
+      { ((${#patterns[@]}==0)) || ble/complete/string#match-patterns "$key1" "${patterns[@]}"; } &&
+      ((${#key1}>${#key})) && key=$key1 ent=$ret
+  fi
+  if [[ :$opts: == *:suffix:* ]]; then
+    local pos key1 ent1
+    ble/complete/sabbrev/locate-key 'command' &&
+      ble/complete/sabbrev/suffix.find "${_ble_edit_str:pos:comp_index-pos}" filter-by-patterns &&
+      ((${#key1}>${#key})) && key=$key1 ent=$ent1 pos_wbegin=$pos
   fi
   if [[ :$opts: == *:literal:* ]]; then
-    local key ret
+    local key1 ent1
     ble/complete/sabbrev/literal.find "${_ble_edit_str::comp_index}" filter-by-patterns &&
-      key2=$key ent2=$ret
-  fi
-  if ((${#key1}>=${#key2})); then
-    local key=$key1 ent=$ent1
-  else
-    local key=$key2 ent=$ent2
+      ((${#key1}>${#key})) && key=$key1 ent=$ent1
   fi
   [[ $key ]] || return 1
 
@@ -9290,6 +9415,9 @@ function ble/complete/sabbrev/expand {
     local pos=$((comp_index-${#key}))
     ble/widget/.replace-range "$pos" "$comp_index" "$value"
     ((_ble_edit_ind=pos+${#value})) ;;
+  (s)
+    ble/widget/.replace-range "$pos_wbegin" "$pos_wbegin" "$value "
+    ((_ble_edit_ind=comp_index+${#value}+1)) ;;
   (m)
     # prepare completion context
     local comp_type= comps_flags= comps_fixed=
@@ -9357,7 +9485,7 @@ function ble/complete/action:sabbrev/init-menu-item {
   show=$INSERT
 }
 function ble/complete/action:sabbrev/get-desc {
-  local ret; ble/complete/sabbrev/wordwise.get "$INSERT"
+  local ret; ble/complete/sabbrev#get "$INSERT"
   desc="$desc_sgrt(sabbrev)$desc_sgr0 $ret"
 }
 function ble/complete/source:sabbrev {
@@ -9828,7 +9956,7 @@ function ble/cmdinfo/complete:cd/generate-cdable_vars {
 
 ## @fn ble/cmdinfo/complete:cd/.impl
 ##   @remarks
-##     この実装は ble/complete/source:file/.impl を元にしている。
+##     この実装は ble/complete/source:file を元にしている。
 ##     実装に関する注意点はこの元の実装も参照の事。
 function ble/cmdinfo/complete:cd/.impl {
   local type=$1

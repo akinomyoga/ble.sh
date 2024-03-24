@@ -547,6 +547,8 @@ ble-face -s command_file              fg=green
 ble-face -s command_keyword           fg=blue
 ble-face -s command_jobs              fg=red
 ble-face -s command_directory         fg=26,underline
+ble-face -s command_suffix            fg=white,bg=green
+ble-face -s command_suffix_new        fg=white,bg=brown
 ble-face -s filename_directory        underline,fg=26
 ble-face -s filename_directory_sticky underline,fg=white,bg=26
 ble-face -s filename_link             underline,fg=teal

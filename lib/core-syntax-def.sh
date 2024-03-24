@@ -143,6 +143,8 @@ function ble/syntax/defface.onload {
   ble/color/defface command_keyword     fg=blue
   ble/color/defface command_jobs        fg=red,bold
   ble/color/defface command_directory   fg=26,underline
+  ble/color/defface command_suffix      fg=white,bg=green
+  ble/color/defface command_suffix_new  fg=white,bg=brown
   ble/color/defface filename_directory        underline,fg=26
   ble/color/defface filename_directory_sticky underline,fg=white,bg=26
   ble/color/defface filename_link             underline,fg=teal

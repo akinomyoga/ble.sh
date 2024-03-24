@@ -6445,13 +6445,16 @@ function ble/syntax/attr2iface/color_defface.onload {
   ble/syntax/attr2iface/.define CTX_HERE0   syntax_document
   ble/syntax/attr2iface/.define CTX_HERE1   syntax_document
 
-  ble/syntax/attr2iface/.define ATTR_CMD_BOLD      command_builtin_dot
-  ble/syntax/attr2iface/.define ATTR_CMD_BUILTIN   command_builtin
-  ble/syntax/attr2iface/.define ATTR_CMD_ALIAS     command_alias
-  ble/syntax/attr2iface/.define ATTR_CMD_FUNCTION  command_function
-  ble/syntax/attr2iface/.define ATTR_CMD_FILE      command_file
-  ble/syntax/attr2iface/.define ATTR_CMD_JOBS      command_jobs
-  ble/syntax/attr2iface/.define ATTR_CMD_DIR       command_directory
+  ble/syntax/attr2iface/.define ATTR_CMD_BOLD       command_builtin_dot
+  ble/syntax/attr2iface/.define ATTR_CMD_BUILTIN    command_builtin
+  ble/syntax/attr2iface/.define ATTR_CMD_ALIAS      command_alias
+  ble/syntax/attr2iface/.define ATTR_CMD_FUNCTION   command_function
+  ble/syntax/attr2iface/.define ATTR_CMD_FILE       command_file
+  ble/syntax/attr2iface/.define ATTR_CMD_JOBS       command_jobs
+  ble/syntax/attr2iface/.define ATTR_CMD_DIR        command_directory
+  ble/syntax/attr2iface/.define ATTR_CMD_SUFFIX     command_suffix
+  ble/syntax/attr2iface/.define ATTR_CMD_SUFFIX_NEW command_suffix_new
+
   ble/syntax/attr2iface/.define ATTR_KEYWORD       command_keyword
   ble/syntax/attr2iface/.define ATTR_KEYWORD_BEGIN command_keyword
   ble/syntax/attr2iface/.define ATTR_KEYWORD_END   command_keyword
@@ -6521,6 +6524,12 @@ function ble/syntax/highlight/cmdtype1 {
   (*)
     if [[ -d $cmd ]] && shopt -q autocd &>/dev/null; then
       ((type=ATTR_CMD_DIR))
+    elif [[ $cmd == *.* ]] && ble/function#try ble/complete/sabbrev#match "$cmd" 's'; then
+      if [[ -e $cmd || -h $cmd ]]; then
+        ((type=ATTR_CMD_SUFFIX))
+      else
+        ((type=ATTR_CMD_SUFFIX_NEW))
+      fi
     else
       ((type=ATTR_ERR))
     fi ;;

@@ -125,6 +125,8 @@ ATTR_KEYWORD_END    119 # fi, esac, done, } など
 ATTR_KEYWORD_MID    120 # then, elif, else, do など
 ATTR_CMD_JOBS       107
 ATTR_CMD_DIR        112
+ATTR_CMD_SUFFIX     135
+ATTR_CMD_SUFFIX_NEW 136
 ATTR_FILE_DIR       108
 ATTR_FILE_STICKY    124 # directory with sticky bit
 ATTR_FILE_LINK      109

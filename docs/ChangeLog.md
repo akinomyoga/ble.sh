@@ -32,6 +32,7 @@
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 - complete(cd): complete variable names for `cdable_vars` `#D2190` xxxxxxxx
+- sabbrev: support suffix sabbrev to emulate Zsh's suffix aliases `#D2191` xxxxxxxx
 
 ## Changes
 
