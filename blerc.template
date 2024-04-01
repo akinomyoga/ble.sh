@@ -9,7 +9,7 @@
 ##
 ## # Please put the following line in the beginning of .bashrc
 ## # Note: Please replace $HOME/.local/share/blesh with the path to your ble.sh
-## [[ $- == *i* ]] && "$HOME/.local/share/blesh/ble.sh" --noattach
+## [[ $- == *i* ]] && source "$HOME/.local/share/blesh/ble.sh" --noattach
 ##
 ## # Your bashrc contents should come between the two lines.
 ##
