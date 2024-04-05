@@ -1016,6 +1016,23 @@ fi
 
 # ble/bin
 
+if ((_ble_bash>=40000)); then
+  function ble/bin#has { builtin type -t -- "$@" &>/dev/null; }
+else
+  function ble/bin#has {
+    local cmd
+    for cmd; do builtin type -t -- "$cmd" || return 1; done &>/dev/null
+    return 0
+  }
+fi
+
+## @fn ble/bin#get-path command
+##   @var[out] path
+function ble/bin#get-path {
+  local cmd=$1
+  ble/util/assign path 'builtin type -P -- "$cmd" 2>/dev/null' && [[ $path ]]
+}
+
 ## @fn ble/bin/.default-utility-path commands...
 ##   取り敢えず ble/bin/* からコマンドを呼び出せる様にします。
 function ble/bin/.default-utility-path {
@@ -1039,7 +1056,7 @@ function ble/bin#freeze-utility-path {
     fi
     [[ $flags == *n* ]] && ble/bin#has "ble/bin/$cmd" && continue
     ble/bin#has "ble/bin/.frozen:$cmd" && continue
-    if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
+    if ble/bin#get-path "$cmd"; then
       [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
     else
@@ -1048,16 +1065,6 @@ function ble/bin#freeze-utility-path {
   done
   ((!fail))
 }
-
-if ((_ble_bash>=40000)); then
-  function ble/bin#has { type -t "$@" &>/dev/null; }
-else
-  function ble/bin#has {
-    local cmd
-    for cmd; do type -t "$cmd" || return 1; done &>/dev/null
-    return 0
-  }
-fi
 
 # POSIX utilities
 
@@ -1174,7 +1181,7 @@ _ble_bin_awk_type=
 function ble/bin/awk/.instantiate {
   local path q=\' Q="'\''" ext=1
 
-  if ble/util/assign path "builtin type -P -- nawk 2>/dev/null" && [[ $path ]]; then
+  if ble/bin#get-path nawk; then
     [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     # Note: Some distribution (like Ubuntu) provides gawk as "nawk" by
     # default. To avoid wrongly picking gawk as nawk, we need to check the
@@ -1190,7 +1197,7 @@ function ble/bin/awk/.instantiate {
     fi
   fi
 
-  if ble/util/assign path "builtin type -P -- mawk 2>/dev/null" && [[ $path ]]; then
+  if ble/bin#get-path mawk; then
     [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     builtin eval "function ble/bin/mawk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
     if [[ ! $_ble_bin_awk_type ]]; then
@@ -1199,7 +1206,7 @@ function ble/bin/awk/.instantiate {
     fi
   fi
 
-  if ble/util/assign path "builtin type -P -- gawk 2>/dev/null" && [[ $path ]]; then
+  if ble/bin#get-path gawk; then
     [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     builtin eval "function ble/bin/gawk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
     if [[ ! $_ble_bin_awk_type ]]; then
@@ -1213,7 +1220,7 @@ function ble/bin/awk/.instantiate {
       # Solaris の既定の awk は全然駄目なので /usr/xpg4 以下の awk を使う。
       _ble_bin_awk_type=xpg4
       function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; } && ext=0
-    elif ble/util/assign path "builtin type -P -- awk 2>/dev/null" && [[ $path ]]; then
+    elif ble/bin#get-path awk; then
       [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       local version
       ble/util/assign version '"$path" -W version || "$path" --version' 2>/dev/null </dev/null

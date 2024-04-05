@@ -1943,7 +1943,7 @@ function ble/complete/action:command/initialize.batch {
 function ble/complete/action:command/complete {
   if [[ -d $CAND ]]; then
     ble/complete/action/complete.mark-directory
-  elif ! type "$CAND" &>/dev/null; then
+  elif ! ble/bin#has "$CAND"; then
     # 関数名について縮約されたもので一意確定した時。
     #
     # Note: 関数名について縮約されている時、
@@ -2002,7 +2002,7 @@ function ble/complete/action:command/get-desc {
       ble/alias#expand "$CAND"
       title=alias value=$ret ;;
     ($_ble_attr_CMD_FILE)
-      local path; ble/util/assign path 'type -p -- "$CAND"'
+      local path; ble/bin#get-path "$CAND"
       [[ $path == ?*/"$CAND" ]] && path="from ${path%/"$CAND"}"
       title=file value=$path ;;
     ($_ble_attr_CMD_FUNCTION)
@@ -2600,7 +2600,7 @@ function ble/complete/source:command {
 
     # workaround: 何故か compgen -c -- "$compv_quoted" で
     #   厳密一致のディレクトリ名が混入するので削除する。
-    [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
+    [[ $cand != */ && -d $cand ]] && ! ble/bin#has "$cand" && continue
 
     if [[ $is_quoted ]]; then
       local disable_count=
@@ -2621,7 +2621,7 @@ function ble/complete/source:command {
       if [[ ! $expand_aliases ]]; then
         # #D1715 expand_aliases が無効でも compgen -c は alias を列挙してしまうので、
         # ここで alias は除外 (type は expand_aliases をちゃんと考慮してくれる)。
-        ble/is-alias "$cand" && ! type "$cand" &>/dev/null && continue
+        ble/is-alias "$cand" && ! ble/bin#has "$cand" && continue
       fi
 
       # alias は quote されては困るので、quote される可能性のある文字を含んでい
@@ -9128,7 +9128,7 @@ function ble/complete/sabbrev/literal.find {
   ble/complete/sabbrev#match "$str" 'il' "$opts"
 }
 function ble/complete/sabbrev/suffix.is-normal-command {
-  type -- "$1" &>/dev/null ||
+  ble/bin#has "$1" ||
     { ble/util/joblist.check; jobs -- "$1" &>/dev/null; } ||
     { [[ -d $1 ]] && shopt -q autocd &>/dev/null; }
 }

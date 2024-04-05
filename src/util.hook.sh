@@ -264,7 +264,7 @@ function blehook/has-hook {
 ## @fn blehook/invoke.sandbox
 ##   @var[in] _ble_local_hook _ble_local_lastexit _ble_local_lastarg
 function blehook/invoke.sandbox {
-  if type "$_ble_local_hook" &>/dev/null; then
+  if ble/bin#has "$_ble_local_hook"; then
     ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
     "$_ble_local_hook" "$@" 2>&3
   else

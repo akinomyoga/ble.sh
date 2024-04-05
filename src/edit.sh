@@ -4115,8 +4115,7 @@ function ble/edit/display-version/check:zoxide {
   ble/is-function __zoxide_hook || return 1
 
   local path=
-  ble/util/assign path 'type -P zoxide 2>/dev/null'
-  [[ $path ]] || return 1
+  ble/bin#get-path zoxide || return 1
 
   local version=
   ble/util/assign-array version '\command zoxide --version'
@@ -4134,8 +4133,7 @@ function ble/edit/display-version/check:atuin {
   ble/is-function _atuin_precmd || ble/is-function __atuin_precmd || return 1
 
   local path=
-  ble/util/assign path 'type -P atuin 2>/dev/null'
-  [[ $path ]] || return 1
+  ble/bin#get-path atuin || return 1
 
   local version=
   ble/util/assign-array version '\command atuin --version'
@@ -7734,11 +7732,11 @@ function ble/widget/edit-and-execute-command.edit {
   ble/util/print "$content" >| "$file"
 
   local fallback=vi
-  if type emacs &>/dev/null; then
+  if ble/bin#has emacs; then
     fallback='emacs -nw'
-  elif type vim &>/dev/null; then
+  elif ble/bin#has vim; then
     fallback=vim
-  elif type nano &>/dev/null; then
+  elif ble/bin#has nano; then
     fallback=nano
   fi
 
@@ -10507,7 +10505,7 @@ function ble/widget/command-help/.locate-in-man-bash {
   [[ ${pager_cmd##*/} == less ]] || return 1
 
   # awk/gawk
-  local awk=ble/bin/awk; type -t gawk &>/dev/null && awk=gawk
+  local awk=ble/bin/awk; ble/bin#has gawk && awk=gawk
 
   # man bash
   local man_content; ble/widget/command-help/.read-man bash || return 1 # 733ms (3 fork: man, sh, cat)
@@ -10544,7 +10542,7 @@ function ble/widget/command-help/.locate-in-man-bash {
 function ble/widget/command-help/.show-bash-script {
   local _ble_local_pipeline=$1
   local -x LESS="${LESS:+$LESS }-r" # Note: Bash のバグで tempenv builtin eval は消滅するので #D1438
-  type -t source-highlight &>/dev/null &&
+  ble/bin#has source-highlight &&
     _ble_local_pipeline='source-highlight -s sh -f esc | '$_ble_local_pipeline
   builtin eval -- "$_ble_local_pipeline"
 }

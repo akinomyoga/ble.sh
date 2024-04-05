@@ -188,6 +188,7 @@
   - history: fix initially shifted history index `#D2180` e425dc56
 - edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 3801a87e
 - global: avoid using the builtin `:` `#D2192` xxxxxxxx
+- global: pass `--` to `type` and `declare` before arbitrary arguments `#D2194` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

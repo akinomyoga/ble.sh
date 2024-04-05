@@ -4,7 +4,7 @@
 #%if target == "ksh"
 #%% $ echo _ble_measure_target=ksh
 #%end
-if ! type ble/util/print &>/dev/null; then
+if ! builtin type ble/util/print &>/dev/null; then
   function ble/util/unlocal { builtin unset -v "$@"; }
   function ble/util/print { builtin printf '%s\n' "$1"; }
   function ble/util/print-lines { builtin printf '%s\n' "$@"; }
@@ -373,7 +373,7 @@ function ble-measure {
     if [[ $flags != *q* ]]; then
       local reso=$_ble_measure_resolution
       local awk=ble/bin/awk
-      type "$awk" &>/dev/null || awk=awk
+      builtin type -- "$awk" &>/dev/null || awk=awk
       local -x title="$command (x$n)"
       "$awk" -v utot="$utot" -v nsec0="$nsec0" -v n="$n" -v reso="$reso" '
         function genround(x, mod) { return int(x / mod + 0.5) * mod; }

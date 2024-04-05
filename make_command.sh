@@ -493,7 +493,8 @@ function sub:scan/word-splitting-number {
 function sub:scan/check-readonly-unsafe {
   echo "--- $FUNCNAME ---"
   local rex_varname='\b(_[_a-zA-Z0-9]+|[_A-Z][_A-Z0-9]+)\b'
-  grc -Wg,-n -Wg,--color=always -o "$rex_varname"'\+?=\b|(/assign|/assign-array|#split) '"$rex_varname"'| -v '"$rex_varname"' ' --exclude={memo,wiki,test,make,\*.md,make_command.sh,GNUmakefile} |
+  grc -Wg,-n -Wg,--color=always -o "$rex_varname"'\+?=\b|(/assign|/assign-array|#split) '"$rex_varname"'| -v '"$rex_varname"' ' \
+      --exclude={memo,wiki,test,make,'*.md',make_command.sh,GNUmakefile,'gh????.*.'{sh,bash}} |
     sed -E 'h;s/'"$_make_rex_escseq"'//g
 
       # Exceptions in each file
@@ -657,6 +658,32 @@ function sub:scan {
       g'
   sub:scan/builtin ':' --exclude=./ble.pp |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      g'
+  sub:scan/builtin 'type' --exclude=./ble.pp |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g
+
+      \Zgh0358\.copilot\.bashZd
+
+    s/^[^:]*:[0-9]+:[[:space:]]*//
+
+      \Zble/util/type type Zd
+      \Zble/util/print "[^"].* type\bZd
+      \Z\blocal( [_a-zA-Z0-9]+)* typeZd
+      \Z # .*\btype\bZd
+      \Z # .*\btype\bZd
+      \Z\bfor type in Zd
+
+      \Z keys type\bZd
+      \Ztrap type ulimitZd
+      \Zevent typeZd
+
+      # awk scripts
+      \Zif \(typeZd
+      \Z\btype ==? Zd
+      \Z = type\bZd
+      \Z\b, type\)Zd
+
+      \Zble/fun:type\bZd
       g'
 
   sub:scan/a.txt

@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/main' 19
+ble/test/start-section 'ble/main' 21
 
 # ble/util/{put,print}
 (
@@ -26,6 +26,14 @@ ble/test/start-section 'ble/main' 19
   ble/test ble/bin#has ble/test/dummy-{1..3}
   ble/test ble/bin#has ble/test/dummy-0 exit=1
   ble/test ble/bin#has ble/test/dummy-{0..2} exit=1
+
+  # Note (#D1715): ble/bin#has should reflect "shopt -s expand_aliases" for the
+  # aliases.
+  alias ble_test_dummy_4=echo
+  shopt -u expand_aliases
+  ble/test '! ble/bin#has ble_test_dummy_4'
+  shopt -s expand_aliases
+  ble/test 'ble/bin#has ble_test_dummy_4'
 )
 
 # ble/util/readlink

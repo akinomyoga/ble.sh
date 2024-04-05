@@ -2351,7 +2351,7 @@ ble/bin/awk/.instantiate
 ##
 if ((_ble_bash>=30200)); then
   function ble/is-function {
-    declare -F "$1" &>/dev/null
+    declare -F -- "$1" &>/dev/null
   }
 else
   # bash-3.1 has bug in declare -f.
@@ -2377,17 +2377,17 @@ if ((_ble_bash>=30200)); then
     local name=$1
     ble/is-function "$name" || return 1
     if [[ -o posix ]]; then
-      ble/util/assign def 'type "$name"'
+      ble/util/assign def 'builtin type -- "$name"'
       def=${def#*$'\n'}
     else
-      ble/util/assign def 'declare -f "$name"'
+      ble/util/assign def 'declare -f -- "$name"'
     fi
   }
 else
   function ble/function#getdef {
     local name=$1
     ble/is-function "$name" || return 1
-    ble/util/assign def 'type "$name"'
+    ble/util/assign def 'builtin type -- "$name"'
     def=${def#*$'\n'}
   }
 fi
@@ -2410,7 +2410,7 @@ builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_util_function_traced}"
 function ble/function#trace {
   local func
   for func; do
-    declare -ft "$func" &>/dev/null || continue
+    declare -ft -- "$func" &>/dev/null || continue
     ble/gdict#set _ble_util_function_traced "$func" 1
   done
 }
@@ -2419,7 +2419,7 @@ function ble/function#has-trace {
 }
 function ble/function#has-attr {
   local __ble_tmp=$1
-  ble/util/assign-array __ble_tmp 'declare -pf "$__ble_tmp" 2>/dev/null'
+  ble/util/assign-array __ble_tmp 'declare -pf -- "$__ble_tmp" 2>/dev/null'
   local nline=${#__ble_tmp[@]}
   ((nline)) &&
     ble/string#match "${__ble_tmp[nline-1]}" '^declare -([a-zA-Z]*)' &&
@@ -2466,9 +2466,9 @@ function ble/function#try {
 }
 
 function ble/function#get-source-and-lineno {
-  local ret unset_extdebug=
+  local func=$1 ret unset_extdebug=
   shopt -q extdebug || { unset_extdebug=1; shopt -s extdebug; }
-  ble/util/assign ret "declare -F '$1' 2>/dev/null"; local ext=$?
+  ble/util/assign ret 'declare -F -- "$func" 2>/dev/null'; local ext=$?
   [[ ! $unset_extdebug ]] || shopt -u extdebug
   if ((ext==0)); then
     ret=${ret#*' '}
@@ -4426,11 +4426,11 @@ function ble/util/cat {
 _ble_util_less_fallback=
 function ble/util/get-pager {
   if [[ ! $_ble_util_less_fallback ]]; then
-    if type -t less &>/dev/null; then
+    if ble/bin#has less; then
       _ble_util_less_fallback=less
-    elif type -t pager &>/dev/null; then
+    elif ble/bin#has pager; then
       _ble_util_less_fallback=pager
-    elif type -t more &>/dev/null; then
+    elif ble/bin#has more; then
       _ble_util_less_fallback=more
     else
       _ble_util_less_fallback=cat

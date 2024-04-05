@@ -24,7 +24,7 @@ function ble/function#get-source-and-lineno {
   local _ble_util_function_util=$FUNCNAME
   if ble/is-function "$_ble_util_function_name"; then
     (
-      declare -ft "$_ble_util_function_name"
+      declare -ft -- "$_ble_util_function_name"
       builtin trap 'ble/function#get-source-and-lineno/.extract && return 0' DEBUG
       "$_ble_util_function_name"
     ) 11>&- 11>&1 12>&- 12>&2 # disable=#D2164 (we give up bash-3.1)
@@ -37,7 +37,7 @@ function ble/function#get-source-and-lineno.impl2 {
     unset_extdebug=1
     shopt -s extdebug
   fi
-  ble/util/assign ret "declare -F '$1' &>/dev/null"; local ext=$?
+  ble/util/assign ret "declare -F -- '$1' &>/dev/null"; local ext=$?
   if [[ $unset_extdebug ]]: then
      shopt -u extdebug
   fi
@@ -53,7 +53,7 @@ function ble/function#get-source-and-lineno.impl2 {
 function ble/function#get-source-and-lineno.impl3 {
   local ret shopt=$BASHOPTS # 古い bash で使えない
   shopt -s extdebug
-  ble/util/assign ret "declare -F '$1' &>/dev/null"; local ext=$?
+  ble/util/assign ret "declare -F -- '$1' &>/dev/null"; local ext=$?
   [[ :$unset_extdebug: == *:extdebug:* ]] || shopt -u extdebug
 
   if ((ext==0)); then
@@ -68,10 +68,10 @@ function ble/function#get-source-and-lineno.impl4 {
   local ret ext
   if ! shopt -q extdebug; then
     shopt -s extdebug
-    ble/util/assign ret "declare -F '$1' &>/dev/null"; ext=$?
+    ble/util/assign ret "declare -F -- '$1' &>/dev/null"; ext=$?
     shopt -u extdebug
   else
-    ble/util/assign ret "declare -F '$1' &>/dev/null"; ext=$?
+    ble/util/assign ret "declare -F -- '$1' &>/dev/null"; ext=$?
   fi
   if ((ext==0)); then
     ret=${ret#*' '}
@@ -84,7 +84,7 @@ function ble/function#get-source-and-lineno.impl4 {
 function ble/function#get-source-and-lineno.impl2a {
   local ret unset_extdebug=
   shopt -q extdebug || { unset_extdebug=1; shopt -s extdebug; }
-  ble/util/assign ret "declare -F '$1' &>/dev/null"; local ext=$?
+  ble/util/assign ret "declare -F -- '$1' &>/dev/null"; local ext=$?
   [[ ! $unset_extdebug ]] || shopt -u extdebug
   if ((ext==0)); then
     ret=${ret#*' '}

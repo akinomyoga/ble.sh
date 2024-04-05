@@ -7336,6 +7336,34 @@ bash_tips
 
 2024-04-17
 
+  * global: 組み込みコマンドで -- を指定するべきところでちゃんと指定する [#D2194]
+
+    * util(is-function): use "declare -F --" to check function names
+
+    これは物凄く些細な変更の気がするが backport した方が良い気がするので独立し
+    た commit にする。
+
+    他に類似の物がないか調べるのも面倒なので declare 単体の修正で良いのでは。或
+    いは少なくとも make_command.sh でチェックしている builtin に関しては -- を
+    指定する必要があるかどうか確認する。eval については既に対策しているので問題
+    ない。他の builtin についてはそもそも正しい使い方をしている限りはオプション
+    と紛らわしい引数は現れない気がするので気にしない事にする。
+
+    * main(ble/bin#has): use "builtin type -t -- ..."
+    * main(ble/bin#get-path): use "builtin type -P -- ..."
+
+    と思ったら type は builtin を通して呼び出す物の内に入っていなかった。以前
+    omb において (Windows の type を似せる為に) alias type=cat として問題を起こ
+    した人がいたので、type も builtin をつけて呼び出すべきの気がする。
+
+    うーん。type は様々な箇所でまちまちのやり方で使われている。既に ble/bin#has
+    は関数の判定にも使われている。なので、一般のコマンド存在判定として使って良
+    い。存在判定には一律で ble/bin#has を使う事にする。また、ファイルコマンドの
+    パスの取得については一律で builtin type -P -- を使うこととして、これも
+    ble/bin#get-path という新しい関数を通して呼び出すことにした。
+
+    最終的に結構大きな commit になってしまった。
+
   * complete: support ble-face menu_desc_* (requested by romaia) [#D2193]
     https://github.com/akinomyoga/ble.sh/discussions/433
 

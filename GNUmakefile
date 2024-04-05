@@ -9,14 +9,14 @@ ifeq ($(.FEATURES),)
 endif
 
 # check gawk
-GAWK := $(shell which gawk 2>/dev/null || bash -c 'type -p gawk' 2>/dev/null)
+GAWK := $(shell which gawk 2>/dev/null || bash -c 'builtin type -P gawk' 2>/dev/null)
 ifneq ($(GAWK),)
   GAWK_VERSION := $(shell LANG=C $(GAWK) --version 2>/dev/null | sed -n '1{/[Gg][Nn][Uu] [Aa][Ww][Kk]/p;}')
   ifeq ($(GAWK_VERSION),)
     $(error Sorry, gawk is found but does not seem to work. Please install a proper version of gawk (GNU Awk).)
   endif
 else
-  GAWK := $(shell which awk 2>/dev/null || bash -c 'type -p awk' 2>/dev/null)
+  GAWK := $(shell which awk 2>/dev/null || bash -c 'builtin type -P awk' 2>/dev/null)
   ifeq ($(GAWK),)
     $(error Sorry, gawk/awk could not be found. Please check your PATH environment variable.)
   endif
