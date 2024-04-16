@@ -515,8 +515,8 @@ function ble/decode/keys2chars {
 
 ## @fn[custom] ble-decode/PROLOGUE
 ## @fn[custom] ble-decode/EPILOGUE
-function ble-decode/PROLOGUE { :; }
-function ble-decode/EPILOGUE { :; }
+function ble-decode/PROLOGUE { return 0; }
+function ble-decode/EPILOGUE { return 0; }
 
 _ble_decode_input_buffer=()
 _ble_decode_input_count=0
@@ -1609,7 +1609,7 @@ function ble/decode/keymap#.onload {
   local delay=$_ble_base_run/$$.bind.delay.$kmap
   if [[ -s $delay ]]; then
     source "$delay"
-    : >| "$delay"
+    >| "$delay"
   fi
 }
 function ble/decode/keymap#load {
@@ -4224,7 +4224,7 @@ function ble/builtin/bind/read-user-settings/.cache-save {
     if [[ -s $delay_prefix.$keymap ]]; then
       ble/util/copyfile "$delay_prefix.$keymap" "$cache_prefix.$keymap"
     else
-      : >| "$cache_prefix.$keymap"
+      >| "$cache_prefix.$keymap"
     fi || fail=1
   done
   [[ $fail ]] && return 1
@@ -4416,7 +4416,7 @@ function ble/decode/detach {
   # 元のキー割り当ての復元
   if [[ -s "$_ble_base_run/$$.bind.save" ]]; then
     source "$_ble_base_run/$$.bind.save"
-    : >| "$_ble_base_run/$$.bind.save"
+    >| "$_ble_base_run/$$.bind.save"
   fi
 
   [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode current_editing_mode
@@ -4427,7 +4427,7 @@ function ble/decode/detach {
 #------------------------------------------------------------------------------
 # **** encoding = UTF-8 ****
 
-function ble/encoding:UTF-8/generate-binder { :; }
+function ble/encoding:UTF-8/generate-binder { return 0; }
 
 # 以下は lib/init-bind.sh の中にある物と等価なので殊更に設定しなくて良い。
 

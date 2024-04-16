@@ -1710,9 +1710,9 @@ function ble/complete/action:plain/complete {
 }
 
 # action:literal-substr
-function ble/complete/action:literal-substr/initialize { :; }
+function ble/complete/action:literal-substr/initialize { return 0; }
 function ble/complete/action:literal-substr/initialize.batch { inserts=("${cands[@]}"); }
-function ble/complete/action:literal-substr/complete { :; }
+function ble/complete/action:literal-substr/complete { return 0; }
 
 # action:substr (equivalent to plain)
 function ble/complete/action:substr/initialize {
@@ -1726,7 +1726,7 @@ function ble/complete/action:substr/complete {
 }
 
 # action:literal-word
-function ble/complete/action:literal-word/initialize { :; }
+function ble/complete/action:literal-word/initialize { return 0; }
 function ble/complete/action:literal-word/initialize.batch { inserts=("${cands[@]}"); }
 function ble/complete/action:literal-word/complete {
   if [[ $comps_flags == *x* ]]; then
@@ -9479,7 +9479,7 @@ function ble/widget/sabbrev-expand {
 
 # sabbrev の補完候補
 function ble/complete/action:sabbrev/initialize { CAND=$value; }
-function ble/complete/action:sabbrev/complete { :; }
+function ble/complete/action:sabbrev/complete { return 0; }
 function ble/complete/action:sabbrev/init-menu-item {
   local ret; ble/color/face2g command_alias; g=$ret
   show=$INSERT

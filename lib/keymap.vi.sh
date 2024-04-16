@@ -3,7 +3,7 @@
 # Note: bind (INITIALIZE_DEFMAP) の中から再帰的に呼び出されうるので、
 # 先に ble-edit/bind/load-editing-mode:vi を上書きする必要がある。
 ble/is-function ble-edit/bind/load-editing-mode:vi && return 0
-function ble-edit/bind/load-editing-mode:vi { :; }
+function ble-edit/bind/load-editing-mode:vi { return 0; }
 
 # 2020-04-29 force update (rename ble-decode/keymap/.register)
 # 2021-01-25 force update (change mapping of C-w and M-w)
@@ -351,12 +351,12 @@ function bleopt/check:keymap_vi_omap_cursor { ble/keymap:vi/.process-cursor-opti
 function bleopt/check:keymap_vi_xmap_cursor { ble/keymap:vi/.process-cursor-options; }
 function bleopt/check:keymap_vi_smap_cursor { ble/keymap:vi/.process-cursor-options; }
 function bleopt/check:keymap_vi_cmap_cursor { ble/keymap:vi/.process-cursor-options; }
-function bleopt/obsolete:keymap_vi_imap_cursor { :; }
-function bleopt/obsolete:keymap_vi_nmap_cursor { :; }
-function bleopt/obsolete:keymap_vi_omap_cursor { :; }
-function bleopt/obsolete:keymap_vi_xmap_cursor { :; }
-function bleopt/obsolete:keymap_vi_smap_cursor { :; }
-function bleopt/obsolete:keymap_vi_cmap_cursor { :; }
+function bleopt/obsolete:keymap_vi_imap_cursor { return 0; }
+function bleopt/obsolete:keymap_vi_nmap_cursor { return 0; }
+function bleopt/obsolete:keymap_vi_omap_cursor { return 0; }
+function bleopt/obsolete:keymap_vi_xmap_cursor { return 0; }
+function bleopt/obsolete:keymap_vi_smap_cursor { return 0; }
+function bleopt/obsolete:keymap_vi_cmap_cursor { return 0; }
 
 bleopt/declare -v keymap_vi_mode_show 1
 function bleopt/check:keymap_vi_mode_show {
@@ -1554,7 +1554,7 @@ function ble/keymap:vi/operator:c {
   fi
   return 0
 }
-function ble/keymap:vi/operator:y.record { :; }
+function ble/keymap:vi/operator:y.record { return 0; }
 function ble/keymap:vi/operator:y {
   local beg=$1 end=$2 context=$3 arg=$4 reg=$5
   local yank_type= yank_content=

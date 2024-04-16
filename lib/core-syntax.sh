@@ -924,7 +924,7 @@ function ble/syntax:text/ctx-unspecified {
 _ble_syntax_context_proc[CTX_UNSPECIFIED]=ble/syntax:text/ctx-unspecified
 
 function ble/syntax:text/initialize-ctx { ctx=$CTX_UNSPECIFIED; }
-function ble/syntax:text/initialize-vars { :; }
+function ble/syntax:text/initialize-vars { return 0; }
 
 #==============================================================================
 #
@@ -7804,7 +7804,7 @@ blehook textarea_render_defer!=ble/highlight/layer:syntax/textarea_render_defer.
 #%m main main.r/\<CTX_/_ble_ctx_/
 #%x main
 
-function ble/syntax/import { :; }
+function ble/syntax/import { return 0; }
 
 blehook/invoke syntax_load
 ble/function#try ble/textarea#invalidate str

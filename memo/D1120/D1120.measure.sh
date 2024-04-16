@@ -1,7 +1,7 @@
 #!/bin/bash
 
 _initialize() {
-  : >| D1119.measure.out
+  >| D1119.measure.out
   echo "builtin history -c" >| D1119.measure._read_r
   echo "builtin history -c" >| D1119.measure._read_s
   local N=$1

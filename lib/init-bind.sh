@@ -34,8 +34,8 @@ function ble/init:bind/generate-binder {
 
   ble/edit/info/show text "ble.sh: updating binders..."
 
-  : >| "$fbind1"
-  : >| "$fbind2"
+  >| "$fbind1"
+  >| "$fbind2"
 
   local q=\' Q="'\\''"
   local altdqs00='\xC0\x80'

@@ -2,7 +2,7 @@
 
 # include guard
 ble/is-function ble-edit/bind/load-editing-mode:emacs && return 0
-function ble-edit/bind/load-editing-mode:emacs { :; }
+function ble-edit/bind/load-editing-mode:emacs { return 0; }
 
 # 2015-12-09 keymap cache should be updated due to the refactoring.
 # 2019-01-18 keymap cache should be updated for recent changes

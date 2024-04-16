@@ -1335,9 +1335,9 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
   ble/test 'ble/is-function declare' exit=1
   ble/test 'ble/is-function mkfifo' exit=1
 
-  function compgen { :; }
-  function declare { :; }
-  function mkfifo { :; }
+  function compgen { return 0; }
+  function declare { return 0; }
+  function mkfifo { return 0; }
   ble/test 'ble/is-function compgen'
   ble/test 'ble/is-function declare'
   ble/test 'ble/is-function mkfifo'
@@ -1446,10 +1446,10 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 (
   shopt -s expand_aliases
   alias aaa=fun
-  function fun { :; }
-  function ble/fun { :; }
-  function ble/fun:type { :; }
-  function ble/fun#meth { :; }
+  function fun { return 0; }
+  function ble/fun { return 0; }
+  function ble/fun:type { return 0; }
+  function ble/fun#meth { return 0; }
 
   ble/test 'ble/util/type ret aaa' ret=alias
   ble/test 'ble/util/type ret fun' ret=function

@@ -49,7 +49,7 @@ function ble/builtin/history/is-empty {
 ##   する。実際に SIGSEGV で終了した時に履歴ファイルを確認して問題の行番号を出
 ##   力する。
 if ((_ble_bash>=50000)); then
-  function ble/builtin/history/.check-timestamp-sigsegv { :; }
+  function ble/builtin/history/.check-timestamp-sigsegv { return 0; }
 else
   function ble/builtin/history/.check-timestamp-sigsegv {
     local stat=$1
@@ -342,7 +342,7 @@ if ((_ble_bash>=40000)); then
             _ble_history_load_bgpid=
           fi
 
-          : >| "$history_tmpfile"
+          >| "$history_tmpfile"
           if [[ $opt_async ]]; then
             _ble_history_load_bgpid=$(ble/util/nohup 'ble/history:bash/load/.background-initialize' print-bgpid)
 
@@ -399,7 +399,7 @@ if ((_ble_bash>=40000)); then
           else
             builtin mapfile -O "$arg_offset" -t -d '' _ble_history_edit < "$history_tmpfile"
           fi
-          : >| "$history_tmpfile"
+          >| "$history_tmpfile"
 
           if [[ $load_strategy != nlfix ]]; then
             ((_ble_history_load_resume+=3))
@@ -729,7 +729,7 @@ if ((_ble_bash>=30100)); then
   ##   @var[in] tmpfile_base
   function ble/history:bash/resolve-multiline/.cleanup {
     local file
-    for file in "$tmpfile_base".*; do : >| "$file"; done
+    for file in "$tmpfile_base".*; do >| "$file"; done
   }
   function ble/history:bash/resolve-multiline/.worker {
     local HISTTIMEFORMAT=__ble_time_%s__
@@ -780,7 +780,7 @@ if ((_ble_bash>=30100)); then
           _ble_history_mlfix_bgpid=
         fi
 
-        : >| "$history_tmpfile"
+        >| "$history_tmpfile"
         if [[ $opt_async ]]; then
           _ble_history_mlfix_bgpid=$(ble/util/nohup 'ble/history:bash/resolve-multiline/.worker' print-bgpid)
 
@@ -851,7 +851,7 @@ if ((_ble_bash>=30100)); then
   }
 else
   function ble/history:bash/resolve-multiline/readfile { builtin history -r "$filename"; }
-  function ble/history:bash/resolve-multiline { ((1)); }
+  function ble/history:bash/resolve-multiline { return 0; }
 fi
 
 # Note: 複数行コマンドは eval -- $'' の形に変換して
@@ -890,7 +890,7 @@ function ble/history:bash/reset {
 
 function ble/builtin/history/.touch-histfile {
   local touch=$_ble_base_run/$$.history.touch
-  : >| "$touch"
+  >| "$touch"
 }
 
 # in def.sh
@@ -951,7 +951,7 @@ function ble/builtin/history/.initialize {
   _ble_builtin_history_initialized=1
 
   local histnew=$_ble_base_run/$$.history.new
-  : >| "$histnew"
+  >| "$histnew"
 
   if [[ $line ]]; then
     # Note: #D1126 ble.sh ロード前に追加された履歴項目があれば保存する。
@@ -960,7 +960,7 @@ function ble/builtin/history/.initialize {
     HISTTIMEFORMAT=1 builtin history -a "$histini"
     if [[ -s $histini ]]; then
       ble/bin/sed '/^#\([0-9].*\)/{s//    0  __ble_time_\1__/;N;s/\n//;}' "$histini" >> "$histapp"
-      : >| "$histini"
+      >| "$histini"
     fi
   else
     # 履歴が読み込まれていなければ強制的に読み込む
@@ -1060,7 +1060,7 @@ function ble/builtin/history/.read {
   if [[ ! $fetch && -s $histnew ]]; then
     local nline=$_ble_builtin_history_histnew_count
     ble/history:bash/resolve-multiline/readfile "$histnew"
-    : >| "$histnew"
+    >| "$histnew"
     _ble_builtin_history_histnew_count=0
     ble/builtin/history/.load-recent-entries "$nline"
     local max; ble/builtin/history/.get-max
@@ -1091,9 +1091,9 @@ function ble/builtin/history/.write {
   fi
 
   if [[ ! -e $file ]]; then
-    (umask 077; : >| "$file")
+    (umask 077; >| "$file")
   elif [[ :$opts: != *:append:* ]]; then
-    : >| "$file"
+    >| "$file"
   fi
 
   if [[ :$opts: != *:fetch:* && -s $histapp ]]; then
@@ -1144,7 +1144,7 @@ function ble/builtin/history/.write {
       END { flush_line(); }
     '
     ble/builtin/history/.add-rskip "$file" "$_ble_builtin_history_histapp_count"
-    : >| "$histapp"
+    >| "$histapp"
     _ble_builtin_history_histapp_count=0
   fi
   _ble_builtin_history_wskip=$max
@@ -1310,7 +1310,7 @@ function ble/builtin/history/option:n {
   if [[ $histfile == ${HISTFILE-} ]]; then
     local touch=$_ble_base_run/$$.history.touch
     [[ $touch -nt ${HISTFILE-} ]] && return 0
-    : >| "$touch"
+    >| "$touch"
   fi
 
   ble/builtin/history/.initialize

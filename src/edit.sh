@@ -1812,7 +1812,7 @@ if ble/is-function ble/util/idle.push; then
     fi
   }
 else
-  function ble/prompt/timeout/check { ((1)); }
+  function ble/prompt/timeout/check { return 0; }
 fi
 
 function ble/prompt/update/.has-prompt_command {
@@ -4610,7 +4610,7 @@ function ble/widget/bell {
   ble/widget/.bell "$1"
 }
 
-function ble/widget/nop { :; }
+function ble/widget/nop { return 0; }
 
 # **** insert ****                                                 @edit.insert
 
@@ -6919,11 +6919,11 @@ function _ble_builtin_trap_DEBUG__initialize {
   if [[ $_ble_builtin_trap_DEBUG_userTrapInitialized ]]; then
     # Note: 既に ble/builtin/trap:DEBUG 等によって user trap が設定されている場
     # 合は改めて読み取る事はしない (読み取っても TRAPDEBUG が見えるだけ)。
-    builtin eval -- "function $FUNCNAME { ((1)); }"
+    builtin eval -- "function $FUNCNAME { return 0; }"
     return 0
   elif [[ $1 == force ]] || ble/function/is-global-trace-context; then
     _ble_builtin_trap_DEBUG_userTrapInitialized=1
-    builtin eval -- "function $FUNCNAME { ((1)); }"
+    builtin eval -- "function $FUNCNAME { return 0; }"
 
     # Note: ble/util/assign は DEBUG を継承しないのでその場で trap -p で出力する
     local _ble_local_tmpfile; ble/util/assign/mktmp
@@ -7862,7 +7862,7 @@ function ble/widget/tilde-expand {
 
 _ble_edit_shell_expand_ExpandWtype=()
 function ble/widget/shell-expand-line.initialize {
-  function ble/widget/shell-expand-line.initialize { :; }
+  function ble/widget/shell-expand-line.initialize { return 0; }
   _ble_edit_shell_expand_ExpandWtype[_ble_ctx_CMDI]=1
   _ble_edit_shell_expand_ExpandWtype[_ble_ctx_ARGI]=1
   _ble_edit_shell_expand_ExpandWtype[_ble_ctx_ARGEI]=1
@@ -10729,7 +10729,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   }
   function ble-edit/bind/stdout.finalize {
     ble-edit/bind/stdout.on
-    [[ -f $_ble_edit_io_fname2 ]] && : >| "$_ble_edit_io_fname2"
+    [[ -f $_ble_edit_io_fname2 ]] && >| "$_ble_edit_io_fname2"
   }
 
   ## @fn ble-edit/io/check-stderr
@@ -10754,7 +10754,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
         done < "$file"
 
         [[ $message ]] && ble/term/visible-bell "$message"
-        : >| "$file"
+        >| "$file"
       fi
     fi
   }
@@ -10772,7 +10772,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       if [[ -s $file ]]; then
         local content cmd
         ble/util/readfile content "$file"
-        : >| "$file"
+        >| "$file"
         for cmd in $content; do
           case $cmd in
           (eof)

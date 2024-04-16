@@ -215,9 +215,10 @@ function sub:scan/list-command {
 function sub:scan/builtin {
   echo "--- $FUNCNAME $1 ---"
   local command=$1 esc=$_make_rex_escseq
+  local b="(\b|$esc)" ; [[ $command == [_a-zA-Z0-9]* ]] || b="($esc)"
   sub:scan/list-command --exclude-this --exclude={generate-release-note.sh,lib/test-*.sh,make,ext} "$command" "${@:2}" |
-    grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
-    grep -Ev "$command(\b|$esc)=" |
+    grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|$b(builtin|function)$esc([[:space:]]$esc)+$command$b" |
+    grep -Ev "$command$b=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
     sed -E 'h;s/'"$_make_rex_escseq"'//g
         \Z^\./lib/test-[^:]+\.sh:[0-9]+:.*ble/test Zd
@@ -607,7 +608,7 @@ function sub:scan {
       g'
   sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zunset _ble_init_(version|arg|exit|command)\bZd
+      \Zunset (-v )?_ble_init_(version|arg|exit|command)\bZd
       \Zreadonly -f unsetZd
       \Zunset -f builtinZd
       \Z'\''\(unset\)'\''Zd
@@ -653,6 +654,9 @@ function sub:scan {
       \Z readonly was blocked\.Zd
       \Z\[\[ \$\{FUNCNAME\[i]} == \*readonly ]]Zd
       \Zread readonly set shopt trapZd
+      g'
+  sub:scan/builtin ':' --exclude=./ble.pp |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       g'
 
   sub:scan/a.txt

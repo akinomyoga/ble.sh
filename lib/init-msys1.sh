@@ -55,7 +55,7 @@ function ble-edit/io:msys1/start-background {
   ble/util/assign winpid 'ble-edit/io:msys1/get-winpid.proc $$'
   [[ $winpid ]] || return 1
 
-  : >| "$fname_buff"
+  >| "$fname_buff"
   ble/fd#alloc _ble_edit_io_fd2 '> "$fname_buff"'
   "$helper2" "$winpid" "$fname_buff" "${fname_buff%.buff}.read" | ble-edit/io/check-ignoreeof-loop & disown
 } &>/dev/null

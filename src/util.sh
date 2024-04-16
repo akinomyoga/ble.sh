@@ -278,7 +278,7 @@ function bleopt/declare {
   (-o)
     builtin eval -- "$name='[obsolete: renamed to $3]'"
     builtin eval -- "function bleopt/check:$2 { bleopt/declare/.check-renamed-option $2 $3; }"
-    builtin eval -- "function bleopt/obsolete:$2 { :; }" ;;
+    builtin eval -- "function bleopt/obsolete:$2 { return 0; }" ;;
   (-n)
     builtin eval -- "_ble_opt_def_$2=\$3"
     builtin eval -- ": \"\${$name:=\$default_value}\"" ;;
@@ -2790,7 +2790,7 @@ fi
 # Note: BASHPID は Bash-4.0 以上
 
 if ((_ble_bash>=40000)); then
-  function ble/util/getpid { :; }
+  function ble/util/getpid { return 0; }
   function ble/util/is-running-in-subshell { [[ $$ != $BASHPID ]]; }
 else
   ## @fn ble/util/getpid
@@ -4794,7 +4794,7 @@ function ble/util/joblist {
 # works in `bind -x', foreground completed subshells also remain in the job
 # list and can be unexpectedly notified to users.  To avoid it, we mark
 # foreground subshells by including the call to this dummy function.
-function ble/util/joblist/__suppress__ { ((1)); }
+function ble/util/joblist/__suppress__ { return 0; }
 
 function ble/util/joblist.split {
   local arr=$1; shift
@@ -5329,7 +5329,7 @@ function ble/util/import {
     ble/is-function "$guard" && return 0
     [[ -e $file ]] || return 1
     source "$file" || { ext=$?; continue; }
-    builtin eval "function $guard { :; }"
+    builtin eval "function $guard { return 0; }"
     ble/array#push _ble_util_import_files "$file"
 
     local onload=ble/util/import/onload:$enc
@@ -5629,12 +5629,12 @@ if ((_ble_bash>=40000)); then
   }
 
   function ble/util/idle.clock/.initialize {
-    function ble/util/idle.clock/.initialize { :; }
+    function ble/util/idle.clock/.initialize { return 0; }
 
     ## @fn ble/util/idle.clock
     ##   タスクスケジューリングに使用する時計
     ##   @var[out] ret
-    function ble/util/idle.clock/.restart { :; }
+    function ble/util/idle.clock/.restart { return 0; }
     if [[ ! $_ble_util_clock_type || $_ble_util_clock_type == date ]]; then
       function ble/util/idle.clock {
         ret=$_ble_util_idle_sclock
@@ -6806,8 +6806,8 @@ function ble/term/bracketed-paste-mode/leave {
 }
 if [[ $TERM == minix ]]; then
   # Minix console は DECSET も使えない
-  function ble/term/bracketed-paste-mode/enter { :; }
-  function ble/term/bracketed-paste-mode/leave { :; }
+  function ble/term/bracketed-paste-mode/enter { return 0; }
+  function ble/term/bracketed-paste-mode/leave { return 0; }
 fi
 
 #---- DA2 ---------------------------------------------------------------------

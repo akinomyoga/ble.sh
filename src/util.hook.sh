@@ -415,7 +415,7 @@ function ble/builtin/trap/sig#new {
   fi
 }
 function ble/builtin/trap/sig#init {
-  function ble/builtin/trap/sig#init { :; }
+  function ble/builtin/trap/sig#init { return 0; }
   local ret i
   ble/util/assign-words ret 'builtin trap -l' 2>/dev/null
   for ((i=0;i<${#ret[@]};i+=2)); do

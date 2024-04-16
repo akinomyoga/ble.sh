@@ -201,7 +201,7 @@ if [[ ! $_ble_init_command ]]; then
     esac &&
       builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
     _ble_init_exit=1
-  elif ! [[ -t 4 && -t 5 ]] && ! { [[ ${bleopt_connect_tty-} ]] && ((1)) >/dev/tty; }; then
+  elif ! [[ -t 4 && -t 5 ]] && ! { [[ ${bleopt_connect_tty-} ]] && >/dev/tty; }; then
     if [[ ${bleopt_connect_tty-} ]]; then
       builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
     else
@@ -403,7 +403,7 @@ function ble/variable#copy-state {
   _ble_bash_PS4=
 } 2>/dev/null # set -x 対策
 # From src/util.sh (ble/fd#is-open and ble/fd#alloc/.nextfd)
-function ble/base/xtrace/.fdcheck { builtin : >&"$1"; } 2>/dev/null
+function ble/base/xtrace/.fdcheck { >&"$1"; } 2>/dev/null
 function ble/base/xtrace/.fdnext {
   local _ble_local_init=${_ble_util_openat_nextfd:=${bleopt_openat_base:-30}}
   for (($1=_ble_local_init;$1<_ble_local_init+1024;$1++)); do
@@ -1257,10 +1257,10 @@ function ble/bin/awk {
 }
 
 # Do not overwrite by .freeze-utility-path
-function ble/bin/.frozen:awk { :; }
-function ble/bin/.frozen:nawk { :; }
-function ble/bin/.frozen:mawk { :; }
-function ble/bin/.frozen:gawk { :; }
+function ble/bin/.frozen:awk { return 0; }
+function ble/bin/.frozen:nawk { return 0; }
+function ble/bin/.frozen:mawk { return 0; }
+function ble/bin/.frozen:gawk { return 0; }
 
 ## @fn ble/bin/awk0
 ##   awk implementation that supports NUL record separator
@@ -1277,18 +1277,18 @@ function ble/bin/awk0.available {
     if ble/bin#freeze-utility-path -n "$awk" &&
         ble/bin/awk0.available/test ble/bin/"$awk" &&
         builtin eval -- "function ble/bin/awk0 { ble/bin/$awk -v AWKTYPE=$awk \"\$@\"; }"; then
-      function ble/bin/awk0.available { ((1)); }
+      function ble/bin/awk0.available { return 0; }
       return 0
     fi
   done
 
   if ble/bin/awk0.available/test ble/bin/awk &&
       function ble/bin/awk0 { ble/bin/awk "$@"; }; then
-    function ble/bin/awk0.available { ((1)); }
+    function ble/bin/awk0.available { return 0; }
     return 0
   fi
 
-  function ble/bin/awk0.available { ((0)); }
+  function ble/bin/awk0.available { return 1; }
   return 1
 }
 
@@ -1592,7 +1592,7 @@ if ! ble/base/initialize-runtime-directory; then
 fi
 
 # ロード時刻の記録 (ble-update で使う為)
-: >| "$_ble_base_run/$$.load"
+>| "$_ble_base_run/$$.load"
 
 ## @fn ble/base/clean-up-runtime-directory [opts]
 ##   既に存在しないプロセスに属する実行時ファイルを削除します。*.pid のファイル
@@ -2599,7 +2599,7 @@ function ble/base/sub:test {
   if (($#==0)); then
     set -- bash main util canvas decode edit syntax complete keymap.vi
     logfile=$_ble_base_cache/test.$(date +'%Y%m%d.%H%M%S').log
-    : >| "$logfile"
+    >| "$logfile"
     ble/test/log#open "$logfile"
   fi
 
@@ -2688,7 +2688,7 @@ function ble/base/sub:install {
     return 1
   fi
 }
-function ble/base/sub:lib { :; } # do nothing
+function ble/base/sub:lib { return 0; } # do nothing
 
 #%if measure_load_time
 ble/debug/measure-set-timeformat ble.pp/epilogue; }

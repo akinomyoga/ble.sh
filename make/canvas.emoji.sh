@@ -130,7 +130,7 @@ function inspect2/start {
   _term_emojiw_index_rcv=0
   _term_emojiw_data=("${emoji_data[@]}")
   _term_emojiw_output=emoji.txt
-  : > "$_term_emojiw_output"
+  >| "$_term_emojiw_output"
   inspect2/next
 }
 
