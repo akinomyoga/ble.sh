@@ -7336,6 +7336,14 @@ bash_tips
 
 2024-04-17
 
+  * term: linux console で cursor が表示されなくなっている [#D2197]
+
+    これは civis に \e[?1c という物が含まれていてこれを戻す為には \e[?0c を指定
+    する必要がある為。これはカーソルのスタイルを変更するシーケンスの気がするの
+    で \e[?<Pn>c は使わない様にする。
+
+    実際の linux で動作確認した。これで良い事にする。
+
   * README: bleopt prompt_command_changes_layout=1 について記述する [#D2196]
     記述した。
 

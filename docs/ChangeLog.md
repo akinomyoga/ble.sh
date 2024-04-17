@@ -76,6 +76,7 @@
 - decode: fix handling of @ESC in quoted-insert `#D2119` 0bbc3639
 - syntax: save stat after command name for consistent completion-context `#D2126` 50d6f1bb
 - term: fix control sequences for hiding cursor (reported by n87) `#D2130` f9b9aea8
+  - term: fix `_ble_term_rmcivis` for `TERM=linux` `#D2197` xxxxxxxx
 - highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` f9072c40
 - decode: consume incomplete keyseq in macros `#D2137` 27e6309e
 - keymap/vi: fix conflicting binding to <kbd>C-RET</kbd> in `vi_imap` `#D2146` 0b18f3c2
