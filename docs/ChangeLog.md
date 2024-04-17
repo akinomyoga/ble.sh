@@ -33,6 +33,7 @@
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 - complete(cd): complete variable names for `cdable_vars` `#D2190` xxxxxxxx
 - sabbrev: support suffix sabbrev to emulate Zsh's suffix aliases `#D2191` xxxxxxxx
+- complete: support `ble-face menu_desc_{default,type,quote}` (requested by romaia) `#D2193` xxxxxxxx
 
 ## Changes
 

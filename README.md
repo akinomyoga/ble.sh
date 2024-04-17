@@ -519,9 +519,6 @@ ble-face -s region_match              bg=55,fg=white
 ble-face -s region_insert             fg=12,bg=252
 ble-face -s disabled                  fg=242
 ble-face -s overwrite_mode            fg=black,bg=51
-ble-face -s auto_complete             fg=238,bg=254
-ble-face -s menu_filter_fixed         bold
-ble-face -s menu_filter_input         fg=16,bg=229
 ble-face -s vbell                     reverse
 ble-face -s vbell_erase               bg=252
 ble-face -s vbell_flash               fg=green,reverse
@@ -583,6 +580,13 @@ ble-face -s varname_unset             fg=124
 ble-face -s argument_option           fg=teal
 ble-face -s argument_error            fg=black,bg=225
 
+# highlighting for completions
+ble-face -s auto_complete             fg=238,bg=254
+ble-face -s menu_desc_default         none
+ble-face -s menu_desc_type            ref:syntax_delimiter
+ble-face -s menu_desc_quote           ref:syntax_quoted
+ble-face -s menu_filter_fixed         bold
+ble-face -s menu_filter_input         fg=16,bg=229
 ```
 
 The current list of faces can be obtained by the following command (`ble-face` without arguments):

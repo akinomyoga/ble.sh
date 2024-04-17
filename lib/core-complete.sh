@@ -443,8 +443,8 @@ function ble/complete/menu-style:desc/construct-page {
 
   local colsep=' | '
   local desc_sgr0=$'\e[m'
-  ble/color/face2sgr-ansi syntax_quoted; local desc_sgrq=$ret
-  ble/color/face2sgr-ansi syntax_delimiter; local desc_sgrt=$ret
+  ble/color/face2sgr-ansi menu_desc_quote; local desc_sgrq=$ret
+  ble/color/face2sgr-ansi menu_desc_type; local desc_sgrt=$ret
 
   local ncolumn=1 nline=$lines
   local nrest_item=$((${#menu_items[@]}-begin))
@@ -532,8 +532,10 @@ function ble/complete/menu-style:desc/construct-page {
       local desc=$desc_sgrt'(no description)'$desc_sgr0
       ble/function#try "$menu_class"/get-desc "$pack"
       if [[ $opt_raw ]]; then
-        y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$wcolumn ble/canvas/trace.draw "$desc" truncate:relative:ellipsis
+        y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$wcolumn ble/canvas/trace.draw "$desc" truncate:relative:ellipsis:face0=menu_desc_default
       else
+        ble/color/face2sgr menu_desc_default
+        ble/canvas/put.draw "$ret"
         y=0 lines=1 cols=$wcolumn ble/canvas/trace-text "$desc" nonewline
         ble/canvas/put.draw "$ret"
       fi

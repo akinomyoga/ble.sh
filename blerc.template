@@ -791,6 +791,17 @@
 #bleopt menu_desc_multicolumn_width=65
 
 
+## These faces control graphics styles used in the menu descriptions.  Face
+## "menu_desc_default" is used as a default highlighting of the description.
+## Face "menu_desc_type" is used for the prefix string "(type) " to indicate
+## the type of the menu item.  Face "menu_desc_quote" is used to quote strings
+## embedded in the descriptions.
+
+#ble-face menu_desc_default=none
+#ble-face menu_desc_type=ref:syntax_delimiter
+#ble-face menu_desc_quote=ref:syntax_quoted
+
+
 ## When this Readline setting is enabled, the cases of alphabets are ignored on
 ## completion generation.
 

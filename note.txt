@@ -7336,6 +7336,11 @@ bash_tips
 
 2024-04-17
 
+  * complete: support ble-face menu_desc_* (requested by romaia) [#D2193]
+    https://github.com/akinomyoga/ble.sh/discussions/433
+
+    これは実装してみたらとても簡単だった。
+
   * global: avoid using the builtin ":" [#D2192]
 
     "function fun { :; }" は "function fun { return 0; }" で良いし、": >|
