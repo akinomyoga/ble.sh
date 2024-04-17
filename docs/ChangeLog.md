@@ -48,7 +48,7 @@
 - prompt: update status line on face change (motivated by Vosjedev) `#D2134` f3e7e386
 - decode: specify the default keymap for the keymap load hooks `#D2141` 4a34ccf2
 - progcomp(compopt): refactor the completion option `ble/{no- => }default` `#D2155` 51f9f4f6
-- main: export `BLE_SESSION_ID` `#D2188` xxxxxxxx
+- main: export `BLE_SESSION_ID` `#D2188` 5871fea2
 
 ## Fixes
 
@@ -85,7 +85,7 @@
 - edit: fix `BLE_COMMAND_ID` starting from `2` `#D2160` 8f4bf62a
 - util(vbell): fix previous vbell not fully cleared `#D2181` 6c740a94
 - decode(rlfunc): fix widget name `vi-command/edit-and-execute-{line => command}` (fixed by alexandregv) 6aa8ba67
-- util(ble/util/idle.push): fix uninitialized `ble/util/idle.clock` (reported by Anyborr) `#D2189` xxxxxxxx
+- util(ble/util/idle.push): fix uninitialized `ble/util/idle.clock` (reported by Anyborr) `#D2189` 83ceb124
 
 ## Compatibility
 
@@ -153,6 +153,7 @@
 - blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` cd069860
 - docs: apply Grammarly and fix typos `#D2099` 8b3f6f8c
 - docs(README): add sabbrev example for named directories `#D2115` a9a21a0e
+- docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` xxxxxxxx
 
 ## Test
 
@@ -164,7 +165,7 @@
 - test(vi): fix broken states after test `#D2123` 06ad3a6c
 - test(bash): fix test cases for history expansion `#D2131` 838b4652
 - test(bash): add tests for bash array bugs `#D2149` 6154d71c
-- github/workflows: update versions of GitHub Actions `#D2186` 0c42c8bd xxxxxxxx
+- github/workflows: update versions of GitHub Actions `#D2186` 0c42c8bd 433ac7c2
 
 ## Internal changes
 

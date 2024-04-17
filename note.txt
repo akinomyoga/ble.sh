@@ -7336,6 +7336,9 @@ bash_tips
 
 2024-04-17
 
+  * README: bleopt prompt_command_changes_layout=1 について記述する [#D2196]
+    記述した。
+
   * main: WSL で /run/user/* を使っていると突然 permission がなくなったりする (reported by antonioetv and geoffreyvanwyk) [#D2195]
     https://github.com/akinomyoga/ble.sh/issues/426
 
