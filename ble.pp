@@ -1531,6 +1531,12 @@ fi
 ##   2. /tmp/blesh/$UID を作成可能ならば、それを使う。
 ##   3. $_ble_base/tmp/$UID を使う。
 ##
+function ble/base/initialize-runtime-directory/.is-wsl {
+  [[ -d /usr/lib/wsl/lib && -r /proc/version ]] || return 1
+  local kernel_version
+  ble/bash/read kernel_version < /proc/version || return 1
+  [[ $kernel_version == *-microsoft-* ]]
+}
 function ble/base/initialize-runtime-directory/.xdg {
   local runtime_dir=
   if [[ $XDG_RUNTIME_DIR ]]; then
@@ -1551,6 +1557,12 @@ function ble/base/initialize-runtime-directory/.xdg {
     runtime_dir=/run/user/$UID
     [[ -d $runtime_dir && -O $runtime_dir ]] || return 1
   fi
+
+  # Note: Some versions of WSL around 2023-09 seem to have an issue in the
+  # permission of /run/user/*, so we avoid to use them in WSL.
+  [[ $runtime_dir == /run/user/* ]] &&
+    ble/base/initialize-runtime-directory/.is-wsl &&
+    return 1
 
   if ! [[ -r $runtime_dir && -w $runtime_dir && -x $runtime_dir ]]; then
     [[ $runtime_dir == "$XDG_RUNTIME_DIR" ]] &&

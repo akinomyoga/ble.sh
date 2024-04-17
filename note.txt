@@ -7336,6 +7336,17 @@ bash_tips
 
 2024-04-17
 
+  * main: WSL で /run/user/* を使っていると突然 permission がなくなったりする (reported by antonioetv and geoffreyvanwyk) [#D2195]
+    https://github.com/akinomyoga/ble.sh/issues/426
+
+    複数の report が出ているのでこれは明らかに WSL の問題である。報告されている
+    期間が 2023-09 周辺に集中しているのでもしかすると修正済みかもしれない。一方
+    で、同様の問題はより昔からちらほらと報告はされていたみたいなので、類似の異
+    なる問題が複数あるのかもしれない。その場合に全てが修正されたのかは分からな
+    い。
+
+    面倒なので何れにしても WSL では /run/user は使わない様にする。
+
   * global: 組み込みコマンドで -- を指定するべきところでちゃんと指定する [#D2194]
 
     * util(is-function): use "declare -F --" to check function names

@@ -126,6 +126,7 @@
 - util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192
 - decode: fix the problem that key always timed out in bash-3 `#D2173` 0b176e76
 - term: adjust the result of `tput clear` for `ncurses >= 6.1` (reported by cmndrsp0ck) `#D2185` 18dd51ab
+- main: work around WSL's permission issue on `/run/user/1000` (reported by antonioetv and geoffreyvanwyk) `#D2195` xxxxxxxx
 
 ## Contrib
 
