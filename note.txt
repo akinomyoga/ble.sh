@@ -7334,6 +7334,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-04-20
+
+  * BUG complete: sabbrev が動かなくなっている (reported by dgudim) [#D2198]
+    https://github.com/akinomyoga/ble.sh/issues/437
+
+    明らかに #D2191 で導入した suffix sabbrev の影響である。refactoring の際に
+    色々変わって動かなくなっていたのだった。特に、sabbrev#get 内のミスで全く動
+    かなくなっていた。
+
 2024-04-17
 
   * term: linux console で cursor が表示されなくなっている [#D2197]

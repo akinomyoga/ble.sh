@@ -31,9 +31,10 @@
   - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` b6344b3b
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
-- complete(cd): complete variable names for `cdable_vars` `#D2190` xxxxxxxx
-- sabbrev: support suffix sabbrev to emulate Zsh's suffix aliases `#D2191` xxxxxxxx
-- complete: support `ble-face menu_desc_{default,type,quote}` (requested by romaia) `#D2193` xxxxxxxx
+- complete(cd): complete variable names for `cdable_vars` `#D2190` 10527901
+- sabbrev: support suffix sabbrev to emulate Zsh's suffix aliases `#D2191` d66e05d2
+  - sabbrev: fix bugs in sabbrev matching and positioning (reported by dgudim) `#D2198` xxxxxxxx
+- complete: support `ble-face menu_desc_{default,type,quote}` (requested by romaia) `#D2193` b3e7237e
 
 ## Changes
 
@@ -76,7 +77,7 @@
 - decode: fix handling of @ESC in quoted-insert `#D2119` 0bbc3639
 - syntax: save stat after command name for consistent completion-context `#D2126` 50d6f1bb
 - term: fix control sequences for hiding cursor (reported by n87) `#D2130` f9b9aea8
-  - term: fix `_ble_term_rmcivis` for `TERM=linux` `#D2197` xxxxxxxx
+  - term: fix `_ble_term_rmcivis` for `TERM=linux` `#D2197` 56765251
 - highlight: fix inconsistent tab width in plain layer (reported by dgudim) `#D2132` f9072c40
 - decode: consume incomplete keyseq in macros `#D2137` 27e6309e
 - keymap/vi: fix conflicting binding to <kbd>C-RET</kbd> in `vi_imap` `#D2146` 0b18f3c2
@@ -127,7 +128,7 @@
 - util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192
 - decode: fix the problem that key always timed out in bash-3 `#D2173` 0b176e76
 - term: adjust the result of `tput clear` for `ncurses >= 6.1` (reported by cmndrsp0ck) `#D2185` 18dd51ab
-- main: work around WSL's permission issue on `/run/user/1000` (reported by antonioetv and geoffreyvanwyk) `#D2195` xxxxxxxx
+- main: work around WSL's permission issue on `/run/user/1000` (reported by antonioetv and geoffreyvanwyk) `#D2195` fb826ab6
 
 ## Contrib
 
@@ -154,7 +155,7 @@
 - blerc: describe keybinding to accept autosuggestion by TAB (motivated by TehFunkWagnalls) `#D2090` cd069860
 - docs: apply Grammarly and fix typos `#D2099` 8b3f6f8c
 - docs(README): add sabbrev example for named directories `#D2115` a9a21a0e
-- docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` xxxxxxxx
+- docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` 208eaa9d
 
 ## Test
 
@@ -190,8 +191,8 @@
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
   - history: fix initially shifted history index `#D2180` e425dc56
 - edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 3801a87e
-- global: avoid using the builtin `:` `#D2192` xxxxxxxx
-- global: pass `--` to `type` and `declare` before arbitrary arguments `#D2194` xxxxxxxx
+- global: avoid using the builtin `:` `#D2192` f2fd2955
+- global: pass `--` to `type` and `declare` before arbitrary arguments `#D2194` 5c0efcf6
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

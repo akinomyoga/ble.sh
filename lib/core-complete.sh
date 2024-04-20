@@ -9052,7 +9052,7 @@ function ble/complete/sabbrev/reset {
 function ble/complete/sabbrev#get {
   local key=$1
   ble/gdict#get _ble_complete_sabbrev "$key" &&
-    [[ ! ${2-} || $ret == ["$2"]: ]]
+    [[ ! ${2-} || $ret == ["$2"]:* ]]
 }
 
 ## @fn ble/complete/sabbrev#get-keys [type]
@@ -9387,7 +9387,7 @@ function ble/complete/sabbrev/expand {
       key1=${_ble_edit_str:pos:comp_index-pos} &&
       ble/complete/sabbrev#get "$key1" 'wm' &&
       { ((${#patterns[@]}==0)) || ble/complete/string#match-patterns "$key1" "${patterns[@]}"; } &&
-      ((${#key1}>${#key})) && key=$key1 ent=$ret
+      ((${#key1}>${#key})) && key=$key1 ent=$ret pos_wbegin=$pos
   fi
   if [[ :$opts: == *:suffix:* ]]; then
     local pos key1 ent1
@@ -9422,6 +9422,7 @@ function ble/complete/sabbrev/expand {
     ((_ble_edit_ind=comp_index+${#value}+1)) ;;
   (m)
     # prepare completion context
+    local pos=$pos_wbegin
     local comp_type= comps_flags= comps_fixed=
     local COMP1=$pos COMP2=$pos COMPS=$key COMPV=
     ble/complete/candidates/comp_type#read-rl-variables
