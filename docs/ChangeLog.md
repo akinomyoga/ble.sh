@@ -33,9 +33,9 @@
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 - complete(cd): complete variable names for `cdable_vars` `#D2190` 10527901
 - sabbrev: support suffix sabbrev to emulate Zsh's suffix aliases `#D2191` d66e05d2
-  - sabbrev: fix bugs in sabbrev matching and positioning (reported by dgudim) `#D2198` xxxxxxxx
+  - sabbrev: fix bugs in sabbrev matching and positioning (reported by dgudim) `#D2198` 70a325f9
 - complete: support `ble-face menu_desc_{default,type,quote}` (requested by romaia) `#D2193` b3e7237e
-- complete: support `bleopt complete_menu_complete_opts=hidden` and menu-style switching (requested by CamRatliff) `#D2199` xxxxxxxx
+- complete: support `bleopt complete_menu_complete_opts=hidden` and menu-style switching (requested by CamRatliff) `#D2199` 16ff7df7
 
 ## Changes
 
@@ -89,7 +89,7 @@
 - util(vbell): fix previous vbell not fully cleared `#D2181` 6c740a94
 - decode(rlfunc): fix widget name `vi-command/edit-and-execute-{line => command}` (fixed by alexandregv) 6aa8ba67
 - util(ble/util/idle.push): fix uninitialized `ble/util/idle.clock` (reported by Anyborr) `#D2189` 83ceb124
-- prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) `#D2200` xxxxxxxx
+- prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) `#D2200` 61968497
 
 ## Compatibility
 
@@ -195,6 +195,7 @@
 - edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 3801a87e
 - global: avoid using the builtin `:` `#D2192` f2fd2955
 - global: pass `--` to `type` and `declare` before arbitrary arguments `#D2194` 5c0efcf6
+- global: fix spelling mistakes `#D2201` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

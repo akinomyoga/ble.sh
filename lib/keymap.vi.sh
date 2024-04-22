@@ -8050,10 +8050,10 @@ function ble/widget/vi_imap/bracketed-paste.proc {
   builtin eval -- "$WIDGET"
 }
 
-_ble_keymap_vi_brackated_paste_mark_active=
+_ble_keymap_vi_bracketed_paste_mark_active=
 function ble/widget/vi-command/bracketed-paste {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1 # discard args
-  _ble_keymap_vi_brackated_paste_mark_active=$_ble_edit_mark_active
+  _ble_keymap_vi_bracketed_paste_mark_active=$_ble_edit_mark_active
   _ble_edit_mark_active=
   ble/widget/bracketed-paste
   _ble_edit_bracketed_paste_proc=ble/widget/vi-command/bracketed-paste.proc
@@ -8070,7 +8070,7 @@ function ble/widget/vi-command/bracketed-paste.proc {
     ble/keymap:vi/imap/invoke-widget \
       ble/widget/vi_imap/normal-mode "$((_ble_decode_Ctrl|0x5b))"
   elif [[ $_ble_decode_keymap == vi_[xs]map ]]; then
-    local _ble_edit_mark_active=$_ble_keymap_vi_brackated_paste_mark_active
+    local _ble_edit_mark_active=$_ble_keymap_vi_bracketed_paste_mark_active
     ble/decode/widget/call-interactively 'ble/widget/vi-command/operator c' 99 || return 1
     ble/widget/vi_imap/bracketed-paste.proc "$@"
     ble/keymap:vi/imap/invoke-widget \

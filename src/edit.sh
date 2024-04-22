@@ -1203,7 +1203,7 @@ function ble/prompt/backslash:q {
       if [[ ! $word ]]; then
         ble/term/visible-bell "ble/prompt: invalid sequence \\q$rematch"
       elif ! ble/is-function ble/prompt/backslash:"$word"; then
-        ble/term/visible-bell "ble/propmt: undefined named sequence \\q{$word}"
+        ble/term/visible-bell "ble/prompt: undefined named sequence \\q{$word}"
       fi
       ble/prompt/print "\\q$BASH_REMATCH"
       return 2
@@ -2511,7 +2511,7 @@ function ble-edit/content/is-single-line {
 ##   /^$/
 ##     引数の未入力状態である事を示します。
 ##   /^\+$/
-##     universal-arugument (M-C-u) 開始直後である事を示します。
+##     universal-argument (M-C-u) 開始直後である事を示します。
 ##     次に入力する - または数字を引数として解釈します。
 ##   /^([0-9]+|-[0-9]*)$/
 ##     引数の入力途中である事を表します。
@@ -7130,7 +7130,7 @@ function ble-edit/exec:gexec/.save-lastarg {
   ble/exec/time#adjust-TIMEFORMAT
 
   # Note: We here update the file descriptors for the user commands.  The file
-  # descriptors may be changed by the `exec` buitlin.  Note that stdout (1) and
+  # descriptors may be changed by the `exec` builtin.  Note that stdout (1) and
   # stderr (2) are redirected to /dev/null to suppress "set -x" messages in
   # this context.  Instead, we use 4 and 5 because stdout and stderr are copied
   # to 4 and 5, respectively, by the caller.

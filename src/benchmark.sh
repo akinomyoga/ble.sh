@@ -356,7 +356,7 @@ function ble-measure {
       fi
     fi
 
-    # upate base if the result is shorter than base
+    # update base if the result is shorter than base
     if ((min_utot<0x7FFFFFFFFFFFFFFF/1000)); then
       local __ble_real=$((min_utot*1000/n))
       [[ ${_ble_measure_base_real[__ble_level]} ]] &&

@@ -4856,7 +4856,7 @@ function ble/syntax:bash/ctx-heredoc-content {
 }
 
 #------------------------------------------------------------------------------
-# Utilities based on syntactic strutures
+# Utilities based on syntactic structures
 
 function ble/syntax:bash/is-complete {
   local iN=${#_ble_syntax_text}

@@ -202,7 +202,7 @@ function ble/init:term/initialize {
   ble/init:term/register-varname _ble_term_rmcivis
   if ble/string#match "$_ble_term_civis" $'^((\e\\[[<=>?]?[0-9;]+)[hl])+$'; then
     # When terminfo's civis has the form of one or more ANSI sequences SM/RM,
-    # we revert theem to cancel civis.
+    # we revert theme to cancel civis.
     local s=$_ble_term_civis
     _ble_term_civis=
     _ble_term_rmcivis=
@@ -217,7 +217,7 @@ function ble/init:term/initialize {
     done
   elif [[ $_ble_term_civis == *$'\e[?25l'* || ! $_ble_term_civis && $TERM != minix ]]; then
     # When terminfo's civis contains DECRST(25) or is an empty string, we use
-    # DECSET(25) to reveal the cursor.  It should bascailly be safe to send
+    # DECSET(25) to reveal the cursor.  It should basically be safe to send
     # SM/RM with modes unsupported by the terminal because typical terminals
     # just ignore them.  We exclude the minix console because it does not
     # ignore unsupported modes.  Some historical terminals use Mode ?25 for a

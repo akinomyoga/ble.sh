@@ -299,7 +299,7 @@ ble/test/start-section 'bash' 65
   fi
 
   # BUG bash-3.0
-  #   IFS がデフォルト以外の時 declare -a arr2=("${arr1[@]}") (disbale=#D0525)
+  #   IFS がデフォルト以外の時 declare -a arr2=("${arr1[@]}") (disable=#D0525)
   #   も正しく動かない。
   a=(1 2 3)
   IFS=x

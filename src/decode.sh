@@ -176,7 +176,7 @@ function ble-decode-kbd/.get-keyname {
 ## @fn ble-decode-kbd/generate-keycode keyname
 ##   指定した名前に対応する keycode を取得します。
 ##   指定した名前の key が登録されていない場合は、
-##   新しく kecode を割り当てて返します。
+##   新しく keycode を割り当てて返します。
 ##   @param[in]  keyname keyname
 ##   @var  [out] ret     keycode
 function ble-decode-kbd/generate-keycode {
@@ -2718,7 +2718,7 @@ function ble/widget/.MACRO {
   if ((ble_decode_char_char&_ble_decode_Macr)); then
     if ((_ble_decode_macro_count++>=bleopt_decode_macro_limit)); then
       ((_ble_decode_macro_count==bleopt_decode_macro_limit+1)) &&
-        ble/term/visible-bell "Macro invocation is cancelled by decode_macro_limit"
+        ble/term/visible-bell "Macro invocation is canceled by decode_macro_limit"
       return 1
     fi
   else
@@ -2853,11 +2853,11 @@ function ble/decode/cmap/initialize {
     _ble_decode_bind_fbinder=$fbinder
     if ! [[ -s $_ble_decode_bind_fbinder.bind && $_ble_decode_bind_fbinder.bind -nt $init &&
               -s $_ble_decode_bind_fbinder.unbind && $_ble_decode_bind_fbinder.unbind -nt $init ]]; then
-      ble/edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... '
+      ble/edit/info/immediate-show text  'ble.sh: initializing multi-character sequence binders... '
       ble/decode/cmap/.generate-binder-template >| "$fbinder"
       binder=ble/decode/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
       binder=ble/decode/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
-      ble/edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... done'
+      ble/edit/info/immediate-show text  'ble.sh: initializing multi-character sequence binders... done'
     fi
   fi
 }

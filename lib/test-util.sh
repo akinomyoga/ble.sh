@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1234
+ble/test/start-section 'ble/util' 1243
 
 # bleopt
 

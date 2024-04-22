@@ -188,7 +188,7 @@ if [[ ! $_ble_init_command ]]; then
   # frameworks try to do a hack using an interactive Bash.  We honestly do not
   # want to add exceptions for every random framework that tries to do a naive
   # hack using interactive sessions, but it is easier than instructing users to
-  # add a proper workaroud/check by themselves.
+  # add a proper workaround/check by themselves.
   if [[ ${BASH_EXECUTION_STRING+set} ]]; then
     # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&3
     _ble_init_exit=1
@@ -489,7 +489,7 @@ function ble/base/xtrace/restore {
     if [[ $_ble_bash_XTRACEFD_dup ]]; then
       # BASH_XTRACEFD の fd を元の出力先に繋ぎ直す
       builtin eval "exec $BASH_XTRACEFD>&$_ble_bash_XTRACEFD_dup" &&
-        builtin eval "exec $_ble_bash_XTRACEFD_dup>&-" || ((1)) # disble=#D2164 (here bash4+)
+        builtin eval "exec $_ble_bash_XTRACEFD_dup>&-" || ((1)) # disable=#D2164 (here bash4+)
     else
       # BASH_XTRACEFD の fd は新しく割り当てた fd なので値上書きで閉じて良い
       if [[ $_ble_bash_XTRACEFD_set ]]; then

@@ -1,4 +1,4 @@
-# -*- coding:utf-8 -*-
+# -*- coding: utf-8; fill-column: 79 -*-
 
 拡張
 
@@ -832,7 +832,18 @@ bash_tips
     https://wiki.archlinux.jp/index.php/%E3%83%91%E3%83%83%E3%82%B1%E3%83%BC%E3%82%B8%E3%81%AE%E4%BD%9C%E6%88%90#.E9.96.A2.E6.95.B0_pkgver.28.29
 
     PKGBUILD と一緒に.SRCINFO も更新すること。
+
+    $ makepkg --printsrcinfo > .SRCINFO
+
     pkgrel は新しい pkgver に変わったら一緒に 1 に変更する。
+
+    blesh-git の最新の pkgver は以下の様にして取得する
+
+    $ (cd ~/.mwg/src; source ble.sh/ext/aur.blesh-git/PKGBUILD; pkgver)
+
+    PKGBUILD のチェックは以下で行う
+
+    $ namcap PKGBUILD
 
 2021-05-03
 
@@ -1299,6 +1310,16 @@ bash_tips
 *******************************************************************************
     bug-bash, third-party bugs & reviews
 -------------------------------------------------------------------------------
+
+2024-04-22
+
+  * 以下で内部エラーになる
+
+    $ bash-2.05b -c 'f() { exit; }; a=1 eval "f | :"'
+    $ bash-dev -c 'f() { exit; }; a=1 eval "f | :"'
+
+    これは以前に発見している tempenv のエラーと同根だろう。builtin eval を使っ
+    た時には発生しない。
 
 2023-02-20
 
@@ -1904,6 +1925,37 @@ bash_tips
   - keymap の移動 (これは別 commit にする?)
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
+
+2024-04-17
+
+  * highlight sabbrev
+
+    inline sabbrev / line sabbrev 等は後回しで良い。
+
+2024-03-19
+
+  * auto-complete 中の C-right は自分の操作体系と干渉する。一番右にいる時にだけ
+    有効にするべきの気がする。現在の振る舞いは [1] で導入した物である。
+
+    [1] https://github.com/akinomyoga/ble.sh/issues/397
+
+    そもそも C-e だとか C-f に関しても行末以外での振る舞いが非直感的である。うー
+    ん。というか元の設計の方針を思い出すと、C-e 及び C-f などの移動コマンドは
+    auto_complete が急に popup したとしても振る舞いを変更しないという事だった。
+    現在もそうなっている。然し、今新しく C-right 等で単語挿入を行う様にした為、
+    C-e 及び C-f でも auto_complete の挿入ができるような錯覚を受けて変な操作を
+    して失敗している様な気がする。
+
+    今改めて C-right などの移動コマンドで挿入をしない様に変更し、別の方法で単語
+    挿入を行う仕組みにできないだろうか。或いは、行の途中にいる時は C-right 等は
+    通常の動作をする様に変更する。うーん。これが自然の気がする。
+
+  * isearch してから up をした時に選択解除してから上に行くという振る舞いに変わっ
+    ている。これも何だか不自然な気がする。元々 set-mark でなかったのであれば up
+    で普通に前の項目に移動するべきである。
+
+    そもそも shift selection の時に up をした時に上の項目に移動せずに選択解除す
+    る振る舞いになっていて、これは変である。
 
 2024-02-22
 
@@ -7335,6 +7387,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-04-28
+
+  * global: spelling mistakes [#D2201]
+    typo がある。修正する。似たような物がないか確認して一括で修正する事にする。
+    ソースコード中の特にコメントやメッセージなどに typo が多い。
 
   * prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) [#D2200]
     https://github.com/akinomyoga/ble.sh/issues/359

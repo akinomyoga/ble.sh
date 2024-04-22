@@ -1888,7 +1888,7 @@ function ble/highlight/layer:{selection}/update {
           local rind=$((rlen-m-1)) oind=$((olen-m-1))
           # Compare each selection from the end of the list (where `m` is the
           # offset from the end) and increment `m` as far as the selections
-          # match.  If there is no correponding selection or the color is
+          # match.  If there is no corresponding selection or the color is
           # different or the boundary is different, process the later part of
           # the loop.  Otherwise, skip this loop and try next `m`.
           if ((m==min_len)); then

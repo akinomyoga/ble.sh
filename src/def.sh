@@ -129,7 +129,7 @@ EOF
 function ble-edit/prompt/print { ble/prompt/print "$@"; }
 function ble-edit/prompt/process-prompt-string { ble/prompt/process-prompt-string "$@"; }
 
-# This is effetively nop after the selection keymap is introduced.
+# This is effectively nop after the selection keymap is introduced.
 function ble/widget/@nomarked { ble/decode/widget/dispatch "$@"; }
 
 # core-complete.sh

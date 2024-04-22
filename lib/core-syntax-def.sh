@@ -54,7 +54,7 @@ function ble/highlight/layer:syntax/getg { true; }
 
 
 ## @fn ble/syntax:bash/is-complete
-##   sytax がロードされる迄は常に真値。
+##   syntax がロードされる迄は常に真値。
 function ble/syntax:bash/is-complete { true; }
 
 

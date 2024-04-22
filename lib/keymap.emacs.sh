@@ -34,7 +34,7 @@ _ble_keymap_emacs_white_list=(
   display-shell-version
   redraw-line
   # delete-backward-{c,f,s,u}word
-  # delete-bacward-char
+  # delete-backward-char
 )
 function ble/keymap:emacs/is-command-white {
   if [[ $1 == ble/widget/self-insert ]]; then

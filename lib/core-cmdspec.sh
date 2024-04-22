@@ -80,8 +80,8 @@ function ble/complete/opts/initialize {
     -F function     The shell function function is executed in the current
                     shell environment.  When the function is executed, the
                     first argument ($1) is the name of the command whose
-                    arguments are being completed, the second argu- ment ($2)
-                    is the word being completed, and the third argument ($3) is
+                    arguments are being completed, the second argument ($2) is
+                    the word being completed, and the third argument ($3) is
                     the word preceding the word being completed on the current
                     command line.  When it finishes, the possible completions
                     are retrieved from the value of the COMPREPLY array

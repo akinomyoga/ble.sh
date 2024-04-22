@@ -143,7 +143,7 @@ function bleopt/default {
 }
 
 ## @fn bleopt args...
-##   @params[in] args
+##   @param[in] args
 ##     args は以下の内の何れかの形式を持つ。
 ##
 ##     var=value
@@ -2676,7 +2676,7 @@ function ble/function#suppress-stderr {
 }
 
 #
-# miscallaneous utils
+# miscellaneous utils
 #
 
 # Note: "printf -v" for an array element is only allowed in bash-4.1
@@ -3017,7 +3017,7 @@ fi
 ble/fd#alloc/.close/.upgrade
 
 ## @fn ble/fd#alloc/.exec fddst redir
-##   Performs builtin eval "exec $fddst$redir" with sepcial cares for bugs in
+##   Performs builtin eval "exec $fddst$redir" with special cares for bugs in
 ##   old versions of Bash.
 ##   @param fddst
 ##     The file descriptor that is supposed to be modified
@@ -3036,7 +3036,7 @@ function ble/fd#alloc/.exec {
   builtin eval "exec $1$2"
 }
 
-# We now switch to the complete implementation of "ble/fd#is-open" utlizing
+# We now switch to the complete implementation of "ble/fd#is-open" utilizing
 # "ble/fd#alloc/.nextfd", "ble/fd#alloc/.exec", and "$_ble_util_fd_null".
 ble/fd#is-open/.upgrade
 
@@ -3067,7 +3067,7 @@ if [[ -d /proc/$$/fd ]]; then
     [[ :$shopt: == *:failglob:* ]] && shopt -s failglob
   }
   ## @fn ble/fd#list [pid]
-  ##   List the file descriptors opend for the specified process.  If PID is
+  ##   List the file descriptors opened for the specified process.  If PID is
   ##   not specified, this returns the list for the current process.
   ##   @arr[out] ret
   function ble/fd#list {
@@ -3094,7 +3094,7 @@ if [[ -d /proc/$$/fd ]]; then
   }
 else
   ## @fn ble/fd#list
-  ##   List the file descriptors opend for the current process.
+  ##   List the file descriptors opened for the current process.
   ##   @arr[out] ret
   function ble/fd#list {
     ret=()
@@ -4727,7 +4727,7 @@ function ble/util/joblist {
   # Note (#D2157): ble/util/assign uses the function substitution in bash >=
   # 5.3.  However, in the function substitution, the update of the joblist is
   # disabled.  For this reason, reading the output of "jobs" by ble/util/assign
-  # doesn't clear the notified job entries.  To clear job entires, we perform a
+  # doesn't clear the notified job entries.  To clear job entries, we perform a
   # dummy call of the jobs builtin without using a function substitution.
   ((_ble_bash>=50300)) && jobs >/dev/null
 
@@ -4945,7 +4945,7 @@ function ble/util/rlvar#bind-bleopt {
     ble/util/rlvar#load
   fi
 
-  # Bash が readlie 変数に対応している場合、bleopt に対する代入と合わせて
+  # Bash が readline 変数に対応している場合、bleopt に対する代入と合わせて
   # readline 変数にも対応する値を設定する。
   if ble/util/rlvar#has "$name"; then
     # 値の同期
@@ -5377,7 +5377,7 @@ function ble-import {
       '                  already imported files.' \
       '    -C, --callback=CALLBACK' \
       '                  Specify a command that will be evaluated when all of' \
-      '                  SCRIPTFILEs are loaded.  If all of SCRIPTFILESs are already' \
+      '                  SCRIPTFILEs are loaded.  If all of SCRIPTFILEs are already' \
       '                  loaded, the callback is immediately evaluated.' \
       '' \
       >&2
@@ -7859,7 +7859,7 @@ blehook internal_PREEXEC!='_ble_builtin_readonly_message_count=0'
 function ble/builtin/readonly/.print-warning {
   [[ -t 2 ]] || return 0
 
-  # If the caller iformation has not been initialized:
+  # If the caller information has not been initialized:
   if [[ ! $_ble_local_caller ]]; then
     _ble_local_caller=-
     local i n=${#FUNCNAME[@]}

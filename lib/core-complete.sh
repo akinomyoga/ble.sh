@@ -3516,7 +3516,7 @@ function ble/complete/progcomp/compopt/.read-arguments {
     else
       ble/array#push compopt_args "$arg"
       has_cmd=1
-      has_stop=1 # Bash's compot stops parsing options on any name
+      has_stop=1 # Bash's compopt stops parsing options on any name
     fi
   done
 
