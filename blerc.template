@@ -733,10 +733,11 @@
 
 
 ## The following setting controls the detailed behavior of menu-complete with a
-## colon-separated list of options:
-##
-## - When the option "insert-selection" is specified, the currently selected
-##  menu item is temporarily inserted in the command line.
+## colon-separated list of options.  When the option "insert-selection" is
+## specified, the currently selected menu item is temporarily inserted in the
+## command line.  When "hidden" is specified, "insert-selection" is enabled,
+## and additionally, the completion menu is hidden by default.  The default is
+## "insert-selection".
 
 #bleopt complete_menu_complete_opts=insert-selection
 

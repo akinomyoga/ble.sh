@@ -66,7 +66,7 @@ function ble/complete/get-wordbreaks {
 #==============================================================================
 # 選択インターフェイス (ble/complete/menu)
 
-## @arr _ble_complete_menu_icons
+## @arr _ble_complete_menu_page_icons
 ##
 ##   各要素は以下の形式の文字列である。
 ##
@@ -81,28 +81,29 @@ function ble/complete/get-wordbreaks {
 _ble_complete_menu_items=()
 _ble_complete_menu_class=
 _ble_complete_menu_param=
-_ble_complete_menu_version=
 _ble_complete_menu_page_style=
-_ble_complete_menu_ipage=
-_ble_complete_menu_offset=
-_ble_complete_menu_icons=()
-_ble_complete_menu_info_data=()
+_ble_complete_menu_page_index=
+_ble_complete_menu_page_offset=
+_ble_complete_menu_page_icons=()
+_ble_complete_menu_page_infodata=()
 _ble_complete_menu_selected=-1
 
 function ble/complete/menu#check-cancel {
   ((menu_iloop++%menu_interval==0)) &&
-    [[ :$comp_type: != *:sync:* ]] &&
+    [[ :$menu_construct_opts: != *:sync:* ]] &&
     ble/decode/has-input
 }
 
 ## @fn ble/complete/menu-style:$menu_style/construct-page
 ##   候補一覧メニューの表示・配置を計算します。
 ##
-##   @var[out] x y esc
 ##   @var[in] menu_style
 ##   @arr[in] menu_items
 ##   @var[in] menu_class menu_param
 ##   @var[in] cols lines
+##   @var[in,out] begin
+##   @var[out] end
+##   @var[out] x y esc
 ##
 ## @fn ble/complete/menu-style:$menu_style/guess
 ##   scroll 番目の候補がどのページにいるかを予測します。
@@ -113,6 +114,7 @@ function ble/complete/menu#check-cancel {
 ##   @var[in] cols lines
 ##
 
+_ble_complete_menu_style_hash=
 _ble_complete_menu_style_measure=()
 _ble_complete_menu_style_icons=()
 _ble_complete_menu_style_pages=()
@@ -180,7 +182,6 @@ function ble/complete/menu#render-prefix {
     fi
   fi
 }
-
 
 ## @fn ble/complete/menu-style:align/construct/.measure-candidates-in-page
 ##   その頁に入り切る範囲で候補の幅を計測する
@@ -580,7 +581,7 @@ function ble/complete/menu-style:desc/guess {
 }
 function ble/complete/menu-style:desc/locate {
   local type=$1 osel=$2
-  local ipage=$_ble_complete_menu_ipage
+  local ipage=$_ble_complete_menu_page_index
   local nline=${_ble_complete_menu_desc_pageheight[ipage]:-1}
 
   case $type in
@@ -591,8 +592,8 @@ function ble/complete/menu-style:desc/locate {
   (*) return 1 ;;
   esac
 
-  local beg=$_ble_complete_menu_offset
-  local end=$((beg+${#_ble_complete_menu_icons[@]}))
+  local beg=$_ble_complete_menu_page_offset
+  local end=$((beg+${#_ble_complete_menu_page_icons[@]}))
   if ((ret<beg)); then
     ((ret=beg-1))
   elif ((ret>end)); then
@@ -617,8 +618,19 @@ function ble/complete/menu#construct/.initialize-size {
   local maxlines=$((bleopt_complete_menu_maxlines))
   ((maxlines>0&&lines>maxlines)) && lines=$maxlines
 }
-## @fn ble/complete/menu#construct menu_opts
+## @fn ble/complete/menu#construct opts
 ##   実装分離の adapter 部分
+##
+##   @param[in] opts
+##     A colon-separated list of options.
+##
+##     @opt scroll=INT
+##       This option is used to select the page that contains the item
+##       specified by the index INT.
+##
+##     @opt sync
+##       Do not cancel menu preparation on the user input.  Note: This is
+##       implemented through ble/complete/menu#check-cancel.
 ##
 ##   @var[in] menu_style
 ##
@@ -654,40 +666,51 @@ function ble/complete/menu#construct/.initialize-size {
 ##   @fn[in,opt] $menu_class/oncancel nsel
 ##
 function ble/complete/menu#construct {
-  local menu_opts=$1
+  local menu_construct_opts=$1
   local menu_iloop=0
   local menu_interval=$bleopt_complete_polling_cycle
 
-  local cols lines
-  ble/complete/menu#construct/.initialize-size
-  local nitem=${#menu_items[@]}
-  local version=$nitem:$lines:$cols
+  _ble_complete_menu_items=("${menu_items[@]}")
+  _ble_complete_menu_class=$menu_class
+  _ble_complete_menu_param=$menu_param
+  _ble_complete_menu_selected=-1
 
-  # 項目がない時の特別表示
-  if ((nitem==0)); then
-    _ble_complete_menu_version=$version
-    _ble_complete_menu_items=()
+  local nitem=${#menu_items[@]}
+  if [[ :$menu_construct_opts: == *:hidden:* ]]; then
+    ble/array#reserve-prototype "$nitem"
     _ble_complete_menu_page_style=
-    _ble_complete_menu_ipage=0
-    _ble_complete_menu_offset=0
-    _ble_complete_menu_icons=()
-    _ble_complete_menu_info_data=(ansi $'\e[38;5;242m(no items)\e[m')
-    _ble_complete_menu_selected=-1
+    _ble_complete_menu_page_index=
+    _ble_complete_menu_page_offset=
+    _ble_complete_menu_page_icons=("${_ble_array_prototype[@]::nitem}")
+    _ble_complete_menu_page_infodata=(store 0 0 '')
+    return 0
+  elif ((nitem==0)); then
+    # 項目がない時の特別表示
+    _ble_complete_menu_page_style=
+    _ble_complete_menu_page_index=0
+    _ble_complete_menu_page_offset=0
+    _ble_complete_menu_page_icons=()
+    _ble_complete_menu_page_infodata=(ansi $'\e[38;5;242m(no items)\e[m')
     return 0
   fi
 
+  local cols lines
+  ble/complete/menu#construct/.initialize-size
+  local hash=$nitem,$lines,$cols:$menu_style
+
   # 表示したい項目の指定
   local scroll=0 rex=':scroll=([0-9]+):' use_cache=
-  if [[ :$menu_opts: =~ $rex ]]; then
+  if [[ :$menu_construct_opts: =~ $rex ]]; then
     scroll=${BASH_REMATCH[1]}
     ((nitem&&(scroll%=nitem)))
-    [[ $_ble_complete_menu_version == $version ]] && use_cache=1
+    [[ $hash == "$_ble_complete_menu_style_hash" ]] && use_cache=1
   fi
   if [[ ! $use_cache ]]; then
     _ble_complete_menu_style_measure=()
     _ble_complete_menu_style_icons=()
     _ble_complete_menu_style_pages=()
   fi
+  _ble_complete_menu_style_hash=$hash
 
   local begin=0 end=0 ipage=0 x y esc
   ble/function#try ble/complete/menu-style:"$menu_style"/guess
@@ -704,7 +727,7 @@ function ble/complete/menu#construct {
       fi
     else
       # キャッシュがない時は頁を構築
-      ble/complete/menu-style:"$menu_style"/construct-page "$menu_opts" || return "$?"
+      ble/complete/menu-style:"$menu_style"/construct-page "$menu_construct_opts" || return "$?"
       _ble_complete_menu_style_pages[ipage]=$begin,$end,$x,$y:$esc
       ((begin<=scroll&&scroll<end)) && break
     fi
@@ -712,26 +735,98 @@ function ble/complete/menu#construct {
     ((ipage++))
   done
 
-  _ble_complete_menu_version=$version
-  _ble_complete_menu_items=("${menu_items[@]}")
-  _ble_complete_menu_class=$menu_class
-  _ble_complete_menu_param=$menu_param
   _ble_complete_menu_page_style=$menu_style
-  _ble_complete_menu_ipage=$ipage
-  _ble_complete_menu_offset=$begin
-  _ble_complete_menu_icons=("${_ble_complete_menu_style_icons[@]:begin:end-begin}")
-  _ble_complete_menu_info_data=(store "$x" "$y" "$esc")
-  _ble_complete_menu_selected=-1
+  _ble_complete_menu_page_index=$ipage
+  _ble_complete_menu_page_offset=$begin
+  _ble_complete_menu_page_icons=("${_ble_complete_menu_style_icons[@]:begin:end-begin}")
+  _ble_complete_menu_page_infodata=(store "$x" "$y" "$esc")
   return 0
 }
 
 function ble/complete/menu#show {
-  ble/edit/info/immediate-show "${_ble_complete_menu_info_data[@]}"
+  ble/edit/info/immediate-show "${_ble_complete_menu_page_infodata[@]}"
 }
 function ble/complete/menu#clear {
   ble/edit/info/default
 }
 
+## @fn ble/complete/menu#select/.erase-item-selection.draw i
+##   @param[in] i
+##     Index of the item in the current page.
+##
+##   @var[in] infoy
+##   @var[in] _ble_complete_menu_page_icons
+##   @var[in] _ble_canvas_panel_height
+##   @var[in] _ble_edit_info_panel
+##   @var[out] _ble_canvas_x _ble_canvas_y
+function ble/complete/menu#select/.erase-item-selection.draw {
+  local i=$1
+  local entry=${_ble_complete_menu_page_icons[i]}
+  [[ $entry ]] || return 1
+
+  local fields text=${entry#*:}
+  ble/string#split fields , "${entry%%:*}"
+
+  ((fields[3]<_ble_canvas_panel_height[_ble_edit_info_panel])) || return 1
+
+  # Note: 編集文字列の内容の変化により info panel が削れている事がある。
+  # 現在の項目がちゃんと info panel の中にある時にだけ描画する。(#D0880)
+
+  ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
+  ble/canvas/put.draw "${text:fields[4]}"
+  _ble_canvas_x=${fields[2]} _ble_canvas_y=$((infoy+fields[3]))
+}
+
+## @fn ble/complete/menu#select/.render-item-selection.draw i
+##   @param[in] i
+##     Index of the item in the current page.
+##
+##   @var[in] infoy
+##   @var[in] _ble_complete_menu_page_icons
+##   @var[in] _ble_canvas_panel_height
+##   @var[in] _ble_edit_info_panel
+##   @var[out] _ble_canvas_x _ble_canvas_y
+##
+##   @exit 1
+##     This means that the selected item is not rendered (not registered in
+##     _ble_complete_menu_page_icons) because the item is hidden.
+##   @exit 12
+##     Request re-arrangement of the menu items.  This is caused when the item
+##     is not in the original page due to the size change of the info panel.
+function ble/complete/menu#select/.render-item-selection.draw {
+  local i=$1
+  local entry=${_ble_complete_menu_page_icons[i]}
+  [[ $entry ]] || return 1
+
+  local fields text=${entry#*:}
+  ble/string#split fields , "${entry%%:*}"
+
+  local x=${fields[0]} y=${fields[1]}
+  local item=${text::fields[4]}
+
+  # construct reverted candidate
+  local ret
+  if [[ ${fields[6]} ]]; then
+    local box cols lines
+    ble/string#split-words box "${fields[6]}"
+    x=${box[0]} y=${box[1]} cols=${box[2]} lines=${box[3]}
+    ble/complete/menu#render-item "$item" selected
+    ((x+=fields[0]-box[0]))
+    ((y+=fields[1]-box[1]))
+  else
+    local cols lines
+    ble/complete/menu#construct/.initialize-size
+    ble/complete/menu#render-item "$item" selected
+  fi
+
+  # Note: 編集文字列の内容の変化により info panel が削れている事がある。
+  # 現在の項目がちゃんと info panel の中にある時にだけ描画する。(#D0880)
+  ((y<_ble_canvas_panel_height[_ble_edit_info_panel])) || return 12
+
+  ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
+  ble/canvas/put.draw "$ret"
+  _ble_canvas_x=$x _ble_canvas_y=$((infoy+y))
+}
 
 ## @fn ble/complete/menu#select index [opts]
 ##   @param[in] opts
@@ -751,79 +846,43 @@ function ble/complete/menu#select {
   ble/canvas/panel#get-origin "$_ble_edit_info_panel" --prefix=info
 
   # ページ更新
-  local visible_beg=$_ble_complete_menu_offset
-  local visible_end=$((visible_beg+${#_ble_complete_menu_icons[@]}))
-  if ((nsel>=0&&!(visible_beg<=nsel&&nsel<visible_end))); then
-    ble/complete/menu/show filter:load-filtered-data:scroll="$nsel"; local ext=$?
-    ((ext)) && return "$ext"
+  local visible_beg=0
+  local visible_end=$ncand
+  if [[ :$_ble_complete_menu_opts: != *:hidden:* ]]; then
+    visible_beg=$_ble_complete_menu_page_offset
+    visible_end=$((visible_beg+${#_ble_complete_menu_page_icons[@]}))
+    if ((nsel>=0&&!(visible_beg<=nsel&&nsel<visible_end))); then
+      ble/complete/menu/show scroll="$nsel"; local ext=$?
+      ((ext)) && return "$ext"
 
-    if [[ $_ble_complete_menu_ipage ]]; then
-      local ipage=$_ble_complete_menu_ipage
-      ble/term/visible-bell "menu: Page $((ipage+1))" persistent
-    else
-      ble/term/visible-bell "menu: Offset $_ble_complete_menu_offset/$ncand" persistent
+      if [[ $_ble_complete_menu_page_index ]]; then
+        local ipage=$_ble_complete_menu_page_index
+        ble/term/visible-bell "menu: Page $((ipage+1))" persistent
+      else
+        ble/term/visible-bell "menu: Offset $_ble_complete_menu_page_offset/$ncand" persistent
+      fi
+
+      visible_beg=$_ble_complete_menu_page_offset
+      visible_end=$((visible_beg+${#_ble_complete_menu_page_icons[@]}))
+
+      # スクロールに対応していない menu_style や、スクロールしすぎた時の為。
+      ((visible_end<=nsel&&(nsel=visible_end-1)))
+      ((nsel<=visible_beg&&(nsel=visible_beg)))
+      ((visible_beg<=osel&&osel<visible_end)) || osel=-1
     fi
-
-    visible_beg=$_ble_complete_menu_offset
-    visible_end=$((visible_beg+${#_ble_complete_menu_icons[@]}))
-
-    # スクロールに対応していない menu_style や、スクロールしすぎた時の為。
-    ((visible_end<=nsel&&(nsel=visible_end-1)))
-    ((nsel<=visible_beg&&(nsel=visible_beg)))
-    ((visible_beg<=osel&&osel<visible_end)) || osel=-1
   fi
 
   local -a DRAW_BUFF=()
   local ret; ble/canvas/panel/save-position; local pos0=$ret
   if ((osel>=0)); then
-    # 消去
-    local entry=${_ble_complete_menu_icons[osel-visible_beg]}
-    local fields text=${entry#*:}
-    ble/string#split fields , "${entry%%:*}"
-
-    if ((fields[3]<_ble_canvas_panel_height[_ble_edit_info_panel])); then
-      # Note: 編集文字列の内容の変化により info panel が削れている事がある。
-      # 現在の項目がちゃんと info panel の中にある時にだけ描画する。(#D0880)
-
-      ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
-      ble/canvas/put.draw "${text:fields[4]}"
-      _ble_canvas_x=${fields[2]} _ble_canvas_y=$((infoy+fields[3]))
-    fi
+    ble/complete/menu#select/.erase-item-selection.draw "$((osel-visible_beg))"
   fi
 
   local value=
   if ((nsel>=0)); then
     [[ :$opts: == *:goto-page-top:* ]] && nsel=$visible_beg
-    local entry=${_ble_complete_menu_icons[nsel-visible_beg]}
-    local fields text=${entry#*:}
-    ble/string#split fields , "${entry%%:*}"
 
-    local x=${fields[0]} y=${fields[1]}
-    local item=${text::fields[4]}
-
-    # construct reverted candidate
-    local ret
-    if [[ ${fields[6]} ]]; then
-      local box cols lines
-      ble/string#split-words box "${fields[6]}"
-      x=${box[0]} y=${box[1]} cols=${box[2]} lines=${box[3]}
-      ble/complete/menu#render-item "$item" selected
-      ((x+=fields[0]-box[0]))
-      ((y+=fields[1]-box[1]))
-    else
-      local cols lines
-      ble/complete/menu#construct/.initialize-size
-      ble/complete/menu#render-item "$item" selected
-    fi
-
-    if ((y<_ble_canvas_panel_height[_ble_edit_info_panel])); then
-      # Note: 編集文字列の内容の変化により info panel が削れている事がある。
-      # 現在の項目がちゃんと info panel の中にある時にだけ描画する。(#D0880)
-
-      ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
-      ble/canvas/put.draw "$ret"
-      _ble_canvas_x=$x _ble_canvas_y=$((infoy+y))
-    fi
+    ble/complete/menu#select/.render-item-selection.draw "$((nsel-visible_beg))"
 
     _ble_complete_menu_selected=$nsel
   else
@@ -915,17 +974,17 @@ function ble/widget/menu/.check-last-column {
 ##   @param[in] column
 function ble/widget/menu/.goto-column {
   local column=$1
-  local offset=$_ble_complete_menu_offset
+  local offset=$_ble_complete_menu_page_offset
   local osel=$_ble_complete_menu_selected
   ((osel>=0)) || return 1
-  local entry=${_ble_complete_menu_icons[osel-offset]}
+  local entry=${_ble_complete_menu_page_icons[osel-offset]}
   local fields; ble/string#split fields , "${entry%%:*}"
   local ox=${fields[0]} oy=${fields[1]}
   local nsel=-1
   if ((ox<column)); then
     # forward search within the line
     nsel=$osel
-    for entry in "${_ble_complete_menu_icons[@]:osel+1-offset}"; do
+    for entry in "${_ble_complete_menu_page_icons[@]:osel+1-offset}"; do
       ble/string#split fields , "${entry%%:*}"
       local x=${fields[0]} y=${fields[1]}
       ((y==oy&&x<=column)) || break
@@ -935,7 +994,7 @@ function ble/widget/menu/.goto-column {
     # backward search within the line
     local i=$osel
     while ((--i>=offset)); do
-      entry=${_ble_complete_menu_icons[i-offset]}
+      entry=${_ble_complete_menu_page_icons[i-offset]}
       ble/string#split fields , "${entry%%:*}"
       local x=${fields[0]} y=${fields[1]}
       ((y<oy||x<=column&&(nsel=i,1))) && break
@@ -945,7 +1004,7 @@ function ble/widget/menu/.goto-column {
     ble/complete/menu#select "$nsel"
 }
 function ble/widget/menu/forward-line {
-  local offset=$_ble_complete_menu_offset
+  local offset=$_ble_complete_menu_page_offset
   local osel=$_ble_complete_menu_selected
   ((osel>=0)) || return 1
 
@@ -953,18 +1012,18 @@ function ble/widget/menu/forward-line {
   if local ret; ble/function#try ble/complete/menu-style:"$_ble_complete_menu_page_style"/locate down "$osel"; then
     nsel=$ret
   else
-    local entry=${_ble_complete_menu_icons[osel-offset]}
+    local entry=${_ble_complete_menu_page_icons[osel-offset]}
     local fields; ble/string#split fields , "${entry%%:*}"
     local ox=${fields[0]} oy=${fields[1]}
     ble/widget/menu/.check-last-column
     local i=$osel nsel=-1 is_next_page=
-    for entry in "${_ble_complete_menu_icons[@]:osel+1-offset}"; do
+    for entry in "${_ble_complete_menu_page_icons[@]:osel+1-offset}"; do
       ble/string#split fields , "${entry%%:*}"
       local x=${fields[0]} y=${fields[1]}
       ((y<=oy||y==oy+1&&x<=ox||nsel<0)) || break
       ((++i,y>oy&&(nsel=i)))
     done
-    ((nsel<0&&(is_next_page=1,nsel=offset+${#_ble_complete_menu_icons[@]})))
+    ((nsel<0&&(is_next_page=1,nsel=offset+${#_ble_complete_menu_page_icons[@]})))
     ((is_next_page)) && goto_column=$ox
   fi
 
@@ -979,7 +1038,7 @@ function ble/widget/menu/forward-line {
   fi
 }
 function ble/widget/menu/backward-line {
-  local offset=$_ble_complete_menu_offset
+  local offset=$_ble_complete_menu_page_offset
   local osel=$_ble_complete_menu_selected
   ((osel>=0)) || return 1
 
@@ -987,13 +1046,13 @@ function ble/widget/menu/backward-line {
   if local ret; ble/function#try ble/complete/menu-style:"$_ble_complete_menu_page_style"/locate up "$osel"; then
     nsel=$ret
   else
-    local entry=${_ble_complete_menu_icons[osel-offset]}
+    local entry=${_ble_complete_menu_page_icons[osel-offset]}
     local fields; ble/string#split fields , "${entry%%:*}"
     local ox=${fields[0]} oy=${fields[1]}
     ble/widget/menu/.check-last-column
     local nsel=$osel
     while ((--nsel>=offset)); do
-      entry=${_ble_complete_menu_icons[nsel-offset]}
+      entry=${_ble_complete_menu_page_icons[nsel-offset]}
       ble/string#split fields , "${entry%%:*}"
       local x=${fields[0]} y=${fields[1]}
       ((y<oy-1||y==oy-1&&x<=ox)) && break
@@ -1011,15 +1070,15 @@ function ble/widget/menu/backward-line {
   fi
 }
 function ble/widget/menu/backward-page {
-  if ((_ble_complete_menu_offset>0)); then
-    ble/complete/menu#select "$((_ble_complete_menu_offset-1))" goto-page-top
+  if ((_ble_complete_menu_page_offset>0)); then
+    ble/complete/menu#select "$((_ble_complete_menu_page_offset-1))" goto-page-top
   else
     ble/widget/.bell "menu: this is the first page."
     return 1
   fi
 }
 function ble/widget/menu/forward-page {
-  local next=$((_ble_complete_menu_offset+${#_ble_complete_menu_icons[@]}))
+  local next=$((_ble_complete_menu_page_offset+${#_ble_complete_menu_page_icons[@]}))
   if ((next<${#_ble_complete_menu_items[@]})); then
     ble/complete/menu#select "$next"
   else
@@ -1028,11 +1087,11 @@ function ble/widget/menu/forward-page {
   fi
 }
 function ble/widget/menu/beginning-of-page {
-  ble/complete/menu#select "$_ble_complete_menu_offset"
+  ble/complete/menu#select "$_ble_complete_menu_page_offset"
 }
 function ble/widget/menu/end-of-page {
-  local nicon=${#_ble_complete_menu_icons[@]}
-  ((nicon)) && ble/complete/menu#select "$((_ble_complete_menu_offset+nicon-1))"
+  local nicon=${#_ble_complete_menu_page_icons[@]}
+  ((nicon)) && ble/complete/menu#select "$((_ble_complete_menu_page_offset+nicon-1))"
 }
 
 function ble/widget/menu/cancel {
@@ -6820,6 +6879,7 @@ function ble/complete/candidates/determine-common-prefix {
 
 _ble_complete_menu_active=
 _ble_complete_menu_style=
+_ble_complete_menu_opts=
 _ble_complete_menu0_beg=
 _ble_complete_menu0_end=
 _ble_complete_menu0_str=
@@ -6997,46 +7057,121 @@ function ble/complete/menu/get-footprint {
 }
 
 ## @fn ble/complete/menu/show opts
+##
 ##   @param[in] opts
-##     filter
-##     menu-source
-##     offset=NUMBER
-##   @var[in] comp_type
-##   @var[in] COMP1 COMP2 COMPS COMPV comps_flags comps_fixed
-##   @arr[in] cand_pack
-##   @var[in] menu_common_part
+##     A colon-separated list of options.  In addition to the options supported
+##     by ble/complete/menu#construct, the following options are supported.
+##
+##     @opt init
+##       When this is specified, the variables containing the current
+##       completion ccontext, "_ble_complete_menu{,0}_*", are initialized.
+##       When this is specified, the following variables need to be supplied by
+##       the caller:
+##
+##       @var[in] _ble_edit_str _ble_edit_ind
+##       @var[in] COMP1 COMP2 COMPS COMPV comps_flags comps_fixed
+##
+##       Based on those variables, the following variables are initialied.
+##
+##       @var[out] _ble_complete_menu_active=1
+##       @arr[out] _ble_complete_menu0_comp
+##       @arr[out] _ble_complete_menu_comp
+##       @var[out] _ble_complete_menu0_str
+##       @var[out] _ble_complete_menu0_beg
+##       @var[out] _ble_complete_menu0_end
+##       @var[out] _ble_complete_menu_footprint
+##
+##       This option implies opt and "update-items".  The items specified in
+##       the array "cand_pack" are saved in the array
+##       "_ble_complete_menu0_pack".
+##
+##       @arr[out] _ble_complete_menu0_pack
+##
+##       When this is specified, the menu style and opts are updated to be the
+##       one specified by bleopt complete_menu_style and "hidden" from
+##       complete_menu_complete_opts, respectively.  Otherwise, the menu style
+##       and opts are the one used in the previous call of
+##       ble/complete/menu/show.
+##
+##       @var[out] _ble_complete_menu_style
+##       @var[out] _ble_complete_menu_opts
+##
+##     @opt update-context
+##       When this is specified, the following variables, containing the text
+##       surrounding the completed word, are updated based on the current
+##       content of the command line.
+##
+##       @var[ref] _ble_complete_menu0_str
+##       @var[ref] _ble_complete_menu0_end
+##       @var[ref] _ble_complete_menu_footprint
+##
+##     @opt update-items
+##       When this is specified, the menu items are specified through the
+##       following variables.
+##
+##       @var[in] comp_type
+##       @arr[in] cand_pack
+##       @var[in] menu_common_part
+##
+##       The items are saved in the following variable.
+##
+##       @arr[out] _ble_complete_menu_items
 ##
 function ble/complete/menu/show {
   local opts=$1
 
-  if [[ :$opts: == *:load-filtered-data:* ]]; then
-    local COMP1=${_ble_complete_menu_comp[0]}
-    local COMP2=${_ble_complete_menu_comp[1]}
-    local COMPS=${_ble_complete_menu_comp[2]}
-    local COMPV=${_ble_complete_menu_comp[3]}
+  [[ :$opts: == *:init:* ]] && opts=$opts:update-items
+
+  if [[ :$opts: != *:update-items:* ]]; then
     local comp_type=${_ble_complete_menu_comp[4]}
-    local comps_flags=${_ble_complete_menu0_comp[5]}
-    local comps_fixed=${_ble_complete_menu0_comp[6]}
     local cand_pack; cand_pack=("${_ble_complete_menu_items[@]}")
     local menu_common_part=$_ble_complete_menu_common_part
   fi
 
-  # settings
-  local menu_style=$bleopt_complete_menu_style
-  [[ :$opts: == *:filter:* && $_ble_complete_menu_style ]] &&
-    menu_style=$_ble_complete_menu_style
+  # settings for ble/complete/menu/menu#construct
+  local menu_style=$_ble_complete_menu_style
+  local menu_opts=$_ble_complete_menu_opts
+  if [[ ! $_ble_complete_menu_style || :$opts: == *:init:* ]]; then
+    menu_style=$bleopt_complete_menu_style
+    menu_opts=
+    [[ :$bleopt_complete_menu_complete_opts: == *:hidden:* && :$opts: != *:show_menu:* ]] &&
+      menu_opts=$menu_opts:hidden
+
+    _ble_complete_menu_style=$menu_style
+    _ble_complete_menu_opts=$menu_opts
+  fi
+
   local menu_items; menu_items=("${cand_pack[@]}")
 
   _ble_complete_menu_common_part=$menu_common_part
   local menu_class=ble/complete/menu-complete.class menu_param=
 
-  local menu_opts=$opts
-  [[ :$comp_type: == *:sync:* ]] && menu_opts=$menu_opts:sync
+  local menu_construct_opts=$opts
+  [[ :$comp_type: == *:sync:* ]] &&
+    menu_construct_opts=$menu_construct_opts:sync
+  [[ :$_ble_complete_menu_opts: == *:hidden:* ]] &&
+    menu_construct_opts=$menu_construct_opts:hidden
 
-  ble/complete/menu#construct "$menu_opts" || return "$?"
+  ble/complete/menu#construct "$menu_construct_opts" || return "$?"
   ble/complete/menu#show
 
-  if [[ :$opts: == *:menu-source:* ]]; then
+  case :$opts: in
+  (*:init:*)
+    local beg=$COMP1 end=$_ble_edit_ind # COMP2 でなく補完挿入後の位置
+    local str=$_ble_edit_str
+    [[ $_ble_decode_keymap == auto_complete ]] &&
+      str=${str::_ble_edit_ind}${str:_ble_edit_mark}
+    local footprint; ble/complete/menu/get-footprint
+    _ble_complete_menu_active=1
+    _ble_complete_menu0_beg=$beg
+    _ble_complete_menu0_end=$end
+    _ble_complete_menu0_str=$str
+    _ble_complete_menu0_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags" "$comps_fixed")
+    _ble_complete_menu0_pack=("${cand_pack[@]}")
+    _ble_complete_menu_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type")
+    _ble_complete_menu_footprint=$footprint ;;
+
+  (*:update-context:*)
     # menu に既に表示されている内容を元にした補完後のメニュー再表示。
     # 補完開始時の情報を保持したまま調整を行う。
 
@@ -7053,24 +7188,8 @@ function ble/complete/menu/show {
     local footprint; ble/complete/menu/get-footprint
     _ble_complete_menu0_str=$left0$right0
     _ble_complete_menu0_end=${#left0}
-    _ble_complete_menu_footprint=$footprint
-  elif [[ :$opts: != *:filter:* ]]; then
-    local beg=$COMP1 end=$_ble_edit_ind # COMP2 でなく補完挿入後の位置
-    local str=$_ble_edit_str
-    [[ $_ble_decode_keymap == auto_complete ]] &&
-      str=${str::_ble_edit_ind}${str:_ble_edit_mark}
-    local footprint; ble/complete/menu/get-footprint
-    _ble_complete_menu_active=1
-    _ble_complete_menu_style=$menu_style
-    _ble_complete_menu0_beg=$beg
-    _ble_complete_menu0_end=$end
-    _ble_complete_menu0_str=$str
-    _ble_complete_menu0_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags" "$comps_fixed")
-    _ble_complete_menu0_pack=("${cand_pack[@]}")
-    _ble_complete_menu_selected=-1
-    _ble_complete_menu_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type")
-    _ble_complete_menu_footprint=$footprint
-  fi
+    _ble_complete_menu_footprint=$footprint ;;
+  esac
   return 0
 }
 
@@ -7208,6 +7327,9 @@ function ble/complete/insert {
 ## @fn ble/complete/insert-common
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
+##
+##   @var[in] menu_show_opts
+##     This variable is supposed to be set by ble/widget/complete.
 function ble/complete/insert-common {
   local ret
   ble/complete/candidates/determine-common-prefix; (($?==148)) && return 148
@@ -7720,6 +7842,10 @@ function ble/complete/insert-braces/.compose {
 ## @fn ble/complete/insert-braces
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
+##
+##   @var[in] menu_show_opts
+##     This variable is supposed to be set by ble/widget/complete and
+##     referenced in ble/complete/insert-common.
 function ble/complete/insert-braces {
   if ((cand_count==1)); then
     ble/complete/insert-common; return "$?"
@@ -7822,6 +7948,10 @@ _ble_complete_state=
 ##       メニューを表示します。
 ##     enter_menu
 ##       メニュー補完に入ります。
+##     menu-style=*
+##       Specify the menu style when the menu is shown (with show_menu,
+##       enter_menu).  This overrides the default specified by "bleopt
+##       complete_menu_style".
 ##
 ##     context=*
 ##       候補生成の文脈を指定します。
@@ -7844,29 +7974,44 @@ function ble/widget/complete {
   local state=$_ble_complete_state
   _ble_complete_state=start
 
-  local menu_show_opts=
+  local ret
+  ble/opts#extract-last-optarg "$opts" menu-style &&
+    [[ $ret ]] && ble/is-function ble/complete/menu-style:"$ret"/construct &&
+    local bleopt_complete_menu_style=$ret
 
-  if [[ :$opts: != *:insert_*:* && :$opts: != *:show_menu:* ]]; then
-    if [[ :$opts: == *:enter_menu:* ]]; then
-      [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
-        ble/complete/menu-complete/enter "$opts" && return 0
-    elif [[ $bleopt_complete_menu_complete ]]; then
+  case :$opts: in
+  (*:insert_*:*) ;;
+  (*:toggle_menu:*)
+    if [[ $_ble_complete_menu_active ]]; then
+      ble/widget/menu_complete/toggle-hidden
+      return 0
+    else
+      opts=$opts:show_menu
+    fi ;;
+  (*:show_menu:*) ;;
+  (*:enter_menu:*)
+    [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
+      ble/complete/menu-complete/enter "$opts" && return 0 ;;
+  (*)
+    if [[ $bleopt_complete_menu_complete ]]; then
       if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]]; then
         local footprint; ble/complete/menu/get-footprint
         [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
           ble/complete/menu-complete/enter "$opts" && return 0
       fi
       [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
-    fi
-  fi
+    fi ;;
+  esac
 
   local COMP1 COMP2 COMPS COMPV
   local comp_type comps_flags comps_fixed
   local cand_count cand_cand cand_word cand_pack
   ble/complete/candidates/clear
+
+  local menu_show_opts=init
   local cand_limit_reached=
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
-          :$opts: != *:context=*:* && ${#_ble_complete_menu_icons[@]} -gt 0 ]]
+          :$opts: != *:context=*:* && ${#_ble_complete_menu_items[@]} -gt 0 ]]
   then
     if [[ $_ble_complete_menu_filter_enabled && $bleopt_complete_menu_filter ]] || {
          ble/complete/menu-filter; local ext=$?
@@ -7875,8 +8020,7 @@ function ble/widget/complete {
       ble/complete/menu/generate-candidates-from-menu; local ext=$?
       ((ext==148)) && return 148
       if ((ext==0&&cand_count)); then
-        local bleopt_complete_menu_style=$_ble_complete_menu_style
-        menu_show_opts=$menu_show_opts:menu-source # 既存の filter 前候補を保持する
+        menu_show_opts=update-context:update-items
       fi
     fi
   fi
@@ -7922,7 +8066,7 @@ function ble/widget/complete {
 
   elif [[ :$opts: == *:show_menu:* ]]; then
     local menu_common_part=$COMPV
-    ble/complete/menu/show "$menu_show_opts"
+    ble/complete/menu/show "$menu_show_opts:show_menu"
     return "$?" # exit status of ble/complete/menu/show
 
   fi
@@ -8022,7 +8166,7 @@ function ble/complete/menu-filter {
   ble/complete/menu-filter/.filter-candidates; (($?==148)) && return 148
 
   local menu_common_part=$COMPV
-  ble/complete/menu/show filter || return "$?"
+  ble/complete/menu/show update-items || return "$?"
   _ble_complete_menu_comp=("$beg" "$end" "$input" "$COMPV" "$comp_type")
   return 0
 }
@@ -8087,7 +8231,7 @@ function ble/highlight/layer:menu_filter/update {
 
   # determine range
   local beg= end= ret
-  if [[ $bleopt_complete_menu_filter && $_ble_complete_menu_active && ${#_ble_complete_menu_icons[@]} -gt 0 ]]; then
+  if [[ $bleopt_complete_menu_filter && $_ble_complete_menu_active && ${#_ble_complete_menu_items[@]} -gt 0 ]]; then
     ble/complete/menu-filter/.get-filter-target && local str=$ret &&
       ble/complete/menu/get-active-range "$str" "$_ble_edit_ind" &&
       [[ ${str:beg:end-beg} != "${_ble_complete_menu0_comp[2]}" ]] || beg= end=
@@ -8163,7 +8307,7 @@ fi
 ##   @var[in] _ble_complete_menu_original
 ##   @var[in] _ble_complete_menu_selected
 ##   @var[in] _ble_complete_menu_common_part
-##   @arr[in] _ble_complete_menu_icons
+##   @arr[in] _ble_complete_menu_page_icons
 ##
 ## 更に以下の変数を使用する
 ##
@@ -8181,7 +8325,7 @@ function ble/complete/menu-complete/select {
 ##     backward
 ##     insert_unique
 function ble/complete/menu-complete/enter {
-  ((${#_ble_complete_menu_icons[@]}>=1)) || return 1
+  ((${#_ble_complete_menu_items[@]}>=1)) || return 1
   local beg end; ble/complete/menu/get-active-range || return 1
 
   local opts=$1
@@ -8238,7 +8382,7 @@ function ble/widget/menu_complete/exit {
     # suffix の決定と挿入
     local suffix=
     if [[ :$opts: == *:complete:* ]]; then
-      local icon=${_ble_complete_menu_icons[_ble_complete_menu_selected-_ble_complete_menu_offset]}
+      local icon=${_ble_complete_menu_page_icons[_ble_complete_menu_selected-_ble_complete_menu_page_offset]}
       local icon_data=${icon#*:} icon_fields
       ble/string#split icon_fields , "${icon%%:*}"
       local pack=${icon_data::icon_fields[4]}
@@ -8285,6 +8429,40 @@ function ble/widget/menu_complete/exit-default {
   ble/decode/widget/redispatch
 }
 
+_ble_complete_menu_switch_styles=(align-nowrap desc linewise dense-nowrap)
+function ble/widget/menu_complete/switch-style {
+  local menu_style
+  if [[ $1 && $1 != [-+] ]]; then
+    menu_style=$1
+  else
+    local ret nstyle=${#_ble_complete_menu_switch_styles[@]} shift=${1:-+}1
+    if ble/array#index _ble_complete_menu_switch_styles "$_ble_complete_menu_style"; then
+      ((ret=(ret+shift+nstyle)%nstyle))
+    else
+      ((ret=shift<0?nstyle-1:0))
+    fi
+    menu_style=${_ble_complete_menu_switch_styles[ret]}
+  fi
+  [[ $menu_style != "$_ble_complete_menu_style" ]] || return 0
+
+  _ble_complete_menu_style=$menu_style
+  bleopt complete_menu_style="$menu_style"
+  local sel=$_ble_complete_menu_selected
+  ble/complete/menu/show scroll="$sel"
+  ble/complete/menu#select "$sel"
+}
+function ble/widget/menu_complete/toggle-hidden {
+  if [[ :$_ble_complete_menu_opts: == *:hidden:* ]]; then
+    ble/opts#remove _ble_complete_menu_opts hidden
+  else
+    _ble_complete_menu_opts=$_ble_complete_menu_opts:hidden
+  fi
+
+  local sel=$_ble_complete_menu_selected
+  ble/complete/menu/show scroll="$sel"
+  ble/complete/menu#select "$sel"
+}
+
 function ble-decode/keymap:menu_complete/define {
   # ble-bind -f __defchar__ menu_complete/self-insert
   ble-bind -f __default__ 'menu_complete/exit-default'
@@ -8310,6 +8488,16 @@ function ble-decode/keymap:menu_complete/define {
   ble-bind -f next        'menu/forward-page'
   ble-bind -f home        'menu/beginning-of-page'
   ble-bind -f end         'menu/end-of-page'
+
+  ble-bind -f 'C-x SP'    'menu_complete/toggle-hidden'
+  ble-bind -f 'C-x right' 'menu_complete/switch-style +'
+  ble-bind -f 'C-x C-n'   'menu_complete/switch-style +'
+  ble-bind -f 'C-x left'  'menu_complete/switch-style -'
+  ble-bind -f 'C-x C-p'   'menu_complete/switch-style -'
+  ble-bind -f 'C-x a'     'menu_complete/switch-style align-nowrap'
+  ble-bind -f 'C-x c'     'menu_complete/switch-style dense-nowrap'
+  ble-bind -f 'C-x d'     'menu_complete/switch-style desc'
+  ble-bind -f 'C-x l'     'menu_complete/switch-style linewise'
 
   local key
   for key in {,M-,C-}{0..9}; do
@@ -9466,7 +9654,7 @@ function ble/complete/sabbrev/expand {
 
     local bleopt_complete_menu_style=$bleopt_sabbrev_menu_style
     local menu_common_part=
-    ble/complete/menu/show || return "$?"
+    ble/complete/menu/show init || return "$?"
     [[ :$bleopt_sabbrev_menu_opts: == *:enter_menu:* ]] &&
       ble/complete/menu-complete/enter "$bleopt_sabbrev_menu_opts"
     return 147 ;;

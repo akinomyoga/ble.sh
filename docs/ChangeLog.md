@@ -35,6 +35,7 @@
 - sabbrev: support suffix sabbrev to emulate Zsh's suffix aliases `#D2191` d66e05d2
   - sabbrev: fix bugs in sabbrev matching and positioning (reported by dgudim) `#D2198` xxxxxxxx
 - complete: support `ble-face menu_desc_{default,type,quote}` (requested by romaia) `#D2193` b3e7237e
+- complete: support `bleopt complete_menu_complete_opts=hidden` and menu-style switching (requested by CamRatliff) `#D2199` xxxxxxxx
 
 ## Changes
 

@@ -7334,6 +7334,148 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-04-24
+
+  * menu-complete: support hiding menu (requested by CamRatliff) [#D2199]
+    https://github.com/akinomyoga/ble.sh/discussions/439
+
+    * done: menu-style を toggle/rotate する機能。
+
+      途中で切り替えた時にページを再構築する機能が必要。
+
+      ページの再表示は ble/complete/menu/show に filter 及び menu-source を指定し
+      て実行されている様に見える。然し、何故 filter と menu-source の二種類がある
+      のだろうか。両者の動作の違いは何なのか。load-filtered-data とは何か。
+
+    * done: refactor ble/complete/menu/show
+
+      ble/complete/menu/show の内部の opts を元にしている条件分岐が意味不明であ
+      る。opts の名前に沿っている様にも思えないし、皆類似していて何がどう異なる
+      のかもよく分からない。load-filtered-data と filter は常に一緒に使われるの
+      か。それとも filter だけ使われる事もあるのだろうか。どの様に使われている
+      かを調べて改めて適切な振る舞いについて考える事にする。
+
+      filter
+
+        ble/complete/menu/show filter で load-filtered-data なしで呼び出してい
+        る箇所がある。うーん。filter で load-filtered-data なしなのは
+        menu-filter の初回の呼び出しの時だけ? と思ったがそうでもない。
+        menu-filter が実行される度にこれで既存の結果を置き換えている。これは実
+        際に menu-filter でフィルタリングをして cand_pack を準備した直後に呼び
+        出されている。フィルタリングを計算する度に項目の更新が必要になるのでこ
+        れは妥当である。
+
+        filter を指定した時の振る舞いの効能としては前回の menu-style を継承する
+        という事。それから _ble_complete_menu_* に対する諸々のデータの格納をス
+        キップするという事。
+
+      filter:load-filtered-data
+
+        load-filtered-data は menu#select から呼び出されていて、一緒に filter
+        が指定されている。然し、何がどう filter なのかはよく分からない。呼び出
+        し元の文脈的に filter は関係ないのではないかという気がする。だとすると
+        と、元々 filter が指定された時の特別な振る舞いを想定して流用したという
+        事だろうか?
+
+        この場合は filter を指定した時に加えて COMP? や comp_* comps_*
+        cand_pack 等の変数を前の menu/show の呼び出しの時に使った物を元にして初
+        期化する。逆に言えば、これを指定していない時には、これらの変数を呼び出
+        し元が適切に準備する必要がある。
+
+      menu-source
+
+        その他の ble/complete/menu/show の呼び出しとして "$menu_show_opts" を渡
+        している箇所が複数あるが、これらは menu-source を含む可能性があるという
+        だけである。
+
+        この場合は既に存在している _ble_complete_menu{,0}_* を更新しない? でも
+        呼び出し元の変数を参照する。何の為の物かよく分からない。
+
+        既に menu が表示されている状態で ble/widget/complete が呼び出されると
+        (background の menu filter が有効でなければ) menu-filter を実施してから
+        候補生成を行う (実はこの時点で menu が既に表示されている筈)。その上で
+        更に enter_menu や show_menu 等で menu を表示するという処理の時に、処理
+        をスキップするのに使っている。特に filter 前の候補の情報を削除しない為
+        に? 然し全く何もしないかというとそうではなくて、現在の編集状況に応じて
+        "補完開始前の状態" に対応する情報を更新している。
+
+      処理の流れについて整理する。呼び出し方が四種類ある。
+
+      - 通常。
+
+        1. widget/complete で候補を生成しメニュー項目の情報を変数に入れる
+        2. menu_style は bleopt から拾う。
+        3. menu を表示する。
+        4. 補完開始の文脈を記録する
+
+        変更: これは opts=init という事にする。
+
+      - update [menu-source (menu が表示されている状態での更なる補完?)]
+
+        1. 既存の menu から補完候補の情報を復元する。
+        2. menu_style は bleopt から拾う。
+        3. menu を表示する。
+        4. 補完開始時の文脈 (コマンドラインの補完対象以外の部分) を更新する。
+
+        変更: これは opts=update-context:update-items:update-style で処理する。
+
+      - filter
+
+        1. 既存のメニュー項目を元に filter した cand_pack を生成する。
+        2. menu_style は既存の物を使う。
+        3. menu を表示する。この時 _ble_complete_menu_items は更新される。
+        4. 何も新しく記録しない。
+
+        変更: これは opts=update-items という事にする。
+
+      - filter:load-filtered-data
+
+        1. 呼び出し元では何も生成しない。
+        2. 既存のフィルター済みのデータを元にして menu を表示する。
+        3. 何も記録しない。
+
+        変更: これは opts= という事にする。
+
+      作り直した。何かミスをしていないかは気になる。
+
+    * done: 現在は menu-style:hidden として実装しているが style と visibility
+      に分けて実装するべきではないか? 例えば、source:option で desc が要求され
+      て complete_menu_style が設定された時にそれは hidden を上書きするべきなの
+      か?  上書きするのは変である。しかし、かといって hidden の時に何もしないと
+      いう事にすると、いざ menu-style を switch して表示した時に menu-style が
+      source:option が意図した物と異なるという事態になってしまう。
+
+      しかしそうすると表示していない時でも裏で layout 計算を実行するという事に
+      なるのだろうか? 或いは表示・非表示を切り替える度に layout 計算を実行する
+      のか? 或いは必要になった時に初めて layout 計算をする事にして、現在 page
+      layout が計算されているかそうでないかをまた別の変数で管理する様にする?
+
+      →取り敢えず実装した。
+
+    * done: switch-style で bleopt complete_menu_style も変更するべきの気がする。
+
+    * done: bleopt complete_menu_opts を追加したがよく見たら既に
+      complete_menu_complete_opts というオプションが存在している。統合する。
+
+    x fixed: 隠した状態で初めて menu-style を変更してから表示しても menu-style
+      が反映されない。_ble_complete_menu_version を使ってキャッシュの style を
+      一致させようとしていたが、_ble_complete_menu_version は hidden であっても
+      更新される。なので、キャッシュを保持していると記録されている物とのずれが
+      生じる。
+
+    x fixed: 隠した状態で巡回しようとしても項目が挿入されない → これは hidden
+      の場合に menu_class が設定されないまま menu#construct が終了していたのが
+      原因。ちゃんと全ての変数を設定する必要がある。
+
+    * done: bleopt complete_menu_complete_opts=hidden とすると、何も表示されな
+      くなって変な事になるので、hidden を指定している時は insert-selection を自
+      動的に有効にする様にする。
+
+    * done: "complete show_menu" としても何も表示されない。show_menu が指定され
+      た時は強制的に表示するべきでは。
+
+    * done: "toggle_menu" も追加するべきの気がする。
+
 2024-04-20
 
   * BUG complete: sabbrev が動かなくなっている (reported by dgudim) [#D2198]

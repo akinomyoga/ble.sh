@@ -86,6 +86,13 @@ bleopt/declare -v complete_menu_complete_opts 'insert-selection'
 bleopt/declare -v complete_menu_filter 1
 bleopt/declare -v complete_menu_maxlines '-1'
 
+function bleopt/check:complete_menu_complete_opts {
+  if [[ :$value: == *:hidden:* && :$value: != *:insert-selection:* ]]; then
+    value=$value:insert-selection
+  fi
+  return 0
+}
+
 bleopt/declare -v complete_skip_matched     on
 bleopt/declare -v complete_menu_color       on
 bleopt/declare -v complete_menu_color_match on
