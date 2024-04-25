@@ -978,7 +978,7 @@ function ble/builtin/trap/.handler {
 
     # user hook
     local install_opts=${_ble_builtin_trap_sig_opts[_ble_trap_sig]}
-    if [[ :$_ble_tra_opts: == *:user-trap-in-postproc:* ]]; then
+    if [[ :$install_opts: == *:user-trap-in-postproc:* ]]; then
       # ユーザートラップを外で実行 (Note: user-trap lastarg は反映されず)
       local q=\' Q="'\''" _ble_trap_handler postproc=
       ble/builtin/trap/user-handler#load "$_ble_trap_sig"

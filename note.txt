@@ -7388,6 +7388,17 @@ bash_tips
 
 2024-04-28
 
+  * util.hook: run user DEBUG trap at the top-level context [#D2202]
+
+    spell check の間に見つけた物。存在しない変数を参照していた。 a22c25b54 で
+    user-trap-in-postproc が追加された時から誤っている。書き換えの途中でそのま
+    まになっていた物の様に思われる。これは遡って適用する。しかも a5b10e8b1 で修
+    正しようとした形跡があるがその修正が完全でなかった (install_opts という変数
+    が新しく導入されているが何処からも参照されていない気がする)。
+
+    影響としては user DEBUG trap が一番外側で評価される事になっていたのが動いて
+    いなかった。trap handler の内部で実行されていた。
+
   * global: spelling mistakes [#D2201]
     typo がある。修正する。似たような物がないか確認して一括で修正する事にする。
     ソースコード中の特にコメントやメッセージなどに typo が多い。
