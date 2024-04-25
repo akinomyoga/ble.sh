@@ -148,6 +148,15 @@ time {
              '  --keep-rlvars' \
              '    Do not change readline settings for ble.sh' \
              '' \
+             '  --bash-debug-version=TYPE' \
+             '    This controls the warning mesage for the debug version of Bash.  When' \
+             '    "full" is specified to TYPE, ble.sh prints the full message to the terminal' \
+             '    when it is loaded in a debug version of Bash.  This is the default.  When' \
+             '    "short" is specified, a short version of the message is printed.  When' \
+             '    "once" is specified, the full message is printed only once for a specific' \
+             '    version of debug Bash.  When "ignore" is specified, the message is not' \
+             '    printed even when ble.sh is loaded in a debug version of Bash.' \
+             '' \
              '  -o BLEOPT=VALUE' \
              '    Set a value for the specified bleopt option.' \
              '  --debug-bash-output' \
@@ -894,6 +903,24 @@ function ble/base/read-blesh-arguments {
       _ble_base_arguments_rcfile=/dev/null ;;
     (--keep-rlvars)
       opts=$opts:keep-rlvars ;;
+    (--bash-debug-version=*|--bash-debug-version)
+      local value=
+      if [[ $arg == *=* ]]; then
+        value=${arg#*=}
+      elif (($#)); then
+        value=$1; shift
+      else
+        opts=$opts:E
+        ble/util/print "ble.sh ($arg): an option argument is missing." >&2
+        continue
+      fi
+      case $value in
+      (full|short|once|ignore)
+        opts=$opts:bash-debug-version=$value ;;
+      (*)
+        opts=$opts:E
+        ble/util/print "ble.sh ($arg): unrecognized value '$value'." >&2
+      esac ;;
     (--debug-bash-output)
       bleopt_internal_suppress_bash_output= ;;
     (--test | --update | --clear-cache | --lib | --install)
@@ -967,15 +994,6 @@ fi
 
 #------------------------------------------------------------------------------
 # Initialize version information
-
-# DEBUG version の Bash では遅いという通知
-case ${BASH_VERSINFO[4]} in
-(alp*|bet*|dev*|rc*|releng*|maint*)
-  ble/util/print-lines \
-    "ble.sh may become very slow because this is a debug version of Bash" \
-    "  (version '$BASH_VERSION', release status: '${BASH_VERSINFO[4]}')." \
-    "  We recommend using ble.sh with a release version of Bash." >&2 ;;
-esac
 
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 _ble_bash_loaded_in_function=0
@@ -2189,6 +2207,63 @@ function ble/base/initialize-session {
   export BLE_SESSION_ID=$_ble_base_session
 }
 ble/base/initialize-session
+
+# DEBUG version の Bash では遅いという通知
+function ble/base/check-bash-debug-version {
+  case ${BASH_VERSINFO[4]} in
+  (alp*|bet*|dev*|rc*|releng*|maint*) ;;
+  (*) return 0 ;;
+  esac
+
+  local type=check ret
+  ble/opts#extract-last-optarg "$_ble_base_arguments_opts" bash-debug-version check && type=$ret
+  [[ $type == ignore ]] && return 0
+
+  local file=$_ble_base_cache/base.bash-debug-version-checked.txt
+  local -a checked=()
+  [[ ! -d $file && -r $file && -s $file ]] && ble/util/mapfile checked < "$file"
+  if ble/array#index checked "$BASH_VERSION"; then
+    [[ $type == once ]] && return 0
+  else
+    ble/util/print "$BASH_VERSION" >> "$file"
+  fi
+
+  local sgr0=$_ble_term_sgr0
+  local sgr1=${_ble_term_setaf[4]}
+  local sgr2=${_ble_term_setaf[6]}
+  local sgr3=${_ble_term_setaf[2]}
+  local sgrC=${_ble_term_setaf[8]}
+  local bold=$_ble_term_bold
+  if [[ $type == short ]]; then
+    ble/util/print-lines \
+      "Note: ble.sh can be very slow in a debug version of Bash: $sgr3$BASH_VERSION$sgr0"
+  else
+    ble/util/print-lines \
+      "$bold# ble.sh with debug version of Bash$sgr0" \
+      '' \
+      'ble.sh may become very slow because this is a debug version of Bash (version' \
+      "\`$sgr3$BASH_VERSION$sgr0', release status: \`$sgr3${BASH_VERSINFO[4]}$sgr0').  We recommend using" \
+      'ble.sh with a release version of Bash.  If you want to use ble.sh with a' \
+      'non-release version of Bash, it is highly recommended to build Bash with the' \
+      "configure option \`$sgr2--with-bash-malloc=no$sgr0' for practical performance:" \
+      '' \
+      "  $sgr1./configure $bold--with-bash-malloc=no$sgr0" \
+      '' \
+      'To suppress this startup warning message, please specify the option' \
+      "\`$sgr2--bash-debug-version=short$sgr0' or \`${sgr2}once$sgr0' or \`${sgr2}ignore$sgr0' to \`ble.sh':" \
+      '' \
+      "  ${sgrC}# Show a short version of the message$sgr0" \
+      "  ${sgr1}source /path/to/ble.sh $bold--bash-debug-version=short$sgr0" \
+      '' \
+      "  ${sgrC}# Do not print the warning message more than once$sgr0" \
+      "  ${sgr1}source /path/to/ble.sh $bold--bash-debug-version=once$sgr0" \
+      '' \
+      "  ${sgrC}# Show the warning message only once for each debug version of Bash$sgr0" \
+      "  ${sgr1}source /path/to/ble.sh $bold--bash-debug-version=ignore$sgr0" \
+      ''
+  fi
+}
+ble/base/check-bash-debug-version
 
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|

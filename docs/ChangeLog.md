@@ -5,10 +5,16 @@
 
 ## New features
 
+- Bash 5.3 support
+  - syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 71272a4b
+  - decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
+  - util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
+  - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
+  - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` xxxxxxxx
+  - main: update the startup message for debug versions of Bash `#D2222` xxxxxxxx
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
-- syntax: support bash-5.3 function subst `${ list; }` `#2045` 0906fd95 71272a4b
 - complete: support `bleopt complete_requote_threshold` (requested by rauldipeas) `#2048` bb7e118e
 - menu (`ble/widget/menu/append-arg`): add option `bell` (motivated by bkerin) `#D2066` 3f31be18 bbf3fed3
 - make: support `make uninstall` `#D2068` a39a4a89
@@ -126,7 +132,6 @@
 - decode,syntax: quote `$#` in arguments properly `#D2097` 40a625d3
 - global: work around case-interleaving collation (reported by dongxi8) `#D2103` a3b94bb3
 - nsearch: set `immediate-accept` for `empty=emulate-readline` (reported by blackteahamburger) `#D2104` 870ecef7
-- decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
 - decode, vi_digraph: trim CR of text resources in MSYS `#D2105` 6f4badf4
 - progcomp: conditionally suffix space for git completion (reported by bkerin) `#D2111` 2c7cca2f
 - main: fix initialization errors with `set -u` `#D2116` b503887a
@@ -137,8 +142,6 @@
 - main: work around nRF Connect initialization (requested by liyafe1997) `#D2129` 2df3b109
 - main(unload): redirect streams to work around trap `EXIT` in bash-5.2 (reported by ragnarov) `#D2142` 38a8d571
 - complete: call the `docker` command through `ble/util/conditional-sync` `#D2150` 6c3f824a
-- util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
-  - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
 - util,complete: work around regex `/=.../` failing in Solaris nawk `#D2162` 46fdf44a
 - main: fix issues in MSYS1 `#D2163` 5f0b88fb
 - util: work around bash-3.1 bug that `10>&-` fails to close the fd `#D2164` b5938192
@@ -147,7 +150,6 @@
 - main: work around WSL's permission issue on `/run/user/1000` (reported by antonioetv and geoffreyvanwyk) `#D2195` fb826ab6
 - util: detect Zellij heuristically `#D2219` xxxxxxxx
 - decode: exclude `/etc/inputrc` in SUSE as well as in openSUSE (reported by Anyborr) `#D2220` xxxxxxxx
-- global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` xxxxxxxx
 
 ## Contrib
 

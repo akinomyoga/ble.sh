@@ -7380,6 +7380,32 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-06-11
+
+  * main: 5.3 check. 表示しない様にするオプションを追加する。説明追加 [#D2222]
+
+    * "bleopt init_check_debug_bash" 等にする? 然し、このチェックを行っている時
+      点では未だ bleopt/declare の仕組みを整えていないし、blerc も実行していな
+      い。だとすると、この表示を無効化するには source する時の引数として
+
+        source /path/to/ble.sh -o init_check_debug_bash=false
+
+      等としなければならない。或いは設定ではなくてオプションにしてしまう?
+
+      うーん。そちらの方が自然の気がしてきた。
+
+      然し、各 version で最低一回は表示する様にしようと思ったら結局
+      _ble_base_cache の初期化後にしなければならないので、それならば .blerc を
+      実行してからでも良いのでは? 現在の指定方法の候補は:
+
+        bleopt init_bash_debug_version={check,check-once,ignore}
+        ble.sh --bash-debug-version={check,check-once,ignore}
+
+      等の様すれば良い。うーん。初期化時だけに有効という事であればやはりオプショ
+      ンで良いのではないか。bleopt にしてもそのセッションでそれ以降に参照する事
+      はない。そして、_ble_base_cache が初期化できたらその後に実行すれば良い気
+      がする。
+
 2024-06-05
 
   * global: bash-5.3 posix function name with slashes in POSIX mode [#D2221]
