@@ -3099,7 +3099,8 @@ function ble/widget/vi-command/relative-line.impl {
   else
     ble/string#count-char "${_ble_edit_str:_ble_edit_ind}" $'\n'
   fi
-  ((count-=count<ret?count:ret))
+  local nmove=$((count<ret?count:ret))
+  ((count-=nmove))
 
   # 現在の履歴項目内での探索
   if ((count==0)); then

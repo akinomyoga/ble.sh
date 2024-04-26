@@ -91,6 +91,7 @@
 - util(ble/util/idle.push): fix uninitialized `ble/util/idle.clock` (reported by Anyborr) `#D2189` 83ceb124
 - prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) `#D2200` 61968497
 - util.hook: fix user DEBUG trap not executed at the top-level context `#D2202` xxxxxxxx
+- keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` xxxxxxxx
 
 ## Compatibility
 

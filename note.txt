@@ -7388,6 +7388,11 @@ bash_tips
 
 2024-04-28
 
+  * keymap/vi (relative-line.impl): fix uninitialized nmove [#D2203]
+
+    これも spell check の時に見つけた物。これは大分前からあるバグである
+    (a9a1638a)。元々存在していた変数 nmove を削除していた。これは大分遡る。
+
   * util.hook: run user DEBUG trap at the top-level context [#D2202]
 
     spell check の間に見つけた物。存在しない変数を参照していた。 a22c25b54 で
