@@ -1932,6 +1932,9 @@ function ble/prompt/update {
   local prompt_rows=${LINES:-25}
   local prompt_cols=${COLUMNS:-80}
   local "${_ble_prompt_cache_vars[@]/%/=}" # WA #D1570 checked
+  # clear the list for cyclic dependency detection
+  local ble_prompt_unit_processing=1
+  "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}"
 
   ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
 

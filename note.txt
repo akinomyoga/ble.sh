@@ -7334,6 +7334,26 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-04-28
+
+  * prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) [#D2200]
+    https://github.com/akinomyoga/ble.sh/issues/359
+    https://github.com/akinomyoga/ble.sh/issues/442
+
+    どちらも初期化時に発生する。前者は starship と一緒に使っている時のエラーだっ
+    たが、後者は starship は使っていない。代わりに atuin を使っている。
+
+    PS1 の中で循環参照が起こっているのではないかと思ったが、通常の設定である限
+    りは unit#update が PS1 によって (間接的であるにしても) 呼び出されるのは変
+    である。或いは winch を介してプロンプトの初期化をしている間に、また
+    ble/prompt/update が入れ子で呼び出されているのかもしれない。その場合に何が
+    起こるか確認する。循環参照の検出には ble_prompt_unit_mark というローカル変
+    数を使っている。これは存在していなければその場で作るという形になっている。
+    つまり、一番外側の unit#update で空の物を用意するという訳ではない様だ。
+
+    ble/prompt/update で明示的に空に初期化する事にする。これで PS1 を処理してい
+    る間に ble/prompt/update が入れ子で呼び出されたとしても問題ない筈。
+
 2024-04-24
 
   * menu-complete: support hiding menu (requested by CamRatliff) [#D2199]
