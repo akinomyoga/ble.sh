@@ -7386,6 +7386,64 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-05-15
+
+  * airline: 複数の theme で初期化時に存在しない face を設定しようとしてエラーが出る (reported by alexalekseyenko) [#D2201]
+    https://github.com/akinomyoga/blesh-contrib/issues/19
+
+    ref #D1589
+
+    今まで気づいていなかったのが不思議だ。持っている複数の theme で試したけれど
+    も、全部は試していなかったという事。
+
+    * _default という face を参照している様だが、これは vim-airline.sh では定義
+      されていない。contrib/theme/*.bash の生成スクリプトを見ると *_default と
+      いう face を辞書に入れている様だが、どうもこれは _default のついていない
+      名前の face の既定値を入れているだけの様だ。これを face を比較する為に同
+      じ辞書に入れているだけだった。
+
+      この比較用のダミーの face は除外するべき。本来は (*) continue ;; で除外す
+      るつもりだったのかもしれないが、その前の (*_*) に結局引っかかるので意味が
+      ないという事だろう。
+
+    * 改めて走らせようと思ったらエラーが出る。rgb.txt が存在しない。これは色名
+      を #rrggbb 値に変換する為のテーブルとして使っている様だ。:help rgb.txt を
+      見ると、色名は $VIMRUNTIME/colors/lists/default.vim に移行した様だ。その
+      ファイルを読み取る様に変更することにした。
+
+      色の詳細な値がまた変わったようだ。16 が 235 などになっている。然し、16 も
+      結局 6x6x6 cube の色であって、terminal 16 colors の一部ではないのでこの変
+      化は問題にはならないだろう。
+
+    * 他に色々ハードコードされていたパスや年などについて、ファイルの先頭で定義
+      できる様にした。
+
+    * done: 生成用スクリプトは移動するべき。使い方も記述する。
+
+      というか使い方について確認する必要がある。特に .vim の法の使い方が分から
+      ない。
+
+      改めてデータを生成した所、biogoo theme で色が特定できなくなっている。vim
+      のバージョンの相性もあるかもしれないので、昔に生成した dump データをやは
+      り使う事にした。
+
+    * done: 最新版に更新する。前後の commit を記録する。
+
+      * vim-airline-themes 97cf3e6 -> a9aa25c
+        以下の themes が更新されている: base16 blood_red (new) cyberpunk (new)
+        jellybeans light onedark selenized supernova
+
+      * vim-airline be5bda1 -> ff0f9a4
+        唯一の theme "dark" も更新されている。
+
+      * landscape dcdd360 変更なし
+
+      ライセンスも更新する。と思ったがライセンスファイルは全く更新されていない
+      様だ。なので更新しない事にする。
+
+      再生成してみたがやはり biogoo は色々と設定が消滅している様だ。新しく追加
+      された項目はそのままにして、既存の項目はそのままにする事にした。
+
 2024-04-28
 
   * keymap/vi (relative-line.impl): fix uninitialized nmove [#D2203]

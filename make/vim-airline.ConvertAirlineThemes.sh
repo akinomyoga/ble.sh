@@ -5,20 +5,57 @@ if [[ ! ${BLE_VERSION-} ]]; then
   return 1 || exit 1
 fi
 
-year=$(date +%Y)
+#_ble_vim_airline_dumpdir=tmp/airline
+_ble_vim_airline_vimruntime=$(builtin printf '%s\n' /usr/share/vim/vim[0-9]* | tail -n 1)
+_ble_vim_airline_dumpdir=out/data/airline
+_ble_vim_airline_themes_repo=~/.vim/plugged/vim-airline-themes
+_ble_vim_airline_themes_year=2021
 
 declare -A name2color=([none]=-1 [lightmagenta]='#ffe0ff')
+
+## @fn ble/lib/vim-airline/convert-theme/load-vim-rgb
+##   This attempts to read $VIMRUNTIME/rgb.txt.
+##
+##   @remarks $VIMRUNTIME/rgb.txt seems to have been deprecated.  ":help
+##   rgb.txt" shows the following descriptions:
+##
+##   > Additionally, colors defined by a default color list can be used.  For
+##   > more info see :colorscheme.  These colors used to be defined in
+##   > $VIMRUNTIME/rgb.txt, now they are in v:colornames which is initialized
+##   > from $VIMRUNTIME/colors/lists/default.vim.
 function ble/lib/vim-airline/convert-theme/load-vim-rgb {
-  local R G B name ret
+  local path_rgb_txt=$_ble_vim_airline_vimruntime/rgb.txt
+  [[ -s $path_rgb_txt ]] || return 1
+  local R G B name ret IFS=$' \t\n'
   while builtin read -r R G B name || [[ $name ]]; do
     name=${name,,}
     name=${name//["$_ble_term_IFS"]}
     [[ $name ]] || continue
     printf -v ret '#%02x%02x%02x' "$R" "$G" "$B"
     name2color[$name]=$ret
-  done < /usr/share/vim/vim82/rgb.txt
+  done < "$path_rgb_txt"
 }
-ble/lib/vim-airline/convert-theme/load-vim-rgb
+
+## @fn ble/lib/vim-airline/convert-theme/load-vim-default-colors
+##   This attempts to read $VIMRUNTIME/colors/lists/default.vim.
+function ble/lib/vim-airline/convert-theme/load-vim-default-colors {
+  local path_default_vim=$_ble_vim_airline_vimruntime/colors/lists/default.vim
+  [[ -s $path_default_vim ]] || return 1
+  local R G B name color IFS=$' \t\n'
+  while builtin read -r color name || [[ $name ]]; do
+    name=${name,,}
+    name=${name//["$_ble_term_IFS"]}
+    [[ $name ]] || continue
+    name2color[$name]=$color
+  done < <(
+    ble/bin/sed -n '
+      s/^.*'\''\([^'\''"]\{1,\}\)'\'': '\''\(#[0-9a-fA-F]\{6\}\)'\''.*$/\2 \1/p
+    ' "$path_default_vim"
+  )
+}
+
+ble/lib/vim-airline/convert-theme/load-vim-rgb ||
+  ble/lib/vim-airline/convert-theme/load-vim-default-colors
 
 function ble/lib/vim-airline/convert-theme/decode-color {
   local cspec=${1,,} ret
@@ -85,13 +122,14 @@ function ble/lib/vim-airline/convert-theme/convert {
 
   local -A fg256=() bg256=() fg24=() bg24=()
 
-  # default faces
+  # These are the dummy faces used to compare the colors with the default
+  # values of the respective faces (without "_default").
   local f
   f=vim_airline_error_default   fg256[$f]=16  bg256[$f]=88  fg24[$f]='#000000' bg24[$f]='#990000'
   f=vim_airline_term_default    fg256[$f]=158 bg256[$f]=234 fg24[$f]='#9cffd3' bg24[$f]='#202020'
   f=vim_airline_warning_default fg256[$f]=16  bg256[$f]=166 fg24[$f]='#000000' bg24[$f]='#df5f00'
 
-  source "tmp/airline/$theme.bash"
+  source "$_ble_vim_airline_dumpdir/$theme.bash"
 
   [[ -d contrib/airline ]] || mkdir -p contrib/airline
   exec 5> "contrib/airline/$theme.bash"
@@ -109,9 +147,9 @@ function ble/lib/vim-airline/convert-theme/convert {
     else
       ble/util/print "# From github:vim-airline/vim-airline-themes/autoload/airline/themes/$theme.vim"
       ble/util/print "#   The MIT License (MIT)"
-      ble/util/print "#   Copyright (C) 2013-$year Bailey Ling & Contributors."
+      ble/util/print "#   Copyright (C) 2013-$_ble_vim_airline_themes_year Bailey Ling & Contributors."
       ble/util/print "#"
-      ble/bin/sed '/^"/!Q;s//#/' ~/.vim/plugged/vim-airline-themes/autoload/airline/themes/"$theme".vim
+      ble/bin/sed '/^"/!Q;s//#/' "$_ble_vim_airline_themes_repo"/autoload/airline/themes/"$theme".vim
     fi
     ble/util/print
     ble/util/print 'ble-import lib/vim-airline'
@@ -132,6 +170,7 @@ function ble/lib/vim-airline/convert-theme/convert {
     (*_normal)
       face2=${face%_normal}
       ble/lib/vim-airline/convert-theme/eq "$face" "${face%_*}_default" && continue ;;
+    (*_default) continue ;; # skip dummy faces
     (*_*) ble/lib/vim-airline/convert-theme/eq "$face" "${face%_*}_normal" && continue ;;
     (*) continue ;;
     esac
@@ -145,12 +184,11 @@ function ble/lib/vim-airline/convert-theme/convert {
 
 function ble/lib/vim-airline/convert-theme/convert-all {
   local file theme
-  for file in tmp/airline/*.bash; do
+  for file in "$_ble_vim_airline_dumpdir"/*.bash; do
     theme=${file##*/}
     theme=${theme%.bash}
     #ble/util/print "Converting $theme..."
     ble/lib/vim-airline/convert-theme/convert "$theme"
   done
 }
-#ble/lib/vim-airline/convert-theme/convert-all
-ble/lib/vim-airline/convert-theme/convert dark
+ble/lib/vim-airline/convert-theme/convert-all

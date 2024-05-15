@@ -14,7 +14,7 @@ function DumpAirlineTheme(name)
       call add(lines, 'face ' . mode . " " . face . " '" . fg . "' '" . bg . "' '" . cfg . "' '" . cbg . "'")
     endfor
   endfor
-  call writefile(lines, "tmp/airline/" . a:name . ".bash")
+  call writefile(lines, "out/data/airline/" . a:name . ".bash")
 endfunction
 
 function DumpAirlineThemeAll()

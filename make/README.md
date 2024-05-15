@@ -34,3 +34,27 @@ src/canvas.GraphemeClusterBreak.sh
 lib/test-canvas.GraphemeClusterTest.sh
 
 ```
+
+## Update airline themes in the contrib repository
+
+First install `vim-airline` and `vim-airline-themes` using `vim-plug`. Then
+create a directory at `out/data/airline`:
+
+```bash
+mkdir -p out/data/airline
+```
+
+
+Open Vim and run the following commands:
+
+```vim
+:source make/vim-airline.DumpAirlineThemes.vim
+:call DumpAirlineThemeAll()
+```
+
+This can take time. Finally, you can run the following command in a ble.sh
+session.
+
+```bash
+(source make/vim-airline.ConvertAirlineThemes.sh)
+```
