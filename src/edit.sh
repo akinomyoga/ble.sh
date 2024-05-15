@@ -1935,6 +1935,7 @@ function ble/prompt/update {
   # clear the list for cyclic dependency detection
   local ble_prompt_unit_processing=1
   "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}"
+  local prompt_unit=
 
   ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
 

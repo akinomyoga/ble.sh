@@ -7426,6 +7426,8 @@ bash_tips
     ble/prompt/update で明示的に空に初期化する事にする。これで PS1 を処理してい
     る間に ble/prompt/update が入れ子で呼び出されたとしても問題ない筈。
 
+    2024-05-15 pending の修正を追加する。
+
 2024-04-24
 
   * menu-complete: support hiding menu (requested by CamRatliff) [#D2199]
