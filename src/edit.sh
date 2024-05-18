@@ -1934,7 +1934,7 @@ function ble/prompt/update {
   local "${_ble_prompt_cache_vars[@]/%/=}" # WA #D1570 checked
   # clear the list for cyclic dependency detection
   local ble_prompt_unit_processing=1
-  "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}"
+  "${_ble_util_set_declare[@]//NAME/ble_prompt_unit_mark}" # disable=#D1570
   local prompt_unit=
 
   ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
@@ -2672,15 +2672,36 @@ function ble-edit/content/append-kill-ring {
   fi
 }
 
-## @fn ble-edit/content/push-kill-ring string kill_type opts
+## @fn ble-edit/content/push-kill-ring string kill_type [direction]
+##   @param[in] string kill_type
+##
+##   @param[in,opt] direction
+##     If STRING is a part of the current command-line string, the
+##     directionality can be specified to determine whether STRING should be
+##     appended or prepended to the kill ring.  The values "forward" or
+##     "backward" mean that STRING is located in the forward/backward
+##     directions from the current cursor position.  The value has the form
+##     <int>:<int>, it is interpreted as the range of STRING in the current
+##     command line.
+##
 function ble-edit/content/push-kill-ring {
   if ((${#_ble_edit_kill_ring[@]})) && [[ ${LASTWIDGET#ble/widget/} == kill-* || ${LASTWIDGET#ble/widget/} == copy-* ]]; then
+    local proc=
     local name; ble/string#split-words name "${WIDGET#ble/widget/}"
-    if [[ $name == kill-backward-* || $name == copy-backward-* ]]; then
-      ble-edit/content/prepend-kill-ring "$1" "$2"
-      return "$?"
-    elif [[ $name != kill-region* && $name != copy-region* ]]; then
-      ble-edit/content/append-kill-ring "$1" "$2"
+    if [[ $3 == backward || $name == kill-backward-* || $name == copy-backward-* ]]; then
+      proc=ble-edit/content/prepend-kill-ring
+    elif [[ $3 == forward || $name == kill-forward-* || $name == copy-forward-* ]]; then
+      proc=ble-edit/content/append-kill-ring
+    elif [[ $name == kill-region* || $name == copy-region* ]]; then
+      proc=
+    elif [[ $3 == [0-9]*:[0-9]* ]] && ((${3##*:}<=_ble_edit_ind)); then
+      proc=ble-edit/content/prepend-kill-ring
+    else
+      proc=ble-edit/content/append-kill-ring
+    fi
+
+    if [[ $proc ]]; then
+      "$proc" "$1" "$2"
       return "$?"
     fi
   fi
@@ -4299,14 +4320,14 @@ function ble/widget/set-mark {
 function ble/widget/kill-forward-text {
   ble-edit/content/clear-arg
   ((_ble_edit_ind>=${#_ble_edit_str})) && return 0
-  ble-edit/content/push-kill-ring "${_ble_edit_str:_ble_edit_ind}"
+  ble-edit/content/push-kill-ring "${_ble_edit_str:_ble_edit_ind}" '' forward
   ble-edit/content/replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {
   ble-edit/content/clear-arg
   ((_ble_edit_ind==0)) && return 0
-  ble-edit/content/push-kill-ring "${_ble_edit_str::_ble_edit_ind}"
+  ble-edit/content/push-kill-ring "${_ble_edit_str::_ble_edit_ind}" '' backward
   ble-edit/content/replace 0 "$_ble_edit_ind" ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
@@ -4419,7 +4440,7 @@ function ble/widget/.kill-range {
   ble/widget/.process-range-argument "${@:1:2}" || return 1
 
   # copy
-  ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4"
+  ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4" "$p0:$p1"
 
   # delete
   if ((len)); then
@@ -4439,7 +4460,7 @@ function ble/widget/.copy-range {
   ble/widget/.process-range-argument "${@:1:2}" || return 1
 
   # copy
-  ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4"
+  ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4" "$p0:$p1"
 }
 ## @fn ble/widget/.replace-range P0 P1 string
 function ble/widget/.replace-range {

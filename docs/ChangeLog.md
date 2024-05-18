@@ -22,6 +22,7 @@
 - complete: add widgets `auto_complete/insert-?word` (requested by Tommimon) `#D2127` 0c4b6772
 - edit: add widgets `execute-named-command` and `history-goto` `#D2144` aa92b42a
 - keymap/vi_nmap: support `shell-expand-line` `#D2145` aa92b42a
+  - decode: fix quoting of `WIDGET` and `LASTWIDGET` (reported by 3ximus) `#D2205` xxxxxxxx
 - main: support `bash ble.sh --install` `#D2169` 986d26a3 3801a87e
 - util(stty): support `bleopt term_stty_restore` (requested by TheFantasticWarrior) `#D2170` e64b02b7
   - util: update workaround of Bash 5.2 `checkwinsize` for `term_stty_restore` (reported by TheFantasticWarrior) `#D2184` ef8272a4
@@ -89,9 +90,9 @@
 - util(vbell): fix previous vbell not fully cleared `#D2181` 6c740a94
 - decode(rlfunc): fix widget name `vi-command/edit-and-execute-{line => command}` (fixed by alexandregv) 6aa8ba67
 - util(ble/util/idle.push): fix uninitialized `ble/util/idle.clock` (reported by Anyborr) `#D2189` 83ceb124
-- prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) `#D2200` 61968497 xxxxxxxx
-- util.hook: fix user DEBUG trap not executed at the top-level context `#D2202` xxxxxxxx
-- keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` xxxxxxxx
+- prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) `#D2200` 61968497 00cae745b
+- util.hook: fix user DEBUG trap not executed at the top-level context `#D2202` 828fcfc1
+- keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` 4268650d
 
 ## Compatibility
 
@@ -150,8 +151,8 @@
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
 - contrib/bash-preexec: support the latest version of `bash-preexec` (reported by mcarans) `#D2128` 50af4d9c
 - contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` 64cdcd01
-- contrib/airline: remove dummy faces (reported by alexalekseyenko) `#D2201` xxxxxxxx
-- contrib/airline: update themes `#D2201` xxxxxxxx
+- contrib/airline: remove dummy faces (reported by alexalekseyenko) `#D2204` 59787ee5
+- contrib/airline: update themes `#D2204` 59787ee5
 
 ## Documentation
 
@@ -199,7 +200,7 @@
 - edit: support `bleopt internal_exec_int_trace` (motivated by tessus) `#D2171` cebea478 3801a87e
 - global: avoid using the builtin `:` `#D2192` f2fd2955
 - global: pass `--` to `type` and `declare` before arbitrary arguments `#D2194` 5c0efcf6
-- global: fix spelling mistakes `#D2201` xxxxxxxx
+- global: fix spelling mistakes `#D2201` 86815f61
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
