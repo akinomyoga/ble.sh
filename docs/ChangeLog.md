@@ -52,6 +52,7 @@
 - decode: specify the default keymap for the keymap load hooks `#D2141` 4a34ccf2
 - progcomp(compopt): refactor the completion option `ble/{no- => }default` `#D2155` 51f9f4f6
 - main: export `BLE_SESSION_ID` `#D2188` 5871fea2
+- menu-complete: adjust cursor position with `insert-selection` disabled (reported by gvlassis) `#D2206` xxxxxxxx
 
 ## Fixes
 

@@ -7033,8 +7033,6 @@ function ble/complete/menu-complete.class/onselect {
   if [[ :$bleopt_complete_menu_complete_opts: == *:insert-selection:* ]]; then
     ble-edit/content/replace-limited "$_ble_complete_menu0_beg" "$_ble_edit_ind" "$insert"
     ((_ble_edit_ind=_ble_complete_menu0_beg+${#insert}))
-  else
-    ((_ble_edit_ind=_ble_complete_menu0_beg))
   fi
 }
 

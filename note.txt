@@ -7388,6 +7388,30 @@ bash_tips
 
 2024-05-18
 
+  * complete_menu_complete_opts で insert-selection を外した時のカーソル位置 (reported by gvlassis) [#D2206]
+    https://github.com/akinomyoga/ble.sh/issues/445
+
+    Ref #D1911 https://github.com/akinomyoga/ble.sh/discussions/252
+
+    単語の最初に位置しているがこれで良いのか? 処理は
+    ble/complete/menu-complete.class/onselect で明示的に行われている。一時挿入
+    時のカーソルの位置指定に関しては一番はじめの実装からそうなっている。これは
+    元々 GitHub#252 の要望で実装された物で、要望を出した人は it perfectly works
+    と言っている。
+
+    https://github.com/akinomyoga/ble.sh/discussions/252#discussioncomment-4347042
+
+    或いはテストした時には空の単語でしか試していなくて OK と言っただけなのかも
+    しれない。後で変な振る舞いに気づいたとしてももう ble.sh を使っていなかった
+    か、或いは perfectly と言った手前追加で要望を出すのを諦めたのかもしれない。
+
+    修正としては適切な位置にカーソルを設定するか、或いは全く位置を移動しないと
+    いう事。そもそも一次挿入する時の挿入範囲を決定するのに _ble_edit_ind を参照
+    しているので _ble_edit_ind は元より補完終了点を指している様に見える。むしろ
+    補完開始時の補完終了点を参照すると、内容が既に変わっている時に変な事が起こ
+    る可能性がある。と思うと、そのまま _ble_edit_ind を保持するのが良い気がする。
+    単に _ble_edit_ind の更新をしないようにすれば良い。
+
   * C-w で切り取られた単語が累積されなくなっている (reported by 3ximus) [#D2205]
     https://github.com/akinomyoga/ble.sh/issues/446
 
