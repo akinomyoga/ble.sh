@@ -53,6 +53,7 @@
 - progcomp(compopt): refactor the completion option `ble/{no- => }default` `#D2155` 51f9f4f6
 - main: export `BLE_SESSION_ID` `#D2188` 5871fea2
 - menu-complete: adjust cursor position with `insert-selection` disabled (reported by gvlassis) `#D2206` xxxxxxxx
+- decode (`ble-bind`): do not convert registered C0 (motivated by gvlassis) `#D2210` xxxxxxxx
 
 ## Fixes
 

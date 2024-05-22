@@ -1253,7 +1253,9 @@ function ble-decode-char {
         ((ble_decode_char_rest+=${#rest[@]}))
         chars=("${rest[@]}" "${chars[@]:ichar}") ichar=0
       else
-        ble/decode/send-unmodified-key "$char" "_$char"
+        local ret
+        ble/decode/process-char/.convert-c0 "$char"
+        ble/decode/send-unmodified-key "$ret" "_$char"
       fi
     elif [[ $ent == *_ ]]; then
       # /\d*_/ (_ は続き (1つ以上の有効なシーケンス) がある事を示す)
@@ -1263,7 +1265,9 @@ function ble-decode-char {
         _ble_decode_char2_reach_seq=$_ble_decode_char2_seq
       elif [[ ! $_ble_decode_char2_reach_key ]]; then
         # 1文字目
-        _ble_decode_char2_reach_key=$char
+        local ret
+        ble/decode/process-char/.convert-c0 "$char"
+        _ble_decode_char2_reach_key=$ret
         _ble_decode_char2_reach_seq=$_ble_decode_char2_seq
       fi
     else
@@ -1342,6 +1346,20 @@ function ble-decode-char/.getent {
   # ble/util/assert '[[ $ent =~ ^[0-9]*_?$ ]]'
 }
 
+## @fn ble/decode/process-char/.convert-c0 char
+##   C0制御文字および [DEL] を [C-文字] に変換します。char = 0..31,127 はそれぞ
+##   れ C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ C-? に変換されます。
+##   @param[in] char
+##   @var[out] ret
+function ble/decode/process-char/.convert-c0 {
+  ret=$1
+  if ((0<=ret&&ret<32)); then
+    ((ret|=(ret==0||ret>26?64:96)|_ble_decode_Ctrl))
+  elif ((ret==127)); then # C-?
+    ((ret=63|_ble_decode_Ctrl))
+  fi
+}
+
 ## @fn ble/decode/send-unmodified-key/.add-modifier mod
 ##   @param[in] mod
 ##     The modifier flag
@@ -1368,7 +1386,6 @@ function ble/decode/send-unmodified-key/.add-modifier {
 
 ## @fn ble/decode/send-unmodified-key key seq
 ##   指定されたキーを修飾して ble-decode-key に渡します。
-##   key = 0..31,127 は C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ C-? に変換されます。
 ##   ESC は次に来る文字を meta 修飾します。
 ##   _ble_decode_IsolatedESC は meta にならずに ESC として渡されます。
 ##   @param[in] key
@@ -1380,20 +1397,15 @@ function ble/decode/send-unmodified-key {
   local key=$1
   ((key==_ble_decode_KCODE_IGNORE)) && return 0
 
-  # Note: @ESC は現在の実装では seq の先頭にしか来ない筈。
   local seq
   ble/string#split-words seq "${2//_/ }"
+  local meta=; ((${#seq[@]}==1)) && meta=${seq[0]}
+  # Note: @ESC は現在の実装では seq の先頭にしか来ない筈。
   ((seq[0]==_ble_decode_IsolatedESC)) && seq[0]=27
 
-  if ((0<=key&&key<32)); then
-    ((key|=(key==0||key>26?64:96)|_ble_decode_Ctrl))
-  elif ((key==127)); then # C-?
-    ((key=63|_ble_decode_Ctrl))
-  fi
-
-  if (($1==27)); then
+  if ((meta==27)); then
     ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Meta" && return 0
-  elif (($1==_ble_decode_IsolatedESC)); then
+  elif ((meta==_ble_decode_IsolatedESC)); then
     ((key=(_ble_decode_Ctrl|91)))
     if ! ble/decode/uses-isolated-esc; then
       ble/decode/send-unmodified-key/.add-modifier "$_ble_decode_Meta" && return 0
