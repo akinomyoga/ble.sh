@@ -54,6 +54,7 @@
 - main: export `BLE_SESSION_ID` `#D2188` 5871fea2
 - menu-complete: adjust cursor position with `insert-selection` disabled (reported by gvlassis) `#D2206` xxxxxxxx
 - decode (`ble-bind`): do not convert registered C0 (motivated by gvlassis) `#D2210` xxxxxxxx
+- decode (`ble-bind`): support combined option arguments of the forms `--long=OPTARG` and `-kOPTARG` `#D2211` xxxxxxxx
 
 ## Fixes
 

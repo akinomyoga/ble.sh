@@ -7388,6 +7388,11 @@ bash_tips
 
 2024-05-22
 
+  * decode(ble-bind): combined options 対応 [#D2211]
+
+    #D2210 の対応中に気になったが #D2210 の中に含めるには大きいので分ける事にし
+    た。実際 #D2210 の変更とは overlap が全くない。簡単にテストした。
+
   * decode (ble-bind): ble-bind -k TAB TAB で TAB をそのまま透過する様にできたら良い気がする (motivated by gvlassis) [#D2210]
     https://github.com/akinomyoga/ble.sh/issues/445
 

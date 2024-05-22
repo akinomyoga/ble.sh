@@ -3178,16 +3178,35 @@ CURSOR_CODE
 EOF
 }
 
-function ble-bind/check-argument {
-  if (($3<$2)); then
+## @fn ble-bind/get-optarg label count [has_optarg optarg | optarg]
+##   @param[in] has_optarg optarg
+##     When the third argument is non-empty, ${4-$3} is used as the first
+##     optional argument.
+##   @arr[out] optarg
+function ble-bind/get-optarg {
+  optarg=()
+  local label=$1 req=$2
+  ((req>=1)) || return 0
+
+  if [[ $3 ]]; then
+    ((req--))
+    ble/array#push optarg "${4-$3}"
+  fi
+  ((req>=1)) || return 0
+
+  if ((${#args[@]}-iarg<req)); then
     flags=E$flags
-    if (($2==1)); then
-      ble/util/print "ble-bind: the option \`$1' requires an argument." >&2
+    if ((req==1)); then
+      ble/util/print "ble-bind: the option \`$label' requires an argument." >&2
     else
-      ble/util/print "ble-bind: the option \`$1' requires $2 arguments." >&2
+      ble/util/print "ble-bind: the option \`$label' requires $req arguments." >&2
     fi
     return 2
   fi
+
+  ble/array#push optarg "${args[@]:iarg:req}"
+  ((iarg+=req))
+  return 0
 }
 
 function ble-bind/option:csi {
@@ -3317,31 +3336,43 @@ function ble-bind {
   local -a keymaps; keymaps=()
   ble/decode/initialize
 
-  local arg c
-  while (($#)); do
-    local arg=$1; shift
+  local -a args
+  args=("$@")
+  local iarg=0 arg c optarg
+  while ((iarg<$#)); do
+    local arg=${args[iarg++]}
     if [[ $arg == --?* ]]; then
-      case ${arg:2} in
-      (color|color=always)
-        flags=c${flags//[cn]} ;;
-      (color=never)
-        flags=n${flags//[cn]} ;;
-      (color=auto)
-        flags=${flags//[cn]} ;;
+      local name=${arg:2} has_optarg= optarg=
+      if [[ $name == *=* ]]; then
+        has_optarg=set
+        optarg=${name#*=}
+        name=${name%%=*}
+      fi
+
+      case $name in
+      (color)
+        if [[ ! $has_optarg || $optarg == always ]]; then
+          flags=c${flags//[cn]}
+        elif [[ $optarg == never ]]; then
+          flags=n${flags//[cn]}
+        elif [[ $optarg == auto ]]; then
+          flags=${flags//[cn]}
+        else
+          flags=E$flags
+          ble/util/print "ble-bind: unrecognized color '--color=$optarg'." >&2
+        fi ;;
       (help)
         ble-bind/option:help
         flags=D$flags ;;
       (csi)
         flags=D$flags
-        ble-bind/check-argument --csi 2 "$#" || break
-        ble-bind/option:csi "$1" "$2"
-        shift 2 ;;
+        ble-bind/get-optarg --csi 2 "$has_optarg" "$optarg" || break
+        ble-bind/option:csi "${optarg[0]}" "${optarg[1]}" ;;
       (cursor)
         flags=D$flags
-        ble-bind/check-argument --cursor 1 "$#" || break
+        ble-bind/get-optarg --cursor 1 "$has_optarg" "$optarg" || break
         ble-bind/.initialize-kmap &&
-          ble/decode/keymap#set-cursor "$kmap" "$1"
-        shift 1 ;;
+          ble/decode/keymap#set-cursor "$kmap" "${optarg[0]}" ;;
       (list-widgets|list-functions)
         flags=D$flags
         ble-bind/option:list-widgets ;;
@@ -3362,31 +3393,26 @@ function ble-bind {
         case $c in
         (k)
           flags=D$flags
-          if (($#<2)); then
-            ble/util/print "ble-bind: the option \`-k' requires two arguments." >&2
-            flags=E$flags
-            break
-          fi
+          ble-bind/get-optarg -k 2 "$arg" || break 2
+          arg=
 
-          ble-decode-kbd "$1"; local cseq=$ret
-          if [[ $2 && $2 != - ]]; then
-            ble-decode-kbd "$2"; local kc=$ret
+          ble-decode-kbd "${optarg[0]}"; local cseq=$ret
+          if [[ ${optarg[1]} && ${optarg[1]} != - ]]; then
+            ble-decode-kbd "${optarg[1]}"; local kc=$ret
             ble-decode-char/bind "$cseq" "$kc"
           else
             ble-decode-char/unbind "$cseq"
-          fi
-          shift 2 ;;
+          fi ;;
         (m)
-          ble-bind/check-argument -m 1 "$#" || break
-          if ! ble/decode/is-keymap "$1"; then
-            ble/util/print "ble-bind: the keymap '$1' is unknown." >&2
+          ble-bind/get-optarg -m 1 "$arg" || break 2
+          arg=
+          if ! ble/decode/is-keymap "$optarg"; then
+            ble/util/print "ble-bind: the keymap '$optarg' is unknown." >&2
             flags=E$flags
-            shift
             continue
           fi
-          kmap=$1
-          ble/array#push keymaps "$1"
-          shift ;;
+          kmap=$optarg
+          ble/array#push keymaps "$optarg" ;;
         (D)
           flags=D$flags
           ble-bind/option:dump "${keymaps[@]}" ;;
@@ -3398,11 +3424,12 @@ function ble-bind {
 
           # 旧形式の指定 -xf や -cf に対応する処理
           [[ $c != f && $arg == f* ]] && arg=${arg:1}
-          ble-bind/check-argument "-$c" 2 "$#" || break
+          ble-bind/get-optarg "-$c" 2 "$arg" || break 2
+          arg=
 
-          ble-decode-kbd "$1"; local kbd=$ret
-          if [[ $2 && $2 != - ]]; then
-            local command=$2
+          ble-decode-kbd "${optarg[0]}"; local kbd=$ret
+          if [[ ${optarg[1]} && ${optarg[1]} != - ]]; then
+            local command=${optarg[1]}
 
             # コマンドの種類
             case $c in
@@ -3421,15 +3448,14 @@ function ble-bind {
           else
             ble-bind/.initialize-kmap &&
               ble-decode-key/unbind "$kmap" "$kbd"
-          fi
-          shift 2 ;;
+          fi ;;
         (T)
           flags=D$flags
-          ble-decode-kbd "$1"; local kbd=$ret
-          ble-bind/check-argument -T 2 "$#" || break
+          ble-bind/get-optarg -T 2 "$arg" || break 2
+          arg=
+          ble-decode-kbd "${optarg[0]}"; local kbd=$ret
           ble-bind/.initialize-kmap &&
-            ble-decode-key/set-timeout "$kmap" "$kbd" "$2"
-          shift 2 ;;
+            ble-decode-key/set-timeout "$kmap" "$kbd" "${optarg[1]}" ;;
         (L)
           flags=D$flags
           ble-bind/option:list-widgets ;;
