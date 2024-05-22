@@ -8992,12 +8992,15 @@ function ble/widget/auto_complete/self-insert {
   fi
 }
 
-function ble/widget/auto_complete/insert-on-end {
-  if ((_ble_edit_mark==${#_ble_edit_str})); then
-    ble/widget/auto_complete/insert
-  else
+function ble/widget/auto_complete/@end {
+  if ((_ble_edit_mark!=${#_ble_edit_str})); then
     ble/widget/auto_complete/cancel-default
+  else
+    ble/widget/auto_complete/"$@"
   fi
+}
+function ble/widget/auto_complete/insert-on-end {
+  ble/widget/auto_complete/@end insert
 }
 
 function ble/widget/auto_complete/.insert-prefix {
@@ -9105,13 +9108,13 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f 'C-M-g'     auto_complete/cancel
   ble-bind -f S-RET       auto_complete/insert
   ble-bind -f S-C-m       auto_complete/insert
-  ble-bind -f C-f         auto_complete/insert-on-end
-  ble-bind -f right       auto_complete/insert-on-end
-  ble-bind -f C-e         auto_complete/insert-on-end
-  ble-bind -f end         auto_complete/insert-on-end
-  ble-bind -f M-f         auto_complete/insert-cword
-  ble-bind -f C-right     auto_complete/insert-cword
-  ble-bind -f M-right     auto_complete/insert-word
+  ble-bind -f C-f         'auto_complete/@end insert'
+  ble-bind -f right       'auto_complete/@end insert'
+  ble-bind -f C-e         'auto_complete/@end insert'
+  ble-bind -f end         'auto_complete/@end insert'
+  ble-bind -f M-f         'auto_complete/@end insert-cword'
+  ble-bind -f C-right     'auto_complete/@end insert-cword'
+  ble-bind -f M-right     'auto_complete/@end insert-word'
   ble-bind -f C-j         auto_complete/accept-line
   ble-bind -f C-RET       auto_complete/accept-line
   ble-bind -f auto_complete_enter auto_complete/notify-enter
