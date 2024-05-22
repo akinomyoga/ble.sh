@@ -94,6 +94,7 @@
 - prompt: clear list for the cylic dependency detection (reported by micimize, neilbags) `#D2200` 61968497 00cae745b
 - util.hook: fix user DEBUG trap not executed at the top-level context `#D2202` 828fcfc1
 - keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` 4268650d
+- edit: render the final prompt before updating command history (motivated by pallaswept) `#D2207` xxxxxxxx
 
 ## Compatibility
 

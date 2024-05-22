@@ -34,6 +34,8 @@
 /memo/D1881/pr227-sleep-delay.pdf
 /memo/D2014
 /memo/D2165/?.txt
+/memo/D2207.*.txt
+/memo/D2207.*.bk
 
 # make
 /make/*.exe

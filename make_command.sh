@@ -463,7 +463,7 @@ function sub:scan/mistake-_ble_bash {
 
 function sub:scan/command-layout {
   echo "--- $FUNCNAME ---"
-  grc '/(enter-command-layout|\.insert-newline|\.newline)([[:space:]]|$)' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
+  grc '(/enter-command-layout|ble/edit/\.relocate-textarea|/\.newline)([[:space:]]|$)' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z^[[:space:]]*#Zd
       \Z^[[:space:]]*function [^[:space:]]* \{$Zd

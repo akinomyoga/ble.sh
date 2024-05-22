@@ -3400,6 +3400,22 @@ function ble/textarea#render/.show-rprompt {
   _ble_prompt_rps1_shown=1
 }
 
+## @fn ble/textarea#render/.trim-prompt
+##   @var[ref] DRAW_BUFF
+function ble/textarea#render/.trim-prompt {
+  local ps1f=$bleopt_prompt_ps1_final
+  local ps1t=$bleopt_prompt_ps1_transient
+  if [[ ! $ps1f && :$ps1t: == *:trim:* ]]; then
+    [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_prompt_trim_opwd ]] && return 0
+    local y=${_ble_prompt_ps1_data[4]}
+    if ((y)); then
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+      ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" "$((-y))" shift
+      ((_ble_textarea_gendy-=y))
+    fi
+  fi
+}
+
 ## @fn ble/textarea#focus
 ##   プロンプト・編集文字列の現在位置に端末のカーソルを移動します。
 function ble/textarea#focus {
@@ -3484,6 +3500,10 @@ function ble/textarea#render {
   ble/urange#clear --prefix=_ble_textmap_
 
   # 着色の更新
+  if [[ :$opts: == *:leave:* ]]; then
+    local _ble_complete_menu_active= # suppress layer:menu_filter
+    local _ble_edit_overwrite_mode= # suppress layer:region
+  fi
   local DMIN=$_ble_edit_dirty_draw_beg
   ble-edit/content/update-syntax
   ble/textarea#update-text-buffer # [in] text index [ref] lc lg;
@@ -3610,6 +3630,8 @@ function ble/textarea#render {
   # 3 移動
   local gcx=$cx gcy=$((cy-_ble_textarea_scroll))
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gcx" "$gcy"
+
+  [[ :$opts: == *:leave:* ]] && ble/textarea#render/.trim-prompt
   ble/canvas/bflush.draw
 
   # 4 後で使う情報の記録
@@ -7343,48 +7365,35 @@ function ble-edit/exec:gexec/restore-state {
 : "${_ble_edit_lineno:=0}"
 _ble_prompt_trim_opwd=
 
-## @fn ble/widget/.insert-newline/trim-prompt
-##   @var[ref] DRAW_BUFF
-function ble/widget/.insert-newline/trim-prompt {
-  local ps1f=$bleopt_prompt_ps1_final
-  local ps1t=$bleopt_prompt_ps1_transient
-  if [[ ! $ps1f && :$ps1t: == *:trim:* ]]; then
-    [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_prompt_trim_opwd ]] && return 0
-    local y=${_ble_prompt_ps1_data[4]}
-    if ((y)); then
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
-      ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" "$((-y))" shift
-      ((_ble_textarea_gendy-=y))
-    fi
-  fi
-}
-## @fn ble/widget/.insert-newline [opts]
+## @fn ble/edit/.relocate-textarea [opts]
+## @fn ble/edit/.allocate-textarea [opts]
+##   textarea 描画用の新しいパネル領域に移動します。relocate-textarea はこれま
+##   での textarea の最終描画を行ってから新しい領域に移動します。
+##   insert-textarea はこれまでの領域の更新を行いません。
+##
 ##   @param[in,opt] opts
 ##
-##   @remarks keep-info が指定されていない場合は
-##   ble/edit/enter-command-layout が一段階呼び出されます。keep-info
-##   が指定されている場合は ble/edit/enter-command-layout の階層は変更
-##   しません。
-function ble/widget/.insert-newline {
+##   @remarks keep-info が指定されていない場合はble/edit/enter-command-layout
+##   が一段階呼び出されます。keep-infoが指定されている場合は
+##   ble/edit/enter-command-layout の階層は変更しません。
+##
+function ble/edit/.relocate-textarea {
+  ble/textarea#render leave
+  ble/edit/.allocate-textarea "$1"
+}
+function ble/edit/.allocate-textarea {
   local opts=$1
   local -a DRAW_BUFF=()
   if [[ :$opts: == *:keep-info:* && $_ble_textarea_panel == 0 ]] &&
        ! ble/util/joblist.has-events
   then
-    # 最終状態の描画
-    ble/textarea#render leave
-    ble/widget/.insert-newline/trim-prompt
-
     # info を表示したまま行を挿入し、今までの panel 0 の内容を範囲外に破棄
     local textarea_height=${_ble_canvas_panel_height[_ble_textarea_panel]}
     ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" 1
     ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$textarea_height" sgr0
     ble/canvas/bflush.draw
   else
-    # 最終状態の描画
-    ble/edit/enter-command-layout # #D1800 checked=.insert-newline
-    ble/textarea#render leave
-    ble/widget/.insert-newline/trim-prompt
+    ble/edit/enter-command-layout # #D1800 checked=ble/edit/.relocate-textarea
 
     # 新しい描画領域
     ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy" sgr0
@@ -7460,7 +7469,7 @@ function ble/widget/.newline {
   fi
 
   # 現在のプロンプトの最終描画 & 次の行へ移動
-  _ble_complete_menu_active= _ble_edit_overwrite_mode= ble/widget/.insert-newline "$opts" # #D1800 checked=.newline
+  ble/edit/.allocate-textarea "$opts" # #D1800 checked=.newline
 
   # update LINENO
   local ret; ble/string#count-char "$_ble_edit_str" $'\n'
@@ -7473,7 +7482,8 @@ function ble/widget/.newline {
 function ble/widget/discard-line {
   ble-edit/content/clear-arg
   [[ $bleopt_history_share ]] && ble/builtin/history/option:n
-  _ble_edit_line_disabled=1 ble/widget/.newline keep-info
+  _ble_edit_line_disabled=1 ble/textarea#render leave
+  ble/widget/.newline keep-info
   ble/textarea#render
 }
 
@@ -7561,7 +7571,7 @@ function ble/widget/default/accept-line/.prepare-verify {
   local new_str=$1 new_ind=$2
   ble-edit/content/reset-and-check-dirty "$old_str"
   _ble_edit_ind=$old_ind
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
+  _ble_edit_line_disabled=1 ble/edit/.relocate-textarea keep-info
   ble-edit/content/reset-and-check-dirty "$new_str"
   _ble_edit_ind=$new_ind
   _ble_edit_mark=0
@@ -7585,6 +7595,7 @@ function ble/widget/default/accept-line {
   if [[ ! ${command//["$_ble_term_IFS"]} ]]; then
     [[ $bleopt_history_share ]] &&
       ble/builtin/history/option:n
+    ble/textarea#render leave
     ble/widget/.newline keep-info
     ble/prompt/print-ruler.buff '' keep-info
     ble/textarea#render
@@ -7666,8 +7677,15 @@ function ble/widget/default/accept-line {
     fi
   fi
 
+  # Note (#D220x): we need to render the textarea before
+  # "ble-edit/exec/register" and "ble/history/add" because they increment \#
+  # and \!, respectively, in the prompt.  However, we want to process
+  # "ble/widget/.newline" after them because we want to keep the text content
+  # (_ble_edit_str) so that histdb hooking into ADDHISTORY in ble/history/add
+  # can reference the text content.
+  ble/textarea#render leave
+
   # 実行を登録
-  local old_cmd=$_ble_edit_CMD
   ble-edit/exec/register "$command"
 
   # 編集文字列を履歴に追加
@@ -7675,7 +7693,7 @@ function ble/widget/default/accept-line {
 
   local show_expanded
   [[ $command != "$_ble_edit_str" ]] && show_expanded=1
-  _ble_edit_CMD=$old_cmd ble/widget/.newline # #D1800 register
+  ble/widget/.newline # #D1800 register
   if [[ $show_expanded ]]; then
     local ret
     ble/edit/marker#instantiate 'expand' non-empty
@@ -7765,8 +7783,10 @@ function ble/widget/edit-and-execute-command.edit {
     fallback=nano
   fi
 
-  [[ $opts == *:no-newline:* ]] ||
-    _ble_edit_line_disabled=1 ble/widget/.newline # #D1800 (呼び出し元で exec/register)
+  if [[ $opts != *:no-newline:* ]]; then
+    _ble_edit_line_disabled=1 ble/textarea#render leave
+    ble/widget/.newline # #D1800 (呼び出し元で exec/register)
+  fi
 
   ble/term/leave
   ${bleopt_editor:-${VISUAL:-${EDITOR:-$fallback}}} "$file"; local ext=$?
@@ -7796,8 +7816,8 @@ function ble/widget/edit-and-execute-command.impl {
   # Note: accept-line を参考にした
   ble/edit/marker#instantiate 'fc' non-empty
   ble/util/buffer.print "$ret $command"
-  ble/history/add "$command"
   ble-edit/exec/register "$command"
+  ble/history/add "$command"
 }
 function ble/widget/edit-and-execute-command {
   ble-edit/content/clear-arg
@@ -10264,9 +10284,9 @@ function ble/builtin/read/.loop {
     ble/canvas/bflush.draw
   else
     if ((_ble_edit_read_accept==1)); then
-      ble/widget/.insert-newline # #D1800 (既に外部状態なのでOK)
+      ble/edit/.relocate-textarea # #D1800 (既に外部状態なのでOK)
     else
-      _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 (既に外部状態なのでOK)
+      _ble_edit_line_disabled=1 ble/edit/.relocate-textarea # #D1800 (既に外部状態なのでOK)
     fi
   fi
 
@@ -11049,10 +11069,10 @@ function ble-decode/EPILOGUE {
 
 function ble/widget/.internal-print-command {
   local _ble_local_command=$1 _ble_command_opts=$2
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
+  _ble_edit_line_disabled=1 ble/edit/.relocate-textarea # #D1800 pair=leave-command-layout
   [[ :$_ble_command_opts: != *:pre-flush:* ]] || ble/util/buffer.flush >&2
   BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"
-  ble/edit/leave-command-layout # #D1800 pair=.insert-newline
+  ble/edit/leave-command-layout # #D1800 pair=ble/edit/.relocate-textarea
   [[ :$_ble_command_opts: != *:post-flush:* ]] || ble/util/buffer.flush >&2
 }
 
@@ -11097,13 +11117,13 @@ function ble/widget/execute-command {
   ble-edit/content/clear-arg
   local command=$1
   if [[ $command != *[!"$_ble_term_IFS"]* ]]; then
-    # Note: 空コマンドでも .insert-newline は実行する。
-    _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
+    # Note: 空コマンドでも ble/edit/.relocate-textarea は実行する。
+    _ble_edit_line_disabled=1 ble/edit/.relocate-textarea keep-info
     return 1
   fi
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=exec/register
+  _ble_edit_line_disabled=1 ble/edit/.relocate-textarea # #D1800 pair=exec/register
   ble-edit/exec/register "$command"
 }
 

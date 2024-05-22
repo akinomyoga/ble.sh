@@ -7386,6 +7386,174 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-05-20
+
+  * accept-line: RET からコマンド実行までの時間 (motivated by pallaswept) [#D2207]
+    https://github.com/akinomyoga/ble.sh/issues/447
+
+    そこを短縮する事に何の意味があるのか分からない。
+
+    調べてみると PS1 が再計算されている。何故? 調べてみると $_ble_prompt_hash
+    == "$version" の計算で version に history count が含まれている。考えてみれ
+    ば最近 ble/prompt/update と履歴登録の順序を交換した気がする。
+
+    #D1925 (44d9e104) で変更されている。最近の様な気がしていたが 2023-01-31 で
+    ある。順番を入れ替えても問題ない気がするといって入れ替えている。更に #D1938
+    (00cae745) で gexec に対する register も順番を変更しているが、これも
+    2023-02-03 で最近の話ではない。
+
+    これだと必要もないのにほぼ毎回 PS1 を2回実行する事になっていて明らかに無駄
+    である。順番をやはり元に戻したいが、そもそも順番を入れ替えたのには理由があっ
+    た筈である。それを確認する必要がある。
+
+    (背景) histdb は ADDHISTORY の中で文法情報を参照したい。newline ->
+    histexpand -> ADDHISTORY -> ble/history/add だと ADDHISTORY の中で文法情報
+    が参照できない。何故なら文法情報は既に newline によって消去されているから。
+    従って、histexpand -> ADDHISTORY -> newline の順にしなければならない。一方
+    で、ADDHISTORY は ble/history/add の中で呼び出されているので、これだと
+    histoexpand -> ADDHISTORY -> newline の順序にする必要がある。
+
+    a ADDHISTORY の中で文法情報を参照できるようにするのが問題? ADDHISTORY とは
+      別の hook を用意して histdb はその中で文法情報を抽出する様にする?
+
+    b ADDHISTORY は ble/history/add の外側で実行する?
+
+      コマンド履歴に関係する ble/history/add が呼び出されているのは二箇所のみで
+      ある。accept-line と edit-and-execute-command である。
+
+      ? ble/history/add の中で複雑なフィルタリングをした上で ADDHISTORY を呼び
+      出しているのだとすれば単純に分割はできないのではないか? と思って実装を確
+      認してみたが別に複雑な事はしていなくて最初に ADDHISTORY を呼び出している
+      のだった。但し、 _ble_history_prefix を参照している。つまり、コマンド履歴
+      に追加するモードではない場合についても考慮に入れる必要がある。
+
+      x また分割するにしてもインターフェイス的に不自然になる。一体どういう説明
+      にするべきだろうか。
+
+    c 或いは最終プロンプトの表示と新しい行に移行するステップを分割するべきなの
+      ではないか? 順番的には (最終プロンプトの表示) → (履歴登録) → (次のコマ
+      ンドラインに移行) の気がする。というかそもそも諸々の展開を実行するよりも
+      前に最終プロンプトは表示するべきなのではないか?
+
+    結局論理的に c が自然なので実装が多少複雑でも c の方針で行く事にした。書き
+    換えも現実的な範囲で可能だと判断した。
+
+    .newline は以下の場所で呼び出されている。
+
+      ./src/edit.sh:7474:  _ble_edit_line_disabled=1 ble/widget/.newline keep-info
+      ./src/edit.sh:7586:    ble/widget/.newline keep-info
+      ./src/edit.sh:7676:  _ble_edit_CMD=$old_cmd ble/widget/.newline # #D1800 register
+      ./src/edit.sh:7767:    _ble_edit_line_disabled=1 ble/widget/.newline # #D1800 (呼び出し元で exec/register)
+
+    うーん。実際に処理をしているのは .insert-newline の様である。.insert-newline
+    はより多くの箇所で呼び出されている。
+
+      ./lib/test-keymap.vi.sh:678:    _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
+      ./src/edit.sh:7480:  _ble_complete_menu_active= _ble_edit_overwrite_mode= ble/widget/.insert-newline "$opts" # #D1800 checked=.newline
+      ./src/edit.sh:7581:  _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
+      ./src/edit.sh:10284:      ble/widget/.insert-newline # #D1800 (既に外部状態なのでOK)
+      ./src/edit.sh:10286:      _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 (既に外部状態なのでOK)
+      ./src/edit.sh:11069:  _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
+      ./src/edit.sh:11118:    _ble_edit_line_disabled=1 ble/widget/.insert-newline keep-info
+      ./src/edit.sh:11123:  _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=exec/register
+
+    .insert-newline の中で ble/textarea#render leave と trim-prompt を呼び出
+    している。
+
+    * done: うーん。trim-prompt は textarea#render の中に含めるのが自然である。
+      →修正した。
+
+    さて沢山ある呼び出し元の全てで ble/textarea#render leave を呼び出すのは非
+    現実的な気がする。
+
+    a 例えば追加のオプションを実装して ble/textarea#render leave を抑制する?
+
+    b 或いは関数名を .insert-newline => .update-prompt-and-insert-newline 的
+      にして、それぞれ分割して実行したい時には ble/textarea#render と
+      .insert-newline をそれぞれ呼び出す?
+
+    * done: 関数名の整理・変更
+
+      そもそも何故 .newline と .insert-newline に分かれているのだったか。関数名
+      的に違いが分からない。
+
+      うーん。.insert-newline は現在の command line の内容を保持したまま次の行
+      に行く機能で、例えば履歴展開を失敗した時などにユーザーに再入力を求める時
+      にはこれだけを呼び出す。一方で .newline は本当に新しいコマンド行に移動す
+      る機能である。LINENO が実際に増える。.insert-newline は寧ろ .new-prompt
+      なのかもしれない。然し、実際には新しいプロンプトを表示するのではなくて単
+      に端末的に次の行に移動するだけである。
+
+      つまり .newline はコマンドラインの概念的な新しい行で、.insert-newline は
+      表示上の行の話をしている。
+
+      いつも分からなくなるので関数名を工夫した方が良い気がする。
+
+      * .newline / .insert-newline
+      * .new-command-line / .next-display-line
+
+      * .newline / ble/textarea#newline
+        別に textarea だけでなく全体のレイアウトも変更している。
+
+      * .newline / new-display-line
+
+      * .go-to-newline = 最終描画・新しい描画領域・初期化
+        .newline = 新しい描画領域・初期化
+        .new-rendering-area = 最終描画・新しい描画領域
+        .shift-rendering-area = 新しい描画領域
+
+        うーん。最終描画をするかどうかと、初期化をするかどうかの二つの軸がある。
+        それぞれに勝手に名前をつけるのではなく、系統的な名前にしたい。
+
+        例えば最終描画をするのは go-to/switch-to/move-to で単に新しい描画領域を
+        用意するのは create/insert などにする。二つの単語に分かれているのは余り
+        綺麗でない。synonym を調べると visit appear catch show haunt alternate
+        shift transform substitute swap convert divert replace turn veer
+        advance carry change blow cross drift flow migrate push proceed propel
+        relocate remove run ship transfer transport travel walk withdraw。うー
+        ん。余り良い物はやはりない。 relocate は rendering-area に対して使うと
+        良い様な気がする (relocate-rendering-area / insert-rendering-area)。と
+        思ったが前の prompt の更新も "rendering-area" の操作対象とするのはやは
+        り変な気がする。"switch-panel-area" とかにする? 然しそうすると
+        insert-panel-area も何だか変な気がする (textarea だけ更新してその他のパ
+        ネルは前の物と共有しているので)。それならば寧ろ、switch-textarea /
+        insert-textarea とかの方が良い? でも textarea を即座に render する訳で
+        もないので switch-textarea はやはり変?
+
+        newline
+        relocate-textarea
+        insert-textarea
+
+        うーん。newline は textarea#render は実行しないという事にして実行する
+        version も用意しない事にする。
+
+      prefix についても ble/widget ではなくて別の名前を与えたい。ble/textarea
+      は特定のパネルの話だし、かといって ble/canvas/panel にお邪魔するのも変な
+      気がする。ble/application は一応 edit.sh の管轄だがより一般の枠組みを意図
+      した物の様な気がする。ble/edit の以下に直接置いても良いのかもしれない。或
+      いは ble/edit/panel もしくは ble/edit/rendering-area か。取り敢えず
+      ble/edit 直下で考える。
+
+    * done: .newline では _ble_complete_menu_active= _ble_edit_overwrite_mode=
+      を指定して .insert-newline を呼び出していたが、他の場所では呼び出さないの
+      だろうか。そもそも ble/textarea#render leave の中で一括で指定するべきなの
+      ではないか。
+
+      既にある .relocate-textarea (.insert-newline 改名後) も見たが何れも
+      _ble_complete_menu_active= 及び _ble_edit_overwrite_mode= は指定するべき
+      の気がする。何れにしても _ble_edit_line_disbaled=1 を指定していたので隠れ
+      て見えなかったのかもしれないが。
+
+    x fixed: ble/widget/edit-and-execute-command の実装を見ると accept-line の
+      中と、様々なステップの実行の順序が変わってしまっている。これも
+      accept-line に合わせる形で修正する必要がある。
+
+      特にこの場合には (最終プロンプト表示) → (編集) → (展開) → (履歴登録)
+      なので insert-line を先に実行する事は不可能である。一方で、この場合には
+      histdb が文法情報は参照しないのは自然である。
+
+    * done: ちゃんと無駄な PS1 の評価が消えているかを確認する → OK
+
 2024-05-18
 
   * complete_menu_complete_opts で insert-selection を外した時のカーソル位置 (reported by gvlassis) [#D2206]

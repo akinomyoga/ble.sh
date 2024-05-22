@@ -675,7 +675,7 @@ if [[ $1 == bind ]]; then
     local original_ind=$_ble_edit_ind
     local original_mark=$_ble_edit_mark
     local original_mark_active=$_ble_edit_mark_active
-    _ble_edit_line_disabled=1 ble/widget/.insert-newline # #D1800 pair=leave-command-layout
+    _ble_edit_line_disabled=1 ble/edit/.relocate-textarea # #D1800 pair=leave-command-layout
     ble/util/buffer.flush >&2
 
     ble/keymap:vi_test/run-tests
@@ -685,7 +685,7 @@ if [[ $1 == bind ]]; then
     _ble_edit_ind=$original_ind
     _ble_edit_mark=$original_mark
     _ble_edit_mark_active=$original_mark_active
-    ble/edit/leave-command-layout # #D1800 pair=.insert-newline
+    ble/edit/leave-command-layout # #D1800 pair=ble/edit/.relocate-textarea
     return 0
   }
 
