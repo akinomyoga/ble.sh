@@ -7999,15 +7999,50 @@ function ble/widget/vi_imap/overwrite-mode {
 }
 
 # imap C-w
-function ble/widget/vi_imap/delete-backward-word {
+
+## @fn ble/widget/vi_imap/.locate-backward-vword
+##   直前の単語 (vword) の開始点を特定します。
+##   @var[out] ret
+function ble/widget/vi_imap/.locate-backward-word {
   local space=$' \t' nl=$'\n'
-  local rex="($_ble_keymap_vi_REX_WORD)[$space]*\$|[$space]+\$|$nl\$"
-  if [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
-    local index=$((_ble_edit_ind-${#BASH_REMATCH}))
-    if ((index!=_ble_edit_ind)); then
+  local rex='('$_ble_keymap_vi_REX_WORD')['$space']*$|['$space']+$|'$nl'$'
+  [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]] || return 1
+  ((ret=_ble_edit_ind-${#BASH_REMATCH}))
+  return 0
+}
+
+function ble/widget/vi_imap/delete-backward-word {
+  if local ret; ble/widget/vi_imap/.locate-backward-word; then
+    if ((ret!=_ble_edit_ind)); then
       ble/keymap:vi/undo/add more
-      ble/widget/.delete-range "$index" "$_ble_edit_ind"
+      ble/widget/.delete-range "$ret" "$_ble_edit_ind"
       ble/keymap:vi/undo/add more
+    fi
+    return 0
+  else
+    ble/widget/.bell
+    return 1
+  fi
+}
+
+function ble/widget/vi_imap/kill-backward-word {
+  if local ret; ble/widget/vi_imap/.locate-backward-word; then
+    if ((ret!=_ble_edit_ind)); then
+      ble/keymap:vi/undo/add more
+      ble/widget/.kill-range "$ret" "$_ble_edit_ind"
+      ble/keymap:vi/undo/add more
+    fi
+    return 0
+  else
+    ble/widget/.bell
+    return 1
+  fi
+}
+
+function ble/widget/vi_imap/copy-backward-word {
+  if local ret; ble/widget/vi_imap/.locate-backward-word; then
+    if ((ret!=_ble_edit_ind)); then
+      ble/widget/.copy-range "$ret" "$_ble_edit_ind"
     fi
     return 0
   else
@@ -8181,7 +8216,7 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f 'BS'        'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
 
   # wordwise operations
-  ble-bind -f 'C-w'       'vi_imap/delete-backward-word'
+  ble-bind -f 'C-w'       'vi_imap/kill-backward-word'
 
   # complete
   ble-decode/keymap:vi_imap/bind-complete

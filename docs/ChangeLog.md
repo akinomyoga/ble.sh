@@ -95,6 +95,7 @@
 - util.hook: fix user DEBUG trap not executed at the top-level context `#D2202` 828fcfc1
 - keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` 4268650d
 - edit: render the final prompt before updating command history (motivated by pallaswept) `#D2207` xxxxxxxx
+- keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` xxxxxxxx
 
 ## Compatibility
 
