@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
+input_file=${1:-memo/D2207.measure-local.txt}
+
 if [[ ${BLE_VERSION-} ]]; then
-  fname=memo/D2207.measure-local.txt
+  fname=$input_file
   rm -rf "$fname"
   blehook POSTEXEC='bleopt debug_xtrace='
   bleopt debug_xtrace_ps4='+[$EPOCHREALTIME $BASH_SOURCE:$LINENO${FUNCNAME:+ (${#FUNCNAME[*]} $FUNCNAME)}] '
@@ -10,13 +12,12 @@ if [[ ${BLE_VERSION-} ]]; then
   return "$?"
 fi
 
-input_file=${1:-memo/D2207.measure-local.txt}
-sed -ni.bk '\:ble-decode/\.hook 13$:,$p' "$input_file"
+#sed -ni.bk '\:ble-decode/\.hook 13$:,$p' "$input_file"
 
 < "$input_file" gawk '
   BEGIN {
     # Only shows the levels that took more than this time.
-    THRESHOLD_DURATION = 0.5; # [msec]
+    THRESHOLD_DURATION = 1.0; # [msec]
   }
 
   function s_trunc(str, len) {
@@ -51,7 +52,7 @@ sed -ni.bk '\:ble-decode/\.hook 13$:,$p' "$input_file"
 
     if (dur_msec < THRESHOLD_DURATION) return;
 
-    line = sprintf("%17.6f %7.3fms %2d  __tree__\x1b[1m%s\x1b[;34m%s\x1b[m", start_time, dur_msec, level, prev_cmd, prev_source);
+    line = sprintf("%17.6f %10.3fms %2d  __tree__\x1b[1m%s\x1b[;34m%s\x1b[m", start_time, dur_msec, level, prev_cmd, prev_source);
     for (i = 0; i < n; i++) {
       child = g_record[level, "child", i];
       gsub(/__tree__/, i < n - 1 ? "&|  " : "&   ", child);

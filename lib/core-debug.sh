@@ -134,31 +134,51 @@ function ble/debug/profiler/stop {
   bleopt debug_xtrace="$_ble_debug_profiler_original_xtrace"
   bleopt debug_xtrace_ps4="$_ble_debug_profiler_original_xtrace_ps4"
 
-  local f1=$prefix.xtrace
-  local f2=$prefix.line.txt
-  local f3=$prefix.line.html
-  local f4=$prefix.func.txt
-
-  # count lines
-  local nline
-  ble/util/print "ble/debug/profiler: counting lines..."
-  ble/util/assign-words nline 'ble/bin/wc -l "$f1" 2>/dev/null'
-  ble/util/print $'\e[A\rble/debug/profiler: counting lines... '"$nline"
-
   # awk
   local -a awk_args=()
-  [[ -s $f2 ]] && ble/array#push awk_args mode=line_stat "$f2"
-  [[ -s $f4 ]] && ble/array#push awk_args mode=func_stat "$f4"
+  local opts=$bleopt_debug_profiler_opts ret
+
+  # debug_profiler_opts='line'
+  local -x profiler_line_output=
+  local -x profiler_line_html=
+  if ble/opts#extract-last-optarg "$opts" line; then
+    local file=$prefix.line.txt
+    [[ -s $file ]] && ble/array#push awk_args mode=line_stat "$file"
+
+    profiler_line_output=$file.part
+    [[ $ret == html ]] &&
+      profiler_line_html=$prefix.line.html
+  fi
+
+  # debug_profiler_opts='func'
+  local -x profiler_func_output=
+  local -x profiler_func_html=
+  if ble/opts#extract-last-optarg "$opts" func; then
+    local file=$prefix.func.txt
+    [[ -s $file ]] && ble/array#push awk_args mode=func_stat "$file"
+    profiler_func_output=$file.part
+    [[ $ret == html ]] &&
+      profiler_func_html=$prefix.func.html
+  fi
+
+  # debug_profiler_opts='tree'
+  local -x profiler_tree_output=
+  local -x profiler_tree_threshold_duration=
+  if [[ :$opts: == *:tree:* ]]; then
+    profiler_tree_output=$prefix.tree.txt
+    profiler_tree_threshold_duration=${bleopt_debug_profiler_tree_threshold:-1.0} # [ms]
+  fi
+
+  # input file
+  local f1=$prefix.xtrace
   ble/array#push awk_args mode=xtrace "$f1"
-  local -x file_func=$f4.part
-  local -x file_line=$f2.part
-  local -x file_line_html= #$f3 # currently .html output is disabled
+  local nline
+  ble/util/print "ble/debug/profiler: counting lines..." >&2
+  ble/util/assign-words nline 'ble/bin/wc -l "$f1" 2>/dev/null'
+  ble/util/print $'\e[A\rble/debug/profiler: counting lines... '"$nline" >&2
+
   ble/bin/awk -v magic="$_ble_debug_profiler_magic" -v nline="$nline" '
     BEGIN {
-      file_func = ENVIRON["file_func"];
-      file_line = ENVIRON["file_line"];
-      file_line_html = ENVIRON["file_line_html"];
-
       xtrace_debug_enabled = 1;
       print "ble/debug/profiler: collecting information..." >"/dev/stderr";
       if (nline) progress_interval = int(nline / 100);
@@ -167,6 +187,10 @@ function ble/debug/profiler/stop {
       ilabel = 0;
       ifname = 0;
       _usec_sec0 = "";
+
+      lines_initialize();
+      funcs_initialize();
+      tree_initialize();
     }
 
     function to_percentage(value) {
@@ -205,13 +229,14 @@ function ble/debug/profiler/stop {
       return sec * 1000000 + usec;
     }
 
-    ## @var[out] level depth pid usec fname label command
+    ## @var[out] level depth pid epoch usec fname label command
     function parse_line(_, s) {
       s = $1;
       level = gsub(/\+/, "", s);
       depth = 1 + (s > 0 ? s : 0);
       level += depth - 1;
       pid = $2;
+      epoch = $3;
       usec = parse_usec($3);
 
       fname = $4;
@@ -229,7 +254,46 @@ function ble/debug/profiler/stop {
     }
 
     #--------------------------------------------------------------------------
+    # util
+
+    function str_strip_ansi(str) {
+      gsub(/\x1b\[[ -?]*[@-~]/, "", str);
+      gsub(/\x1b[ -\/]*[0-~]/, "", str);
+      gsub(/[\x01-\x1F\x7F]/, "", str);
+      return str;
+    }
+
+    function str_html_escape(str) {
+      gsub(/&/, "\\&amp;", str);
+      gsub(/</, "\\&lt;", str);
+      gsub(/>/, "\\&gt;", str);
+      return str;
+    }
+
+    function str_ansi_escape(str) {
+      if (str ~ /[\x01-\x1F]/) {
+        gsub(/\x1b/, "\x1b[7m^[\x1b[27m", str);
+        gsub(/\x07/, "\x1b[7m^G\x1b[27m", str);
+        gsub(/\x08/, "\x1b[7m^H\x1b[27m", str);
+        gsub(/\x09/, "\x1b[7m^I\x1b[27m", str);
+        gsub(/\x0a/, "\x1b[7m^J\x1b[27m", str);
+        gsub(/\x0b/, "\x1b[7m^K\x1b[27m", str);
+        gsub(/\x0c/, "\x1b[7m^L\x1b[27m", str);
+        gsub(/\x0d/, "\x1b[7m^M\x1b[27m", str);
+        gsub(/[\x01-\x1A\x1C-\x1F]/ ,"?", str);
+      }
+      return str;
+    }
+
+    #--------------------------------------------------------------------------
     # line_stat
+
+    function lines_initialize() {
+      c_lines_output = ENVIRON["profiler_line_output"];
+      c_lines_enabled = c_lines_output != "";
+      if (!c_lines_enabled) return;
+      c_lines_html = ENVIRON["profiler_line_html"];
+    }
 
     function lines_level_push(pid, level, usec, label, command, _, lv) {
       if (!line_stat[label, "count"]++)
@@ -298,14 +362,14 @@ function ble/debug/profiler/stop {
       line = sprintf("# %6s %8s %8s", "count", "subcount", "allcount");
       line = line sprintf(" %10s %-6s %10s %-6s %10s", "total_msec", "TOTAL%", "self_msec", "SELF%", "child_msec");
       line = line sprintf(" %10s %10s %10s", "max_msec", "max_self", "max_child");
-      printf("%s %s%s\n", line, "\x1b[35mSOURCE\x1b[36m (FUNCNAME):\x1b[32mLINENO\x1b[36m:\x1b[m", "COMMAND") > file_line;
+      printf("%s %s%s\n", line, "\x1b[35mSOURCE\x1b[36m (FUNCNAME):\x1b[32mLINENO\x1b[36m:\x1b[m", "COMMAND") > c_lines_output;
     }
 
     function lines_text_print(info, _, line) {
       line = sprintf("%8d %8d %8d", info["count"], info["substep_count"], info["allstep_count"]);
       line = line sprintf(" %10.3f %-6s %10.3f %-6s %10.3f", info["total_time"], info["total_time_percentage"], info["total_self"], info["total_self_percentage"], info["total_child"]);
       line = line sprintf(" %10.3f %10.3f %10.3f", info["max_time"], info["max_self"], info["max_child"]);
-      printf("%s %s%s\n", line, info["label"], info["command"]) > file_line;
+      printf("%s %s%s\n", line, info["label"], info["command"]) > c_lines_output;
     }
 
     function lines_html_header(_, line) {
@@ -320,8 +384,8 @@ function ble/debug/profiler/stop {
       line = line sprintf("  <th colspan=3>total (msec)</th>\n");
       line = line sprintf("  <th colspan=3>average (msec)</th>\n");
       line = line sprintf("  <th colspan=3>max (msec)</th>\n");
-      line = line sprintf("  <th rowspan=2>command</th>\n", max_cmd);
-      line = line sprintf("  <th rowspan=2>location</th>\n", label);
+      line = line sprintf("  <th rowspan=2>command</th>\n");
+      line = line sprintf("  <th rowspan=2>location</th>\n");
       line = line sprintf("</tr>\n");
       line = line sprintf("<tr>\n");
       line = line sprintf("  <th>sum</th>\n");
@@ -334,17 +398,12 @@ function ble/debug/profiler/stop {
       line = line sprintf("  <th>self</th>\n");
       line = line sprintf("  <th>child</th>\n");
       line = line sprintf("</tr>\n");
-      printf("%s", line) > file_line_html;
+      printf("%s", line) > c_lines_html;
     }
 
-    function lines_html_escape(str) {
-      gsub(/&/, "\\&amp;", str);
-      gsub(/</, "\\&lt;", str);
-      gsub(/>/, "\\&gt;", str);
-      return str;
-    }
-
-    function lines_html_print(info, _, line) {
+    function lines_html_print(info, _, line, label) {
+      label = str_strip_ansi(info["label"]);
+      sub(/:$/, "", label);
       line = sprintf("<tr>\n");
       line = line sprintf("  <td>%d</td>\n", info["count"]);
       line = line sprintf("  <td>%d</td>\n", info["substep_count"]);
@@ -358,19 +417,19 @@ function ble/debug/profiler/stop {
       line = line sprintf("  <td>%.3f</td>\n", info["max_time"]);
       line = line sprintf("  <td>%.3f</td>\n", info["max_self"]);
       line = line sprintf("  <td>%.3f</td>\n", info["max_child"]);
-      line = line sprintf("  <td>%s</td>\n", lines_html_escape(info["command"]));
-      line = line sprintf("  <td>%s</td>\n", lines_html_escape(info["label"]));
+      line = line sprintf("  <td>%s</td>\n", str_html_escape(info["command"]));
+      line = line sprintf("  <td>%s</td>\n", str_html_escape(label));
       line = line sprintf("</tr>\n");
-      printf("%s", line) > file_line_html;
+      printf("%s", line) > c_lines_html;
     }
 
     function lines_html_footer() {
-      printf("</table>\n") > file_line_html;
+      printf("</table>\n") > c_lines_html;
     }
 
     function lines_save(_, i, label, count, info, total_time) {
       lines_text_header();
-      if (file_line_html) lines_html_header();
+      if (c_lines_html) lines_html_header();
 
       total_time = 0.0;
       for (i = 0; i < ilabel; i++) {
@@ -404,10 +463,10 @@ function ble/debug/profiler/stop {
         info["command"] = line_stat[label, "max_command"];
 
         lines_text_print(info);
-        if (file_line_html) lines_html_print(info);
+        if (c_lines_html) lines_html_print(info);
       }
 
-      if (file_line_html) lines_html_footer();
+      if (c_lines_html) lines_html_footer();
     }
 
     function lines_load_line(_, i, s, label, old_max_time, new_max_time) {
@@ -433,8 +492,20 @@ function ble/debug/profiler/stop {
       }
     }
 
+    function lines_finalize() {
+      if (c_lines_enabled)
+        lines_save();
+    }
+
     #--------------------------------------------------------------------------
     # func_stat
+
+    function funcs_initialize() {
+      c_funcs_output = ENVIRON["profiler_func_output"];
+      c_funcs_enabled = c_funcs_output != "";
+      if (!c_funcs_enabled) return;
+      c_funcs_html = ENVIRON["profiler_func_html"];
+    }
 
     function funcs_depth_push(pid, depth, usec, fname, source, _, old_depth) {
       if (!func_stat[fname, "mark"]++)
@@ -500,18 +571,60 @@ function ble/debug/profiler/stop {
       line = sprintf("# %6s %8s %8s", "count", "subcall", "allcall");
       line = line sprintf(" %10s %-6s %10s %-6s %10s", "total_msec", "TOTAL%", "self_msec", "SELF%", "child_msec");
       line = line sprintf(" %10s %10s %10s", "max_msec", "max_self", "max_child");
-      printf("%s %s (\x1b[35m%s\x1b[m)\n", line, "FUNCNAME", "SOURCE") > file_func;
+      printf("%s %s (\x1b[35m%s\x1b[m)\n", line, "FUNCNAME", "SOURCE") > c_funcs_output;
     }
 
     function funcs_text_print(info, _, line) {
       line = sprintf("%8d %8d %8d", info["count"], info["subcall_count"], info["allcall_count"]);
       line = line sprintf(" %10.3f %-6s %10.3f %-6s %10.3f", info["total_time"], info["total_time_percentage"], info["total_self"], info["total_self_percentage"], info["total_child"]);
       line = line sprintf(" %10.3f %10.3f %10.3f", info["max_time"], info["max_self"], info["max_child"]);
-      printf("%s %s (\x1b[35m%s\x1b[m)\n", line, info["fname"], info["source"]) > file_func;
+      printf("%s %s (\x1b[35m%s\x1b[m)\n", line, info["fname"], info["source"]) > c_funcs_output;
+    }
+
+    function funcs_html_header(_, line) {
+      line = sprintf("<!DOCTYPE html>\n");
+      line = line sprintf("<title>ble.sh xtrace profiling result</title>\n");
+      line = line sprintf("<style>table,td,th{border-collapse:collapse;border:1px solid black}td{max-width:40em;}</style>\n");
+      line = line sprintf("<table>\n");
+      line = line sprintf("<tr>\n");
+      line = line sprintf("  <th rowspan=2>count</th>\n");
+      line = line sprintf("  <th rowspan=2>subcall</th>\n");
+      line = line sprintf("  <th rowspan=2>allcall</th>\n");
+      line = line sprintf("  <th colspan=3>total (ms)</th>\n");
+      line = line sprintf("  <th colspan=3>self (ms)</th>\n");
+      line = line sprintf("  <th colspan=2>child (ms)</th>\n");
+      line = line sprintf("  <th rowspan=2>function</th>\n");
+      line = line sprintf("  <th rowspan=2>location</th>\n");
+      line = line sprintf("</tr>\n");
+      line = line sprintf("<tr>\n");
+      line = line sprintf("  <th>sum</th>\n");
+      line = line sprintf("  <th>%%</th>\n");
+      line = line sprintf("  <th>max</th>\n");
+      line = line sprintf("  <th>sum</th>\n");
+      line = line sprintf("  <th>%%</th>\n");
+      line = line sprintf("  <th>max</th>\n");
+      line = line sprintf("  <th>sum</th>\n");
+      line = line sprintf("  <th>max</th>\n");
+      line = line sprintf("</tr>\n");
+      printf("%s", line) > c_funcs_html;
+    }
+    function funcs_html_print(info, _, line) {
+      line = sprintf("<tr>\n");
+      line = line sprintf("  <td>%s</td><td>%s</td><td>%s</td>\n", info["count"], info["subcall_count"], info["allcall_count"]);
+      line = line sprintf("  <td>%s</td><td>%s</td><td>%s</td>\n", info["total_time"], info["total_time_percentage"], info["max_time"]);
+      line = line sprintf("  <td>%s</td><td>%s</td><td>%s</td>\n", info["total_self"], info["total_self_percentage"], info["max_self"]);
+      line = line sprintf("  <td>%s</td><td>%s</td>\n", info["total_child"], info["max_child"]);
+      line = line sprintf("  <td><code>%s</code></td><td>%s</td>\n", info["fname"], info["source"]);
+      line = line sprintf("</tr>\n");
+      printf("%s", line) > c_funcs_html;
+    }
+    function funcs_html_footer() {
+      printf("</table>\n") > c_funcs_html;
     }
 
     function funcs_save(_, i, fname, count, info, total_time) {
       funcs_text_header();
+      if (c_funcs_html) funcs_html_header();
 
       total_time = 0.0;
       for (i = 0; i < ifname; i++) {
@@ -544,7 +657,9 @@ function ble/debug/profiler/stop {
         info["source"] = func_stat[fname, "source"];
 
         funcs_text_print(info);
+        if (c_funcs_html) funcs_html_print(info);
       }
+      if (c_funcs_html) funcs_html_footer();
     }
 
     function funcs_load_line(_, fname, i, s, old_max_time, new_max_time) {
@@ -576,12 +691,106 @@ function ble/debug/profiler/stop {
       }
     }
 
+    function funcs_finalize() {
+      if (c_funcs_enabled)
+        funcs_save();
+    }
+
+    #--------------------------------------------------------------------------
+
+    function tree_initialize() {
+      c_tree_output = ENVIRON["profiler_tree_output"];
+      c_tree_enabled = c_tree_output != "";
+      if (!c_tree_enabled) return;
+
+      c_tree_threshold_duration = ENVIRON["profiler_tree_threshold_duration"] * 1000;
+      g_tree_min_level = "";
+    }
+
+    function tree_flush_command(level, now_usec, _, start_time, clk_start, clk_end, dur_usec, prev_cmd, prev_source, prev_lineno, prev_func, line, child, i, n) {
+      if (g_tree_record[level] == "") return;
+
+      start_time = g_tree_record[level, "epoch"];
+      clk_start = g_tree_record[level, "start"];
+      clk_end = now_usec;
+      dur_usec = clk_end - clk_start;
+
+      prev_cmd = str_ansi_escape(g_tree_record[level]);
+
+      prev_source = g_tree_record[level, "source"];
+      prev_lineno = g_tree_record[level, "lineno"];
+      prev_func = g_tree_record[level, "func"];
+      if (prev_cmd == "???") {
+        prev_source = "";
+      } else if (prev_source == "" && prev_func == "") {
+        prev_source = sprintf(" [(global):%d]", prev_lineno);
+      } else {
+        prev_source = sprintf(" [%s:%d (%s)]", prev_source, prev_lineno, prev_func);
+      }
+
+      n = 0 + g_tree_record[level, "#child"];
+
+      g_tree_record[level] = "";
+      g_tree_record[level, "#child"] = 0;
+
+      if (dur_usec < c_tree_threshold_duration) return;
+
+      line = sprintf("%17.6f %10.3fms %2d  __tree__\x1b[1m%s\x1b[;34m%s\x1b[m", start_time, dur_usec * 0.001, level, prev_cmd, prev_source);
+      for (i = 0; i < n; i++) {
+        child = g_tree_record[level, "child", i];
+        gsub(/__tree__/, i < n - 1 ? "&|  " : "&   ", child);
+        sub(/__tree__.../, "__tree__+- ", child);
+        line = line "\n" child;
+      }
+
+      if (level > g_tree_min_level) {
+        if (g_tree_record[level - 1] == "") {
+          g_tree_record[level - 1] = "???";
+          g_tree_record[level - 1, "start"] = start_time;
+          g_tree_record[level - 1, "start"] = clk_start;
+          g_tree_record[level - 1, "#child"] = 0;
+        }
+        i = 0 + g_tree_record[level - 1, "#child"];
+        g_tree_record[level - 1, "child", i] = line;
+        g_tree_record[level - 1, "#child"] = i + 1;
+      } else {
+        gsub(/__tree__/, "", line);
+        print line >> c_tree_output;
+      }
+    }
+
+    function tree_flush_level(level, now_usec) {
+      for (; g_tree_level >= level; g_tree_level--)
+        tree_flush_command(g_tree_level, now_usec);
+      g_tree_level = level;
+    }
+
+    function tree_process_line(level, epoch, usec, source, lineno, funcname, command) {
+      tree_flush_level(level, usec);
+
+      if (g_tree_min_level == "" || g_tree_min_level > level)
+        g_tree_min_level = level;
+
+      g_tree_record[level] = command;
+      g_tree_record[level, "epoch"] = epoch;
+      g_tree_record[level, "start"] = usec;
+      g_tree_record[level, "source"] = source;
+      g_tree_record[level, "lineno"] = lineno;
+      g_tree_record[level, "func"] = funcname;
+      g_tree_last_usec = usec;
+    }
+
+    function tree_finalize() {
+      if (c_tree_enabled)
+        tree_flush_level(1, g_tree_last_usec);
+    }
+
     #--------------------------------------------------------------------------
 
     function flush_stack(_, i) {
       for (i = 0; i < ipid; i++) {
-        lines_level_pop(pids[i], 1, proc[pids[i], "time"]);
-        funcs_depth_pop(pids[i], 1, proc[pids[i], "time"]);
+        if (c_lines_enabled) lines_level_pop(pids[i], 1, proc[pids[i], "time"]);
+        if (c_funcs_enabled) funcs_depth_pop(pids[i], 1, proc[pids[i], "time"]);
       }
       pids_clear();
     }
@@ -608,8 +817,12 @@ function ble/debug/profiler/stop {
 
       # register "pid" and "label" to the lists
       pids_register(pid);
-      lines_level_push(pid, level, usec, label, command);
-      funcs_depth_push(pid, depth, usec, fname, source);
+      if (c_lines_enabled)
+        lines_level_push(pid, level, usec, label, command);
+      if (c_funcs_enabled)
+        funcs_depth_push(pid, depth, usec, fname, source);
+      if (c_tree_enabled)
+        tree_process_line(level, epoch, usec, source, lineno, fname, command);
       proc[pid, "time"] = usec;
       next;
     }
@@ -625,17 +838,32 @@ function ble/debug/profiler/stop {
     END {
       flush_stack();
       print "ble/debug/profiler: writing result..." >"/dev/stderr";
-      lines_save();
-      funcs_save();
+      lines_finalize();
+      funcs_finalize();
+      tree_finalize();
     }
-  ' "${awk_args[@]}" &&
+  ' "${awk_args[@]}" || return "$?"
+
+  local -a files_to_remove
+  files_to_remove=("$f1")
+
+  if [[ $profiler_line_output == *.part ]]; then
+    local file=${profiler_line_output%.part}
     {
-      LANG=C ble/bin/grep '^#' "$f2.part"
-      LANG=C ble/bin/grep -v '^#' "$f2.part" | ble/bin/sort -nrk4
-    } >| "$f2" &&
+      LANG=C ble/bin/grep '^#' "$file.part"
+      LANG=C ble/bin/grep -v '^#' "$file.part" | ble/bin/sort -nrk4
+    } >| "$file" &&
+      ble/array#push files_to_remove "$file.part"
+  fi
+
+  if [[ $profiler_func_output == *.part ]]; then
+    local file=${profiler_func_output%.part}
     {
-      LANG=C ble/bin/grep '^#' "$f4.part"
-      LANG=C ble/bin/grep -v '^#' "$f4.part" | ble/bin/sort -nrk4
-    } >| "$f4" &&
-    ble/bin/rm -f "$f1" "$f2.part" "$f4.part"
+      LANG=C ble/bin/grep '^#' "$file.part"
+      LANG=C ble/bin/grep -v '^#' "$file.part" | ble/bin/sort -nrk4
+    } >| "$file" &&
+      ble/array#push files_to_remove "$file.part"
+  fi
+
+  ble/bin/rm -f "${files_to_remove[@]}"
 }

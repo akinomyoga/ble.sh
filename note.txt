@@ -1926,6 +1926,16 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-06-05
+
+  * debug: debug_profiler_opts=flame
+
+    flame graph にも対応する? 然し flame graph はインターフェイスが難しい気がす
+    る。取り敢えず少なくとも等価な統計は出す事にする。percentage, 呼び出し回数,
+    etc 等について統計を取る。
+
+    既存のデータの読み取りにも対応する。
+
 2024-04-17
 
   * highlight sabbrev
@@ -7371,6 +7381,30 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-06-03
+
+  * debug: 関数呼び出しツリー [#D2216]
+    Ref #D2207
+
+    取り敢えず D2207.measure.sh から移植した。
+
+    * done: C0 を一括で変換してしまっているが主だった文字については ^[, ^G, ^H,
+      ^I, ^K, ^L, ^M 等に変換して良いのではないか?
+
+    * done: html 形式の時のラベルに esc で色がついている。これらは除去するべき。
+      また、末尾の : も邪魔である。
+
+    * ok: 終了時も progress を表示する → これは別の問題という事が分かった
+      #D2217
+
+    * ok: flame graph も追加する? これは TUI で表現するのも難しいので取り敢えず
+      は別項目にする事にする。
+
+    * done: func も html 形式に対応しないとバランスが悪い気がする。というか、本
+      来はfunc の方が html で見たい物なのではないか。
+
+    * debug_profiler_opts の documentation
+      * done: blerc
+      * done: wiki
 
   * 2024-05-25 mc でまた動かなくなっている (reported by u/satanicllamaplaza) [#D2215]
     https://www.reddit.com/r/linux4noobs/comments/1cz5kd7/midnight_commander_help/
