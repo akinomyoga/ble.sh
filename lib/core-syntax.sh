@@ -6624,7 +6624,10 @@ function ble/syntax/highlight/cmdtype {
 #------------------------------------------------------------------------------
 # ble/syntax/highlight/filetype
 
-## @fn ble/syntax/highlight/filetype filename
+## @fn ble/syntax/highlight/filetype filename [opts]
+##   @param[in] fielname
+##   @param[in,opt] opts
+##     @opt follow-symlink
 ##   @var[out] type
 function ble/syntax/highlight/filetype {
   type=
@@ -6636,7 +6639,7 @@ function ble/syntax/highlight/filetype {
     [[ $type ]]; return "$?"
   fi
 
-  if [[ -h $file ]]; then
+  if [[ :$2: != *:follow-symlink:* && -h $file ]]; then
     if [[ -e $file ]]; then
       ((type=ATTR_FILE_LINK))
     else
@@ -6646,7 +6649,7 @@ function ble/syntax/highlight/filetype {
     if [[ -d $file ]]; then
       if [[ -k $file ]]; then
         ((type=ATTR_FILE_STICKY))
-      elif [[ -h ${file%/} ]]; then
+      elif [[ :$2: != *:follow-symlink:* && -h ${file%/} ]]; then
         ((type=ATTR_FILE_LINK))
       else
         ((type=ATTR_FILE_DIR))
@@ -6679,24 +6682,61 @@ function ble/syntax/highlight/filetype {
 #------------------------------------------------------------------------------
 # ble/syntax/highlight/ls_colors
 
+## @dict _ble_syntax_highlight_lscolors_ext
+## @dict _ble_syntax_highlight_lscolors_suffix
+##   Those dictionaries are defined in core-syntax-def.sh
+
 function ble/syntax/highlight/ls_colors/.clear {
   _ble_syntax_highlight_lscolors=()
   ble/gdict#clear _ble_syntax_highlight_lscolors_ext
+  ble/gdict#clear _ble_syntax_highlight_lscolors_suffix
 }
 
-## @fn ble/syntax/highlight/ls_colors/.register-extension key value
-##   @param[in] key value
-## @fn ble/syntax/highlight/ls_colors/.read-extension key
-##   @param[in] key
+## @fn ble/syntax/highlight/ls_colors/.register-suffix suffix value
+##   @param[in] suffix value
+function ble/syntax/highlight/ls_colors/.register-suffix {
+  local suffix=$1 value=$2
+  if [[ $suffix == .* ]]; then
+    ble/gdict#set _ble_syntax_highlight_lscolors_ext "$suffix" "$value"
+  else
+    ble/gdict#set _ble_syntax_highlight_lscolors_suffix "$suffix" "$value"
+  fi
+}
+
+function ble/syntax/highlight/ls_colors/.has-suffix {
+  ((${#_ble_syntax_highlight_lscolors_ext[@]})) ||
+    ((${#_ble_syntax_highlight_lscolors_suffix[@]}))
+}
+
+## @fn ble/syntax/highlight/ls_colors/.match-suffix path
+##   @param[in] path
 ##   @var[out] ret
+function ble/syntax/highlight/ls_colors/.match-suffix {
+  ret=
+  local filename=${1##*/} suffix= g=
 
-# Note: _ble_syntax_highlight_lscolors_ext は core-syntax-def.sh で先に定義
-function ble/syntax/highlight/ls_colors/.register-extension {
-  local key=$1 value=$2
-  ble/gdict#set _ble_syntax_highlight_lscolors_ext "$key" "$value"
-}
-function ble/syntax/highlight/ls_colors/.read-extension {
-  ble/gdict#get _ble_syntax_highlight_lscolors_ext "$1"
+  local ext=$filename
+  while [[ $ext == *.* ]]; do
+    ext=${ext#*.}
+    if ble/gdict#get _ble_syntax_highlight_lscolors_ext ".$ext" && [[ $ret ]]; then
+      suffix=.$ext g=$ret
+      break
+    fi
+  done
+
+  local key keys
+  ble/gdict#keys _ble_syntax_highlight_lscolors_suffix
+  keys=("${ret[@]}")
+  for key in "${keys[@]}"; do
+    ((${#key}>${#suffix})) &&
+      [[ $filename == *"$key" ]] &&
+      ble/gdict#get _ble_syntax_highlight_lscolors_suffix "$key" &&
+      [[ $ret ]] &&
+      suffix=$key g=$ret
+  done
+
+  ret=$g
+  [[ $ret ]]
 }
 
 function ble/syntax/highlight/ls_colors/.parse {
@@ -6706,6 +6746,11 @@ function ble/syntax/highlight/ls_colors/.parse {
   ble/string#split fields : "$1"
   for field in "${fields[@]}"; do
     [[ $field == *=* ]] || continue
+    if [[ $field == 'ln=target' ]]; then
+      _ble_syntax_highlight_lscolors[ATTR_FILE_LINK]=target
+      continue
+    fi
+
     local lhs=${field%%=*}
     local ret; ble/color/sgrspec2g "${field#*=}"; local rhs=$ret
     case $lhs in
@@ -6721,8 +6766,8 @@ function ble/syntax/highlight/ls_colors/.parse {
     ('pi') _ble_syntax_highlight_lscolors[ATTR_FILE_FIFO]=$rhs ;;
     ('so') _ble_syntax_highlight_lscolors[ATTR_FILE_SOCK]=$rhs ;;
     ('bd') _ble_syntax_highlight_lscolors[ATTR_FILE_BLK]=$rhs  ;;
-    (\*.*)
-      ble/syntax/highlight/ls_colors/.register-extension "${lhs:2}" "$rhs" ;;
+    (.*)   ble/syntax/highlight/ls_colors/.register-suffix "$lhs" "$rhs" ;;
+    (\*?*) ble/syntax/highlight/ls_colors/.register-suffix "${lhs:1}" "$rhs" ;;
     esac
   done
 }
@@ -6731,22 +6776,31 @@ function ble/syntax/highlight/ls_colors/.parse {
 ##   対応する LS_COLORS 設定が見つかった時に g を上書きし成功します。
 ##   それ以外の場合は g は変更せず失敗します。
 ##   @param[in] filename
-##   @var[in] type
+##   @var[ref] type
+##     This specifies the type of the file.  When the file is symbolic link and
+##     `ln=target' is specified, this function rewrites `type` to the file type
+##     of the target file.
 ##   @var[in,out] g
 function ble/syntax/highlight/ls_colors {
   local file=$1
+  if ((type==ATTR_FILE_LINK)) && [[ ${_ble_syntax_highlight_lscolors[ATTR_FILE_LINK]} == target ]]; then
+    # determine type based on resolved file
+    ble/syntax/highlight/filetype "$file" follow-symlink ||
+      type=$ATTR_FILE_ORPHAN
+    if ((type==ATTR_FILE_FILE)) && ble/syntax/highlight/ls_colors/.has-suffix; then
+      ble/util/readlink "$file"
+      file=$ret
+    fi
+  fi
+
   if ((type==ATTR_FILE_FILE)); then
-    local ext=${file##*/} ret=
-    while [[ $ext == *.* ]]; do
-      ext=${ext#*.}
-      [[ $ext ]] || break
-      if ble/syntax/highlight/ls_colors/.read-extension "$ext"; then
-        local g1=$ret
-        ble/color/face2g filename_ls_colors; g=$ret
-        ble/color/g#append g "$g1"
-        return 0
-      fi
-    done
+    local ret=
+    if ble/syntax/highlight/ls_colors/.match-suffix "$file"; then
+      local g1=$ret
+      ble/color/face2g filename_ls_colors; g=$ret
+      ble/color/g#append g "$g1"
+      return 0
+    fi
   fi
 
   local g1=${_ble_syntax_highlight_lscolors[type]}

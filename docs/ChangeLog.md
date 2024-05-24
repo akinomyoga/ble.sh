@@ -38,6 +38,8 @@
   - sabbrev: fix bugs in sabbrev matching and positioning (reported by dgudim) `#D2198` 70a325f9
 - complete: support `ble-face menu_desc_{default,type,quote}` (requested by romaia) `#D2193` b3e7237e
 - complete: support `bleopt complete_menu_complete_opts=hidden` and menu-style switching (requested by CamRatliff) `#D2199` 16ff7df7
+- syntax: support `ln=target` in `bleopt filename_ls_colors` (requested by akhilkedia) `#D2213` xxxxxxxx
+- syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` xxxxxxxx
 
 ## Changes
 

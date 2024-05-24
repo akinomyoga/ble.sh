@@ -7370,6 +7370,155 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-05-24
+
+  * syntax: LS_COLORS='ln=target' (requested by akhilkedia) [#D2213]
+    https://github.com/akinomyoga/ble.sh/issues/449
+
+    対策はする。一方でこれに対応するべきだろうか。
+
+    * そもそもこの機能は何なのか。ちゃんと公式で定義された機能なのか。もし何処
+      かの勝手なプロジェクトがランダムに実装した物だったら、ble.sh がこれに対応
+      する事によってユーザーが LS_COLORS に ln=target を設定して余計に問題が増
+      える可能性がある。
+
+      検索すると色々なプロジェクトに対応していないという文句が立っている。どう
+      もGNU ls の独自機能であって undocumented という事が exa の issue に書かれ
+      ている。
+
+      - 2023-07-29 eza 対応? https://github.com/eza-community/eza/pull/52
+      - 2021-09-24 exa 未対応  https://github.com/ogham/exa/pull/960
+      - 2021-07-05 tcsh-6.23.00 対応 https://bugs.astron.com/view.php?id=258 これは bash の対応を受けて
+      - 2019-08-10 xonsh-0.9.10 対応 https://xon.sh/changelog.html#v0-9-10
+      - 2015-03-21 bash 対応 https://lists.gnu.org/archive/html/bug-bash/2015-03/msg00122.html
+      - < 2004-08 GNU coreutils ls?
+
+        と思ったが検索すると GNU ls 自体も別に独自に実装した訳ではなくて誰かが
+        要求したのを修正している?
+
+        > * Noteworthy changes in release 8.14 (2011-10-12) [stable]
+        > ** Bug fixes
+        >   ls --dereference no longer outputs erroneous "argetm" strings for
+        >   dangling symlinks when an 'ln=target' entry is in $LS_COLORS.
+        >   [bug introduced in fileutils-4.0]
+
+        と思ったがこれよりも前に dangling でない symlinks については動作してい
+        たという事? もっと遡ると 6.9.90 に言及がある。6.0 で導入されたバグとい
+        う事になっているので、6.0 よりも前に実は ln=target は存在したという事な
+        のだろうか。或いは単にランダムな文字列は昔は無視していたというだけの可
+        能性もあるが。
+
+        > * Noteworthy changes in release 6.9.90 (2007-12-01) [beta]
+        > ** Bug fixes
+        >   ls --color, (with a custom LS_COLORS envvar value including the
+        >   ln=target attribute) would mistakenly output the string "target"
+        >   before the name of each symlink.  [introduced in coreutils-6.0]
+
+        それより前にはメーリングリスト上での言及はない様である。と思ったが別のメー
+        リングリスト上で登場している。
+
+        https://lists.gnu.org/archive/html/bug-coreutils/2004-08/msg00024.html
+        https://lists.gnu.org/archive/html/bug-coreutils/2007-04/msg00048.html
+        https://lists.gnu.org/archive/html/bug-coreutils/2008-04/msg00122.html
+
+        ソースコード上には既に 2004-08 の時点で存在していた。
+
+      - https://superuser.com/questions/225799/ ここでは 2010 年の段階で既に
+        ln=target を使っている人がいる。
+
+      然し、そもそも LS_COLORS どdocumentation が何処にあるのかも謎である。man
+      dir_colors に dircolors の設定ファイルの記述方法が書かれている。
+
+      [まとめ] 何処が出どころかは分からないが、 GNU coreutils ls では大分昔から
+      コードの中に存在していた様である。undocumented であるという話も見られたが、
+      そもそも LS_COLORS 自体が文書化されていない気がする。
+
+    * 他にも対応していないものはあるだろうか。
+
+      man dir_colors に変換元のファイルの形式の説明が幾らかある。実際に適当な設
+      定を書いてどのように翻訳されるかを見ることで、どういう機能があるかを確認
+      する事ができる。
+
+      * reject: SGR の制御シーケンスを他の物にする機能?
+
+        lc=1
+        rc=2
+        ec=3
+
+        これらはそもそもその他の色指定の方法の時にも適用するべきかどうか考える
+        必要がある。ls_colors のレベルで対応しても仕方がないので気にしない事に
+        する。
+
+      * reject: ファイル名以外の色を指定する機能
+        <del>デフォルトのファイルの色を指定する機能</del>
+
+        no=109 NORM (NORMAL)
+
+        % これは既にble.sh の中で別枠で指定する事になっている? と思ったがそうで
+        % もない様だ。後で確認する。
+        %
+        % うーん。別で指定する様になっているとしても、他のファイルタイプと同様
+        % に filename_ls_colors で上書きできる様になっていても良いのではないか。
+        %
+        % 確認すると filename_other という face が存在していて、これは
+        % ATTR_FILE_FILE に紐づけられている。そして ATTR_FILE_FILE は
+        % dir_colors の 'fi' に紐づけられている。では fi と no の違いは何だろう
+        % か。
+        %
+        % man dir_colors を改めて確認すると FILE (fi) は通常のファイルに使われ
+        % る色で、NORMAL (no) はそもそもファイル名ですらない部分の着色という事
+        % の様である。これは実装しなくて良い気がする。
+        %
+        % ? no: というか、そもそもこれは sgr0 の別名という事なのでは? とも思っ
+        %   たがそうでもない。ec が sgr0 に対応している筈である。
+
+        これはファイル名ではない通常テキストを表示するものである。通常ファイル
+        名に使う色ではない。考えない事にする。
+
+      * 特殊なファイルの種類
+
+        do=110 DOOR
+        mi=111 MISSING
+        tw=112 OWT (STICKY_OTHER_WRITABLE)
+        ow=113 OWR (OTHER_WRITABLE)
+
+        これらはそもそも現れないか、判定できないか、判定に時間がかかるので実装
+        しない物。
+
+      * うーん。どうも *~ なども指定できる様だ。以前に試した時には LS_COLORS は
+        *~ を解釈しないと判断した筈だがそうでもない? 或いは実装によって対応して
+        いなかったとしても ble.sh では対応する事にしても良いのではないか。
+
+        問題はこれに対応するとすると最長一致を判定するのが面倒になるという事。
+        殆どの接尾辞が . で始まると想定して処理を分けるというのが現実的の気がす
+        る。拡張子 (. で始まる物) の最長を求め、また別にそれ以外の接尾辞の最長
+        一致を求め、両方の最長で判定を行う。或いはそれ以外の接尾辞の長さについ
+        ては
+
+        一方で dir_colors で対応されていないのは任意の glob パターンの様である。
+
+        実際に GNU ls で試してみた所 *~ 等もちゃんと suffix として動いている。
+
+    * done: ln=target には対応した。
+
+    * done: 任意の suffix については追加で実装する事にする。
+
+      * done: _ble_syntax_highlight_lscolors_ext の key に . を含める様に修正す
+        る。修正した。他に参照している箇所がない事も確認した。
+
+      動作確認。
+
+      x fixed: 全く着色されなくなっている。と思ったら .match-suffix が引数を受
+        け取っていない。修正した。
+
+      他は問題なく動いている様子である。
+
+      ? *~ とファイルの属性のどちらが優先されるのだろうか。現在の ble.sh の実装
+        だと例えばファイルが実行属性を持っているとするとその時点で実行ファイル
+        の着色が適用される事になり、ファイル名パターンによる着色はされない。
+
+        GNU ls の振る舞いも同様だったので現在の振る舞いで良い事にする。
+
 2024-05-22
 
   * 2024-03-19 auto-complete 中の C-right は自分の操作体系と干渉する [#D2212]

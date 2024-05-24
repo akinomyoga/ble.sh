@@ -94,6 +94,7 @@ bleopt/declare -v syntax_eval_polling_interval 50
 
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_filetype}"
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_lscolors_ext}"
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_lscolors_suffix}"
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_bash_simple_eval}"
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_bash_simple_eval_full}"
 

@@ -870,8 +870,8 @@ function ble/color/read-sgrspec {
   for ((i=0,iN=${#specs[@]};i<iN;i++)); do
     local spec=${specs[i]} fields
     ble/string#split fields : "$spec"
-    local arg=$((10#0${fields[0]}))
-    if ((arg==0)); then
+    local arg=${fields[0]}
+    if [[ ${arg//[0-9]} ]] || (((arg=10#0$arg)==0)); then
       g=0
       continue
     elif [[ :$opts: != *:ansi:* ]]; then
