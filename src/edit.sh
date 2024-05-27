@@ -4261,6 +4261,7 @@ function ble/widget/display-shell-version {
   [[ ${TERM+set} ]] && ble/string#quote-word "$TERM" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
   local i line="${_ble_term_bold}terminal$sgr0: ${sgr2}TERM$sgrV=$sgr0$ret"
   line="$line ${sgr2}wcwidth$sgrV=$sgr0$bleopt_char_width_version-$bleopt_char_width_mode${bleopt_emoji_width:+/$bleopt_emoji_version-$bleopt_emoji_width+$bleopt_emoji_opts}"
+  [[ ${MC_SID-} ]] && line="$line, ${sgrC}mc$sgr0 (${sgrV}MC_SID:$MC_SID$sgr0)"
   for i in "${!_ble_term_DA2R[@]}"; do
     line="$line, $sgrC${_ble_term_TERM[i]-unknown}$sgr0 ($sgrV${_ble_term_DA2R[i]}$sgr0)"
   done
@@ -7537,8 +7538,10 @@ function ble/widget/accept-line/.is-mc-init {
   # PS1='\u@\h:\w\$ '
   # -------------------------------------
   if [[ $_ble_edit_str == *'PROMPT_COMMAND=${PROMPT_COMMAND:+$PROMPT_COMMAND'* ]]; then
-    ble/string#match "$_ble_edit_str" 'pwd>&[0-9]+;kill -STOP \$\$' &&
+    if ble/string#match "$_ble_edit_str" 'pwd>&[0-9]+;kill -STOP \$\$'; then
       _ble_edit_integration_mc_precmd_stop=1
+      ble/edit/info/set-default clear
+    fi
     return 0
   fi
 

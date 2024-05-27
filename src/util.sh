@@ -1418,8 +1418,12 @@ function ble/opts#remove {
   ble/path#remove "$@"
 }
 ## @fn ble/opts#append-unique opts value
+function ble/opts#append {
+  ble/util/set "$1" "${!1:+${!1}:}$2"
+}
+## @fn ble/opts#append-unique opts value
 function ble/opts#append-unique {
-  [[ :${!1}: == *:"$2":* ]] || ble/util/set "$1" "${!1:+${!1}:}$2"
+  [[ :${!1}: == *:"$2":* ]] || ble/opts#append "$1" "$2"
 }
 
 ## @fn ble/opts#extract-first-optarg opts key [default_value]
@@ -2888,6 +2892,17 @@ else
   function ble/fd#alloc/.close/.upgrade { builtin unset -f "$FUNCNAME"; }
 fi
 
+## @env[in] _ble_util_fdlist_cloexec
+##   A colon-separated list of the file descriptors that should be closed on
+##   the initialization of ble.sh.  Each element has the form of
+##   /[0-9]+(=[to])?/. These are supposed to be leftovers from the parent
+##   ble.sh sessions that should have been closed by CLOEXEC.  When
+##   ble/fd#add-cloexec failed, the file descriptor is added to this
+##   environment variable.
+## @env[in] _ble_util_fdvars_export
+##   A colon-separated list of the environment variable names that contain file
+##   descriptors that are shared by the parent ble.sh session if possible.
+
 function ble/fd/.validate-shared-fds {
   local -a close_fd=()
   # We first check if the exported fds are still valid.  If an exported fd is
@@ -2923,16 +2938,28 @@ function ble/fd/.validate-shared-fds {
     _ble_util_fdvars_export=
   fi
 
-  # We also close all the fds marked as "cloexec" that were inherited by the
-  # parent ble.sh session.
-  if [[ ${_ble_util_fdlist_cloexit-} ]]; then
+  if [[ ${_ble_util_fdlist_cloexec-} ]]; then
     local ret fd
-    ble/string#split ret : "$_ble_util_fdlist_cloexit"
+    ble/string#split ret : "$_ble_util_fdlist_cloexec"
     for fd in "${ret[@]}"; do
-      [[ $fd && ! ${fd//[0-9]} ]] &&
-        ble/array#push close_fd "$fd"
+      ble/string#match "$fd" '^([0-9]+)(=(.*))?' || continue
+      local fd=${BASH_REMATCH[1]} type=${BASH_REMATCH[3]-}
+
+      # When the type of the file descriptor does not match the recorded one,
+      # we keep the file descriptor because the file descriptor is probably
+      # replaced with another one by other programs.
+      case $type in
+      (L*)
+        [[ -h /proc/$$/fd/$1 ]] &&
+          ble/util/readlink "/proc/$$/fd/$1" &&
+          [[ ${ret//:} == "${type#L}" ]] || continue ;;
+      (t) [[ -t $fd ]] || continue ;;
+      (o) [[ ! -t $fd ]] || continue ;;
+      esac
+
+      ble/array#push close_fd "$fd"
     done
-    _ble_util_fdlist_cloexit=
+    _ble_util_fdlist_cloexec=
   fi
 
   if ((${#close_fd[@]})); then
@@ -2950,7 +2977,8 @@ function ble/fd/.validate-shared-fds {
   fi
 }
 ble/fd/.validate-shared-fds
-export _ble_util_fdlist_cloexit=
+_ble_util_fdlist_cloexit=
+export _ble_util_fdlist_cloexec=
 export _ble_util_fdvars_export=
 
 _ble_util_openat_nextfd=
@@ -3106,12 +3134,12 @@ else
 fi
 
 if ((_ble_bash>=40400)) && ble/util/load-standard-builtin fdflags; then
-  # Implementation of ble/fd#add-cloexec by loadable builtin (8us)
+  # Implementation of ble/fd#cloexec by loadable builtin (8us)
 
-  function ble/fd#add-cloexec { builtin fdflags -s +cloexec "$1"; }
-  function ble/fd#remove-cloexec { builtin fdflags -s -cloexec "$1"; }
+  function ble/fd#cloexec/.add { builtin fdflags -s +cloexec "$1"; }
+  function ble/fd#cloexec/.remove { builtin fdflags -s -cloexec "$1"; }
 elif ((_ble_bash>=40000)); then
-  # Implementation of ble/fd#add-cloexec by undo fd.
+  # Implementation of ble/fd#cloexec by undo fd.
   #
   # In bash >= 4.0, the "undo fd" (i.e., the file descriptor that holds the
   # original stream of the redirected file descriptor) gets O_CLOEXEC.  If we
@@ -3120,20 +3148,20 @@ elif ((_ble_bash>=40000)); then
   # bash >= 4.0, because older versions of bash does not give O_CLOEXEC to the
   # undo fds.
   if [[ -d /proc/$$/fd ]]; then
-    # Implementation of ble/fd#add-cloexec by procfs (1588us)
+    # Implementation of ble/fd#cloexec by procfs (1588us)
 
-    function ble/fd#add-cloexec/.listfd {
+    function ble/fd#cloexec/.listfd {
       local fd
       for fd in /proc/"$$"/fd/*; do
         fd=${fd##*/}
         [[ $fd && ! ${fd//[0-9]} ]] && ble/util/set "$1[fd]" 1
       done
     }
-    ## @fn ble/fd#add-cloexec/.probe
+    ## @fn ble/fd#cloexec/.probe
     ##   @var[out] ret
-    function ble/fd#add-cloexec/.probe {
+    function ble/fd#cloexec/.probe {
       local fdset2
-      ble/fd#add-cloexec/.listfd fdset2
+      ble/fd#cloexec/.listfd fdset2
 
       local fd
       for fd in "${!fdset1[@]}"; do builtin unset -v 'fdset2[fd]'; done
@@ -3148,27 +3176,27 @@ elif ((_ble_bash>=40000)); then
       return 1
     }
 
-    ## @fn ble/fd#add-cloexec/.dup-undo-redirection-fd
+    ## @fn ble/fd#cloexec/.dup-undo-redirection-fd
     ##   @var[out] ret
-    function ble/fd#add-cloexec/.dup-undo-redirection-fd {
+    function ble/fd#cloexec/.dup-undo-redirection-fd {
       local set shopt gignore
       ble/fd#list/adjust-glob
 
       local fd=$1 fdset1
-      ble/fd#add-cloexec/.listfd fdset1
+      ble/fd#cloexec/.listfd fdset1
 
-      builtin eval -- "ble/fd#add-cloexec/.probe $fd</dev/null"
+      builtin eval -- "ble/fd#cloexec/.probe $fd</dev/null"
       local ext=$?
 
       ble/fd#list/restore-glob
       return "$ext"
     }
   else
-    # Implementation of ble/fd#add-cloexec by manual fd scan (1996us)
+    # Implementation of ble/fd#cloexec by manual fd scan (1996us)
 
-    ## @fn ble/fd#add-cloexec/.probe
+    ## @fn ble/fd#cloexec/.probe
     ##   @var[out] ret
-    function ble/fd#add-cloexec/.probe {
+    function ble/fd#cloexec/.probe {
       local fd
       local -a mark=()
       for fd in "${candidates[@]}"; do
@@ -3184,7 +3212,7 @@ elif ((_ble_bash>=40000)); then
       return 1
     }
 
-    function ble/fd#add-cloexec/.dup-undo-redirection-fd {
+    function ble/fd#cloexec/.dup-undo-redirection-fd {
       local fd=$1
 
       local -a candidates=()
@@ -3196,16 +3224,16 @@ elif ((_ble_bash>=40000)); then
       ble/fd#alloc/.nextfd fdtmp '' no-increment &&
         ble/array#push candidates "$fdtmp"
 
-      builtin eval -- "ble/fd#add-cloexec/.probe $fd</dev/null"
+      builtin eval -- "ble/fd#cloexec/.probe $fd</dev/null"
     }
   fi
 
-  function ble/fd#add-cloexec {
+  function ble/fd#cloexec/.add {
     local fd=$1 ret
-    ble/fd#add-cloexec/.dup-undo-redirection-fd "$fd" &&
+    ble/fd#cloexec/.dup-undo-redirection-fd "$fd" &&
       builtin eval -- "exec $fd>&- $fd>&$ret $ret>&-" # disable=#D2164 (here bash4+)
   } 2>/dev/null
-  function ble/fd#remove-cloexec {
+  function ble/fd#cloexec/.remove {
     local fd=$1
     if ((fd!=0)); then
       builtin eval -- "exec 0<&$fd $fd<&- $fd<&0" </dev/null # disable=#D2164 (here bash4+)
@@ -3214,9 +3242,30 @@ elif ((_ble_bash>=40000)); then
     fi
   }
 else
-  function ble/fd#add-cloexec { false; }
-  function ble/fd#remove-cloexec { false; }
+  function ble/fd#cloexec/.add { false; }
+  function ble/fd#cloexec/.remove { false; }
 fi
+
+function ble/fd#add-cloexec {
+  ble/fd#cloexec/.add "$1" && return 0
+
+  local type
+  if [[ -h /proc/$$/fd/$1 ]] && ble/util/readlink "/proc/$$/fd/$1"; then
+    type=L${ret//:}
+  elif [[ -t ${!1} ]]; then
+    type=t
+  else
+    type=o
+  fi
+
+  ble/opts#remove _ble_util_fdlist_cloexec "$1"
+  ble/opts#append _ble_util_fdlist_cloexec "$1=$type"
+}
+function ble/fd#remove-cloexec {
+  ble/fd#cloexec/.remove "$1" || return "$?"
+  ble/opts#remove _ble_util_fdlist_cloexec "$1"
+  return 0
+}
 
 ## @fn ble/fd#alloc fdvar redirect [opts]
 ##   "exec {fdvar}>foo" に該当する操作を実行します。
@@ -3309,6 +3358,7 @@ function ble/fd#finalize {
     ble/fd#alloc/.close "$fd"
   done
   _ble_util_fdlist_cloexit=
+  _ble_util_fdlist_cloexec=
 }
 function ble/fd#is-cloexit {
   [[ :$_ble_util_fdlist_cloexit: == *:"$fd":* ]]
@@ -3320,6 +3370,7 @@ function ble/fd#close {
   (($1>=3)) || return 1
   ble/fd#alloc/.close "$1"
   ble/opts#remove _ble_util_fdlist_cloexit "$1"
+  ble/opts#remove _ble_util_fdlist_cloexec "$1"
   return 0
 }
 

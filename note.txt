@@ -7370,6 +7370,135 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-06-03
+
+  * 2024-05-25 mc でまた動かなくなっている (reported by u/satanicllamaplaza) [#D2215]
+    https://www.reddit.com/r/linux4noobs/comments/1cz5kd7/midnight_commander_help/
+
+    | コメントで 785267e1 で動かなくなったと返信した。単に add-cloexec の処理を
+    | 外しても問題は解決しない。
+    |
+    | 或いは具体的に処理がどの様に進んでいるのかを確認したら分かるだろうか? 調
+    | べてみた感じだとコマンドの実行まではちゃんとできている。
+    |
+    | うーん。或いは prompt の出力先が変になっている可能性?
+    |
+    | * 何故か ble.sh の開発に使っている shell から起動した場合には問題はなく
+    |   mc を起動する事ができる。起動できる場合と起動できない場合の違いは何だろ
+    |   う。更に同じくらい古そうな別のタブでは起動できない。
+    |
+    |   * _ble_util_fd_{tty,tui,cmd}_std{in,out,err} の接続先を確認してみたが別
+    |     に異常はない。起動できる場合と起動できない場合で比較してみたが本質的
+    |     な違いはない様に見える。
+    |
+    |   * 或いは環境変数が異なる可能性? 動く環境では READLINE_LINE
+    |     READLINE_POINT が存在する。_fzf_git_cat 及び fzf の PATH が登録されて
+    |     いる。PWD/OLDPWD/LINENO (bash) が異なる。WINDOW (screen) が異な
+    |     る。_ble_util_fdlist_cloexit が異なる。
+    |
+    |   何と環境変数をロードしてから起動したら動く。と思ったが違った。何も修正
+    |   しなくても動く。ディレクトリが同じだったから動いただけ? そうでもない。
+    |   別の新しいセッションで実行しても別に違いは見られない。
+    |
+    |   * 改めてほぼ同じ session で違いを見てみるとどうも fd 10 が何処に繋がっ
+    |     ているのかが異なる気がする。或いはその他に違いはあるだろうか。
+    |
+    |     然し、ls /proc/self/fd で表示すると何れの fd も閉じられているので関係
+    |     ない気がする。
+    |
+    |   % うーん。そもそも exec 10>/dev/null 等として bashrc で開いて置いた物が
+    |   % histdb の fd によって上書きされてしまっている。どういう事か? うーん。
+    |   % これは単に 10 が既に ble.sh で使われている fd であって ble.sh が
+    |   % cloexec に指定している為に、ble.sh が残留 fd と思って削除しているだけ
+    |   % だった。
+    |
+    | * 改めて add-cloexec を除いた時にどうなるか確認する。うーん。やはり
+    |   add-cloexec を何もしない関数に置き換えても問題は解決しない。
+    |
+    |   また、stdout/stderr/stdin の特別なコピーをやめて単に 0,1,2 から exec で
+    |   コピーする様に変更しても問題は変わらない。
+    |
+    | * どうやら問題のあるセッションからだと bashrc が空だったとしても mc の起
+    |   動に失敗する様だ (DEBUG=1 mc)。一旦空の bash を途中で起動すると、その中
+    |   では mc の起動に成功する (DEBUG=1 bash [RET] mc)。また、ble-detach した
+    |   環境で mc を実行しても問題は発生する。
+    |
+    | 呼び出し元の bash セッションで fdflags を使っているかどうかで違いが生まれ
+    | る様だ。また、fdflags を使わない実装でも cloexec を付加していると問題が生
+    | じる。
+    |
+    | fdflags を使って 10, 11 に +cloexec を実行すると mc が起動しなくなる。一
+    | 方で、その後に 10, 11 から cloexec を取り除くと動く様になる。不思議だ。10
+    | と 11 のどちらが効いているのか調べる。うーん。10 か 11 のどちらか一方でも
+    | cloexec がついていると失敗する。
+    |
+    | plain Bash でも再現するか試してみた。まず、fd を全て閉じていたとしても問
+    | 題のあるセッションから起動した bash --norc の中では結局問題が持続している。
+    |
+    | - 一度 exec で 10 と 11 に何か割り当てると問題がなくなる。
+    |   - 然し、そこで再び fd で何か割り当てると失敗する様になる。
+    |   - 代わりにまた exec 10>&- 11>&- で fd を削除すると動かなくなる。
+    |
+    | うーん。mc 自体が 10, 11 に fd が存在しているという事を期待しているという
+    | 事なのだろうか? うーん。mc-wrapper の redirection か何かが悪さをしている
+    | かと思ったが /usr/bin/mc で試しても症状は変わらない。
+    |
+    | そうなると次の疑問は普通にログインした時に 10, 11 がなかったらどうなるの
+    | かという事。うーん。別にちゃんと mc は動いている。しかも、この場合には
+    | 10, 11 が cloexec を持っているかどうかは関係なくて、mc の中で ble.sh が初
+    | 期化されているかどうかで振る舞いが変わっている? うーん。
+    |
+    | とここで何だか分かった様な気がする。mc が用意した fd が 10, 11 に割り当て
+    | られているが、_ble_util_fdlist_cloexec に登録されている物と被っている為に
+    | ble.sh が勝手に削除してしまっている? 初期化時に fd 10 11 等が何処に繋がっ
+    | ているかを確認する必要がある。
+    |
+    | 確認した。これだった。
+
+    % デバグ用コード
+    %
+    % if [[ $command == *PS1* ]]; then
+    %   #ble/debug/print-variables -t "$FUNCNAME" _ble_edit_str KEYS CHARS >> ~/a.txt 2>&1
+    %   #ble/debug/print-variables -t "$FUNCNAME" _ble_util_fd_{tty,tui,cmd}_{stdin,stdout,stderr} >> ~/a.txt 2>&1
+    %   for v in _ble_util_fd_{tty,tui,cmd}_{stdin,stdout,stderr}; do
+    %     echo "$v"
+    %     ls -la "/proc/$$/fd/${!v}"
+    %   done
+    % fi >> ~/a.txt 2>&1
+
+    [まとめ] 発生条件は、外側のシェルで cloexec 指定した fd を
+    _ble_util_fdlist_cloexit で export している時に、mc の内側で ble.sh を初期
+    化すると発生する。cloexec している fd は自動的に閉じられて、その後で mc が
+    自分で準備した fd が _ble_util_fdlist_cloexit で閉じられた fd と一致する値
+    に割り当てられる。この状態で ble.sh を初期化すると、mc が用意した fd を勘違
+    いして閉じてしまう。mc が用意した fd に対しては pwd や
+    READLINE_LINE,BASH_VERSINFO,READLINE_POINT 等が書き込まれる筈だがこれが受信
+    できないので mc は初期化に失敗したと見做す。
+
+    修正について
+
+    * done: 先ず、_ble_util_fdlist_cloexit が他の場所で使われていないか確認する。
+      うーん。別の用途で使われている。分離するべきの気がす
+      る。_ble_util_fdlist_cloexec を用意する事にする。
+
+    * done: cloexit に登録している fd が tty の時には tty である事のチェックも
+      行う。
+
+      先ずこちらの修正を行う事にする。これでテストしようと思ったが、どうも 10,
+      11 に来るのは histdb の pipe の様なので単に tty かどうかだけでは判定する
+      事はできない。
+
+      * done: うーん。或いは readlink を使ってチェックするというのもありなのか
+        もしれない。そちらの方が確実である。これで procfs が利用できるシステム
+        ではかなり確実に判定できる様になっただろう。何れにしても fd#add-cloexec
+        がちゃんと動いている限りは問題ない筈。
+
+    * done: cloexec に対応している場合には _ble_util_fdlist_cloexit に登録しな
+      い。
+
+      _ble_util_fdlist_cloexit を使っている他の箇所はないか? その場所ではちゃん
+      と閉じる様にしなければいならない。
+
 2024-06-01
 
   * decode: kitty で ESC が動かなくなった (reported by gvlassis, 10b14224cc, lokxii) [#D2214]
@@ -7468,6 +7597,19 @@ bash_tips
       いという文句が出た時にどうするか? そもそも -k は char に対する変換操作な
       ので、 CSI u で送られてきた ESC に対しては作用しないのは作用しない。一方
       で、ユーザーは ble-bind -k @ESC ... を実行する事はできる。
+
+    * mc が vi mode indicator をプロンプトとして抽出してしまっている。ちゃんと
+      mc である事は検出できていて、 _ble_edit_integration_mc_precmd_stop=1 も設
+      定されている。然し、それでも表示されてしまう。調べてみると、
+      _ble_edit_integration_mc_precmd_stop を参照して
+      keymap:vi/update-mode-indicator が呼び出されて内容を更新するが、そもそも
+      update-mode-indicator が呼び出されるのがコマンドを実行した後に
+      leave-command-layout を実行して、更にその後で ble/application/render が走っ
+      た後である。一方で、leave-command-layout を実行した時点で info の再表示が
+      実行されるので、その瞬間に既に設定していた mode indicator が表示されてし
+      まう。mc はそれを拾ってしまう。
+
+    * ble/widget/display-shell-version で MC_SID もチェックする。
 
 2024-05-24
 
