@@ -261,7 +261,7 @@ For example,
   If the user or another framework directly calls the original builtins through `builtin BUILTIN`, or if the user or another framework replaces the shell functions, the behavior is undefined.
 - The shell and terminal settings for the line editor and the command execution
   are different.  `ble.sh` adjusts them for the line editor and try to restore
-  the settigns for the command execution.  However, there are settings that
+  the settings for the command execution.  However, there are settings that
   cannot be restored or are intentionally not restored for various reasons.
   Some of them are summarlized on [a wiki
   page](https://github.com/akinomyoga/ble.sh/wiki/Internals#internal-and-external).
