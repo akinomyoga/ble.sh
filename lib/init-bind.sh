@@ -12,7 +12,7 @@
 #   マクロを追加する時にはそれに応じてチェックを追加する必要がある。
 
 function ble/init:bind/append {
-  local xarg="\"$1\":ble-decode/.hook $2; builtin eval -- \"\$_ble_decode_bind_hook\""
+  local xarg="\"$1\":_ble_decode_hook $2; builtin eval -- \"\$_ble_decode_bind_hook\""
   local rarg=$1 condition=$3${3:+' && '}
   ble/util/print "${condition}builtin bind -x '${xarg//$q/$Q}'" >> "$fbind1"
   ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >> "$fbind2"

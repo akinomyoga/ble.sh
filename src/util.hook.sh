@@ -184,6 +184,7 @@ function blehook/.read-arguments {
 }
 
 function blehook {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   local set shopt
   ble/base/adjust-BASH_REMATCH
   ble/base/.adjust-bash-options set shopt
@@ -203,6 +204,7 @@ function blehook {
     ble/util/unlocal LC_ALL LC_COLLATE 2>/dev/null # suppress locale error #D1440
     ble/base/.restore-bash-options set shopt
     ble/base/restore-BASH_REMATCH
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
     return "$ext"
   fi
 
@@ -253,7 +255,8 @@ function blehook {
   ble/util/unlocal LC_ALL LC_COLLATE 2>/dev/null # suppress locale error #D1440
   ble/base/.restore-bash-options set shopt
   ble/base/restore-BASH_REMATCH
-  return "$ext"
+  ble/util/setexit "$ext"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }
 blehook/.compatibility-ble-0.3
 
@@ -729,7 +732,11 @@ function ble/builtin/trap {
   ble/base/.restore-bash-options set shopt
   return 0
 }
-function trap { ble/builtin/trap "$@"; }
+function trap {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/builtin/trap "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
 ble/builtin/trap/user-handler#init
 
 function ble/builtin/trap/.TRAPRETURN {
@@ -748,7 +755,7 @@ function ble/builtin/trap/.TRAPRETURN {
     (*) return 126 ;;
     esac ;;
   # 待避処理をしていないユーザーコマンド実行後に呼び出される関数達。
-  (*' ble-edit/exec:gexec/.save-lastarg ' | ' _ble_edit_exec_gexec__TRAPDEBUG_adjust ') return 126 ;;
+  (*' _ble_edit_exec_gexec__save_lastarg ' | ' _ble_edit_exec_gexec__TRAPDEBUG_adjust ') return 126 ;;
   esac
   return 0
 }

@@ -60,7 +60,7 @@ q=\'
   /^__PRINT__$/ { keymap_print(); next; }
   sub(/^KEYMAP=/, "") { KEYMAP = $0; }
 
-  /ble-decode\/.hook / { next; }
+  /(ble-decode\/.hook|_ble_decode_hook) / { next; }
 
   match($0, /^"(\\.|[^"])+": /) {
     key = substr($0, 1, RLENGTH - 2);

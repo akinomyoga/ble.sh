@@ -9452,7 +9452,7 @@ function ble/complete/sabbrev/read-arguments {
 
 ## @fn ble-sabbrev key=value
 ##   静的略語展開を登録します。
-function ble-sabbrev {
+function ble/complete/sabbrev {
   local flags type specs print
   ble/complete/sabbrev/read-arguments "$@"
   if [[ $flags == *H* || $flags == *E* ]]; then
@@ -9496,6 +9496,11 @@ function ble-sabbrev {
     ble/complete/sabbrev/register "$key" "${type:-w}:$value"
   done
   return "$ext"
+}
+function ble-sabbrev {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/complete/sabbrev "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }
 
 ## @fn ble/complete/sabbrev/locate-key rex_source_type

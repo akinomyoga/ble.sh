@@ -68,12 +68,7 @@ function ble/color/initialize-term-colors {
 blehook term_DA2R!=ble/color/initialize-term-colors
 
 
-function ble-color-show {
-  if (($#)); then
-    ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
-    return "$?"
-  fi
-
+function ble/color/palette/.print-indexed-colors {
   local cols=$(((${COLUMNS:-80}-1)/4))
   ((cols<1?(cols=1):(cols>16&&(cols=16))))
   local bg bg0 bgN ret gflags=$((_ble_color_gflags_BgIndexed|_ble_color_gflags_FgIndexed))
@@ -90,18 +85,9 @@ function ble-color-show {
     done
     printf '%s\n' "$_ble_term_sgr0"
   done
+  return 0
 }
-function ble-palette {
-  if (($#)); then
-    ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
-    return "$?"
-  fi
-
-  if ((${COLUMNS:-80}<80)); then
-    ble-color-show
-    return 0
-  fi
-
+function ble/color/palette/.print-xterm-256color {
   local ret gflags=$((_ble_color_gflags_BgIndexed|_ble_color_gflags_FgIndexed))
   local l c bg
   for ((l=0;l<2;l++)); do
@@ -141,6 +127,33 @@ function ble-palette {
     done
     printf '%s\n' "$_ble_term_sgr0"
   done
+  return 0
+}
+
+function ble-color-show {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  if (($#)); then
+    ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
+    return 2
+  fi
+  ble/color/palette/.print-indexed-colors
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
+function ble-palette {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  if (($#)); then
+    ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
+    return 2
+  fi
+
+  if ((${COLUMNS:-80}<80)); then
+    ble/color/palette/.print-indexed-colors
+  else
+    ble/color/palette/.print-xterm-256color
+  fi
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }
 
 
@@ -1056,7 +1069,10 @@ function ble/color/setface/.check-argument {
   [[ $flags == *c* || $flags == *a* && -t 1 ]] && opts=$opts:color
   ble/color/list-faces "$opts"; ext=$?; return 1
 }
+## @fn ble-color-defface
+##   @deprecated
 function ble-color-defface {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   local set shopt
   [[ $_ble_bash_options_adjusted ]] || ble/base/.adjust-bash-options set shopt
   if local ext; ble/color/setface/.check-argument "$@"; then
@@ -1064,9 +1080,13 @@ function ble-color-defface {
     ext=$?
   fi
   [[ $_ble_bash_options_adjusted ]] || ble/base/.restore-bash-options set shopt
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
   return "$ext"
 }
+## @fn ble-color-setface
+##   @deprecated
 function ble-color-setface {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   local set shopt
   [[ $_ble_bash_options_adjusted ]] || ble/base/.adjust-bash-options set shopt
   if local ext; ble/color/setface/.check-argument "$@"; then
@@ -1074,6 +1094,7 @@ function ble-color-setface {
     ext=$?
   fi
   [[ $_ble_bash_options_adjusted ]] || ble/base/.restore-bash-options set shopt
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
   return "$ext"
 }
 
@@ -1204,11 +1225,11 @@ function ble/color/list-faces {
 
   local key
   for key in "${!_ble_faces__@}"; do
-    ble-face/.print-face "$key"
+    ble/color/face/.print-face "$key"
   done
 }
 
-function ble-face/.read-arguments/process-set {
+function ble/color/face/.read-arguments/process-set {
   local o=$1 face=$2 value=$3
   if local rex='^[_a-zA-Z0-9@][_a-zA-Z0-9@]*$'; ! [[ $face =~ $rex ]]; then
     ble/util/print "ble-face: invalid face name '$face'." >&2
@@ -1225,7 +1246,7 @@ function ble-face/.read-arguments/process-set {
   ble/array#push setface "$face$assign$value"
 }
 
-## @fn ble-face/.read-arguments args...
+## @fn ble/color/face/.read-arguments args...
 ##   @var[out] flags
 ##     H = help
 ##     E = error
@@ -1233,7 +1254,7 @@ function ble-face/.read-arguments/process-set {
 ##     c = color
 ##     r = reset
 ##     u = changed
-function ble-face/.read-arguments {
+function ble/color/face/.read-arguments {
   flags= setface=() print=()
   local opt_color=auto
   local args iarg narg=$#; args=("$@")
@@ -1277,7 +1298,7 @@ function ble-face/.read-arguments {
                 flags=E$flags
                 continue
               fi
-              ble-face/.read-arguments/process-set "${arg::2}" "$lhs" "$rhs"
+              ble/color/face/.read-arguments/process-set "${arg::2}" "$lhs" "$rhs"
               break ;;
             (*)
               ble/util/print "ble-face: unrecognized option '-$c'." >&2
@@ -1312,7 +1333,7 @@ function ble-face/.read-arguments {
   [[ $opt_color == auto && -t 1 || $opt_color == always ]] && flags=c$flags
   [[ $flags != *E* ]]
 }
-function ble-face/.print-help {
+function ble/color/face/.print-help {
   ble/util/print-lines >&2 \
     'ble-face --help' \
     'ble-face [FACEPAT[:=|=][TYPE:]SPEC | -[sd] FACEPAT [TYPE:]SPEC]]...' \
@@ -1357,7 +1378,7 @@ function ble-face/.print-help {
 ## @fn ble/color/.print-face key
 ##   @param[in] key
 ##   @var[in] flags sgr0 sgr1 sgr2
-function ble-face/.print-face {
+function ble/color/face/.print-face {
   local key=$1 ret
   local name=${key#_ble_faces__}
   local cur=${_ble_faces[key]}
@@ -1382,12 +1403,13 @@ function ble-face/.print-face {
 ## @fn ble/color/.print-face key
 ##   @param[in] key
 ##   @var[in] flags sgr0 sgr1 sgr2
-function ble-face/.reset-face {
+function ble/color/face/.reset-face {
   local key=$1 ret
   [[ ${_ble_faces_def[key]+set} ]] &&
     _ble_faces[key]=${_ble_faces_def[key]}
 }
-function ble-face {
+
+function ble/color/face {
   local set shopt reset=
   if [[ ! $_ble_bash_options_adjusted ]]; then
     ble/base/.adjust-bash-options set shopt
@@ -1395,9 +1417,9 @@ function ble-face {
   fi
 
   local flags setface print
-  ble-face/.read-arguments "$@"
+  ble/color/face/.read-arguments "$@"
   if [[ $flags == *H* ]]; then
-    ble-face/.print-help
+    ble/color/face/.print-help
     builtin eval -- "$reset"
     return 2
   elif [[ $flags == *E* ]]; then
@@ -1464,11 +1486,11 @@ function ble-face {
       if bleopt/expand-variable-pattern "_ble_faces__$spec"; then
         if [[ $flags == *r* ]]; then
           for face in "${ret[@]}"; do
-            ble-face/.reset-face "$face"
+            ble/color/face/.reset-face "$face"
           done
         else
           for face in "${ret[@]}"; do
-            ble-face/.print-face "$face"
+            ble/color/face/.print-face "$face"
           done
         fi
       else
@@ -1482,6 +1504,11 @@ function ble-face {
   local ext=$?
   builtin eval -- "$reset"
   return "$ext"
+}
+function ble-face {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/color/face "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }
 
 #------------------------------------------------------------------------------

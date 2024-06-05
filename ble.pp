@@ -251,7 +251,7 @@ fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
       _ble_bash_FUNCNEST_adjusted=1
       _ble_bash_FUNCNEST_set=${FUNCNEST+set}
       _ble_bash_FUNCNEST=${FUNCNEST-}
-      builtin unset -v FUNCNEST
+      \builtin unset -v FUNCNEST
     fi 2>/dev/null'
   _ble_bash_FUNCNEST_restore='
     if [[ $_ble_bash_FUNCNEST_adjusted ]]; then
@@ -259,35 +259,54 @@ fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
       if [[ $_ble_bash_FUNCNEST_set ]]; then
         FUNCNEST=$_ble_bash_FUNCNEST
       else
-        builtin unset -v FUNCNEST
+        \builtin unset -v FUNCNEST
       fi
     fi 2>/dev/null'
   \builtin eval -- "$_ble_bash_FUNCNEST_adjust"
 
   \builtin unset -v POSIXLY_CORRECT
+
+  _ble_bash_POSIXLY_CORRECT_adjust='
+    if [[ ! ${_ble_bash_POSIXLY_CORRECT_adjusted-} ]]; then
+      _ble_bash_POSIXLY_CORRECT_adjusted=1
+      _ble_bash_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+      _ble_bash_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
+      if [[ $_ble_bash_POSIXLY_CORRECT_set ]]; then
+        \builtin unset -v POSIXLY_CORRECT
+      fi
+
+      # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
+      ble/base/workaround-POSIXLY_CORRECT
+    fi'
+  _ble_bash_POSIXLY_CORRECT_unset='
+    if [[ ${POSIXLY_CORRECT+set} ]]; then
+      \builtin unset -v POSIXLY_CORRECT
+      ble/base/workaround-POSIXLY_CORRECT
+    fi'
+  _ble_bash_POSIXLY_CORRECT_local_adjust='
+    \builtin local _ble_local_POSIXLY_CORRECT _ble_local_POSIXLY_CORRECT_set
+    _ble_local_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+    _ble_local_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
+    \builtin unset -v POSIXLY_CORRECT'
+  _ble_bash_POSIXLY_CORRECT_local_leave='
+    if [[ $_ble_local_POSIXLY_CORRECT_set ]]; then
+      POSIXLY_CORRECT=$_ble_local_POSIXLY_CORRECT
+    fi'
+  _ble_bash_POSIXLY_CORRECT_local_enter='
+    _ble_local_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+    _ble_local_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
+    \builtin unset -v POSIXLY_CORRECT'
+  _ble_bash_POSIXLY_CORRECT_local_return='
+    \builtin local _ble_local_POSIXLY_CORRECT_ext=$?
+    if [[ $_ble_local_POSIXLY_CORRECT_set ]]; then
+      POSIXLY_CORRECT=$_ble_local_POSIXLY_CORRECT
+    fi
+    \return "$_ble_local_POSIXLY_CORRECT_ext"'
 } 2>/dev/null
 
 function ble/base/workaround-POSIXLY_CORRECT {
   # This function will be overwritten by ble-decode
   true
-}
-function ble/base/unset-POSIXLY_CORRECT {
-  if [[ ${POSIXLY_CORRECT+set} ]]; then
-    builtin unset -v POSIXLY_CORRECT
-    ble/base/workaround-POSIXLY_CORRECT
-  fi
-}
-function ble/base/adjust-POSIXLY_CORRECT {
-  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then return 0; fi # Note: set -e 対策
-  _ble_bash_POSIXLY_CORRECT_adjusted=1
-  _ble_bash_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
-  _ble_bash_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
-  if [[ $_ble_bash_POSIXLY_CORRECT_set ]]; then
-    builtin unset -v POSIXLY_CORRECT
-  fi
-
-  # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
-  ble/base/workaround-POSIXLY_CORRECT
 }
 function ble/base/restore-POSIXLY_CORRECT {
   if [[ ! $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then return 0; fi # Note: set -e の為 || は駄目
@@ -295,15 +314,14 @@ function ble/base/restore-POSIXLY_CORRECT {
   if [[ $_ble_bash_POSIXLY_CORRECT_set ]]; then
     POSIXLY_CORRECT=$_ble_bash_POSIXLY_CORRECT
   else
-    ble/base/unset-POSIXLY_CORRECT
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_unset"
   fi
 }
+## @fn ble/base/is-POSIXLY_CORRECT
+##   Check if the POSIX mode is enabled in the user context.  This function is
+##   assumed to be called in the adjusted state.
 function ble/base/is-POSIXLY_CORRECT {
-  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then
-    [[ $_ble_bash_POSIXLY_CORRECT_set ]]
-  else
-    [[ ${POSIXLY_CORRECT+set} ]]
-  fi
+  [[ $_ble_bash_POSIXLY_CORRECT_adjusted && $_ble_bash_POSIXLY_CORRECT_set ]]
 }
 
 {
@@ -324,14 +342,14 @@ function ble/base/adjust-builtin-wrappers/.assign {
     defs=$(builtin eval -- "$1")
   fi || ((1))
 }
-function ble/base/adjust-builtin-wrappers-1 {
+function ble/base/adjust-builtin-wrappers/.impl1 {
   # Note: 何故か local POSIXLY_CORRECT の効果が
   #   builtin unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
   # Note: set -o posix にしても read, type, builtin, local 等は上書き
   #   された儘なので難しい。unset -f builtin さえすれば色々動く様になる
   #   ので builtin は unset -f builtin してしまう。
   unset -f builtin
-  builtin local POSIXLY_CORRECT=y builtins1 keywords1
+  builtin local builtins1 keywords1
   builtins1=(builtin unset enable unalias return break continue declare local typeset eval exec set)
   keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
   if [[ ! $_ble_bash_builtins_adjusted ]]; then
@@ -343,17 +361,19 @@ function ble/base/adjust-builtin-wrappers-1 {
       \builtin alias "${builtins1[@]}" "${keywords1[@]}" || ((1))' # set -e 対策
     _ble_bash_builtins_save=$defs
   fi
+  builtin local POSIXLY_CORRECT=y
   builtin unset -f "${builtins1[@]}"
   builtin unalias "${builtins1[@]}" "${keywords1[@]}" || ((1)) # set -e 対策
-  ble/base/unset-POSIXLY_CORRECT
-} 2>/dev/null
-function ble/base/adjust-builtin-wrappers-2 {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_unset"
+}
+function ble/base/adjust-builtin-wrappers/.impl2 {
   # Workaround (bash-3.0..4.3) #D0722
   #
-  #   builtin unset -v POSIXLY_CORRECT でないと unset -f : できないが、
-  #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
-  #   builtin unset -v POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
-  #   "unset -f :" (非POSIX関数名) は別関数で adjust-POSIXLY_CORRECT の後で実行することにする。
+  #   builtin unset -v POSIXLY_CORRECT でないと unset -f : できないが、bash-3.0
+  #   -- 4.3 のバグで、local POSIXLY_CORRECT の時、builtin unset -v
+  #   POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
+  #   "unset -f :" (非POSIX関数名) は別関数で実行する事にする。呼び出し元で既に
+  #   builtin unset -v POSIXLY_CORRECT されている事を前提とする。
 
   # function :, alias : の保存
   local defs
@@ -363,6 +383,27 @@ function ble/base/adjust-builtin-wrappers-2 {
 
   builtin unset -f :
   builtin unalias : || ((1)) # set -e 対策
+}
+## @fn ble/base/adjust-builtin-wrappers
+##
+##   Note: This function needs to be called after adjusting POSIXLY_CORRECT by
+##   calling « builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust" »
+##
+##   Note (#D2221) We have been delayed the execution of "unset -f :"
+##   (adjust-builtin-wrappers-2) until POSIXLY_CORRECT is unset.  However, .
+##   we can now call "ble/base/adjust-builtin-wrappers/.impl2" immediately
+##   after "ble/base/adjust-builtin-wrappers/.impl1" because we now unset
+##   POSIXLY_CORRECT earlier.  We combine those two functions again.
+##
+function ble/base/adjust-builtin-wrappers {
+  ble/base/adjust-builtin-wrappers/.impl1
+
+  # Note (#D2221): In Bash 3.0 and 3.1, when "local POSIXLY_CORRECT" is used in
+  # a function, the POSIX mode remains effective even after the function
+  # returns.  This can be fixed by calling "unset -v POSIXLY_CORRECT".
+  builtin unset -v POSIXLY_CORRECT
+
+  ble/base/adjust-builtin-wrappers/.impl2
 } 2>/dev/null
 function ble/base/restore-builtin-wrappers {
   if [[ $_ble_bash_builtins_adjusted ]]; then
@@ -371,8 +412,7 @@ function ble/base/restore-builtin-wrappers {
   fi
 }
 {
-  ble/base/adjust-builtin-wrappers-1
-  ble/base/adjust-builtin-wrappers-2
+  ble/base/adjust-builtin-wrappers
 
   # 対策 expand_aliases (暫定) 終了
   if [[ $_ble_bash_expand_aliases ]]; then
@@ -412,7 +452,7 @@ function ble/base/xtrace/.fdnext {
   (($1<_ble_local_init+1024)) ||
     { (($1=_ble_local_init,_ble_util_openat_nextfd++)); builtin eval "exec ${!1}>&-"; } ||
     ((1))
-} 
+}
 function ble/base/xtrace/.log {
   local bash=${_ble_bash:-$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))}
   local open=---- close=----
@@ -1835,6 +1875,7 @@ function ble/base/print-usage-for-no-argument-command {
   return 0
 }
 function ble-reload {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   local -a options=()
   [[ ! -e $_ble_base_rcfile ]] ||
     ble/array#push options --rcfile="${_ble_base_rcfile:-/dev/null}"
@@ -1846,6 +1887,7 @@ function ble-reload {
       ble/array#push options "--$name"
     fi
   done
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
   source "$_ble_base/ble.sh" "${options[@]}"
 }
 
@@ -1895,9 +1937,13 @@ function ble-update/.reload {
       ble/util/print "ble-update: new ble.sh '$_ble_base/ble.sh' is empty." >&2
       return 1
     elif [[ $- == *i* && $_ble_attached ]] && ! ble/util/is-running-in-subshell; then
+      builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
       ble-reload
+      ext=$?
+      builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_enter"
+      return "$ext"
     fi
-    return "$?"
+    return 0
   fi
   ((ext==6)) && ext=0
   return "$ext"
@@ -2029,7 +2075,7 @@ function ble-update/.check-repository {
   fi
   return 1
 }
-function ble-update {
+function ble-update/.impl {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
     return "$?"
@@ -2079,7 +2125,7 @@ function ble-update {
     ble-update/.reload "$?"
     return "$?"
   fi
-  
+
   if ((EUID!=0)) && ! ble-update/.check-install-directory-ownership; then
     # _ble_base が自分の物でない時は sudo でやり直す
     sudo "$BASH" "$_ble_base/ble.sh" --update &&
@@ -2096,6 +2142,11 @@ function ble-update {
     return "$?"
   fi
   return 1
+}
+function ble-update {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble-update/.impl "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }
 #%if measure_load_time
 ble/debug/measure-set-timeformat ble.pp/prologue
@@ -2221,7 +2272,18 @@ function ble/dispatch {
     fi
   esac
 }
-function ble { ble/dispatch "$@"; }
+function ble {
+  case ${1-} in
+  (attach|detach|update|reload)
+    # These subcommands can affect the POSIX mode, so we need to call them
+    # without the adjustment of the POSIX mode.
+    "ble-$@" ;;
+  (*)
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+    ble/dispatch "$@"
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return" ;;
+  esac
+}
 
 
 # blerc
@@ -2249,7 +2311,9 @@ function ble-attach {
 ble/debug/leakvar#check $"leakvar" A1-begin
 #%end.i
   if (($# >= 2)); then
-    ble/util/print-lines \
+    # Note: We may not use "ble/util/print-lines" because it can be in the
+    # POSIX mode.
+    builtin printf '%s\n' \
       'usage: ble-attach [opts]' \
       'Attach to ble.sh.' >&2
     [[ $1 != --help ]] && return 2
@@ -2276,10 +2340,9 @@ ble/debug/leakvar#check $"leakvar" A3-guard
 #%end.i
   # 特殊シェル設定を待避
   builtin eval -- "$_ble_bash_FUNCNEST_adjust"
-  ble/base/adjust-builtin-wrappers-1
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
+  ble/base/adjust-builtin-wrappers
   ble/base/adjust-bash-options
-  ble/base/adjust-POSIXLY_CORRECT
-  ble/base/adjust-builtin-wrappers-2
   ble/base/adjust-BASH_REMATCH
 
 #%if leakvar
@@ -2293,8 +2356,8 @@ ble/debug/leakvar#check $"leakvar" A4-adjust
       BLE_ATTACHED=
       ble/base/restore-BASH_REMATCH
       ble/base/restore-bash-options
-      ble/base/restore-POSIXLY_CORRECT
       ble/base/restore-builtin-wrappers
+      ble/base/restore-POSIXLY_CORRECT
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A4b1
 #%end.i
@@ -2347,8 +2410,8 @@ ble/debug/leakvar#check $"leakvar" A7-decode
     ble/term/leave
     ble/base/restore-BASH_REMATCH
     ble/base/restore-bash-options
-    ble/base/restore-POSIXLY_CORRECT
     ble/base/restore-builtin-wrappers
+    ble/base/restore-POSIXLY_CORRECT
     builtin eval -- "$_ble_bash_FUNCNEST_restore"
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A7b1
@@ -2391,8 +2454,10 @@ ble/debug/leakvar#check $"leakvar" A12-tail
 
 function ble-detach {
   if (($#)); then
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
     ble/base/print-usage-for-no-argument-command 'Detach from ble.sh.' "$@"
-    return "$?"
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
+    return 2
   fi
 
   [[ $_ble_attached && ! $_ble_edit_detach_flag ]] || return 1
@@ -2436,10 +2501,9 @@ function ble/base/unload {
 
   # Adjust environment
   local IFS=$_ble_term_IFS
-  ble/base/adjust-builtin-wrappers-1
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
+  ble/base/adjust-builtin-wrappers
   ble/base/adjust-bash-options
-  ble/base/adjust-POSIXLY_CORRECT
-  ble/base/adjust-builtin-wrappers-2
   ble/base/adjust-BASH_REMATCH
 
   ble/term/stty/TRAPEXIT "$1"

@@ -156,9 +156,11 @@ function bleopt/default {
 ##       変数の設定内容を表示する
 ##
 function bleopt {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   local flags pvars specs
   bleopt/.read-arguments "$@"
   if [[ $flags == *E* ]]; then
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
     return 2
   elif [[ $flags == *H* ]]; then
     ble/util/print-lines \
@@ -180,6 +182,7 @@ function bleopt {
       '' \
       '  NAME can contain "@", "*", and "?" as wildcards.' \
       ''
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
     return 0
   fi
 
@@ -250,6 +253,7 @@ function bleopt {
   fi
 
   [[ $flags != *E* ]]
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }
 
 function bleopt/declare/.check-renamed-option {
@@ -333,7 +337,7 @@ function bleopt/check:input_encoding {
 
   if [[ $bleopt_input_encoding != "$value" ]]; then
     local bleopt_input_encoding=$value
-    ble/decode/rebind
+    ble/decode/readline/rebind
   fi
   return 0
 }
@@ -4250,7 +4254,11 @@ if ((_ble_bash>=40400)) && ble/util/load-standard-builtin sleep; then
     ble/base/.restore-bash-options set shopt 1
     return "$ext"
   }
-  function sleep { ble/builtin/sleep "$@"; }
+  function sleep {
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+    ble/builtin/sleep "$@"
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+  }
 elif [[ -f $_ble_base/lib/init-msleep.sh ]] &&
        source "$_ble_base/lib/init-msleep.sh" &&
        ble/util/msleep/.load-compiled-builtin
@@ -5181,17 +5189,21 @@ function ble/util/autoload/.read-arguments {
   file=${args[0]} functions=("${args[@]:1}")
 }
 function ble-autoload {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   local file flags
   local -a functions=()
   ble/util/autoload/.read-arguments "$@"
   if [[ $flags == *[eh]* ]]; then
     [[ $flags == *e* ]] && builtin printf '\n'
     ble/util/autoload/.print-usage
-    [[ $flags == *e* ]] && return 2
-    return 0
+    local ext=0
+    [[ $flags == *e* ]] && ext=2
+    builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
+    return "$ext"
   fi
 
   ble/util/autoload "$file" "${functions[@]}"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }
 
 ## @fn ble-import scriptfile...
@@ -5411,7 +5423,7 @@ function ble/util/import/option:query {
   fi
 }
 
-function ble-import {
+function ble/util/import/.dispatch {
   local files flags callbacks
   ble/util/import/.read-arguments "$@"
   if [[ $flags == *[Eh]* ]]; then
@@ -5477,6 +5489,11 @@ function ble-import {
 
   ((${#callbacks[@]})) || ble/util/import "${files[@]}"
 }
+function ble-import {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/util/import/.dispatch "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
 
 _ble_util_import_onload_count=0
 function ble/util/import/eval-after-load {
@@ -5500,6 +5517,7 @@ function ble/util/import/eval-after-load {
   fi
 }
 
+## @fn ble/util/stackdump [message]
 ## @fn ble-stackdump [message]
 ##   現在のコールスタックの状態を出力します。
 ##
@@ -5530,8 +5548,10 @@ function ble/util/stackdump {
   done
   ble/util/put "$message"
 }
-function ble-stackdump {
-  local flags args
+
+function ble/util/stackdump/.read-arguments {
+  ext=0
+  local flags
   ble/util/.read-arguments-for-no-option-command ble-stackdump "$@"
   if [[ $flags == *[eh]* ]]; then
     [[ $flags == *e* ]] && ble/util/print
@@ -5539,15 +5559,25 @@ function ble-stackdump {
       ble/util/print 'usage: ble-stackdump command [message]'
       ble/util/print '  Print stackdump.'
     } >&2
-    [[ $flags == *e* ]] && return 2
-    return 0
+    [[ $flags == *e* ]] && ext=2
+    return 1
   fi
-
-  local _ble_util_stackdump_start=2
-  local IFS=$_ble_term_IFS
-  ble/util/stackdump "${args[*]}"
+  return 0
+}
+function ble-stackdump {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  local args ext
+  if ble/util/stackdump/.read-arguments "$@"; then
+    local _ble_util_stackdump_start=2
+    local IFS=$_ble_term_IFS
+    ble/util/stackdump "${args[*]}"
+    ext=$?
+  fi
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
+  return "$ext"
 }
 
+## @fn ble/util/assert command [message]
 ## @fn ble-assert command [message]
 ##   コマンドを評価し失敗した時にメッセージを表示します。
 ##
@@ -5568,8 +5598,12 @@ function ble/util/assert {
     return 0
   fi
 }
-function ble-assert {
-  local flags args
+
+## @fn ble/util/assert/.read-arguments args...
+##   @var[out] args ext
+function ble/util/assert/.read-arguments {
+  ext=0
+  local flags
   ble/util/.read-arguments-for-no-option-command ble-assert "$@"
   if [[ $flags != *h* ]]; then
     if ((${#args[@]}==0)); then
@@ -5583,12 +5617,21 @@ function ble-assert {
       ble/util/print 'usage: ble-assert command [message]'
       ble/util/print '  Evaluate command and print stackdump on fail.'
     } >&2
-    [[ $flags == *e* ]] && return 2
-    return 0
+    [[ $flags == *e* ]] && ext=2
+    return 1
   fi
-
-  local IFS=$_ble_term_IFS
-  ble/util/assert "${args[0]}" "${args[*]:1}"
+  return 0
+}
+function ble-assert {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  local args ext
+  if ble/util/assert/.read-arguments "$@"; then
+    local IFS=$_ble_term_IFS
+    ble/util/assert "${args[0]}" "${args[*]:1}"
+    ext=$?
+  fi
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
+  return "$ext"
 }
 
 #------------------------------------------------------------------------------
@@ -6544,7 +6587,7 @@ function ble/term/stty/.initialize-flags {
   # # ^U, ^V, ^W, ^?
   # # Note: lnext, werase は POSIX にはないので stty の項目に存在する
   # #   かチェックする。
-  # # Note (#D1683): ble/decode/bind/adjust-uvw が正しい対策。以下の対
+  # # Note (#D1683): ble/decode/readline/adjust-uvw が正しい対策。以下の対
   # #   策の効果は不明。寧ろ vim :term 内部で ^? が効かなくなるなど問
   # #   題を起こす様なので取り敢えず無効化する。
   # ble/array#push _ble_term_stty_flags_enter kill undef erase undef
@@ -8002,7 +8045,11 @@ function ble/builtin/readonly {
   return "$?"
 }
 
-function readonly { ble/builtin/readonly "$@"; }
+function readonly {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/builtin/readonly "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
 
 #------------------------------------------------------------------------------
 # ble/util/message

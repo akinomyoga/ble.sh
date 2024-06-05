@@ -6214,7 +6214,7 @@ function ble/syntax/tree#previous-sibling {
 
   local node
   ble/string#split-words node "${_ble_syntax_tree[i0-1]}"
-  ble-assert '((${#node[@]}>nofs0))' "Broken AST: tree-node info missing at $((i0-1))[$nofs0]" || return 1
+  ble/util/assert '((${#node[@]}>nofs0))' "Broken AST: tree-node info missing at $((i0-1))[$nofs0]" || return 1
   local tplen=${node[nofs0+3]}
   ((tplen>=0)) || return 1
 
@@ -6222,7 +6222,7 @@ function ble/syntax/tree#previous-sibling {
   ret=$i:$nofs
   if [[ $opts == *:wvars:* ]]; then
     ble/string#split-words node "${_ble_syntax_tree[i-1]}"
-    ble-assert '((${#node[@]}>nofs))' "Broken AST: tree-node info missing at $((i-1))[$nofs]" || return 1
+    ble/util/assert '((${#node[@]}>nofs))' "Broken AST: tree-node info missing at $((i-1))[$nofs]" || return 1
     wtype=${node[nofs]}
     wlen=${node[nofs+1]}
     ((wbeg=i-wlen,wend=i))

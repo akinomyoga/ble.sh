@@ -1869,7 +1869,11 @@ function ble/builtin/history {
   ble/base/.restore-bash-options set shopt
   return "$ext"
 }
-function history { ble/builtin/history "$@"; }
+function history {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/builtin/history "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
 
 #==============================================================================
 # ble/history                                                          @history

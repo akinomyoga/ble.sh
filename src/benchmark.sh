@@ -257,11 +257,17 @@ function ble-measure/.read-arguments {
 ##   @var[out] nsec
 ##     実行時間を nsec 単位で返します。
 function ble-measure {
+  builtin eval -- "${_ble_bash_POSIXLY_CORRECT_local_adjust-}"
   local __ble_level=${#FUNCNAME[@]} __ble_base=
   [[ ${ZSH_VERSION-} ]] && __ble_level=${#funcstack[@]}
   local flags= command= count=$_ble_measure_count
   local measure_threshold=$_ble_measure_threshold
-  ble-measure/.read-arguments "$@" || return "$?"
+  ble-measure/.read-arguments "$@"; local ext=$?
+  if ((ext)); then
+    builtin eval -- "${_ble_bash_POSIXLY_CORRECT_local_leave-}"
+    return "$ext"
+  fi
+
   if [[ $flags == *h* ]]; then
     ble/util/print-lines \
       'usage: ble-measure [-q|-ac COUNT|-TB TIME] [--] COMMAND' \
@@ -282,6 +288,7 @@ function ble-measure {
       '  Exit status:' \
       '    Returns 1 for the failure in measuring the time.  Returns 2 after printing' \
       '    help.  Otherwise, returns 0.'
+    builtin eval -- "${_ble_bash_POSIXLY_CORRECT_local_leave-}"
     return 2
   fi
 
@@ -331,7 +338,10 @@ function ble-measure {
 
     local utot=0
     [[ $flags != *V* ]] && printf '%s (x%d)...' "$command" "$n" >&2
-    ble-measure/.time "$n" "$command" || return 1
+    if ! ble-measure/.time "$n" "$command"; then
+      builtin eval -- "${_ble_bash_POSIXLY_CORRECT_local_leave-}"
+      return 1
+    fi
     [[ $flags != *V* ]] && printf '\r\e[2K' >&2
     ((utot=ret,utot>=measure_threshold||n==__ble_max_n)) || continue
 
@@ -389,8 +399,10 @@ function ble-measure {
     fi
     ((out-=nsec0/1000,nsec-=nsec0))
     ret=$out
+    builtin eval -- "${_ble_bash_POSIXLY_CORRECT_local_leave-}"
     return 0
   done
+  builtin eval -- "${_ble_bash_POSIXLY_CORRECT_local_return-}"
 }
 #%end
 #%if target == "ksh"

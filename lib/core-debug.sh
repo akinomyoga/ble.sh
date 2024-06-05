@@ -808,7 +808,7 @@ function ble/debug/profiler/stop {
       parse_line();
       if (fname == "(global)") {
         # flush on user input
-        if (command ~ /^ble-decode\/.hook [0-9]+$/) flush_stack();
+        if (command ~ /^(ble-decode\/.hook|_ble_decode_hook) [0-9]+$/) flush_stack();
 
         label = command;
         sub(/^['"$_ble_term_space"']+|['"$_ble_term_space"'].*/, "", label);

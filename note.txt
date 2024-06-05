@@ -7382,6 +7382,122 @@ bash_tips
 
 2024-06-05
 
+  * global: bash-5.3 posix function name with slashes in POSIX mode [#D2221]
+
+    * done: ble/base/adjust-POSIXLY_CORRECT 削除
+    * done: ble/base/unset-POSIXLY_CORRECT 削除
+
+    * done: ble/base/adjust-builtin-wrappers-1 のコメントが気になる。つまり、
+      ble/base/adjust-builtin-wrappers-1 を呼び出すと POSIXLY_CORRECT が入った
+      儘になってしまう可能性? だとすると ble/base/adjust-builtin-wrappers-1 の
+      直後で unset を明示的に呼び出す必要がある?
+
+      履歴を遡る。commit 0860be04 で edit.sh から ble.pp に移動している。
+      b3b06f71 cd1826e3 は単なる微修正。366a49a4 で導入されている。一方でこの時
+      点では unset POSIXLY_CORRECT は 1 と 2 の間に挟んでいない。
+
+      うーん。間に挟まる様になったのは 07ae3cc2 (#D0871) である。この時には間で
+      unset POSIXLY_CORRECT する必要があったというよりも、問題のある unset : だ
+      け unset POSIXLY_CORRECT よりも後に移動したという形だった様だ。という事は、
+      今、unset POSIXLY_CORRECT を最初に持ってきたので -1 の直後に -2 を持って
+      きても問題ないのではないか。
+
+      →再び ble/base/adjust-builtin-wrappers に統合する事にした。
+
+    * done: うーん。 ble-decode/.hook はいよいよ _ble_decode_hook に変更しなけ
+      ればならないのだろうか。一応古い実装との互換性の為に ble-decode/.hook も
+      残しておく? と思ったが、ユーザーが直接使いそうな物はない気がする。
+
+      →取り敢えず変更した。bind -X の解析などのチェックしている箇所も更新する。
+
+      それより cache に色々残る様なのでちゃんと更新される様にする
+
+      →これもちゃんと更新される様に init-cmap.sh に追記した。init-bind.sh の方
+      についてはこのファイル自体が変更されるので自動的に更新される。
+
+    * done: 様々の builtin emulation で adjust/restore をする必要があるのでは?
+      しかも nest level も考慮しなければならないのでは? 或いは、外側の状況を再
+      現すれば良いので、local に状態を記録すれば OK?
+
+      というか単に local POSIXLY_CORRECT を宣言すれば良いだけの話では? (但し
+      localvar_inherit には注意) と思ったが試してみた所、3.0..4.3 で
+      POSIXLY_CORRECT の place holder が存在するだけで POSIXLY_CORRECT が有効だ
+      と判断される様だ。なので local POSIXLY_CORRECT する訳には行かない。
+
+      加えて 3.0..3.1 では関数内で local POSIXLY_CORRECT するとその効果が関数を
+      出ても持続してしまう。
+
+      対象の builtin: bind exit history read readonly sleep trap
+
+      更に function ble 及び其処から呼び出されている物にも対応した。
+      一方で、更に他にも関数がある。
+
+      - ble-color-defface
+      - ble-color-setface
+      - ble-color-show
+
+        これらは deprecated なので対応しない。と思ったが adjust-bash-options に
+        ついてはちゃんと対応しているみたいなので POSIXLY_CORRECT についても序で
+        として対応する事にした。
+
+      - ble-decode-byte
+      - ble-decode-char
+      - ble-decode-kbd
+      - ble-decode-key
+      - ble-decode-unkbd
+
+        これらは内部で使っている関数なので対応しない。その内に関数名を変更した
+        い。
+
+      - ble-import
+      - ble-autoload
+      - ble-measure
+      - ble-append-line
+
+        これらには対応した。コマンドラインから呼び出す事がありそう。
+
+      - ble-assert
+      - ble-stackdump
+
+        これもどちらかと言うと内部で使う関数の気がする。対応しない事にする。うー
+        ん。然し、内部で使うのは ble/util/{assert,stackdump} である。という事を
+        考えるとやはり対応するべきの気がする。
+
+        取り敢えず内部で ble-assert を使っている箇所が二箇所あったのでそれは
+        ble/util/assert に置き換える。一方で、ble-stackdump は内部敵意は何処に
+        も使っていなかった。
+
+      - ble-histdb
+      - ble-histdb-*
+
+        これは ble-histdb だけ対応すれば良い気がする。と思ったが他の関数はそも
+        そも古い histdb.bash に含まれている関数であって現在のバージョンにはなかっ
+        た。ble-histdb で対応した。
+
+    * gexec の .save-lastarg 及び .epilogue はちゃんと / のない関数名にする必要
+      がある → 関数名を変えた。これは仕方がない。諦める。
+
+    x reload 時に以下の様なエラーが出た。然し再び実行しても出ない。古い version
+      から新しい version に更新する時に出るのだろうか?e
+
+      > bash: unalias: builtin: 見つかりません
+      > ...
+      > bash: unalias: function: 見つかりません
+      > bash: alias: :: 見つかりません
+      > bash: unalias: :: 見つかりません
+
+      これは恐らく ble/base/unload-for-reload の時点で
+      adjust-builtin-wrappers-{1,2} が置き換わっているが、未だそれを直接呼び出
+      しているコードが残っている為に起こっているのだろう。対策の方法は二つある。
+
+      a adjust-builtin-wrappers-{1,2} の関数名を変更する。関数に非互換な変更を
+        与えたのに同じ名前を使っているせいで、以前の版が上書きされてしまうのが
+        問題である。
+
+      b 或いは adjust-bultin-wrappers-{1,2} で引き続き 2>/dev/null を実行する。
+
+      一旦は b で対処したが a の方針で修正するべきの気がしてきた→修正した。
+
   * 2024-03-23 main: SUSE で何故か正しく初期化できない (reported by Anyborr) [#D2220]
     https://github.com/akinomyoga/ble.sh/issues/424
 

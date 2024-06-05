@@ -6488,7 +6488,11 @@ function ble/builtin/exit {
   return 1 # exit できなかった場合は 1 らしい
 }
 
-function exit { ble/builtin/exit "$@"; }
+function exit {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/builtin/exit "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
 
 # start time - end time - end
 
@@ -6607,7 +6611,7 @@ function ble/exec/time#start {
       _ble_exec_time_EPOCHREALTIME_end=$EPOCHREALTIME
       ble/exec/time#adjust-TIMEFORMAT
       # Note: The time until reading EPOCHREALTIME is important, so we do not
-      # have to mimic the rest procesing in ble-edit/exec:gexec/.save-lastarg.
+      # have to mimic the rest procesing in _ble_edit_exec_gexec__save_lastarg.
     }
     function ble/exec/time#calibrate {
       local _ble_edit_exec_lastexit=0
@@ -6722,7 +6726,7 @@ function ble/exec/time#start {
 ##     実行するコマンドの配列を指定します。実行したコマンドは削除するか空文字列を代入します。
 ##   @return
 ##     戻り値が 0 の場合、終端 (ble-edit/bind/.tail) に対する処理も行われた事を意味します。
-##     つまり、そのまま ble-decode/.hook から抜ける事を期待します。
+##     つまり、そのまま _ble_decode_hook から抜ける事を期待します。
 ##     それ以外の場合には終端処理をしていない事を表します。
 
 #--------------------------------------
@@ -6745,7 +6749,7 @@ ble/builtin/trap/sig#reserve DEBUG override-builtin-signal:user-trap-in-postproc
 ##       みに対して DEBUG trap を走らせる為に指定します。
 function ble-edit/exec:gexec/.TRAPDEBUG/trap {
   # Note #D1772: 本来は ! $_ble_attached の時には user trap を直接 trap したい
-  #   が、それだと ble-attach 直後に ble.sh の関数 (特に ble-decode/.hook) に対
+  #   が、それだと ble-attach 直後に ble.sh の関数 (特に _ble_decode_hook) に対
   #   して意図しない DEBUG trap が発火する事を防げないので TRAPDEBUG 経由にして、
   #   DEBUG を選別することにする。
   # Note #D1772: コマンド実行の為の TRAPDEBUG の場合でも、やはり
@@ -7056,7 +7060,8 @@ function ble-edit/exec:gexec/TERM/leave {
 }
 function ble-edit/exec:gexec/TERM/enter {
   if [[ $_ble_decode_bind_state != none ]] && ble-edit/exec:gexec/TERM/is-dirty; then
-    # Note: ble/decode/rebind ではなく元の binding の記録・復元も含めてやり直す。
+    # Note: ble/decode/readline/rebind ではなく元の binding の記録・復元も含め
+    # てやり直す。
     ble/edit/info/immediate-show text 'ble: TERM has changed. rebinding...'
     ble/decode/detach
     if ! ble/decode/attach; then
@@ -7157,18 +7162,20 @@ function ble-edit/exec:gexec/.prologue {
 ##     い。
 function ble-edit/exec:gexec/.restore-lastarg {
   ble/base/restore-bash-options
-  ble/base/restore-POSIXLY_CORRECT
   ble/base/restore-builtin-wrappers
+  ble/base/restore-POSIXLY_CORRECT
 
   # Note: これ以降関数は呼び出せない。但し一重までなら関数を呼び出せるので
-  # ble-edit/exec:gexec/.restore-lastarg だけなら問題ない筈。
+  # _ble_edit_exec_gexec__save_lastarg だけなら問題ない筈。
   builtin eval -- "$_ble_bash_FUNCNEST_restore"
   _ble_edit_exec_TRAPDEBUG_enabled=1
   _ble_edit_exec_inside_userspace=1
   _ble_exec_time_EPOCHREALTIME_beg=$EPOCHREALTIME
   return "$_ble_edit_exec_lastexit" # set $?
 } &>/dev/null # set -x 対策 #D0930
-function ble-edit/exec:gexec/.save-lastarg {
+## @fn ble-edit/exec:gexec/.save-lastarg (original name)
+## @fn _ble_edit_exec_gexec__save_lastarg
+function _ble_edit_exec_gexec__save_lastarg {
   _ble_exec_time_EPOCHREALTIME_end=$EPOCHREALTIME \
     _ble_edit_exec_lastexit=$? \
     _ble_edit_exec_lastarg=$_ \
@@ -7180,6 +7187,7 @@ function ble-edit/exec:gexec/.save-lastarg {
   # FUNCNEST=1 なので一重なら関数はいつでも呼び出せる。なのでこの関数
   # .save-lastarg 自体の呼び出しは問題ない。
   builtin eval -- "$_ble_bash_FUNCNEST_adjust"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
   ble/base/adjust-bash-options
   ble/exec/time#adjust-TIMEFORMAT
 
@@ -7192,7 +7200,9 @@ function ble-edit/exec:gexec/.save-lastarg {
 
   return "$_ble_edit_exec_lastexit"
 }
-function ble-edit/exec:gexec/.epilogue {
+## @fn ble-edit/exec:gexec/.epilogue (original name)
+## @fn _ble_edit_exec_gexec__epilogue
+function _ble_edit_exec_gexec__epilogue {
   # Note: $_ は同じ eval の中でないと取れないのでここでは読み取らない。
   _ble_exec_time_EPOCHREALTIME_end=${_ble_exec_time_EPOCHREALTIME_end:-$EPOCHREALTIME} \
     _ble_edit_exec_lastexit=$?
@@ -7200,7 +7210,8 @@ function ble-edit/exec:gexec/.epilogue {
   _ble_edit_exec_TRAPDEBUG_enabled=
   # Note: 他の関数呼び出しよりも先
   builtin eval -- "$_ble_bash_FUNCNEST_adjust"
-  ble/base/adjust-builtin-wrappers-1
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
+  ble/base/adjust-builtin-wrappers
   if [[ $_ble_edit_exec_TRAPDEBUG_INT ]]; then
     if ((_ble_edit_exec_lastexit==0)); then
       _ble_edit_exec_lastexit=$_ble_edit_exec_TRAPDEBUG_INT
@@ -7213,8 +7224,6 @@ function ble-edit/exec:gexec/.epilogue {
   builtin trap -- - DEBUG
 
   ble/base/adjust-bash-options
-  ble/base/adjust-POSIXLY_CORRECT
-  ble/base/adjust-builtin-wrappers-2
   ble/base/adjust-BASH_REMATCH
   ble-edit/adjust-IGNOREEOF
   ble-edit/adjust-READLINE
@@ -7337,9 +7346,9 @@ function ble-edit/exec:gexec/.setup {
       # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
       #   る時に eval の最終引数になってしまう)。
-      buff[ibuff++]='{ ble-edit/exec:gexec/.save-lastarg; } 4>&1 5>&2 &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
+      buff[ibuff++]='{ _ble_edit_exec_gexec__save_lastarg; } 4>&1 5>&2 &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
       buff[ibuff++]='" 0<&"$_ble_util_fd_cmd_stdin" 1>&"$_ble_util_fd_cmd_stdout" 2>&"$_ble_util_fd_cmd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"'
-      buff[ibuff++]='{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null'
+      buff[ibuff++]='{ _ble_edit_exec_gexec__epilogue; } 3>&2 &>/dev/null'
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
       #   続きの行が実行されない事になってしまう。
@@ -7366,7 +7375,7 @@ function ble-edit/exec:gexec/process {
 }
 function ble-edit/exec:gexec/restore-state {
   # 構文エラー等で epilogue/end が呼び出されなかった時の為 #D1170
-  [[ $_ble_edit_exec_inside_prologue ]] && ble-edit/exec:gexec/.epilogue 3>&2 &>/dev/null
+  [[ $_ble_edit_exec_inside_prologue ]] && _ble_edit_exec_gexec__epilogue 3>&2 &>/dev/null
   [[ $_ble_edit_exec_inside_begin ]] && ble-edit/exec:gexec/.end restore
 }
 
@@ -10393,7 +10402,11 @@ function ble/builtin/read {
   # 局所変数により被覆されないように外側で評価
   builtin eval -- "$__ble_command"
 }
-function read { ble/builtin/read "$@"; }
+function read {
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
+  ble/builtin/read "$@"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
 
 ## @fn ble/edit/async-read-mode hook prefix keymap
 ##   Set up the async-read mode
@@ -10832,7 +10845,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           case $cmd in
           (eof)
             # C-d
-            ble-decode/.hook 4
+            _ble_decode_hook 4
             builtin eval -- "$_ble_decode_bind_hook" ;;
           esac
         done
@@ -10965,8 +10978,8 @@ function ble-edit/bind/.check-detach {
       # ここで ble-detach/impl した時は調整は最低限でOK
       ble/base/restore-BASH_REMATCH
       ble/base/restore-bash-options
-      ble/base/restore-POSIXLY_CORRECT
       ble/base/restore-builtin-wrappers
+      ble/base/restore-POSIXLY_CORRECT
       builtin eval -- "$_ble_bash_FUNCNEST_restore" # これ以降関数は呼び出せない
     else
       # Note: 既に ble-detach/impl されていた時 (reload 時) は
@@ -11049,7 +11062,7 @@ fi
 function ble-decode/PROLOGUE {
   ble-edit/exec:gexec/restore-state
   ble-edit/bind/.head
-  ble/decode/bind/adjust-uvw
+  ble/decode/readline/adjust-uvw
   ble/term/enter
 }
 
@@ -11060,7 +11073,7 @@ function ble-decode/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    #   現在は ble-decode/.hook の段階で連続入力を縮約しているので
+    #   現在は _ble_decode_hook の段階で連続入力を縮約しているので
     #   この関数はそんなに沢山呼び出される事はない。
     #   bash 4.0 以降でないとユーザー入力検出できない事に注意。
     if ble/decode/has-input && ! ble-edit/exec/has-pending-commands; then
@@ -11260,5 +11273,7 @@ function ble/util/message/handler:edit/append-line {
 function ble-append-line {
   local data="${*-}"
   [[ $data ]] || return 0
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   ble/util/message.post "$$" precmd edit/append-line "$data"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
 }

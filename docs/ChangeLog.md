@@ -147,6 +147,7 @@
 - main: work around WSL's permission issue on `/run/user/1000` (reported by antonioetv and geoffreyvanwyk) `#D2195` fb826ab6
 - util: detect Zellij heuristically `#D2219` xxxxxxxx
 - decode: exclude `/etc/inputrc` in SUSE as well as in openSUSE (reported by Anyborr) `#D2220` xxxxxxxx
+- global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` xxxxxxxx
 
 ## Contrib
 
