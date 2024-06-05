@@ -6918,7 +6918,21 @@ function ble/term/DA2/initialize-term {
     # https://github.com/microsoft/terminal/blob/bcc38d04/src/terminal/adapter/adaptDispatch.cpp#L779-L782
     _ble_term_TERM[depth]=wt:0 ;;
   ('0;'*';1')
-    if ((da2r_vec[1]>=1001)); then
+    if ((da2r_vec[1]>=3000)); then
+      # Zellij seems to use the same range as Alacritty with the same scheme,
+      # which makes it essentially difficult to differentiate it from
+      # Alacritty.  Zellij has introduce DA2 in PR [1], whose primary purpose
+      # was cursor position, etc.  The design of its DA2 was not specifically
+      # discussed/mentioned.  The first release with the support for DA2 report
+      # was 0.10.0 [2], so the minimum value by Zellij would be 1000, which
+      # clearly conflicts with the recent versions of Alacritty.  We currently
+      # use 3000 to distinguish Zellij and Alacritty, but this value needs to
+      # be updated before Alacritty's version reaches v0.30.0.
+      #
+      # [1] https://github.com/zellij-org/zellij/pull/500 (2021-05-13)
+      # [2] https://github.com/zellij-org/zellij/releases/tag/v0.10.0
+      _ble_term_TERM[depth]=zellij:$((da2r_vec[1]))
+    elif ((da2r_vec[1]>=1001)); then
       # Alacritty
       # https://github.com/alacritty/alacritty/blob/4734b2b8/alacritty_terminal/src/term/mod.rs#L1315
       # https://github.com/alacritty/alacritty/blob/4734b2b8/alacritty_terminal/src/term/mod.rs#L3104

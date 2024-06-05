@@ -7380,6 +7380,150 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-06-05
+
+  * 2024-05-27 zellij で panel が消えない (reported by gvlassis) [#D2219]
+    https://github.com/akinomyoga/ble.sh/issues/450
+
+    confirmed
+
+    これは zellij 自体の問題に違いないという気がする。
+
+    どうやら分かった。DECSTBM に実装していないのに実装していると判定されている?
+    確認すると実装している様に見える。
+
+    % * 先ず、zellij は \e[;r を \e[1;1r と解釈する様になっている様だ。
+    %
+    %   なので単に \e[1;1r が無視されるだけでなく、更に別の設定になってしまって
+    %   いるという事。従って単に 2 行目に居るかどうかで判定はできない。
+    %
+    %   と思ったが試してみた所ちゃんと 3 行目に移動する事ができている。うーん。
+    %   或いは初めから範囲外に CUP で移動しているので DECSTBM が動作していない
+    %   という事? 代わりに \e[;r に設定して先頭から CUD してみたがちゃんとカー
+    %   ソルは下に移動する。また、振る舞い的に \e[1;1r とは異なる様だ。具体的に
+    %   どの様に振る舞っているのか確認する必要がある。
+    %
+    %   うーん。よく分からないので zellij 自体に手を入れてデバグ使用と思ったが
+    %   ビルドに滅茶苦茶時間がかかる。リンクだけで4分かかる。然しデバグビルドに
+    %   すると今度はそもそも使えないぐらいに遅くなるのだろう。
+    %
+    %   どうやら bottom は usize ではなくて Option<usize> の様だ。つまり、None
+    %   が入っていると考えるべき。None が入っている時の振る舞いは一体どうなって
+    %   いるのだろうか。単に 1 等を指定した時と違うのだろうか。とにかく zellij
+    %   での振る舞いを確認して、可能であれば zellij の振る舞いに合わせて範囲を
+    %   設定するし、そうでなければ DECSTBM 自体の使用を zellij では諦める。
+
+    * どうも単に \e[1;1r となっているのではなくて \e[1;r になっている様だ。この
+      時の振る舞いは何も設定しないのと比べて何か違いが出るのだろうか。うーん。
+      例えば端末の一番下に行った時の振る舞いが違うという事? 然しそれはそれで変
+      な気もする。スクロールしなくなるという事なのでは?
+
+      取り敢えず変な動作一つ目を発見した。どうやら \e[1;r とすると、二つ目のフィー
+      ルドは terminal の高さに設定される様だが、この高さは LINES とは一致しない
+      様だ。
+
+      $ printf '\e[1;r'                 ; seq 999; printf '\e[r' ... これは駄目
+      $ printf '\e[1;%dr' "$LINES"      ; seq 999; printf '\e[r' ... これは OK
+      $ printf '\e[1;%dr' "$((LINES+1))"; seq 999; printf '\e[r' ... これは駄目
+
+      恐らく内部的な高さと LINES が一致していなくて変な範囲を scroll しようとし
+      てこうなっているのではないかという気がする。
+
+      またソースコードを見て気付いた。index となっているのに直接 height を代入
+      している。これは -1 しなければ変な事になる。バグ一つ目。
+
+    しかしこれを修正したとしても本質的な問題は変わっていない気がする。何故? 改
+    めて振る舞いについて調べる。うーん。治った? と思ったがやっぱり治っていない。
+
+    ビルドに一々時間がかかるのでよく分からない。しかも cargo xtask build などが
+    ちゃんと動いているのかもよく分からない。cargo install --locked --force
+    zellij としても修正前の物がインストールされている? 弄っているのは
+    zellij-server なので。
+
+    * 振る舞いを調べたら簡単に再現できた。というかそもそも panel を消去するのに
+      ble.sh は大した事もしていなかった。\e[20M をしているだけで、しかしこれが
+      zellij は処理できていない。
+
+      reproducer も簡単だった。
+
+      $ seq 10; printf '\e[10A\e[10MHello, world\n'
+
+      以下の commit が怪しいがよく分からない。
+
+      https://github.com/zellij-org/zellij/commit/cd5ddd1d2995fd7495b223e17809247b19cfc4dd#diff-eee6f90451a46a505ddbce570e7aa27ed44e8bfe38f0ff928061861cfb5602efL1246
+
+    修正を zellij に提出してマージされた。然し、肝心の報告者から返信がない。
+
+    2024-06-05 返事がないが面倒なのでもう done の方に送る事にする。util.sh を微
+    妙に修正仕掛けたが結局 zellij の実装の問題であって、検出するのも難しそうだ
+    し、zellij の古い version を使い続ける人もいない気がするので良い事にする。
+    zellij の検出もしない事にする?
+
+    > diff --git a/src/util.sh b/src/util.sh
+    > index 5fbdb3b2..6b671183 100644
+    > --- a/src/util.sh
+    > +++ b/src/util.sh
+    > @@ -7091,32 +7091,41 @@ function ble/term/quote-passthrough {
+    >
+    >  _ble_term_DECSTBM=
+    >  _ble_term_DECSTBM_reset=
+    > -function ble/term/test-DECSTBM.hook1 {
+    > -  (($1==2)) && _ble_term_DECSTBM=$'\e[%s;%sr'
+    > -}
+    > -function ble/term/test-DECSTBM.hook2 {
+    > -  if [[ $_ble_term_DECSTBM ]]; then
+    > -    if (($1==2)); then
+    > -      # Failed to reset DECSTBM with \e[;r
+    > -      _ble_term_DECSTBM_reset=$'\e[r'
+    > -    else
+    > -      _ble_term_DECSTBM_reset=$'\e[;r'
+    > -    fi
+    > +_ble_term_DECSTBM_test=()
+    > +function ble/term/test-DECSTBM.hook {
+    > +  ble/array#push _ble_term_DECSTBM_test "$1"
+    > +  if ((${#_ble_term_DECSTBM_test[@]}==2)); then
+    > +    local test1=${_ble_term_DECSTBM_test[0]}
+    > +    local test2=${_ble_term_DECSTBM_test[1]}
+    > +    case $test1:$test2 in
+    > +    (2:3)
+    > +      # \e[;r is working as expected to reset the range.
+    > +      _ble_term_DECSTBM=$'\e[%s;%sr'
+    > +      _ble_term_DECSTBM_reset=$'\e[;r' ;;
+    > +    (2:*)
+    > +      # Otherwise, the terminal is expected to not support the overloading of
+    > +      # DECSTBM and SCORC for "CSI r", and thus we expect \e[r can be used to
+    > +      # reset the scrolling region.
+    > +      _ble_term_DECSTBM=$'\e[%s;%sr'
+    > +      _ble_term_DECSTBM_reset=$'\e[r' ;;
+    > +    esac
+    >    fi
+    >  }
+    >  function ble/term/test-DECSTBM {
+    >    # Note: kitty 及び wezterm では SCORC と区別できる形の \e[;r では復
+    >    # 帰できない。
+    > +  _ble_term_DECSTBM_test=()
+    > +
+    >    local -a DRAW_BUFF=()
+    >    ble/canvas/panel/goto-top-dock.draw
+    >    ble/canvas/put.draw "$_ble_term_sc"$'\e[1;2r'
+    >    ble/canvas/put-cup.draw 2 1
+    >    ble/canvas/put-cud.draw 1
+    > -  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook1
+    > +  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook
+    >    ble/canvas/put.draw $'\e[;r'
+    >    ble/canvas/put-cup.draw 2 1
+    >    ble/canvas/put-cud.draw 1
+    > -  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook2
+    > +  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook
+    >    ble/canvas/put.draw $'\e[r'"$_ble_term_rc"
+    >    ble/canvas/bflush.draw
+    >  }
+
+    但し terminal id については zellij と alacritty でもう少し頑張っても良いか
+    もしれない。zellij は 4001 等の様な感じにしている。Alacritty も似たような物
+    だが zellij は既に 40 に行っているのに対して alacritty はそんなに上がる気配
+    がない。取り敢えず適当な値で判定する事にした。コメントに詳しく書く。
+
 2024-06-03
 
   * util: ble/util/buffer.flush >&2 の redirection を既定で行う [#D2218]
