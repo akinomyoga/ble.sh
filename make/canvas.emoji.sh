@@ -105,13 +105,13 @@ function inspect1/callback-final {
 function make/canvas.emoji/sub:measure-emoji.impl1 {
   local emoji_data emoji_cache_file
   make/canvas.emoji/get-emoji-data
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
   local line
   for line in "${emoji_data[@]}"; do
     eval "inspect1/proc $line"
   done
   ble/term/CPR/request.buff inspect1/callback-final
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 
 #------------------------------------------------------------------------------
@@ -163,7 +163,7 @@ function inspect2/next {
 
     ble/util/buffer $'\r'"$s"
     ble/term/CPR/request.buff inspect2/wait
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
   done
   ble/edit/info/show text "Measuring #$_term_emojiw_index_rcv..$_term_emojiw_index_req"
 }

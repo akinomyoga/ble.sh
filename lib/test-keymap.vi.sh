@@ -676,7 +676,7 @@ if [[ $1 == bind ]]; then
     local original_mark=$_ble_edit_mark
     local original_mark_active=$_ble_edit_mark_active
     _ble_edit_line_disabled=1 ble/edit/.relocate-textarea # #D1800 pair=leave-command-layout
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
 
     ble/keymap:vi_test/run-tests
 
@@ -715,7 +715,7 @@ function ble/keymap:vi_test/main {
   local original_mark_active=$_ble_edit_mark_active
 
   # test
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
   ble/keymap:vi_test/run-tests
 
   # restore

@@ -1772,7 +1772,7 @@ function ble-decode-key/bind {
     local message="ble-bind: Unknown widget \`${widget#'ble/widget/'}'."
     [[ $command == ble/widget/ble/widget/* ]] &&
       message="$message Note: The prefix 'ble/widget/' is redundant."
-    ble/util/print "$message" 1>&2
+    ble/util/print "$message" >&2
     return 1
   fi
 
@@ -3464,7 +3464,7 @@ function ble-bind {
             (s) local ret; ble/util/keyseq2chars "$command"; command="ble/widget/.MACRO ${ret[*]}" ;;
             ('@') ;; # 直接実行
             (*)
-              ble/util/print "error: unsupported binding type \`-$c'." 1>&2
+              ble/util/print "error: unsupported binding type \`-$c'." >&2
               continue ;;
             esac
 

@@ -33,7 +33,7 @@ function erasedupA {
   local -a hist=()
   local n=0
   while read -r line; do
-    echo "# = ${#hist[@]} / $((++n))" 1>&2
+    echo "# = ${#hist[@]} / $((++n))" >&2
     erasedup2.1 "$line"
     hist+=("$line")
   done < ~/.bash_history

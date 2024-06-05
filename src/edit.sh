@@ -439,7 +439,7 @@ function ble/application/render {
       ble/forms/render "${render#*:}" ;; # NYI
     esac
     _ble_app_winsize=("$COLUMNS" "$LINES")
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
   }
   ble/util/unlocal _ble_app_onwinch_Suppress
 
@@ -1891,7 +1891,7 @@ function ble/prompt/update {
           local -a DRAW_BUFF=()
           ble/canvas/panel#goto.draw 0 0 0 sgr0
           ble/canvas/bflush.draw
-          ble/util/buffer.flush >&2
+          ble/util/buffer.flush
         fi
 
         ((_ble_edit_attached)) && ble-edit/restore-PS1
@@ -2183,7 +2183,7 @@ function ble/edit/info/show {
     local x y content=
     ble/edit/info/.construct-content "$@"
     ble/edit/info/.render-content "$x" "$y" "$content"
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
     _ble_edit_info_scene=show
   else
     ble/edit/info/default
@@ -2218,14 +2218,14 @@ function ble/edit/info/immediate-show {
   local ret; ble/canvas/panel/save-position
   ble/edit/info/show "$@"
   ble/canvas/panel/load-position "$ret"
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 function ble/edit/info/immediate-default {
   local ret; ble/canvas/panel/save-position
   ble/edit/info/default
   ble/edit/info/.render-content "${_ble_edit_info_default[@]}"
   ble/canvas/panel/load-position "$ret"
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 
 # 
@@ -3825,7 +3825,7 @@ function ble/textarea#render-defer.idle {
   [[ $_ble_textarea_render_defer ]] || return 0
 
   local ble_textarea_render_defer_running=1
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
   _ble_textarea_render_defer=
   blehook/invoke textarea_render_defer
   ble/textarea#render update
@@ -5288,7 +5288,7 @@ function ble/widget/exit {
   ble/canvas/bflush.draw
   ble/edit/marker#instantiate-config exec_exit_mark
   ble/util/buffer.print "$ret"
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 
   # Note: Even if jobs are remaining, we forcibly terminate the session.
   # Note (#D2217): To properly handle the redirections in the EXIT trap, we
@@ -7088,7 +7088,7 @@ function ble-edit/exec:gexec/.begin {
   ble-edit/exec:gexec/TERM/leave
   ble/term/leave
   ble-edit/bind/stdout.on
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 
   # C-c に対して
   ble/builtin/trap/install-hook INT # 何故か改めて実行しないと有効にならない
@@ -7106,7 +7106,7 @@ function ble-edit/exec:gexec/.end {
 
   blehook/invoke exec_end
   [[ $PWD != "$_ble_edit_exec_PWD" ]] && blehook/invoke CHPWD
-  ble/util/joblist.flush >&2
+  ble/util/joblist.flush >&"$_ble_util_fd_tui_stderr"
   ble-edit/bind/.check-detach && return 0
   ble/term/enter
   ble-edit/exec:gexec/TERM/enter || return 0 # rebind に失敗した時 .tail せずに抜ける
@@ -7224,7 +7224,7 @@ function ble-edit/exec:gexec/.epilogue {
   ble-edit/exec/.adjust-eol
   _ble_edit_exec_inside_prologue=
 
-  ble/util/buffer.flush >&"$_ble_util_fd_tui_stderr"
+  ble/util/buffer.flush
   ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC "$_ble_edit_exec_BASH_COMMAND"
 
   local msg=
@@ -7311,7 +7311,7 @@ function ble-edit/exec:gexec/.setup {
 
   local count=${#_ble_edit_exec_lines[@]}
   if ((count)); then
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
 
     local q=\' Q="'\''" cmd cmd_id lineno
     buff[ibuff++]=ble-edit/exec:gexec/.begin
@@ -7562,7 +7562,7 @@ function ble/widget/accept-line/.is-mc-init {
   if ble/string#match "$_ble_edit_str" 'bind -x '\''"\\e\+":"([^"'\'']+)"'\'''; then
     function ble/widget/.mc_exec_command {
       ble/textarea#redraw
-      ble/util/buffer.flush >&2
+      ble/util/buffer.flush
       builtin eval -- "$1"
     }
     local str=${_ble_edit_str//"$BASH_REMATCH"/"ble-bind -f M-+ '.mc_exec_command '\''${BASH_REMATCH[1]}'\'''"} &&
@@ -7611,7 +7611,7 @@ function ble/widget/default/accept-line {
     ble/widget/.newline keep-info
     ble/prompt/print-ruler.buff '' keep-info
     ble/textarea#render
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
     return 0
   fi
 
@@ -10302,7 +10302,7 @@ function ble/builtin/read/.loop {
     fi
   fi
 
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
   ble/term/visible-bell/erase
 
   if ((_ble_edit_read_accept==1)); then
@@ -10348,7 +10348,7 @@ function ble/builtin/read/.impl {
   local result _ble_edit_read_context=$_ble_term_state
 
   # Note: サブシェル中で重複して出力されない様に空にしておく
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 
   [[ $_ble_edit_read_context == external ]] && ble/term/enter # 外側にいたら入る
   result=$(ble/builtin/read/.loop); local ext=$?
@@ -10768,7 +10768,7 @@ function ble/widget/command-help {
 # **** ble-edit/bind ****                                                 @bind
 
 function ble-edit/bind/stdout.on { :;}
-function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
+function ble-edit/bind/stdout.off { ble/util/buffer.flush;}
 function ble-edit/bind/stdout.finalize { :;}
 
 if [[ $bleopt_internal_suppress_bash_output ]]; then
@@ -10778,7 +10778,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     exec 2>&"$_ble_util_fd_tui_stderr"
   }
   function ble-edit/bind/stdout.off {
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
     ble-edit/io/check-stderr
     exec 2>>"$_ble_edit_io_fname2"
   }
@@ -10882,13 +10882,13 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       ble/fd#alloc _ble_edit_io_fd2 '> "$_ble_edit_io_fname2.pipe"'
 
       function ble-edit/bind/stdout.off {
-        ble/util/buffer.flush >&2
+        ble/util/buffer.flush
         ble-edit/io/check-stderr
         exec 2>&"$_ble_edit_io_fd2"
       }
     elif . "$_ble_base/lib/init-msys1.sh"; ble-edit/io:msys1/start-background; then
       function ble-edit/bind/stdout.off {
-        ble/util/buffer.flush >&2
+        ble/util/buffer.flush
         ble-edit/io/check-stderr
 
         # Note: 一気に入力すると permission denied のエラーメッセージが出る。
@@ -10921,7 +10921,7 @@ function ble-edit/bind/.check-detach {
     # 従って、現状ではここに入ってくることはないようである。
     local ret
     ble/edit/marker#instantiate 'unsupported' error:non-empty
-    ble/util/print "$ret Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
+    ble/util/print "$ret Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." >&2
     ble-detach
   fi
 
@@ -11000,7 +11000,7 @@ if ((_ble_bash>=40100)); then
   function ble-edit/bind/.head/adjust-bash-rendering {
     # bash-4.1 以降では呼出直前にプロンプトが消される
     ble/textarea#redraw-cache
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
   }
 else
   function ble-edit/bind/.head/adjust-bash-rendering {
@@ -11082,10 +11082,10 @@ function ble-decode/EPILOGUE {
 function ble/widget/.internal-print-command {
   local _ble_local_command=$1 _ble_command_opts=$2
   _ble_edit_line_disabled=1 ble/edit/.relocate-textarea # #D1800 pair=leave-command-layout
-  [[ :$_ble_command_opts: != *:pre-flush:* ]] || ble/util/buffer.flush >&2
+  [[ :$_ble_command_opts: != *:pre-flush:* ]] || ble/util/buffer.flush
   BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"
   ble/edit/leave-command-layout # #D1800 pair=ble/edit/.relocate-textarea
-  [[ :$_ble_command_opts: != *:post-flush:* ]] || ble/util/buffer.flush >&2
+  [[ :$_ble_command_opts: != *:post-flush:* ]] || ble/util/buffer.flush
 }
 
 function ble/widget/print {
@@ -11097,8 +11097,9 @@ function ble/widget/print {
   if [[ ! ${_ble_attached-} || ${_ble_edit_exec_inside_begin-} ]]; then
     ble/util/print-lines "${lines[@]}"
   else
-    ble/widget/.internal-print-command \
-      'ble/util/print-lines "${lines[@]}" >&2' pre-flush
+    ble/widget/.internal-print-command '
+      ble/util/buffer.print-lines "${lines[@]}"
+      ble/util/buffer.flush' pre-flush
   fi
 }
 function ble/widget/internal-command {
@@ -11119,7 +11120,7 @@ function ble/widget/external-command {
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0 sgr0
   ble/canvas/bflush.draw
   ble/term/leave
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
   BASH_COMMAND=$_ble_local_command builtin eval -- "$_ble_local_command"; local ext=$?
   ble/term/enter
   ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
@@ -11195,7 +11196,7 @@ function ble-decode/INITIALIZE_DEFMAP {
   local -a DRAW_BUFF=()
   ble/canvas/put.draw "$_ble_term_cr$_ble_term_el$msg$_ble_term_nl"
   ble/canvas/bflush.draw
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
   ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
 
   # Fallback keymap "safe"

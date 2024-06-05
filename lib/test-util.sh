@@ -1753,6 +1753,7 @@ fi
 
 # ble/util/buffer
 (
+  _ble_util_fd_tui_stderr=1 # ble/util/buffer.flush write outputs to this fd.
   ble/util/buffer.clear
   ble/test 'ble/util/buffer.flush' stdout=
   ble/util/buffer hello
@@ -1861,7 +1862,11 @@ fi
 
 # ble-import -C
 (
+  # Suppress all the idle tasks and processings
   ble/function#try ble/util/idle.clear
+  ble/util/buffer.clear
+  blehook idle_after_task=
+
   ble/function#push ble/util/idle/IS_IDLE '((1))'
   ble/test/chdir
   ble/util/print 'ble/util/print FILE1' >| FILE1.txt

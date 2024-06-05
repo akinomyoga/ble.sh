@@ -4616,6 +4616,12 @@ function ble/util/buffer {
 function ble/util/buffer.print {
   ble/util/buffer "$1"$'\n'
 }
+function ble/util/buffer.print-lines {
+  local line
+  for line; do
+    ble/util/buffer "$line"$'\n'
+  done
+}
 function ble/util/buffer.flush {
   IFS= builtin eval 'local text="${_ble_util_buffer[*]-}"'
   _ble_util_buffer=()
@@ -4628,7 +4634,7 @@ function ble/util/buffer.flush {
     [[ $text != *"$_ble_term_civis"* && $text != *"$_ble_term_rmcivis"* ]] &&
     text=$_ble_term_civis$text$_ble_term_rmcivis
 
-  ble/util/put "$text"
+  ble/util/put "$text" >&"$_ble_util_fd_tui_stderr"
 }
 function ble/util/buffer.clear {
   _ble_util_buffer=()
@@ -5796,7 +5802,7 @@ if ((_ble_bash>=40000)); then
     local IFS=$_ble_term_IFS
     ble/util/idle/IS_IDLE || return 1
     ((${#_ble_util_idle_task[@]}==0)) && return 1
-    ble/util/buffer.flush >&2
+    ble/util/buffer.flush
 
     local ret
     ble/util/idle.clock/.initialize
@@ -6233,7 +6239,7 @@ function ble/term/flush {
 # **** vbell/abell ****
 
 function ble/term/audible-bell {
-  ble/util/put '' 1>&2
+  ble/util/put '' >&2
 }
 
 # visible-bell の表示の管理について。
@@ -6340,7 +6346,7 @@ function ble/term/visible-bell:canvas/show {
     ble/canvas/put-hpa.draw "$((1+_ble_canvas_x))"
   fi
   ble/canvas/bflush.draw
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 function ble/term/visible-bell:canvas/update {
   ble/term/visible-bell:canvas/show "$@"
@@ -6366,7 +6372,7 @@ function ble/term/visible-bell:canvas/clear {
     #[[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret" # WA #D1495
   else
     : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
-    # ble/util/buffer.flush >&2
+    # ble/util/buffer.flush
     # ble/canvas/put.draw "$_ble_term_ri_or_cuu1$_ble_term_sgr0"
     # ble/canvas/put-hpa.draw "$((1+x0))"
     # ble/canvas/put.draw "$sgr"
@@ -7366,7 +7372,7 @@ function ble/term/enter-for-widget {
   ble/term/modifyOtherKeys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 function ble/term/leave-for-widget {
   ble/term/visible-bell/erase
@@ -7374,7 +7380,7 @@ function ble/term/leave-for-widget {
   ble/term/modifyOtherKeys/leave
   ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 
 _ble_term_state=external
@@ -7399,7 +7405,7 @@ function ble/term/leave {
 function ble/term/finalize {
   ble/term/stty/finalize
   ble/term/leave
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 function ble/term/initialize {
   ble/term/stty/initialize

@@ -40,7 +40,7 @@ function .ble-getopt.next-argument {
       oarg=${type:1}
       [[ ! $oarg ]] && return 0
     else
-      ble/util/print "$getopt_cmd: missing an argument of the option \`${optargs[0]}'." 1>&2
+      ble/util/print "$getopt_cmd: missing an argument of the option \`${optargs[0]}'." >&2
       return 1
     fi
   fi
@@ -49,7 +49,7 @@ function .ble-getopt.next-argument {
   case $type in
   [nefdhcbpugkrwxsv])
     if [ ! -$type "$oarg" ]; then
-      ble/util/print "$getopt_cmd: the argument of the option \`${optargs[0]}' is empty string (oarg=$oarg)." 1>&2
+      ble/util/print "$getopt_cmd: the argument of the option \`${optargs[0]}' is empty string (oarg=$oarg)." >&2
       return 1
     fi ;;
   esac
@@ -74,9 +74,9 @@ function .ble-getopt.process-option {
   # unknown option
   if [[ ! $f_found ]]; then
     if [[ $f_longname ]]; then
-      ble/util/print "an unknown long-name option \`--$name'" 1>&2
+      ble/util/print "an unknown long-name option \`--$name'" >&2
     else
-      ble/util/print "an unknown option \`-$name'" 1>&2
+      ble/util/print "an unknown option \`-$name'" >&2
     fi
     return 1
   fi
@@ -103,7 +103,7 @@ function ble-getopt-begin {
 
 function .ble-getopt.check-oarg-processed {
   if ((getopt_oind<getopt_olen)); then
-    ble/util/print "$getopt_cmd: an option argument not processed (oarg=${getopt_oarg[$getopt_oind]})." 1>&2
+    ble/util/print "$getopt_cmd: an option argument not processed (oarg=${getopt_oarg[$getopt_oind]})." >&2
     getopt_oind=0
     getopt_olen=0
     builtin unset -v 'getopt_oarg[@]'

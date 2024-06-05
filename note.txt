@@ -7382,6 +7382,27 @@ bash_tips
 
 2024-06-03
 
+  * util: ble/util/buffer.flush >&2 の redirection を既定で行う [#D2218]
+
+    そもそも ble/util/buffer.flush を毎回手で redirection しているがこれは
+    ble/util/buffer.flush 自身が tui に対して redirect するべきなのでは?
+    ble/util/buffer.flush の初期化の順序などもちゃんと考慮に入れる。
+
+    →呼び出し元をチェックしてみると test を除いて全て >&2 を指定している。これ
+    は ble/util/buffer.flush 自体に tui_stderr への redirection 含めてしまうの
+    が自然である。或いは、別の関数を用意する。ble/util/buffer.tflush か
+    ble/util/buffer.flush-tui か ble/util/buffer.
+
+    うーん。結局 ble/util/buffer.flush の振る舞い自体を変更する事にした。色々カー
+    ソルを隠すなどの非自明な処理もしているので元より TUI 専用の関数になっている
+    気がする。
+
+    * ok: 初期化順序も大丈夫。stderr は L3487 で変数にコピーしていて、
+      ble/util/buffer の初期化は L4646 である。なので、_ble_util_fd_tui_stderr
+      は自由に使える。
+
+    * done: 1>&2 は >&2 に標準化する。
+
   * edit: fix standard streams in EXIT trap with ble/widget/exit [#D2217]
 
     EXIT trap 実行時に tui streams にリダイレクトする?

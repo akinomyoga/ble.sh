@@ -1170,7 +1170,7 @@ function ble/init/check-environment {
   return 0
 }
 if ! ble/init/check-environment; then
-  ble/util/print "ble.sh: failed to adjust the environment. canceling the load of ble.sh." 1>&2
+  ble/util/print "ble.sh: failed to adjust the environment. canceling the load of ble.sh." >&2
   ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
@@ -1516,7 +1516,7 @@ function ble/base/initialize-base-directory {
   [[ -d $_ble_base ]]
 }
 if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
-  ble/util/print "ble.sh: ble base directory not found!" 1>&2
+  ble/util/print "ble.sh: ble base directory not found!" >&2
   ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
@@ -1604,7 +1604,7 @@ function ble/base/initialize-runtime-directory {
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/${USER:-$UID}@$HOSTNAME"
 }
 if ! ble/base/initialize-runtime-directory; then
-  ble/util/print "ble.sh: failed to initialize \$_ble_base_run." 1>&2
+  ble/util/print "ble.sh: failed to initialize \$_ble_base_run." >&2
   ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
@@ -1761,7 +1761,7 @@ function ble/base/migrate-cache-directory {
   [[ $failglob ]] && shopt -s failglob
 }
 if ! ble/base/initialize-cache-directory; then
-  ble/util/print "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
+  ble/util/print "ble.sh: failed to initialize \$_ble_base_cache." >&2
   ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
@@ -1819,7 +1819,7 @@ function ble/base/initialize-state-directory {
   ble/base/.create-user-directory _ble_base_state "$state_dir/$UID"
 }
 if ! ble/base/initialize-state-directory; then
-  ble/util/print "ble.sh: failed to initialize \$_ble_base_state." 1>&2
+  ble/util/print "ble.sh: failed to initialize \$_ble_base_state." >&2
   ble/base/clear-version-variables
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
   return 1
@@ -2328,7 +2328,7 @@ ble/debug/leakvar#check $"leakvar" A5-canvas
   ble-edit/initialize # 3ms
   ble-edit/attach     # 0ms (_ble_edit_PS1 他の初期化)
   ble/canvas/panel/render # 37ms
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A6-term/edit
 #%end.i
@@ -2411,18 +2411,19 @@ function ble-detach/impl {
   READLINE_LINE='' READLINE_POINT=0
 }
 function ble-detach/message {
-  ble/util/buffer.flush >&2
-  printf '%s\n' "$@" 1>&2
+  ble/util/buffer.print-lines "$@"
+  ble/util/buffer.flush
   ble/edit/info/clear
   ble/textarea#render
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
 }
 
 function ble/base/unload-for-reload {
   if [[ $_ble_attached ]]; then
     ble-detach/impl
     local ret
-    ble/edit/marker#instantiate 'reload' && ble/util/print "$ret" 1>&2
+    ble/edit/marker#instantiate 'reload' &&
+      ble/util/print "$ret" >&"$_ble_util_fd_tui_stderr"
     [[ $_ble_edit_detach_flag ]] ||
       _ble_edit_detach_flag=reload
   fi
@@ -2443,7 +2444,7 @@ function ble/base/unload {
 
   ble/term/stty/TRAPEXIT "$1"
   ble/term/leave
-  ble/util/buffer.flush >&2
+  ble/util/buffer.flush
   blehook/invoke unload
   ble/decode/keymap#unload
   ble-edit/bind/clear-keymap-definition-loader
@@ -2528,7 +2529,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
       # 待避していた内容を復元・実行
       local PROMPT_COMMAND=${_ble_base_attach_PROMPT_COMMAND[save_index]}
       local ble_base_attach_from_prompt_command=processing
-      ble/prompt/update/.eval-prompt_command 2>&3
+      ble/prompt/update/.eval-prompt_command 2>&"$_ble_util_fd_tui_stderr"
       ble/util/unlocal ble_base_attach_from_prompt_command
       _ble_base_attach_PROMPT_COMMAND[save_index]=$PROMPT_COMMAND
       ble/util/unlocal PROMPT_COMMAND
@@ -2541,9 +2542,9 @@ function ble/base/attach-from-PROMPT_COMMAND {
         is_last_PROMPT_COMMAND=
       fi
 
-      # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
-      #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ
-      #   イレクトにより stdout.off の効果が巻き戻されるのを防ぐ為。
+      # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番外側で
+      #   ble-attach を実行する様にする。2>/dev/null のリダイレクトにより
+      #   stdout.off の効果が巻き戻されるのを防ぐ為。
       [[ ${ble_base_attach_from_prompt_command-} != processing ]] || return 0
     fi
 
@@ -2565,7 +2566,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
       ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
       _ble_prompt_hash=$COLUMNS:$_ble_edit_lineno:prompt_attach
     fi
-  } 3>&2 2>/dev/null # set -x 対策 #D0930
+  } 2>/dev/null # set -x 対策 #D0930
 
   ble-attach force
 
