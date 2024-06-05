@@ -2786,12 +2786,12 @@ function ble/complete/util/eval-pathname-expansion {
 
     local def
     ble/util/assign def 'ble/util/conditional-sync "$sync_command" "" "" "$sync_opts"' &>/dev/null; local ext=$?
-    if ((ext==148)) || ble/complete/check-cancel; then
+    if ((ext==148)) || ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin"; then
       ble/util/invoke-hook dtor
       return 148
     fi
     builtin eval -- "$def"
-  fi 2>&"$_ble_util_fd_tui_stderr"
+  fi
 
   ble/util/invoke-hook dtor
   return 0

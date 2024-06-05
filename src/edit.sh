@@ -1791,10 +1791,11 @@ if ble/is-function ble/util/idle.push; then
 
     ble/edit/marker#instantiate 'auto-logout' non-empty
     local msg="$ret timed out waiting for input"
+    # Note (#D2217): In calling ble/builtin/exit, we set
+    # "_ble_builtin_exit_processing=1" to skip checking the remaining jobs.
     ble/widget/.internal-print-command '
       ble/util/print "$msg"
-      builtin exit 0 &>/dev/null
-      builtin exit 0 &>/dev/null' pre-flush
+      _ble_builtin_exit_processing=1 ble/builtin/exit 0' pre-flush
     return 1 # exit に失敗した時
   } >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
   function ble/prompt/timeout/check {
@@ -5289,9 +5290,11 @@ function ble/widget/exit {
   ble/util/buffer.print "$ret"
   ble/util/buffer.flush >&2
 
-  # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
-  builtin exit 0 &>/dev/null
-  builtin exit 0 &>/dev/null
+  # Note: Even if jobs are remaining, we forcibly terminate the session.
+  # Note (#D2217): To properly handle the redirections in the EXIT trap, we
+  # here use ble/builtin/exit instead of the raw "builtin exit 0". We here set
+  # _ble_builtin_exit_processing=1 to skip checking the remaining jobs.
+  _ble_builtin_exit_processing=1 ble/builtin/exit 0
   ble/edit/leave-command-layout # #D1800 pair=enter-command-layout
   return 1
 }
@@ -6530,7 +6533,7 @@ function ble/exec/time/times.parse-time {
   local msc=$((10#0${BASH_REMATCH[3]#?}))
   ((ret=(min*60+sec)*1000+msc))
   return 0
-} 2>&"$_ble_util_fd_tui_stderr"
+}
 function ble/exec/time/times.start {
   builtin times >| "$_ble_exec_time_TIMES"
 }
@@ -6595,12 +6598,16 @@ function ble/exec/time#start {
     }
 
     function ble/exec/time#calibrate.restore-lastarg {
+      # Note: The time after reading EPOCHREALTIME is important, so we do not
+      # have to mimic the processing prior to this.
       _ble_exec_time_EPOCHREALTIME_beg=$EPOCHREALTIME
       return "$_ble_edit_exec_lastexit"
     }
     function ble/exec/time#calibrate.save-lastarg {
       _ble_exec_time_EPOCHREALTIME_end=$EPOCHREALTIME
       ble/exec/time#adjust-TIMEFORMAT
+      # Note: The time until reading EPOCHREALTIME is important, so we do not
+      # have to mimic the rest procesing in ble-edit/exec:gexec/.save-lastarg.
     }
     function ble/exec/time#calibrate {
       local _ble_edit_exec_lastexit=0
@@ -6614,14 +6621,16 @@ function ble/exec/time#start {
 
       # create a script
       local script1='ble/exec/time#calibrate.restore-lastarg "$_ble_edit_exec_lastarg"'
-      local script2='{ ble/exec/time#calibrate.save-lastarg; } &>/dev/null'
+      local script2='{ ble/exec/time#calibrate.save-lastarg; } 4>&1 5>&2 &>/dev/null'
       local script=$script1$_ble_term_nl$script2$_ble_term_nl
 
       # make a histogram
       local -a hist=()
       local i
       for i in {00..99}; do
-        { builtin eval -- "$script" 2>&"$_ble_util_fd_tui_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"
+        # This invocation mimics the actual setup for the command execution in
+        # ble-edit/exec:gexec.
+        { time LINENO=$i builtin eval -- "$script" 0<&"$_ble_util_fd_cmd_stdin" 1>&"$_ble_util_fd_cmd_stdout" 2>&"$_ble_util_fd_cmd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"
         ble/exec/time#restore-TIMEFORMAT
         local beg=${_ble_exec_time_EPOCHREALTIME_beg//[!0-9]}
         local end=${_ble_exec_time_EPOCHREALTIME_end//[!0-9]}

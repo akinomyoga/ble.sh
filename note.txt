@@ -7382,6 +7382,184 @@ bash_tips
 
 2024-06-03
 
+  * edit: fix standard streams in EXIT trap with ble/widget/exit [#D2217]
+
+    EXIT trap 実行時に tui streams にリダイレクトする?
+
+    [結論] EXIT trap が exit 呼び出し文脈の標準ストリームで呼び出されるのは
+    bash の昔からの動作である。Bash-4.4..5.1 でだけトップレベルの標準ストリーム
+    で呼び出されていた。従って、EXIT trap 時に呼び出し文脈の標準ストリームを用
+    いる動作は保持する。一方で ble/widget/exit や ble/prompt/timeout については
+    呼び出し文脈の標準ストリームが潰されていたので修正した。その他細かい修正が
+    幾つかある。
+
+    ----
+
+    ble/debug/profiler で EXIT で終端処理をする時も progress を表示する様に変更
+    しようと思ってコードを確認してみた所、別に意図的に隠していた訳ではないとい
+    う事が分かった。bash の EXIT trap の処理の仕方の変更によって出力が外に伝達
+    しない様になっていたのだった。というか、EXIT の trap の処理側で /dev/tty に
+    繋ぎ直すべきなのでは。
+
+    最近色々と問題があった様な気がするのでその時の対策は一旦解除する? と思った
+    が最近の変更は bash のもっと別の振る舞いに関係する物であって関係なかった。
+
+    その他の _ble_util_fd_.*_std.* 等にリダイレクトしている箇所で振る舞いを確認
+    する。
+
+    * 影響確認: 一つずつ関係のありそうな部分を拾っていく。特に EXIT の内部での
+      振る舞いを調整する目的の redirect を確認する。
+
+      先ず、 ble.pp の中の unload における redirection が関係ある。
+
+      →修正しなければならないと思ったが、unload に関しては実はユーザーが直接呼
+        び出した時に redirect されていても変な事になるので、EXIT で呼び出されて
+        いるかどうかに関係なくやはり redirection しなければならないのではないか。
+
+      contrib/integration の fzf, nix completion に関しては EXIT には関係ないだ
+      ろう。
+
+      util.sh の term/update-winsize でリダイレクトしている。EXIT の中で呼ばれ
+      る事もあるのでは? と思ったがこれは unload の中で呼ばれる気がするのでここ
+      で気にしなくても良い気がする。
+
+      history.sh の利用は bash-3.2 以下で builtin history が無限ループになるの
+      を防ぐ目的の workaround で使われている。これは EXIT には関係してこないだ
+      ろう。
+
+      core-complete.sh の check-cancel に関しても同様に関数の側で redirection
+      するべきなのではないか? と思ったがリダイレクトが必ずしも必要とは限らない。
+      これらの redirection は別の理由で suppress されているのを拾う為の物?  後
+      で調べる → 見た限り様々な箇所で check-cancel はそのままで呼び出されてい
+      る。という事を考えるとやはり現状のままで良い気がしてきた。わざわざ新しい
+      関数を用意する程でもない様に思われる。
+
+      edit.sh の prompt のエラーメッセージに関しては EXIT とは直接関係ない。
+
+      edit.sh の prompt/timeout/process に関しては idle.do の内部で実行される物
+      なので EXIT の redirection の問題にはならない。
+
+      ble-edit/attach/TRAPWINCH は状況は似ているが EXIT は関係ない。
+
+      ble-edit/exec:gexec/.TRAPDEBUG の中の redirection は INT の処理の部分なの
+      で関係ない。ble-edit/exec:gexec/.TRAPINT も同様に関係ない。
+
+      ble-edit/exec:gexec/invoke-hook-with-setexit については今回と類似の理由で
+      ユーザーが設定した hook に対して redirection を実行している。これは tui
+      に繋いでいる。ble-edit/exec:gexec/.prologue の中で PS0 の出力を tui に繋
+      いでいるのは、この時点で既に cmd に繋いでしまっているのでそれを回避する為
+      である。実は invoke-hook-with-setexit の redirections も同じ理由だったと
+      思われる。
+
+      →それなら一括で外側で redirections するか cmd のリダイレクションも毎回実
+      行する様にすれば良かったのでは? と思ったが add-cloexec 等の処理も考えると、
+      まあ現在の様な処理でも仕方がない気もする。
+
+      ble-edit/exec:gexec/.epilogue で buffer が redirection しているのは関係な
+      い。
+
+      ble/exec/time/times.parse-time の redirection はよく分からない。この関数
+      は何も出力していない気がする。或いはデバグの為にエラーメッセージを取り出
+      そうとした物が残留している?
+
+      →別に更に外側で 2 を読み取っているという訳でもない様だ。この redirection
+        は初めに時間計測に対応した時 2b28bece #D1756 の時から存在していた様だ。
+
+      ble/exec/time#calibrate でも何も出力しない筈のリダイレクトしているが、こ
+      れは単に 2 を別の用途 (時間計測) で使っていて関係ない出力が混入しない様に
+      する為の物である。だからと言って、何故外側の 2 ではなくて /dev/tty なのか
+      は不明であるが。
+
+      ? ok: これは外側の 2 に繋ぐ様に修正するべきではないか? と思ったが、どうも
+        見てみるとこれは実際に gexec でコマンドを実行する時の redirection の形
+        を再現しようとしている様だ。なので、今のままで良い。
+
+        意図がわかる様にコメントを加えた。また現在の設定に近くなる様に
+        redirection を更新した。(但し、測定開始と測定終了の外側での処理なので実
+        際にどれだけ影響があるのかは分からない)
+
+      * fixed: core-complete.sh の ble/complete/util/eval-pathname-expansion で
+        行われているリダイレクトは何だろう? これは check-cancel に渡す /dev/tty
+        を stdin vs stderr で間違えていたりしないか? これは確認する必要がある。
+        commit c89aa2377 で /dev/tty の redirection が追加されている。同時に
+        check-cancel が追加されている。
+
+        > diff --git a/lib/core-complete.sh b/lib/core-complete.sh
+        > index 8a11d28e..afcb7caf 100644
+        > --- a/lib/core-complete.sh
+        > +++ b/lib/core-complete.sh
+        > @@ -1753,11 +1753,13 @@ function ble/complete/util/eval-pathname-expansion {
+        >      local sync_opts=progressive-weight
+        >      [[ :$comp_type: == *:auto:* && $bleopt_complete_timeout_auto ]] &&
+        >        sync_opts=$sync_opts:timeout=$((bleopt_complete_timeout_auto))
+        > +
+        >      local def
+        >      ble/util/assign def 'ble/util/conditional-sync "$sync_command" "" "" "$sync_opts"' &>/dev/null; local ext=$?
+        >      ((ext==148)) && return 148
+        > +    ble/complete/check-cancel && return 148
+        >      builtin eval -- "$def"
+        > -  fi
+        > +  fi 2>/dev/tty
+        >
+        >    ble/array#reverse dtor
+        >    ble/util/invoke-hook dtor
+
+        これは如何にも怪しい。多分間違いだ。修正する。
+
+      * done: /dev/tty に直接 redirect している箇所は他にないか? →ない様である。
+        何れもコメント内部か、初期化時の確認か、或いは初期化時の /dev/tty の記
+        録でしか使っていない。或いは、contrib の中の処理。
+
+    ? また別の疑問として、もし EXIT が trap EXIT を置き換える物なのだとしたら勝
+      手に redirection するのは良くないのでは? と思いつつ、従来の設定ではトップ
+      レベルで呼び出される事を想定していたのだろうし、通常は EXIT に登録する
+      hook は一番外側に std streams が繋がっている事を想定するだろう。変な物に
+      繋がっていたとしてもそれを有効に使う方法が存在するとは思えない。なので、
+      EXIT トラップの側でリダイレクトを実行してしまって問題ない。
+
+      一方で、EXIT トラップの側でリダイレクトを実行するとしてそれが tui 側に繋
+      がっているべきか cmd 側に繋がっているべきかは謎である。例えば端末の状態を
+      元に戻す為のシーケンスを送るとして、それはどちらの端末に送るべきか?  それ
+      がコマンド実行時の端末に向けてのシーケンスだった場合にはそちらに送るべき
+      だし、或いは、プロンプトを含めたシェル設定に対しての物だったら tui 側に送
+      るべきである。
+
+      うーん。ble.sh 的には自分の tui に関連して端末の設定が変に変更されている
+      という事は想定したくないので、ユーザーが設定するのは cmd に対する処理と想
+      定して良い気がする。その場合には結局現在の unload の redirection は削除で
+      きないのではないか? 然しその場合に ble.sh session がなくなった後にもその
+      端末が持続するのかという別の疑問もある。うーん。面倒なので tui 側に繋ぐと
+      いう事で良い気がする。
+
+      OK 取り敢えず tui 側に繋ぐという事で良い事にする。
+
+    EXIT を呼び出している箇所を探す。うーん。EXIT 特有の処理を行っているという
+    訳でもない様だ。うーん。EXIT の時には外側の standard streams に関係なく、も
+    う勝手にリセットしてしまって良いのではないか。EXIT trap が実行された後に何
+    かコマンドが実行されるとも思えないので。
+
+    →と思って修正しようとしたら逆向きの redirection が実は既にあった。昔は
+    EXIT は最後に呼び出した場所での standard streams になっていた様だ。4.4..5.1
+    でトップレベルで実行される様になって不都合が生じた。という事になっている。
+    だとすれば、やはり EXIT は exit が呼び出された瞬間の streams に繋いだ状態で
+    実行するべき? そもそもそうしないと行けなかったのは何故だったか?
+
+    これは #D1782 (f62fc04f) で説明されていた。とにかくトップレベルの streams
+    に繋がっているのは 4.4..5.1 だけで、他は基本的に関数内で exit が実行されて
+    いた様だ。然し、別に積極的に exit の呼び出し文脈の streams に繋ぎ直す必要は
+    ない様に思われる。一番外側に繋いで置けば良かったのではないか? 然し、わざわ
+    ざユーザーの設定した EXIT に対する振る舞いを変える程でもない様な気がしてき
+    たので、やはり EXIT に関しては各 hook が時前でちゃんと redirect する様にす
+    る事にした。
+
+    ? fixed: 然し、exit 呼び出し文脈での streams を復元しているのだとすれば、何
+      故 profiler/stop from EXIT で外側に出力されなかったのだろうか。
+
+      →これは ble/widget/exit から直接 builtin exit 0 &>/dev/null を実行してい
+      るからだった。ble/widget/exit の中からでもちゃんと終了する為に
+      ble/builtin/exit を用いて終了する事にした。重複したジョブのチェックをスキッ
+      プする為に _ble_builtin_exit_processing=1 を設定して呼び出す。
+
   * debug: 関数呼び出しツリー [#D2216]
     Ref #D2207
 
