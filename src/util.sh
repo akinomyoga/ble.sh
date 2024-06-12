@@ -2766,11 +2766,16 @@ else
   }
 fi
 
+## @fn ble/util/load-standard-builtin name [check_command]
 function ble/util/load-standard-builtin {
   local ret; ble/util/readlink "$BASH"
   local bash_prefix=${ret%/*/*}
-  if [[ -s $bash_prefix/lib/bash/$1 ]] &&
-    (enable -f "$bash_prefix/lib/bash/$1" "$1" && help "$1") &>/dev/null; then
+  if [[ -s $bash_prefix/lib/bash/$1 ]] && (
+       enable -f "$bash_prefix/lib/bash/$1" "$1" &&
+         help "$1" &&
+         { [[ ! $2 ]] || builtin eval -- "$2"; }
+     ) &>/dev/null
+  then
     enable -f "$bash_prefix/lib/bash/$1" "$1"
     return 0
   else
@@ -3137,7 +3142,7 @@ else
   }
 fi
 
-if ((_ble_bash>=40400)) && ble/util/load-standard-builtin fdflags; then
+if ((_ble_bash>=40400)) && ble/util/load-standard-builtin fdflags 'builtin fdflags 0; (($?<=2))'; then
   # Implementation of ble/fd#cloexec by loadable builtin (8us)
 
   function ble/fd#cloexec/.add { builtin fdflags -s +cloexec "$1"; }

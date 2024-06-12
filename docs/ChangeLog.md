@@ -111,6 +111,7 @@
   - debug: support `bleopt debug_profiler_opts=tree` `#D2216` a453f373
 - keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` aa7ca45d
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
+- util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` xxxxxxxx
 
 ## Compatibility
 
