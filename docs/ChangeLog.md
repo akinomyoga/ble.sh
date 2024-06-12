@@ -152,6 +152,7 @@
 - util: detect Zellij heuristically `#D2219` 86034398
 - decode: exclude `/etc/inputrc` in SUSE as well as in openSUSE (reported by Anyborr) `#D2220` 63be48df
 - term: detect iTerm2 `#D2224` xxxxxxxx
+- mandb: support man page format of `rg` (requested by pallaswept) `#D2225` xxxxxxxx
 
 ## Contrib
 

@@ -4755,17 +4755,21 @@ function ble/complete/mandb/.generate-cache-from-man {
       print "";
       print desc;
     }
-    function flush_topic(_, i) {
-      if (g_keys_count != 0) {
-        for (i = 0; i < g_keys_count; i++)
-          output_pair(g_keys[i], g_desc);
-      }
+
+    function all_flush(_, i) {
+      stage_flush();
+      fmt3_flush();
+      fmt5_flush();
+      fmt6_flush();
+    }
+    function all_reset() {
       g_keys_count = 0;
       g_desc = "";
-
-      fmt3_flush();
+      mode = "none";
+      prev_line = "";
+      fmt3_state = "";
       fmt5_state = "";
-      fmt6_flush();
+      fmt6_state = "";
     }
 
     # ".Dd" seems to be the include directive for macros?
@@ -4775,9 +4779,22 @@ function ble/complete/mandb/.generate-cache-from-man {
       print $0;
     }
 
-    function register_key(key) {
+    function stage_key(key) {
       g_keys[g_keys_count++] = key;
       g_desc = "";
+    }
+    function stage_desc(desc) {
+      if (g_desc != "") g_desc = g_desc "\n";
+      g_desc = g_desc desc;
+    }
+    function stage_flush() {
+      if (g_keys_count == 0) return;
+
+      for (i = 0; i < g_keys_count; i++)
+        output_pair(g_keys[i], g_desc);
+      g_keys_count = 0;
+      g_desc = "";
+      mode = "none";
     }
 
     # Comment: [.ig \n comments \n ..]
@@ -4792,14 +4809,38 @@ function ble/complete/mandb/.generate-cache-from-man {
       REQ = match($0, /^\.[_a-zA-Z0-9]+/) ? substr($0, 2, RLENGTH - 1) : "";
     }
 
-    REQ ~ /^(S[Ss]|S[Hh]|Pp)$/ { flush_topic(); next; }
+    REQ ~ /^(S[Ss]|S[Hh]|Pp)$/ { all_flush(); next; }
+
+    #--------------------------------------------------------------------------
+    # Format #7: [key \n .RS ... \n desc \n .RE]
+    # This is used by rg (riggrep).  The key appears in a plain context without
+    # any starting marker. This switches to fmt5 after identifying the key.
+
+    function fmt7_check_start() {
+      # If the previous line is empty, this is not fmt7.
+      if (prev_line == "") return 0;
+
+      # If we are already in a non-trivial state of the option description in
+      # other formats, we do not try to interpret it as fmt7.
+      if (g_keys_count || mode !~ /^(begin|none)$/) return 0;
+      if (fmt3_state != "") return 0;
+      if (fmt5_state !~ /^$|^key$/) return 0;
+      if (fmt6_state != "") return 0;
+
+      fmt5_state = "desc";
+      fmt5_key = prev_line;
+      fmt5_desc = "";
+      return 1;
+    }
+
+    REQ == "RS" && fmt7_check_start() { next; }
 
     #--------------------------------------------------------------------------
     # Format #5: [.PP \n key \n .RS \n desc \n .RE]
-    # used by "ping" and "git".
+    # This format is used by "ping" and "git".
 
     REQ == "PP" {
-      flush_topic();
+      all_flush();
       fmt5_state = "key";
       fmt5_key = "";
       fmt5_desc = "";
@@ -4811,27 +4852,36 @@ function ble/complete/mandb/.generate-cache-from-man {
         if (/^\.RS([^_a-zA-Z0-9]|$)/)
           fmt5_state = "desc";
         else if (/^\.RE([^_a-zA-Z0-9]|$)/)
-          fmt5_state = "none";
+          fmt5_state = "";
         else
           fmt5_key = (fmt5_key ? fmt5_key "\n" : "") $0;
       } else if (fmt5_state == "desc") {
         if (/^\.RE([^_a-zA-Z0-9]|$)/) {
-          register_key(fmt5_key);
-          g_desc = fmt5_desc;
-          flush_topic();
-          fmt5_state = "";
-        } else
+          fmt5_flush();
+          all_reset();
+        } else {
           fmt5_desc = (fmt5_desc ? fmt5_desc "\n" : "") $0;
+        }
       }
+    }
+
+    function fmt5_flush() {
+      if (fmt5_state == "desc") {
+        stage_key(fmt5_key);
+        stage_desc(fmt5_desc);
+        stage_flush();
+      }
+      fmt5_state = "";
     }
 
     #--------------------------------------------------------------------------
     # Format #3: [.HP \n keys \n .IP \n desc]
     # GNU sed seems to use this format.
     # GNU coreutils mv seems to contain [.HP \n key      desc ] (for option "-b")
+    # Once we find desc, we can switch to the normal processing of mode = "desc".
 
     REQ == "HP" {
-      flush_topic();
+      all_flush();
       fmt3_state = "key";
       fmt3_key_count = 0;
       fmt3_desc = "";
@@ -4839,7 +4889,7 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
 
     function fmt3_process(_, key) {
-      if (REQ == "TP") { fmt3_flush(); return; }
+      if (REQ == "TP") { fmt3_switch(); return; }
       if (REQ == "PD") return;
 
       if (fmt3_state == "key") {
@@ -4856,15 +4906,20 @@ function ble/complete/mandb/.generate-cache-from-man {
         fmt3_desc = fmt3_desc $0;
       }
     }
-    function fmt3_flush(_, i) {
+    function fmt3_switch(_, i) {
       if (fmt3_state == "desc" && fmt3_key_count > 0) {
         for (i = 0; i < fmt3_key_count; i++)
-          register_key(fmt3_keys[i]);
-        g_desc = fmt3_desc;
+          stage_key(fmt3_keys[i]);
+        stage_desc(fmt3_desc);
+        mode = "desc"; # switch to normal "desc" processing
       }
       fmt3_state = "";
       fmt3_key_count = 0;
       fmt3_desc = "";
+    }
+    function fmt3_flush() {
+      fmt3_switch();
+      stage_flush();
     }
 
     fmt3_state { fmt3_process(); }
@@ -4881,14 +4936,14 @@ function ble/complete/mandb/.generate-cache-from-man {
 
     function fmt4_init() {
       if (mode != "fmt4_desc")
-        if (!(g_keys_count && g_desc == "")) flush_topic();
+        if (!(g_keys_count && g_desc == "")) all_flush();
 
       gsub(/^\.IP['"$_ble_term_space"']+"|"(['"$_ble_term_space"']+[0-9]+)?$/, "");
-      register_key($0);
+      stage_key($0);
       mode = "fmt4_desc";
     }
     mode == "fmt4_desc" {
-      if ($0 == "") { flush_topic(); mode = "none"; next; }
+      if ($0 == "") { all_flush(); mode = "none"; next; }
 
       # fish has a special format of [.IP "\(bu" 2 \n keys desc]
       if (g_keys_count == 1 && g_keys[0] == "\\(bu" && match($0, /^\\fC[^\\]+\\fP( or \\fC[^\\]+\\fP)?/) > 0) {
@@ -4904,12 +4959,11 @@ function ble/complete/mandb/.generate-cache-from-man {
       if (REQ == "PD") next;
       if (/^\.IX['"$_ble_term_space"']+Item['"$_ble_term_space"']+/) next;
 
-      if (g_desc != "") g_desc = g_desc "\n";
-      g_desc = g_desc $0;
+      stage_desc($0);
     }
 
     #--------------------------------------------------------------------------
-    # Format #6: [[.IP "key" \n desc .IP]
+    # Format #6: [.IP "key" \n desc .IP]
     # This format is used by "rsync".
 
     function fmt6_init() {
@@ -4939,13 +4993,13 @@ function ble/complete/mandb/.generate-cache-from-man {
     # Format #2: [.It Fl key \n desc] or [.It Fl Xo \n key \n .Xc desc]
     # This form was found in both "mdoc" and "man"
     /^\.It Fl([^_a-zA-Z0-9]|$)/ {
-      if (g_keys_count && g_desc != "") flush_topic();
+      if (g_keys_count && g_desc != "") all_flush();
       sub(/^\.It Fl/, ".Fl");
       if ($0 ~ / Xo$/) {
         g_current_key = $0;
         mode = "fmt2_keyc"
       } else {
-        register_key($0);
+        stage_key($0);
         mode = "desc";
       }
       next;
@@ -4954,7 +5008,7 @@ function ble/complete/mandb/.generate-cache-from-man {
       if (/^\.PD['"$_ble_term_space"']*([0-9]+['"$_ble_term_space"']*)?$/) next;
       g_current_key = g_current_key "\n" $0;
       if (REQ == "Xc") {
-        register_key(g_current_key);
+        stage_key(g_current_key);
         mode = "desc";
       }
       next;
@@ -4964,36 +5018,43 @@ function ble/complete/mandb/.generate-cache-from-man {
     # Format #1: [.TP \n key   desc \n desc...]
     # This is the typical format in "man".
     type == "man" && REQ == "TP" {
-      if (g_keys_count && g_desc != "") flush_topic();
+      if (g_keys_count && g_desc != "") all_flush();
       mode = "key1";
       next;
     }
-    mode == "key1" {
-      if (/^\.PD['"$_ble_term_space"']*([0-9]+['"$_ble_term_space"']*)?$/) next;
 
+    function fmt1_process_key(line, _, key, desc) {
       # In Japanese version of "man ls", key and desc is separated by multiple
       # spaces, where the number of spaces seem to vary from 5 to more than 10
       # spaces.
-      if (match($0, /['"$_ble_term_space"']['"$_ble_term_space"']['"$_ble_term_space"']/) > 0) {
-        register_key(substr($0, 1, RSTART - 1));
-        g_desc = substr($0, RSTART);
-        sub(/^['"$_ble_term_space"']+/, "", g_desc);
-      } else {
-        register_key($0);
-      }
+      if (match(line, /['"$_ble_term_space"']['"$_ble_term_space"']['"$_ble_term_space"']/) > 0) {
+        key = substr(line, 1, RSTART - 1)
+        desc = substr(line, RSTART);
+        sub(/^['"$_ble_term_space"']+/, "", desc);
 
+        stage_key(key);
+        stage_desc(desc);
+      } else {
+        stage_key(line);
+      }
       mode = "desc";
+    }
+
+    mode == "key1" {
+      if (/^\.PD['"$_ble_term_space"']*([0-9]+['"$_ble_term_space"']*)?$/) next;
+      fmt1_process_key($0);
       next;
     }
     mode == "desc" {
       if (REQ == "PD") next;
-
-      if (g_desc != "") g_desc = g_desc "\n";
-      g_desc = g_desc $0;
+      stage_desc($0);
+      next;
     }
+    { prev_line = $0; }
+
     #--------------------------------------------------------------------------
 
-    END { flush_topic(); }
+    END { all_flush(); }
   ' | ble/complete/mandb/convert-mandoc 2>/dev/null | ble/bin/awk -F "$_ble_term_FS" '
     function flush_pair(_, i, desc, prev_opt) {
       if (g_option_count) {
