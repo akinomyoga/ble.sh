@@ -420,6 +420,8 @@ function ble/util/c2w:auto/test.buff {
 
   [[ $_ble_attached ]] && { ble/canvas/panel/save-position goto-top-dock; saved_pos=$ret; }
   ble/canvas/put.draw "$_ble_term_sc"
+  [[ $_ble_term_sgr_invis ]] &&
+    ble/canvas/put.draw $'\e['"$_ble_term_sgr_invis"'m'
   if ble/util/is-unicode-output; then
 
     local -a codes=(
@@ -464,6 +466,8 @@ function ble/util/c2w:auto/test.buff {
       ble/canvas/put.draw "$_ble_term_cr$_ble_term_el"
     fi
   fi
+  [[ $_ble_term_sgr_invis ]] &&
+    ble/canvas/put.draw "$_ble_term_sgr0"
   ble/canvas/put.draw "$_ble_term_rc"
   [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$saved_pos"
   ble/canvas/bflush.draw
