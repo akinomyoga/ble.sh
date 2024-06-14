@@ -1928,6 +1928,18 @@ bash_tips
 
 2024-06-05
 
+  * 何処かの時点で ret -> REPLY に書き換えたい。
+
+    既存ユーザーの設定で使われている場合にはどうするか。declare -n ret=REPLY を
+    設定しようと思っていたが、local ret とした時点でそれが上書きされてしまうか
+    ら駄目の気がする。逆に declare -n REPLY=ret としていたらどうなるか。これは
+    逆にble.sh の内部で local REPLY=xxx とした時点で駄目になってしまう気がする?
+    と思ったがその場合は REPLY は通常変数として問題ない気がする。
+
+    自動で変換する時に気にするべきは ret=$? の様な別の用途で使っている物を除外
+    する事。また、REPLY が使われている箇所があったらそれが batting しない様にす
+    るという事。これについては全く使っていなければ問題ない気がする。
+
   * debug: debug_profiler_opts=flame
 
     flame graph にも対応する? 然し flame graph はインターフェイスが難しい気がす
@@ -7381,6 +7393,68 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-06-14
+
+  * term: iTerm2 identification [#D2224]
+
+    iTerm2 identification は LC_TERMINAL でできる? 但し ssh で入った時はできな
+    いだろう (sshd_config を変更していない限り)。
+
+    LC_TERMINAL=iTerm2 LC_TERMINAL_VERSION=3.4.15 xterm:95 (0;95;0)
+    LC_TERMINAL=iTerm2 LC_TERMINAL_VERSION=3.4.16 xterm:95 (0;95;0)
+    LC_TERMINAL=iTerm2 LC_TERMINAL_VERSION=3.4.20 応答なし?
+    LC_TERMINAL=iTerm2 LC_TERMINAL_VERSION=3.5.0beta10 xterm:2500 (41;2500;0)
+
+    | うーん。0;95;0 は iTerm2 を疑うべき。ローカルで動かしているのであれば
+    | LC_TERMINAL をチェックするので OK? 一方で、ssh で入っている時は DA2 を使
+    | う? と思ったが、iTerm2 の中から更に別の端末を立ち上げた時に LC_TERMINAL
+    | が残っていて影響を与える可能性がある。また、ssh で入っているかの判定をす
+    | る時に terminal multiplexer を使っている場合には別の接続時の
+    | SSH_CONNECTION が残っている等して判定に失敗する可能性がある。結局信頼でき
+    | るのは DA2 だけの気がする。
+    |
+    | iTerm2 の実装を見ると {0,1,41};xterm-ver;0 を送る様になっている。そして、
+    | xterm-ver は設定で変更可能になっている。ソースコードの既定値を見ると今は
+    | 2500 になっている。説明が書かれていて pre 3.4.10 は 95 と書かれている。
+    | commit 2fef3881 で導入されている。然し commit を見るとこれが最初に入った
+    | のは 3.5.0beta である。3.4.11 以降でも別に入っていない。
+    |
+    | https://github.com/gnachman/iTerm2/commit/2fef388179057cf0090d536350ed644c7d4499d7
+    |
+    | それ以降は別に変更していない様である。
+    |
+    | 一方で vtLevel {0,1,41} はどうやって決まるのか。setTermType を元に決定さ
+    | れていて、setTermType は _termVariable から来ている。_termVariable は
+    | setTermVariable から設定されていて、これは [iTermProfilePreferences
+    | stringForKey:KEY_TERMINAL_TYPE inProfile:aDict] から取り出している。これ
+    | も規定値は "xterm" っぽい。辿ると VT100, VT2, VT3 の時はそれぞれ 0, 1, 1
+    | になり、それ以外は 41 になる気がする。
+    |
+    | 変更の履歴を辿ると termVariable が xterm になったのは commit 6ee4169c 10
+    | 年前 (2.9.2015) からである。関係なさそう。
+    |
+    | * 2019-05-13 commit d1645a9c では始めて vtLevel が導入された。VT100 =
+    |   100, else 200.
+    |
+    | * 2021-08-14 commit 6c923fab (3.5.0beta) で 0;*;0 をそれまで報告していた
+    |   のを <vt>;*;0 に変更している。この時は vtLevel 100 = 0, else 1 で処理し
+    |   ていた。
+    |
+    | * 2021-10-08 commit 33ca789f で vtLevel 400 と対応する vt = 41 を追加して
+    |   いる。
+    |
+    | * 2021-10-08 commit 33ca789f で termType -> vtLevel に於いて、 VT4 -> 400
+    |   を追加している。
+    |
+    | * 2021-10-13 commit 05dd9859 で termType -> vtLevel への変換が変わってい
+    |   る。VT100 = 100, VT4 = 400, else 200. だったのを現在の方法に変更してい
+    |   る。
+
+    つまり、3.5.0 より前は 0;<xterm ver>;0 だったのが、3.5.0 以降で <vt>;<xterm
+    ver>;0 に変更され、更に <vt> は termType <- termVariable <-
+    KEY_TERMINAL_TYPE を通して決定され設定で変更可能である (6c923fab)。既定値は
+    xterm ver については 95 だったのが 2500 に変更された (2fef3881)。また、vt
+    については vt = 41 <- vtlevel = 400 <- termType = xterm <- termVariable =
+    xterm <- KEY_TERMINAL_TYPE = xterm と決まっている。
 
   * canvas: 初期化時の文字幅テストの文字が表示される (motivated by tessus) [#D2223]
 

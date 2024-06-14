@@ -6956,6 +6956,17 @@ function ble/term/DA2/initialize-term {
   ('1;277;0')  _ble_term_TERM[depth]=mlterm:30402 ;; # Note: wezterm:20220408 と同じ。wezterm の方を優先
   ('24;279;0') _ble_term_TERM[depth]=mlterm:30702 ;;
 
+  # iTerm2
+  # * 0;95;     v1.0.0.20110724 (2010-08-07) https://github.com/gnachman/iTerm2/commit/732e2016a488f9e06a88cd2ab3925436e437864e
+  # - 0:95      v2.9.20151111   (2015-02-24) https://github.com/gnachman/iTerm2/commit/e5b7db007c9340b93607096f64f4895fe4cef544
+  # * 0;95;0    v2.9.20151111   (2015-03-02) https://github.com/gnachman/iTerm2/commit/5a613a9c1bf7ddd0fea34135a391fd3fa7c53585
+  # - 0;95;0    v3.3.0beta1     (2018-10-10) https://github.com/gnachman/iTerm2/commit/b3058e6806c22f345329923a15394502e2b4a251 (LC_TERMINAL_VERSION)
+  # - 1;95;0    v3.5.0beta1     (2021-08-14) https://github.com/gnachman/iTerm2/commit/6c923fab1e78147b00a5867aa7e20617739608db
+  # - 41;95;0   v3.5.0beta3     (2021-10-13) https://github.com/gnachman/iTerm2/commit/05dd985955736e222b4144c45dc7e33cafd76948
+  # * 41;2500;0 v3.5.0beta3     (2021-10-13) https://github.com/gnachman/iTerm2/commit/2fef388179057cf0090d536350ed644c7d4499d7
+  ('0;95;0')    _ble_term_TERM[depth]=iTerm2:${LC_TERMINAL_VERSION-2.9+} ;;
+  ('41;2500;0') _ble_term_TERM[depth]=iTerm2:${LC_TERMINAL_VERSION-3.5+} ;;
+
   ('0;10;1') # Windows Terminal
     # 現状ハードコードされている。
     # https://github.com/microsoft/terminal/blob/bcc38d04/src/terminal/adapter/adaptDispatch.cpp#L779-L782

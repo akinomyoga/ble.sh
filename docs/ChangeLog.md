@@ -10,8 +10,8 @@
   - decode(bind): support the colonless form of `bind -x` of bash-5.3 `#D2106` 78d7d2e3
   - util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
   - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
-  - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` xxxxxxxx
-  - main: update the startup message for debug versions of Bash `#D2222` xxxxxxxx
+  - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` 48c7bbee
+  - main: update the startup message for debug versions of Bash `#D2222` afb29073
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
@@ -108,9 +108,9 @@
 - util.hook: fix user DEBUG trap not executed at the top-level context `#D2202` 828fcfc1
 - keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` 4268650d
 - edit: render the final prompt before updating command history (motivated by pallaswept) `#D2207` 911a4051
-  - debug: support `bleopt debug_profiler_opts=tree` `#D2216` xxxxxxxx
+  - debug: support `bleopt debug_profiler_opts=tree` `#D2216` a453f373
 - keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` aa7ca45d
-- edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` xxxxxxxx
+- edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
 
 ## Compatibility
 
@@ -149,8 +149,9 @@
 - decode: fix the problem that key always timed out in bash-3 `#D2173` 0b176e76
 - term: adjust the result of `tput clear` for `ncurses >= 6.1` (reported by cmndrsp0ck) `#D2185` 18dd51ab
 - main: work around WSL's permission issue on `/run/user/1000` (reported by antonioetv and geoffreyvanwyk) `#D2195` fb826ab6
-- util: detect Zellij heuristically `#D2219` xxxxxxxx
-- decode: exclude `/etc/inputrc` in SUSE as well as in openSUSE (reported by Anyborr) `#D2220` xxxxxxxx
+- util: detect Zellij heuristically `#D2219` 86034398
+- decode: exclude `/etc/inputrc` in SUSE as well as in openSUSE (reported by Anyborr) `#D2220` 63be48df
+- term: detect iTerm2 `#D2224` xxxxxxxx
 
 ## Contrib
 
@@ -211,7 +212,7 @@
   - util: fix error of bad file descriptors (reported by ragnarov) `#D2159` 785267e1
   - util: work around macOS/FreeBSD failure on `exec 32>&2` (reported by tessus, jon-hotaisle) `#D2165` 8f0dfe9b
   - main: record external file descriptors on `ble-attach` `#D2183` a508a827
-  - util: check leftovers of CLOEXEC fds more strictly `#D2215` xxxxxxxx
+  - util: check leftovers of CLOEXEC fds more strictly `#D2215` 79fe2483
 - main: fix unprocessed `-PGID` in `*.pid` for cleanup `#D2143` a5da23c0
 - history: prevent `SIGPIPE` from reverting the TTY state in trap `EXIT` `#D2153` 4b8a0799
   - history: fix initially shifted history index `#D2180` e425dc56
@@ -219,7 +220,7 @@
 - global: avoid using the builtin `:` `#D2192` f2fd2955
 - global: pass `--` to `type` and `declare` before arbitrary arguments `#D2194` 5c0efcf6
 - global: fix spelling mistakes `#D2201` 86815f61
-- util (`ble/util/buffer.flush`): write to the TUI stderr `#D2218` xxxxxxxx
+- util (`ble/util/buffer.flush`): write to the TUI stderr `#D2218` b5c88947
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
