@@ -4635,12 +4635,16 @@ function ble/util/buffer.flush {
   _ble_util_buffer=()
   [[ $text ]] || return 0
 
-  # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal など途中
-  # のカーソル移動も無理やり表示しようとする端末に対する対策。
-  [[ $_ble_term_state == internal ]] &&
+  if [[ $_ble_term_state == internal ]]; then
+    # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal など途中
+    # のカーソル移動も無理やり表示しようとする端末に対する対策。
     [[ $_ble_term_cursor_hidden_internal != hidden ]] &&
-    [[ $text != *"$_ble_term_civis"* && $text != *"$_ble_term_rmcivis"* ]] &&
-    text=$_ble_term_civis$text$_ble_term_rmcivis
+      [[ $text != *"$_ble_term_civis"* && $text != *"$_ble_term_rmcivis"* ]] &&
+      text=$_ble_term_civis$text$_ble_term_rmcivis
+
+    [[ $bleopt_term_synchronized_update_mode == on ]] &&
+      text=$'\e[?2026h'$text$'\e[?2026l'
+  fi
 
   ble/util/put "$text" >&"$_ble_util_fd_tui_stderr"
 }
@@ -6910,6 +6914,20 @@ if [[ $TERM == minix ]]; then
   function ble/term/bracketed-paste-mode/leave { return 0; }
 fi
 
+#---- DECSET(2026): synchronized update ---------------------------------------
+
+bleopt/declare -v term_synchronized_update_mode auto
+function ble/term/synchronized-update-mode/resolve-auto {
+  [[ $bleopt_term_synchronized_update_mode == auto ]] || return 0
+
+  case $_ble_term_TERM in
+  (mintty:*|foot:*|wezterm:*|iTerm2:*|kitty:*|alacritty:*|zellij:*)
+    bleopt_term_synchronized_update_mode=on ;;
+  (*)
+    bleopt_term_synchronized_update_mode= ;;
+  esac
+}
+
 #---- DA2 ---------------------------------------------------------------------
 
 _ble_term_TERM=()
@@ -7081,6 +7099,9 @@ function ble/term/DA2/notify {
       _ble_term_sc=$'\e7' _ble_term_rc=$'\r\e8' ;;
     esac
 
+    if ((depth==0)); then
+      ble/term/synchronized-update-mode/resolve-auto
+    fi
     if [[ $is_outermost ]]; then
       _ble_term_TERM_done=1
       ble/term/modifyOtherKeys/reset

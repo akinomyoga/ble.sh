@@ -222,6 +222,7 @@
 - global: pass `--` to `type` and `declare` before arbitrary arguments `#D2194` 5c0efcf6
 - global: fix spelling mistakes `#D2201` 86815f61
 - util (`ble/util/buffer.flush`): write to the TUI stderr `#D2218` b5c88947
+- util (`ble/util/buffer.flush`): use <kbd>DECSET(2026)</kbd> in terminals with the support `#D2226` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
