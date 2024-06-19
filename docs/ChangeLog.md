@@ -46,6 +46,7 @@
 - complete: support `bleopt complete_menu_complete_opts=hidden` and menu-style switching (requested by CamRatliff) `#D2199` 16ff7df7
 - syntax: support `ln=target` in `bleopt filename_ls_colors` (requested by akhilkedia) `#D2213` e169e31d
 - syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` e169e31d
+- util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` xxxxxxxx
 
 ## Changes
 

@@ -161,8 +161,8 @@ bleopt/declare -n info_display top
 function bleopt/check:info_display {
   case $value in
   (top)
-    [[ $_ble_canvas_panel_vfill == 3 ]] && return 0
-    _ble_canvas_panel_vfill=3
+    [[ $_ble_canvas_panel_vfill == 4 ]] && return 0
+    _ble_canvas_panel_vfill=4
     [[ $_ble_attached ]] && ble/canvas/panel/clear
     return 0 ;;
   (bottom)
@@ -467,7 +467,7 @@ function ble/application/onwinch/panel.process-redraw-here {
     # それを想定して取り敢えず DECRC で戻った先の座標を使って判定する。
     ble/canvas/panel/goto-top-dock.draw
 
-    local i npanel=${#_ble_canvas_panel_height[@]}
+    local i npanel=${#_ble_canvas_panel_class[@]}
     local y0=0
     local nchar=0
     for ((i=0;i<npanel;i++)); do
@@ -574,8 +574,9 @@ function ble/application/onwinch {
 # canvas.sh 設定
 
 _ble_canvas_panel_focus=0
-_ble_canvas_panel_class=(ble/textarea ble/textarea ble/edit/info ble/prompt/status)
-_ble_canvas_panel_vfill=3
+_ble_canvas_panel_class=(ble/textarea ble/textarea ble/edit/info ble/edit/visible-bell ble/prompt/status)
+_ble_canvas_panel_height=(1 0 0 0 0)
+_ble_canvas_panel_vfill=4
 
 _ble_edit_command_layout_level=0
 function ble/edit/enter-command-layout {
@@ -583,6 +584,7 @@ function ble/edit/enter-command-layout {
 
   # 一時的に info 及び status を消去する。
   ble/edit/info#collapse "$_ble_edit_info_panel"
+  ble/edit/visible-bell#collapse
   ble/prompt/status#collapse
 }
 function ble/edit/leave-command-layout {
@@ -607,7 +609,7 @@ function ble/edit/is-command-layout {
 #------------------------------------------------------------------------------
 # **** ble/prompt/status ****                                    @prompt.status
 
-_ble_prompt_status_panel=3
+_ble_prompt_status_panel=4
 _ble_prompt_status_dirty=
 _ble_prompt_status_data=()
 _ble_prompt_status_bbox=()
@@ -664,6 +666,154 @@ function ble/prompt/status#collapse {
   local -a DRAW_BUFF=()
   ble/canvas/panel#set-height.draw "$_ble_prompt_status_panel" 0
   ble/canvas/bflush.draw
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** ble/edit/visible-bell ****                                  @panel.vbell
+
+_ble_edit_vbell_panel=3
+
+## @var _ble_edit_vbell_state[0] message
+## @var _ble_edit_vbell_state[1] opts
+## @var _ble_edit_vbell_state[2] dirty
+## @var _ble_edit_vbell_state[3] sgr
+## @var _ble_edit_vbell_state[4] esc
+## @var _ble_edit_vbell_state[5] esc_cols
+## @var _ble_edit_vbell_state[6] esc_width
+_ble_edit_vbell_state=('' '' 0)
+
+function ble/edit/visible-bell#panel::getHeight {
+  if [[ ${_ble_edit_vbell_state[0]} ]]; then
+    height=0:1
+  else
+    height=0:0
+  fi
+}
+function ble/edit/visible-bell#panel::invalidate {
+  (($1!=_ble_edit_vbell_panel)) && return 0
+  _ble_edit_vbell_state[2]=1
+}
+function ble/edit/visible-bell#panel::render {
+  (($1!=_ble_edit_vbell_panel)) && return 0
+  ble/edit/is-command-layout && return 0
+  ((_ble_edit_vbell_state[2]==1)) || return 0
+
+  local message=${_ble_edit_vbell_state[0]}
+
+  local -a DRAW_BUFF=()
+  if [[ ! $message ]]; then
+    ble/canvas/panel#set-height.draw "$_ble_edit_vbell_panel" 0
+  else
+    ble/canvas/panel/reallocate-height.draw
+    local panel_height=${_ble_canvas_panel_height[$1]}
+    if ((panel_height>=1)); then
+      local ret
+      ble/canvas/panel/save-position; local pos=$ret
+      ble/canvas/put.draw "$_ble_term_sgr0"
+      ble/canvas/panel#clear.draw "$_ble_edit_vbell_panel"
+      ble/canvas/panel#goto.draw "$_ble_edit_vbell_panel"
+
+      local lines=1 cols=${COLUMNS:-80}
+      ((_ble_term_xenl||COLUMNS--))
+      if ((cols!=_ble_edit_vbell_state[5])); then
+        local x=0 y=0 ret= sgr0= sgr1=
+        ble/canvas/trace-text "$message" nonewline:external-sgr
+        _ble_edit_vbell_state[4]=$ret
+        _ble_edit_vbell_state[5]=$cols
+        _ble_edit_vbell_state[6]=$x
+      fi
+
+      local sgr=${_ble_edit_vbell_state[3]}
+      local esc=${_ble_edit_vbell_state[4]}
+      local esc_w=${_ble_edit_vbell_state[6]}
+
+      local margin=$((cols-esc_w))
+      case :$bleopt_vbell_align: in
+      (*:left:*) margin=0;;
+      (*:center:*) ((margin/=2)) ;;
+      (*:right:*) ;;
+      esac
+
+      ble/canvas/put.draw "$_ble_term_cr"
+      ((margin>0)) && ble/canvas/put-cuf.draw "$margin"
+      ble/canvas/put.draw "$sgr$esc"
+      ((_ble_canvas_x=margin+esc_w))
+      ble/canvas/panel/load-position.draw "$pos"
+    fi
+  fi
+  ble/canvas/bflush.draw
+  _ble_edit_vbell_state[2]=0
+}
+
+function ble/edit/visible-bell#collapse {
+  ble/util/idle.cancel ble/edit/visible-bell/.async-1.idle
+  ble/util/idle.cancel ble/edit/visible-bell/.async-2.idle
+  _ble_edit_vbell_state=('' '' 0)
+  local -a DRAW_BUFF=()
+  ble/canvas/panel#set-height.draw "$_ble_edit_vbell_panel" 0
+  ble/canvas/bflush.draw
+}
+
+## @fn ble/edit/visible-bell/.show face
+##   @param[in] face
+##     Specifies the face name to use in showing the visible bell.
+function ble/edit/visible-bell/.show {
+  [[ ${_ble_edit_vbell_state[0]} ]] || return 0
+
+  local ret
+  ble/color/face2sgr "$1"; local sgr=$ret
+
+  if [[ $sgr != "${_ble_edit_vbell_state[2]}" ]]; then
+    _ble_edit_vbell_state[2]=1 # invalidate
+    _ble_edit_vbell_state[3]=$sgr
+  fi
+  ble/edit/visible-bell#panel::render "$_ble_edit_vbell_panel"
+  ble/util/buffer.flush
+}
+function ble/edit/visible-bell/.clear {
+  ble/edit/visible-bell#collapse
+  ble/util/buffer.flush
+}
+
+## @fn ble/edit/visible-bell message [opts]
+##   @param[in] message
+##   @param[in,opt] opts
+##     @opt persistent
+function ble/edit/visible-bell {
+  # Check whether the visible-bell in the panel is supported in the current
+  # context.
+  [[ $_ble_attached ]] || return 1
+  ble/util/is-running-in-subshell && return 1
+  ble/is-function ble/util/idle.push || return 1
+  ble/util/is-running-in-idle && return 1
+
+  local message=$1 opts=$2
+  if [[ ! $message ]]; then
+    ble/edit/visible-bell/.clear
+    return 0
+  fi
+
+  ble/util/idle.cancel ble/edit/visible-bell/.async-1.idle
+  ble/util/idle.cancel ble/edit/visible-bell/.async-2.idle
+  _ble_edit_vbell_state=("$message" "$opts" 1)
+  ble/edit/visible-bell/.show vbell_flash
+  ble/util/idle.push --sleep=50 ble/edit/visible-bell/.async-1.idle
+  return 0
+}
+
+function ble/edit/visible-bell/.async-1.idle {
+  ble/edit/visible-bell/.show vbell
+  if [[ :${_ble_edit_vbell_state[1]}: != *:persistent:* ]]; then
+    local msec=$((bleopt_vbell_duration))
+    ble/util/idle.push --sleep="$msec" ble/edit/visible-bell/.async-2.idle
+  fi
+  return 0
+}
+
+function ble/edit/visible-bell/.async-2.idle {
+  ble/edit/visible-bell/.clear
+  return 0
 }
 
 # 

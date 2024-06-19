@@ -41,14 +41,16 @@
 #bleopt editor=vim
 
 
-## The following settings sets the behavior of visible bells (vbell).
-## "vbell_duration" sets the time duration to show the vbell. "vbell_align"
-## controls the position of vbell. The value "left" (default) specifies that
-## the vbell should be shown up on the top left corner of the terminal. The
-## values "center" and "right" specify that the vbell is shown on the top
-## center and the top right corner, respectively.  The faces "vbell",
-## "vbell_erase", and "vbell_flash" specify the graphic style of the vbell, the
-## one after vbell is erased, and the one used to blink the vbell,
+## The following settings sets the behavior of visible bells (vbell).  The
+## option "vbell_duration" sets the time duration to show the vbell.  The
+## option "vbell_align" controls the position of vbell with a colon-separated
+## fields. The fields "left", "center", and "right" specify that the vbell
+## should be shown up on the left, center, and right, respectively, in the
+## terminal display.  The default is "right".  The field "panel" specify that
+## vbell should be shown below the command line within the line editor
+## interface (as far as the line editor is currently active).  The faces
+## "vbell", "vbell_erase", and "vbell_flash" specify the graphic style of the
+## vbell, the one after vbell is erased, and the one used to blink the vbell,
 ## respectively.
 
 #bleopt vbell_default_message=' Wuff, -- Wuff!! '

@@ -3044,7 +3044,7 @@ function ble/canvas/excursion-end.draw {
 ##   下部に寄せて表示されるパネルの開始番号を保持する。
 ##   この変数が空文字列の時は全てのパネルは上部に表示される。
 _ble_canvas_panel_class=()
-_ble_canvas_panel_height=(1 0 0)
+_ble_canvas_panel_height=()
 _ble_canvas_panel_focus=
 _ble_canvas_panel_vfill=
 _ble_canvas_panel_bottom= # 現在下部に居るかどうか
@@ -3417,7 +3417,7 @@ function ble/canvas/panel/invalidate {
     ble/canvas/excursion-end.draw
     ble/canvas/put.draw "$_ble_term_cr$_ble_term_ed"
     _ble_canvas_x=0 _ble_canvas_y=0
-    ble/array#fill-range _ble_canvas_panel_height 0 "${#_ble_canvas_panel_height[@]}" 0
+    ble/array#fill-range _ble_canvas_panel_height 0 "${#_ble_canvas_panel_class[@]}" 0
     ble/canvas/panel/reallocate-height.draw
     ble/canvas/bflush.draw
   fi

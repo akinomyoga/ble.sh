@@ -6060,8 +6060,12 @@ if ((_ble_bash>=40000)); then
         ble/util/idle.clock/.initialize
         ble/util/idle.clock
         status=S$((ret+sleep))
+        ble/util/is-running-in-idle &&
+          ble/util/idle.do/.check-clock "$status"
       elif [[ $isleep ]]; then
         status=W$((_ble_util_idle_sclock+isleep))
+        ble/util/is-running-in-idle &&
+          ble/util/idle.do/.check-clock "$status"
       fi
     done
     ble/util/idle.push/.impl "$nice" "$status$_ble_util_idle_SEP$1"
@@ -6220,7 +6224,7 @@ function ble/util/fiberchain#clear {
 
 bleopt/declare -v vbell_default_message ' Wuff, -- Wuff!! '
 bleopt/declare -v vbell_duration 2000
-bleopt/declare -n vbell_align left
+bleopt/declare -n vbell_align right
 
 function ble/term:cygwin/initialize.hook {
   # RIの修正
@@ -6360,12 +6364,12 @@ function ble/term/visible-bell:canvas/init {
   ble/canvas/trace-text "$message" nonewline:external-sgr
   message=$ret
 
-  local x0=0 y0=0
-  if [[ $bleopt_vbell_align == right ]]; then
-    ((x0=COLUMNS-1-x,x0<0&&(x0=0)))
-  elif [[ $bleopt_vbell_align == center ]]; then
-    ((x0=(COLUMNS-1-x)/2,x0<0&&(x0=0)))
-  fi
+  local x0=$((COLUMNS-1-x)) y0=0
+  ((x0<0)) && x0=0
+  case :$bleopt_vbell_align: in
+  (*:left:*) x0=0 ;;
+  (*:center:*) ((x0/=2)) ;;
+  esac
 
   _ble_term_visible_bell_prev=(canvas "$message" "$x0" "$y0" "$x" "$y")
 }
@@ -6498,7 +6502,7 @@ function ble/term/visible-bell/.worker {
   fi
 
   # load time duration settings
-  local msec=$bleopt_vbell_duration
+  local msec=$((bleopt_vbell_duration))
 
   # wait
   ble/util/msleep "$msec"
@@ -6518,6 +6522,10 @@ function ble/term/visible-bell {
   # Note: 1行しかない時は表示しない。0行の時は全てログに行くので出力する。空文
   # 字列の時は設定されていないだけなので表示する。
   ((LINES==1)) && return 0
+
+  [[ :$bleopt_vbell_align: == *:panel:* ]] &&
+    ble/function#try ble/edit/visible-bell "$message" "$opts" &&
+    return 0
 
   local sgr0=$_ble_term_sgr0
   local sgr1=${_ble_term_setaf[2]}$_ble_term_rev
