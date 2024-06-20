@@ -31,21 +31,45 @@
 #   1 追加入力欄
 #   2 infobar
 
-## @bleopt edit_vbell
-##   編集時の visible bell の有効・無効を設定します。
-## bleopt_edit_vbell=1
-##   有効です。
-## bleopt_edit_vbell=
-##   無効です。
-bleopt/declare -v edit_vbell ''
-
-## @bleopt edit_abell
-##   編集時の audible bell (BEL 文字出力) の有効・無効を設定します。
-## bleopt_edit_abell=1
-##   有効です。
-## bleopt_edit_abell=
-##   無効です。
-bleopt/declare -v edit_abell 1
+## @bleopt edit_bell
+##   A colon-separated list of fields to control the behavior of the bell in
+##   line editing.
+##
+##   @opt vbell
+##     When this is specified, the visible bell (vbell) is enabled for the edit
+##     bell.  The message is shown in the position specified by "bleopt
+##     vbell_align"
+##
+##   @opt abell
+##     When this is specified, the audible bell (abell) is enabled for the edit
+##     bell.  The event is notified by printing BEL to the terminal.
+##
+##   @opt visual
+##     When this is specified, the visual bell in the GNU Screen style is
+##     enabled for the edit bell.  The event is notified by flashing the screen
+##     by DECSCNM.
+##
+bleopt/declare -v edit_bell 'abell'
+bleopt/declare -v edit_vbell '[obsolute: use edit_bell=vbell]'
+bleopt/declare -v edit_abell '[obsolute: use edit_bell=abell]'
+function bleopt/obsolete:edit_vbell { return 0; }
+function bleopt/obsolete:edit_abell { return 0; }
+function bleopt/check:edit_vbell {
+  if [[ $value ]]; then
+    ble/opts#append-unique bleopt_edit_bell vbell
+  else
+    ble/opts#remove bleopt_edit_bell vbell
+  fi
+  value=$bleopt_edit_vbell
+}
+function bleopt/check:edit_abell {
+  if [[ $value ]]; then
+    ble/opts#append-unique bleopt_edit_bell abell
+  else
+    ble/opts#remove bleopt_edit_bell abell
+  fi
+  value=$bleopt_edit_abell
+}
 
 ## @bleopt history_lazyload
 ## bleopt_history_lazyload=1
@@ -4792,10 +4816,32 @@ function ble-decode/keymap:yankpop/define {
 
 # **** bell ****                                                     @edit.bell
 
+_ble_term_DECSCNM_state=
+
 function ble/widget/.bell {
-  [[ $bleopt_edit_vbell ]] && ble/term/visible-bell "$1"
-  [[ $bleopt_edit_abell ]] && ble/term/audible-bell
+  [[ :$bleopt_edit_bell: == *:vbell:* ]] && ble/term/visible-bell "$1"
+  [[ :$bleopt_edit_bell: == *:abell:* ]] && ble/term/audible-bell
+
+  if [[ :$bleopt_edit_bell: == *:visual:* ]]; then
+    ble/util/buffer $'\e[?5h'
+    ble/util/buffer.flush
+    _ble_term_DECSCNM_state=1
+    if ble/is-function ble/util/idle.push; then
+      ble/util/idle.push --sleep=50 ble/widget/.bell/.clear-DECSCNM
+    else
+      ble/util/msleep 50
+      ble/widget/.bell/.clear-DECSCNM
+    fi
+  fi
+
   return 0
+}
+
+function ble/widget/.bell/.clear-DECSCNM {
+  [[ $_ble_term_DECSCNM_state ]] || return
+  _ble_term_DECSCNM_state=
+  ble/util/buffer $'\e[?5l'
+  ble/util/buffer.flush
 }
 
 # blehook/declare widget_bell (defined in def.sh)

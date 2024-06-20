@@ -485,21 +485,21 @@ bleopt input_encoding='C'
 
 ## 2.5 ベル
 
-設定 `edit_abell` と設定 `edit_vbell` は、編集関数 `bell` の振る舞いを制御します。
-`edit_abell` が非空白の文字列の場合、音による通知が有効になります (つまり、制御文字の `BEL` (0x07) が `stderr` に出力されます)。
-`edit_vbell` が非空白の文字列の場合、画面での通知が有効になります。既定では音による通知が有効で、画面での通知が無効になっています。
+設定 `edit_bell` は編集関数 `bell` の振る舞いを制御するコロン区切りのリストです。
+値 `abell`, `vbell`, `visual` はそれぞれ対応するベルの提示方法を有効化します。
+値 `abell` は音による通知に対応し、制御文字の <kbd>BEL</kbd> (0x07) を `stderr` に出力します。
+値 `vbell` は画面での通知に対応し、端末画面上にメッセージを表示します。
+値 `visual` は画面の反転に対応し、<kbd>DECSCNM</kbd> を用いて端末画面を瞬間的に反転します。
+既定では音による通知のみが有効になっています。
 
 設定 `vbell_default_message` は画面での通知で使用するメッセージ文字列を指定します。既定値は `' Wuff, -- Wuff!! '` です。
 設定 `vbell_duration` は画面での通知を表示する時間の長さを指定します。単位はミリ秒です。既定値は `2000` です。
+設定 `vbell_align` は画面での通知の表示位置を指定します。`left`, `center`, `right` が指定できます。
 
-例えば、画面での通知は以下のように設定・有効化できます:
-```bash
-bleopt edit_vbell=1 vbell_default_message=' BEL ' vbell_duration=3000
-```
+例えば、以下の設定によって、音による通知を無効化して画面での通知を設定・有効化できます。
 
-もう一つの例として、音による通知は以下の様にして無効化できます。
 ```bash
-bleopt edit_abell=
+bleopt edit_bell=vbell vbell_{default_message=' BEL ',duration=3000,align=right}
 ```
 
 ## 2.6 着色の設定

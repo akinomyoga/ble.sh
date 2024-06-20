@@ -2581,16 +2581,24 @@ function ble/base/unload {
   ble/base/adjust-bash-options
   ble/base/adjust-BASH_REMATCH
 
+  # src/edit.sh
+  ble-edit/bind/clear-keymap-definition-loader
+  ble/widget/.bell/.clear-DECSCNM
+
+  # decode.sh
+  ble/decode/keymap#unload
+
+  # src/util.sh
   ble/term/stty/TRAPEXIT "$1"
   ble/term/leave
   ble/util/buffer.flush
   blehook/invoke unload
-  ble/decode/keymap#unload
-  ble-edit/bind/clear-keymap-definition-loader
   ble/builtin/trap/finalize "$1"
   ble/util/import/finalize
+
+  # main
   ble/base/clean-up-runtime-directory finalize
-  ble/fd#finalize
+  ble/fd#finalize # this is used by the above function
   ble/base/clear-version-variables
   return 0
 } 0<&"$_ble_util_fd_tui_stdin" 1>&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"

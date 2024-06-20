@@ -65,11 +65,15 @@
 ## Line editor settings
 
 
-## The following settings turns on/off the audible bells and visible bells for
-## errors while user edit. The non-empty value turns on the bells.
+## This option controls the behavior of the bell in the line editing by
+## colon-separated values.  When "abell", "vbell", and "visual" are contained,
+## the audible bells, the visible bells, and the visual bells are enabled.  The
+## audible bell sends BEL to the terminal.  The visible bell shows the message
+## on the terminal display.  The visual bell is the GNU-Screen style bell that
+## flashes the terminal display by turning on DECSCNM in a short moment.  Old
+## settings "edit_vbell" and "edit_abell" should be updated to use "edit_bell".
 
-#bleopt edit_abell=1
-#bleopt edit_vbell=
+#bleopt edit_bell=abell
 
 
 ## The following setting turns on the delayed load of history when an non-empty

@@ -7392,6 +7392,20 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-06-20
+
+  * vbell: edit_vbell edit_abell の設定を統合する [#D2229]
+
+    * visible bell vs visual bell? ソースコード上は全て visible になっている。
+      audible と対象になっている。一方で wiki では visual bell になっている。元
+      の GNU Screen では visual bell である。
+
+    * DECSCNM を使った反転にも対応する? これを visual と名付けるのでも良い気が
+      する。これについては visible
+
+    これまで visual/visible としていたのは visible に統一する事にして、新しいベ
+    ルの形式として GNU screen と同様の方法を用いる visual を導入する事にした。
+
 2024-06-19
 
   * vbell: panel 内部に表示する (requested by bb010g) [#D2228]

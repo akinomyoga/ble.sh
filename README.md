@@ -501,18 +501,28 @@ bleopt input_encoding='C'
 
 ## 2.5 Bell
 
-The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, the audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, the visual bell is enabled. By default, the audible bell is enabled while the visual bell is disabled.
+The option `edit_bell` controls the behavior of the edit function (widget)
+called `bell`.  It is a colon-separated list of the values `vbell`, `abell`,
+and `visual`.  When a value is contained, the corresponding type of the bell is
+enabled.  The value `abell` corresponds to the audible bell, which prints ASCII
+Control Character <kbd>BEL</kbd> (0x07) will be written to `stderr`.  The value
+`vbell` corresponds to the visible bell, which shows the message in the
+terminal display.  The value `visual` corresponds to the visual bell, which
+flashes the terminal screen by turning on the <kbd>DECSCNM</kbd> mode for a
+short moment.  By default, only the audible bell is enabled.
 
-The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is a millisecond. The default value is `2000`.
+The option `vbell_default_message` specifies the default message shown by the
+visual bell. The default value of this setting is `' Wuff, -- Wuff!! '`. The
+option `vbell_duration` specifies the display duration of the visual-bell
+message. The unit is a millisecond. The default value is `2000`.  The option
+`vbell_align` specifies the position of `vbell` by `left`, `center`, or
+`right`.
 
-For example, the visual bell can be enabled as:
-```
-bleopt edit_vbell=1 vbell_default_message=' BEL ' vbell_duration=3000
-```
+For example, the audible bell can be disabled, and the visual bell can be set
+up as:
 
-For another instance, the audible bell is disabled as:
-```
-bleopt edit_abell=
+```bash
+bleopt edit_bell=vbell vbell_{default_message=' BEL ',duration=3000,align=right}
 ```
 
 ## 2.6 Highlight Colors
