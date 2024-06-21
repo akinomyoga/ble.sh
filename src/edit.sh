@@ -943,6 +943,10 @@ function ble/prompt/initialize {
   _ble_prompt_const_u=$ret
 
   # bash versions
+#%if target == "osh"
+  local BASH_VERSINFO
+  ble/string#split BASH_VERSINFO . "${OILS_VERSION:-$OIL_VERSION}"
+#%end
   ble/util/sprintf _ble_prompt_const_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
   ble/util/sprintf _ble_prompt_const_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
 
