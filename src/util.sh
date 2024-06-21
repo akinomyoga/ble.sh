@@ -1494,7 +1494,11 @@ function ble/opts#extract-all-optargs {
 }
 
 if ((_ble_bash>=40000)); then
+#%if target == "osh"
+  _ble_util_set_declare=(builtin eval -- 'declare -A NAME')
+#%else
   _ble_util_set_declare=(declare -A NAME)
+#%end
   function ble/set#add { builtin eval -- "$1[x\$2]=1"; }
   function ble/set#remove { builtin unset -v "$1[x\$2]"; }
   function ble/set#contains { builtin eval "[[ \${$1[x\$2]+set} ]]"; }
@@ -1617,7 +1621,11 @@ else
 fi
 
 if ((_ble_bash>=40200)); then
+#%if target == "osh"
+  _ble_util_gdict_declare='{ builtin unset -v NAME; declare -gA NAME; }'
+#%else
   _ble_util_gdict_declare='{ builtin unset -v NAME; declare -gA NAME; NAME=(); }'
+#%end
   function ble/gdict#set   { ble/dict#set   "$@"; }
   function ble/gdict#get   { ble/dict#get   "$@"; }
   function ble/gdict#unset { ble/dict#unset "$@"; }
