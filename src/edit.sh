@@ -10957,7 +10957,9 @@ function ble/builtin/read/TRAPWINCH {
 function ble/builtin/read/.loop {
   # この関数はサブシェルの中で実行される事を前提としている。
 
+#%if target != "osh"
   set +m # ジョブ管理を無効にする
+#%end
 
   # Note: サブシェルの中では eval で failglob を防御できない様だ。
   #   それが理由で visible-bell を呼び出すと read が終了してしまう。

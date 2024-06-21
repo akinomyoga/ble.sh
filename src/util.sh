@@ -2749,6 +2749,8 @@ function ble/function#lambda {
 ## @fn ble/function#suppress-stderr function_name
 ##   @param[in] function_name
 function ble/function#suppress-stderr {
+  # In osh, ble/function#getdef is unavailable.
+#%if target != "osh"
   local name=$1
   if ! ble/is-function "$name"; then
     ble/util/print "$FUNCNAME: '$name' is not a function name" >&2
@@ -2762,6 +2764,7 @@ function ble/function#suppress-stderr {
   fi
 
   builtin eval "function $name { $lambda \"\$@\" 2>/dev/null; }"
+#%end
   return 0
 }
 
@@ -5175,7 +5178,7 @@ function ble/util/rlvar#bind-bleopt {
     # (初期化時に --keep-rlvars を指定していない限りは) ble.sh の側に書き換えて
     # しまう。多くのユーザは自分で設定しないので便利な機能が off になっている。
     # 一方で設定するユーザは自分で off に戻すぐらいはできるだろう。
-    if [[ :$_ble_base_arguments_opts: == *:keep-rlvars:* ]]; then
+    if [[ :$_ble_base_arguments_opts: == *:keep-rlvars:* || $_ble_bash_oil -ne 0 ]]; then
       local ret; ble/util/rlvar#read "$name"
       [[ :$opts: == *:bool:* && $ret == off ]] && ret=
       bleopt "$bleopt=$ret"
