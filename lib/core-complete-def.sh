@@ -79,7 +79,7 @@ function bleopt/check:complete_menu_style {
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/complete/menu-style:{align,dense}{,-nowrap}/construct-page \
                   ble/complete/menu-style:linewise/construct-page \
-                  ble/complete/menu-style:desc{,-raw}/construct-page
+                  ble/complete/menu-style:desc{,-text,-raw}/construct-page
 
 bleopt/declare -v complete_menu_complete 1
 bleopt/declare -v complete_menu_complete_opts 'insert-selection'

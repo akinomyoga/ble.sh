@@ -155,6 +155,7 @@
 - decode: exclude `/etc/inputrc` in SUSE as well as in openSUSE (reported by Anyborr) `#D2220` 63be48df
 - term: detect iTerm2 `#D2224` xxxxxxxx
 - mandb: support man page format of `rg` (requested by pallaswept) `#D2225` xxxxxxxx
+- mandb: restore ASCII hyphens from Unicode hyphens before analysis (reported by pallaswept) `#D2230` xxxxxxxx
 
 ## Contrib
 

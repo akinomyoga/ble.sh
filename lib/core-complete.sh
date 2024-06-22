@@ -5169,6 +5169,7 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
 
     function process_line(line, _, head, m0) {
+      gsub(/‐|‑|⁃|−|﹣/, "-", line);
       while (match(line, /__ble_(key|desc)__/) > 0) {
         head = substr(line, 1, RSTART - 1);
         m0 = substr(line, RSTART, RLENGTH);
