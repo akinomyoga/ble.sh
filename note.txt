@@ -7394,6 +7394,61 @@ bash_tips
 
 2024-06-24
 
+  * term: カーソル表示・非表示管理の再設計 (motivated by tessus) [#D2232]
+
+    今や手動で civis rmcivis を指定しなくても良いのでは? と思ったが、どうも
+    ble/term/enter が rmcivis を含めている為に、ble/util/buffer.flush での囲み
+    機能が無効化されている様である。
+
+    更に言うと、無条件でカーソルを消して表す様にしていると、元々カーソルを隠し
+    ている状態だった時にカーソルが見える様になってしまう。なので、手動で civis
+    rmcivis を設定する方針も動かない。ちゃんと条件付きで囲む必要がある。
+
+    然しそもそも ble/util/buffer.flush が civis を出力するのだとしたら
+    ble/term/enter で civis を出力する意味はあるのだろうか。うーん。確認してみ
+    た所、内部状態に応じて civis を出力したり rmcivis を出力したり切り替えてい
+    る。うーん。一番分かりやすいのは ble/term/enter で rmcivis を最初に出力して
+    しまう事? とも思ったがそれだと ble/term/enter よりも前に buffer に入ってい
+    た内容に対しては rmcivis が適用されなくなってしまう。もう一つの可能性はやは
+    り ble/util/buffer.flush に任せるという事だろうか。しかし、それはそれで 1)
+    internal state でないと ble/util/buffer.flush がちゃんと期待する物を出力す
+    るかわからない。といって state まで確認して出力内容を変えるのはやりすぎの気
+    もする。
+
+    でも char_width auto が手動で civis rmcivis を実行するのにも問題がある。こ
+    のシーケンスの後にシーケンスがあった場合にそれに対して civis が適用されない。
+    やはり ble/util/buffer.flush の側で隠すべきの気がする。
+
+    * ble/uti/buffer.flush について現在は civis か rmcivis のどちらかが使われて
+      いたら囲まない様にしているが、最初の civis は何れにしても出力するべきなの
+      では? 既に含まれている内容で最後が civis の時にはそこに rmcivis を付加す
+      ると問題になるが。
+
+    * そもそも cursor-hidden では調整を一切せずに buffer.flush でカーソル調整は
+      全部するべきか? しかしその時に問題になるのは internal, external の変化に
+      ちゃんと追随できるかという事。基本的に 1. internal の時には素直に処理する。
+      2. external -> internal の時には何も気にしなくて良い 3. internal ->
+      external の時には状態が変わる時に明示的にシーケンスを出力する必要がある。
+
+      と思って改めて確認してみた所、実は _ble_term_cursor_hidden_current にて明
+      示的に現在期待している状態を記録している。という事は
+      _ble_term_cursor_hidden_current の値に基づいて処理すれば良いだけでは。ま
+      た、external の時には元から external の時には何もしなくて良い。internal
+      -> external の場合については、実は leave-for-widget の中で current=reveal
+      にしてから buffer.flush をしているので、ちゃんと外側の状態になっていると
+      いう事は保証される。
+
+    ? ok: iTerm2 では DECSET(2026) はこの CPR による強制描画に対して意味がある
+      のか。iTerm2 の最初の DECSET(2026) の説明によると通信の遅延を解消するだけ
+      で実際に行われる処理 (内部に含まれる描画の指示) などは実は遅延されない?
+
+      $ esc=$(printf '\e[8m'; printf '\r%s\e[6n%s\e[6n' {1..30}; printf '\e[m')
+      $ echo "$esc"
+      $ echo $'\e[?2026h'"$esc"$'\e[?2026l'
+
+      これは試してみてみて貰ったところちゃんと描画は抑制はされている。然し、改
+      めて見てみるとどうも実行時間に時間がかかるのは変わっていない?
+
   * main (ble-attach): 端末関連の初期化順序の再考 [#D2231]
     Ref. #D2223 #2232
 

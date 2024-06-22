@@ -4643,9 +4643,14 @@ function ble/util/buffer.flush {
   if [[ $_ble_term_state == internal ]]; then
     # Note: 出力の瞬間だけカーソルを非表示にする。Windows terminal など途中
     # のカーソル移動も無理やり表示しようとする端末に対する対策。
-    [[ $_ble_term_cursor_hidden_internal != hidden ]] &&
-      [[ $text != *"$_ble_term_civis"* && $text != *"$_ble_term_rmcivis"* ]] &&
+    if [[ $_ble_term_cursor_hidden_current == hidden ]]; then
+      # Note: Even if the current cursor-hidden state is "hidden", the TEXT may
+      # contain the transition sequence from "reveal" to "hidden", we anyway
+      # want to prefix civis.
+      text=$_ble_term_civis$text
+    else
       text=$_ble_term_civis$text$_ble_term_rmcivis
+    fi
 
     [[ $bleopt_term_synchronized_update_mode == on ]] &&
       text=$'\e[?2026h'$text$'\e[?2026l'
@@ -6859,14 +6864,8 @@ function ble/term/cursor-state/set-internal {
 function ble/term/cursor-state/.update-hidden {
   local state=$1
   [[ $state != hidden ]] && state=reveal
-  [[ $_ble_term_cursor_hidden_current == "$state" ]] && return 0
 
-  if [[ $state == hidden ]]; then
-    ble/util/buffer "$_ble_term_civis"
-  else
-    ble/util/buffer "$_ble_term_rmcivis"
-  fi
-
+  # Note: the actual sequence is added by ble/util/buffer.flush.
   _ble_term_cursor_hidden_current=$state
 }
 function ble/term/cursor-state/hide {
@@ -7498,16 +7497,16 @@ function ble/term/enter-for-widget {
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
   [[ :$1: == *:noflush:* ]] || ble/util/buffer.flush
 }
-## @fn ble/term/leave-for-widget [opts]
-##   @param[opt] opts
-##     @opt noflush
+## @fn ble/term/leave-for-widget
 function ble/term/leave-for-widget {
   ble/term/visible-bell/erase
   ble/term/bracketed-paste-mode/leave
   ble/term/modifyOtherKeys/leave
   ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
-  [[ :$1: == *:noflush:* ]] || ble/util/buffer.flush
+  # Note: To reveal the cursor, we need to make sure that ble/util/buffer.flush
+  # is called this timing (where _ble_term_cursor_hidden_current=reveal).
+  ble/util/buffer.flush
 }
 
 ## @fn ble/term/enter [opts]
@@ -7520,14 +7519,12 @@ function ble/term/enter {
   ble/term/rl-convert-meta/enter
   ble/term/enter-for-widget "$1"
 }
-## @fn ble/term/leave [opts]
-##   @param[opt] opts
-##     @opt noflush
+## @fn ble/term/leave
 function ble/term/leave {
   [[ $_ble_term_state == external ]] && return 0
   ble/term/stty/leave
   ble/term/rl-convert-meta/leave
-  ble/term/leave-for-widget "$1"
+  ble/term/leave-for-widget
   [[ $_ble_term_cursor_current == default ]] ||
     _ble_term_cursor_current=unknown # vim は復元してくれない
   _ble_term_cursor_hidden_current=unknown
