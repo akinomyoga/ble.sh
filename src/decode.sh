@@ -3144,9 +3144,9 @@ function ble/decode/readline/bind {
   #   128-255 を bind しようとすると 0-127 を bind してしまう。
   #   32 bit 環境で LC_CTYPE=C で起動すると 'set convert-meta on' になる様だ。
   #
-  #   一応、以下の関数は ble/term/initialize で呼び出しているので、
-  #   ble/decode/readline/bind の呼び出しが ble/term/initialize より後なら大丈
-  #   夫の筈だが、念の為にここでも呼び出しておく事にする。
+  #   一応、以下の関数は ble/term/attach で呼び出しているので、
+  #   ble/decode/readline/bind の呼び出しが ble/term/attach より後なら大丈夫の
+  #   筈だが、念の為にここでも呼び出しておく事にする。
   #
   ble/term/rl-convert-meta/enter
 
@@ -4451,7 +4451,7 @@ function ble/decode/attach {
   [[ $_ble_decode_bind_state == none ]] && return 1
 
   # bind/unbind 中に C-c で中断されると大変なので先に stty を設定する必要がある
-  ble/term/initialize # 3ms
+  ble/term/attach # 3ms
 
   # 既定の keymap に戻す
   ble/util/reset-keymap-of-editing-mode
@@ -4462,18 +4462,6 @@ function ble/decode/attach {
   # ble.sh bind の設置
   ble/decode/readline/bind # 20ms
 
-  case $TERM in
-  (linux)
-    # Note #D1213: linux コンソール (kernel 5.0.0) は "\e[>"
-    #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
-    _ble_term_TERM=linux:- ;;
-  (st|st-*)
-    # st の unknown csi sequence メッセージに対して文句を言う人がいた。
-    # st は TERM で判定できるので DA2 はスキップできる。
-    _ble_term_TERM=st:- ;;
-  (*)
-    ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
-  esac
   return 0
 }
 
@@ -4484,7 +4472,7 @@ function ble/decode/detach {
   ble/util/save-editing-mode current_editing_mode
   [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode _ble_decode_bind_state
 
-  ble/term/finalize
+  ble/term/detach
 
   # ble.sh bind の削除
   ble/decode/readline/unbind

@@ -2114,11 +2114,14 @@ function ble/prompt/update {
 
   ble/prompt/unit#update _ble_prompt_ps1 && dirty=1
 
-  # Note #D1392: mc (midnight commander) の中では補助プロンプトは全て off
-  [[ $MC_SID == $$ ]] && { [[ $dirty ]]; return "$?"; }
-
-  # Note: 補助プロンプトは _ble_textarea_panel==0 の時だけ有効 #D1027
-  ((_ble_textarea_panel==0)) || { [[ $dirty ]]; return "$?"; }
+  # 補助プロンプトを無効にする条件
+  # * _ble_textarea_panel==0 の時以外は無効 #D1027
+  # * 初回プロンプトの時も無効化
+  # * #D1392: mc (Midnight Commander) の中では無効
+  if [[ _ble_textarea_panel -ne 0 || $ble_attach_first_prompt || $MC_SID == $$ ]]; then
+    [[ $dirty ]]
+    return "$?"
+  fi
 
   # bleopt prompt_rps1
   if [[ :$opts: == *:leave:* && ! $rps1f && $bleopt_prompt_rps1_transient ]]; then

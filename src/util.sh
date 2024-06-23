@@ -6840,12 +6840,13 @@ function ble/term/cursor-state/.update {
     esac
   fi
   local ret=${_ble_term_Ss//@1/"$state"}
+  if [[ $ret ]]; then
+    # Note: 既に pass-through seq が含まれている時はスキップする。
+    [[ $ret != $'\eP'*$'\e\\' ]] &&
+      ble/term/quote-passthrough "$ret" '' all
 
-  # Note: 既に pass-through seq が含まれている時はスキップする。
-  [[ $ret && $ret != $'\eP'*$'\e\\' ]] &&
-    ble/term/quote-passthrough "$ret" '' all
-
-  ble/util/buffer "$ret"
+    ble/util/buffer "$ret"
+  fi
 
   _ble_term_cursor_current=$state
 }
@@ -6947,6 +6948,21 @@ _ble_term_TERM=()
 _ble_term_DA1R=()
 _ble_term_DA2R=()
 _ble_term_TERM_done=
+
+function ble/term/DA2/request {
+  case $TERM in
+  (linux)
+    # Note #D1213: linux コンソール (kernel 5.0.0) は "\e[>"
+    #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
+    _ble_term_TERM=linux:- ;;
+  (st|st-*)
+    # st の unknown csi sequence メッセージに対して文句を言う人がいた。
+    # st は TERM で判定できるので DA2 はスキップできる。
+    _ble_term_TERM=st:- ;;
+  (*)
+    ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
+  esac
+}
 
 ## @fn ble/term/DA2/initialize-term [depth]
 ##   @var[out] _ble_term_TERM
@@ -7469,50 +7485,80 @@ function ble/term/rl-convert-meta/leave {
 
 #---- terminal enter/leave ----------------------------------------------------
 
+_ble_term_attached=
+_ble_term_state=external
+
+## @fn ble/term/enter-for-widget [opts]
+##   @param[opt] opts
+##     @opt noflush
 function ble/term/enter-for-widget {
   ble/term/bracketed-paste-mode/enter
   ble/term/modifyOtherKeys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
-  ble/util/buffer.flush
+  [[ :$1: == *:noflush:* ]] || ble/util/buffer.flush
 }
+## @fn ble/term/leave-for-widget [opts]
+##   @param[opt] opts
+##     @opt noflush
 function ble/term/leave-for-widget {
   ble/term/visible-bell/erase
   ble/term/bracketed-paste-mode/leave
   ble/term/modifyOtherKeys/leave
   ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
-  ble/util/buffer.flush
+  [[ :$1: == *:noflush:* ]] || ble/util/buffer.flush
 }
 
-_ble_term_state=external
+## @fn ble/term/enter [opts]
+##   @param[opt] opts
+##     @opt noflush
 function ble/term/enter {
   [[ $_ble_term_state == internal ]] && return 0
+  _ble_term_state=internal
   ble/term/stty/enter
   ble/term/rl-convert-meta/enter
-  ble/term/enter-for-widget
-  _ble_term_state=internal
+  ble/term/enter-for-widget "$1"
 }
+## @fn ble/term/leave [opts]
+##   @param[opt] opts
+##     @opt noflush
 function ble/term/leave {
   [[ $_ble_term_state == external ]] && return 0
   ble/term/stty/leave
   ble/term/rl-convert-meta/leave
-  ble/term/leave-for-widget
+  ble/term/leave-for-widget "$1"
   [[ $_ble_term_cursor_current == default ]] ||
     _ble_term_cursor_current=unknown # vim は復元してくれない
   _ble_term_cursor_hidden_current=unknown
   _ble_term_state=external
 }
 
-function ble/term/finalize {
+## @fn ble/term/initialize [opts]
+##   @param[opt] opts
+##     @opt noflush
+function ble/term/initialize {
+  ble/term/DA2/request
+  ble/term/test-DECSTBM
+}
+## @fn ble/term/attach [opts]
+##   @param[opt] opts
+##     @opt noflush
+function ble/term/attach {
+  [[ $_ble_term_attached ]] && return 0
+  _ble_term_attached=1
+  ble/term/stty/initialize
+  ble/term/enter "$1"
+}
+## @fn ble/term/enter [opts]
+##   @param[opt] opts
+##     @opt noflush
+function ble/term/detach {
+  [[ $_ble_term_attached ]] || return 0
+  _ble_term_attached=
   ble/term/stty/finalize
   ble/term/leave
   ble/util/buffer.flush
-}
-function ble/term/initialize {
-  ble/term/stty/initialize
-  ble/term/test-DECSTBM
-  ble/term/enter
 }
 
 #------------------------------------------------------------------------------

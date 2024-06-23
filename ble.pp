@@ -2455,20 +2455,29 @@ ble/debug/leakvar#check $"leakvar" A4b2
   exec 1>&"$_ble_util_fd_tui_stdout"
   exec 2>&"$_ble_util_fd_tui_stderr"
 
-  # char_width_mode=auto
-  ble/canvas/attach
+  # Terminal initialization and Terminal requests (5.0ms)
+  #   The round-trip communication will take time, so we first adjust the
+  #   terminal state and send requests.  We then calculate the first prompt,
+  #   which takes about 50ms, while waiting for the responses from the
+  #   terminal.
+  ble/term/initialize     # 0.4ms
+  ble/term/attach noflush # 2.5ms (起動時のずれ防止の為 stty -echo は早期に)
+  ble/canvas/attach       # 1.8ms (requests for char_width_mode=auto)
+  ble/util/buffer.flush   # 0.3ms
+
 #%if leakvar
-ble/debug/leakvar#check $"leakvar" A5-canvas
+ble/debug/leakvar#check $"leakvar" A5-term/init
 #%end.i
 
-  # 取り敢えずプロンプトを表示する
-  ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
-  ble-edit/initialize # 3ms
-  ble-edit/attach     # 0ms (_ble_edit_PS1 他の初期化)
-  ble/canvas/panel/render # 37ms
-  ble/util/buffer.flush
+  # Show the first prompt (44.7ms)
+  ble-edit/initialize       # 0.3ms
+  ble-edit/attach           # 2.1ms (_ble_edit_PS1 他の初期化)
+  ble_attach_first_prompt=1 \
+    ble/canvas/panel/render # 42ms
+  ble/util/buffer.flush     # 0.2ms
+
 #%if leakvar
-ble/debug/leakvar#check $"leakvar" A6-term/edit
+ble/debug/leakvar#check $"leakvar" A6-edit
 #%end.i
 
   # keymap 初期化

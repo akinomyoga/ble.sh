@@ -1977,8 +1977,8 @@ fi
 # ble/term/leave-for-widget
 # ble/term/enter
 # ble/term/leave
-# ble/term/initialize
-# ble/term/finalize
+# ble/term/attach
+# ble/term/detach
 
 # ble/util/{s2c,c2s}
 (
