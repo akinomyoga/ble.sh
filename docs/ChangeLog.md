@@ -12,6 +12,7 @@
   - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
   - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` 48c7bbee
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
+  - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` xxxxxxxx
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691

@@ -4247,11 +4247,20 @@ function ble/builtin/bind/read-user-settings/.reconstruct {
       return out;
     }
 
-    match($0, /^"(\\.|[^"])+": /) {
-      key = substr($0, 1, RLENGTH - 2);
-      val = substr($0, 1 + RLENGTH);
+    function process_line(line, _, key, val) {
+      # extract key and value
+      if (match(line, /^"(\\.|[^"])+": /)) {
+        key = substr(line, 1, RLENGTH - 2);
+        val = substr(line, 1 + RLENGTH);
+      } else if (mode == 1 && _ble_bash >= 50300 && match(line, /^"(\\.|[^"])+" /)) {
+        key = substr(line, 1, RLENGTH - 1);
+        val = substr(line, 1 + RLENGTH);
+      } else {
+        return 0;
+      }
       if (_ble_bash < 50100)
         key = workaround_bashbug(key);
+
       if (mode) {
         type = mode == 1 ? "x" : mode == 2 ? "s" : "";
         keymap_register(key, val, type);
@@ -4259,6 +4268,8 @@ function ble/builtin/bind/read-user-settings/.reconstruct {
         keymap0[key] = val;
       }
     }
+
+    { process_line($0); }
   ' 2>/dev/null # suppress LC_ALL error messages
 }
 
