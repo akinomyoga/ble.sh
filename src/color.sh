@@ -890,8 +890,13 @@ function ble/color/read-sgrspec {
       g=0
       continue
     elif [[ :$opts: != *:ansi:* ]]; then
+#%if target == "osh"
+      [[ ${_ble_term_sgr_term2ansi[$arg]} ]] &&
+        arg=${_ble_term_sgr_term2ansi[$arg]}
+#%else
       [[ ${_ble_term_sgr_term2ansi[arg]} ]] &&
         arg=${_ble_term_sgr_term2ansi[arg]}
+#%end
     fi
 
     if ((30<=arg&&arg<50)); then

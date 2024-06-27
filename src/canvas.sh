@@ -589,17 +589,30 @@ function ble/unicode/GraphemeCluster/c2break {
   local code=$1
   ret=${_ble_unicode_GraphemeClusterBreak_custom[code]}
   [[ $ret ]] && return 0
+#%if target == "osh"
+  ret=${_ble_unicode_GraphemeClusterBreak[$code]}
+#%else
   ret=${_ble_unicode_GraphemeClusterBreak[code]}
+#%end
   [[ $ret ]] && return 0
   ((ret>_ble_unicode_GraphemeClusterBreak_MaxCode)) && { ret=0; return 0; }
 
   local l=0 u=${#_ble_unicode_GraphemeClusterBreak_ranges[@]} m
   while ((l+1<u)); do
+#%if target == "osh"
+    ((_ble_unicode_GraphemeClusterBreak_ranges[$((m=(l+u)/2))]<=code?(l=m):(u=m)))
+#%else
     ((_ble_unicode_GraphemeClusterBreak_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+#%end
   done
 
+#%if target == "osh"
+  ret=${_ble_unicode_GraphemeClusterBreak[${_ble_unicode_GraphemeClusterBreak_ranges[$l]}]:-0}
+  _ble_unicode_GraphemeClusterBreak[$code]=$ret
+#%else
   ret=${_ble_unicode_GraphemeClusterBreak[_ble_unicode_GraphemeClusterBreak_ranges[l]]:-0}
   _ble_unicode_GraphemeClusterBreak[code]=$ret
+#%end
   return 0
 }
 
