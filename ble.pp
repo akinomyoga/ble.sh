@@ -386,6 +386,9 @@ fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
       POSIXLY_CORRECT=$_ble_local_POSIXLY_CORRECT
     fi
     \return "$_ble_local_POSIXLY_CORRECT_ext"'
+#%if target == "osh"
+  _ble_bash_POSIXLY_CORRECT_local_return=${_ble_bash_POSIXLY_CORRECT_local_return/'\return'/'return'}
+#%end
 } 2>/dev/null
 
 function ble/base/workaround-POSIXLY_CORRECT {
