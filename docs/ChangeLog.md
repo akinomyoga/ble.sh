@@ -158,6 +158,7 @@
 - term: detect iTerm2 `#D2224` xxxxxxxx
 - mandb: support man page format of `rg` (requested by pallaswept) `#D2225` xxxxxxxx
 - mandb: restore ASCII hyphens from Unicode hyphens before analysis (reported by pallaswept) `#D2230` xxxxxxxx
+- main: work around the issue WSL clears `/tmp` after Bash starts (reported by LeonardoMor) `#D2235` xxxxxxxx
 
 ## Contrib
 

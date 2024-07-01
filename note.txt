@@ -7394,6 +7394,14 @@ bash_tips
 
 2024-07-01
 
+  * main: work around the issue that WSL clears "/tmp" after Bash starts (reported by LeonardoMor) [#D2235]
+    https://github.com/akinomyoga/ble.sh/discussions/462
+    https://github.com/microsoft/WSL/issues/8441#issuecomment-1139434972
+
+    既に WSL で報告されている様だ。gitstatus が /tmp を作った後に中身が消去され
+    ているという問題。報告されていて romkatv は何度も mention しているが、WSL
+    での issue は閉じられて無視されている。
+
   * test: skip tests on "ble/test/chdir" failure [#D2234]
 
     何らかの理由で ble/test/chdir に失敗した時 (例えば permission の問題でディ

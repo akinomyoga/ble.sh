@@ -1589,11 +1589,15 @@ fi
 ##   2. /tmp/blesh/$UID を作成可能ならば、それを使う。
 ##   3. $_ble_base/tmp/$UID を使う。
 ##
+_ble_base_is_wsl_status=
 function ble/base/initialize-runtime-directory/.is-wsl {
+  [[ $_ble_base_is_wsl_status ]] && return "$_ble_base_is_wsl_status"
+  _ble_base_is_wsl_status=1
   [[ -d /usr/lib/wsl/lib && -r /proc/version ]] || return 1
   local kernel_version
   ble/bash/read kernel_version < /proc/version || return 1
-  [[ $kernel_version == *-microsoft-* ]]
+  [[ $kernel_version == *-microsoft-* ]] || return 1
+  _ble_base_is_wsl_status=0
 }
 function ble/base/initialize-runtime-directory/.xdg {
   local runtime_dir=
@@ -1633,6 +1637,12 @@ function ble/base/initialize-runtime-directory/.xdg {
 function ble/base/initialize-runtime-directory/.tmp {
   [[ -r /tmp && -w /tmp && -x /tmp ]] || return 1
 
+  # Note: WSL seems to clear /tmp after the first instance of Bash starts,
+  # which causes a problem of missing /tmp after blesh's initialization.
+  # https://github.com/microsoft/WSL/issues/8441#issuecomment-1139434972
+  # https://github.com/akinomyoga/ble.sh/discussions/462
+  ble/base/initialize-runtime-directory/.is-wsl && return 1
+
   local tmp_dir=/tmp/blesh
   if [[ ! -d $tmp_dir ]]; then
     [[ ! -e $tmp_dir && -h $tmp_dir ]] && ble/bin/rm -f "$tmp_dir"
@@ -1649,17 +1659,39 @@ function ble/base/initialize-runtime-directory/.tmp {
 
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
-function ble/base/initialize-runtime-directory {
-  ble/base/initialize-runtime-directory/.xdg && return 0
-  ble/base/initialize-runtime-directory/.tmp && return 0
-
-  # fallback
+function ble/base/initialize-runtime-directory/.base {
   local tmp_dir=$_ble_base/run
   if [[ ! -d $tmp_dir ]]; then
     ble/bin/mkdir -p "$tmp_dir" || return 1
     ble/bin/chmod a+rwxt "$tmp_dir" || return 1
   fi
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/${USER:-$UID}@$HOSTNAME"
+}
+function ble/base/initialize-runtime-directory/.home {
+  local cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}
+  if [[ ! -d $cache_dir ]]; then
+    if [[ $XDG_CACHE_HOME ]]; then
+      ble/util/print "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' is not a directory." >&2
+      return 1
+    else
+      ble/bin/mkdir -p "$cache_dir" || return 1
+    fi
+  fi
+  if ! [[ -r $cache_dir && -w $cache_dir && -x $cache_dir ]]; then
+    if [[ $XDG_CACHE_HOME ]]; then
+      ble/util/print "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' doesn't have a proper permission." >&2
+    else
+      ble/util/print "ble.sh: '$cache_dir' doesn't have a proper permission." >&2
+    fi
+    return 1
+  fi
+  ble/base/.create-user-directory _ble_base_run "$cache_dir/blesh/run"
+}
+function ble/base/initialize-runtime-directory {
+  ble/base/initialize-runtime-directory/.xdg && return 0
+  ble/base/initialize-runtime-directory/.tmp && return 0
+  ble/base/initialize-runtime-directory/.base && return 0
+  ble/base/initialize-runtime-directory/.home
 }
 if ! ble/base/initialize-runtime-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_run." >&2
