@@ -199,6 +199,7 @@
 - test(bash): fix test cases for history expansion `#D2131` 838b4652
 - test(bash): add tests for bash array bugs `#D2149` 6154d71c
 - github/workflows: update versions of GitHub Actions `#D2186` 0c42c8bd 433ac7c2
+- test: skip tests on `ble/test/chdir` failure `#D2234` xxxxxxxx
 
 ## Internal changes
 

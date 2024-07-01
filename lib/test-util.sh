@@ -1514,7 +1514,7 @@ ble/test ble/util/is-running-in-subshell exit=1
 
 # ble/util/getpid
 (
-  ble/test/chdir
+  ble/test/chdir || exit
   function getpid {
     sh -c 'printf %s $PPID' >| a.txt
     ble/util/readfile ppid a.txt
@@ -1551,7 +1551,7 @@ ble/test ble/util/is-running-in-subshell exit=1
 # ble/fd#alloc
 # ble/fd#close
 (
-  ble/test/chdir
+  ble/test/chdir || exit
   ble/fd#alloc fd '> a.txt'
   ble/util/print hello >&"$fd"
   ble/util/print world >&"$fd"
@@ -1868,7 +1868,7 @@ fi
   blehook idle_after_task=
 
   ble/function#push ble/util/idle/IS_IDLE '((1))'
-  ble/test/chdir
+  ble/test/chdir || exit
   ble/util/print 'ble/util/print FILE1' >| FILE1.txt
   ble/util/print 'ble/util/print FILE2' >| FILE2.txt
   ble/util/print 'ble/util/print FILE3' >| FILE3.txt

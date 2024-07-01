@@ -83,7 +83,7 @@ ble/test/start-section 'bash' 69
   #   local GLOBIGNORE すると、関数を出てもパス名展開の時にその影響が残っている。
   #   (直接変数の中身を見ても何もない様に見えるが。) unset GLOBIGNORE などとす
   #   ると直る。
-  ble/test/chdir
+  ble/test/chdir || exit
   touch {a..c}.txt
   function f1 { local GLOBIGNORE='*.txt'; }
   if ((_ble_bash<30200)); then
