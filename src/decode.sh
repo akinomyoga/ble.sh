@@ -3674,12 +3674,19 @@ function ble/builtin/bind/option:m {
 ##   @var[out] ret
 function ble/builtin/bind/.unquote-macro-string {
   local value=$1 q=\' Q="'\''"
-  if ! ble/string#match "$value" '^"(([^\"]|\\.)*)"['"$_ble_term_IFS"']*'; then
-    ble/util/print "ble.sh (bind): no closing '\"' in spec: '${spec//$q/$Q}'" >&2
+
+  local delim=${1::1}
+  if [[ $delim != [\"\'] ]]; then
+    ret=$value
+  fi
+
+  local rex='^'$delim'(([^\'$delim']|\\.)*)'$delim'['$_ble_term_IFS']*'
+  if ! [[ $value =~ $rex ]]; then
+    ble/util/print "ble.sh (bind): no closing '${delim//$q/$Q}' in spec: '${spec//$q/$Q}'" >&2
     return 1
   elif ((${#BASH_REMATCH}<${#value})); then
     local fragment=${value:${#BASH_REMATCH}}
-    ble/util/print "ble.sh (bind): warning: unprocessed fragments (${fragment//$q/$Q}) in spec: '${spec//$q/$Q}'" >&2
+    ble/util/print "ble.sh (bind): warning: unprocessed fragments '${fragment//$q/$Q}' in spec: '${spec//$q/$Q}'" >&2
   fi
   ret=${BASH_REMATCH[1]}
 }
@@ -3712,7 +3719,7 @@ function ble/builtin/bind/.decompose-pair.impl {
 
     ble/string#ltrim "${spec:${#BASH_REMATCH}}"
     if [[ $rematch == *: ]]; then
-      if [[ $ret == \"* ]]; then
+      if [[ $ret == [\"\']* ]]; then
         ble/builtin/bind/.unquote-macro-string "$ret" 2>&3 || return 1
       fi
     else
@@ -3729,13 +3736,17 @@ function ble/builtin/bind/.decompose-pair.impl {
     fi
     value=command:$ret
   else
-    # bind -x 'keyseq: rlfunc'
-    # bind -x 'keyseq: "macro"'
+    # bind 'keyseq: rlfunc'
+    # bind 'keyseq: "macro"'
     ble/string#match "$spec" "$rex_keyseq[$ifs]*(:[$ifs]*)?"
     keyseq=${BASH_REMATCH[1]}
     ble/string#trim "${spec:${#BASH_REMATCH}}"
-    if [[ $ret == \"* ]]; then
+    if [[ $ret == [\"\']* ]]; then
       ble/builtin/bind/.unquote-macro-string "$ret" 2>&3 || return 1
+      # Note: With any unprocessed fragments for string macros, Readline seems
+      # to extend the range to the first whitespace, and thus the ending
+      # delimiter is included as a part of the macro content, which is strange.
+      # This implementation does not extend the range.
       value=macro:$ret
     else
       value=rlfunc:$ret
