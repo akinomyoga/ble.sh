@@ -7394,6 +7394,19 @@ bash_tips
 
 2024-07-29
 
+  * main: --clear-cache で長々しい devel version では遅い warning を出力する必要はあるのか [#D2241]
+    Ref. #D2222
+
+    この長い version のメッセージを実装した時に意図的にそうしたのだったか? 或い
+    は余り考えていなかったのか? → 確認してみたが別に余り考えていなかった様だ。
+    新しく _ble_init_command が指定されていた時には長いメッセージの代わりに短い
+    メッセージを表示する事にした。
+
+    オプション --bash-debug-version=check を明示的に指定した時には長いものを表
+    示する事も考えたが、"long" ではなくて "check" だし、諸々の処理をする時に長
+    いメッセージを表示する必要もない気がするので、check を明示した場合でもやは
+    り短いメッセージを表示する事にする。
+
   * util(ble/function#pop): エイリアス展開により push/pop の度に関数がどんどん長くなる (reported by 103sbavert) [#D2240]
     https://github.com/akinomyoga/ble.sh/issues/471
 

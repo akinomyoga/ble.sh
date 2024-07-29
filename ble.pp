@@ -2291,7 +2291,7 @@ function ble/base/check-bash-debug-version {
   local sgr3=${_ble_term_setaf[2]}
   local sgrC=${_ble_term_setaf[8]}
   local bold=$_ble_term_bold
-  if [[ $type == short ]]; then
+  if [[ $type == short || $_ble_init_command ]]; then
     ble/util/print-lines \
       "Note: ble.sh can be very slow in a debug version of Bash: $sgr3$BASH_VERSION$sgr0"
   else

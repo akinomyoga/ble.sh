@@ -12,6 +12,7 @@
   - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
   - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` 48c7bbee
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
+    - main: shorten the startup message for debug versions `#D2241` xxxxxxxx
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
@@ -115,7 +116,7 @@
 - keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` aa7ca45d
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8
-- util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` xxxxxxxx
+- util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
 
 ## Compatibility
 
@@ -160,7 +161,7 @@
 - mandb: support man page format of `rg` (requested by pallaswept) `#D2225` 063bf66b
 - mandb: restore ASCII hyphens from Unicode hyphens before analysis (reported by pallaswept) `#D2230` f160b8f0
 - main: work around the issue WSL clears `/tmp` after Bash starts (reported by LeonardoMor) `#D2235` fcbf1ed0
-- decode(`ble/builtin/bind`): support single quotes in the macro/command strings `#D2236` xxxxxxxx
+- decode(`ble/builtin/bind`): support single quotes in the macro/command strings `#D2236` 2f90120e
 
 ## Contrib
 
@@ -180,9 +181,9 @@
 - contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` 64cdcd01
 - contrib/airline: remove dummy faces (reported by alexalekseyenko) `#D2204` 59787ee5
 - contrib/airline: update themes `#D2204` 59787ee5
-- contrib/fzf-git: fix unadjusted terminal states in calling `fzf` (reported by tessus) `#D2237` xxxxxxxx
-- contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` xxxxxxxx
-- contrib/colorglass: fix fixed-point round `#D2239` xxxxxxxx
+- contrib/fzf-git: fix unadjusted terminal states in calling `fzf` (reported by tessus) `#D2237` b154058a
+- contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
+- contrib/colorglass: fix fixed-point round `#D2239` b154058a
 
 ## Documentation
 
