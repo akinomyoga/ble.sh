@@ -179,6 +179,9 @@
 - contrib/config/execmark: output error status through `ble/canvas/trace` `#D2136` 64cdcd01
 - contrib/airline: remove dummy faces (reported by alexalekseyenko) `#D2204` 59787ee5
 - contrib/airline: update themes `#D2204` 59787ee5
+- contrib/fzf-git: fix unadjusted terminal states in calling `fzf` (reported by tessus) `#D2237` xxxxxxxx
+- contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` xxxxxxxx
+- contrib/colorglass: fix fixed-point round `#D2239` xxxxxxxx
 
 ## Documentation
 

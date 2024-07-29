@@ -4841,7 +4841,7 @@ function ble/widget/.bell {
 }
 
 function ble/widget/.bell/.clear-DECSCNM {
-  [[ $_ble_term_DECSCNM_state ]] || return
+  [[ $_ble_term_DECSCNM_state ]] || return "$?"
   _ble_term_DECSCNM_state=
   ble/util/buffer $'\e[?5l'
   ble/util/buffer.flush

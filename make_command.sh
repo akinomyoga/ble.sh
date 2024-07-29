@@ -514,6 +514,7 @@ function sub:scan/check-readonly-unsafe {
       # other frameworks & integrations
       /^__bp_blesh_invoking_through_blesh$/d
       /^__bp_imported$/d
+      /^__bp_inside_pre(cmd|exec)$/d
       /^BP_PROMPT_COMMAND_.*$/d
 
       # common variables

@@ -7392,6 +7392,148 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-07-29
+
+  * contrib/colorglass: 浮動小数点丸めが正しくない [#D2239]
+
+    後で他の演算についても間違いがないか確認するつもりだったが長らくそのまま放
+    置されていたので、今回の機会にこの修正だけでも push する事にする。
+
+  * contrib/bash-preexec: __bp_set_ret_value 等を期待するスクリプトが存在する (reported by Comnenus) [#D2238]
+    https://forum.atuin.sh/t/bash-bp-set-ret-value-command-not-found-on-macos-bash-powerline/410
+
+    iTerm2 shell integration が __bp_set_ret_value を使っている。これによってエ
+    ラーが発生する。
+
+    ? resolved: iTerm2 shell integration precmd では
+      __bp_last_argument_prev_command に $_ が入っている事を期待している様だが、
+      bash-preexec.bash の実装を見ると __bp_last_argument_prev_command は
+      precmd に対しては設定されていない様に見える。つまり、iTerm2 shell
+      integration を実行した後だと $_ が変わってしまうのでは? と思ったが、改め
+      て確認してみるとbash-preexec は DEBUG trap で常にこの変数を設定している様
+      に見えるので問題ない?
+
+      然し、それはそれで bash-preexec.bash を使っていると $_ が容易に上書きされ
+      てしまうという事を意味する。というか、bash でも bind -x 等を実行した時に
+      $_ が上書きされてしまう事になるので、それと振る舞いが consistent という事
+      だろうか? → 実際試してみた所、bash では bind -x などを通して実行されたコ
+      マンドでも $_ を上書きしてしまう。なので、bash-preexec の現在の様な実装で
+      あっても、bash の振る舞いとの互換性の為にそうなっているのだと言われればそ
+      うなのかもしれない。
+
+      ? とは言いつつ precmd はユーザーのコマンドが実行された直後に実行されるは
+        ずだから他の要因で書き換わる事はないのでは? とも思ったがユーザーが空の
+        コマンドを実行した場合には更に前の $_ が参照されるのでは。その場合には
+        bind -x などによって上書きされた値を拾う可能性が未だある。
+
+      問題は ble.sh でも律儀に bash の振る舞いを模倣するべきかという事になるが、
+      恐らく気にしなくて良い。やはり bind -x 経由でコマンドを呼び出したか呼び出
+      していないかという対話的操作によってコマンド実行の振る舞いが変わってはい
+      けない筈である。
+
+      現在の実装では bash-preexec の実装に倣って preexec では $_ を記録して
+      precmd では $_ を記録しない様になっているがこれは駄目だ。bash-preexec で
+      は DEBUG の処理の一番初めに $_ を記録していて、preexec を実行する場合でも
+      そうでない場合でも $_ を記録する様になっていた。一方で、contrib の
+      bash-preexec.bash では本当に PREEXEC の時だけに呼ばれるのでそこで $_ を記
+      録しても、precmd で正しく $_ を得ることができない。precmd でも $_ を記録
+      する様にする事にする。
+
+      というより precmd で設定するのであれば preexec では
+      __bp_last_argument_prev_command は設定しなくて良い気がする。そちらの方が
+      他の変数の設定とも一貫している。
+
+    うーん。他にも他のスクリプトが使っていそうな内部関数や変数はあるだろうかと
+    思ったがない様な気がする。そもそも __bp_set_ret_value だって他の枠組みが使
+    いそうにないような気がする。取り敢えず __bp_set_ret_value は追加し
+    て、__bp_last_argument_prev_command も precmd で記録する様にした。他に
+    __bp_inside_precmd, __bp_inside_preexec も設定してみる事にしたが実際に参照
+    している設定が存在するかは知らない。
+
+  * fzf-git: fzf-git で fzf を呼び出すときに modifyOtherKeys が有効になっている (reported by tessus) [#D2237]
+    https://github.com/akinomyoga/ble.sh/issues/470
+
+    これは全然対策していなかった。今まで気づいていなかったのが不思議だ。contra
+    は先ず modifyOtherKeys を実装しておらず常に独自のキーを送信する様になってい
+    るし、また contrib/integration/fzf-git を使っている人もそもそも余りいないか
+    らだろうか。
+
+    * fixed: builtin bind が呼び出されているがこれは本当に意図した物なのだろう
+      か。ユーザーが type original を使って fzf-git の初期化をして、更にその初
+      期化が遅延で行われた場合に ble.sh 自体の builtin bind を上書きしてしまう
+      のではないか。
+
+      そもそもこれは bind に対する make scan のエラーを抑制する為に機械的に適用
+      された変更だったりしないか? → 調べてみると 88151ffb で変更が適用されてい
+      る。確かに make scan 関係のエラーを抑制する為に色々変更を適用した commit
+      に見える。恐らく何も考えずに適用したという事だろう。これは恐らく意図しな
+      い変更である。
+
+      修正する。直接の bind の呼び出しにするとまた make scan に引っかかる様になっ
+      てしまうので ble/builtin/bind を呼び出す様にする。
+
+    ble-bind -f 経由で呼び出すときについては対策を入れたが他の呼び出し方をした
+    場合にも問題になるのではないか? 他の場合も全て対策するのは大変の気がする。
+
+    a 先ず original については直接 _fzf_git_* を呼び出しているのを間接的に別の
+      関数を通して呼び出す様にする? その他の場合についても必要に応じて個別に調
+      整を行う。
+
+    b 或いは _fzf_git_* の側で端末状態を調節する様にする?
+
+    c 全ての fzf 呼び出しは _fzf_git_fzf 経由で行われている様なのでこの関数で調
+      整すれば良い。
+
+      と思ったが subshell の中でこの調整を行っても大丈夫だろうか。例えば
+
+      ? kill された時に不整合が生じないか。
+
+        kill が何処まで伝播するのかという問題の気がする。fzf が中断してもその呼
+        び出し元のプロセスが残っていれば良い。
+
+        中断が起こるとすると SIGINT によるものだろう。しかし $(...) の実行中に
+        呼び出された SIGINT は何処まで伝播するのか。というかそもそも
+        $_ble_term_state == internal の場合には stty で調整がされているので C-c
+        で SIGINT が送信される事はない。手動で SIGINT を送る場合には何が起こる
+        かについて保証できないので気にしなくて良い。
+
+      ? そもそも、 ble/term/leave-for-widget の必要性を判定する時に
+        _ble_term_state を確認しているが更新していない。これによって重複して
+        ble/term/leave-for-widget が実行されたりしないのか。
+
+        そもそも ble/term/{leave,enter}-for-widget を呼び出している箇所は少ない。
+        bind -x で登録されたコマンドと、integration/*.bash の中でしか使われてい
+        ない。なので、"bind -x" 経由で呼び出された時に重複で処理がされない様に
+        しておけば十分の様に思われる。
+
+        大体大丈夫の気がするが、ユーザーが直接 gb 等のシェル関数を bind -x の中
+        から呼び出した時に問題になる気がする。ble/term/enter-for-widget が呼び
+        出されて、bind -x の処理の途中なのに端末の状態が ble.sh internal 用に調
+        整された物になってしまう。
+
+        やはり leave-for-widget 用にも状態を管理する変数を追加しなければならな
+        いのだろうか。この手の変数が何種類も重複してあって良くない気がするがど
+        うにかならないのだろうか。
+
+      x また、既に leave-for-widget した状態の時に subshell の中で調整を行うと
+        最終的に enter-for-widget の状態になるが、それが復元されない事になるの
+        では。leave-for-widget 専用に状態を変数で管理するとしても subshell の中
+        の変更は親シェルに反映されない。
+
+        →これは入れ子で呼び出される事がないようにする。
+
+    x fixed: is_in_git_repo の実装が間違っている気がする。と思ったが fzf-down
+      と実装が逆になっていたのだった。入れ替えた。
+
+    ? fixed: _fzf_git_fzf という関数がユーザーによって重複して定義される可能性
+      は? 高い。そもそも _fzf_git_fzf という関数に分けているのはユーザーが設定
+      を変更できる様にするためであろう。実際にコメントで Redefine this function
+      ... という指示が書かれている。という事を思うと現在の修正方法は望ましい物
+      ではない。
+
+      結局新しい関数 ble/contrib/integration:fzf-git/git を定義してそれ経由
+      で_fzf_git_fzf を呼び出す事にした。
+
 2024-07-09
 
   * decode: mcfly で "'C-m': 'string'" という形式の keybinding が使われている [#D2236]
