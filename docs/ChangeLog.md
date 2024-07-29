@@ -117,6 +117,7 @@
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
+  - main: fix a bug that `_ble_bash` is missing (reported by tessus) `#D2242` xxxxxxxx
 
 ## Compatibility
 

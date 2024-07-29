@@ -7394,6 +7394,15 @@ bash_tips
 
 2024-07-29
 
+  * BUG main: _ble_bash が消失している (reported by tessus) [#D2242]
+    https://github.com/akinomyoga/ble.sh/issues/470#issuecomment-2255357001
+    Ref. #D2240
+
+    これは #D2240 の regression. _ble_bash の位置を前方に移動した時に builtin
+    unset -v _ble_bash を途中失敗に付加したが、全体で実行する ble/init/clean-up
+    にも付加していた事によって全体で _ble_bash が unset される様になってしまっ
+    ていた。これは問題だ。急いで修正する。
+
   * main: --clear-cache で長々しい devel version では遅い warning を出力する必要はあるのか [#D2241]
     Ref. #D2222
 

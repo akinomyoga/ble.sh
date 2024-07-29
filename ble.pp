@@ -859,7 +859,6 @@ function ble/init/clean-up {
     ble/base/restore-builtin-wrappers
     builtin eval -- "$_ble_bash_FUNCNEST_restore"
   fi
-  builtin unset -v _ble_bash
   return "$ext"
 }
 
@@ -1006,6 +1005,7 @@ function ble/base/read-blesh-arguments {
 if ! ble/base/read-blesh-arguments "$@"; then
   builtin echo "ble.sh: cancel initialization." >&2
   ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
+  builtin unset -v _ble_bash
   return 2 2>/dev/null || builtin exit 2
 fi
 
@@ -1014,6 +1014,7 @@ if [[ ${_ble_base-} ]]; then
   if ! ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
     ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
+    builtin unset -v _ble_bash
     return 1 2>/dev/null || builtin exit 1
   fi
 fi
