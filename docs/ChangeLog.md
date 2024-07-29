@@ -115,6 +115,7 @@
 - keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` aa7ca45d
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8
+- util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` xxxxxxxx
 
 ## Compatibility
 

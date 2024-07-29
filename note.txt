@@ -7394,6 +7394,25 @@ bash_tips
 
 2024-07-29
 
+  * util(ble/function#pop): エイリアス展開により push/pop の度に関数がどんどん長くなる (reported by 103sbavert) [#D2240]
+    https://github.com/akinomyoga/ble.sh/issues/471
+
+    報告者の場合には報告者が alias ='sudo -v; sudo ' なるエイリアスを設定してい
+    たために関数を push/pop する度に sudo の呼び出し回数が 2 倍になって、或る時
+    点で関数が長くなりすぎて bash がクラッシュするという状態だった。
+
+    * done: shopt を記録する為の関数を用意する → 用意した。_ble_bash はやはり
+      参照したいのでできるだけ始めに初期化してしまう。代わりに ble.sh の初期化
+      失敗の折には builtin unset で削除する。
+
+    ? fixed: 類似の事は restore-builtin-wrappers でも発生するのでは?
+
+      →基本的に ble/function#evaldef と同じ実装で良い。然し
+      ble/function#evaldef は util.sh まで辿り着かないと定義されない。同じ内容
+      の関数が重複するのも嫌なので ble/base/evaldef という関数を ble.pp で定義
+      してそれを呼び出す事にした。ble/function#evaldef もその関数をそのまま呼び
+      出す。
+
   * contrib/colorglass: 浮動小数点丸めが正しくない [#D2239]
 
     後で他の演算についても間違いがないか確認するつもりだったが長らくそのまま放

@@ -1452,7 +1452,7 @@ function ble/syntax:bash/simple-word/eval/.cache-clear {
 ##   @var[in,out] _ble_syntax_bash_simple_eval
 ##   @var[in,out] _ble_syntax_bash_simple_eval_hash
 function ble/syntax:bash/simple-word/eval/.cache-update {
-  local hash=$-:$BASHOPTS:$_ble_edit_lineno:$_ble_textarea_version:$PWD
+  local hash=$-:${BASHOPTS-}:$_ble_edit_lineno:$_ble_textarea_version:$PWD
   if [[ $hash != "$_ble_syntax_bash_simple_eval_hash" ]]; then
     _ble_syntax_bash_simple_eval_hash=$hash
     ble/syntax:bash/simple-word/eval/.cache-clear

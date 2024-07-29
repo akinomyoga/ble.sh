@@ -2401,17 +2401,10 @@ else
 fi
 
 ## @fn ble/function#evaldef def
-##   関数を定義します。基本的に eval に等価ですが評価時に extglob を保
-##   証します。
+##   関数を定義します。基本的に eval に等価ですが評価時に shopt -s extglob 及び
+##   shopt -u expand_aliases を保証します。
 function ble/function#evaldef {
-  local reset_extglob=
-  if ! shopt -q extglob; then
-    reset_extglob=1
-    shopt -s extglob
-  fi
-  builtin eval -- "$1"; local ext=$?
-  [[ ! $reset_extglob ]] || shopt -u extglob
-  return "$ext"
+  ble/base/evaldef "$1"
 }
 
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_util_function_traced}"
@@ -3082,14 +3075,8 @@ if [[ -d /proc/$$/fd ]]; then
   ## @fn ble/fd#list/adjust-glob
   ##   @var[out] set shopt gignore
   function ble/fd#list/adjust-glob {
-    set=$- gignore=$GLOBIGNORE
-    if ((_ble_bash>=40100)); then
-      shopt=$BASHOPTS
-    else
-      shopt=
-      shopt -q failglob && shopt=$shopt:failglob
-      shopt -q dotglob && shopt=$shopt:dotglob
-    fi
+    set=$- shopt= gignore=$GLOBIGNORE
+    ble/base/list-shopt failglob dotglob
     shopt -u failglob
     set +f
     GLOBIGNORE=
@@ -3800,15 +3787,7 @@ function ble/util/eval-pathname-expansion {
   if [[ :$2: == *:canonical:* ]]; then
     canon=1
     local set=$- shopt gignore=$GLOBIGNORE
-    if ((_ble_bash>=40100)); then
-      shopt=$BASHOPTS
-    else
-      shopt=
-      shopt -q failglob && shopt=$shopt:failglob
-      shopt -q nullglob && shopt=$shopt:nullglob
-      shopt -q extglob && shopt=$shopt:extglob
-      shopt -q dotglob && shopt=$shopt:dotglob
-    fi
+    ble/base/list-shopt failglob nullglob extglob dotglob
     shopt -u failglob
     shopt -s nullglob
     shopt -s extglob

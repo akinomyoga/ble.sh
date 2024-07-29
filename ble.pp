@@ -233,6 +233,8 @@ if [[ ! $_ble_init_command ]]; then
 fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
 
 {
+  _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
+
   ## @var _ble_bash_POSIXLY_CORRECT_adjusted
   ##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
   ## @var _ble_bash_POSIXLY_CORRECT_set
@@ -333,6 +335,30 @@ function ble/base/is-POSIXLY_CORRECT {
   [[ $_ble_bash_POSIXLY_CORRECT_adjusted && $_ble_bash_POSIXLY_CORRECT_set ]]
 }
 
+## @fn ble/base/list-shopt names...
+##   @var[out] shopt
+if ((_ble_bash>=40100)); then
+  function ble/base/list-shopt { shopt=$BASHOPTS; }
+else
+  function ble/base/list-shopt {
+    shopt=
+    local name
+    for name; do
+      shopt -q "$name" 2>/dev/null && shopt=$shopt:$name
+    done
+  }
+fi 2>/dev/null # set -x 対策
+function ble/base/evaldef {
+  local shopt
+  ble/base/list-shopt extglob expand_aliases
+  shopt -s extglob
+  shopt -u expand_aliases
+  builtin eval -- "$1"; local ext=$?
+  [[ :$shopt: == *:extglob:* ]] || shopt -u extglob
+  [[ :$shopt: != *:expand_aliases:* ]] || shopt -s expand_aliases
+  return "$ext"
+}
+
 {
   _ble_bash_builtins_adjusted=
   _ble_bash_builtins_save=
@@ -417,7 +443,8 @@ function ble/base/adjust-builtin-wrappers {
 function ble/base/restore-builtin-wrappers {
   if [[ $_ble_bash_builtins_adjusted ]]; then
     _ble_bash_builtins_adjusted=
-    builtin eval -- "$_ble_bash_builtins_save"
+    ble/base/evaldef "$_ble_bash_builtins_save"
+    return 0
   fi
 }
 {
@@ -463,9 +490,8 @@ function ble/base/xtrace/.fdnext {
     ((1))
 }
 function ble/base/xtrace/.log {
-  local bash=${_ble_bash:-$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))}
   local open=---- close=----
-  if ((bash>=40200)); then
+  if ((_ble_bash>=40200)); then
     builtin printf '%s [%(%F %T %Z)T] %s %s\n' "$open" -1 "$1" "$close"
   else
     builtin printf '%s [%s] %s %s\n' "$open" "$(date 2>/dev/null)" "$1" "$close"
@@ -550,20 +576,17 @@ function ble/base/xtrace/restore {
   fi
 }
 
+## @fn ble/base/.adjust-bash-options vset vshopt
+##   @var[out] $vset
+##   @var[out] $vshopt
 function ble/base/.adjust-bash-options {
   builtin eval -- "$1=\$-"
   set +evukT -B
   ble/base/xtrace/adjust
 
   [[ $2 == shopt ]] || local shopt
-  if ((_ble_bash>=40100)); then
-    shopt=$BASHOPTS
-  else
-    # Note: nocasematch は bash-3.1 以上
-    shopt=
-    shopt -q extdebug 2>/dev/null && shopt=$shopt:extdebug
-    shopt -q nocasematch 2>/dev/null && shopt=$shopt:nocasematch
-  fi
+  # Note: nocasematch は bash-3.1 以上
+  ble/base/list-shopt extdebug nocasematch
   [[ $2 == shopt ]] || builtin eval -- "$2=\$shopt"
   shopt -u extdebug
   shopt -u nocasematch 2>/dev/null
@@ -673,6 +696,7 @@ if [[ ! -o emacs && ! -o vi && ! $_ble_init_command ]]; then
   ble/base/restore-builtin-wrappers
   ble/base/restore-POSIXLY_CORRECT
   builtin eval -- "$_ble_bash_FUNCNEST_restore"
+  builtin unset -v _ble_bash
   return 1 2>/dev/null || builtin exit 1
 fi
 
@@ -682,6 +706,7 @@ if shopt -q restricted_shell; then
   ble/base/restore-builtin-wrappers
   ble/base/restore-POSIXLY_CORRECT
   builtin eval -- "$_ble_bash_FUNCNEST_restore"
+  builtin unset -v _ble_bash
   return 1 2>/dev/null || builtin exit 1
 fi
 
@@ -703,7 +728,7 @@ function ble/init/restore-IFS {
   builtin unset -v _ble_init_original_IFS
 }
 
-if ((BASH_VERSINFO[0]>5||BASH_VERSINFO[0]==5&&BASH_VERSINFO[1]>=1)); then
+if ((_ble_bash>=50100)); then
   _ble_bash_BASH_REMATCH_level=0
   _ble_bash_BASH_REMATCH=()
   function ble/base/adjust-BASH_REMATCH {
@@ -834,6 +859,7 @@ function ble/init/clean-up {
     ble/base/restore-builtin-wrappers
     builtin eval -- "$_ble_bash_FUNCNEST_restore"
   fi
+  builtin unset -v _ble_bash
   return "$ext"
 }
 
@@ -995,7 +1021,6 @@ fi
 #------------------------------------------------------------------------------
 # Initialize version information
 
-_ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 _ble_bash_loaded_in_function=0
 local _ble_local_test 2>/dev/null && _ble_bash_loaded_in_function=1
 
