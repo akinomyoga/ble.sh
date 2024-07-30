@@ -7394,14 +7394,25 @@ bash_tips
 
 2024-07-29
 
-  * BUG main: _ble_bash が消失している (reported by tessus) [#D2242]
+  * BUG main: _ble_bash が消失している (reported by tessus and Knusper) [#D2242]
     https://github.com/akinomyoga/ble.sh/issues/470#issuecomment-2255357001
+    https://github.com/akinomyoga/ble.sh/issues/472#issuecomment-2258653708
     Ref. #D2240
 
     これは #D2240 の regression. _ble_bash の位置を前方に移動した時に builtin
     unset -v _ble_bash を途中失敗に付加したが、全体で実行する ble/init/clean-up
     にも付加していた事によって全体で _ble_bash が unset される様になってしまっ
     ていた。これは問題だ。急いで修正する。
+
+    2024-07-31 最新版の中で ble-reload した時にエラーが起こるというがどういう事
+    だろう。自分の手元で実行すると別にエラーは発生しない。然しその後で ble.sh
+    が全く機能しなくなる。やはり _ble_bash が消滅している様だ。未だ _ble_bash
+    を削除している箇所があると思ったが見つからない。
+
+    ble-reload の時に発生するという事を考えると ble/util/unload を呼び出してい
+    るのでそれによって _ble_bash が削除されている。今まで _ble_bash の初期化を
+    遅延していた理由があった様な気がしていたが、それは reload 時の
+    ble/util/unload よりも後にしたかったからだろう。
 
   * main: --clear-cache で長々しい devel version では遅い warning を出力する必要はあるのか [#D2241]
     Ref. #D2222

@@ -2634,6 +2634,10 @@ function ble/base/unload-for-reload {
     [[ $_ble_edit_detach_flag ]] ||
       _ble_edit_detach_flag=reload
   fi
+
+  # We here localize "_ble_bash" to avoid overwriting _ble_bash, which is
+  # already initialized by the new instance of ble.sh.
+  local _ble_bash=$_ble_bash
   ble/base/unload reload
   return 0
 }

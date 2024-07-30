@@ -12,7 +12,7 @@
   - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
   - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` 48c7bbee
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
-    - main: shorten the startup message for debug versions `#D2241` xxxxxxxx
+    - main: shorten the startup message for debug versions `#D2241` 0bc8610a
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
@@ -117,7 +117,7 @@
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
-  - main: fix a bug that `_ble_bash` is missing (reported by tessus) `#D2242` xxxxxxxx
+  - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e xxxxxxxx
 
 ## Compatibility
 
