@@ -7394,6 +7394,21 @@ bash_tips
 
 2024-08-14
 
+  * mandb: _^HX が処理できていない? [#D2244]
+
+    less の mandb でオプションの説明の中に _^HN (N の下線付きを表現する為に _
+    を出力した後 ^H を出力して、その後に文字本体を出力) が含まれている。
+
+    →man から抽出した内容に関しては ^H は除去している筈だし、実際に確かめてみ
+    ると除去できている。キャッシュを調べてみるとどうやら --help で抽出した内容
+    の方に _^H が混入している様だ。実際に less --help を試してみると less は
+    less --help の表示についても less を用いるようで、それを他のコマンドにパイ
+    プで流し込む様にすると _^HN の形式で下線を引いて出力する様である。
+
+    optarg については元々 control chars が含まれていると escape して見える様に
+    表示してしまう様なので削除する。desc に関しては SGR による装飾に変換する事
+    にする。
+
   * main: bash-4.4 で POSIXLY_CORRECT 補正が動いていない (reported by vasi786) [#D2243]
     https://github.com/akinomyoga/ble.sh/issues/477
 

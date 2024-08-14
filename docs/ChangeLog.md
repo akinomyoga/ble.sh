@@ -164,6 +164,7 @@
 - mandb: restore ASCII hyphens from Unicode hyphens before analysis (reported by pallaswept) `#D2230` f160b8f0
 - main: work around the issue WSL clears `/tmp` after Bash starts (reported by LeonardoMor) `#D2235` fcbf1ed0
 - decode(`ble/builtin/bind`): support single quotes in the macro/command strings `#D2236` 2f90120e
+- mandb: process less formatting sequences in parsing `--help` `#D2244` xxxxxxxx
 
 ## Contrib
 

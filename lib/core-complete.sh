@@ -5258,6 +5258,53 @@ function ble/complete/mandb:help/generate-cache {
     }
 
     #--------------------------------------------------------------------------
+    # utils
+
+    function str_convert_bs2ansi(str, _, head, n, a, c, flag_bold, flag_underline, i, prefix, suffix) {
+      if (str !~ /\x08/) return str;
+      print "str = " str >> "./a.txt"
+
+      head = "";
+      while (match(str, /(.\x08)+./) > 0) {
+        n = split(substr(str, RSTART, RLENGTH), a, "\x08");
+        c = a[1];
+        flag_bold = 0;
+        flag_underline = 0;
+        for (i = 2; i <= n; i++) {
+          if (a[i] == "_") {
+            if (c == "_" && !flag_bold)
+              flag_bold = 1;
+            else
+              flag_underline = 1;
+          } else {
+            if (a[i] == c)
+              flag_bold = 1;
+            else {
+              if (c == "_")
+                flag_underline = 1;
+              c = a[i];
+            }
+          }
+        }
+        if (flag_bold || flag_underline) {
+          prefix = "";
+          suffix = "";
+          if (flag_bold) {
+            prefix = "1";
+            suffix = "22";
+          }
+          if (flag_underline) {
+            prefix = prefix != "" ? prefix ";4" : "4";
+            suffix = suffix != "" ? suffix ";24" : "24";
+          }
+          c = "\x1b[" prefix "m" c "\x1b[" suffix "m";
+        }
+
+        head = head substr(str, 1, RSTART - 1) c;
+        str = substr(str, RSTART + RLENGTH);
+      }
+      return head str;
+    }
 
     function split_option_optarg_suffix(optspec, _, key, suffix, optarg) {
       # Note: Skip options that contain FS (due to the limitation by the cache format)
@@ -5268,6 +5315,10 @@ function ble/complete/mandb:help/generate-cache {
         suffix = substr(optspec, pos + RLENGTH - 1, 1);
         if (suffix == "[") suffix = "";
         optarg = substr(optspec, pos);
+
+        # Note (#D2244): Remove formatting like "_\x08A" and "A\x08A". "less
+        # --help" contains such sequences.
+        gsub(/.\x08/, "", optarg);
       } else {
         key = optspec;
         optarg = "";
@@ -5433,6 +5484,8 @@ function ble/complete/mandb:help/generate-cache {
     function help_append_desc(desc) {
       gsub(/^['"$_ble_term_space"']+|['"$_ble_term_space"']$/, "", desc);
       if (desc == "") return;
+      desc = str_convert_bs2ansi(desc);
+
       if (g_help_desc == "")
         g_help_desc = desc;
       else
