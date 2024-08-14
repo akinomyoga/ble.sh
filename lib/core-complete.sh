@@ -4704,7 +4704,7 @@ elif ble/is-function ble/bin/nroff; then
     if [[ $_ble_util_locale_encoding == UTF-8 ]]; then
       ble/bin/nroff -Tutf8 -man
     else
-      ble/bin/groff -Tascii -man
+      ble/bin/nroff -Tascii -man
     fi
   }
 elif ble/is-function ble/bin/mandoc; then
