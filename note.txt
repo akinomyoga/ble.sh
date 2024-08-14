@@ -7394,6 +7394,43 @@ bash_tips
 
 2024-08-14
 
+  * select: C-o で region 選択が解除されずにコマンドが表示される [#D2247]
+    Ref. #D2207
+
+    これはまた面倒そうなので後で考える。と思ったが普通に C-m で実行した時にも同
+    様の問題が発生している。うーん。これは起こらない様に調整した様な気がするが、
+    改めてまた発生しているという事だろうか?
+
+    →調べてみた所、対応して追加修正した直後 98a2ae15 はちゃんと選択が解除され
+    て表示されている。911a4051 で動かなくなっている。911a4051 では
+    ble/textarea#render に opts=leave を指定したら _ble_complete_menu_active や
+    _ble_edit_overwrite_mode を解除して描画する様に変更している。
+
+    a しかし、それが効いていないという事だろうか?
+
+    b 或いは一旦 _ble_complete_menu_active= で描画した後に再び上書き描画してし
+      まっている可能性? 然しそれも変な気がする。
+
+    確認してみた所、そもそも描画更新が発生していない。umin,umax が -1,-1 の儘に
+    なっているのでそもそも描画が起こらないという状況である。更に詳しく見ると
+    region layer も何も更新がないと報告している。
+
+    region は _ble_edit_mark_active を参照して決めている。とここで気付いたのだ
+    がそもそも opts=leave を指定している時に _ble_edit_mark_active を無効化して
+    いない。コメントでは _ble_edit_overwrite_mode= に対して layer:region を無効
+    化しているという事になっているが、これは明らかに間違ってい
+    る。_ble_edit_overwrite_mode で無効化できるのは layer:overwrite_mode であり、
+    layer:region を無効化するには _ble_edit_mark_active を空にしなければならな
+    い。これは単純に変更ミスと思うべき。
+
+    "local _ble_edit_mark_active=" を ble/textarea#render で指定する様にしたら
+    ちゃんと直った。
+
+    * reject: 或いはもう一つの方法として region をそもそも実行時には無効化する?
+      → 原因は "region が有効な状態で再度描画される事によって復元する" などで
+      はなくて、そもそも region を無効化して描画する時点でちゃんと更新がかかっ
+      ていないのが原因だった。
+
   * highlight: echo $* とすると $* がエラー着色される [#D2246]
 
     これは何故だろうか。failglob 着色が有効になっているという事?

@@ -115,6 +115,7 @@
 - keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` 4268650d
 - edit: render the final prompt before updating command history (motivated by pallaswept) `#D2207` 911a4051
   - debug: support `bleopt debug_profiler_opts=tree` `#D2216` a453f373
+  - edit: fix leftover region after command execution `#D2247` xxxxxxxx
 - keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` aa7ca45d
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8

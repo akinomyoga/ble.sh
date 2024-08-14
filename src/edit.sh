@@ -3680,7 +3680,8 @@ function ble/textarea#render {
   # 着色の更新
   if [[ :$opts: == *:leave:* ]]; then
     local _ble_complete_menu_active= # suppress layer:menu_filter
-    local _ble_edit_overwrite_mode= # suppress layer:region
+    local _ble_edit_mark_active= # suppress layer:region
+    local _ble_edit_overwrite_mode= # suppress layer:overwrite_mode
   fi
   local DMIN=$_ble_edit_dirty_draw_beg
   ble-edit/content/update-syntax
