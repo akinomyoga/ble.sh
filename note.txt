@@ -7392,6 +7392,43 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-14
+
+  * main: bash-4.4 で POSIXLY_CORRECT 補正が動いていない (reported by vasi786) [#D2243]
+    https://github.com/akinomyoga/ble.sh/issues/477
+
+    Ref. #D2221
+
+    * 48c7bbee (#D2221) より前は動いていたというのは確実
+
+    * 毎回コマンドを実行する時には状態が壊れている。
+
+    * 通常の編集時には状態は壊れていない気がする。しかしそれでも何故か TAB が無
+      反応になるという現象は発生する。
+
+    どうも ble/widget/vi_imap/complete の中で "C-i": complete になる様だ。更に
+    調べると ble/complete/menu-complete/enter の内部で起こっている。更に
+    ble/decode/keymap#load menu_complete の中で発生している。更に辿ると
+    ble-decode/keymap:menu_complete/define の中で発生している。とここで分かった。
+    ble-decode/keymap:menu_complete/define の中で実行している ble-bind が原因だ
+    ろう。ble-bind の中で POSIXLY_CORRECT の調整を行っている。これは今まで無かっ
+    た物の筈である。中を確認すると "$_ble_bash_POSIXLY_CORRECT_local_adjust" と
+    "$_ble_bash_POSIXLY_CORRECT_local_return" を呼び出している。何もなければ -o
+    posix を待避する事もなく、従って workaround-POSIXLY_CORRECT を実行する必要
+    すらもない筈だ。しかし、何かが起こっているという事は実際に無条件で
+    POSIXLY_CORRECT に触っているという事。
+
+    テスト用に用いた関数:
+
+      function check-posix {
+        local ext=$? posix=$(builtin bind -p | grep C-i)
+        if [[ $posix != "$_dbg_posix_prev" ]]; then
+          echo "${FUNCNAME[1]}${1:+:$1}: state changed (${posix:+C-i broken})" >/dev/tty
+          _dbg_posix_prev=$posix
+        fi
+        return "$ext"
+      }
+
 2024-07-29
 
   * BUG main: _ble_bash が消失している (reported by tessus and Knusper) [#D2242]

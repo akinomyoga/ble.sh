@@ -298,7 +298,7 @@ fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
     \builtin local _ble_local_POSIXLY_CORRECT _ble_local_POSIXLY_CORRECT_set
     _ble_local_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
     _ble_local_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
-    \builtin unset -v POSIXLY_CORRECT'
+    '$_ble_bash_POSIXLY_CORRECT_unset
   _ble_bash_POSIXLY_CORRECT_local_leave='
     if [[ $_ble_local_POSIXLY_CORRECT_set ]]; then
       POSIXLY_CORRECT=$_ble_local_POSIXLY_CORRECT
@@ -306,7 +306,7 @@ fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
   _ble_bash_POSIXLY_CORRECT_local_enter='
     _ble_local_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
     _ble_local_POSIXLY_CORRECT=${POSIXLY_CORRECT-}
-    \builtin unset -v POSIXLY_CORRECT'
+    '$_ble_bash_POSIXLY_CORRECT_unset
   _ble_bash_POSIXLY_CORRECT_local_return='
     \builtin local _ble_local_POSIXLY_CORRECT_ext=$?
     if [[ $_ble_local_POSIXLY_CORRECT_set ]]; then

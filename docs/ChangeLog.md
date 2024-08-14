@@ -11,6 +11,7 @@
   - util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
   - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
   - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` 48c7bbee
+    - main: fix workaround for the posix vi-insert <kbd>C-i</kbd> binding in `bash <= 5.0` (reported by vasi786) `#D2243` xxxxxxxx
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69

@@ -2979,16 +2979,20 @@ function ble/decode/readline/adjust-uvw {
 
 # ble.pp の関数を上書き
 #
-# Note: bash で set -o vi の時、
-#   builtin unset -v POSIXLY_CORRECT や local POSIXLY_CORRECT が設定されると、
-#   C-i の既定の動作の切り替えに伴って C-i の束縛が消滅する。
-#   ユーザが POSIXLY_CORRECT を触った時や自分で触った時に、
-#   改めて束縛し直す必要がある。
+
+# Note: bash で set -o vi の時、builtin unset -v POSIXLY_CORRECT や local
+#   POSIXLY_CORRECT が設定されると、C-i の既定の動作の切り替えに伴って C-i の束
+#   縛が消滅する。ユーザが POSIXLY_CORRECT を触った時や自分で触った時に、改めて
+#   束縛し直す必要がある。以下の patch を提出したところ 5.1 以降で修正された。
 #
-function ble/base/workaround-POSIXLY_CORRECT {
-  [[ $_ble_decode_bind_state == none ]] && return 0
-  builtin bind -x '"\C-i":_ble_decode_hook 9; builtin eval -- "$_ble_decode_bind_hook"'
-}
+#   https://lists.gnu.org/archive/html/bug-bash/2019-02/msg00035.html
+#
+if ((_ble_bash>=50100)); then
+  function ble/base/workaround-POSIXLY_CORRECT {
+    [[ $_ble_decode_bind_state == none ]] && return 0
+    builtin bind -x '"\C-i":_ble_decode_hook 9; builtin eval -- "$_ble_decode_bind_hook"'
+  }
+fi
 
 # **** ble-decode-bind ****                                   @decode.bind.main
 
