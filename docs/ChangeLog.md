@@ -50,6 +50,7 @@
 - syntax: support `ln=target` in `bleopt filename_ls_colors` (requested by akhilkedia) `#D2213` e169e31d
 - syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` e169e31d
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
+- highlight: reflect the top-level positional parameters `#D2246` xxxxxxxx
 
 ## Changes
 

@@ -6463,6 +6463,7 @@ function ble/widget/zap-to-char {
 _ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
+_ble_edit_exec_lastparams=()
 _ble_edit_exec_BASH_COMMAND=$BASH
 _ble_edit_exec_PIPESTATUS=()
 function ble-edit/exec/register {
@@ -7373,12 +7374,15 @@ function ble-edit/exec:gexec/.restore-lastarg {
   return "$_ble_edit_exec_lastexit" # set $?
 } &>/dev/null # set -x 対策 #D0930
 ## @fn ble-edit/exec:gexec/.save-lastarg (original name)
-## @fn _ble_edit_exec_gexec__save_lastarg
+## @fn _ble_edit_exec_gexec__save_lastarg params...
+##   @param[in] params...
+##     specify the positional parameters of the outer context.
 function _ble_edit_exec_gexec__save_lastarg {
   _ble_exec_time_EPOCHREALTIME_end=$EPOCHREALTIME \
     _ble_edit_exec_lastexit=$? \
     _ble_edit_exec_lastarg=$_ \
-    _ble_edit_exec_PIPESTATUS=("${PIPESTATUS[@]}")
+    _ble_edit_exec_PIPESTATUS=("${PIPESTATUS[@]}") \
+    _ble_edit_exec_lastparams=("$@")
   _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
 
@@ -7545,7 +7549,7 @@ function ble-edit/exec:gexec/.setup {
       # Note #D0465: 実際のコマンドと save-lastarg を同じ eval の中に入れている
       #   のは、同じ eval の中でないと $_ が失われてしまうから (特に eval を出
       #   る時に eval の最終引数になってしまう)。
-      buff[ibuff++]='{ _ble_edit_exec_gexec__save_lastarg; } 4>&1 5>&2 &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
+      buff[ibuff++]='{ _ble_edit_exec_gexec__save_lastarg \"\$@\"; } 4>&1 5>&2 &>/dev/null' # Note: &>/dev/null は set -x 対策 #D0930
       buff[ibuff++]='" 0<&"$_ble_util_fd_cmd_stdin" 1>&"$_ble_util_fd_cmd_stdout" 2>&"$_ble_util_fd_cmd_stderr"; } 2>| "$_ble_exec_time_TIMEFILE"'
       buff[ibuff++]='{ _ble_edit_exec_gexec__epilogue; } 3>&2 &>/dev/null'
 

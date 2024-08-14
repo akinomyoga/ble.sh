@@ -1359,6 +1359,37 @@ function ble/syntax:bash/simple-word/eval/.print-result {
   local ret; ble/string#quote-words "$@"
   ble/util/print "__ble_ret=($ret)"
 }
+## @fn ble/syntax:bash/simple-word/eval/.eval-set
+## @fn ble/syntax:bash/simple-word/eval/.eval-print
+##   Evaluate the specified word and set or print the results.
+##   @var[in] __ble_simple_word
+##     This variable specifies the target word to evalaute.
+##   @remarks #D2246: These functions are needed to evaluate the word in a
+##     context with the proper positional parameters.  The evaluation of the
+##     positional parameter expansions in $__ble_simple_word may cause
+##     unexpected "failglob" if the positional parameters of the current
+##     context is naively used.  We try to restore the positional parameters of
+##     the top-level context and evaluate the word with these positional
+##     parameters.
+function ble/syntax:bash/simple-word/eval/.eval-set {
+  if [[ ${_ble_edit_exec_lastparams[0]+set} ]]; then
+    set -- "${_ble_edit_exec_lastparams[@]}"
+  else
+    set --
+  fi
+  local ext=0
+  builtin eval -- "ble/syntax:bash/simple-word/eval/.set-result $__ble_simple_word" &>/dev/null; ext=$?
+  builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
+  return "$ext"
+}
+function ble/syntax:bash/simple-word/eval/.eval-print {
+  if [[ ${_ble_edit_exec_lastparams[0]+set} ]]; then
+    set -- "${_ble_edit_exec_lastparams[@]}"
+  else
+    set --
+  fi
+  builtin eval -- "ble/syntax:bash/simple-word/eval/.print-result $__ble_simple_word"
+}
 ## @fn ble/syntax:bash/simple-word/eval/.impl word opts
 ##   @param[in] word
 ##   @param[in,opt] opts
@@ -1411,8 +1442,9 @@ function ble/syntax:bash/simple-word/eval/.impl {
   # Note: failglob 時に一致がないと実行されないので予め __ble_ret=() をする。
   #   また、エラーメッセージが生じるので /dev/null に繋ぐ。
   __ble_ret=()
+  local __ble_simple_word=$__ble_word
   if [[ $__ble_flags == *s* ]]; then
-    local __ble_sync_command="ble/syntax:bash/simple-word/eval/.print-result $__ble_word"
+    local __ble_sync_command=ble/syntax:bash/simple-word/eval/.eval-print
     local __ble_sync_opts=progressive-weight
     local __ble_sync_weight=$bleopt_syntax_eval_polling_interval
 
@@ -1433,8 +1465,7 @@ function ble/syntax:bash/simple-word/eval/.impl {
     builtin eval -- "$__ble_script"
     ble/util/assign/rmtmp
   else
-    builtin eval "ble/syntax:bash/simple-word/eval/.set-result $__ble_word" &>/dev/null; local ext=$?
-    builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
+    ble/syntax:bash/simple-word/eval/.eval-set; local ext=$?
   fi
 
   [[ $__ble_flags == *f* ]] && set +f
@@ -1898,6 +1929,16 @@ function ble/syntax/highlight/vartype/.impl {
   fi
 
   local __ble_name=$1 __ble_opts=$2 __ble_tail=$3
+
+  # restore positional parameters if necesssary
+  if ble/string#match "$__ble_name" '^[1-9][0-9]*$'; then
+    if [[ ${_ble_edit_exec_lastparams[0]+set} ]]; then
+      set -- "${_ble_edit_exec_lastparams[@]}"
+    else
+      set --
+    fi
+  fi
+
   local __ble_attr; ble/variable#get-attr -v __ble_attr "$__ble_name"
   if [[ ${!__ble_name+set} || $__ble_attr == *[aA]* ]]; then
     local __ble_rex='^-?[0-9]+(#[_a-zA-Z0-9@]*)?$'
