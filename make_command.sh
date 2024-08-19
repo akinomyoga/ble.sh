@@ -175,6 +175,11 @@ function sub:check-all {
 
 _make_rex_escseq='(\[[ -?]*[@-~])*'
 
+function sub:scan/.mark {
+  local mark=$1
+  sed -E '/'"$mark"'($|[^0-9])/d;s/^/\x1b[1;95m'"$mark"'\x1b[m /'
+}
+
 function sub:scan/grc-source {
   local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk} --exclude=./{GNUmakefile,make_command.sh})
   grc "${options[@]}" "$@"
@@ -252,20 +257,20 @@ function sub:scan/bash300bug {
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
   grc '(local|declare|typeset) [_a-zA-Z]+=\(' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md --color |
-    grep -v '#D0184'
+    sub:scan/.mark '#D0184'
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
   grc '(local|declare|typeset) -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh --color |
-    grep -v '#D0525'
+    sub:scan/.mark '#D0525'
 
   # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
   grc '\$\{[_a-zA-Z0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
-    grep -v '#D1570'
+    sub:scan/.mark '#D1570'
 
   # bash-3.0 では "..${var-$'hello'}.." は (var が存在しない時) "..'hello'..." になる。
   grc '".*\$\{[^{}]*\$'\''([^\\'\'']|\\.)*'\''\}.*"' --exclude={./make_command.sh,memo,\*.md} --color |
-    grep -v '#D1774'
+    sub:scan/.mark '#D1774'
 
 }
 
@@ -292,7 +297,7 @@ function sub:scan/bash301bug {
   # 日本語の文字数が変になる。
   grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} --color |
     grep -Ev '^([^#]*[[:space:]])?#' |
-    grep -v '#D0182'
+    sub:scan/.mark '#D0182'
 }
 
 function sub:scan/bash400bug {
@@ -307,7 +312,7 @@ function sub:scan/bash400bug {
 function sub:scan/bash401-histexpand-bgpid {
   echo "--- $FUNCNAME ---"
   grc '"\$!"' --exclude={test,ChangeLog.md} --color |
-    grep -Ev '#D2028'
+    sub:scan/.mark '#D2028'
 }
 
 function sub:scan/bash404-no-argument-return {
@@ -677,6 +682,7 @@ function sub:scan {
       \Z keys type\bZd
       \Ztrap type ulimitZd
       \Zevent typeZd
+      \Z"unrecognized fzf-complete type Zd
 
       # awk scripts
       \Zif \(typeZd

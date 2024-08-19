@@ -11,7 +11,7 @@
   - util(joblist): fix job detection in Bash 5.3 `#D2157` 6d835818
   - util(joblist): exclude more foreground dead jobs in Bash 5.3 `#D2174` 8a321424
   - global: work around function names with slashes in Bash 5.3 POSIX mode `#D2221` 48c7bbee
-    - main: fix workaround for the posix vi-insert <kbd>C-i</kbd> binding in `bash <= 5.0` (reported by vasi786) `#D2243` xxxxxxxx
+    - main: fix workaround for the posix vi-insert <kbd>C-i</kbd> binding in `bash <= 5.0` (reported by vasi786) `#D2243` 8e7ed824
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
@@ -50,7 +50,7 @@
 - syntax: support `ln=target` in `bleopt filename_ls_colors` (requested by akhilkedia) `#D2213` e169e31d
 - syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` e169e31d
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
-- highlight: reflect the top-level positional parameters `#D2246` xxxxxxxx
+- highlight: reflect the top-level positional parameters `#D2246` f08e8f08
 - color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248`
 
 ## Changes
@@ -117,13 +117,13 @@
 - keymap/vi(relative-line.impl): fix uninitialized variable `nmove` `#D2203` 4268650d
 - edit: render the final prompt before updating command history (motivated by pallaswept) `#D2207` 911a4051
   - debug: support `bleopt debug_profiler_opts=tree` `#D2216` a453f373
-  - edit: fix leftover region after command execution `#D2247` xxxxxxxx
+  - edit: fix leftover region after command execution `#D2247` 75c4a848
 - keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` aa7ca45d
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
   - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e a9b962d2
-- mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` xxxxxxxx
+- mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` e0ffc418
 
 ## Compatibility
 
@@ -169,7 +169,7 @@
 - mandb: restore ASCII hyphens from Unicode hyphens before analysis (reported by pallaswept) `#D2230` f160b8f0
 - main: work around the issue WSL clears `/tmp` after Bash starts (reported by LeonardoMor) `#D2235` fcbf1ed0
 - decode(`ble/builtin/bind`): support single quotes in the macro/command strings `#D2236` 2f90120e
-- mandb: process less formatting sequences in parsing `--help` `#D2244` xxxxxxxx
+- mandb: process less formatting sequences in parsing `--help` `#D2244` 60d36ba5
 
 ## Contrib
 
@@ -193,6 +193,8 @@
 - contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
 - contrib/colorglass: fix fixed-point round `#D2239` b154058a
 - contrib: add `config/github48{1,3}` for elapsed-mark examples `#D2249` xxxxxxxx
+- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` xxxxxxxx
+- contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` xxxxxxxx
 
 ## Documentation
 
@@ -203,6 +205,7 @@
 - docs: apply Grammarly and fix typos `#D2099` 8b3f6f8c
 - docs(README): add sabbrev example for named directories `#D2115` a9a21a0e
 - docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` 208eaa9d
+- docs(README): move disclaimers to a later section `#D2250` xxxxxxxx
 
 ## Test
 

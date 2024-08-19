@@ -5294,7 +5294,6 @@ function ble/complete/mandb:help/generate-cache {
 
     function str_convert_bs2ansi(str, _, head, n, a, c, flag_bold, flag_underline, i, prefix, suffix) {
       if (str !~ /\x08/) return str;
-      print "str = " str >> "./a.txt"
 
       head = "";
       while (match(str, /(.\x08)+./) > 0) {

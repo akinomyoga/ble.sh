@@ -7394,6 +7394,37 @@ bash_tips
 
 2024-08-21
 
+  * contrib: ble/widget/fzf-complete (motivated by 3ximus) [#D2252]
+    https://github.com/akinomyoga/blesh-contrib/issues/20
+
+    設定例を contrib に追加するのが良い気がする。これは fzf-completion.bash の
+    中に直接追加する事にした。
+
+  * contrib: fzf-menu (motivated by pallaswept) [#D2251]
+    https://github.com/akinomyoga/ble.sh/issues/479
+
+    これについても設定を contrib に追加する事にする。というか既に追加してある。
+
+  * [OK] fzf-key-bindings: M-c binding が動かない (asked by markaacosta) [#D2250]
+    https://github.com/akinomyoga/blesh-contrib/issues/21
+
+    M-c は他の binding と比べて設定が異なって見える。最近追加された binding で
+    はないか、と思ったが物凄く昔からある。少なくとも 9 年前から存在している。うー
+    ん。key-bindings.bash が追加された時から存在している。そしてこれは元々
+    install の中にあった。install ²追加されたのは以下の commit である。
+    https://github.com/junegunn/fzf/commit/229601317433ee3ca94abdd09232a4b3db2d812c
+
+    という事は最近の ble.sh の側の変更でこの binding が動作しなくなったという事
+    なのだろう。
+
+    今まで気付いていなかったのは何なのだろうか。と思って
+    contrib/integration/fzf-key-bindings.bash を確認してみたらちゃんと対策がさ
+    れている。つまり、このユーザーは説明を読まずに fzf を使っているのではないか
+    という事が疑われる。
+
+    結局ユーザーが設定を間違えていただけだった。改めて README を見ていて分かり
+    にくかったので README の余分な部分は分離することにした。
+
   * contrib: exec_elapsed_mark 設定 (motivated by paulzzy, TheFantasticWarrior) [#D2249]
 
     * exec_elapsed_mark からコマンド名を削除する方法
@@ -7685,6 +7716,8 @@ bash_tips
     optarg については元々 control chars が含まれていると escape して見える様に
     表示してしまう様なので削除する。desc に関しては SGR による装飾に変換する事
     にする。
+
+    2024-08-22 テスト用の a.txt に対する出力が残留していた。削除する。
 
   * main: bash-4.4 で POSIXLY_CORRECT 補正が動いていない (reported by vasi786) [#D2243]
     https://github.com/akinomyoga/ble.sh/issues/477

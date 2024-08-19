@@ -8,26 +8,16 @@
 <a href="https://github.com/akinomyoga/ble.sh/wiki/Recipes">Recipes</a> ]
 </p>
 
-*Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash which replaces the default GNU Readline.
+*Bash Line Editor* (`ble.sh`<a href="#discl-pronun">†1</a>) is a command line editor written in pure Bash<a href="#discl-pure">†2</a> which replaces the default GNU Readline.
 
 The current devel version is 0.4.
 This script supports Bash 3.0 or higher although we recommend using `ble.sh` with release versions of **Bash 4.0 or higher**.
+The POSIX standard utilities are also required.
 Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
 
-Disclaimer: The core part of the line editor is written in **pure Bash**, but
-`ble.sh` relies on POSIX `stty` to set up TTY states before and after the execution of user commands.
-It also uses other POSIX utilities for acceleration
-in some parts of initialization and cleanup code,
-processing of large data in completions, pasting large data, etc.
-
-Pronunciation: The easiest pronunciation of `ble.sh` that users use is /blɛʃ/, but you can pronounce it as you like.
-I do not specify the canonical way of pronouncing `ble.sh`.
-In fact, I personally call it simply /biːɛliː/ or verbosely read it as /biːɛliː dɑt ɛseɪtʃ/ in my head.
-
 ## Quick instructions
 
-To use `ble.sh`, Bash 3.0+ and POSIX standard utilities are required.
 <!-- In macOS, you might additionally need to install `gawk`, `nawk`, or `mawk` since macOS `/usr/bin/awk` (awk-32 and later) seems to have a problem with some multibyte charsets. -->
 There are two ways to get `ble.sh`: to download and build `ble.sh` using `git`, or to download the nightly build using `curl` or `wget`.
 For the detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
@@ -39,7 +29,7 @@ and [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
 
 <details open><summary><b>Download and generate <code>ble.sh</code> using <code>git</code></b></summary>
 
-This requires the commands `git`, `make` (GNU make), and `gawk` (GNU awk).
+This requires the commands `git`, `make` (GNU make), and `gawk` (GNU awk)<a href="#discl-pronun">†3</a>.
 In the following, please replace `make` with `gmake` if your system provides GNU make as `gmake` (such as in BSD).
 
 ```bash
@@ -58,20 +48,7 @@ echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 
 The build process integrates multiple Bash script files into a single Bash script `ble.sh` with pre-processing,
 places other module files in appropriate places, and strips code comments for a shorter initialization time.
-
-Note: This does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
-Some people seem to believe that one always needs to use `make` with C/C++/Fortran compilers to generate binaries.
-They complain about `ble.sh`'s make process, but it comes from the lack of knowledge on the general principle of `make`.
-You may find C/C++ programs in the repository, but they are used to update the Unicode character table from the Unicode database when a new Unicode standard appears.
-The generated table is included in the repository:
-[`canvas.GraphemeClusterBreak.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.GraphemeClusterBreak.sh),
-[`canvas.c2w.musl.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.musl.sh),
-[`canvas.c2w.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.sh),
-and [`canvas.emoji.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.emoji.sh),
-so there is no need to run these C/C++ programs in the build process.
-Another C file is used as an adapter in an old system MSYS1,
-which is used with an old compiler toolchain in Windows, but it will never be used in Unix-like systems.
-Each file used in the build process is explained in [`make/README.md`](make/README.md).
+The build process does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
 </details>
 
 <details><summary><b>Download the nightly build with <code>curl</code></b></summary>
@@ -138,7 +115,7 @@ bash /path/to/ble.sh --update
 
 <details><summary><b>Create a package of <code>ble.sh</code></b></summary>
 
-Since `ble.sh` is just a set of shell scripts and do not contain any binary (i.e., "`noarch`"), 
+Since `ble.sh` is just a set of shell scripts and do not contain any binary (i.e., "`noarch`"),
 you may just download the pre-built tarball from release pages and put the extracted contents in e.g. `/tmp/blesh-package/usr/local`.
 Nevertheless, if you need to build the package from the source, please use the following commands.
 Note that the git repository (`.git`) is required for the build.
@@ -263,8 +240,59 @@ For example,
   are different.  `ble.sh` adjusts them for the line editor and try to restore
   the settings for the command execution.  However, there are settings that
   cannot be restored or are intentionally not restored for various reasons.
-  Some of them are summarlized on [a wiki
+  Some of them are summarized on [a wiki
   page](https://github.com/akinomyoga/ble.sh/wiki/Internals#internal-and-external).
+
+## Disclaimer
+
+- Q. It is hard to pronounce "ble-sh"<a id="discl-pronun"
+  href="#discl-pronun">†1</a>. How should I pronounce it? --- A. The easiest
+  pronunciation of `ble.sh` that users use is /blɛʃ/, but you can pronounce it
+  as you like.  I do not specify the canonical way of pronouncing `ble.sh`.  In
+  fact, I personally call it simply /biːɛliː/ or verbosely read it as /biːɛliː
+  dɑt ɛseɪtʃ/ in my head.
+- Q. It cannot be pure Bash<a id="discl-pure" href="#discl-pure">†2</a>
+  because the user should be able input and run external commands.  What does
+  the pure Bash mean? --- A. It means that the core part of the line editor is
+  written in pure Bash.  Of course, the external commands will be run when the
+  user input it and request the execution of it.  In addition, before and after
+  the execution of user commands, `ble.sh` relies on POSIX `stty` to set up the
+  correct TTY states for user commands.  It also uses other POSIX utilities for
+  acceleration in some parts of initialization and cleanup code, processing of
+  large data in completions, pasting large data, etc.  The primary goal of the
+  `ble.sh` implementation is not being pure Bash, but the performance in the
+  Bash implementation with the POSIX environment.  Being pure Bash is usually
+  useful for reducing the `fork`/`exec` cost, but if implementation by external
+  commands are more efficient in specific parts, `ble.sh` will use the external
+  commands there.
+- Q. Why does `ble.sh` use `make` to generate the script file?<a
+  id="discl-make" href="#discl-make">†3</a> You should not use `make` for a
+  script framework. --- A. Because it is not a good idea to directly edit a
+  large script file of tens of thousands of lines.  I split the codebase of
+  `ble.sh` into source files of reasonable sizes and edit the source files.  In
+  the build process, some source files are combined to form the main script
+  `ble.sh`, and some other files are arranged in appropriate places.  The
+  reason for combining the files into one file instead of sourcing the related
+  files in runtime is to minimize the shell startup time, which has a large
+  impact on the shell experience.  Opening and reading many files can take a
+  long time.  Some people seem to be angry about `ble.sh` using `make` to build
+  and arrange script files.  They seem to believe that one always needs to use
+  `make` with C/C++/Fortran compilers to generate binaries.  They complain
+  about `ble.sh`'s make process, but it comes from the lack of knowledge on the
+  general principle of `make`.  Some people seem to be angry about `ble.sh`
+  having C/C++ source codes in the repository, but they are used to update the
+  Unicode character table from the Unicode database when a new Unicode standard
+  appears.  The generated table is included in the repository:
+  [`canvas.GraphemeClusterBreak.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.GraphemeClusterBreak.sh),
+  [`canvas.c2w.musl.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.musl.sh),
+  [`canvas.c2w.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.c2w.sh),
+  and
+  [`canvas.emoji.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.emoji.sh),
+  so there is no need to run these C/C++ programs in the build process.
+  Another C file is used as an adapter in an old system MSYS1, which is used
+  with an old compiler tool chain in Windows, but it will never be used in
+  Unix-like systems.  Each file used in the build process is explained in
+  [`make/README.md`](make/README.md).
 
 # 1 Usage
 
@@ -684,7 +712,7 @@ Please follow the instructions in the link for the detailed description.
 # blerc
 
 # Note: If you want to combine fzf-completion with bash_completion, you need to
-# load bash_completion earilier than fzf-completion.  This is required
+# load bash_completion earlier than fzf-completion.  This is required
 # regardless of whether to use ble.sh or not.
 source /etc/profile.d/bash_completion.sh
 
@@ -695,18 +723,29 @@ ble-import -d integration/fzf-key-bindings
 The option `-d` of `ble-import` delays the initialization.  In this way, the
 fzf settings are loaded in background after the prompt is shown.  See
 [`ble-import` - Manual §8](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A78-Miscellaneous#user-content-fn-ble-import)
-for details.  If you would like to additionally configure the fzf settings
-after loading them, there are four options.  The easiest way is to drop the
-`-d` option (Option 1 below).  As another option, you may also delay the
-additional settings with `ble-import -d` [2] or `ble/util/idle.push` [3].  Or,
-you can hook into the loading of the fzf settings by `ble-import -C` [4].
+for details.
+
+### When you have additional configuration for fzf
+
+When you want to run codes of the additional configuration after the fzf
+settings are loaded, you cannot simply write them after the above settings
+because of the delayed loading of the fzf settings.  In this case, there are
+four options.  The easiest way is to drop the `-d` option (Option 1 below) to
+disable the delayed loading:
 
 ```bash
 # [1] Drop -d
 ble-import integration/fzf-completion
 ble-import integration/fzf-key-bindings
 <settings>
+```
 
+However, the above setting may make the initialization time longer.  As another
+option, you may also delay the additional settings with `ble-import -d` [2] or
+`ble/util/idle.push` [3].  Or, you can hook into the loading of the fzf
+settings by `ble-import -C` [4].
+
+```bash
 # [2] Use ble-import -d for additional settings
 ble-import -d integration/fzf-completion
 ble-import -d integration/fzf-key-bindings
@@ -780,7 +819,7 @@ ble-sabbrev "~mybin=$HOME/bin"
 
 # 4 Contributors
 
-I received many feedbacks from many people in GitHub Issues/PRs.
+I received much feedback from many people in GitHub Issues/PRs.
 I thank all such people for supporting the project.
 Among them, the following people have made particularly significant contributions.
 
