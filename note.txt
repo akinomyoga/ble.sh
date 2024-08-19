@@ -7392,6 +7392,204 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-19
+
+  * color: パレット再考 (requested by mattmc3) [#D2248]
+    https://github.com/akinomyoga/ble.sh/issues/478
+
+    色弱・色盲の為の色変換の式: https://mk.bcgsc.ca/colorblind/math.mhtml
+
+    greyscale で見える範囲を決定する。色々の見え方について greyscale に変換した
+    時に範囲を指定する。→mattmc3 から返信があった。87 .. 198 乃至は 96 .. 174
+    との事である。自分の目で見た感じだと 100 .. 200 だと思った。色々範囲を変え
+    て見てみると 100..174 でも一応たくさんの色の選択肢があるようなのでこの範囲
+    で選ぶ事にする。
+
+    - 26 -> 33
+    - 92 -> 99
+    - 94 -> 100
+    - 124 -> 166
+    - navy -> 63
+    - purple -> 133
+
+    変更漏れがない様に置換を自動化する様にする。適当に patch を生成して、それを
+    確認してから patch -p1 < a.patch で適用する事にする。適用した。動いている。
+
+    * ok: 既存の色と被っていない事も確認した。(airline themes にはあるがこれは
+      status line だけでの着色なので被る事はないと考えられるし、そもそも
+      airline theme は既定の着色ではなくてユーザーが選択する着色テーマなので気
+      にしなくて良い。また、 github265-prompt-path-level-colors.bash でも一つの
+      レベルにおける着色に使われているが、これも気にしなくて良い。)
+
+    * base16 専用のテーマも用意して良いのではないかという気がする。いよいよ
+      themes を作成する? 読み込みの方法について考える。単に ble-import で読み込
+      む形にすると初回しか設定されない。ちゃんと変更した時に適用される為には
+      bleopt 経由で読み取る必要があるのでは。或いは、include check なしに強制的
+      に読み取る種類の ble-import を実装するか?
+
+      何れにしても bleopt theme があると良い気がする → 簡単に実装した。
+
+      * ok: 取り敢えず一回 ble-import して後は initialize を呼び出す形にしたが、
+        そうでない方が良いかもしれない? でもこれは後で考えれば良い気がする。後
+        で毎回 source する形にするとしても、source した後で initialize を実行す
+        る様にすれば interface を変えなくても、メモリーの問題はない気がする
+        (initialize 以外にも様々な関数や変数を作成しない限りは)。
+
+      * fixed: "theme" という名前だと prompt theme を提供する物の様に思える。別
+        の名前にできないか。palette など。或いは theme として prompt を提供した
+        りしなかったり、face に対する色を提供したりしなかったりなどの自由度を許
+        す? 然しそれは分かりにくい。一覧を見てどの palette が利用可能でどの
+        prompt が利用可能化が見えるようにしたい。ディレクトリの中を除いた時にそ
+        れらが一緒くたになっているのは良くない。
+
+        → theme ではなくて palette に変更した。
+
+      * done: 現在 base16 は基本の配色の上に重ねて適用する前提になっているが、
+        既に別の palette が適用されていた場合どうするのか? 前の palette の影響
+        が残っても良いのか? 駄目の気がする。
+
+        palette を設定して初期化する前に設定を clear する必要がある気がする。そ
+        うすると default palette については空で良いという事になる。
+
+        うーん。基本の face 一覧を clear するというのは palette の側で明示的に
+        示した方が分かりやすいのでは。と思ったがやはり palette=name で指定でき
+        る様にする以上は干渉する可能性が残っているのは望ましくない。
+
+        然し palette に於いて基本の物以外の face を指定しても良いはずである。そ
+        ういう場合には呼び出し元が既定に戻してくれると期待していると変な事にな
+        る。
+
+      * done: 既定の配色も palette にするべきか? 一旦 palette を切り替えた後に
+        元に戻すことができなくなるのでは? 然し、contrib がなくても動く様にした
+        いという事を考えると完全に contrib の中に既定の palette を移動するのは
+        したくない。例えば、基本の face については ble-face -r を実行するなど?
+
+        →基本設定は飽くまで本体の中に含めるが形式的に基本設定を復元するコマン
+        ドの列 (ble-face -r) として "default" palette を提供する事にした。他の
+        palette で基本設定を元にして修正する場合にはこの基本設定を呼び出してか
+        ら固有の設定を上書きする事にする。
+
+      ? 既存の theme の値が残っていた時に初期化時に初期化順序で問題が起こらない
+        か? と思ったが問題ない様である。初期化の遅延がされないなど多少の問題は
+        生じるかもしれないが。
+
+        うーん。やはり face 関連が初期化されるまでは初期化を遅延するべきの気が
+        する。初期化が終了した時点で default 以外になっていたら読み込みを実行す
+        る事にする。
+
+        と思ったが、改めて実装を確認してみると ble-face や ble/color/face を呼
+        び出しても直ちに初期化が実行される訳ではない。初期化前の ble-face の呼
+        び出しはを通して行われる様だ。なので気にしなくて良い? うーん。然し処理
+        が遅くなる様な気がするのでやはりできるだけ遅延する方が親切だろうか。と
+        いうか、ユーザーが個別に設定した ble-face の方を優先させたいと思うとや
+        はり同じ様に遅延させるのでは駄目の気がする。
+
+        →bleopt palette に関しては特別に遅延させる事にした。initialize-faces
+        で他の ble-face による初期化に先立って実行する。取り敢えず動いている。
+        vim-airline を使っていない限りはちゃんと ble-reload でも faces 初期化の
+        遅延が動いている。
+
+      x fixed: どうも ble/color/initialize-faces が余分に2回呼び出されていた様
+        だ。2回も呼び出す必要はない筈である。修正した。
+
+      x ok: うーん。ble-reload の時に vim-airline の設定によって結局最初に
+        initialize-faces が呼び出されている。vim-airline の設定も遅延できないの
+        か? うーん。と思ったが前の session で設定した bleopt vim_airline_theme
+        を継承していて、それによって "bleopt -I" から initialize-faces が呼び出
+        されている。これは仕方がない事の様な気がする。幸いにして初回の実行時に
+        はこれは起こらないので余り気にしなくて良い気がする。
+
+      ? done: うーん。theme -> palette にしたがよく考えたら ble palette と被る。
+        それに余り良い名前でもなかった気がする。やはり theme に戻すか? →
+        scheme に変更する事にした。
+
+        - そもそも prompt の theme については prompt_* という一連の設定が既にあ
+          るのだから prompt_theme にするのが良い気がする。
+
+        - また、theme を避けるにしても既に bleopt vim_airline_theme という設定
+          を作っているので今更の感じもする (とは言いつつ vim_airline_theme は未
+          だ prompt の theme の一部の様な気がする。ただし、配色しか指定していな
+          くて各 segment に何を表示するかは vim_airline_theme では指定していな
+          い)。
+
+        やはり theme に戻したい。
+
+        →と思ったが theme に戻すとすると contrib/palette は contrib/theme に変
+        更するのだろうか。然し、元々は contrib/theme には prompt 用のテーマを格
+        納するつもりだった。contrib/prompt は prompt/backslash:* の定義を置く場
+        所にしたい。だとすると、prompt 用のテーマを contrib/theme 以外の場所に
+        配置するか、配色設定を contrib/theme 以外に配置するかしなければならない。
+
+        他の framework (bash-it, oh-my-bash) との一貫性を考えるとやはり
+        contrib/theme には prompt のテーマを置く事にしたい。配色設定を palette
+        に置くとするとやはり ble palette との兼ね合いで分かりにくい気がする。何
+        より bleopt palette=name で設定できるのだとしたら ble palette で単に端
+        末の色表示が見られるだけというのは混乱の元である。
+
+        辞書や ChatGPT で調べてみると配色は color scheme と言ったり colorway と
+        言ったりするらしい。iTerm2 云々の repository の名前が scheme だったのは
+        そういう事だったのだ。うーん。scheme にするのが良い気がしてきた。bleopt
+        は color_scheme で、contrib の下は scheme という事にする。
+
+    * done: 折角 color blindness について調べたのだから colorglass_blindness 等
+      について対応しても良いのではないか? その場合には色変換のコードをシェルで
+      作成する必要がある。とは言いつつ行列の掛け算だけ実装すれば良い気がする。
+
+    * done: colorglass で使う base16 color について指定する仕組み。というか、
+      base16 palette が指定されている時は、変換する時だけでなく、常にその色を使
+      うようにするべき。
+
+    * reject: colorglass.base16.dat の md version も追加する? 然し余りにも沢山
+      のデータを repository に含めるのはどうなのだろう。documentation はやはり
+      wiki に記述するべきなのではないか? 特に自動生成される物については wiki に
+      入れるべきの気がする。
+
+      →実際に生成してみて wiki に push して見たがちゃんと表示されない。以下の
+      ページによるとどうやら Issue/PR/Discussion でしか有効ではない様だ。Wiki
+      はもちろん README などのファイルとして存在する markdown でも対応していな
+      い様だ。つまり、GFM の範囲で色サンプルを表示する方法はないという事?
+
+      https://qiita.com/Yarakashi_Kikohshi/items/8b1ebfa798a35dec6154#%E3%82%AB%E3%83%A9%E3%83%BC%E3%83%81%E3%83%83%E3%83%97%E3%81%AE%E8%A1%A8%E7%A4%BA
+
+      gh-pages に載せるしかないという事?
+
+      他に気付いた事は contrib/colorglass.base16.dat.md にファイルを作ったが
+      colorglass.base16.dat として表示されてしまう。然し一方で GitHub の Web UI
+      からだと contrib/ 以下にファイルを作ることができる気がする。ファイル名の
+      対応はどうなっているのだろうか? うーん。
+      wiki/contrib/colorglass.base16.dat にアクセスするとファイル作成画面に跳ぶ
+      が、其処で slash 入のファイル名を指定しても結局生成されるファイル名は /
+      から - に置換された物になってしまう。そして改めて - を / に置き換えた URL
+      にアクセスすると再びファイル作成画面が表示される。
+
+      うーん。wiki に変なファイルを追加してしまったがこれを保持しておく必要は全
+      くない。colorglass.base16.dat の内容と等価の情報しか表示できていない。削
+      除するべき。
+
+      うーん。取り敢えずサンプルの表示は諦める事にする。
+
+      取り敢えず -t html で html を生成できる様にした。
+
+    * done: color.sample.sh: list-safe-colors で .md 形式でも色を出力できる様に
+      する。markdown では背景色を任意に設定できないので `#xxxxxx` を沢山 table
+      に含めるだけになるだろう。
+
+      →これも GFM で表示できない以上は生成する意味がない気がする。一応生成の為
+      のコードだけは作成しておく? → オプション -t で出力形式を切り替えられる様
+      にした。plain markdown の出力と html の出力を追加した。実際には html の出
+      力で確認するのが妥当だろう。
+
+    * done: contrib/*.md をちゃんとコピーするようにする?
+
+    * done: docs: bleopt colorglass_{blindness,base16_palette}
+
+    * done: wiki, blerc: bleopt color_scheme
+
+    * done: gh-pages: 新しく gh-pages を作る? color.sample.safe-colors.html と
+      colorglass.base16.html を追加する? index.html には単純にリンクの一覧を載
+      せるだけで良い。colorglass.base16.html については contrib/colorglas.md か
+      らリンクを貼る。というか make/README.md からもリンクを貼る。
+
 2024-08-14
 
   * select: C-o で region 選択が解除されずにコマンドが表示される [#D2247]

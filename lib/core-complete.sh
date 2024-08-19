@@ -1212,11 +1212,15 @@ function ble/complete/check-cancel {
 ## 既存の action
 ##
 ##   ble/complete/action:plain
-##   ble/complete/action:word
-##   ble/complete/action:file
+##   ble/complete/action:{,literal-}{word,substr}
+##   ble/complete/action:file{,_rhs}
+##   ble/complete/action:cdpath
 ##   ble/complete/action:progcomp
+##   ble/complete/action:mandb{,.flag}
 ##   ble/complete/action:command
 ##   ble/complete/action:variable
+##   ble/complete/action:tilde
+##   ble/complete/action:{suffix-,}sabbrev
 ##
 ## action の実装
 ##
@@ -1230,9 +1234,9 @@ function ble/complete/check-cancel {
 ##
 ##   @var[in] COMP1 COMP2 COMPS COMPV comp_type
 ##
-##   @var[in    ] COMP_PREFIX
+##   @var[in] COMP_PREFIX
 ##
-##   @var[in    ] comps_flags
+##   @var[in] comps_flags
 ##     以下のフラグ文字からなる文字列です。
 ##
 ##     p パラメータ展開の直後に於ける補完である事を表します。
@@ -1251,11 +1255,25 @@ function ble/complete/check-cancel {
 ##     Note: shopt -s nocaseglob のため、フラグ文字は
 ##       大文字・小文字でも重複しないように定義する必要がある。
 ##
-##   @var[in    ] comps_fixed
+##   @var[in] comps_fixed
 ##     補完対象がブレース展開を含む場合に ibrace:value の形式になります。
 ##     それ以外の場合は空文字列です。
 ##     ibrace はブレース展開の構造を保持するのに必要な COMPS 接頭辞の長さです。
 ##     value は ${COMPS::ibrace} のブレース展開を実行した結果の最後の単語の評価結果です。
+##
+## @fn ble/complete/action:$ACTION/initialize.batch
+##   Convert all the elements stored in "cands" to the array "inserts" at once.
+##
+##   @var[in] ACTION
+##   @var[in] DATA
+##   @arr[in] cands
+##   @arr[out] inserts
+##
+##   @var[in] COMP1 COMP2 COMPS COMPV comp_type
+##   @var[in] COMP_PREFIX
+##   @var[in] comps_flags
+##   @var[in] comps_fixed
+##     (see ble/complete/action:$ACTION/initialize)
 ##
 ## @fn ble/complete/action:$ACTION/complete
 ##   一意確定時に、挿入文字列・範囲に対する加工を行います。
@@ -1281,6 +1299,20 @@ function ble/complete/check-cancel {
 ##     m   [out] 候補一覧 (menu) の表示を要求する事を表します。
 ##     n   [out] 再度補完を試み (確定せずに) 候補一覧を表示する事を要求します。
 ##
+## @fn ble/complete/action:$ACTION/init-menu-item
+##   @var[in] ACTION CAND INSERT DATA PREFIX_LEN
+##     These variables contain the data of the current item.
+##   @var[ref] g prefix suffix
+##     When the corresponding information exists, the corresponding variable is
+##     updated.
+##
+## @fn ble/complete/action:$ACTION/get-desc
+##   @var[in] ACTION CAND INSERT DATA PREFIX_LEN
+##     These variables contain the data of the current item.
+##   @var[in] desc_sgr0 desc_sgrq desc_sgrt
+##     These variables specify the graphic styles of descriptions
+##   @var[out] desc
+##     Store the generated description
 
 function ble/complete/string#escape-for-completion-context {
   local str=$1 escape_flags=$2

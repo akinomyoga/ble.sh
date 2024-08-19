@@ -1112,6 +1112,7 @@ function ble/color/face2sgr-ansi { ble/color/initialize-faces && ble/color/face2
 # 遅延初期化子
 _ble_color_faces_initialized=
 function ble/color/initialize-faces {
+  [[ $_ble_color_faces_initialized ]] && return 0
   local _ble_color_faces_initializing=1
   local -a _ble_color_faces_errors=()
 
@@ -1192,6 +1193,8 @@ function ble/color/initialize-faces {
   }
 
   _ble_color_faces_initialized=1
+  [[ $bleopt_color_scheme == default ]] ||
+    bleopt/check:color_scheme/load "$bleopt_color_scheme"
   blehook/invoke color_defface_load
   blehook/invoke color_setface_load
   blehook color_defface_load=
@@ -1509,6 +1512,46 @@ function ble-face {
   builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
   ble/color/face "$@"
   builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
+}
+
+function bleopt/check:color_scheme/error {
+  if [[ $_ble_color_faces_initializing ]]; then
+    ble/array#push _ble_color_faces_errors "$1"
+  else
+    ble/util/print "$1" >&2
+  fi
+}
+
+## @fn bleopt/check:color_scheme/load scheme
+function bleopt/check:color_scheme/load {
+  if ! ble-import "contrib/scheme/$1"; then
+    bleopt/check:color_scheme/error "bleopt: The specified scheme '$1' not found."
+    return 1
+  fi
+
+  local init=ble/contrib/scheme:$1/initialize
+  if ! ble/is-function "$init"; then
+    bleopt/check:color_scheme/error "bleopt: scheme=$1: The function '$init' not found."
+    return 1
+  fi
+
+  "$init"
+}
+
+bleopt/declare -n color_scheme 'default'
+function bleopt/check:color_scheme {
+  # If the faces have not yet been initialized, we only check the existence of
+  # the scheme file.
+  if [[ ! $_ble_color_faces_initialized ]]; then
+    local ret
+    if ! ble/util/import/search "contrib/scheme/$value"; then
+      ble/util/print "bleopt: The file for the specified scheme '$value' not found." >&2
+      return 1
+    fi
+    return 0
+  fi
+
+  bleopt/check:color_scheme/load "$value"
 }
 
 #------------------------------------------------------------------------------

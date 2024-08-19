@@ -927,6 +927,13 @@
 #bleopt syntax_eval_polling_interval=50
 
 
+## If set to a non-empty value, the setting "color_scheme" specifies a preset
+## graphic styles for basic faces.  The supported schemes are found in the
+## subdirectory "contrib/scheme".  The default value is "default".
+
+#bleopt color_scheme=base16
+
+
 ## The following settings specify graphic styles of corresponding faces.  Faces
 ## used for specific features are described in the respective sections.
 
@@ -942,32 +949,32 @@
 #ble-face -s syntax_quoted             fg=green
 #ble-face -s syntax_quotation          fg=green,bold
 #ble-face -s syntax_escape             fg=magenta
-#ble-face -s syntax_expr               fg=navy
+#ble-face -s syntax_expr               fg=63
 #ble-face -s syntax_error              bg=203,fg=231
 #ble-face -s syntax_varname            fg=202
 #ble-face -s syntax_delimiter          bold
-#ble-face -s syntax_param_expansion    fg=purple
+#ble-face -s syntax_param_expansion    fg=133
 #ble-face -s syntax_history_expansion  bg=94,fg=231
-#ble-face -s syntax_function_name      fg=92,bold
+#ble-face -s syntax_function_name      fg=99,bold
 #ble-face -s syntax_comment            fg=gray
 #ble-face -s syntax_glob               fg=198,bold
 #ble-face -s syntax_brace              fg=37,bold
-#ble-face -s syntax_tilde              fg=navy,bold
-#ble-face -s syntax_document           fg=94
-#ble-face -s syntax_document_begin     fg=94,bold
+#ble-face -s syntax_tilde              fg=63,bold
+#ble-face -s syntax_document           fg=100
+#ble-face -s syntax_document_begin     fg=100,bold
 #ble-face -s command_builtin_dot       fg=red,bold
 #ble-face -s command_builtin           fg=red
 #ble-face -s command_alias             fg=teal
-#ble-face -s command_function          fg=92 # fg=purple
+#ble-face -s command_function          fg=99 # fg=133
 #ble-face -s command_file              fg=green
 #ble-face -s command_keyword           fg=blue
 #ble-face -s command_jobs              fg=red,bold
-#ble-face -s command_directory         fg=navy,underline
+#ble-face -s command_directory         fg=63,underline
 #ble-face -s command_suffix            fg=white,bg=green
 #ble-face -s command_suffix_new        fg=white,bg=brown
 #ble-face -s argument_option           fg=teal
 #ble-face -s argument_option           fg=black,bg=225
-#ble-face -s filename_directory        underline,fg=26
+#ble-face -s filename_directory        underline,fg=33
 #ble-face -s filename_directory_sticky underline,fg=white,bg=26
 #ble-face -s filename_link             underline,fg=teal
 #ble-face -s filename_orphan           underline,fg=teal,bg=224
@@ -985,12 +992,12 @@
 #ble-face -s varname_array             fg=orange,bold
 #ble-face -s varname_empty             fg=31
 #ble-face -s varname_export            fg=200,bold
-#ble-face -s varname_expr              fg=92,bold
+#ble-face -s varname_expr              fg=99,bold
 #ble-face -s varname_hash              fg=70,bold
 #ble-face -s varname_number            fg=64
 #ble-face -s varname_readonly          fg=200
 #ble-face -s varname_transform         fg=29,bold
-#ble-face -s varname_unset             fg=124
+#ble-face -s varname_unset             fg=166
 
 #ble-face -s cmdinfo_cd_cdpath         fg=26,bg=155
 

@@ -35,6 +35,46 @@ lib/test-canvas.GraphemeClusterTest.sh
 
 ```
 
+## `color.sample.sh`
+
+This script is used to choose the colors in the default faces.  To show the
+color sample for the brightness, the following command can be used:
+
+```bash
+$ make/color.sample.sh show-brightness-sample
+```
+
+The above command shows the sample of brightness in the grayscale foreground
+characters in black and white backgrounds.
+
+To list the safe colors, one can run the following command.  The HTML output is
+available
+[here](https://akinomyoga.github.io/ble.sh/color.sample.safe-colors.html).
+
+
+```bash
+$ make/color.sample.sh list-safe-colors [-bBdD] [-t [ansi|html|markdown] | -y MINBRIGHT | -Y MAXBRIGHT]
+```
+
+The accepted range of the brightness and other conditions can be configured by
+directly modifying the variables `c_b_min`, `c_b_max`, and `c_filter_by_*` in
+the file.
+
+To generate a patch to modify unsafe colors, one can run the following command:
+
+```bash
+$ make/color.sample.sh patch1       # suggested changes are printed to stdout
+$ make/color.sample.sh patch1-save  # patch is saved to a.patch
+```
+
+To generate a list of base16 themes for `bleopt colorglass_base16_palette`, the
+following command can be used.  The HTML output is available
+[here](https://akinomyoga.github.io/ble.sh/colorglass.base16.html).
+
+```bash
+make/color.sample.sh generate-base16-sample [-t [ansi|html|markdown]]
+```
+
 ## Update airline themes in the contrib repository
 
 First install `vim-airline` and `vim-airline-themes` using `vim-plug`. Then
