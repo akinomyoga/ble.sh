@@ -6921,6 +6921,31 @@ function ble/exec/time#start {
   ble/exec/time#start
 }
 
+function ble/exec/time#format-elapsed-time {
+  ret=$_ble_exec_time_ata
+  if ((ret%1000!=0&&ret<1000)); then
+    ret="${ret}ns"
+  elif ((ret%1000!=0&&ret<1000*100)); then
+    ret="${ret::${#ret}-3}.${ret:${#ret}-3:2}ms"
+  elif ((ret/=1000,ret<1000)); then
+    ret="${ret}ms"
+  elif ((ret<1000*1000)); then
+    ret="${ret::${#ret}-3}.${ret:${#ret}-3}s"
+  elif ((ret/=1000,ret<3600*100)); then # ret [s]
+    local min
+    ((min=ret/60,ret%=60))
+    if ((min<100)); then
+      ret="${min}m${ret}s"
+    else
+      ret="$((min/60))h$((min%60))m${ret}s"
+    fi
+  else
+    local hour
+    ((ret/=60,hour=ret/60,ret%=60))
+    ret="$((hour/24))d$((hour%24))h${ret}m"
+  fi
+}
+
 ## @fn ble-edit/exec:$bleopt_internal_exec_type/process
 ##   指定したコマンドを実行します。
 ##   @param[in,out] _ble_edit_exec_lines
@@ -7459,24 +7484,7 @@ function _ble_edit_exec_gexec__epilogue {
       local format=$ret
 
       # ata
-      local ata=$((_ble_exec_time_ata/1000))
-      if ((ata<1000)); then
-        ata="${ata}ms"
-      elif ((ata<1000*1000)); then
-        ata="${ata::${#ata}-3}.${ata:${#ata}-3}s"
-      elif ((ata/=1000,ata<3600*100)); then # ata [s]
-        local min
-        ((min=ata/60,ata%=60))
-        if ((min<100)); then
-          ata="${min}m${ata}s"
-        else
-          ata="$((min/60))h$((min%60))m${ata}s"
-        fi
-      else
-        local hour
-        ((ata/=60,hour=ata/60,ata%=60))
-        ata="$((hour/24))d$((hour%24))h${ata}m"
-      fi
+      ble/exec/time#format-elapsed-time; local ata=$ret
 
       # cpu
       local cpu='--.-'

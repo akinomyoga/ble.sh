@@ -7392,6 +7392,19 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-21
+
+  * contrib: exec_elapsed_mark 設定 (motivated by paulzzy, TheFantasticWarrior) [#D2249]
+
+    * exec_elapsed_mark からコマンド名を削除する方法
+      https://github.com/akinomyoga/ble.sh/issues/481
+    * exec_elapsed_mark を non zero exit status でも表示する方法
+      https://github.com/akinomyoga/ble.sh/issues/483
+
+    これも設定例を contrib に追加する事にする。対応の過程で共通部分を新しい関数
+    ble/exec/time#format-elapsed-time に括りだした。序に ns の分解能での表示に
+    対応する事にする。
+
 2024-08-19
 
   * color: パレット再考 (requested by mattmc3) [#D2248]
