@@ -1193,9 +1193,9 @@ function ble/color/initialize-faces {
   }
 
   _ble_color_faces_initialized=1
+  blehook/invoke color_defface_load
   [[ $bleopt_color_scheme == default ]] ||
     bleopt/check:color_scheme/load "$bleopt_color_scheme"
-  blehook/invoke color_defface_load
   blehook/invoke color_setface_load
   blehook color_defface_load=
   blehook color_setface_load=

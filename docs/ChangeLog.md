@@ -15,7 +15,7 @@
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
-  - progcomp: use Bash 5.3 "compgen -V" for completions with newlines (motivated by RBT22) `#D2253` xxxxxxxx
+  - progcomp: use Bash 5.3 "compgen -V" for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
@@ -52,8 +52,8 @@
 - syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` e169e31d
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
 - highlight: reflect the top-level positional parameters `#D2246` f08e8f08
-- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248`
-- highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` xxxxxxxx
+- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea xxxxxxxx
+- highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 
 ## Changes
 
@@ -75,7 +75,7 @@
 - decode (`ble-bind`): support combined option arguments of the forms `--long=OPTARG` and `-kOPTARG` `#D2211` 1b16d399
 - canvas: use `_ble_term_invis` to hide characters used to determine char-width modes (requested by tessus) `#D2223` 8bb302e0
   - canvas: hide cursor during char-width detection (requested by tessus) `#D2232` 0ff29b26
-- exec: refine the elapsed time resolution `#D2249` xxxxxxxx
+- exec: refine the elapsed time resolution `#D2249` 67548656
 
 ## Fixes
 
@@ -172,7 +172,7 @@
 - main: work around the issue WSL clears `/tmp` after Bash starts (reported by LeonardoMor) `#D2235` fcbf1ed0
 - decode(`ble/builtin/bind`): support single quotes in the macro/command strings `#D2236` 2f90120e
 - mandb: process less formatting sequences in parsing `--help` `#D2244` 60d36ba5
-- mandb: hook into bash-completion's `_comp_command_offset` `#D2255` xxxxxxxx
+- mandb: hook into bash-completion's `_comp_command_offset` `#D2255` cbcce625
 
 ## Contrib
 
@@ -195,9 +195,9 @@
 - contrib/fzf-git: fix unadjusted terminal states in calling `fzf` (reported by tessus) `#D2237` b154058a
 - contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
 - contrib/colorglass: fix fixed-point round `#D2239` b154058a
-- contrib: add `config/github48{1,3}` for elapsed-mark examples `#D2249` xxxxxxxx
-- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` xxxxxxxx
-- contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` xxxxxxxx
+- contrib: add `config/github48{1,3}` for elapsed-mark examples `#D2249` 67548656
+- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7
+- contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 
 ## Documentation
 
@@ -208,7 +208,7 @@
 - docs: apply Grammarly and fix typos `#D2099` 8b3f6f8c
 - docs(README): add sabbrev example for named directories `#D2115` a9a21a0e
 - docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` 208eaa9d
-- docs(README): move disclaimers to a later section `#D2250` xxxxxxxx
+- docs(README): move disclaimers to a later section `#D2250` ad6f58b7
 
 ## Test
 
@@ -252,7 +252,7 @@
 - util (`ble/util/buffer.flush`): write to the TUI stderr `#D2218` b5c88947
 - util (`ble/util/buffer.flush`): use <kbd>DECSET(2026)</kbd> in terminals with the support `#D2226` c3df08be
 - main: refactor initialization sequence `#D2231` cc9d7f39
-- util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` xxxxxxxx
+- util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

@@ -7945,6 +7945,10 @@ bash_tips
       せるだけで良い。colorglass.base16.html については contrib/colorglas.md か
       らリンクを貼る。というか make/README.md からもリンクを貼る。
 
+    2024-08-22 https://github.com/akinomyoga/ble.sh/issues/478#issuecomment-2304599975
+    ~/.blerc に color_scheme を記述すると初期化エラーになるという報告。単に初期
+    化の順序を間違っていた。
+
 2024-08-14
 
   * select: C-o で region 選択が解除されずにコマンドが表示される [#D2247]
