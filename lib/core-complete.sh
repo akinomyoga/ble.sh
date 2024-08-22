@@ -2334,6 +2334,7 @@ function ble/complete/cand/yield.batch {
       ble/complete/cand/yield "$ACTION" "$cand" "$DATA"
     done
   fi
+  return 0
 }
 
 function ble/complete/cand/yield-filenames {
@@ -3879,7 +3880,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       done
     fi
 
-    if local ret; ble/complete/mandb/generate-cache "$man_page" "bin=$command"; then
+    if local ret; ble/complete/mandb/generate-cache "$man_page"; then
       c_mandb=set
       args_mandb=(mode=mandb "$ret")
       sort_args=(-t "$_ble_term_FS" -k 1)
@@ -4085,20 +4086,6 @@ function ble/complete/progcomp/.filter-and-split-compgen {
   return 0
 } 2>/dev/null
 
-function ble/complete/progcomp/patch:bash-completion/_comp_cmd_make.advice {
-  if [[ ${BLE_ATTACHED-} ]]; then
-    ble/function#push "${ADVICE_WORDS[1]}" '
-      local -a make_args; make_args=("${ADVICE_WORDS[1]}" "$@")
-      ble/util/conditional-sync \
-        '\''command "${make_args[@]}"'\'' \
-        '\''! ble/complete/check-cancel'\'' 128 progressive-weight:killall'
-    ble/function#advice/do
-    ble/function#pop "${ADVICE_WORDS[1]}"
-  else
-    ble/function#advice/do
-  fi
-}
-
 function ble/complete/progcomp/patch:cobraV2/extract_activeHelp.patch {
   local cobra_version=$1
   if ((cobra_version<10500)); then
@@ -4165,6 +4152,79 @@ function ble/complete/progcomp/call-by-conditional-sync {
     ble/util/conditional-sync \
       ble/function#advice/do \
       '\''! ble/complete/check-cancel'\'' 128 progressive-weight:killall'
+}
+
+## @fn ble/complete/progcomp/.adjust-third-party-completions
+##   This function sets up the workarounds for third-party plugins.
+##   @var[in] comp_func comp_prog
+##   @var[ref] comp_opts
+function ble/complete/progcomp/.adjust-third-party-completions {
+  # WA: Workarounds for third-party plugins
+  if [[ $comp_func ]]; then
+    # fzf
+    [[ $comp_func == _fzf_* ]] &&
+      ble-import -f contrib/integration/fzf-completion
+
+    # bash_completion
+    if ble/is-function _comp_initialize || ble/is-function _quote_readline_by_ref; then
+      ble-import -f contrib/integration/bash-completion
+      ble/function#try ble/contrib/integration:bash-completion/adjust
+    fi
+
+    # cobra GenBashCompletionV2
+    if [[ $comp_func == __start_* ]]; then
+      local target=__${comp_func#__start_}_handle_completion_types
+      if ble/is-function "$target"; then
+        local cobra_version=
+        if ble/is-function "__${comp_func#__start_}_extract_activeHelp"; then
+          cobra_version=10500 # v1.5.0 (Release 2022-06-21)
+        fi
+        ble/function#advice around "$target" "ble/complete/progcomp/patch:cobraV2/extract_activeHelp.patch $cobra_version"
+      fi
+
+      # https://github.com/akinomyoga/ble.sh/issues/353#issuecomment-1813801048
+      # Note: Some programs can be slow to generate completions for internet
+      # access or another reason.  Since the go programs called by cobraV2
+      # completions are supposed to be an independent executable file (without
+      # being shell functions), we can safely call them inside a subshell for
+      # ble/util/conditional-sync.
+      local target=__${comp_func#__start_}_get_completion_results
+      if ble/is-function "$target"; then
+        ble/function#advice around "$target" ble/complete/progcomp/patch:cobraV2/get_completion_results.advice
+      fi
+    fi
+
+    # conditional-sync for dnf completion
+    [[ $comp_func == _dnf ]] &&
+      ble/complete/progcomp/call-by-conditional-sync _dnf_commands_helper
+
+    # WA for zoxide TAB
+    if [[ $comp_func == _z || $comp_func == __zoxide_z_complete ]]; then
+      ble-import -f contrib/integration/zoxide
+      ble/function#try ble/contrib/integration:zoxide/adjust
+    fi
+
+    # WA for _complete_nix
+    if [[ $comp_func == _complete_nix ]]; then
+      ble-import -f integration/nix-completion
+      ble/contrib/integration:nix-completion/adjust
+    fi
+
+    # https://github.com/akinomyoga/ble.sh/issues/292 (Android Debug Bridge)
+    ble/function#suppress-stderr _adb 2>/dev/null
+
+    # conditional-sync for docker and docker-compose
+    [[ $comp_func == _docker ]] &&
+      ble/complete/progcomp/call-by-conditional-sync __docker_q
+    [[ $comp_func == _docker_compose ]] &&
+      ble/complete/progcomp/call-by-conditional-sync __docker_compose_q
+  fi
+  if [[ $comp_prog ]]; then
+    # aws
+    if [[ $comp_prog == aws_completer ]]; then
+      comp_opts=${comp_opts}ble/no-mark-directories:ble/prog-trim:
+    fi
+  fi
 }
 
 ## @fn ble/complete/progcomp/.compgen opts
@@ -4238,101 +4298,14 @@ function ble/complete/progcomp/.compgen {
   ble/complete/progcomp/.parse-complete "$compdef"
   local comp_opts_parsed=$comp_opts
 
-  # WA: Workarounds for third-party plugins
-  if [[ $comp_func ]]; then
-    # fzf
-    [[ $comp_func == _fzf_* ]] &&
-      ble-import -f contrib/integration/fzf-completion
-
-    # bash_completion
-    if ble/is-function _comp_initialize; then
-      # bash-completion 2.12
-      ble/complete/mandb:bash-completion/inject
-    elif ble/is-function _quote_readline_by_ref; then
-      # https://github.com/scop/bash-completion/pull/492 (fixed in bash-completion 2.12)
-      function _quote_readline_by_ref {
-        if [[ $1 == \'* ]]; then
-          printf -v "$2" %s "${1:1}"
-        else
-          printf -v "$2" %q "$1"
-          [[ ${!2} == \$* ]] && builtin eval "$2=${!2}"
-        fi
-      }
-      ble/function#suppress-stderr _filedir 2>/dev/null
-
-      # https://github.com/scop/bash-completion/issues/509 (fixed in bash-completion 2.12)
-      ble/function#suppress-stderr _find 2>/dev/null
-
-      # https://github.com/scop/bash-completion/pull/556 (fixed in bash-completion 2.12)
-      ble/function#suppress-stderr _scp_remote_files 2>/dev/null
-
-      # https://github.com/scop/bash-completion/pull/773 (fixed in bash-completion 2.12)
-      ble/function#suppress-stderr _function 2>/dev/null
-
-      ble/complete/mandb:bash-completion/inject
-    fi
-
-    if [[ $comp_func == _make || $comp_func == _comp_cmd_make ]] && ble/is-function "$comp_func"; then
-      ble/function#advice around "$comp_func" ble/complete/progcomp/patch:bash-completion/_comp_cmd_make.advice
-    fi
-
-    # cobra GenBashCompletionV2
-    if [[ $comp_func == __start_* ]]; then
-      local target=__${comp_func#__start_}_handle_completion_types
-      if ble/is-function "$target"; then
-        local cobra_version=
-        if ble/is-function "__${comp_func#__start_}_extract_activeHelp"; then
-          cobra_version=10500 # v1.5.0 (Release 2022-06-21)
-        fi
-        ble/function#advice around "$target" "ble/complete/progcomp/patch:cobraV2/extract_activeHelp.patch $cobra_version"
-      fi
-
-      # https://github.com/akinomyoga/ble.sh/issues/353#issuecomment-1813801048
-      # Note: Some programs can be slow to generate completions for internet
-      # access or another reason.  Since the go programs called by cobraV2
-      # completions are supposed to be an independent executable file (without
-      # being shell functions), we can safely call them inside a subshell for
-      # ble/util/conditional-sync.
-      local target=__${comp_func#__start_}_get_completion_results
-      if ble/is-function "$target"; then
-        ble/function#advice around "$target" ble/complete/progcomp/patch:cobraV2/get_completion_results.advice
-      fi
-    fi
-
-    # conditional-sync for dnf completion
-    [[ $comp_func == _dnf ]] &&
-      ble/complete/progcomp/call-by-conditional-sync _dnf_commands_helper
-
-    # WA for zoxide TAB
-    if [[ $comp_func == _z || $comp_func == __zoxide_z_complete ]]; then
-      ble-import -f contrib/integration/zoxide
-      ble/contrib/integration:zoxide/adjust
-    fi
-
-    # WA for _complete_nix
-    if [[ $comp_func == _complete_nix ]]; then
-      ble-import -f integration/nix-completion
-      ble/contrib/integration:nix-completion/adjust
-    fi
-
-    # https://github.com/akinomyoga/ble.sh/issues/292 (Android Debug Bridge)
-    ble/function#suppress-stderr _adb 2>/dev/null
-
-    # conditional-sync for docker and docker-compose
-    [[ $comp_func == _docker ]] &&
-      ble/complete/progcomp/call-by-conditional-sync __docker_q
-    [[ $comp_func == _docker_compose ]] &&
-      ble/complete/progcomp/call-by-conditional-sync __docker_compose_q
-  fi
-  if [[ $comp_prog ]]; then
-    # aws
-    if [[ $comp_prog == aws_completer ]]; then
-      comp_opts=${comp_opts}ble/no-mark-directories:ble/prog-trim:
-    fi
-  fi
-
+  ble/complete/progcomp/.adjust-third-party-completions
 
   ble/complete/check-cancel && return 148
+
+  # Note: The completion function specified to -F may directly yield the blesh
+  # completion items, so we need to record the original cand_count before
+  # calling "builtin compgen".
+  local old_cand_count=$cand_count
 
   # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
@@ -4376,13 +4349,22 @@ function ble/complete/progcomp/.compgen {
     fi
   fi
 
-  local filter_opts=
+  # If "builtin compgen" produces no results, return here.
+  local has_compgen=
   if ((_ble_bash>=50300)); then
-    ((${#compgen[@]})) || return 1
-    filter_opts=array
+    ((${#compgen[@]})) && has_compgen=1
   else
-    [[ $compgen ]] || return 1
+    [[ $compgen ]] && has_compgen=1
   fi
+  if [[ ! $has_compgen ]]; then
+    # Note: The completion function may directly yield the blesh completions,
+    # in which case we exit with status 0.
+    ((cand_count>old_cand_count))
+    return "$?"
+  fi
+
+  local filter_opts=
+  ((_ble_bash>=50300)) && filter_opts=array
 
   # WA: git の補完関数など勝手に末尾に space をつけ -o nospace を指定する物が存在する。
   #   単語の後にスペースを挿入する事を意図していると思われるが、
@@ -4406,6 +4388,26 @@ function ble/complete/progcomp/.compgen {
         comp_opts=${comp_opts//:nospace:/:}
     fi
   fi
+  ble/complete/progcomp/process-compgen-output "$compcmd" "$filter_opts" || return "$?"
+
+  ((cand_count>old_cand_count))
+}
+
+## @fn ble/complete/progcomp/process-compgen-output compcmd opts
+##   @param[in] opts
+##     @opt workaround-for-git
+##
+##   @var[in] compgen
+##   @var[in] COMPS COMPV comp_cword comp_words
+##   @var[in] comp_opts
+##
+##   @var[in] progcomp_prefix
+##     This variable is expected to be initialized by
+##     "ble/complete/progcomp/.compvar-initialize" before calling the
+##     completion function.
+##
+function ble/complete/progcomp/process-compgen-output {
+  local compcmd=$1 filter_opts=$2
 
   local cands flag_mandb=
   ble/complete/progcomp/.filter-and-split-compgen cands "$filter_opts" # compgen (comp_opts, etc) -> cands, flag_mandb
@@ -4420,8 +4422,6 @@ function ble/complete/progcomp/.compgen {
       [[ $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
     fi
   fi
-
-  local old_cand_count=$cand_count
 
   local action=progcomp "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
   ble/complete/cand/yield.initialize "$action"
@@ -4449,8 +4449,6 @@ function ble/complete/progcomp/.compgen {
       fi
   fi
   ble/complete/cand/yield.batch "$action" "$comp_opts"
-
-  ((cand_count>old_cand_count))
 }
 
 ## @fn ble/complete/progcomp/.compline-rewrite-command cmd [args...]
@@ -5746,128 +5744,6 @@ function ble/complete/mandb:help/generate-cache {
     }
   ' | ble/bin/sort -t "$_ble_term_FS" -k 1
   ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
-}
-
-function ble/complete/mandb:bash-completion/inject {
-  if ble/is-function _comp_compgen_help; then
-    # bash-completion 2.12
-    ble/function#advice after _comp_compgen_help__get_help_lines 'ble/complete/mandb:bash-completion/_get_help_lines.advice' &&
-      { ble/function#advice before _comp_complete_longopt 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}"' ||
-          ble/function#advice before _comp_longopt 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}"'; } &&
-      function ble/complete/mandb:bash-completion/inject { return 0; }
-  elif ble/is-function _parse_help; then
-    ble/function#advice before _parse_help 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}"' &&
-      ble/function#advice before _longopt 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}"' &&
-      ble/function#advice before _parse_usage 'ble/complete/mandb:bash-completion/_parse_help.advice "${ADVICE_WORDS[1]}" "${ADVICE_WORDS[2]}"' &&
-      function ble/complete/mandb:bash-completion/inject { return 0; }
-  fi
-} 2>/dev/null # _parse_help が別の枠組みで定義されている事がある? #D1900
-
-## @fn ble/string#hash-pjw text [size shift]
-##   @var[out] ret
-function ble/string#hash-pjw {
-  local size=${2:-32}
-  local S=${3:-$(((size+7)/8))} # shift    4
-  local C=$((size-2*S))         # co-shift 24
-  local M=$(((1<<size-S)-1))    # mask     0x0FFFFFFF
-  local N=$(((1<<S)-1<<S))      # mask2    0x000000F0
-
-  ble/util/s2bytes "$1"
-  local c h=0
-  for c in "${ret[@]}"; do
-    ((h=(h<<S)+c,h=(h^h>>C&N)&M))
-  done
-  ret=$h
-}
-
-## @fn ble/complete/mandb:bash-completion/.alloc-subcache command hash [opts]
-##   @var[out] ret
-function ble/complete/mandb:bash-completion/.alloc-subcache {
-  ret=
-  [[ $_ble_attached ]] || return 1
-
-  local command=$1 hash=$2 opts=$3
-  if [[ :$opts: == *:dequote:* ]]; then
-    ble/syntax:bash/simple-word/safe-eval "$command" noglob:nonull &&
-      command=$ret
-  fi
-  [[ $command ]] || return 1
-
-  [[ $command == ble*/* ]] || command=${1##*/}
-  ble/string#hash-pjw "$args" 64; local hash=$ret
-  local lc_messages=${LC_ALL:-${LC_MESSAGES:-${LANG:-C}}}
-  local mandb_cache_dir=$_ble_base_cache/complete.mandb/${lc_messages//'/'/%}
-  ble/util/sprintf ret '%s.%014x' "$mandb_cache_dir/_parse_help.d/$command" "$hash"
-
-  [[ -s $ret && $ret -nt $_ble_base/lib/core-complete.sh ]] && return 1
-
-  ble/util/mkd "${ret%/*}"
-}
-
-## @fn ble/complete/mandb:bash-completion/_parse_help.advice command args
-function ble/complete/mandb:bash-completion/_parse_help.advice {
-  local cmd=$1 args=$2 func=$ADVICE_FUNCNAME
-  # 現在のコマンド名。 Note: ADVICE_WORDS には実際に現在補完しようとしているコ
-  # マンドとは異なるものが指定される場合があるので (例えば help や - 等) 信用で
-  # きない。
-  local command=${COMP_WORDS[0]-} hash="${ADVICE_WORDS[*]}" ret
-  ble/complete/mandb:bash-completion/.alloc-subcache "$command" "$hash" dequote || return 0
-  local subcache=$ret
-
-  local default_option=--help help_opts=
-  [[ $func == _parse_usage ]] &&
-    default_option=--usage help_opts=mandb-usage
-
-  if [[ ( $func == _parse_help || $func == _parse_usage ) && $cmd == - ]]; then
-    # 標準入力からの読み取り
-    ble/complete/mandb:help/generate-cache "$help_opts" >| "$subcache"
-
-    # Note: _parse_help が読み取る筈だった内容を横取りしたので抽出した内容を標
-    # 準出力に出力する。但し、対応する long option がある short option は除外す
-    # る。
-    LC_ALL= LC_COLLATE=C ble/bin/awk -F "$_ble_term_FS" '
-      BEGIN { entry_count = 0; }
-      {
-        entries[entry_count++] = $1;
-
-        # Assumption: the descriptions of long options have the form
-        # "[short_opt] desc".  The format is defined by
-        # ble/complete/mandb:help/generate-cache.
-        desc = $4;
-        gsub(/\033\[[ -?]*[@-~]/, "", desc);
-        if (match(desc, /^\[[^]'"$_ble_term_space"'[]*\] /) > 0) { # #D1709 safe
-          short_opt = substr(desc, 2, RLENGTH - 3);
-          excludes[short_opt] =1;
-        }
-      }
-      END {
-        for (i = 0; i < entry_count; i++)
-          if (!excludes[entries[i]])
-            print entries[i];
-      }
-    ' "$subcache" 2>/dev/null # suppress locale error #D1440
-  else
-    local cmd_args
-    ble/string#split-words cmd_args "${args:-$default_option}"
-    "$cmd" "${cmd_args[@]}" 2>&1 | ble/complete/mandb:help/generate-cache "$help_opts" >| "$subcache"
-  fi
-}
-
-function ble/complete/mandb:bash-completion/_get_help_lines.advice {
-  ((${#_lines[@]})) || return 0
-
-  # @var cmd
-  #   現在のコマンド名。Note: _comp_command_offset 等によって別のコマンドの補完
-  #   を呼び出している場合があるので ble.sh の用意する comp_words は信用できな
-  #   い。bash-completion の使っている _comp_args[0] または bash-completion が
-  #   上書きしている COMP_WORDS を参照する。
-  local cmd=${_comp_args[0]-${COMP_WORDS[0]-}} hash="${ADVICE_WORDS[*]}"
-  ble/complete/mandb:bash-completion/.alloc-subcache "$cmd" "$hash" dequote || return 0
-  local subcache=$ret
-
-  local help_opts=
-  [[ ${ADVICE_FUNCNAME[1]} == *_usage ]] && help_opts=mandb-usage
-  printf '%s\n' "${_lines[@]}" | ble/complete/mandb:help/generate-cache "$help_opts" >| "$subcache"
 }
 
 ## @fn ble/complete/mandb/generate-cache cmdname [opts]

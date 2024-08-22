@@ -7394,6 +7394,95 @@ bash_tips
 
 2024-08-22
 
+  * mandb: sudo などから呼び出されたコマンドオプションに説明がつかない [#D2255]
+    https://github.com/akinomyoga/ble.sh/issues/480#issuecomment-2298976015
+
+    * ok: _comp_complete_offset で他の補完を呼び出した時に mandb が親コマンドに登録
+      されてしまう?
+
+      % これは _comp_command_offset に介入してその中で呼び出された _parse_help
+      % に関しては _comp_complete_offset によって設定されたコマンドに対して実行
+      % する様に修正すれば良い。
+      %
+      % コマンド名については ${COMP_WORDS[offset]} を使えば良いが offset の計算
+      % 方法については bash-completion の ver 毎に注意が必要である。COMP_CWORD
+      % と offset が同じ場合には特別の処置は要らない。
+      %
+      % ? ok: _comp_command はどうなっているか? → これは内部で
+      %   _comp_command_offset を呼び出しているので _comp_command_offset にだけ
+      %   対応すれば OK。
+      %
+      % ? _command_offset 等の bash-completion 2.11 の関数に対しても同様に適用
+      %   する必要がある。但し、処置としては同じで良い筈。と思ったが offset の
+      %   内部での決定方法が異なるので注意が必要である。
+
+      ? そもそも実際にそういう問題が起こるのかについて確認しておきたい。然し具
+        体的に問題を起こすにはどのようにすればよいか。man が優先されるので普通
+        のコマンドでは問題が表面化しない気がする。実際にキャッシュの中の
+        _parse_help.d の中身を見に行けば良い。
+
+      →どうも親コマンドではなくてちゃんと実際のコマンドのファイルにキャッシュ
+      として保存される様である。なのでこれは問題ではない。実際に実装を見ると
+      _parse_help.advice は COMP_WORDS[0] を見ている。そして
+      _comp_command_offset は COMP_WORDS を調整するので、COMP_WORDS[0] を見てい
+      る限りは問題は起こらない。
+
+    うーん。報告だと候補自体が sudo の物だという様になっているが、実際は生成さ
+    れている候補はやはりそのコマンドの物で、単に説明が sudo の物に置き換わって
+    いるというだけなのでは? と思ったが改めて見ると入力の順序によって表示される
+    内容が変わるなど、それでは説明できない現象が報告されている。うーん。
+
+    取り敢えず現在分かっている問題だけでも修正する。
+
+    * 親コマンドのオプションの mandb の説明が付加される
+
+      うーん。mandb を自分で読み取りつつ処理しようと思ったが
+      fitler-and-split-compgen に突っ込めば良いだけでは?
+
+      * ok: 先に処理してしまうと -P prefix や -S suffix などの処理がスキップさ
+        れる事になるが問題ないか? うーん。然し、_comp_command_offset は sudo な
+        ど、途中から呼び出すコマンド及び引数を受け取る前提のコマンドに対する補
+        完である。もし -P prefix や -S suffix などで加工するのが前提だとしたら
+        そもそも _comp_command_offset は動かないので気にしなくて良い。一方で -X
+        で向こうな単語が指定されている場合にはどうだろうか? これについても親コ
+        マンドの complete 設定で子コマンドの補完する語を制限するのは不自然であ
+        る。という事を考えると考えなくて良いのではないか。
+
+        更に、bash-completion の _comp_command_offset の実装では complete に一
+        緒に指定した別のオプションなどは無視して直接 -F func で指定したコマンド
+        を実行しているので余り細かい事を気にしても仕方がないのではないかという
+        側面もある。
+
+      * compgen -V 対応も一緒にやってしまうか否か。COMPREPLY は元々配列なので
+        compgen -V 対応も一緒にやってしまった方が都合が良いのではないか。もしく
+        は compgen -V 対応を実装してから、その実装を呼び出す様にするべきではな
+        いのか→やはり先に compgen -V 対応を実行する事にする。
+
+    x fixed: 実装してみたが今度は子コマンドの補完が全く生成されなくなってしまっ
+      た。うーん。どうも has-input が true になっている。何故?
+
+      * まずどうやら 0 が /dev/null に繋がっていて、ble/complete/has-input が正
+        しく判定できていない様だ。また ble/util/is-stdin-ready は /dev/null に
+        対して 0 を返す様で、これもまた予期していなかった事である。これについて
+        は ble/util/is-stdin-ready に remarks を残しておく事にする。
+
+        →これは ble/util/is-stdin-ready の実装の仕方も含めて別項目で考え直す事
+        にする。
+
+      redirection を修正したらちゃんと子コマンドの補完について、desc についても
+      ちゃんと動く様になった。今の所壊れる気配はない。
+
+    * done: ble/util/is-stdin-ready を調整するのであれば redirection はキャンセ
+      ルする。
+
+    * ok: mandb の為に _comp_command_offset で処理するのはオプションだけにする?
+      と思ったが、処理的に複雑になってしまうのでやはりそのままにする事にする。
+      filter-and-split で既に様々の処理を実行しているので後で残った物だけ抽出す
+      るというのも変である。
+
+    * done: bash-completion に対する対策の部分は contrib/integration に移動して
+      も良いのではないか。
+
   * ble/util/is-stdin-ready で直接 _ble_util_fd_tui_stdin から読み取る? [#D2254]
 
     うーん。或いは is-stdin-ready で常に tui から読み出す様に変更するべきだ
