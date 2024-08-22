@@ -52,7 +52,7 @@
 - syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` e169e31d
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
 - highlight: reflect the top-level positional parameters `#D2246` f08e8f08
-- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea xxxxxxxx
+- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 
 ## Changes
@@ -75,7 +75,7 @@
 - decode (`ble-bind`): support combined option arguments of the forms `--long=OPTARG` and `-kOPTARG` `#D2211` 1b16d399
 - canvas: use `_ble_term_invis` to hide characters used to determine char-width modes (requested by tessus) `#D2223` 8bb302e0
   - canvas: hide cursor during char-width detection (requested by tessus) `#D2232` 0ff29b26
-- exec: refine the elapsed time resolution `#D2249` 67548656
+- exec: refine the elapsed time resolution `#D2249` 67548656 xxxxxxxx
 
 ## Fixes
 

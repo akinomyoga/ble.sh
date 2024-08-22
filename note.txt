@@ -7711,10 +7711,17 @@ bash_tips
     設定例を contrib に追加するのが良い気がする。これは fzf-completion.bash の
     中に直接追加する事にした。
 
+    2024-08-22 改めて試してみたら空文字列の時の振る舞いが怪しい。修正する。
+
+    2024-08-22 また観察していたら引数をちゃんと使っていない事に気付いた。修正す
+    る。また fzf.md に説明を追記する。
+
   * contrib: fzf-menu (motivated by pallaswept) [#D2251]
     https://github.com/akinomyoga/ble.sh/issues/479
 
     これについても設定を contrib に追加する事にする。というか既に追加してある。
+
+    2024-08-22 これも説明を fzf.md に追加した。
 
   * [OK] fzf-key-bindings: M-c binding が動かない (asked by markaacosta) [#D2250]
     https://github.com/akinomyoga/blesh-contrib/issues/21
@@ -7736,6 +7743,8 @@ bash_tips
     結局ユーザーが設定を間違えていただけだった。改めて README を見ていて分かり
     にくかったので README の余分な部分は分離することにした。
 
+    2024-08-22 註の marker が小さくなっていない。小さくする。
+
   * contrib: exec_elapsed_mark 設定 (motivated by paulzzy, TheFantasticWarrior) [#D2249]
 
     * exec_elapsed_mark からコマンド名を削除する方法
@@ -7746,6 +7755,8 @@ bash_tips
     これも設定例を contrib に追加する事にする。対応の過程で共通部分を新しい関数
     ble/exec/time#format-elapsed-time に括りだした。序に ns の分解能での表示に
     対応する事にする。
+
+    2024-08-22 単位が us ではなくて ns になっていた。修正する。
 
 2024-08-19
 
@@ -7948,6 +7959,11 @@ bash_tips
     2024-08-22 https://github.com/akinomyoga/ble.sh/issues/478#issuecomment-2304599975
     ~/.blerc に color_scheme を記述すると初期化エラーになるという報告。単に初期
     化の順序を間違っていた。
+
+    2024-08-22 colorglass_blindness が clear できない。説明では空文字列で clear
+    できる事になっているが、実際の実装では none が color blindness なしという事
+    になっている。然し、bleopt/check:color_blindness が間違っている所為で none
+    を設定できない。
 
 2024-08-14
 

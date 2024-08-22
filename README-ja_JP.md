@@ -8,8 +8,8 @@
 <a href="https://github.com/akinomyoga/ble.sh/wiki/%E9%80%86%E5%BC%95%E3%81%8D%E3%83%AC%E3%82%B7%E3%83%94">逆引き</a> ]
 </p>
 
-`ble.sh`<a id="discl-pronun" href="#discl-pronun">†1</a> (*Bash Line Editor*)
-はピュア Bash<a id="discl-pure" href="#discl-pure">†2</a>
+`ble.sh`<sup><a href="#discl-pronun">†1</a></sup> (*Bash Line Editor*)
+はピュア Bash<sup><a href="#discl-pure">†2</a></sup>
 スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
 
 現在の開発バージョンは 0.4 です。

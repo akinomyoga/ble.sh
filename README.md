@@ -8,7 +8,7 @@
 <a href="https://github.com/akinomyoga/ble.sh/wiki/Recipes">Recipes</a> ]
 </p>
 
-*Bash Line Editor* (`ble.sh`<a href="#discl-pronun">†1</a>) is a command line editor written in pure Bash<a href="#discl-pure">†2</a> which replaces the default GNU Readline.
+*Bash Line Editor* (`ble.sh`<sup><a href="#discl-pronun">†1</a></sup>) is a command line editor written in pure Bash<sup><a href="#discl-pure">†2</a></sup> which replaces the default GNU Readline.
 
 The current devel version is 0.4.
 This script supports Bash 3.0 or higher although we recommend using `ble.sh` with release versions of **Bash 4.0 or higher**.
@@ -29,7 +29,7 @@ and [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
 
 <details open><summary><b>Download and generate <code>ble.sh</code> using <code>git</code></b></summary>
 
-This requires the commands `git`, `make` (GNU make), and `gawk` (GNU awk)<a href="#discl-pronun">†3</a>.
+This requires the commands `git`, `make` (GNU make), and `gawk` (GNU awk)<sup><a href="#discl-pronun">†3</a></sup>.
 In the following, please replace `make` with `gmake` if your system provides GNU make as `gmake` (such as in BSD).
 
 ```bash

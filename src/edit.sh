@@ -6924,7 +6924,7 @@ function ble/exec/time#start {
 function ble/exec/time#format-elapsed-time {
   ret=$_ble_exec_time_ata
   if ((ret%1000!=0&&ret<1000)); then
-    ret="${ret}ns"
+    ret="${ret}us"
   elif ((ret%1000!=0&&ret<1000*100)); then
     ret="${ret::${#ret}-3}.${ret:${#ret}-3:2}ms"
   elif ((ret/=1000,ret<1000)); then
