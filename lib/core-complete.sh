@@ -3749,50 +3749,104 @@ function ble/complete/progcomp/.parse-complete {
   done
 }
 
-## @fn ble/complete/progcomp/.filter-and-split-compgen arr
+## @fn ble/complete/progcomp/.filter-and-split-compgen arr opts
 ##   filter/sort/uniq candidates
 ##
-##   @var[out] $arr, flag_mandb
+##   @param[out] arr
+##     Array name to store the results.
+##   @param[in,opt] opts
+##     Colon-separated list to control the detailed behavior.
+##
+##     @opt workaround-for-git
+##       Apply a workaround for git. This will trim a space appended at the end
+##       of each word.
+##
+##     @opt array
+##       When this is specified, the variable "compgen" is treated as an array
+##       where each element corresponds to one completion candidate.
+##       Otherwise, the variable "compgen" is treated as a scalar variable
+##       where each line corresponds to one completion candidate.
+##
+##   @var[out] flag_mandb
 ##   @var[in] compgen
 ##   @var[in] COMPV compcmd comp_cword comp_words
-##   @var[in] comp_opts use_workaround_for_git
+##   @var[in] comp_opts
+##
+##     @opt ble/filter-by-prefix
+##       Select only the completions starting with "$COMPV".  If nothing is
+##       selected, use the original set of completions.
+##
+##  sed /^$rex_compv/ でフィルタする。
+##   それで候補が一つもなくなる場合にはフィルタ無しで単語を列挙する。
 function ble/complete/progcomp/.filter-and-split-compgen {
   flag_mandb=
 
-  # 1. sed (sort 前処理)
-  local sed_script=
-  {
-    # $comp_opts == *:ble/filter-by-prefix:*
-    #
-    # Note: "$COMPV" で始まる単語だけを sed /^$rex_compv/ でフィルタする。
-    #   それで候補が一つもなくなる場合にはフィルタ無しで単語を列挙する。
-    #
-    #   2019-02-03 実は、現在の実装ではわざわざフィルタする必要はないかもしれない。
-    #   以前 compgen に -- "$COMPV" を渡してもフィルタしてくれなかったのは、
-    #   #D0245 cdd38598 で ble/complete/progcomp/.compgen-helper-func に於いて、
-    #   "$comp_func" に引数を渡し忘れていたのが原因と思われる。
-    #   これは 1929132b に於いて修正されたが念のためにフィルタを残していた気がする。
-    if [[ $comp_opts == *:ble/filter-by-prefix:* ]]; then
-      local ret; ble/string#escape-for-sed-regex "$COMPV"; local rex_compv=$ret
-      sed_script='!/^'$rex_compv'/d'
+  # Load data from compgen
+  local out nlfix=
+  if [[ :$2: == *:array:* ]]; then
+    ble/util/assign out 'ble/util/writearray --nlfix compgen; ble/util/put nlfix'
+    if [[ $out == *$'\n\n'nlfix ]]; then
+      out=${out%$'\n\n'nlfix}
+    elif  [[ $out == nlfix ]]; then
+      out=
+    else
+      nlfix=1
+      out=${out%$'\n'nlfix}
     fi
-
-    [[ $use_workaround_for_git ]] &&
-      sed_script=${sed_script:+$sed_script;}'s/[[:space:]]\{1,\}$//'
-  }
-  local out=
-  [[ $sed_script ]] && ble/util/assign out 'ble/bin/sed "$sed_script;/^\$/d" <<< "$compgen"'
-  [[ $out ]] || out=$compgen
-
-  # 2. sort
-  local require_awk=
-  if [[ $comp_opts != *:nosort:* ]]; then
-    ble/util/assign out 'ble/bin/sort -u <<< "$out"'
+    out=${out%x}
   else
-    require_awk=1 # for uniq
+    out=$compgen
+  fi
+  [[ $out ]] || return 0
+
+  #----------------------------------------------------------------------------
+  # Prepare settings for filtering
+
+  # rtrim (workaround-for-git)
+  local -x c_rtrim=
+  [[ :$2: == *:workaround-for-git:* ]] && c_rtrim=set
+
+  # ble/filter-by-prefix
+  #   "$COMPV" で始まる単語だけを正規表現でフィルタする。それで候補が一つもなく
+  #   なる場合にはフィルタ無しで単語を列挙する。
+  #
+  #   2019-02-03 実は、現在の実装ではわざわざフィルタする必要はないかもしれない。
+  #   以前 compgen に -- "$COMPV" を渡してもフィルタしてくれなかったのは、
+  #   #D0245 cdd38598 で ble/complete/progcomp/.compgen-helper-func に於いて、
+  #   "$comp_func" に引数を渡し忘れていたのが原因と思われる。
+  #   これは 1929132b に於いて修正されたが念のためにフィルタを残していた気がする。
+  local -x c_rex_filter=
+  if [[ $comp_opts == *:ble/filter-by-prefix:* ]]; then
+    local ret; ble/string#escape-for-awk-regex "$COMPV"; c_rex_filter="^$ret"
+  fi
+
+  # sort
+  local -x c_sort= c_nlfix_prefix=
+  local awk=ble/bin/awk post_filter=''
+  local -a sort_args=()
+  if [[ $comp_opts != *:nosort:* ]]; then
+    if ble/is-function ble/bin/gawk; then
+      # When gawk is available, we can use the gawk extension "asort(items)" to
+      # sort the items.
+      c_sort=set
+      awk=ble/bin/gawk
+    elif ((nlfix)); then
+      # When we want to sort items that may contain newlines, we utilize the
+      # nlfix representation to sort the items.  We first prefix "1:", "2:",
+      # and "3:" to items without newlines, items with newlines, and the nlfix
+      # footer, respectively.  We then sort the items with and without newlines
+      # separetely and finally remove the prefix.
+      c_nlfix_sort=set
+      post_filter=' | ble/bin/sort "${sort_args[@]}" | ble/bin/sed "s/^[1-3]://"'
+    else
+      # When items do not contain newlines, we can simply sort items using the
+      # sort command.
+      post_filter=' | ble/bin/sort "${sort_args[@]}"'
+    fi
   fi
 
   # Prepare mandb
+  local -x c_mandb=
   local -a args_mandb=()
   if [[ $comp_cword -gt 0 && $COMPV != [!-]* ]]; then
     # Expand the command name.  We first try to use the external variable
@@ -3826,90 +3880,205 @@ function ble/complete/progcomp/.filter-and-split-compgen {
     fi
 
     if local ret; ble/complete/mandb/generate-cache "$man_page" "bin=$command"; then
-      require_awk=1
+      c_mandb=set
       args_mandb=(mode=mandb "$ret")
+      sort_args=(-t "$_ble_term_FS" -k 1)
     fi
   fi
 
-  # 3. awk (sort 後処理)
-  if [[ $require_awk ]]; then
-    local fs=$_ble_term_FS
-    local awk_script='
-      BEGIN { mandb_count = 0; }
-      mode == "mandb" {
-        name = $0
-        sub(/'"$_ble_term_FS"'.*/, "", name);
-        if (!mandb[name]) mandb[name] = $0;
-        next;
+  #----------------------------------------------------------------------------
+  # Filter script
+
+  local fs=$_ble_term_FS
+  local awk_script='
+    '$_ble_bin_awk_libNLFIX'
+
+    #--------------------------------------------------------------------------
+    # mandb
+
+    function mandb_register_entry(name, display, entry) {
+      # If the completion generated by progcomp ends with = yet the suffix
+      # specified by the entry is a space, we replace the suffix in the
+      # entry.
+      # Note: nawk in Solaris 2.11 does not allow regex to start with /=.
+      if (display ~ /(=)$/ && match(entry, /^[^'$fs']*'$fs'[^'$fs']*'$fs' '$fs'/) > 0)
+        entry = substr(entry, 1, RLENGTH - 2) "=" substr(entry, RLENGTH);
+
+      if (name2index[name] != "") {
+        # Remove duplicates after removing trailing /=$/.  If the new
+        # "display" is longer, overwrite the existing one.
+        if (length(display) <= length(name2display[name])) return;
+        name2display[name] = display;
+        mandb_entries[name2index[name]] = entry;
+      } else {
+        name2index[name] = mandb_count;
+        name2display[name] = display;
+        mandb_entries[mandb_count++] = entry;
       }
+    }
 
-      function register_mandb_entry(name, display, entry) {
-        # If the completion generated by progcomp ends with = yet the suffix
-        # specified by the entry is a space, we replace the suffix in the
-        # entry.
-        # Note: nawk in Solaris 2.11 does not allow regex to start with /=.
-        if (display ~ /(=)$/ && match(entry, /^[^'$fs']*'$fs'[^'$fs']*'$fs' '$fs'/) > 0)
-          entry = substr(entry, 1, RLENGTH - 2) "=" substr(entry, RLENGTH);
+    function mandb_process_items(items, _, i, n, items_count, item, name, entry, record, desc, option, optarg, suffix) {
+      n = length(items);
+      items_count = 0;
+      mandb_count = 0;
+      for (i = 1; i <= n; i++) {
+        item = items[i];
+        name = item;
 
-        if (name2index[name] != "") {
-          # Remove duplicates after removing trailing /=$/.  If the new
-          # "display" is longer, overwrite the existing one.
-          if (length(display) <= length(name2display[name])) return;
-          name2display[name] = display;
-          entries[name2index[name]] = entry;
-        } else {
-          name2index[name] = mandb_count;
-          name2display[name] = display;
-          entries[mandb_count++] = entry;
-        }
-      }
-
-      !hash[$0]++ {
-        if (/^$/) next;
-
-        name = $0
         # Note: nawk in Solaris 2.11 does not allow regex to start with /=.
         sub(/(=)$/, "", name);
         if (mandb[name]) {
-          register_mandb_entry(name, $0, mandb[name]);
-          next;
+          mandb_register_entry(name, item, mandb[name]);
+          continue;
         } else if (sub(/^--no-/, "--", name)) {
-
           # Synthesize description of "--no-OPTION"
           if ((entry = mandb[name]) || (entry = mandb[substr(name, 2)])) {
             split(entry, record, FS);
             if ((desc = record[4])) {
               desc = "\033[1mReverse[\033[m " desc " \033[;1m]\033[m";
-              if (match($0, /['"$_ble_term_space"']*[:=[]/)) {
-                option = substr($0, 1, RSTART - 1);
-                optarg = substr($0, RSTART);
-                suffix = substr($0, RSTART, 1);
+              if (match(item, /['"$_ble_term_space"']*[:=[]/)) {
+                option = substr(item, 1, RSTART - 1);
+                optarg = substr(item, RSTART);
+                suffix = substr(item, RSTART, 1);
                 if (suffix == "[") suffix = "";
               } else {
-                option = $0;
+                option = item;
                 optarg = "";
                 suffix = " ";
               }
-              register_mandb_entry(name, $0, option FS optarg FS suffix FS desc);
+              mandb_register_entry(name, item, option FS optarg FS suffix FS desc);
+              continue;
             }
-            next;
           }
-
         }
 
-        print $0;
+        items[++items_count] = item;
       }
+      for (i = 0; i < mandb_count; i++)
+        items[++items_count] = mandb_entries[i];
+      while (n > items_count)
+        delete items[n--];
+      return items_count;
+    }
 
-      END {
-        if (mandb_count) {
-          for (i = 0; i < mandb_count; i++)
-            print entries[i];
-          exit 10;
+    #--------------------------------------------------------------------------
+    # filters
+
+    # uniq, remove empty
+    function uniq_items(items, _, n, m, i, item, uniq) {
+      n = length(items);
+      m = 0;
+      for (i = 1; i <= n; i++) {
+        item = items[i];
+        if (!uniq[item]++ && item != "")
+          items[++m] = item;
+      }
+      while (n > m)
+        delete items[n--];
+      return m;
+    }
+
+    # filter by regex, restore if nothing matches
+    function filter_items_by_regex(items, rex_filter, _, n, m, i, item) {
+      n = length(items);
+      m = 0;
+      for (i = 1; i <= item_count; i++) {
+        item = items[i];
+        if (item ~ rex_filter)
+          items[++m] = item;
+      }
+      if (m == 0) m = n;
+      while (n > m)
+        delete items[n--];
+    }
+
+    #--------------------------------------------------------------------------
+
+    BEGIN {
+      c_rex_filter = ENVIRON["c_rex_filter"];
+      c_enable_filter = c_rex_filter != "";
+      c_enable_rtrim = ENVIRON["c_rtrim"] != "";
+      c_enable_sort = ENVIRON["c_sort"] != "";
+      c_enable_nlfix_sort = ENVIRON["c_nlfix_sort"] != "";
+      c_enable_mandb = ENVIRON["c_mandb"] != "";
+
+      if (nlfix) nlfix_begin();
+    }
+
+    mode == "mandb" {
+      name = $0
+      sub(/'"$_ble_term_FS"'.*/, "", name);
+      if (!mandb[name]) mandb[name] = $0;
+      next;
+    }
+
+    { items[++item_count] = $0; }
+
+    END {
+      if (nlfix) {
+        n = split(items[item_count], indices, " ");
+        delete items[item_count--];
+        for (i = 1; i <= n; i++) {
+          j = indices[i] + 1;
+          items[j] = nlfix_unescape(items[j]);
         }
       }
-    '
-    ble/util/assign-array "$1" 'ble/bin/awk -F "$_ble_term_FS" "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'
-    (($?==10)) && flag_mandb=1
+
+      # 1. uniq
+      item_count = uniq_items(items);
+
+      # 2. rtrim
+      if (c_enable_rtrim) {
+        for (i = 1; i <= item_count; i++)
+          sub(/[[:space:]]+$/, "", items[i]);
+      }
+
+      # 3. filter-by-prefix
+      if (c_enable_filter) {
+        item_count = filter_items_by_regex(items, c_rex_filter);
+      }
+
+      # 4. sort
+      if (c_enable_sort) {
+        # Note: if we directly write "asort(items);", it will cause compilation
+        # error in some awk implementation that does not have asort. We instead
+        # enable the call of "asort(items)" only when it is enabled.
+        '${c_sort:+'asort(items);'}'
+      }
+
+      # 5. mandb
+      has_mandb = 0;
+      if (c_enable_mandb) {
+        item_count = mandb_process_items(items);
+        has_mandb = mandb_count != 0;
+      }
+
+      if (c_enable_nlfix_sort) {
+        for (i = 1; i <= item_count; i++)
+          if (items[i] !~ /\n/)
+            nlfix_push("1:" items[i]);
+        for (i = 1; i <= item_count; i++)
+          if (items[i] ~ /\n/)
+            nlfix_push("2:" items[i]);
+        nlfix_put("3:");
+        nlfix_end();
+      } else if (nlfix) {
+        for (i = 1; i <= item_count; i++)
+          nlfix_push(items[i]);
+        nlfix_end();
+      } else {
+        for (i = 1; i <= item_count; i++)
+          print items[i];
+      }
+
+      if (has_mandb) exit 10;
+    }
+  '
+  ble/util/assign out '"$awk" -F "$_ble_term_FS" -v nlfix="$nlfix" "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'"$post_filter"
+  (($?==10)) && flag_mandb=1
+
+  if ((nlfix)); then
+    ble/util/readarray --nlfix "$1" <<< "$out"
   else
     ble/string#split-lines "$1" "$out"
   fi
@@ -4172,11 +4341,15 @@ function ble/complete/progcomp/.compgen {
     local q="'" Q="'\''"
     compgen_compv="'${compgen_compv//$q/$Q}'"
   fi
-  # WA #D1682: libvirt の virsh 用の補完が勝手に変数 IFS 及び word を書き換えて
-  # そのまま放置して抜けてしまう。仕方がないので tmpenv で変数の内容を復元する
-  # 事にする。
   local progcomp_prefix= progcomp_retry=
-  IFS=$IFS word= ble/util/assign compgen 'builtin compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
+  if ((_ble_bash>=50300)); then
+    # WA #D1682: libvirt の virsh 用の補完が勝手に変数 IFS 及び word を書き換え
+    # てそのまま放置して抜けてしまう。仕方がないので tmpenv で変数の内容を復元
+    # する事にする。
+    IFS=$IFS word= builtin compgen -V compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null
+  else
+    IFS=$IFS word= ble/util/assign compgen 'builtin compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
+  fi
 
   # Note #D0534: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始
   #   めから補完を行う。ble/complete/progcomp/.compgen-helper-func 関数内で補間
@@ -4193,12 +4366,23 @@ function ble/complete/progcomp/.compgen {
 
   # plusdirs が動的に追加された時は別に追加生成する必要がある
   if [[ $comp_opts_parsed != *:plusdirs:* && $comp_opts == *:plusdirs:* ]]; then
-    local compgen_plusdirs=
-    ble/util/assign compgen_plusdirs 'builtin compgen -o plusdirs -- "$compgen_compv" 2>/dev/null'
-    [[ $compgen_plusdirs ]] && compgen=$compgen$'\n'$compgen_plusdirs
+    local compgen_plusdirs
+    if ((_ble_bash>=50300)); then
+      builtin compgen -V compgen_plusdirs -o plusdirs -- "$compgen_compv" 2>/dev/null
+      ble/array#push compgen_plusdirs "${compgen_plusdirs[@]}"
+    else
+      ble/util/assign compgen_plusdirs 'builtin compgen -o plusdirs -- "$compgen_compv" 2>/dev/null'
+      [[ $compgen_plusdirs ]] && compgen=$compgen$'\n'$compgen_plusdirs
+    fi
   fi
 
-  [[ $compgen ]] || return 1
+  local filter_opts=
+  if ((_ble_bash>=50300)); then
+    ((${#compgen[@]})) || return 1
+    filter_opts=array
+  else
+    [[ $compgen ]] || return 1
+  fi
 
   # WA: git の補完関数など勝手に末尾に space をつけ -o nospace を指定する物が存在する。
   #   単語の後にスペースを挿入する事を意図していると思われるが、
@@ -4208,15 +4392,23 @@ function ble/complete/progcomp/.compgen {
   #   仕方がないので sed で各候補の末端の [[:space:]]+ を除去する。
   #   これだとスペースで終わるファイル名を挿入できないという実害が発生するが、
   #   そのような変な補完関数を作るのが悪いのである。
-  local use_workaround_for_git=
   if [[ $comp_func == __git* && $comp_opts == *:nospace:* ]]; then
-    use_workaround_for_git=1
-    ble/string#match "$compgen" $'(^|\n|[^[:space:]])(\n|$)' ||
-      comp_opts=${comp_opts//:nospace:/:}
+    filter_opts=$filter_opts:workaround-for-git
+    if ((_ble_bash>=50300)); then
+      # If all the candidates end with [[:space:]], we remove "compopt -o
+      # nospace".
+      local tmp
+      tmp=("${compgen[@]}")
+      ble/array#remove-by-glob tmp '*[[:space:]]'
+      ((${#tmp[@]}==0)) && comp_opts=${comp_opts//:nospace:/:}
+    else
+      ble/string#match "$compgen" $'(^|\n|[^[:space:]])(\n|$)' ||
+        comp_opts=${comp_opts//:nospace:/:}
+    fi
   fi
 
   local cands flag_mandb=
-  ble/complete/progcomp/.filter-and-split-compgen cands # compgen (comp_opts, etc) -> cands, flag_mandb
+  ble/complete/progcomp/.filter-and-split-compgen cands "$filter_opts" # compgen (comp_opts, etc) -> cands, flag_mandb
 
   ble/complete/source/test-limit "${#cands[@]}" || return 1
 

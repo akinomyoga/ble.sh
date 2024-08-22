@@ -1879,9 +1879,44 @@ _ble_bin_awk_libNLFIX='
   ## @var nlfix_indices
   ## @var nlfix_rep_slash
   ## @var nlfix_rep_double_slash
+  ## @fn nlfix_escape(s)
+  ## @fn nlfix_unescape(s)
+  ## @fn nlfix_put(s)
   ## @fn nlfix_begin()
   ## @fn nlfix_push(elem)
   ## @fn nlfix_end()
+  function nlfix_escape(str) {
+    gsub(/\\/,   nlfix_rep_double_slash, str);
+    gsub(/'\''/, nlfix_rep_slash "'\''", str);
+    gsub(/\007/, nlfix_rep_slash "a",    str);
+    gsub(/\010/, nlfix_rep_slash "b",    str);
+    gsub(/\011/, nlfix_rep_slash "t",    str);
+    gsub(/\012/, nlfix_rep_slash "n",    str);
+    gsub(/\013/, nlfix_rep_slash "v",    str);
+    gsub(/\014/, nlfix_rep_slash "f",    str);
+    gsub(/\015/, nlfix_rep_slash "r",    str);
+    return "$'\''" str "'\''";
+  }
+  function nlfix_unescape(str) {
+    if (str !~ /^\$'\''.*'\''$/) return str;
+    str = substr(str, 3, length(str) - 3);
+    gsub(/\\'\''/, "'\''", str);
+    gsub(/\\a/, "\007", str);
+    gsub(/\\b/, "\010", str);
+    gsub(/\\t/, "\011", str);
+    gsub(/\\n/, "\012", str);
+    gsub(/\\v/, "\013", str);
+    gsub(/\\f/, "\014", str);
+    gsub(/\\r/, "\015", str);
+    gsub(/\\\\/, nlfix_rep_slash, str);
+    return str;
+  }
+  function nlfix_put(s) {
+    if (file)
+      printf("%s", s) > file;
+    else
+      printf("%s", s);
+  }
   function nlfix_begin(_, tmp) {
     nlfix_rep_slash = "\\";
     if (AWKTYPE == "xpg4") nlfix_rep_slash = "\\\\";
@@ -1895,33 +1930,15 @@ _ble_bin_awk_libNLFIX='
   }
   function nlfix_push(elem, file) {
     if (elem ~ /\n/) {
-      gsub(/\\/,   nlfix_rep_double_slash, elem);
-      gsub(/'\''/, nlfix_rep_slash "'\''", elem);
-      gsub(/\007/, nlfix_rep_slash "a",    elem);
-      gsub(/\010/, nlfix_rep_slash "b",    elem);
-      gsub(/\011/, nlfix_rep_slash "t",    elem);
-      gsub(/\012/, nlfix_rep_slash "n",    elem);
-      gsub(/\013/, nlfix_rep_slash "v",    elem);
-      gsub(/\014/, nlfix_rep_slash "f",    elem);
-      gsub(/\015/, nlfix_rep_slash "r",    elem);
-      if (file)
-        printf("$'\''%s'\''\n", elem) > file;
-      else
-        printf("$'\''%s'\''\n", elem);
+      nlfix_put(nlfix_escape(elem) "\n");
       nlfix_indices = nlfix_indices != "" ? nlfix_indices " " nlfix_index : nlfix_index;
     } else {
-      if (file)
-        printf("%s\n", elem) > file;
-      else
-        printf("%s\n", elem);
+      nlfix_put(elem "\n");
     }
     nlfix_index++;
   }
   function nlfix_end(file) {
-    if (file)
-      printf("%s\n", nlfix_indices) > file;
-    else
-      printf("%s\n", nlfix_indices);
+    nlfix_put(nlfix_indices "\n");
   }
 '
 _ble_util_writearray_rawbytes=

@@ -7392,6 +7392,39 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-22
+
+  * progcomp: compgen -V による結果取得 (motivated by RBT22, and many) [#D2253]
+    https://github.com/akinomyoga/ble.sh/issues/356
+
+    sort -z や sed -z に対応していれば printf '%s\0' を通して結果を入れてそれを
+    mapfile -d '' を用いて読み取りたい。それ以外の場合にはどうするか?
+
+    うーん。既存の実装を確認すると ble/util/writearray を結局使う事になりそう。
+    というのも printf '%s\0' よりも ble/util/writearray の方が速い実装を提供し
+    ているみたいである。
+
+    うーん。mandb の事を考えると結局 awk 等で情報を付加する事になる (bash でそ
+    れを別に実装する理由がない。候補が大量になる場合には bash で処理するのは重
+    いし、また awk による実装と bash による実装を、振る舞いが一貫する様にしなが
+    ら両方 maintenance するのは大変である)。そう思うと awk や sed で結局処理を
+    する事になる。だとすると ble/util/writearray は何れにしても使う事になる。
+
+    ? fixed: 既存の実装では ble/filter-by-prefix と workaround-for-git を同時に
+      sed で実行している。候補がなくなった場合には 処理前に戻している。これだと、
+      ble/filter-by-prefix で候補がすべてなくなった場合に、workaround-for-git
+      が適用されなかった物が次の処理に流れるのではないか? 本来は処理を分割する
+      べきの気がする。
+
+    或いは処理を分割するぐらいならば一括で awk で処理してしまって良いのではない
+    か? sort 以外は一回の awk の呼び出しで処理するべきの気がする。
+
+    * ok: 色々な場合の実装を考えるよりも全部 nlfix で実装してしまうのが楽かもし
+      れない → awk が sort に対応していない場合には nlfix の状態で外側で sort
+      する事にした。
+
+    処理をするのだと考えると sort を実行するのが良い気がする。
+
 2024-08-21
 
   * contrib: ble/widget/fzf-complete (motivated by 3ximus) [#D2252]
