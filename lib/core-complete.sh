@@ -1769,7 +1769,7 @@ function ble/complete/action/requote-final-insert {
   if [[ $insert == "$comps_prefix"* && $comps_prefix != *[!':/={,'] ]]; then
     local ret ins=${insert:${#comps_prefix}}
     if ! ble/syntax:bash/simple-word/is-literal "$ins" &&
-        ble/syntax:bash/simple-word/safe-eval "$ins" &&
+        ble/syntax:bash/simple-word/safe-eval "$ins" limit=2 &&
         ((${#ret[@]}==1))
     then
       ble/string#quote-word "$ret" quote-empty

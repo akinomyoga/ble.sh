@@ -927,6 +927,13 @@
 #bleopt syntax_eval_polling_interval=50
 
 
+## The following setting limits the number of expanded words to process in
+## highlighting a single grammatical word.  When this setting is set to an
+## empty string, the number of expanded words to process is unlimited.
+
+#bleopt highlight_eval_word_limit=200
+
+
 ## If set to a non-empty value, the setting "color_scheme" specifies a preset
 ## graphic styles for basic faces.  The supported schemes are found in the
 ## subdirectory "contrib/scheme".  The default value is "default".

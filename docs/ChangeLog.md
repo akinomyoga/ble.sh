@@ -53,6 +53,7 @@
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
 - highlight: reflect the top-level positional parameters `#D2246` f08e8f08
 - color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248`
+- highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` xxxxxxxx
 
 ## Changes
 

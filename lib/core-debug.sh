@@ -177,7 +177,16 @@ function ble/debug/profiler/stop {
   ble/util/assign-words nline 'ble/bin/wc -l "$f1" 2>/dev/null'
   ble/util/print $'\e[A\rble/debug/profiler: counting lines... '"$nline" >&2
 
-  ble/bin/awk -v magic="$_ble_debug_profiler_magic" -v nline="$nline" '
+  # nawk becomes unacceptably slow when there is a long line. It seems to scale
+  # as O(N^2). If mawk/gawk is available, we prefer mawk/gawk to nawk.
+  local awk=ble/bin/awk
+  if ble/is-function ble/bin/mawk; then
+    awk=ble/bin/mawk
+  elif ble/is-function ble/bin/gawk; then
+    awk=ble/bin/gawk
+  fi
+
+  "$awk" -v magic="$_ble_debug_profiler_magic" -v nline="$nline" '
     BEGIN {
       xtrace_debug_enabled = 1;
       print "ble/debug/profiler: collecting information..." >"/dev/stderr";

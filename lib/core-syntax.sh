@@ -1337,8 +1337,16 @@ function ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot {
   done
 }
 
-function ble/syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
+function ble/syntax:bash/simple-word/eval/.set-result {
+  if [[ $__ble_word_limit ]] && (($#>__ble_word_limit)); then
+    set -- "${@::__ble_word_limit}"
+  fi
+  __ble_ret=("$@")
+}
 function ble/syntax:bash/simple-word/eval/.print-result {
+  if [[ $__ble_word_limit ]] && (($#>__ble_word_limit)); then
+    set -- "${@::__ble_word_limit}"
+  fi
   if (($#>=1000)) && [[ $OSTYPE != cygwin ]]; then
     # ファイル数が少ない場合は fork コストを避ける為に多少遅くても quote&eval
     # でデータを親シェルに転送する。Cygwin では mapfile/read が unbuffered で遅
@@ -1405,6 +1413,10 @@ function ble/syntax:bash/simple-word/eval/.impl {
     ble/util/assign __ble_defs 'ble/util/print-global-definitions --hidden-only "${ret[@]}"'
     builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
   fi
+
+  local __ble_word_limit=
+  ble/string#match ":$__ble_opts:" ':limit=([^:]*):' &&
+    ((__ble_word_limit=BASH_REMATCH[1]))
 
   # glob パターンを含む可能性がある時の処理 (Note: is-simple-noglob の
   # 判定で変数を参照するので、グローバル変数の復元よりも後で処理する必
@@ -1523,6 +1535,9 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ##
 ##       single
 ##         最初の展開結果のみを ret に設定します。
+##       limit=COUNT
+##         評価後の単語数を COUNT 以下に制限します。これは count によって設定さ
+##         れる展開結果の単語数にも影響を与えます。
 ##       count
 ##         変数 count に展開結果の単語数を返します。
 ##       cached
@@ -1543,8 +1558,8 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ##     パス名展開のタイムアウトの既定値を指定します。空文字列が指定さ
 ##     れている時、既定でタイムアウトは起こりません。
 ##   @var[in,out] _ble_syntax_bash_simple_eval_timeout_carry
-##     この値が設定されている時、パス名展開に対して強制的にタイムアウ
-##     トが起こります。opts に timeout-carry が指定されている時に値が設定されます。
+##     この値が設定されている時、パス名展開に対して強制的にタイムアウトが起こり
+##     ます。opts に timeout-carry が指定されている時に値が設定されます。
 ##
 ##   @arr[out] ret
 ##     展開結果を返します。複数の単語に評価される場合にはそれを全て返します。
@@ -1586,9 +1601,12 @@ function ble/syntax:bash/simple-word/eval {
 }
 
 ## @fn ble/syntax:bash/simple-word/eval word [opts]
+##   Evaluate the specified word only when the word is safe and take the first
+##   word when the word is expanded to multiple words.
+##
 ##   @param[in,opt] opts
 ##     A colon-separated list of options.  In addition to the values supported
-##     by ble/syntax:bash/simple-word/eval, the following value is available:
+##     by ble/syntax:bash/simple-word/eval, the following values are available:
 ##
 ##     @opt reconstruct
 ##       Try to reconstruct the full word using
@@ -1600,18 +1618,26 @@ function ble/syntax:bash/simple-word/eval {
 ##       expansion an empty array "${arr[@]}" or unmatching glob pattern with
 ##       nullglob.
 ##
+##     The other options are processed by "ble/syntax:bash/simple-word/eval",
+##     but if "limit=COUNT" is not specified, the option "limit=1" is added to
+##     suppress the number of generated words.
+##
 ##   @arr[out] ret
 ##
 function ble/syntax:bash/simple-word/safe-eval {
-  if [[ :$2: == *:reconstruct:* ]]; then
+  local __ble_opts=$2
+  if [[ :$__ble_opts: == *:reconstruct:* ]]; then
     local simple_flags simple_ibrace
     ble/syntax:bash/simple-word/reconstruct-incomplete-word "$1" || return 1
     ble/util/unlocal simple_flags simple_ibrace
   else
     ble/syntax:bash/simple-word/is-simple "$1" || return 1
   fi
-  ble/syntax:bash/simple-word/eval "$1" &&
-    { [[ :$2: != *:nonull:* ]] || ((${#ret[@]})); }
+  [[ :$__ble_opts: == *:limit=*:* ]] ||
+    __ble_opts=$__ble_opts:limit=1
+
+  ble/syntax:bash/simple-word/eval "$1" "$__ble_opts" &&
+    { [[ :$__ble_opts: != *:nonull:* ]] || ((${#ret[@]})); }
 }
 
 ## @fn ble/syntax:bash/simple-word/get-rex_element sep
@@ -7558,14 +7584,16 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
 function ble/highlight/layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return 1
 
+  local _ble_syntax_bash_simple_eval_timeout=$bleopt_highlight_timeout_sync
+  local highlight_eval_opts=cached:single:stopcheck
+
+  [[ $bleopt_highlight_eval_word_limit ]] &&
+    highlight_eval_opts=$highlight_eval_opts:limit=$((bleopt_highlight_eval_word_limit))
+
   # Timeout setting for simple-word/eval
   if [[ ! $ble_textarea_render_defer_running ]]; then
-    local _ble_syntax_bash_simple_eval_timeout=$bleopt_highlight_timeout_sync
     local _ble_syntax_bash_simple_eval_timeout_carry=
-    local highlight_eval_opts=cached:single:stopcheck:timeout-carry
-  else
-    local _ble_syntax_bash_simple_eval_timeout=$bleopt_highlight_timeout_async
-    local highlight_eval_opts=cached:single:stopcheck
+    highlight_eval_opts=$highlight_eval_opts:timeout-carry
   fi
 
   ble/syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \

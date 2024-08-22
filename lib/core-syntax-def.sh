@@ -90,6 +90,7 @@ bleopt/declare -v highlight_filename 1
 bleopt/declare -v highlight_variable 1
 bleopt/declare -v highlight_timeout_sync 50
 bleopt/declare -v highlight_timeout_async 5000
+bleopt/declare -v highlight_eval_word_limit 200
 bleopt/declare -v syntax_eval_polling_interval 50
 
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_filetype}"

@@ -7394,6 +7394,29 @@ bash_tips
 
 2024-08-22
 
+  * simple-word: limit the number of expanded words (motivated by orionalves) [#D2256]
+    https://github.com/akinomyoga/ble.sh/issues/482
+
+    ブレース展開で巨大な数を入力するとシステムがクラッシュするという報告。正直
+    そんな非現実的な物を入力するのが悪いとしか言いようがない。
+
+    ble/syntax:bash/simple-word/eval について limit=COUNT opts を追加して、構文
+    着色の際に実施される単語の展開および補完の為の展開について上限を設ける事に
+    した。
+
+    但し、単語数の制限は展開の後に行われるので、必ず一回は大量の単語を生成する
+    ことになる。単にその後の処理をできるだけ軽くするだけの事であるが、単語着色
+    に関しては response はかなり改善したように思う。取り敢えず単語数の上限は既
+    定では 200 という事にする。
+
+    テストに使ったコード:
+
+    | if ((${#__ble_ret[@]}>200)); then
+    |   echo "count=${#__ble_ret[@]} opts=($__ble_opts)" >/dev/tty
+    |   printf -- '- %s\n' "${FUNCNAME[@]}" >/dev/tty
+    |   __ble_ret=("${__ble_ret[@]::200}")
+    | fi
+
   * mandb: sudo などから呼び出されたコマンドオプションに説明がつかない [#D2255]
     https://github.com/akinomyoga/ble.sh/issues/480#issuecomment-2298976015
 
