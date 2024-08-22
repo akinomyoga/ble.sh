@@ -2793,21 +2793,29 @@ function ble/util/load-standard-builtin {
   fi
 }
 
-## @fn ble/util/is-stdin-ready [exit]
+## @fn ble/util/is-stdin-ready [fd] [exit]
 ##   Returns if there is already any user inputs pending in stdin.
+##   @param[in,opt] fd
+##     This specifies the file descriptor to check.  If omitted, it uses the
+##     file descriptor saved in $_ble_util_fd_tui_stdin.
 ##   @param[in,opt] exit
 ##     This specifies the exit status when we cannot test it.  The default
 ##     value is 1.
+##   @remarks When stdin (0) is connected to /dev/null, this function succeeds
+##     unconditionally, even though a read from /dev/null will fail.
 if ((_ble_bash>=40000)); then
   # #D1341 対策 変数代入形式だと組み込みコマンドにロケールが適用されない。
   function ble/util/is-stdin-ready {
     local IFS= LC_ALL= LC_CTYPE=C
-    builtin read -t 0
+    # Note: We use the explicit redirection "<&fd" instead of "-u fd" because
+    # it turned out that "builtin read -t 0 -u fd" is slower than "builtin read
+    # -t 0 <&fd".
+    builtin read -t 0 <&"${1:-${_ble_util_fd_tui_stdin:-0}}"
   }
   # suppress locale error #D1440
   ble/function#suppress-stderr ble/util/is-stdin-ready
 else
-  function ble/util/is-stdin-ready { return "${1:-1}"; }
+  function ble/util/is-stdin-ready { return "${2:-1}"; }
 fi
 
 # Note: BASHPID は Bash-4.0 以上

@@ -7394,6 +7394,172 @@ bash_tips
 
 2024-08-22
 
+  * ble/util/is-stdin-ready で直接 _ble_util_fd_tui_stdin から読み取る? [#D2254]
+
+    うーん。或いは is-stdin-ready で常に tui から読み出す様に変更するべきだ
+    ろうか。
+
+    ? "-u fd vs <&fd": redirection はコストが明らかにある。一方で引数解析に対し
+      てもコストはある気がするが、syscall よりは流石に軽いだろうと思いたい (或
+      いは malloc で syscall 迄行くという可能性もあるが)。うーん。これは後で
+      benchmark すれば良い。
+
+      うーん。計測してみた所普通に redirection した方が速い。では -u は何の為に
+      あるのだろうか。よく分からないが <&fd の形式を使う事にする。
+
+    ? ble/util/is-stdin-ready を別の目的で使っている箇所はあるだろうか。つまり、
+      "現在の stdin" に入力があるかどうかを確認するのに使っている箇所。tes全ての現れる箇所について確認する。
+
+      * lib/test-* については気にしなくて良いだろう。と思ったが、テストの為に
+        stdin が置き換えられるという事を仮定している。うーん。これは
+        _ble_util_fd_tui_stdin を上書きする事で対処する事にした
+
+        % → やはり引数に fd を受け取る様に修正する事にした。何も指定しない時は
+        % _ble_util_fd_tui_stdin を使う。と思ったが、ble/util/is-stdin-ready の
+        % 第一引数は既に poll できない場合の既定の exit status として使われてい
+        % るのだった。
+
+        既存の ble/util/is-stdin-ready の引数は一箇所でしか使っていない。やはり、
+        引数の意味を変える事にする。
+
+      * ./lib/keymap.vi.sh:1195:  if ((depth>=bleopt_keymap_vi_macro_depth)) || ble/util/is-stdin-ready; then
+        これは ble/widget/vi_nmap/play-register.hook の中で停止条件を定める物。
+
+      * ./src/decode.sh: 以下の関数の実装で ble/util/is-stdin-ready を使っている
+
+        ble/decode/wait-input
+
+          ./src/decode.sh:1320:    ble/decode/wait-input 5 char || ent=${ent%_}
+          ./src/decode.sh:2146:        ble/decode/wait-input "$timeout" || node_type=1
+
+          これらは ble-decode-char の処理で使っている。ユーザー入力の処理なので
+          基本的にやはり tui stdin で良い。
+
+        ble/decode/has-input-for-char
+        ble/decode/has-input
+        ble/decode/has-input-char
+
+          ./lib/core-syntax.sh:1429:      ble/decode/has-input && return 148
+
+          これは simple-word/eval によるチェックである。まあ、tui stdin を見
+          に行く動作で妥当だろう。
+
+          ./src/decode.sh:866:  ble/decode/has-input || ble-decode-key/batch/flush
+          ./src/decode.sh:1191:      if [[ ! $ble_decode_char_sync ]] && ble/decode/has-input-for-char; then
+          ./src/decode.sh:2144:      if (($#==0)) && ! ble/decode/has-input; then
+          ./src/decode.sh:2194:    if ! ble/decode/has-input || ((${#_ble_decode_key_batch[@]}>=50)); then
+          ./src/decode.sh:2264:      if ble/decode/has-input && builtin eval "[[ \${${dicthead}[_ble_decode_KCODE_BATCH_CHAR]-} ]]"; then
+
+          これは全てユーザー入力の処理関連なのでok
+
+          ./src/edit.sh:7995:  [[ $_ble_edit_str ]] && ble/decode/has-input &&
+
+          これは accept_line_threshold の為のチェック @
+          ble-edit/is-single-complete-line。これも tui stdin で良い。
+
+          ./src/edit.sh:11310:    if ble/decode/has-input && ! ble-edit/exec/has-pending-commands; then
+
+          これは ble-decode/EPILOGUE で描画をスキップする為の物。これもユーザー
+          入力の関係なので tui stdin で良い。
+
+          ./src/history.sh:2219:      if ((has_stop_check&&isearch_time%isearch_block==0)) && ble/decode/has-input; then
+          ./src/history.sh:2270:          ble/decode/has-input && return 148
+
+          これは履歴検索関係。これもまあ tui stdin で良いだろう。現在の所
+          ble.sh tui 以外から使う事がある様には思われない。
+
+          ./src/util.sh:4450:  local __ble_continue=${2:-'! ble/decode/has-input'}
+
+          これは ble/util/conditional-sync の既定の条件である。うーん。まあ、そ
+          の時の stdin を使いたい場合は ble/util/is-stdin-ready を使う筈で、
+          ble/decode/has-input を用いて decode 経由でアクセスしている時点で tui
+          stdin を介した確認になっている筈なので、これも tui stdin で良いだろう。
+          そういう意味で考えると ble/decode/has-input の呼び出し元をチェックす
+          る意味は余りなかったかもしれない。
+
+          ./lib/core-complete.sh:94:    ble/decode/has-input
+          ./lib/core-complete.sh:1233:  [[ :$comp_type: != *:sync:* ]] && ble/decode/has-input
+
+          これらは以下の関数の呼び出しである。
+
+          ble/complete/menu#check-cancel
+
+            /lib/core-complete.sh:206:    ble/complete/menu#check-cancel && return 148
+            /lib/core-complete.sh:271:    ble/complete/menu#check-cancel && return 148
+            /lib/core-complete.sh:338:    ble/complete/menu#check-cancel && return 148
+            /lib/core-complete.sh:403:    ble/complete/menu#check-cancel && return 148
+            /lib/core-complete.sh:492:      ble/complete/menu#check-cancel && return 148
+            /lib/core-complete.sh:510:      ble/complete/menu#check-cancel && return 148
+
+            ble/complete/menu-style:XXX/construct の処理の中断条件で使われてい
+            る。微妙だけれどやはり ble/decode 経由の時点で tui stdin で良いだろ
+            う。
+
+          ble/complete/check-cancel
+
+            これの呼び出し元はたくさんあるが、やはりこれも tui stdin でOK。補完
+            は特に ble.sh tui でしか発生しない (read を使った時にどうなるかは分
+            からないが)。
+
+            ./lib/core-complete.sh:1720:    '! ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin"' '' progressive-weight
+            ./lib/core-complete.sh:2848:    if ((ext==148)) || ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin"; then
+            ./lib/core-complete.sh:3627:    [[ ! -t 0 ]] && ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin" &&
+            ./lib/core-complete.sh:3649:        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall
+            ./lib/core-complete.sh:4121:        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall'
+            ./lib/core-complete.sh:4178:    "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall
+            ./lib/core-complete.sh:4194:      "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall'
+
+            取り敢えずこれらは最早置換すれば良い。これらを置換したら <& は
+            core-complete.sh からなくなった。なので、他に
+            $_ble_util_fd_tui_stdin を ble/complete/check-cancel の為に余分に
+            redirect している箇所はないだろう。
+
+            ./lib/core-complete.sh:2604:        '! ble/complete/check-cancel' 128 progressive-weight
+
+            これは redirection がなかったが恐らく変更忘れか必要なかったか。何れ
+            にしても別の stdin をチェックする様な文脈ではないはずなのでこのまま
+            で良い。
+
+          以下で検索しても _ble_util_fd_tui_stdin の切り替え自体の処理以外はも
+          うない。全て置換できた様な気がする。
+
+          $ grc '<&"?\$_ble_util_fd_tui_stdin
+
+
+        何れにしても decode 関係は大概ユーザーからの入力を意識していて、何処か
+        勝手に用意した所からの入力を待つという事はないと思われる。
+
+        ? fixed: ble/decode/cmap/decode-chars で処理している時に
+          ble/util/is-stdin-ready を見に行って大丈夫なのか? これの制御は
+          ble_decode_char_sync=1 というローカル変数で行われている様だが部分的に
+          しか制御されていない気がする。現状では寧ろ一般には stdin を見に行って
+          動作を決定している様な気がする。そもそも decode-chars は現在のユーザー
+          の入力と関係なく処理する物のはずだから、ble/util/is-stdin-ready は恰
+          も必ず失敗する様に振る舞わなければならない (或いは has-input でチェッ
+          クしない)。ble_decode_char_sync が設定されてる時は
+          ble/util/is-stdin-ready のチェックは失敗する様に書き換える事にした。
+
+      * ./src/edit.sh:10525:    ble/util/is-stdin-ready && continue
+        これは read の実装に使っている。微妙だが、これは 0 を使う様に修正した。
+
+      * ./src/util.sh:5771:  function ble/util/idle/IS_IDLE { ! ble/util/is-stdin-ready; }
+        ble/util/idle/IS_IDLE
+
+        ./src/util.sh:5896:    ble/util/idle/IS_IDLE || return 1
+        ./src/util.sh:5914:        ble/util/idle/IS_IDLE || break 2
+        ./src/util.sh:6034:    ble/util/idle/IS_IDLE || return 148
+        ./src/util.sh:6071:      ble/util/idle/IS_IDLE || return 148
+
+        ble/util/idle.do ループの中での利用なのでこれで良いはず。
+
+        ./src/history.sh:373:            [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
+        ./src/history.sh:439:      [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
+        ./src/history.sh:810:            [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
+        ./src/history.sh:824:      [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
+
+        これらは履歴読み込み及び mlfix の中断に用いている。基本的に idle/util
+        と同じ取扱で良いだろう。
+
   * progcomp: compgen -V による結果取得 (motivated by RBT22, and many) [#D2253]
     https://github.com/akinomyoga/ble.sh/issues/356
 

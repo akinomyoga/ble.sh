@@ -10503,7 +10503,7 @@ function ble/builtin/read/.loop {
     [[ $_ble_edit_read_accept ]] && break
 
     # render
-    ble/util/is-stdin-ready && continue
+    ble/util/is-stdin-ready 0 && continue
     ble-edit/content/check-limit
     ble-decode/.hook/erase-progress
     ble/application/render

@@ -1145,7 +1145,7 @@ function ble-decode-char/csi/consume {
 _ble_decode_char_buffer=()
 function ble/decode/has-input-for-char {
   ((_ble_decode_input_count)) ||
-    ble/util/is-stdin-ready ||
+    { [[ ! $ble_decode_char_sync ]] && ble/util/is-stdin-ready; } ||
     ble/encoding:"$bleopt_input_encoding"/is-intermediate
 }
 
@@ -2494,7 +2494,7 @@ function ble/decode/widget/keymap-dispatch {
 ##
 function ble/decode/has-input {
   ((_ble_decode_input_count||ble_decode_char_rest)) ||
-    ble/util/is-stdin-ready ||
+    { [[ ! $ble_decode_char_sync ]] && ble/util/is-stdin-ready; } ||
     ble/encoding:"$bleopt_input_encoding"/is-intermediate ||
     ble-decode-char/is-intermediate
 
@@ -2511,7 +2511,7 @@ function ble/decode/has-input {
 ##   cseq (char -> key) にとって次の文字が来ているかどうか
 function ble/decode/has-input-char {
   ((_ble_decode_input_count||ble_decode_char_rest)) ||
-    ble/util/is-stdin-ready ||
+    { [[ ! $ble_decode_char_sync ]] && ble/util/is-stdin-ready; } ||
     ble/encoding:"$bleopt_input_encoding"/is-intermediate
 }
 
@@ -2524,12 +2524,14 @@ function ble/decode/wait-input {
     ble/decode/has-input && return 0
   fi
 
-  while ((timeout>0)); do
-    local w=$((timeout<20?timeout:20))
-    ble/util/msleep "$w"
-    ((timeout-=w))
-    ble/util/is-stdin-ready 0 && return 0
-  done
+  if [[ ! $ble_decode_char_sync ]]; then
+    while ((timeout>0)); do
+      local w=$((timeout<20?timeout:20))
+      ble/util/msleep "$w"
+      ((timeout-=w))
+      ble/util/is-stdin-ready '' 0 && return 0
+    done
+  fi
   return 1
 }
 

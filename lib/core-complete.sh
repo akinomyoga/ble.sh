@@ -1690,7 +1690,7 @@ function ble/complete/action/quote-insert.batch/proc {
   local fname_cands=$_ble_local_tmpfile
   ble/util/conditional-sync \
     'ble/complete/action/quote-insert.batch/awk < "$fname_cands"' \
-    '! ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin"' '' progressive-weight
+    '! ble/complete/check-cancel' '' progressive-weight
   local ext=$?
 
   ble/util/assign/rmtmp
@@ -2818,7 +2818,7 @@ function ble/complete/util/eval-pathname-expansion {
 
     local def
     ble/util/assign def 'ble/util/conditional-sync "$sync_command" "" "" "$sync_opts"' &>/dev/null; local ext=$?
-    if ((ext==148)) || ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin"; then
+    if ((ext==148)) || ble/complete/check-cancel; then
       ble/util/invoke-hook dtor
       return 148
     fi
@@ -3597,7 +3597,7 @@ function ble/complete/progcomp/compopt {
 function ble/complete/progcomp/.check-limits {
   # user-input check
   ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
-    [[ ! -t 0 ]] && ble/complete/check-cancel <&"$_ble_util_fd_tui_stdin" &&
+    [[ ! -t 0 ]] && ble/complete/check-cancel &&
     return 148
   ble/complete/source/test-limit "$((progcomp_read_count++))"
   return "$?"
@@ -3619,7 +3619,7 @@ function ble/complete/progcomp/.compgen-helper-func {
     if [[ " ${FUNCNAME[*]} " == *" ble/complete/progcomp/.compgen "* ]]; then
       local -a args; args=("$@")
       ble/util/conditional-sync "exec ssh \"\${args[@]}\"" \
-        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall
+        '\''! ble/complete/check-cancel'\'' 128 progressive-weight:killall
     else
       ble/function#push/call-top "$@"
     fi'
@@ -4091,7 +4091,7 @@ function ble/complete/progcomp/patch:bash-completion/_comp_cmd_make.advice {
       local -a make_args; make_args=("${ADVICE_WORDS[1]}" "$@")
       ble/util/conditional-sync \
         '\''command "${make_args[@]}"'\'' \
-        "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall'
+        '\''! ble/complete/check-cancel'\'' 128 progressive-weight:killall'
     ble/function#advice/do
     ble/function#pop "${ADVICE_WORDS[1]}"
   else
@@ -4148,7 +4148,7 @@ function ble/complete/progcomp/patch:cobraV2/get_completion_results.invoke {
   local -a invoke_args; invoke_args=("$@")
   ble/util/conditional-sync \
     "${orig_words[0]} \"\${invoke_args[@]}\"" \
-    "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall
+    '! ble/complete/check-cancel' 128 progressive-weight:killall
 }
 ## @fn ble/complete/progcomp/call-by-conditional-sync funcname
 ##   This modifies the function to process its task in a subshell using
@@ -4164,7 +4164,7 @@ function ble/complete/progcomp/call-by-conditional-sync {
   ble/function#advice around "$1" '
     ble/util/conditional-sync \
       ble/function#advice/do \
-      "! ble/complete/check-cancel <&$_ble_util_fd_tui_stdin" 128 progressive-weight:killall'
+      '\''! ble/complete/check-cancel'\'' 128 progressive-weight:killall'
 }
 
 ## @fn ble/complete/progcomp/.compgen opts

@@ -250,6 +250,7 @@
 - util (`ble/util/buffer.flush`): write to the TUI stderr `#D2218` b5c88947
 - util (`ble/util/buffer.flush`): use <kbd>DECSET(2026)</kbd> in terminals with the support `#D2226` c3df08be
 - main: refactor initialization sequence `#D2231` cc9d7f39
+- util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

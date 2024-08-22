@@ -1495,16 +1495,16 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 # ble/util/is-stdin-ready
 if ((_ble_bash>=40000)); then
   (
-    ble/test 'echo 1 | { sleep 0.01; ble/util/is-stdin-ready; }'
+    ble/test 'echo 1 | { sleep 0.01; ble/util/is-stdin-ready 0; }'
     [[ ${CI-} == true && ${GITHUB_ACTION-} && $OSTYPE == msys* ]] ||
-      ble/test 'sleep 0.01 | ble/util/is-stdin-ready' exit=1
-    ble/test 'ble/util/is-stdin-ready <<< a'
-    ble/test 'ble/util/is-stdin-ready <<< ""'
+      ble/test 'sleep 0.01 | ble/util/is-stdin-ready 0' exit=1
+    ble/test 'ble/util/is-stdin-ready 0 <<< a'
+    ble/test 'ble/util/is-stdin-ready 0 <<< ""'
 
     # EOF は成功してしまう? これは意図しない振る舞いである。
     # しかし bash 自体が終了するので関係ないのかもしれない。
-    ble/test ': | { sleep 0.01; ble/util/is-stdin-ready; }'
-    ble/test 'ble/util/is-stdin-ready < /dev/null'
+    ble/test ': | { sleep 0.01; ble/util/is-stdin-ready 0; }'
+    ble/test 'ble/util/is-stdin-ready 0 < /dev/null'
   )
 fi
 
