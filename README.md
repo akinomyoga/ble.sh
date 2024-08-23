@@ -329,14 +329,36 @@ make install
 # INSTALL to a specified directory
 make install INSDIR=/path/to/blesh
 
-# PACKAGE (for package maintainers)
+# PACKAGE (for package maintainers) - Example 1
 make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
+
+# PACKAGE - Example 2
+make install DESTDIR="$build" PREFIX="$prefix" \
+  INSDIR_LICENSE="$build/$prefix/licenses/blesh"
+
+# PACKAGE - Example 3
+make install DESTDIR="$build" PREFIX="$prefix" \
+  INSDIR_LICENSE="$build/$prefix/share/blesh/doc" \
+  INSDIR_DOC="$build/$prefix/share/blesh/doc"
+
+# PACKAGE - Example 4
+make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix" \
+  INSDIR_LICENSE="$build/$prefix/share/blesh"
 ```
 
-If either the make variables `DESTDIR` or `PREFIX` is supplied, `ble.sh` will be copied to `$DESTDIR/$PREFIX/share/blesh`.
-Otherwise, if the make variables `INSDIR` is specified, it will be installed directly on `$INSDIR`.
-Otherwise, if the environment variable `$XDG_DATA_HOME` is defined, the install location will be `$XDG_DATA_HOME/blesh`.
-If none of these variables are specified, the default install location is `~/.local/share/blesh`.
+If make variable `DESTDIR` or `PREFIX` is supplied, `ble.sh` and related files
+will be copied into `$DESTDIR/$PREFIX/share/blesh`, and the license and
+documentation files will be copied into `$DESTDIR/$PREFIX/share/doc/blesh`.
+Otherwise, if make variable `INSDIR` is specified, `ble.sh` and related files
+will be installed directly in `$INSDIR`, and the license and documentation
+files will be copied into `$INSDIR/doc`.  If none of these make variables are
+defined, `ble.sh` and related files are installed in
+`${XDG_DATA_HOME:-$HOME/.local/share}/blesh`, and the license and document
+files are installed in `${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh`.
+
+The install locations of the license and documentation files can be overridden
+by make variables `INSDIR_LICENSE` and `INSDIR_DOC`.  If `USE_DOC=no` is
+specified, the documentation files are disabled.
 
 The comment lines and blank lines in the script files are stripped in the installation process.
 If you would like to keep these lines in the script files, please specify the argument `strip_comment=no` to `make`.

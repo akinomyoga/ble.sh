@@ -55,6 +55,7 @@
 - color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` xxxxxxxx
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` xxxxxxxx
+- make: support make variable `USE_DOC=no` `#D2259` xxxxxxxx
 
 ## Changes
 

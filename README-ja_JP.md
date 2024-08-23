@@ -295,14 +295,35 @@ make install
 # 指定したディレクトリにインストール
 make install INSDIR=/path/to/blesh
 
-# パッケージ作成用 (パッケージ管理者用)
+# パッケージ作成 (パッケージ管理者用) - 例1
 make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
+
+# パッケージ作成 - 例2
+make install DESTDIR="$build" PREFIX="$prefix" \
+  INSDIR_LICENSE="$build/$prefix/licenses/blesh"
+
+# パッケージ作成 - 例3
+make install DESTDIR="$build" PREFIX="$prefix" \
+  INSDIR_LICENSE="$build/$prefix/share/blesh/doc" \
+  INSDIR_DOC="$build/$prefix/share/blesh/doc"
+
+# パッケージ作成 - 例4
+make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix" \
+  INSDIR_LICENSE="$build/$prefix/share/blesh"
 ```
 
-Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` は `$DESTDIR/$PREFIX/share/blesh` にコピーされます。
-それ以外で Make 変数 `INSDIR` が指定されている時、直接 `$INSDIR` にインストールされます。
-更にそれ以外で環境変数 `$XDG_DATA_HOME` が指定されている時、`$XDG_DATA_HOME/blesh` にインストールされます。
-以上の変数が何れも指定されていない時の既定のインストール先は `~/.local/share/blesh` です。
+Make 変数 `DESTDIR` または `PREFIX` が指定されている時、
+`ble.sh` 及び関連ファイルは `$DESTDIR/$PREFIX/share/blesh` に、
+ライセンス及びドキュメントは `$DESTDIR/$PREFIX/share/doc/blesh` にコピーされます。
+それ以外で Make 変数 `INSDIR` が指定されている時、
+`ble.sh` 及び関連ファイルは直接 `$INSDIR` に配置され、
+ライセンス及びドキュメントは `$INSDIR/doc` にコピーされます。
+以上の Make 変数が指定されていない時は、
+`ble.sh` 及び関連ファイルは `${XDG_DATA_HOME:-$HOME/.local/share}/blesh` に、
+ライセンス及びドキュメントは `${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh` にインストールされます。
+
+ライセンス及びドキュメントのインストール先は Make 変数 `INSDIR_LICENSE` と `INSDIR_DOC` を用いて上書きできます。
+Make 変数 `USE_DOC=no` が指定されている場合は、ドキュメントファイルの処理が無効化されます。
 
 インストール時にコード中のコメントは自動で削除されますが、コメントを保持したい場合は `strip_comment=no` を `make` の引数に指定して下さい。
 

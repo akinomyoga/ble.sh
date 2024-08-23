@@ -7373,6 +7373,21 @@ bash_tips
 
 2024-08-23
 
+  * make: make variable "USE_DOC=no" (requested by blackteahamburger) [#D2260]
+    https://github.com/akinomyoga/ble.sh/issues/485
+
+    取り敢えず実装した。USE_DOC=no で指定できる。最初は INSDIR_DOC=none 等を指
+    定した時に無効化できるようにしようと思ったが、それだと make install だけし
+    か影響を受けない機能のようだし、やはり任意の値を指定できるはずのパス名の設
+    定に特別な値を導入するのは良くない気がする。なので、USE_DOC という変数名に
+    する事にする。
+
+    * done: README をもう少し詳しく記述する。
+    * done: README-ja_JP も同様に更新する。
+
+    * fixed: INSDIR_LICENSE と INSDIR_DOC が同じ場合の対策はしているが、それら
+      が INSDIR と一致する場合の対策がされていない気がする。修正する。
+
   * contrib: fzf-menu 修正 (reported by pallaswept) [#D2259]
     https://github.com/akinomyoga/ble.sh/issues/479#issuecomment-2305871596
     Ref: #D2251

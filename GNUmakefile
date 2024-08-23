@@ -152,12 +152,14 @@ removedfiles += \
 # documents
 
 outdirs += $(OUTDIR)/doc
-outfiles-doc += $(OUTDIR)/doc/README.md
-outfiles-doc += $(OUTDIR)/doc/README-ja_JP.md
-outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
-outfiles-doc += $(OUTDIR)/doc/ChangeLog.md
-outfiles-doc += $(OUTDIR)/doc/Release.md
 outfiles-license += $(OUTDIR)/doc/LICENSE.md
+ifneq ($(USE_DOC),no)
+  outfiles-doc += $(OUTDIR)/doc/README.md
+  outfiles-doc += $(OUTDIR)/doc/README-ja_JP.md
+  outfiles-doc += $(OUTDIR)/doc/CONTRIBUTING.md
+  outfiles-doc += $(OUTDIR)/doc/ChangeLog.md
+  outfiles-doc += $(OUTDIR)/doc/Release.md
+endif
 
 # Note #D2065: make-3.81 のバグにより以下の様に記述すると、より長く一致するパター
 # ンを持った規則よりも優先されてしまう。3.82 では問題は発生しない。% の代わりに
@@ -245,9 +247,11 @@ uninstall:
 
 $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install $(opt_strip_comment) "$<" "$@"
+ifneq ($(INSDIR_DOC),$(INSDIR))
 $(INSDIR_DOC)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
-ifneq ($(INSDIR_DOC),$(INSDIR_LICENSE))
+endif
+ifneq ($(findstring $(INSDIR_LICENSE),$(INDDIR) $(INSDIR_DOC)),)
 $(INSDIR_LICENSE)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
 endif
