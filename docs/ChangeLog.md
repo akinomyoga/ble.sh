@@ -57,6 +57,7 @@
 - progcomp: support `complete -E` `#D2257` ffac4205
 - make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95
   - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` xxxxxxxx
+- edit (`ble/widget/display-shell-version`): print shell options `#D2260` xxxxxxxx
 
 ## Changes
 

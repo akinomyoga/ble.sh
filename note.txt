@@ -7371,6 +7371,13 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-24
+
+  * edit: display-shell-version に SHELLOPTS, BASHOPTS も含めるべき? [#D2261]
+
+    追加した。diff が使える時は diff を使って既定のオプションと異なる物だけを指
+    定する。
+
 2024-08-23
 
   * make: make variable "USE_DOC=no" (requested by blackteahamburger) [#D2260]

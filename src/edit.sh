@@ -4446,6 +4446,26 @@ function ble/widget/display-shell-version {
   done
   lines[iline++]=$line
 
+  # shell options
+  if ble/bin#freeze-utility-path diff && [[ -x $BASH ]]; then
+    local _ble_local_tmpfile
+    ble/util/assign/mktmp; local tmpfile1=$_ble_local_tmpfile
+    ble/util/assign/mktmp; local tmpfile2=$_ble_local_tmpfile
+
+    "$BASH" --norc --noprofile  -ic 'shopt -po; shopt' >| "$tmpfile1"
+    { shopt -po; shopt; } >| "$tmpfile2"
+    local awk_script='/^[-+].*[[:space:]]on$/ {print $1} /^[-+]set -o .*$/ {print substr($0,1,1) $3}' IFS=$' \t\n'
+    ble/util/assign-words diff 'ble/bin/diff -bwu "$tmpfile1" "$tmpfile2" | ble/bin/awk "$awk_script"'
+    line="${_ble_term_bold}options$sgr0: ${diff[*]}"
+
+    _ble_local_tmpfile=$tmpfile2 ble/util/assign/rmtmp
+    _ble_local_tmpfile=$tmpfile1 ble/util/assign/rmtmp
+  else
+    line="${_ble_term_bold}options$sgr0: ${sgr2}SHELLOPTS$sgrV=$sgr0$SHELLOPTS"
+    ((_ble_bash>=40100)) && line="$line, ${sgr2}BASHOPTS$sgrV=$sgr0$BASHOPTS"
+  fi
+  lines[iline++]=$line
+
   ble/widget/print "${lines[@]}"
 
   [[ $_ble_bash_options_adjusted ]] || ble/base/.restore-bash-options set shopt
