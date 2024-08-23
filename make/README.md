@@ -53,12 +53,18 @@ available
 
 
 ```bash
-$ make/color.sample.sh list-safe-colors [-bBdD] [-t [ansi|html|markdown] | -y MINBRIGHT | -Y MAXBRIGHT]
+$ make/color.sample.sh list-safe-colors [-t (ansi|html|markdown)] \
+                                [-bB | -y MINBRIGHT | -Y MAXBRIGHT] \
+                                [-dD | -E (cie76|cie94|ITP)]
 ```
 
-The accepted range of the brightness and other conditions can be configured by
-directly modifying the variables `c_b_min`, `c_b_max`, and `c_filter_by_*` in
-the file.
+The accepted range of the brightness can be specified by the options `-y
+MINBRIGHT` and `-Y MAXBRIGHT`.  To enable/disable the filtering by the
+brightness, one can use the option `-b`/`-B`.  The filtering by the brightness
+is enabled by default.  To enable/disable the filtering the the distances from
+white and black, one can use the option `-d`/`-D`.  The definition of the color
+distance can be specified by the option `-E COLORDISTANCE`.  The output format
+can be specified by the option `-t TYPE`.
 
 To generate a patch to modify unsafe colors, one can run the following command:
 
@@ -72,7 +78,7 @@ following command can be used.  The HTML output is available
 [here](https://akinomyoga.github.io/ble.sh/colorglass.base16.html).
 
 ```bash
-make/color.sample.sh generate-base16-sample [-t [ansi|html|markdown]]
+make/color.sample.sh generate-base16-sample [-t (ansi|html|markdown)]
 ```
 
 ## Update airline themes in the contrib repository

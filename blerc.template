@@ -638,7 +638,7 @@
 ## can be specified based on the user's preference.
 
 #ble-face auto_complete='fg=238,bg=254'           # default
-#ble-face auto_complete='fg=white,bg=69'          # blue background
+#ble-face auto_complete='fg=231,bg=69'            # blue background
 #ble-face auto_complete='fg=240,underline,italic' # darker background
 
 
@@ -944,9 +944,9 @@
 ## The following settings specify graphic styles of corresponding faces.  Faces
 ## used for specific features are described in the respective sections.
 
-#ble-face -s region                    fg=white,bg=60
-#ble-face -s region_insert             fg=blue,bg=252
-#ble-face -s region_match              fg=white,bg=55
+#ble-face -s region                    fg=231,bg=60
+#ble-face -s region_insert             fg=27,bg=254
+#ble-face -s region_match              fg=231,bg=55
 #ble-face -s region_target             fg=black,bg=153
 #ble-face -s disabled                  fg=242
 #ble-face -s overwrite_mode            fg=black,bg=51
@@ -977,21 +977,21 @@
 #ble-face -s command_keyword           fg=blue
 #ble-face -s command_jobs              fg=red,bold
 #ble-face -s command_directory         fg=63,underline
-#ble-face -s command_suffix            fg=white,bg=green
-#ble-face -s command_suffix_new        fg=white,bg=brown
+#ble-face -s command_suffix            fg=231,bg=28
+#ble-face -s command_suffix_new        fg=231,bg=124
 #ble-face -s argument_option           fg=teal
 #ble-face -s argument_option           fg=black,bg=225
 #ble-face -s filename_directory        underline,fg=33
-#ble-face -s filename_directory_sticky underline,fg=white,bg=26
+#ble-face -s filename_directory_sticky underline,fg=231,bg=26
 #ble-face -s filename_link             underline,fg=teal
-#ble-face -s filename_orphan           underline,fg=teal,bg=224
+#ble-face -s filename_orphan           underline,fg=16,bg=224
 #ble-face -s filename_setuid           underline,fg=black,bg=220
 #ble-face -s filename_setgid           underline,fg=black,bg=191
 #ble-face -s filename_executable       underline,fg=green
 #ble-face -s filename_other            underline
 #ble-face -s filename_socket           underline,fg=cyan,bg=black
 #ble-face -s filename_pipe             underline,fg=lime,bg=black
-#ble-face -s filename_character        underline,fg=white,bg=black
+#ble-face -s filename_character        underline,fg=231,bg=black
 #ble-face -s filename_block            underline,fg=yellow,bg=black
 #ble-face -s filename_warning          underline,fg=red
 #ble-face -s filename_url              underline,fg=blue

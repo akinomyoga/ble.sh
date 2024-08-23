@@ -78,8 +78,79 @@ function ble/lib/vim-airline/convert-theme/decode-color {
   fi
 }
 
+ble-face test{1..3}:=none
+
+declare -A _ble_vim_airline_bg_to_default_fg=([NONE]= [Brown]='#ffffff'
+  [White]='#000000' [Red]='#ffffff' [SeaGreen]='#ffffff' [Grey90]='#000000'
+  [LightGrey]='#000000' [#000000]='#ffffff' [LightBlue]='#000000'
+  [LightMagenta]='#000000' [LightCyan]='#000000' [#ebebeb]='#000000'
+  [Blue]='#ffffff' [Magenta]='#ffffff' [DarkBlue]='#ffffff'
+  [DarkCyan]='#ffffff' [#d75f00]='#ffffff' [#0087af]='#ffffff'
+  [#585858]='#ffffff')
+
+declare -A _ble_vim_airline_fg_to_default_bg=([NONE]= [Brown]='#ffffff'
+  [#df5f00]='#ffffff' [White]='#000000' [Red]='#ffffff' [SeaGreen]='#ffffff'
+  [Magenta]='#ffffff' [LightGrey]='#000000' [#005f00]='#ffffff'
+  [#d7ff00]='#000000' [LightMagenta]='#000000' [#ebebeb]='#000000'
+  [#6a5acd]='#ffffff' [#3f4b59]='#ffffff' [#D4BFFF]='#000000'
+  [#1d1f21]='#ffffff' [#ffae57]='#000000' [#8d96a1]='#000000'
+  [#F07178]='#000000' [#BBE67E]='#000000' [Blue]='#ffffff' [#ffdf87]='#000000'
+  [#005fff]='#ffffff' [#008700]='#ffffff' [#af00df]='#ffffff'
+  [#dfff00]='#000000' [#ff0000]='#ffffff' [#ffaf87]='#000000'
+  [#ff8700]='#000000' [#8787af]='#000000' [#87afd7]='#000000'
+  [#87af87]='#000000' [#ffffaf]='#000000' [#af5f5f]='#ffffff'
+  [#ff2c4b]='#000000' [#ffa724]='#000000' [#dc9656]='#000000'
+  [#ff5c57]='#000000' [#57c7ff]='#000000' [#E5786D]='#000000'
+  [#86CD74]='#000000' [#d7005f]='#ffffff' [#d7af5f]='#000000'
+  [#b42839]='#ffffff' [#875faf]='#ffffff' [#d70000]='#ffffff'
+  [#d75f00]='#ffffff' [#ffb8d1]='#000000' [#ffb964]='#000000'
+  [#d96e8a]='#000000' [#ef393d]='#000000' [#081c8c]='#ffffff'
+  [#D75F5F]='#000000' [#df0000]='#ffffff' [#FC2929]='#000000'
+  [#ffffff]='#000000' [#e20000]='#ffffff' [#66d9ef]='#000000'
+  [#f8f8f0]='#000000' [#FF0000]='#000000' [#ff2121]='#000000'
+  [#e25000]='#000000' [#1d252b]='#ffffff' [#d2212d]='#ffffff'
+  [#d6000c]='#ffffff' [#f7e4c0]='#000000' [#ff3535]='#000000'
+  [#073642]='#ffffff' [#DC322F]='#ffffff' [#5FD7FF]='#000000'
+  [#CAE682]='#000000' [#ff7400]='#000000' [#4E4E4E]='#ffffff')
+
 function face {
-  local mode=$1 face=$2 fg=${3:-${5:-0}} bg=${4:-${6:-0}}
+  local mode=$1 face=$2 fg=${3:-${5:-NONE}} bg=${4:-${6:-NONE}}
+
+  # map fg=NONE
+  if [[ $fg == NONE ]]; then
+    if [[ ${_ble_vim_airline_bg_to_default_fg[$bg]-} ]]; then
+      fg=${_ble_vim_airline_bg_to_default_fg[$bg]}
+    elif [[ ! ${_ble_vim_airline_bg_to_default_fg[$bg]+set} ]]; then
+      local ret color256 color24
+      ble/lib/vim-airline/convert-theme/decode-color "$bg"
+      ble-face test1="fg=-1,bg=$color24"
+      ble-face test2="fg=16,bg=$color24"
+      ble-face test3="fg=231,bg=$color24"
+      ble/color/face2sgr test1; local sgr1=$ret
+      ble/color/face2sgr test2; local sgr2=$ret
+      ble/color/face2sgr test3; local sgr3=$ret
+      ble/util/print "fg=$fg,bg=$bg might be invisible: [$sgr1 Hello $sgr2 Hello $sgr3 Hello $_ble_term_sgr0]"
+      _ble_vim_airline_bg_to_default_fg[$bg]=
+    fi
+  fi
+
+  # map bg=NONE
+  if [[ $bg == NONE ]]; then
+    if [[ ${_ble_vim_airline_fg_to_default_bg[$fg]-} ]]; then
+      bg=${_ble_vim_airline_fg_to_default_bg[$fg]}
+    elif [[ ! ${_ble_vim_airline_fg_to_default_bg[$fg]+set} ]]; then
+      local ret color256 color24
+      ble/lib/vim-airline/convert-theme/decode-color "$fg"
+      ble-face test1="fg=$color24,bg=-1"
+      ble-face test2="fg=$color24,bg=16"
+      ble-face test3="fg=$color24,bg=231"
+      ble/color/face2sgr test1; local sgr1=$ret
+      ble/color/face2sgr test2; local sgr2=$ret
+      ble/color/face2sgr test3; local sgr3=$ret
+      ble/util/print "fg=$fg,bg=$bg might be invisible: [$sgr1 Hello $sgr2 Hello $sgr3 Hello $_ble_term_sgr0]"
+      _ble_vim_airline_fg_to_default_bg[$fg]=
+    fi
+  fi
 
   # check mode
   case ${mode%_modified} in

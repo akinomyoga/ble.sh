@@ -558,10 +558,10 @@ bleopt edit_bell=vbell vbell_{default_message=' BEL ',duration=3000,align=right}
 The colors and attributes used in the syntax highlighting are controlled by the function `ble-face`. The following code reproduces the default configuration:
 ```bash
 # highlighting related to editing
-ble-face -s region                    bg=60,fg=white
+ble-face -s region                    bg=60,fg=231
 ble-face -s region_target             bg=153,fg=black
-ble-face -s region_match              bg=55,fg=white
-ble-face -s region_insert             fg=12,bg=252
+ble-face -s region_match              bg=55,fg=231
+ble-face -s region_insert             fg=27,bg=254
 ble-face -s disabled                  fg=242
 ble-face -s overwrite_mode            fg=black,bg=51
 ble-face -s vbell                     reverse
@@ -596,19 +596,19 @@ ble-face -s command_file              fg=green
 ble-face -s command_keyword           fg=blue
 ble-face -s command_jobs              fg=red
 ble-face -s command_directory         fg=33,underline
-ble-face -s command_suffix            fg=white,bg=green
-ble-face -s command_suffix_new        fg=white,bg=brown
+ble-face -s command_suffix            fg=231,bg=28
+ble-face -s command_suffix_new        fg=231,bg=124
 ble-face -s filename_directory        underline,fg=33
-ble-face -s filename_directory_sticky underline,fg=white,bg=26
+ble-face -s filename_directory_sticky underline,fg=231,bg=26
 ble-face -s filename_link             underline,fg=teal
-ble-face -s filename_orphan           underline,fg=teal,bg=224
+ble-face -s filename_orphan           underline,fg=16,bg=224
 ble-face -s filename_executable       underline,fg=green
 ble-face -s filename_setuid           underline,fg=black,bg=220
 ble-face -s filename_setgid           underline,fg=black,bg=191
 ble-face -s filename_other            underline
 ble-face -s filename_socket           underline,fg=cyan,bg=black
 ble-face -s filename_pipe             underline,fg=lime,bg=black
-ble-face -s filename_character        underline,fg=white,bg=black
+ble-face -s filename_character        underline,fg=231,bg=black
 ble-face -s filename_block            underline,fg=yellow,bg=black
 ble-face -s filename_warning          underline,fg=red
 ble-face -s filename_url              underline,fg=blue

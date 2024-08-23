@@ -7373,6 +7373,46 @@ bash_tips
 
 2024-08-23
 
+  * color: 配色再調整 - 背景色・前景色を両方指定している場合も駄目の様だ [#D2258]
+    https://github.com/akinomyoga/ble.sh/issues/478#issuecomment-2304712451
+    Ref: #D2248
+
+    改めてサンプルを見てみると明るい背景の上に暗い文字を描画している物が見えな
+    い。もしくは、くらい背景の上に白文字を描画している物が見えない。base16 はこ
+    ういう意味でも信用できないという事。結局、(黒 vs 他の色) の組み合わせしかちゃ
+    んと読めることが保証されないという事になるのだろう。もっと言うと青や紫に関
+    しては黒と組み合わせた場合でも読めるように表示できるか分からない。前景色だ
+    けを指定している時には、navy,purple,lime,cyan,white,black,silver,gray は避
+    ける。前景色と背景色を療法指定する時はどちらか一方が黒になる様にするか、そ
+    うでなければ両方とも 256 index colors (>= 16) を指定するべき。
+
+    ? fg=0 なる指定が airline の 3 themes だけで生成されている。その他の base16
+      については使われていない。これは何か? 最近の更新で新しく混入したのかもし
+      れないと思ったがそうでもなかった。昔からあるようだ。
+
+      ./contrib/airline/distinguished.bash:19:  ble-face -s vim_airline_a_normal_modified            fg=0,bg=166   # fg=0,bg=#d75f00
+      ./contrib/airline/distinguished.bash:31:  ble-face -s vim_airline_z_normal_modified            fg=0,bg=166   # fg=0,bg=#d75f00
+      ./contrib/airline/papercolor.bash:15:  ble-face -s vim_airline_b_visual                     fg=0,bg=31    # fg=0,bg=#0087af
+      ./contrib/airline/supernova.bash:17:  ble-face -s vim_airline_b_visual                     fg=0,bg=240   # fg=0,bg=#585858
+
+      vim からの抽出結果は以下の様になっている (supernova の場合)。
+
+        face visual airline_b '' '#585858' '' '240'
+
+      空欄になっている様である。240 や #585858 は既に暗い色なのでこれを fg=0 に
+      してしまうと文字が読めない。その他の theme についても同様である。空欄は白
+      に mapping するのが良い気がする。
+
+      更に bg=0 も沢山登場するようだ。こちらに関しては黒という事にしておかない
+      と文字が見えなくなる。
+
+      更に更に fg=-1 や bg=-1 等という物も本当にこのままで良いのか怪しい。試し
+      に確認してみた所、文字が読めない様な設定が実は普通にある。
+
+      fg=0 bg=0 (元々 '') や fg=-1 bg=-1 (元々 'NONE') について全て一括で既定職
+      を割り当てることにする。微妙な色もあるが、テーマごとの雰囲気等を考える事
+      なく全て適当に割り当ててしまう事にする。
+
   * 2021-08-31 complete: -E (_EmptycmD_) に対応していない [#D2257]
 
     一方でこれは一体どの様に振る舞うものとして実装すれば良いのか分からない側面
