@@ -2536,10 +2536,10 @@ function ble/complete/source:command/.contract-by-slashes {
   '
 }
 
-## @fn ble/complete/source:command/gen.1
-function ble/complete/source:command/gen.1 {
+## @fn ble/complete/source:command/.print-command
+function ble/complete/source:command/.print-command {
   # Note #D1922: パス名コマンドの曖昧補完は compgen -c ではなく自前で処理する。
-  # ディレクトリ名に関しては ble/complete/source:command/gen の側で生成されるの
+  # ディレクトリ名に関しては ble/complete/source:command/.print の側で生成されるの
   # でここでは生成しない。
   if [[ $COMPV == */* && :$comp_type: == *:[maA]:* ]]; then
     local ret
@@ -2588,12 +2588,12 @@ function ble/complete/source:command/gen.1 {
   fi
 }
 
-function ble/complete/source:command/gen {
+function ble/complete/source:command/.print {
   if [[ :$comp_type: != *:[maA]:* && $bleopt_complete_contract_function_names ]]; then
-    ble/complete/source:command/gen.1 |
+    ble/complete/source:command/.print-command |
       ble/complete/source:command/.contract-by-slashes
   else
-    ble/complete/source:command/gen.1
+    ble/complete/source:command/.print-command
   fi
 
   # ディレクトリ名列挙 (/ 付きで生成する)
@@ -2606,7 +2606,8 @@ function ble/complete/source:command/gen {
   #     [[ :$comp_type: == *:a:* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   #     compgen -A directory -S / -- "$compv_quoted"
   #
-  if [[ $arg != *D* ]]; then
+  local flags=$1
+  if [[ $flags != *D* ]]; then
     local ret
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
     ble/complete/util/eval-pathname-expansion "$ret/"; (($?==148)) && return 148
@@ -2644,35 +2645,11 @@ function ble/complete/source:command/gen {
     builtin compgen -W '"${joblist[@]}"' -- "$compv_quoted"
   fi
 }
-## ble/complete/source:command arg
-##   @param[in] arg
-##     arg に D が含まれている時、
-##     ディレクトリ名の列挙を抑制する事を表します。
-function ble/complete/source:command {
-  [[ $comps_flags == *v* ]] || return 1
-  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
-  local arg=$1
-
-  # Try progcomp by "complete -p -I" / "complete -p _InitialWorD_"
-  {
-    local old_cand_count=$cand_count
-
-    local comp_opts=:
-    ble/complete/source:argument/.generate-user-defined-completion initial; local ext=$?
-    ((ext==148)) && return "$ext"
-    if ((ext==0)); then
-      ((cand_count>old_cand_count)) && return "$ext"
-    fi
-  }
-
-  ble/complete/source:sabbrev
-
-  local arr
-  local compgen
-  ble/util/assign compgen 'ble/complete/source:command/gen "$arg"'
-  [[ $compgen ]] || return 1
-  ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
+function ble/complete/source:command/.generate {
+  local flags=$1 compgen
+  ble/util/assign compgen 'ble/complete/source:command/.print "$flags"'
+  local -a arr=()
+  [[ $compgen ]] && ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
 
   ble/complete/source/test-limit "${#arr[@]}" || return 1
 
@@ -2729,8 +2706,44 @@ function ble/complete/source:command {
     cands[icand++]=$cand
   done
   ble/complete/cand/yield.batch "$action"
+}
 
-  # generate candidates for suffix sabbrev
+## ble/complete/source:command flags
+##   @param[in] flags
+##     A set of flag characters.
+##     @opt D
+##       When D is specified, directory-name generation is suppressed.
+##     @opt V
+##       When V is specified, variable-name generation is suppressed.
+function ble/complete/source:command {
+  [[ $comps_flags == *v* ]] || return 1
+
+  local comp_opts=: old_cand_count=$cand_count
+
+  # Try progcomp by "complete -E" before checking no_empty_cmd_completion.
+  if [[ ! $_ble_edit_str ]]; then
+    ble/complete/source:argument/.generate-user-defined-completion empty; local ext=$?
+    ((ext==148||ext==0&&cand_count>old_cand_count)) && return "$ext"
+  fi
+
+  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+
+  # Try progcomp by "complete -I"
+  ble/complete/source:argument/.generate-user-defined-completion initial; local ext=$?
+  ((ext==148||ext==0&&cand_count>old_cand_count)) && return "$ext"
+
+  ble/complete/source:sabbrev
+
+  # Generate command names (including job specs and directory names)
+  ble/complete/source:command/.generate "$1"
+
+  # Generate variable names
+  [[ $1 != *V* ]] &&
+    ble/string#match "$COMPV" '^([_a-zA-Z][_a-zA-Z0-9]*)?$' &&
+    ble/complete/source:variable '='
+
+  # Generate candidates for suffix sabbrev
   local ret
   if ble/complete/sabbrev/suffix.construct-regex; then
     local source_file_regex=$ret
@@ -3340,11 +3353,11 @@ function ble/complete/progcomp/.compvar-initialize {
   ble/complete/progcomp/.compvar-initialize-wordbreaks
 
   progcomp_prefix=
-  COMP_CWORD=
-  COMP_POINT=
+  COMP_CWORD=-1
+  COMP_POINT=0
   COMP_LINE=
   COMP_WORDS=()
-  cmd=${comp_words[0]}
+  cmd=${comp_words[0]-}
   cur= prev=
   local ret simple_flags simple_ibrace
   local word1 index=0 offset=0 sep=
@@ -4232,8 +4245,12 @@ function ble/complete/progcomp/.adjust-third-party-completions {
 ##   @param[in] opts
 ##     コロン区切りのオプションリストです。
 ##
-##     initial ... 最初の単語 (コマンド名) の補完に用いる関数を指定します。
-##     default ... 既定の補完設定 (complete -D) を用います。
+##     @opt default
+##       既定の補完設定 (complete -D) を用います。
+##     @opt empty
+##       空のコマンド行の為の補完設定 (complete -E) を用います。
+##     @opt initial
+##       最初の単語 (コマンド名) の補完設定 (complete -I) を用います。
 ##
 ##   @param[in,opt] cmd
 ##     プログラム補完規則を検索するのに使う名前を指定します。省略した場合
@@ -4255,29 +4272,35 @@ function ble/complete/progcomp/.compgen {
 
   local compcmd= is_special_completion=
   local -a alias_args=()
-  if [[ :$opts: == *:initial:* ]]; then
+  case :$opts: in
+  (*:default:*)
+    if ((_ble_bash>=40100)); then
+      is_special_completion=1
+      compcmd='-D'
+    else
+      compcmd=_DefaultCmD_
+    fi ;;
+  (*:empty:*)
+    if ((_ble_bash>=40100)); then
+      is_special_completion=1
+      compcmd='-E'
+    else
+      compcmd=_EmptycmD_
+    fi ;;
+  (*:initial:*)
     if ((_ble_bash>=50000)); then
       is_special_completion=1
       compcmd='-I'
     else
       compcmd=_InitialWorD_
-    fi
-  elif [[ :$opts: == *:default:* ]]; then
-    if ((_ble_bash>=40100)); then
-      builtin complete -p -D &>/dev/null || return 1
-      is_special_completion=1
-      compcmd='-D'
-    else
-      builtin complete -p _DefaultCmD_ &>/dev/null || return 1
-      compcmd=_DefaultCmD_
-    fi
-  else
-    compcmd=${cmd:-${comp_words[0]}}
-  fi
+    fi ;;
+  (*)
+    compcmd=${cmd:-${comp_words[0]}} ;;
+  esac
 
   local compdef
   if [[ $is_special_completion ]]; then
-    # -I, -D, etc.
+    # -D, -E, and -I
     ble/util/assign compdef 'builtin complete -p "$compcmd" 2>/dev/null'
   elif ble/syntax:bash/simple-word/is-simple "$compcmd"; then
     # 既に呼び出し元で quote されている想定
@@ -4286,7 +4309,8 @@ function ble/complete/progcomp/.compgen {
   else
     ble/util/assign compdef 'builtin complete -p -- "$compcmd" 2>/dev/null'
   fi
-  # strip -I, -D, or command_name
+  [[ $compdef ]] || return 1
+  # strip -D, -E, -I, or $compcmd
   # Note (#D1579): bash-5.1 では空コマンドに限り '' と出力する様である。
   # Note (#D2088): bash-5.2 ではコマンド名に特殊文字が含まれている時 '...' と出
   #   力するが、一方で安全に eval で評価する事ができるのでこの時点でコマンド名
@@ -6022,22 +6046,35 @@ function ble/complete/source:option/generate-for-command {
 ##
 ##   @param[in] opts
 ##     コロン区切りのオプションリストを指定します。
-##     initial ... 最初の単語(コマンド名)の補完である事を示します。
+##     @opt empty
+##       空のコマンドラインに対する補完である事を示します。
+##     @opt initial
+##       最初の単語(コマンド名)の補完である事を示します。
 ##   @var[in] COMP1 COMP2
 ##   @var[in] (variables set by ble/syntax/parse)
 ##
 function ble/complete/source:argument/.generate-user-defined-completion {
   shopt -q progcomp || return 1
-
   [[ :$comp_type: == *:[maA]:* ]] && local COMP2=$COMP1
 
+  local opts=$1
+
   local comp_words comp_line comp_point comp_cword
-  ble/syntax:bash/extract-command "$COMP2" || return 1
+  if ! ble/syntax:bash/extract-command "$COMP2"; then
+    if [[ :$opts: == *:empty:* || :$opts: == *:initial:* ]]; then
+      # Note: The completions with "complete -E" and "complete -I" are valid
+      # even with the empty command line.  In this case, COMP_WORDS is an empty
+      # array and COMP_CWORD becomes -1.
+      comp_words=() comp_line= comp_point=0 comp_cword=-1
+    else
+      return 1
+    fi
+  fi
 
   # @var comp2_in_word 単語内のカーソルの位置
   # @var comp1_in_word 単語内の補完開始点
   local forward_words=
-  ((comp_cword)) && IFS=' ' builtin eval 'forward_words="${comp_words[*]::comp_cword} "'
+  ((comp_cword>0)) && IFS=' ' builtin eval 'forward_words="${comp_words[*]::comp_cword} "'
   local comp2_in_word=$((comp_point-${#forward_words}))
   local comp1_in_word=$((comp2_in_word-(COMP2-COMP1)))
 
@@ -6075,8 +6112,9 @@ function ble/complete/source:argument/.generate-user-defined-completion {
     ((comp2_in_word+=${#ins}))
   fi
 
-  local opts=$1
-  if [[ :$opts: == *:initial:* ]]; then
+  if [[ :$opts: == *:empty:* ]]; then
+    ble/complete/progcomp/.compgen empty
+  elif [[ :$opts: == *:initial:* ]]; then
     ble/complete/progcomp/.compgen initial
   else
     ble/complete/progcomp "${comp_words[0]}"
