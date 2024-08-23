@@ -251,7 +251,7 @@ ifneq ($(INSDIR_DOC),$(INSDIR))
 $(INSDIR_DOC)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
 endif
-ifneq ($(findstring $(INSDIR_LICENSE),$(INDDIR) $(INSDIR_DOC)),)
+ifeq ($(findstring $(INSDIR_LICENSE),$(INSDIR) $(INSDIR_DOC)),)
 $(INSDIR_LICENSE)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
 endif

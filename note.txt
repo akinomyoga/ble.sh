@@ -7388,6 +7388,11 @@ bash_tips
     * fixed: INSDIR_LICENSE と INSDIR_DOC が同じ場合の対策はしているが、それら
       が INSDIR と一致する場合の対策がされていない気がする。修正する。
 
+    2024-08-24 make install が動かない (reported by Jai-JAP)
+    https://aur.archlinux.org/packages/blesh-git
+    $(INSDIR_LICENSE)/% に対するルールを独立に定義するかどうかの条件が反転して
+    いた。修正する。
+
   * contrib: fzf-menu 修正 (reported by pallaswept) [#D2259]
     https://github.com/akinomyoga/ble.sh/issues/479#issuecomment-2305871596
     Ref: #D2251
