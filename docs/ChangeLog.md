@@ -76,7 +76,7 @@
 - decode (`ble-bind`): support combined option arguments of the forms `--long=OPTARG` and `-kOPTARG` `#D2211` 1b16d399
 - canvas: use `_ble_term_invis` to hide characters used to determine char-width modes (requested by tessus) `#D2223` 8bb302e0
   - canvas: hide cursor during char-width detection (requested by tessus) `#D2232` 0ff29b26
-- exec: refine the elapsed time resolution `#D2249` 67548656 xxxxxxxx
+- exec: refine the elapsed time resolution `#D2249` 67548656 713c4215
 
 ## Fixes
 
@@ -197,7 +197,7 @@
 - contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
 - contrib/colorglass: fix fixed-point round `#D2239` b154058a
 - contrib: add `config/github48{1,3}` for elapsed-mark examples `#D2249` 67548656
-- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7
+- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 xxxxxxxx
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 
 ## Documentation

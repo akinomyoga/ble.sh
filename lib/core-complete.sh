@@ -3790,8 +3790,6 @@ function ble/complete/progcomp/.parse-complete {
 ##       Select only the completions starting with "$COMPV".  If nothing is
 ##       selected, use the original set of completions.
 ##
-##  sed /^$rex_compv/ でフィルタする。
-##   それで候補が一つもなくなる場合にはフィルタ無しで単語を列挙する。
 function ble/complete/progcomp/.filter-and-split-compgen {
   flag_mandb=
 

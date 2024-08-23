@@ -7373,6 +7373,13 @@ bash_tips
 
 2024-08-23
 
+  * contrib: fzf-menu 修正 (reported by pallaswept) [#D2259]
+    https://github.com/akinomyoga/ble.sh/issues/479#issuecomment-2305871596
+    Ref: #D2251
+
+    実は動かなくなっていた。起動だけ確認して C-c でキャンセルしていたので気づか
+    なかった。他にも追加の微調整をする。
+
   * color: 配色再調整 - 背景色・前景色を両方指定している場合も駄目の様だ [#D2258]
     https://github.com/akinomyoga/ble.sh/issues/478#issuecomment-2304712451
     Ref: #D2248
@@ -7768,6 +7775,8 @@ bash_tips
 
     処理をするのだと考えると sort を実行するのが良い気がする。
 
+    2024-08-23 古いコードコメントの断片が残っていた。修正する。
+
 2024-08-21
 
   * contrib: ble/widget/fzf-complete (motivated by 3ximus) [#D2252]
@@ -7809,6 +7818,9 @@ bash_tips
     にくかったので README の余分な部分は分離することにした。
 
     2024-08-22 註の marker が小さくなっていない。小さくする。
+
+    2024-08-23 註本体の方の marker の大きさがそのままだった。修正する。また項目
+    の先頭に来る様に位置を変更する。
 
   * contrib: exec_elapsed_mark 設定 (motivated by paulzzy, TheFantasticWarrior) [#D2249]
 

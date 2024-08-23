@@ -245,29 +245,29 @@ For example,
 
 ## Disclaimer
 
-- Q. It is hard to pronounce "ble-sh"<a id="discl-pronun"
-  href="#discl-pronun">†1</a>. How should I pronounce it? --- A. The easiest
+- <sup><a id="discl-pronun" href="#discl-pronun">†1</a></sup>Q. *It is hard to
+  pronounce "ble-sh". How should I pronounce it?* --- A. The easiest
   pronunciation of `ble.sh` that users use is /blɛʃ/, but you can pronounce it
   as you like.  I do not specify the canonical way of pronouncing `ble.sh`.  In
   fact, I personally call it simply /biːɛliː/ or verbosely read it as /biːɛliː
   dɑt ɛseɪtʃ/ in my head.
-- Q. It cannot be pure Bash<a id="discl-pure" href="#discl-pure">†2</a>
-  because the user should be able input and run external commands.  What does
-  the pure Bash mean? --- A. It means that the core part of the line editor is
-  written in pure Bash.  Of course, the external commands will be run when the
-  user input it and request the execution of it.  In addition, before and after
-  the execution of user commands, `ble.sh` relies on POSIX `stty` to set up the
-  correct TTY states for user commands.  It also uses other POSIX utilities for
-  acceleration in some parts of initialization and cleanup code, processing of
-  large data in completions, pasting large data, etc.  The primary goal of the
-  `ble.sh` implementation is not being pure Bash, but the performance in the
-  Bash implementation with the POSIX environment.  Being pure Bash is usually
-  useful for reducing the `fork`/`exec` cost, but if implementation by external
-  commands are more efficient in specific parts, `ble.sh` will use the external
-  commands there.
-- Q. Why does `ble.sh` use `make` to generate the script file?<a
-  id="discl-make" href="#discl-make">†3</a> You should not use `make` for a
-  script framework. --- A. Because it is not a good idea to directly edit a
+- <sup><a id="discl-pure" href="#discl-pure">†2</a></sup>Q. *It cannot be pure
+  Bash because the user should be able input and run external commands.  What
+  does the pure Bash mean?* --- A. It means that the core part of the line
+  editor is written in pure Bash.  Of course, the external commands will be run
+  when the user input it and request the execution of it.  In addition, before
+  and after the execution of user commands, `ble.sh` relies on POSIX `stty` to
+  set up the correct TTY states for user commands.  It also uses other POSIX
+  utilities for acceleration in some parts of initialization and cleanup code,
+  processing of large data in completions, pasting large data, etc.  The
+  primary goal of the `ble.sh` implementation is not being pure Bash, but the
+  performance in the Bash implementation with the POSIX environment.  Being
+  pure Bash is usually useful for reducing the `fork`/`exec` cost, but if
+  implementation by external commands are more efficient in specific parts,
+  `ble.sh` will use the external commands there.
+- <sup><a id="discl-make" href="#discl-make">†3</a></sup>Q. *Why does `ble.sh`
+  use `make` to generate the script file? You should not use `make` for a
+  script framework.* --- A. Because it is not a good idea to directly edit a
   large script file of tens of thousands of lines.  I split the codebase of
   `ble.sh` into source files of reasonable sizes and edit the source files.  In
   the build process, some source files are combined to form the main script
