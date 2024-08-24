@@ -127,27 +127,13 @@ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
 
-When you would like to tell `ble.sh` the way to update the package for `ble-update`,
+For a detailed control of the install locations of the main files, the license
+files, and the documentation files, please also check the later sections
+[Install](#install) and [Package](#package).
+
+If you want to tell `ble.sh` the way to update the package for `ble-update`,
 you can place `_package.bash` at `${prefix}/share/blesh/lib/_package.bash`.
-The file `_package.bash` is supposed to define a shell variable and a shell function
-as illustrated in the following example (please replace `XXX` with the package management system):
-
-```bash
-# ${prefix}/share/blesh/lib/_package.bash
-
-_ble_base_package_type=XXX
-
-function ble/base/package:XXX/update {
-  update-the-package-in-a-proper-way
-  return 0
-}
-```
-
-When the shell function returns exit status 0, it means that the update has been successfully done, and the reload of `ble.sh` will be automatically happen.
-When the shell function returns exit status 6, the timestamp of `ble.sh` is checked, and the reload of `ble.sh` only happens when `ble.sh` is actually update.
-When the shell function returns exit status 125, the default `ble.sh` update procedure is attempted.
-Otherwise, the updating procedure is canceled, where any message explaining situation should be output by the shell function.
-An example `_package.bash` for `AUR` can be found [here](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git).
+Please check [`_package.bash`](#_packagebash) for the details.
 </details>
 
 ## Features
@@ -243,7 +229,7 @@ For example,
   Some of them are summarized on [a wiki
   page](https://github.com/akinomyoga/ble.sh/wiki/Internals#internal-and-external).
 
-## Disclaimer
+## Criticism
 
 - <sup><a id="discl-pronun" href="#discl-pronun">†1</a></sup>Q. *It is hard to
   pronounce "ble-sh". How should I pronounce it?* --- A. The easiest
@@ -266,7 +252,7 @@ For example,
   implementation by external commands are more efficient in specific parts,
   `ble.sh` will use the external commands there.
 - <sup><a id="discl-make" href="#discl-make">†3</a></sup>Q. *Why does `ble.sh`
-  use `make` to generate the script file? You should not use `make` for a
+  use `make` to generate the script files? You should not use `make` for a
   script framework.* --- A. Because it is not a good idea to directly edit a
   large script file of tens of thousands of lines.  I split the codebase of
   `ble.sh` into source files of reasonable sizes and edit the source files.  In
@@ -296,7 +282,7 @@ For example,
 
 # 1 Usage
 
-## 1.1 Try `ble.sh` generated from source (version ble-0.4 devel)<sup><a id="get-from-source" href="#get-from-source">†</a></sup>
+## 1.1 Build from source<sup><a id="get-from-source" href="#get-from-source">†</a></sup>
 
 ### Generate
 
@@ -322,14 +308,41 @@ source out/ble.sh
 
 To install `ble.sh` in a specified directory, use `make install`.
 
-```bash
-# INSTALL to ~/.local/share/blesh
+```
+# INSTALL to ~/.local/share/blesh and ~/.local/share/doc/blesh
 make install
 
-# INSTALL to a specified directory
+# INSTALL into a specified directory
 make install INSDIR=/path/to/blesh
+```
 
-# PACKAGE (for package maintainers) - Example 1
+The install locations of `ble.sh` and related script files can be specified by
+make variable `INSDIR`.  The locations of the license files and the
+documentation files can be specified by make variables `INSDIR_LICENSE` and
+`INSDIR_DOC`, respectively.  When `INSDIR` is specified, the default values of
+`INSDIR_LICENSE` and `INSDIR_DOC` is `$INSDIR/doc`.  When `INSDIR` and later
+mentioned `DESTDIR`/`PREFIX` are not specified, the value of `INSDIR` is
+`${XDG_DATA_HOME:-$HOME/.local/share}/blesh`, and the default values of
+`INSDIR_LICENSE` and `INSDIR_DOC` are
+`${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh`.
+
+When `USE_DOC=no` is specified, the documentation files are disabled.  Also,
+the default install location of the license files `INSDIR_LICENSE` is changed
+to `$INSDIR`.
+
+By default, the comment lines and blank lines in the script files are stripped
+in the installation process.  If you would like to keep these lines in the
+script files, please specify the argument `strip_comment=no` to `make`.
+
+To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
+
+### Package
+
+Package maintainers may use make variables `DESTDIR` and `PREFIX` to quickly
+set up the default values for `INSDIR`, `INSDIR_LICENSE`, and `INSDIR_DOC`.
+
+```bash
+# PACKAGE - Example 1
 make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 # PACKAGE - Example 2
@@ -346,31 +359,43 @@ make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix" \
   INSDIR_LICENSE="$build/$prefix/share/blesh"
 ```
 
-If make variable `DESTDIR` or `PREFIX` is supplied, `ble.sh` and related files
-will be copied into `$DESTDIR/$PREFIX/share/blesh`, and the license and
-documentation files will be copied into `$DESTDIR/$PREFIX/share/doc/blesh`.
-Otherwise, if make variable `INSDIR` is specified, `ble.sh` and related files
-will be installed directly in `$INSDIR`, and the license and documentation
-files will be copied into `$INSDIR/doc`.  If none of these make variables are
-defined, `ble.sh` and related files are installed in
-`${XDG_DATA_HOME:-$HOME/.local/share}/blesh`, and the license and document
-files are installed in `${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh`.
+If make variable `DESTDIR` or `PREFIX` is specified instead of `INSDIR`, the
+value of `INSDIR` is set to `$DESTDIR/$PREFIX/share/blesh`, and the default
+install locations of the license and documentation files, `INSDIR_LICENSE` and
+`INSDIR_DOC`, will be `$DESTDIR/$PREFIX/share/doc/blesh`.
 
-The install locations of the license and documentation files can be overridden
-by make variables `INSDIR_LICENSE` and `INSDIR_DOC`.  If `USE_DOC=no` is
-specified, the documentation files are disabled.
+#### `_package.bash`
 
-The comment lines and blank lines in the script files are stripped in the installation process.
-If you would like to keep these lines in the script files, please specify the argument `strip_comment=no` to `make`.
+When you want to tell `ble.sh` the way to update the package for `ble-update`,
+you can place `_package.bash` at `${prefix}/share/blesh/lib/_package.bash`.
+The file `_package.bash` is supposed to define a shell variable and a shell
+function as illustrated in the following example (please replace `XXX` with a
+name representing the package management system):
 
-To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
+```bash
+# ${prefix}/share/blesh/lib/_package.bash
 
-## 1.2 Or, use a tar ball of `ble.sh` obtained from GitHub releases<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+_ble_base_package_type=XXX
 
-For download, trial and install, see the description at each release page.
-The stable versions are significantly old compared to the devel version, so many features are unavailable.
+function ble/base/package:XXX/update {
+  update-the-package-in-a-proper-way
+  return 0
+}
+```
 
-- Devel [v0.4.0-devel3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel3) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
+When the shell function returns exit status 0, it means that the update has been successfully completed, and `ble.sh` will be reloaded automatically.
+When the shell function returns exit status 6, the timestamp of `ble.sh` will be checked so `ble.sh` is reloaded only when `ble.sh` is actually updated.
+When the shell function returns exit status 125, the default `ble.sh` update procedure is attempted.
+Otherwise, the updating procedure is canceled, where any message explaining situation should be output by the shell function.
+An example `_package.bash` for `AUR` can be found [here](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git).
+
+## 1.2 Download a tar ball<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+
+You can also download a tar ball of `ble.sh` from GitHub releases.
+See each release page for the description of downloading, trial and installation.
+Many features are unavailable in the stable versions since they are significantly old compared to the devel version.
+
+- Devel [v0.4.0-devel3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel3) (2023-04), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
 - Stable [v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4) (2019-02 fork) Enhanced completions
 - Stable [v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7) (2018-03 fork) Vim mode
 - Stable [v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15) (2015-12 fork) Syntax highlighting

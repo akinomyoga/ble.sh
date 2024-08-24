@@ -7402,6 +7402,13 @@ bash_tips
     $(INSDIR_LICENSE)/% に対するルールを独立に定義するかどうかの条件が反転して
     いた。修正する。
 
+    2024-08-24 USE_DOC=doc で licence を INSDIR と同じ場所に入れる (requested by blackteahamburger)
+    https://github.com/akinomyoga/ble.sh/issues/485#issuecomment-2308148791
+    うーん。既にインストール先決定が複雑になっていてもっと複雑化して大丈夫なの
+    か。ユーザー的には色々のオプションを設定した結果としてどうなるのかが予測不
+    能になるのではないか。それだったら明示的に指定する様にするべきなのではない
+    か。
+
   * contrib: fzf-menu 修正 (reported by pallaswept) [#D2259]
     https://github.com/akinomyoga/ble.sh/issues/479#issuecomment-2305871596
     Ref: #D2251

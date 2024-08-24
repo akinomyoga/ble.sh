@@ -26,8 +26,7 @@
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
 
 > [!NOTE]
-> `fzf` を `ble.sh` と組み合わせてお使いの場合は [節2.8](#set-up-bashrc) を必ず
-> 御覧ください。
+> `fzf` を `ble.sh` と組み合わせてお使いの場合は [節2.8](#fzf-integration) を必ず御覧ください。
 
 <details open><summary><b><code>git</code> を用いてソースを取得し <code>ble.sh</code> を生成</b></summary>
 
@@ -130,26 +129,12 @@ git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyo
 make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
 
-パッケージ管理システムを用いたパッケージ更新方法を指定すると `ble-update` でそれが呼び出されます。
-更新方法を指定するにはスクリプトファイルを `${prefix}/share/blesh/lib/_package.bash` に配置します。
-スクリプトは次の様な変数と関数を定義します。但し `XXX` はパッケージ管理システムの名前に置き換えてください。
+スクリプトファイル、ライセンスファイル。ドキュメントファイルのインストール場所を詳細に指定する方法については、
+後ろの節 [インストール](#install) and [パッケージ作成](#package) を御参照ください。
 
-```bash
-# ${prefix}/share/blesh/lib/_package.bash
-
-_ble_base_package_type=XXX
-
-function ble/base/package:XXX/update {
-  update-the-package-in-a-proper-way
-  return 0
-}
-```
-
-シェル関数がステータス 0 で終了した場合、更新が成功した事を表し `ble.sh` のリロードが自動的に行われます。
-シェル関数がステータス 6 で終了した場合、`ble.sh` のタイムスタンプが確認され、`ble.sh` が現セッションの開始時刻よりも新しい時に限りリロードが行われます。
-シェル関数がステータス 125 で終了した場合、`ble.sh` に組み込みの更新処理が試みられます。
-それ以外の場合には更新処理が中断されます。この場合、シェル関数が状況を説明するメッセージを出力するようにして下さい。
-具体例として `AUR` パッケージの [`_package.bash`](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git) も参考にしていただければ幸いです。
+スクリプトファイル `_package.bash` を `${prefix}/share/blesh/lib/_package.bash` に配置することで、
+`ble-update` で用いるパッケージ更新方法を指定することができます。
+詳細については節 [`_package.bash`](#_packagebash) を御参照ください。
 </details>
 
 ## 機能概要
@@ -241,7 +226,7 @@ Vimモードの実装は2017年9月に始まり2018年3月に一先ず完成と�
   [wiki](https://github.com/akinomyoga/ble.sh/wiki/Internals#internal-and-external)
   (英語) に情報があります。
 
-## 免責事項
+## 批判
 
 - <sup><a id="discl-pronun" href="#discl-pronun">†1</a></sup>Q. "ble.sh の読み方が分からない"---
   A. `ble.sh` はお好きな様に読んでいただいて問題ありませんが、一番短いのは標記の /blɛʃ/ になりましょう。
@@ -262,7 +247,7 @@ Vimモードの実装は2017年9月に始まり2018年3月に一先ず完成と�
 
 # 1 使い方
 
-## 1.1 最新の git repository のソースから生成して試す (バージョン ble-0.4)<sup><a id="get-from-source" href="#get-from-source">†</a></sup>
+## 1.1 ソースからのビルド方法<sup><a id="get-from-source" href="#get-from-source">†</a></sup>
 
 ### ble.sh 生成
 
@@ -284,7 +269,7 @@ $ make
 $ source out/ble.sh
 ```
 
-### インストール
+### インストール<sup><a id="package" href="#install">†</a></sup>
 
 指定したディレクトリにインストールするには `make install` コマンドを使用します。
 
@@ -294,8 +279,29 @@ make install
 
 # 指定したディレクトリにインストール
 make install INSDIR=/path/to/blesh
+```
 
-# パッケージ作成 (パッケージ管理者用) - 例1
+メインファイル `ble.sh` 及び関連スクリプトファイルのインストール先ディレクトリは Make 変数 `INSDIR` を用いて指定できます。
+ライセンス及びドキュメントのインストール先は Make 変数 `INSDIR_LICENSE` と `INSDIR_DOC` を用いて指定できます。
+`INSDIR` が指定されている時、`INSDIR_LICENSE` の `INSDIR_DOC` の既定値は `$INSDIR/doc` です。
+`INSDIR` および後述の `DESTDIR`/`PREFIX` が指定されていない時、`INSDIR` の値は `${XDG_DATA_HOME:-$HOME/.local/share}/blesh` になり、
+`INSDIR_LICENSE` と `INSDIR_DOC` の規定値は `${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh` になります。
+
+Make 変数 `USE_DOC=no` が指定されている時、ドキュメントファイルの処理が無効化されます。
+また、ライセンスの既定のインストール先 `INSDIR_LICENSE` は `$INSDIR` に変更されます。
+
+既定ではコード中のコメント行や空行はインストール時に自動で削除されます。
+コメントや空行を保持したい場合は `strip_comment=no` を `make` の引数に指定して下さい。
+
+`.bashrc` の設定に関しては[節1.3](#set-up-bashrc)を御覧ください。
+
+### パッケージ作成<sup><a id="package" href="#package">†</a></sup>
+
+パッケージ作成者は Make 変数 `DESTDIR` 及び `PREFIX` を用いて `INSDIR`,
+`INSDIR_LICENSE`, `INSDIR_DOC` の既定値を一括で設定することができます。
+
+```
+# パッケージ作成 - 例1
 make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 # パッケージ作成 - 例2
@@ -312,34 +318,46 @@ make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix" \
   INSDIR_LICENSE="$build/$prefix/share/blesh"
 ```
 
-Make 変数 `DESTDIR` または `PREFIX` が指定されている時、
-`ble.sh` 及び関連ファイルは `$DESTDIR/$PREFIX/share/blesh` に、
-ライセンス及びドキュメントは `$DESTDIR/$PREFIX/share/doc/blesh` にコピーされます。
-それ以外で Make 変数 `INSDIR` が指定されている時、
-`ble.sh` 及び関連ファイルは直接 `$INSDIR` に配置され、
-ライセンス及びドキュメントは `$INSDIR/doc` にコピーされます。
-以上の Make 変数が指定されていない時は、
-`ble.sh` 及び関連ファイルは `${XDG_DATA_HOME:-$HOME/.local/share}/blesh` に、
-ライセンス及びドキュメントは `${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh` にインストールされます。
+`INSDIR` の代わりに Make 変数 `DESTDIR` または `PREFIX` が指定されている時、 
+`INSDIR` の値は `$DESTDIR/$PREFIX/share/blesh` に設定され、
+ライセンス及びドキュメントファイルの場所 `INSDIR_LICENSE` と `INSDIR_DOC` の既定値は `$DESTDIR/$PREFIX/share/doc/blesh` になります。
 
-ライセンス及びドキュメントのインストール先は Make 変数 `INSDIR_LICENSE` と `INSDIR_DOC` を用いて上書きできます。
-Make 変数 `USE_DOC=no` が指定されている場合は、ドキュメントファイルの処理が無効化されます。
+#### `_package.bash`
 
-インストール時にコード中のコメントは自動で削除されますが、コメントを保持したい場合は `strip_comment=no` を `make` の引数に指定して下さい。
+スクリプトファイル `_package.bash` を `${prefix}/share/blesh/lib/_package.bash` に配置することで、
+`ble-update` で用いるパッケージ更新方法を指定することができます。
+スクリプトファイル `_package.bash` では、次で示すような変数と関数を定義します。
+但し `XXX` はパッケージ管理システムの名前に置き換えてください。
 
-`.bashrc` の設定に関しては[節1.3](#set-up-bashrc)を御覧ください。
+```bash
+# ${prefix}/share/blesh/lib/_package.bash
 
-## 1.2 GitHub Releases から tar をダウンロードして使う<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+_ble_base_package_type=XXX
 
+function ble/base/package:XXX/update {
+  update-the-package-in-a-proper-way
+  return 0
+}
+```
+
+シェル関数の終了ステータス 0 は更新が成功したことを表し、更新処理完了後に `ble.sh` が自動的にリロードされます。
+シェル関数がステータス 6 で終了した場合、更新処理完了後に `ble.sh` のタイムスタンプが確認され、`ble.sh` が現セッションの開始時刻よりも新しい時に限りリロードが行われます。
+シェル関数がステータス 125 で終了した場合、`ble.sh` に組み込みの更新処理が試みられます。
+それ以外の場合には更新処理が中断されます。この場合、シェル関数が状況を説明するメッセージを出力するようにして下さい。
+具体例として `AUR` パッケージの [`_package.bash`](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git) も参考にしていただければ幸いです。
+
+## 1.2 tar ボールのダウンロード<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+
+GitHub Releases から `ble.sh` の tar ボールをダウンロードすることもできます。
 ダウンロード・試用・インストールの方法については各リリースページの説明を御覧ください。
-現在、安定版は開発版に比べてかなり古いので様々な機能が欠けている事にご注意下さい。
+現在、安定版は開発版に比べてかなり古いので様々な機能が欠けていることにご注意下さい。
 
-- 開発版 [v0.4.0-devel3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel3) (2020-12), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
+- 開発版 [v0.4.0-devel3](https://github.com/akinomyoga/ble.sh/releases/tag/v0.4.0-devel3) (2023-04), [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)
 - 安定版 [v0.3.4](https://github.com/akinomyoga/ble.sh/releases/tag/v0.3.4) (2019-02 fork) 拡張補完
 - 安定版 [v0.2.7](https://github.com/akinomyoga/ble.sh/releases/tag/v0.2.7) (2018-03 fork) Vim モード
 - 安定版 [v0.1.15](https://github.com/akinomyoga/ble.sh/releases/tag/v0.1.15) (2015-12 fork) 構文着色
 
-## 1.3 `.bashrc` に設定する<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
+## 1.3 `.bashrc` の設定<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
 対話シェルで常用する場合には `.bashrc` に設定を行います。
 単に `ble.sh` を `source` して頂くだけでも大抵の場合動作しますが、
@@ -361,7 +379,7 @@ Make 変数 `USE_DOC=no` が指定されている場合は、ドキュメント�
 `source /path/to/ble.sh` をシェル関数の中から実行するのは避けて下さい。
 この「より確実な設定」が必要になる詳細な条件については [Discussion #254 への回答 (英語)](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757) で説明されています。
 
-## 1.4 初期化スクリプト `~/.blerc` について
+## 1.4 初期化スクリプト `~/.blerc`
 
 ユーザー設定は初期化スクリプト `~/.blerc` (またはもし `~/.blerc` が見つからなければ `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh`) に記述します。
 テンプレートとしてリポジトリの [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template) というファイルを利用できます。

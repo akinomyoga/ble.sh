@@ -204,12 +204,22 @@ all: build
 #------------------------------------------------------------------------------
 # target "install"
 
+# Users can specify make variables INSDIR, INSDIR_LICENSE, and INSDIR_DOC to
+# control the install locations.  Instead of INSDIR, users may specify DESTDIR
+# and/or PREFIX to automatically set up these variables.
+
+ifneq ($(USE_DOC),no)
+  insdir_license_subdir := /doc
+else
+  insdir_license_subdir :=
+endif
+
 ifneq ($(INSDIR),)
   ifeq ($(INSDIR_DOC),)
     INSDIR_DOC := $(INSDIR)/doc
   endif
   ifeq ($(INSDIR_LICENSE),)
-    INSDIR_LICENSE := $(INSDIR)/doc
+    INSDIR_LICENSE := $(INSDIR)$(insdir_license_subdir)
   endif
 else
   ifneq ($(filter-out %/,$(DESTDIR)),)
@@ -226,7 +236,7 @@ else
 
   INSDIR = $(DATA_HOME)/blesh
   INSDIR_DOC = $(DATA_HOME)/doc/blesh
-  INSDIR_LICENSE = $(DATA_HOME)/doc/blesh
+  INSDIR_LICENSE = $(DATA_HOME)$(insdir_license_subdir)/blesh
 endif
 
 ifneq ($(strip_comment),)
