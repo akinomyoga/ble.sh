@@ -461,11 +461,6 @@ function sub:scan/WA-localvar_inherit {
       g'
 }
 
-function sub:scan/mistake-_ble_bash {
-  echo "--- $FUNCNAME ---"
-  grc '\(\(.*\b_ble_base\b.*\)\)'
-}
-
 function sub:scan/command-layout {
   echo "--- $FUNCNAME ---"
   grc '(/enter-command-layout|ble/edit/\.relocate-textarea|/\.newline)([[:space:]]|$)' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
@@ -555,6 +550,21 @@ function sub:scan/check-readonly-unsafe {
       /^AWKTYPE$/d
       /^FOO$/d
       g'
+}
+
+function sub:scan/mistake-_ble_bash {
+  echo "--- $FUNCNAME ---"
+  sub:scan/grc-source '\(\(.*\b_ble_base\b.*\)\)'
+}
+
+function sub:scan/mistake-bleopt-declare {
+  echo "--- $FUNCNAME ---"
+  sub:scan/grc-source 'bleopt/declare (-[nv] )?[_a-zA-Z0-9]+='
+}
+
+function sub:scan/mistake-typo {
+  echo "--- $FUNCNAME ---"
+  grc --color --exclude=./make_command.sh 'copmgen|comgpen|inetgration|\buti/'
 }
 
 function sub:scan {
@@ -708,10 +718,13 @@ function sub:scan {
   sub:scan/unset-variable
   sub:scan/eval-literal
   sub:scan/WA-localvar_inherit
-  sub:scan/mistake-_ble_bash
   sub:scan/command-layout
   sub:scan/word-splitting-number
   sub:scan/check-readonly-unsafe
+
+  sub:scan/mistake-_ble_bash
+  sub:scan/mistake-bleopt-declare
+  sub:scan/mistake-typo
 
   sub:scan/memo-numbering
 }

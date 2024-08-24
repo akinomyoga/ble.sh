@@ -56,8 +56,8 @@
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
 - make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95
-  - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` xxxxxxxx
-- edit (`ble/widget/display-shell-version`): print shell options `#D2260` xxxxxxxx
+  - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
+- edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e xxxxxxxx
 
 ## Changes
 
@@ -199,7 +199,7 @@
 - contrib/fzf-git: fix unadjusted terminal states in calling `fzf` (reported by tessus) `#D2237` b154058a
 - contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
 - contrib/colorglass: fix fixed-point round `#D2239` b154058a
-- contrib: add `config/github48{1,3}` for elapsed-mark examples `#D2249` 67548656
+- contrib: add `config/github48{1,3}` for elapsed-mark examples `#D2249` 67548656 xxxxxxxx
 - contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 

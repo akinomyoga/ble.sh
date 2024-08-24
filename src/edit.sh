@@ -4454,7 +4454,7 @@ function ble/widget/display-shell-version {
 
     "$BASH" --norc --noprofile  -ic 'shopt -po; shopt' >| "$tmpfile1"
     { shopt -po; shopt; } >| "$tmpfile2"
-    local awk_script='/^[-+].*[[:space:]]on$/ {print $1} /^[-+]set -o .*$/ {print substr($0,1,1) $3}' IFS=$' \t\n'
+    local diff awk_script='/^[-+].*[[:space:]]on$/ {print $1} /^[-+]set -o .*$/ {print substr($0,1,1) $3}' IFS=$' \t\n'
     ble/util/assign-words diff 'ble/bin/diff -bwu "$tmpfile1" "$tmpfile2" | ble/bin/awk "$awk_script"'
     line="${_ble_term_bold}options$sgr0: ${diff[*]}"
 

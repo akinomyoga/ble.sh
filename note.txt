@@ -7378,6 +7378,8 @@ bash_tips
     追加した。diff が使える時は diff を使って既定のオプションと異なる物だけを指
     定する。
 
+    2024-08-24 変数 diff について local するのを忘れていた。
+
 2024-08-23
 
   * make: make variable "USE_DOC=no" (requested by blackteahamburger) [#D2260]
@@ -7861,6 +7863,9 @@ bash_tips
     対応する事にする。
 
     2024-08-22 単位が us ではなくて ns になっていた。修正する。
+
+    2024-08-24 bleopt/declare の使い方が間違っているという報告 (contributed by paulzzy)
+    https://github.com/akinomyoga/blesh-contrib/pull/22
 
 2024-08-19
 
