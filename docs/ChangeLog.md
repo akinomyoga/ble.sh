@@ -55,6 +55,7 @@
 - color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` d6a38c43
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
+  - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` xxxxxxxx
 - make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 xxxxxxxx
   - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e xxxxxxxx

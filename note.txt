@@ -7373,6 +7373,43 @@ bash_tips
 
 2024-08-24
 
+  * progcomp: var= でエラーメッセージが発生する (reported by blackteahamburger) [#D2262]
+    https://github.com/akinomyoga/ble.sh/issues/487
+    Ref: regression by #D2257
+
+    complete -I の時にも comp_words=() comp_cword=-1 を指定していたがこれが駄目
+    だった。変数代入 var= の時にはコマンドラインが空でなくても complete -I が発
+    生して extract-command が失敗する可能性がある。
+
+    では bash では var= に対して complete -I の補完はどの様に振る舞うのだろうか。
+    と思ったがそもそも var= が入力されている時点で complete -I が呼び出される事
+    はない。ble.sh の拡張で任意のコマンド名補完に対して complete -I を有効にし
+    ているからこそ発生する問題である。
+
+    ? ok: 逆に言えばそもそも任意のコマンドの補完の文脈で complete -I を試みる事
+      は良いのか? 本当のコマンド名の補完の場所で試すのは良いが、例えば type
+      command[TAB] の様な箇所での補完では complete -I は使うべきではない。と思っ
+      たがそもそも type command[TAB] の様な状況では source:command は使われない
+      ので気にしなくて良い。考えてみれば source:command は ble.sh の
+      core-syntax から生成される物であり、core-syntax は文脈に従ってコマンドが
+      現れる場所でしか基本的に source:command を指定しないので、基本的に
+      source:command では complete -I の補完を試みるという事で妥当の気がする。
+
+    ? ok: 何故 var= [TAB] の位置ではなくて var=[tab] の位置でコマンド補完が発生
+      しているのだろうか。check-here だとしたら prefix の幅は 0 になる筈では?
+      うーん。check-prefix で呼び出されている。然し chek-prefix は前回の解析開
+      始点を基準にしているので "var=" の直前の位置における補完としてコマンド名
+      も一緒に生成しているのである。なのでこれは OK
+
+    ? ok: 何故 COMP2 COMP1 が 0 なのに COMPV が有限になっているのだろうか。と思っ
+      たが、どうやら曖昧補完の処理として COMP2 を COMP1 で上書きしている様だ。
+      COMP1 が 0 の時には COMP1 は空文字列になるみたいだが、これは問題ない。
+
+    色々考えたが $COMPV が有限なのに extract-command に失敗するという状況は既に
+    その単語がコマンド名ではない事を意味していて complete -I の対象ではない事を
+    意味している様に思われる。もし $COMPV が有限で対象だったら extract-command
+    が失敗する筈はない為である。
+
   * edit: display-shell-version に SHELLOPTS, BASHOPTS も含めるべき? [#D2261]
 
     追加した。diff が使える時は diff を使って既定のオプションと異なる物だけを指
@@ -7457,6 +7494,7 @@ bash_tips
       なく全て適当に割り当ててしまう事にする。
 
   * 2021-08-31 complete: -E (_EmptycmD_) に対応していない [#D2257]
+    Ref: #D2262
 
     一方でこれは一体どの様に振る舞うものとして実装すれば良いのか分からない側面
     がある。文字列が本当に空の時にはこれを使って補間するので良い。

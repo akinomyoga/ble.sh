@@ -6059,7 +6059,11 @@ function ble/complete/source:argument/.generate-user-defined-completion {
 
   local comp_words comp_line comp_point comp_cword
   if ! ble/syntax:bash/extract-command "$COMP2"; then
-    if [[ :$opts: == *:empty:* || :$opts: == *:initial:* ]]; then
+    # Note: The extraction of the command fails when the command word is empty,
+    # yet we want to perform the programmable completions by "complete -E" and
+    # "complete -I".  When the command extraction fails with a non-empty word,
+    # we do not perform completion because the word is not a command.
+    if [[ ! $COMPV && ( :$opts: == *:empty:* || :$opts: == *:initial:* ) ]]; then
       # Note: The completions with "complete -E" and "complete -I" are valid
       # even with the empty command line.  In this case, COMP_WORDS is an empty
       # array and COMP_CWORD becomes -1.
