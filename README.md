@@ -19,15 +19,16 @@ This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD li
 ## Quick instructions
 
 <!-- In macOS, you might additionally need to install `gawk`, `nawk`, or `mawk` since macOS `/usr/bin/awk` (awk-32 and later) seems to have a problem with some multibyte charsets. -->
-There are two ways to get `ble.sh`: to download and build `ble.sh` using `git`, or to download the nightly build using `curl` or `wget`.
-For the detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
-and [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
+There are two ways to get `ble.sh`: to get the source using `git` and build
+`ble.sh`, or to download the [nightly build](https://github.com/akinomyoga/ble.sh/releases/tag/nightly) using `curl` or `wget`.
+See [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for the details of trial and installation.
+See [Sec 1.3](#set-up-bashrc) for the details of the setup of your `~/.bashrc`.
 
 > [!NOTE]
 > If you want to **use fzf with `ble.sh`**, you need to check [Sec
 > 2.8](#fzf-integration).
 
-<details open><summary><b>Download and generate <code>ble.sh</code> using <code>git</code></b></summary>
+<details open><summary><b>Download source using <code>git</code> and make <code>ble.sh</code></b></summary>
 
 This requires the commands `git`, `make` (GNU make), and `gawk` (GNU awk)<sup><a href="#discl-pronun">†3</a></sup>.
 In the following, please replace `make` with `gmake` if your system provides GNU make as `gmake` (such as in BSD).
@@ -134,6 +135,15 @@ files, and the documentation files, please also check the later sections
 If you want to tell `ble.sh` the way to update the package for `ble-update`,
 you can place `_package.bash` at `${prefix}/share/blesh/lib/_package.bash`.
 Please check [`_package.bash`](#_packagebash) for the details.
+
+```bash
+# ${prefix}/share/blesh/lib/_package.bash
+
+_ble_base_package_type=XXX
+function ble/base/package:XXX/update {
+  update-the-package-in-a-proper-way
+}
+```
 </details>
 
 ## Features
@@ -355,8 +365,7 @@ make install DESTDIR="$build" PREFIX="$prefix" \
   INSDIR_DOC="$build/$prefix/share/blesh/doc"
 
 # PACKAGE - Example 4
-make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix" \
-  INSDIR_LICENSE="$build/$prefix/share/blesh"
+make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix"
 ```
 
 If make variable `DESTDIR` or `PREFIX` is specified instead of `INSDIR`, the
@@ -389,9 +398,9 @@ When the shell function returns exit status 125, the default `ble.sh` update pro
 Otherwise, the updating procedure is canceled, where any message explaining situation should be output by the shell function.
 An example `_package.bash` for `AUR` can be found [here](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git).
 
-## 1.2 Download a tar ball<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+## 1.2 Download a tarball<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
 
-You can also download a tar ball of `ble.sh` from GitHub releases.
+You can also download a tarball of `ble.sh` from GitHub releases.
 See each release page for the description of downloading, trial and installation.
 Many features are unavailable in the stable versions since they are significantly old compared to the devel version.
 
@@ -414,7 +423,7 @@ but a more reliable way is to add the following codes to your `.bashrc` file:
 # your bashrc settings come here...
 
 # Add this line at the end of .bashrc:
-[[ ${BLE_VERSION-} ]] && ble-attach
+[[ ! ${BLE_VERSION-} ]] || ble-attach
 ```
 
 Basically, when `source /path/to/ble.sh` and `ble-attach` are performed,

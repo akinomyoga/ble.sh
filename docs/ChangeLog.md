@@ -214,6 +214,7 @@
 - docs(README): add sabbrev example for named directories `#D2115` a9a21a0e
 - docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` 208eaa9d
 - docs(README): move disclaimers to a later section `#D2250` ad6f58b7
+- README: use `[[ ! ${BLE_VERSION-} ]] || ble-attach` `#D2264` xxxxxxx
 
 ## Test
 
@@ -997,7 +998,7 @@
 - decode: use `BRE` instead of `ERE` for `POSIX sed` (reported by dylankb) `#D1283` 2184739
 - decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
 - edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55 7a99bf3
-- term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef 
+- term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef
 - complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3 `#D1315` 99880ef
 - vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292` da6cc47
 - complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 2f9a000
@@ -2671,7 +2672,7 @@
     * ble-syntax/completion-context: 一部の補完文脈を file から argument に変更。
   * complete.sh: complete -p 設定に基づく補完。
     * ble-complete/source/argument: 追加
-    
+
 ## 2015-11-22
 * ble-syntax.sh: bash 文法関連の関数名整理。
   * ble-decode.sh (ble-bind): error message に . を追加。古いコメントを削除。

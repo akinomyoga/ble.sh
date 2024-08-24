@@ -21,9 +21,10 @@
 ## 簡単設定
 
 <!-- 但し、macOS では附属の `/usr/bin/awk` (awk-32 以降) でマルチバイト文字セットの問題があるため、`gawk`, `nawk`, または `mawk` を別途インストールする必要があるかもしれません。 -->
-`ble.sh` を取得するには主に2つの方法があります: `git` を用いてソースを取得しビルドする方法と `curl` または `wget` を用いて nightly ビルドをダウンロードする方法です。
-詳細は、試用またはインストールに関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
-`~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
+`ble.sh` を取得するには主に2つの方法があります: `git` を用いてソースを取得しビルドする方法と、
+`curl` または `wget` を用いて [nightly ビルド](https://github.com/akinomyoga/ble.sh/releases/tag/nightly)をダウンロードする方法です。
+試用とインストール方法の詳細に関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
+`~/.bashrc` の設定の詳細に関しては [節1.3](#set-up-bashrc) を御覧ください。
 
 > [!NOTE]
 > `fzf` を `ble.sh` と組み合わせてお使いの場合は [節2.8](#fzf-integration) を必ず御覧ください。
@@ -118,7 +119,7 @@ bash /path/to/ble.sh --update
 <details><summary><b><code>ble.sh</code> のパッケージ作成</b></summary>
 
 `ble.sh` は単にシェルスクリプトの集合ですので環境に依存せずにお使いいただけます (いわゆる "`noarch`") ので、
-単にリリースページからビルド済みの tar ボールをダウンロードし中身を `/tmp/blesh-package/usr/local` など所定の位置に配置するだけで問題ありません。
+単にリリースページからビルド済みの tarball をダウンロードし中身を `/tmp/blesh-package/usr/local` など所定の位置に配置するだけで問題ありません。
 それでも何らかの理由により自前でビルドする必要がある場合には以下のコマンドをお使いください。
 ビルドの為には git リポジトリ (`.git`) が必要になることにご注意ください。
 
@@ -135,6 +136,15 @@ make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 スクリプトファイル `_package.bash` を `${prefix}/share/blesh/lib/_package.bash` に配置することで、
 `ble-update` で用いるパッケージ更新方法を指定することができます。
 詳細については節 [`_package.bash`](#_packagebash) を御参照ください。
+
+```bash
+# ${prefix}/share/blesh/lib/_package.bash
+
+_ble_base_package_type=XXX
+function ble/base/package:XXX/update {
+  update-the-package-in-a-proper-way
+}
+```
 </details>
 
 ## 機能概要
@@ -314,8 +324,7 @@ make install DESTDIR="$build" PREFIX="$prefix" \
   INSDIR_DOC="$build/$prefix/share/blesh/doc"
 
 # パッケージ作成 - 例4
-make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix" \
-  INSDIR_LICENSE="$build/$prefix/share/blesh"
+make install USE_DOC=no DESTDIR="$build" PREFIX="$prefix"
 ```
 
 `INSDIR` の代わりに Make 変数 `DESTDIR` または `PREFIX` が指定されている時、 
@@ -346,9 +355,9 @@ function ble/base/package:XXX/update {
 それ以外の場合には更新処理が中断されます。この場合、シェル関数が状況を説明するメッセージを出力するようにして下さい。
 具体例として `AUR` パッケージの [`_package.bash`](https://aur.archlinux.org/cgit/aur.git/tree/blesh-update.sh?h=blesh-git) も参考にしていただければ幸いです。
 
-## 1.2 tar ボールのダウンロード<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
+## 1.2 tarball のダウンロード<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
 
-GitHub Releases から `ble.sh` の tar ボールをダウンロードすることもできます。
+GitHub Releases から `ble.sh` の tarball をダウンロードすることもできます。
 ダウンロード・試用・インストールの方法については各リリースページの説明を御覧ください。
 現在、安定版は開発版に比べてかなり古いので様々な機能が欠けていることにご注意下さい。
 
@@ -371,7 +380,7 @@ GitHub Releases から `ble.sh` の tar ボールをダウンロードするこ�
 # 間に通常の bashrc の内容を既述します。
 
 # .bashrc の末端近くに以下を追加して下さい。
-[[ ${BLE_VERSION-} ]] && ble-attach
+[[ ! ${BLE_VERSION-} ]] || ble-attach
 ```
 
 `source /path/to/ble.sh` 及び `ble-attach` を呼び出す時は、

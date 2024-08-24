@@ -14,7 +14,7 @@
 ## # Your bashrc contents should come between the two lines.
 ##
 ## # Please put the following line in the end of .bashrc
-## [[ ${BLE_VERSION-} ]] && ble-attach
+## [[ ! ${BLE_VERSION-} ]] || ble-attach
 ## ```
 ##
 
