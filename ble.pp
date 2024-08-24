@@ -273,6 +273,18 @@ fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
         \builtin unset -v FUNCNEST
       fi
     fi 2>/dev/null'
+  _ble_bash_FUNCNEST_local_adjust='
+    \local _ble_local_FUNCNEST _ble_local_FUNCNEST_set
+    _ble_local_FUNCNEST_set=${FUNCNEST+set}
+    _ble_local_FUNCNEST=${FUNCNEST-}
+    if [[ $_ble_local_FUNCNEST_set ]]; then
+      \local FUNCNEST
+      \builtin unset -v FUNCNEST
+    fi'
+  _ble_bash_FUNCNEST_local_leave='
+    if [[ $_ble_local_FUNCNEST_set ]]; then
+      FUNCNEST=$_ble_local_FUNCNEST
+    fi'
   \builtin eval -- "$_ble_bash_FUNCNEST_adjust"
 
   \builtin unset -v POSIXLY_CORRECT
@@ -2693,7 +2705,17 @@ function ble/base/install-prompt-attach {
   _ble_base_attach_from_prompt=1
   if ((_ble_bash>=50100)); then
     ((${#PROMPT_COMMAND[@]})) || PROMPT_COMMAND[0]=
-    ble/array#push PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
+
+    local prompt_command=ble/base/attach-from-PROMPT_COMMAND
+    if ((_ble_bash>=50300)); then
+      ble/function#lambda prompt_command '
+        builtin eval -- "$_ble_bash_FUNCNEST_adjust"
+        builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
+        ble/base/attach-from-PROMPT_COMMAND'
+      ble/function#trace "$prompt_command"
+    fi
+    ble/array#push PROMPT_COMMAND "$prompt_command"
+
     if [[ $_ble_edit_detach_flag == reload ]]; then
       _ble_edit_detach_flag=prompt-attach
       blehook internal_PRECMD!=ble/base/attach-from-PROMPT_COMMAND
@@ -2701,8 +2723,14 @@ function ble/base/install-prompt-attach {
   else
     local save_index=${#_ble_base_attach_PROMPT_COMMAND[@]}
     _ble_base_attach_PROMPT_COMMAND[save_index]=${PROMPT_COMMAND-}
-    ble/function#lambda PROMPT_COMMAND \
-                        "ble/base/attach-from-PROMPT_COMMAND $save_index \"\$FUNCNAME\""
+    # Note: We adjust FUNCNEST and POSIXLY_CORRECT but do not need to be
+    # restore them here because "ble/base/attach-from-PROMPT_COMMAND" fails
+    # only when "ble-attach" fails, in such a case "ble-attach" already restore
+    # them.
+    ble/function#lambda PROMPT_COMMAND '
+      builtin eval -- "$_ble_bash_FUNCNEST_adjust"
+      builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
+      ble/base/attach-from-PROMPT_COMMAND '"$save_index"' "'"$FUNCNAME"'"'
     ble/function#trace "$PROMPT_COMMAND"
     if [[ $_ble_edit_detach_flag == reload ]]; then
       _ble_edit_detach_flag=prompt-attach
@@ -2721,6 +2749,9 @@ function ble/base/attach-from-PROMPT_COMMAND {
     _ble_base_attach_from_prompt_lastexit=$? \
       _ble_base_attach_from_prompt_lastarg=$_ \
       _ble_base_attach_from_prompt_PIPESTATUS=("${PIPESTATUS[@]}")
+
+    builtin eval -- "$_ble_bash_FUNCNEST_adjust"
+
 #%if measure_load_time
     ble/util/print "ble.sh: $EPOCHREALTIME start prompt-attach" >&2
 #%end
@@ -2786,7 +2817,15 @@ function ble/base/attach-from-PROMPT_COMMAND {
     fi
   } 2>/dev/null # set -x 対策 #D0930
 
-  ble-attach force
+  ble-attach force; local ext=$?
+
+#FUNCNEST?
+  # Note: When POSIXLY_CORRECT is adjusted outside this function, and when
+  # "ble-attach force" fails, the adjusted POSIXLY_CORRECT may be restored.
+  # For such a case, we need to locally adjust POSIXLY_CORRECT to work around
+  # 5.3 function names with a slash.
+  builtin eval -- "$_ble_bash_FUNCNEST_local_adjust"
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
 
   # Note: 何故か分からないが PROMPT_COMMAND から ble-attach すると
   # ble/bin/stty や ble/bin/mkfifo や tty 2>/dev/null などが
@@ -2797,6 +2836,10 @@ function ble/base/attach-from-PROMPT_COMMAND {
 #%if measure_load_time
   ble/util/print "ble.sh: $EPOCHREALTIME end prompt-attach" >&2
 #%end
+
+  builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
+  builtin eval -- "$_ble_bash_FUNCNEST_local_leave"
+  return "$?"
 }
 
 function ble/base/process-blesh-arguments {

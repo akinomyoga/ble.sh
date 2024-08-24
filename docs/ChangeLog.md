@@ -15,7 +15,8 @@
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
-  - progcomp: use Bash 5.3 "compgen -V" for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
+  - progcomp: use Bash 5.3 `compgen -V` for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
+  - main: fix attach failure with `--attach=prompt` in Bash 5.3 POSIX mode `#D2267` xxxxxxxx
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691

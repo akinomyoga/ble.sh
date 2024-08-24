@@ -125,7 +125,7 @@ ble/test/start-section 'bash' 69
   if ((_ble_bash<50300)); then
     ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=0
   else
-    ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=0
+    ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=127
   fi
 
   # BUG bash-3.0
