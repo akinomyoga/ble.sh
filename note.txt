@@ -7371,6 +7371,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-25
+
+  * color: 変数の色が分かりにくい。unset 変数の色と値を持つ変数の色が近すぎる [#D2263]
+    Ref: #D2248, #D2258
+
+    色々試したが見られる色は全て orange に近い。あるいは灰色にする? 245 辺りで
+    良いのでは? 他にも意味を考えて再調整が必要な face はあるだろうか。見た感じ
+    は他は大丈夫そうな気がする。後で気づいたらその都度修正する
+
 2024-08-24
 
   * progcomp: var= でエラーメッセージが発生する (reported by blackteahamburger) [#D2262]
@@ -7916,6 +7925,7 @@ bash_tips
 
   * color: パレット再考 (requested by mattmc3) [#D2248]
     https://github.com/akinomyoga/ble.sh/issues/478
+    Ref: #D2258, #D2263
 
     色弱・色盲の為の色変換の式: https://mk.bcgsc.ca/colorblind/math.mhtml
 

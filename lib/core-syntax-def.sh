@@ -162,7 +162,7 @@ function ble/syntax/defface.onload {
   ble/color/defface filename_warning          underline,fg=red
   ble/color/defface filename_url              underline,fg=blue
   ble/color/defface filename_ls_colors        underline
-  ble/color/defface varname_unset     fg=166
+  ble/color/defface varname_unset     fg=245
   ble/color/defface varname_empty     fg=31
   ble/color/defface varname_number    fg=64
   ble/color/defface varname_expr      fg=99,bold

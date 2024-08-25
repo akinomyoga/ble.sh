@@ -52,13 +52,13 @@
 - syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` e169e31d
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
 - highlight: reflect the top-level positional parameters `#D2246` f08e8f08
-- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` d6a38c43
+- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` d6a38c43 `#D2263` xxxxxxxx
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
-  - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` xxxxxxxx
-- make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 xxxxxxxx
+  - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` 9270b529
+- make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 134a38d1
   - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
-- edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e xxxxxxxx
+- edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
 
 ## Changes
 
@@ -200,7 +200,7 @@
 - contrib/fzf-git: fix unadjusted terminal states in calling `fzf` (reported by tessus) `#D2237` b154058a
 - contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
 - contrib/colorglass: fix fixed-point round `#D2239` b154058a
-- contrib: add `config/github48{1,3}` for elapsed-mark examples `#D2249` 67548656 xxxxxxxx
+- contrib: add `config/github48{1,3}` for elapsed-mark examples (motivated by paulzzy, TheFantasticWarrior) `#D2249` 67548656 ed5d451b
 - contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 

@@ -623,7 +623,7 @@ ble-face -s varname_hash              fg=70,bold
 ble-face -s varname_number            fg=64
 ble-face -s varname_readonly          fg=200
 ble-face -s varname_transform         fg=29,bold
-ble-face -s varname_unset             fg=166
+ble-face -s varname_unset             fg=245
 ble-face -s argument_option           fg=teal
 ble-face -s argument_error            fg=black,bg=225
 
