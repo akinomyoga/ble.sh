@@ -771,8 +771,10 @@ function ble/edit/visible-bell#panel::render {
 }
 
 function ble/edit/visible-bell#collapse {
-  ble/util/idle.cancel ble/edit/visible-bell/.async-1.idle
-  ble/util/idle.cancel ble/edit/visible-bell/.async-2.idle
+  if ble/is-function ble/util/idle.push; then
+    ble/util/idle.cancel ble/edit/visible-bell/.async-1.idle
+    ble/util/idle.cancel ble/edit/visible-bell/.async-2.idle
+  fi
   _ble_edit_vbell_state=('' '' 0)
   local -a DRAW_BUFF=()
   ble/canvas/panel#set-height.draw "$_ble_edit_vbell_panel" 0
@@ -6604,6 +6606,14 @@ function ble/builtin/exit {
   # 現在、同じ(サブ)シェルでの trap 処理実行中かどうか
   local trap_processing=$_ble_builtin_trap_processing
   [[ $_ble_builtin_trap_processing == "${BASH_SUBSHELL:-0}"/* ]] || trap_processing=
+
+  # Note (#D22XX): In bash < 4.0, "_ble_builtin_trap_processing" may be set by
+  # the user input [C-d] through SIGUSR1.  In this case, we clear
+  # "trap_processing" since we want to process ble/builtin/exit normally.
+  ((_ble_bash<40000)) &&
+    [[ $trap_processing && " ${FUNCNAME[*]} " == *' ble-edit/io/TRAPUSR1 '* ]] &&
+    [[ ${_ble_builtin_trap_sig_name[${trap_processing##*/}]} == SIGUSR1 ]] &&
+    trap_processing=
 
   if [[ ! $trap_processing ]] && { ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; }; then
     (($#)) || set -- "$ext"

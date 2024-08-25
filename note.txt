@@ -7373,6 +7373,32 @@ bash_tips
 
 2024-08-25
 
+  * edit: bash-3.2 がまた動かなくなっている [#D2265]
+    Ref: #D2228, #D2217
+
+    https://github.com/akinomyoga/ble.sh/issues/489 の報告を受けてから bash-3.2
+    の動作を確認していて気付いた。然し、何故報告者はこの振る舞いについて報告し
+    ていなくて代わりにどうでも良い事を報告しているのだろう。一つの可能性は少し
+    使っただけで実際には ble.sh を使っていない? 或いは実は bash-3.2 ではなくて
+    もっと新しい bash を使っている? 或いは何らかの理由で bash-3.2 でもちゃんと
+    動く状況が存在する? よく分からない。
+
+    ble/util/idle.cancel を使おうとしてエラーが発生している。また終了時に
+    return に空引数が渡されてエラーメッセージが発生している。C-d で終了できない。
+
+    * ble/uti/idle.cancel に関しては新しい visible-bell の実装がコマンド実行直
+      前に visible-bell の表示を消去する時に無条件に呼び出している。
+      ble/util/idle.push が有効の時にのみ ble/util/idle.cancel を呼び出す。
+
+    * C-d で終了できないのは、bash-3.2 では C-d の受信を trap USR1 経由で行って
+      いて、しかし ble/util/exit は trap 内部での実行を制限しているからだった。
+      受信に使っている USR1 の場合には ble/builtin/exit の trap の特別取り扱い
+      はしない様に修正する。
+
+    * return にから引数が渡されてエラーになる問題は trap 処理の修正をしたら消え
+      てなくなった。ble.sh の unload 処理をした後も処理が続行していたのが問題だっ
+      たのかもしれない。
+
   * README: ble-attach の条件を [[ ! ${BLE_VERSION-} ]] || ble-attach に変更 [#D2264]
 
     現在の方法 [[ ${BLE_VERSION-} ]] && ble-attach だと ble.sh をロードしていな
@@ -8848,6 +8874,7 @@ bash_tips
 2024-06-19
 
   * vbell: panel 内部に表示する (requested by bb010g) [#D2228]
+    Ref: #D2265
 
     類似の事を過去に考えた事がある様な気がする。ToDo 2021-02-23 に sc..rc の親
     シェルと子シェルの conflict について書いてある。結局、complete menu と同じ
@@ -8956,6 +8983,13 @@ bash_tips
       が消されるという事。
 
     * done: doc: blerc.template ok, wiki en ok, wiki jp
+
+    ----
+
+    2024-08-25 #D2265 bash-3.2 で ble/edit/visible-bell#collapse が
+    ble/util/idle.cancel を呼び出してエラーが発生する様になっていた。bash-3.2
+    ではそもそも ble/util/idle を使わないので ble/util/idle.cancel を呼び出す必
+    要もない。
 
   * 2024-06-12 util: fdflags を呼び出した時点で bash がクラッシュしている [#D2227]
 
@@ -9536,6 +9570,7 @@ bash_tips
     * done: 1>&2 は >&2 に標準化する。
 
   * edit: fix standard streams in EXIT trap with ble/widget/exit [#D2217]
+    Ref: #D2265
 
     EXIT trap 実行時に tui streams にリダイレクトする?
 
@@ -9712,6 +9747,14 @@ bash_tips
       るからだった。ble/widget/exit の中からでもちゃんと終了する為に
       ble/builtin/exit を用いて終了する事にした。重複したジョブのチェックをスキッ
       プする為に _ble_builtin_exit_processing=1 を設定して呼び出す。
+
+    ----
+
+    2024-08-25 #D2265 bash-3.2 で C-d で終了できなくなっていた。bash-3.2 は
+    trap で C-d を受信するが、trap 内では ble/builtin/exit の動作が制限されてい
+    る。この修正で明示的な builtin exit の呼び出しを ble/builtin/exit に置き換
+    えた事で問題が発生していた。bash-3.2 の trap USR1 経由の trap handler 内部
+    では trap 用の特別処理を無効にする事にした。
 
   * debug: 関数呼び出しツリー [#D2216]
     Ref #D2207
