@@ -624,7 +624,7 @@ function ble/array#filter/.eval {
   builtin eval -- "$_ble_local_predicate_cmd"
 }
 function ble/array#filter {
-  local _ble_local_predicate=$2
+  local _ble_local_predicate=$2 _ble_local_predicate_cmd=
   if [[ $2 == *'$'* ]] || ! ble/is-function "$2"; then
     _ble_local_predicate=ble/array#filter/.eval
     _ble_local_predicate_cmd=$2

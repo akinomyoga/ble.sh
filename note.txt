@@ -7373,6 +7373,34 @@ bash_tips
 
 2024-08-25
 
+  * syntax: FUNCNEST 等待避している変数の存在が構文着床kから見えない [#D2268]
+    Ref: #D2267
+
+    #D2267 のテスト中に気になった事。
+
+    print-global-definitions から見えないという事か。何故? と思ったが builtin
+    unset しているのだから当然の事である。print-global-definitions に於いて待
+    避している変数の復元も実行する必要があるだろうか?
+
+    既に何らかの変数について対策しているのではないか? と思ったが分からない。
+    確認する。うーん。別に復元はしていない気がする。というか抑々 FUNCNEST だ
+    とか POSIXLY_CORRECT だとか危険な変数を復元したら変な事が起こるので不用意
+    に復元できない。
+
+    また、確認してみると変数の構文着色では別に print-global-definitions で変
+    数の値を復元している訳ではない。
+
+    * _ble_local_predicate_cmd が leak している。修正した。これは 0.3 にも存在
+      する leak の様なので別 commit にする。と思ったがこの対応自体を独立した項
+      目にする事にしたのでやはり別 commit にしなくても良い。
+
+    新しく ble/variable#load-user-state という関数を用意して、更に待避を行っ
+    ている変数について個別に特殊化関数で対応する事にした。動いている。
+
+    うーん。これは varname_unset の色変更 commit の方で対応するべきでは? と思っ
+    たが varname_unset の commit は一連の色変更の commit の追加修正として取り扱
+    いたい。この変更は独立している気がするので項目は分ける事にする。
+
   * main: bash-5.3 -o posix で --atatch=prompt に失敗する [#D2267]
 
     prompt-attach に失敗する。ble-attach を明示的に呼び出した時は問題ない。set

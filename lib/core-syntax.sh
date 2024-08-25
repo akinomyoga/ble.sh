@@ -1945,6 +1945,42 @@ function ble/syntax:bash/initialize-vars {
 #------------------------------------------------------------------------------
 # 共通の字句の一致判定
 
+## @fn ble/variable#load-user-state
+##   @var[out] __ble_var_set __ble_var_val __ble_var_att
+function ble/variable#load-user-state {
+  __ble_var_set= __ble_var_val= __ble_var_att=
+  [[ $1 == __ble_* || $1 == _ble_local_* ]] && return 0
+  ble/function#try ble/variable#load-user-state/variable:"$1" && return 0
+
+  # restore positional parameters if necesssary
+  if ble/string#match "$1" '^[1-9][0-9]*$'; then
+    local __ble_name=$1
+    if [[ ${_ble_edit_exec_lastparams[0]+set} ]]; then
+      set -- "${_ble_edit_exec_lastparams[@]}"
+    else
+      set --
+    fi
+    __ble_var_set=${!__ble_name+set}
+    __ble_var_val=${!__ble_name-}
+    __ble_var_att=
+    return 0
+  fi
+
+  # XXX---We may possibly extract the global state, but this requires at least
+  # one fork to check if the currently visible variable is global or not, and
+  # even another fork and complicated processing if global.  To avoid the
+  # overhead, we currently do not process the hidden global variables.  When we
+  # support this, we should also consider it in the custom loader
+  # ble/variable#load-user-state/variable:"$1".
+  # if ble/variable#is-global "$1"; then
+  #   ...
+  # fi
+
+  __ble_var_set=${!1+set}
+  __ble_var_val=${!1-}
+  ble/variable#get-attr -v __ble_var_att "$1"
+}
+
 ## @fn ble/syntax/highlight/vartype/.impl name [opts [tail]]
 ##   @arr[out] __ble_vartype_ret=(ret [lookahead])
 ##     属性値 ret と先読み文字数 lookahead を返します。
@@ -1956,34 +1992,27 @@ function ble/syntax/highlight/vartype/.impl {
 
   local __ble_name=$1 __ble_opts=$2 __ble_tail=$3
 
-  # restore positional parameters if necesssary
-  if ble/string#match "$__ble_name" '^[1-9][0-9]*$'; then
-    if [[ ${_ble_edit_exec_lastparams[0]+set} ]]; then
-      set -- "${_ble_edit_exec_lastparams[@]}"
-    else
-      set --
-    fi
-  fi
+  local __ble_var_set __ble_var_val __ble_var_att
+  ble/variable#load-user-state "$__ble_name"
 
-  local __ble_attr; ble/variable#get-attr -v __ble_attr "$__ble_name"
-  if [[ ${!__ble_name+set} || $__ble_attr == *[aA]* ]]; then
+  if [[ $__ble_var_set || $__ble_var_att == *[aA]* ]]; then
     local __ble_rex='^-?[0-9]+(#[_a-zA-Z0-9@]*)?$'
-    if [[ ${!__ble_name-} && :$__ble_opts: == *:expr:* && ! ( ${!__ble_name} =~ $__ble_rex ) ]]; then
+    if [[ $__ble_var_val && :$__ble_opts: == *:expr:* && ! ( $__ble_var_val =~ $__ble_rex ) ]]; then
       __ble_vartype_ret=$ATTR_VAR_EXPR
-    elif [[ ${!__ble_name+set} && $__ble_attr == *x* ]]; then
+    elif [[ $__ble_var_set && $__ble_var_att == *x* ]]; then
       # Note: 配列の場合には第0要素が設定されている時のみ。
       __ble_vartype_ret=$ATTR_VAR_EXPORT
-    elif [[ $__ble_attr == *a* ]]; then
+    elif [[ $__ble_var_att == *a* ]]; then
       __ble_vartype_ret=$ATTR_VAR_ARRAY
-    elif [[ $__ble_attr == *A* ]]; then
+    elif [[ $__ble_var_att == *A* ]]; then
       __ble_vartype_ret=$ATTR_VAR_HASH
-    elif [[ $__ble_attr == *r* && :$__ble_opts: != *:no-readonly:* ]]; then
+    elif [[ $__ble_var_att == *r* && :$__ble_opts: != *:no-readonly:* ]]; then
       __ble_vartype_ret=$ATTR_VAR_READONLY
-    elif [[ $__ble_attr == *i* ]]; then
+    elif [[ $__ble_var_att == *i* ]]; then
       __ble_vartype_ret=$ATTR_VAR_NUMBER
-    elif [[ $__ble_attr == *[luc]* ]]; then
+    elif [[ $__ble_var_att == *[luc]* ]]; then
       __ble_vartype_ret=$ATTR_VAR_TRANSFORM
-    elif [[ ! ${!__ble_name} ]]; then
+    elif [[ ! $__ble_var_val ]]; then
       __ble_vartype_ret=$ATTR_VAR_EMPTY
     else
       __ble_vartype_ret=$ATTR_VAR

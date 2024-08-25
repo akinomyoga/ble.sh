@@ -347,6 +347,34 @@ function ble/base/is-POSIXLY_CORRECT {
   [[ $_ble_bash_POSIXLY_CORRECT_adjusted && $_ble_bash_POSIXLY_CORRECT_set ]]
 }
 
+function ble/variable#load-user-state/variable:FUNCNEST {
+  if [[ $_ble_bash_FUNCNEST_adjusted ]]; then
+    __ble_var_set=$_ble_bash_FUNCNEST_set
+    __ble_var_val=$_ble_bash_FUNCNEST
+    return 0
+  elif [[ ${_ble_local_FUNCNEST_set-} ]]; then
+    __ble_var_set=$_ble_local_FUNCNEST_set
+    __ble_var_set=$_ble_local_FUNCNEST
+    return 0
+  else
+    return 1
+  fi
+}
+
+function ble/variable#load-user-state/variable:POSIXLY_CORRECT {
+  if [[ $_ble_bash_POSIXLY_CORRECT_adjusted ]]; then
+    __ble_var_set=$_ble_bash_POSIXLY_CORRECT_set
+    __ble_var_val=$_ble_bash_POSIXLY_CORRECT
+    return 0
+  elif [[ ${_ble_local_POSIXLY_CORRECT_set-} ]]; then
+    __ble_var_set=$_ble_local_POSIXLY_CORRECT_set
+    __ble_var_set=$_ble_local_POSIXLY_CORRECT
+    return 0
+  else
+    return 1
+  fi
+}
+
 ## @fn ble/base/list-shopt names...
 ##   @var[out] shopt
 if ((_ble_bash>=40100)); then
@@ -692,6 +720,35 @@ function ble/base/recover-bash-options {
   fi
 }
 
+function ble/variable#load-user-state/variable:LC_ALL/.impl {
+  local __ble_save=_ble_bash_$1
+  __ble_var_set=${!__ble_save+set}
+  __ble_var_val=${!__ble_save-}
+  [[ $__ble_var_set ]] && ble/variable#get-attr -v __ble_var_att "$1"
+  return 0
+}
+function ble/variable#load-user-state/variable:LC_COLLATE {
+  ble/variable#load-user-state/variable:LC_ALL/.impl LC_COLLATE
+}
+function ble/variable#load-user-state/variable:LC_ALL {
+  ble/variable#load-user-state/variable:LC_ALL/.impl LC_ALL
+}
+function ble/variable#load-user-state/variable:LC_CTYPE {
+  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_CTYPE
+}
+function ble/variable#load-user-state/variable:LC_MESSAGES {
+  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_MESSAGES
+}
+function ble/variable#load-user-state/variable:LC_NUMERIC {
+  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_NUMERIC
+}
+function ble/variable#load-user-state/variable:LC_TIME {
+  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_TIME
+}
+function ble/variable#load-user-state/variable:LANG {
+  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LANG
+}
+
 { ble/base/adjust-bash-options; } &>/dev/null # set -x 対策 #D0930
 
 builtin bind &>/dev/null # force to load .inputrc
@@ -738,6 +795,13 @@ function ble/init/restore-IFS {
   fi
   builtin unset -v _ble_init_original_IFS_set
   builtin unset -v _ble_init_original_IFS
+}
+
+function ble/variable#load-user-state/variable:IFS {
+  __ble_var_set=${_ble_init_original_IFS_set-}
+  __ble_var_val=${_ble_init_original_IFS-}
+  ble/variable#get-attr -v __ble_var_att IFS
+  return 0
 }
 
 if ((_ble_bash>=50100)); then
@@ -848,6 +912,17 @@ else
     [[ ${_ble_bash_BASH_REMATCH-} =~ $_ble_bash_BASH_REMATCH_rex ]]
   }
 fi
+
+function ble/variable#load-user-state/variable:BASH_REMATCH {
+  if ((_ble_bash_BASH_REMATCH_level)); then
+    __ble_var_set=${BASH_REMATCH+set}
+    __ble_var_val=("${_ble_bash_BASH_REMATCH[@]}")
+    ble/variable#get-attr -v __ble_var_att BASH_REMATCH
+    return 0
+  else
+    return 1
+  fi
+}
 
 ble/init/adjust-IFS
 ble/base/adjust-BASH_REMATCH

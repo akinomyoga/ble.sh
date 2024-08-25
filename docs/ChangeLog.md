@@ -82,6 +82,7 @@
 - canvas: use `_ble_term_invis` to hide characters used to determine char-width modes (requested by tessus) `#D2223` 8bb302e0
   - canvas: hide cursor during char-width detection (requested by tessus) `#D2232` 0ff29b26
 - exec: refine the elapsed time resolution `#D2249` 67548656 713c4215
+- highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` xxxxxxxx
 
 ## Fixes
 
