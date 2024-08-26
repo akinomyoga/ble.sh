@@ -7764,6 +7764,9 @@ bash_tips
     能になるのではないか。それだったら明示的に指定する様にするべきなのではない
     か。
 
+    2024-09-22 返事はもうないみたいなので現在の make branch の内容で master に
+    merge する事にする。
+
   * contrib: fzf-menu 修正 (reported by pallaswept) [#D2259]
     https://github.com/akinomyoga/ble.sh/issues/479#issuecomment-2305871596
     Ref: #D2251

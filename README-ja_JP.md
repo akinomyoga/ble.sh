@@ -293,12 +293,12 @@ make install INSDIR=/path/to/blesh
 
 メインファイル `ble.sh` 及び関連スクリプトファイルのインストール先ディレクトリは Make 変数 `INSDIR` を用いて指定できます。
 ライセンス及びドキュメントのインストール先は Make 変数 `INSDIR_LICENSE` と `INSDIR_DOC` を用いて指定できます。
-`INSDIR` が指定されている時、`INSDIR_LICENSE` の `INSDIR_DOC` の既定値は `$INSDIR/doc` です。
-`INSDIR` および後述の `DESTDIR`/`PREFIX` が指定されていない時、`INSDIR` の値は `${XDG_DATA_HOME:-$HOME/.local/share}/blesh` になり、
-`INSDIR_LICENSE` と `INSDIR_DOC` の規定値は `${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh` になります。
+`INSDIR` が指定されている時、`INSDIR_LICENSE` と `INSDIR_DOC` の既定値はそれぞれ `$INSDIR/licenses` と `$INSDIR/doc` です。
+`INSDIR` および後述の `DESTDIR`/`PREFIX` が指定されていない時、`INSDIR`, `INSDIR_LICENSE`, `INSDIR_DOC` の規定値は
+それぞれ `$data/blesh`, `$data/blesh/licenses`, `$data/doc/blesh` になります。
+但し、`data` は `${XDG_DATA_HOME:-$HOME/.local/share}` を指します。
 
 Make 変数 `USE_DOC=no` が指定されている時、ドキュメントファイルの処理が無効化されます。
-また、ライセンスの既定のインストール先 `INSDIR_LICENSE` は `$INSDIR` に変更されます。
 
 既定ではコード中のコメント行や空行はインストール時に自動で削除されます。
 コメントや空行を保持したい場合は `strip_comment=no` を `make` の引数に指定して下さい。
@@ -316,7 +316,7 @@ make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 # パッケージ作成 - 例2
 make install DESTDIR="$build" PREFIX="$prefix" \
-  INSDIR_LICENSE="$build/$prefix/licenses/blesh"
+  INSDIR_LICENSE="$build/$prefix/share/licenses/blesh"
 
 # パッケージ作成 - 例3
 make install DESTDIR="$build" PREFIX="$prefix" \

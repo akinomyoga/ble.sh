@@ -149,10 +149,10 @@ removedfiles += \
   lib/keymap.vi_test.sh
 
 #------------------------------------------------------------------------------
-# documents
+# licenses and documents
 
-outdirs += $(OUTDIR)/doc
-outfiles-license += $(OUTDIR)/doc/LICENSE.md
+outdirs += $(OUTDIR)/licenses $(OUTDIR)/doc
+outfiles-license += $(OUTDIR)/licenses/LICENSE.md
 ifneq ($(USE_DOC),no)
   outfiles-doc += $(OUTDIR)/doc/README.md
   outfiles-doc += $(OUTDIR)/doc/README-ja_JP.md
@@ -161,21 +161,29 @@ ifneq ($(USE_DOC),no)
   outfiles-doc += $(OUTDIR)/doc/Release.md
 endif
 
-# Note #D2065: make-3.81 のバグにより以下の様に記述すると、より長く一致するパター
-# ンを持った規則よりも優先されてしまう。3.82 では問題は発生しない。% の代わりに
-# %.md にしたとしても、%.md が contrib/README.md 等に一致してしまう。仕方がない
-# ので $(OUTDIR)/doc/%: % に対応するファイルに関しては明示的に一つずつ記述する
-# 事にする。
+# Workaround for make-3.81 (#D2065)
 #
-#   $(OUTDIR)/doc/%: % | $(OUTDIR)/doc
+# We want to do something like the following:
+#
+#   $(OUTDIR)/license/%.md: %.md | $(OUTDIR)/license
+#   	$(CP) $< $@
+#   $(OUTDIR)/doc/%.md: %.md | $(OUTDIR)/doc
 #   	$(CP) $< $@
 #
-# Workaround for make-3.81:
-$(OUTDIR)/doc/README.md: README.md | $(OUTDIR)/doc
+# However, because of a bug in make-3.81, this rule overrides all the other
+# more detailed patterns such as $(OUTDIR)/doc/contrib/%.md.  As a result, even
+# when we want to apply preprocessing to specific file patterns under
+# $(OUTDIR)/doc/%, $(CP) is always is used to install the files.  To work
+# around this problem in make-3.81, we need to manually filter the target files
+# whose source files are at the top level in the source tree.
+#
+outfiles-doc-toplevel := \
+  $(filter $(outfiles-doc),$(patsubst %,$(OUTDIR)/doc/%,$(wildcard *.md)))
+$(outfiles-doc-toplevel): $(OUTDIR)/doc/%.md: %.md | $(OUTDIR)/doc
 	$(CP) $< $@
-$(OUTDIR)/doc/README-ja_JP.md: README-ja_JP.md | $(OUTDIR)/doc
-	$(CP) $< $@
-$(OUTDIR)/doc/LICENSE.md: LICENSE.md | $(OUTDIR)/doc
+outfiles-license-toplevel := \
+  $(filter $(outfiles-license),$(patsubst %,$(OUTDIR)/licenses/%,$(wildcard *.md)))
+$(outfiles-license-toplevel): $(OUTDIR)/licenses/%.md: %.md | $(OUTDIR)/licenses
 	$(CP) $< $@
 
 $(OUTDIR)/doc/%: docs/% | $(OUTDIR)/doc
@@ -208,35 +216,23 @@ all: build
 # control the install locations.  Instead of INSDIR, users may specify DESTDIR
 # and/or PREFIX to automatically set up these variables.
 
-ifneq ($(USE_DOC),no)
-  insdir_license_subdir := /doc
-else
-  insdir_license_subdir :=
-endif
-
 ifneq ($(INSDIR),)
-  ifeq ($(INSDIR_DOC),)
-    INSDIR_DOC := $(INSDIR)/doc
-  endif
-  ifeq ($(INSDIR_LICENSE),)
-    INSDIR_LICENSE := $(INSDIR)$(insdir_license_subdir)
-  endif
+  INSDIR_LICENSE := $(INSDIR)/licenses
+  INSDIR_DOC     := $(INSDIR)/doc
 else
-  ifneq ($(filter-out %/,$(DESTDIR)),)
-    DESTDIR := $(DESTDIR)/
-  endif
-
-  ifneq ($(DESTDIR)$(PREFIX),)
-    DATA_HOME := $(DESTDIR)$(PREFIX)/share
+  ifneq ($(DESTDIR),)
+    DATADIR := $(abspath $(DESTDIR)/$(PREFIX)/share)
+  else ifneq ($(PREFIX),)
+    DATADIR := $(abspath $(PREFIX)/share)
   else ifneq ($(XDG_DATA_HOME),)
-    DATA_HOME := $(XDG_DATA_HOME)
+    DATADIR := $(abspath $(XDG_DATA_HOME))
   else
-    DATA_HOME := $(HOME)/.local/share
+    DATADIR := $(abspath $(HOME)/.local/share)
   endif
 
-  INSDIR = $(DATA_HOME)/blesh
-  INSDIR_DOC = $(DATA_HOME)/doc/blesh
-  INSDIR_LICENSE = $(DATA_HOME)$(insdir_license_subdir)/blesh
+  INSDIR         := $(DATADIR)/blesh
+  INSDIR_LICENSE := $(DATADIR)/blesh/licenses
+  INSDIR_DOC     := $(DATADIR)/doc/blesh
 endif
 
 ifneq ($(strip_comment),)
@@ -245,26 +241,24 @@ else
   opt_strip_comment :=
 endif
 
+insfiles         := $(outfiles:$(OUTDIR)/%=$(INSDIR)/%)
+insfiles-license := $(outfiles-license:$(OUTDIR)/licenses/%=$(INSDIR_LICENSE)/%)
+insfiles-doc     := $(outfiles-doc:$(OUTDIR)/doc/%=$(INSDIR_DOC)/%)
+
 install-files := \
-  $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) \
-  $(outfiles-doc:$(OUTDIR)/doc/%=$(INSDIR_DOC)/%) \
-  $(outfiles-license:$(OUTDIR)/doc/%=$(INSDIR_LICENSE)/%) \
+  $(insfiles) $(insfiles-license) $(insfiles-doc) \
   $(INSDIR)/cache.d $(INSDIR)/run
 install: $(install-files)
 uninstall:
 	bash make_command.sh uninstall $(install-files)
 .PHONY: install uninstall
 
-$(INSDIR)/%: $(OUTDIR)/%
+$(insfiles): $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install $(opt_strip_comment) "$<" "$@"
-ifneq ($(INSDIR_DOC),$(INSDIR))
-$(INSDIR_DOC)/%: $(OUTDIR)/doc/%
+$(insfiles-license): $(INSDIR_LICENSE)/%: $(OUTDIR)/licenses/%
 	bash make_command.sh install "$<" "$@"
-endif
-ifeq ($(findstring $(INSDIR_LICENSE),$(INSDIR) $(INSDIR_DOC)),)
-$(INSDIR_LICENSE)/%: $(OUTDIR)/doc/%
+$(insfiles-doc): $(INSDIR_DOC)/%: $(OUTDIR)/doc/%
 	bash make_command.sh install "$<" "$@"
-endif
 $(INSDIR)/cache.d $(INSDIR)/run:
 	mkdir -p $@ && chmod a+rwxt $@
 

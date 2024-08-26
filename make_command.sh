@@ -52,11 +52,15 @@ function sub:install {
   while [[ $1 == -* ]]; do
     local arg=$1; shift
     case $arg in
-    (--release) flag_release=1 ;;
+    (--release)
+      flag_release=1 ;;
     (--strip-comment=*)
       opt_strip_comment=${arg#*=} ;;
-    (*) echo "install: unknown option $arg" >&2
-        flag_error=1 ;;
+    (--)
+      break ;;
+    (*)
+      echo "install: unknown option $arg" >&2
+      flag_error=1 ;;
     esac
   done
   [[ $flag_error ]] && return 1

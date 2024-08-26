@@ -47,8 +47,8 @@ make -C ble.sh install PREFIX=~/.local
 echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
-The build process integrates multiple Bash script files into a single Bash script `ble.sh` with pre-processing,
-places other module files in appropriate places, and strips code comments for a shorter initialization time.
+The build process integrates multiple Bash script files into a single Bash script `ble.sh` with pre-processing.
+It also places other module files in appropriate places and strips code comments for a shorter initialization time.
 The build process does not involve any C/C++/Fortran compilations and generating binaries, so C/C++/Fortran compilers are not needed.
 </details>
 
@@ -117,7 +117,7 @@ bash /path/to/ble.sh --update
 <details><summary><b>Create a package of <code>ble.sh</code></b></summary>
 
 Since `ble.sh` is just a set of shell scripts and do not contain any binary (i.e., "`noarch`"),
-you may just download the pre-built tarball from release pages and put the extracted contents in e.g. `/tmp/blesh-package/usr/local`.
+you may just download the pre-built tarball from a release page and put the extracted contents in e.g. `/tmp/blesh-package/usr/local`.
 Nevertheless, if you need to build the package from the source, please use the following commands.
 Note that the git repository (`.git`) is required for the build.
 
@@ -248,18 +248,18 @@ For example,
   fact, I personally call it simply /biːɛliː/ or verbosely read it as /biːɛliː
   dɑt ɛseɪtʃ/ in my head.
 - <sup><a id="discl-pure" href="#discl-pure">†2</a></sup>Q. *It cannot be pure
-  Bash because the user should be able input and run external commands.  What
-  does the pure Bash mean?* --- A. It means that the core part of the line
+  Bash because the user should be able to input and run external commands.
+  What does the pure Bash mean?* --- A. It means that the core part of the line
   editor is written in pure Bash.  Of course, the external commands will be run
-  when the user input it and request the execution of it.  In addition, before
-  and after the execution of user commands, `ble.sh` relies on POSIX `stty` to
-  set up the correct TTY states for user commands.  It also uses other POSIX
-  utilities for acceleration in some parts of initialization and cleanup code,
-  processing of large data in completions, pasting large data, etc.  The
-  primary goal of the `ble.sh` implementation is not being pure Bash, but the
-  performance in the Bash implementation with the POSIX environment.  Being
-  pure Bash is usually useful for reducing the `fork`/`exec` cost, but if
-  implementation by external commands are more efficient in specific parts,
+  when the user inputs them and requests the execution of them.  In addition,
+  before and after the execution of user commands, `ble.sh` relies on POSIX
+  `stty` to set up the correct TTY states for user commands.  It also uses
+  other POSIX utilities for acceleration in some parts of initialization and
+  cleanup code, processing of large data in completions, pasting large data,
+  etc.  The primary goal of the `ble.sh` implementation is not being pure Bash,
+  but the performance in the Bash implementation with the POSIX environment.
+  Being pure Bash is usually useful for reducing the `fork`/`exec` cost, but if
+  implementation by external commands is more efficient in specific parts,
   `ble.sh` will use the external commands there.
 - <sup><a id="discl-make" href="#discl-make">†3</a></sup>Q. *Why does `ble.sh`
   use `make` to generate the script files? You should not use `make` for a
@@ -286,7 +286,7 @@ For example,
   [`canvas.emoji.sh`](https://github.com/akinomyoga/ble.sh/blob/master/src/canvas.emoji.sh),
   so there is no need to run these C/C++ programs in the build process.
   Another C file is used as an adapter in an old system MSYS1, which is used
-  with an old compiler tool chain in Windows, but it will never be used in
+  with an old compiler toolchain in Windows, but it will never be used in
   Unix-like systems.  Each file used in the build process is explained in
   [`make/README.md`](make/README.md).
 
@@ -330,15 +330,13 @@ The install locations of `ble.sh` and related script files can be specified by
 make variable `INSDIR`.  The locations of the license files and the
 documentation files can be specified by make variables `INSDIR_LICENSE` and
 `INSDIR_DOC`, respectively.  When `INSDIR` is specified, the default values of
-`INSDIR_LICENSE` and `INSDIR_DOC` is `$INSDIR/doc`.  When `INSDIR` and later
-mentioned `DESTDIR`/`PREFIX` are not specified, the value of `INSDIR` is
-`${XDG_DATA_HOME:-$HOME/.local/share}/blesh`, and the default values of
-`INSDIR_LICENSE` and `INSDIR_DOC` are
-`${XDG_DATA_HOME:-$HOME/.local/share}/doc/blesh`.
+`INSDIR_LICENSE` and `INSDIR_DOC` are `$INSDIR/licenses` and `$INSDIR/doc`.
+When `INSDIR` and the below-mentioned `DESTDIR`/`PREFIX` are not specified, the
+default values of `INSDIR`, `INSDIR_LICENSES`, and `INSDIR_DOC` are
+`$data/blesh`, `$data/blesh/licenses`, and `$data/doc/blesh`, respectively,
+where `$data` represents `${XDG_DATA_HOME:-$HOME/.local/share}/blesh`.
 
-When `USE_DOC=no` is specified, the documentation files are disabled.  Also,
-the default install location of the license files `INSDIR_LICENSE` is changed
-to `$INSDIR`.
+When `USE_DOC=no` is specified, the documentation files are disabled.
 
 By default, the comment lines and blank lines in the script files are stripped
 in the installation process.  If you would like to keep these lines in the
@@ -357,7 +355,7 @@ make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 
 # PACKAGE - Example 2
 make install DESTDIR="$build" PREFIX="$prefix" \
-  INSDIR_LICENSE="$build/$prefix/licenses/blesh"
+  INSDIR_LICENSE="$build/$prefix/share/licenses/blesh"
 
 # PACKAGE - Example 3
 make install DESTDIR="$build" PREFIX="$prefix" \

@@ -61,8 +61,8 @@
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
   - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` 9270b529
-- make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 134a38d1
-  - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
+- make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 134a38d1 xxxxxxxx
+  - make: fix condition for the `INSDIR_LICENSE` rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
 - edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
 
