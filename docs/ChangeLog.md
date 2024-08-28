@@ -64,6 +64,7 @@
 - make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 134a38d1
   - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
+- edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2275` xxxxxxxx
 
 ## Changes
 

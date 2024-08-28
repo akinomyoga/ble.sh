@@ -1656,11 +1656,7 @@ function ble/prompt/.instantiate {
   local expanded=
   if ble/prompt/.uses-builtin-prompt-expansion "$ps"; then
     [[ $ps == *'\'[wW]* ]] && ble/prompt/unit/add-hash '$PWD'
-    ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-    LINENO=$_ble_edit_LINENO \
-      BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
-      builtin eval 'expanded=${ps@P}'
-
+    ble-edit/exec/eval-with-setexit 'expanded=${ps@P}' pipestatus
   else
     # 展開設定
     local prompt_noesc=
@@ -1677,10 +1673,7 @@ function ble/prompt/.instantiate {
       local ret
       ble/prompt/.escape "$processed"; local escaped=$ret
       expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
-      ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-      LINENO=$_ble_edit_LINENO \
-        BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
-        builtin eval "expanded=\"$escaped\""
+      ble-edit/exec/eval-with-setexit "expanded=\"$escaped\"" pipestatus
     else
       expanded=$processed
     fi
@@ -1995,27 +1988,14 @@ fi
 function ble/prompt/update/.has-prompt_command {
   [[ ${_ble_edit_PROMPT_COMMAND[*]} == *[![:space:]]* ]]
 }
-function _ble_prompt_update__eval_prompt_command_1 {
-  # Note: return 等と記述されていた時の対策として関数内評価する。
-  # Note #D1772: 本来は tempenv として _ble_edit_exec_TRAPDEBUG_enabled=1 も指
-  # 定すれば ble-edit/exec/.setexit や builtin eval に対する DEBUG trap の除外
-  # を明示的に確認しなくても済むはずだが、bash-4.4..5.2(少なくとも) にはバグが
-  # あって builtin eval を使うと DEBUG trap の中から tmpenv が見えなくなってし
-  # まう。仕方がないので local で _ble_edit_exec_TRAPDEBUG_enabled=1 を設定する。
-  local _ble_edit_exec_TRAPDEBUG_enabled=1
-  ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  LINENO=$_ble_edit_LINENO \
-    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
-    builtin eval -- "$1"
-}
-ble/function#trace _ble_prompt_update__eval_prompt_command_1
 function ble/prompt/update/.eval-prompt_command {
   ((${#PROMPT_COMMAND[@]})) || return 0
   local _ble_local_command _ble_edit_exec_TRAPDEBUG_adjusted=1
   ble-edit/exec:gexec/.TRAPDEBUG/restore filter
   for _ble_local_command in "${PROMPT_COMMAND[@]}"; do
     [[ $_ble_local_command ]] || continue
-    _ble_prompt_update__eval_prompt_command_1 "$_ble_local_command"
+    # Note: return 等と記述されていた時の対策として関数内評価する。
+    ble-edit/exec/eval-with-setexit "$_ble_local_command" pipestatus:DEBUG
   done
   _ble_edit_exec_gexec__TRAPDEBUG_adjust
 }
@@ -6524,10 +6504,69 @@ function ble-edit/exec/register {
 function ble-edit/exec/has-pending-commands {
   ((${#_ble_edit_exec_lines[@]}))
 }
+
+## @fn ble-edit/exec/.setexit lastarg
+##   Set parameters $? and $_
 function ble-edit/exec/.setexit {
-  # $? 変数の設定
   return "$_ble_edit_exec_lastexit"
 }
+## @fn ble-edit/exec/compose-PIPESTATUS-reproducer
+##   @var[out] ret
+##     A string of dummy command that can be evaluated to reset PIPESTATUS is
+##     stored in variable "ret".
+##
+##   @exit It fails when an additional trick is not necessary (i.e., when
+##     PIPESTATUS has only one element or when "bleopt exec_restore_pipestatus"
+##     is disabled), and `ret` is set to empty.  Otherwise, it succeeds.
+function ble-edit/exec/compose-PIPESTATUS-reproducer {
+  ret=
+  [[ $bleopt_exec_restore_pipestatus ]] && ((${#_ble_edit_exec_PIPESTATUS[@]} >= 2)) || return 1
+  local i pipe=
+  for ((i=0;i<${#_ble_edit_exec_PIPESTATUS[@]};i++)); do
+    pipe=$pipe'| (builtin exit '${_ble_edit_exec_PIPESTATUS[i]}')'
+  done
+  ret=${pipe:2}
+  return 0
+}
+## @fn  ble-edit/exec/eval-with-setexit command [opts]
+##   This function evaluates a command with $?, $_, BLE_PIPESTATUS, LINE, and
+##   BASH_COMMAND, (and aditionally PIPESTATUS when "bleopt
+##   exec_restore_pipestatus" is enabled) being restored.
+##   @param[in] command
+##     The command to execute.
+##   @param[in,opt] opts
+##     @opt pipestatus
+##       If this is specified and "bleopt exec_restore_pipestatus" is enabeld,
+##       PIPESTATUS is reconstructed.
+##     @opt DEBUG
+##       If this is specified, the user's DEBUG trap is enabled while executing
+##       the command.
+function  ble-edit/exec/eval-with-setexit {
+  # Note #D1772: We set "_ble_edit_exec_TRAPDEBUG_enabled=1" as a local
+  # variable to work around a bug in 4.4..5.2.  Ideally, we want to specify it
+  # through tempenv the same as LINENO and BASH_COMMAND, but bash-4.4..5.2 (at
+  # least) has a bug that "builtin eval" makes tempenvs invisible from inside
+  # of the DEBUG trap.
+  local debug_insert=
+  [[ :$2: == *:DEBUG:* ]] &&
+    debug_insert='; local _ble_edit_exec_TRAPDEBUG_enabled=1'
+
+  local ret= q=\' Q="'\''"
+  [[ :$2: == *:pipestatus:* ]] &&
+    ble-edit/exec/compose-PIPESTATUS-reproducer
+
+  local _ble_local_script='
+    local -a BLE_PIPESTATUS
+    BLE_PIPESTATUS=("${_ble_edit_exec_PIPESTATUS[@]}")'$debug_insert'
+    ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"'${ret:+"; $ret"}'
+    LINENO=${_ble_edit_LINENO:-${BASH_LINENO[${#BASH_LINENO[@]}-1]}} \
+      BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
+      builtin eval -- '$q${1//$q/$Q}$q
+  ble/util/unlocal debug_insert ret q Q
+  builtin eval -- "$_ble_local_script"
+}
+ble/function#trace ble-edit/exec/eval-with-setexit
+
 ## @fn ble-edit/exec/.adjust-eol
 ##   文末調整を行います。
 _ble_prompt_eol_mark=('' '' 0)
@@ -7064,9 +7103,17 @@ function ble-edit/exec:gexec/.TRAPDEBUG/restore {
 
 function ble-edit/exec:gexec/.TRAPDEBUG/.filter {
   [[ $_ble_edit_exec_TRAPDEBUG_enabled || ! $_ble_attached ]] || return 1
+  [[ ${_ble_builtin_trap_inside-} ]] && return 1
   [[ $_ble_trap_bash_command != *ble-edit/exec:gexec/.* ]] || return 1
-  [[ ! ( ${FUNCNAME[1]-} == _ble_prompt_update__eval_prompt_command_1 && ( $_ble_trap_bash_command == 'ble-edit/exec/.setexit '* || $_ble_trap_bash_command == 'BASH_COMMAND='*' builtin eval -- '* ) ) ]] || return 1
-  [[ ! ${_ble_builtin_trap_inside-} ]] || return 1
+
+  # PROMPT_COMMAND execution
+  if [[ ${FUNCNAME[2]-} == 'ble-edit/exec/eval-with-setexit' ]]; then
+    case $_ble_trap_bash_command in
+    ('ble-edit/exec/.setexit '*) return 1 ;;
+    ('LINENO='*' BASH_COMMAND='*' builtin eval -- '*) return 1 ;;
+    esac
+  fi
+
   return 0
 }
 _ble_trap_builtin_handler_DEBUG_filter=ble-edit/exec:gexec/.TRAPDEBUG/.filter
@@ -7301,12 +7348,13 @@ function ble-edit/exec:gexec/.TRAPINT/reset {
   blehook internal_INT-='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
-  local -a BLE_PIPESTATUS
-  BLE_PIPESTATUS=("${_ble_edit_exec_PIPESTATUS[@]}")
-  ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  LINENO=${_ble_edit_LINENO:-${BASH_LINENO[${#BASH_LINENO[@]}-1]}} \
-    BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND \
-    blehook/invoke "$@"
+  local -a __ble_exec_hook_args
+  __ble_exec_hook_args=("$@")
+
+  # We do not specify opt "pipestatus" to "ble-edit/exec/eval-with-setexit"
+  # because PIPESTATUS is not propagated to hooks anyway.  One can always
+  # access BLE_PIPESTATUS instead.
+  ble-edit/exec/eval-with-setexit 'blehook/invoke "${__ble_exec_hook_args[@]}"'
 } >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"
 
 function ble-edit/exec:gexec/.TRAPERR {
@@ -7410,13 +7458,9 @@ function ble-edit/exec:gexec/.prologue {
   BLE_PIPESTATUS=("${_ble_edit_exec_PIPESTATUS[@]}")
 
   _ble_edit_exec_BASH_COMMAND_eval=$_ble_edit_exec_BASH_COMMAND
-  if [[ $bleopt_exec_restore_pipestatus ]] && ((${#BLE_PIPESTATUS[@]} > 0)); then
-    local i pipe=
-    for ((i=0;i<${#BLE_PIPESTATUS[@]};i++)); do
-      pipe=$pipe'| (exit '${BLE_PIPESTATUS[i]}')'
-    done
-    _ble_edit_exec_BASH_COMMAND_eval="${pipe:2}; $_ble_edit_exec_BASH_COMMAND_eval"
-  fi
+  local ret
+  ble-edit/exec/compose-PIPESTATUS-reproducer &&
+    _ble_edit_exec_BASH_COMMAND_eval="$ret; $_ble_edit_exec_BASH_COMMAND_eval"
 
   ble-edit/restore-PS1
   ble-edit/restore-READLINE

@@ -7373,6 +7373,19 @@ bash_tips
 
 2024-08-28
 
+  * edit: PROMPT_COMMAND で BLE_PIPESTATUS を参照したい (requested by mattmc3) [#D2275]
+    https://github.com/akinomyoga/ble.sh/issues/492
+
+    取り敢えず実装した。というか実行箇所のコードは何れもほぼ同じなので関数にま
+    とめるのが良い。また色々の調整も含めて全体を一つの eval の中に入れないと都
+    合が悪い事も分かった。
+
+    * ok: DEBUG trap に対する処置が正しく動くのか分からない。実験する必要がある。
+      うーん。分からないがそもそも色々とコマンドのパターンが変化していて動かな
+      くなっていた。修正したら動く様になった。 exec_restore_pipestatus=1 にして
+      もダミーコマンドが出力されるという事もない。何故? subshell だから? 分から
+      ないが取り敢えず良い事にする。
+
   * ble-reload 時に --bash-debug-version=... の設定が保持されない [#D2274]
 
     最初の source 時に指定したものを保持する様にしてみたが、よく考えてみれば再
