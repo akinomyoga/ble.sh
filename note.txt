@@ -7373,6 +7373,15 @@ bash_tips
 
 2024-08-28
 
+  * ble-reload 時に --bash-debug-version=... の設定が保持されない [#D2274]
+
+    最初の source 時に指定したものを保持する様にしてみたが、よく考えてみれば再
+    表示する必要はあるだろうか? そもそも一回だけ表示すれば良い物だけれども、も
+    う一度出したら良いか分からなくなると困るという意味で起動時に表示する様にし
+    ていた。定期的に出す様にしたいが頻度はできるだけ低くしたかったのだ。という
+    事を考えると実は ble-reload の時には完全に suppress するという事で良い気が
+    する。
+
   * color: Gogh なる framework から theme のデータベースを導入する (motivated by d4rkb4sh8) [#D2273]
     https://github.com/akinomyoga/blesh-contrib/issues/23
 

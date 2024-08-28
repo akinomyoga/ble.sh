@@ -2039,19 +2039,25 @@ function ble/base/print-usage-for-no-argument-command {
 }
 function ble-reload {
   builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_adjust"
-  local -a options=()
+  local -a _ble_local_options=()
+
   [[ ! -e $_ble_base_rcfile ]] ||
-    ble/array#push options --rcfile="${_ble_base_rcfile:-/dev/null}"
+    ble/array#push _ble_local_options --rcfile="${_ble_base_rcfile:-/dev/null}"
   [[ $_ble_base_arguments_inputrc == auto ]] ||
-    ble/array#push options --inputrc="$_ble_base_arguments_inputrc"
+    ble/array#push _ble_local_options --inputrc="$_ble_base_arguments_inputrc"
+
   local name
   for name in keep-rlvars; do
     if [[ :$_ble_base_arguments_opts: == *:"$name":* ]]; then
-      ble/array#push options "--$name"
+      ble/array#push _ble_local_options "--$name"
     fi
   done
+  ble/util/unlocal name
+
+  ble/array#push _ble_local_options '--bash-debug-version=ignore'
+
   builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
-  source "$_ble_base/ble.sh" "${options[@]}"
+  source "$_ble_base/ble.sh" "${_ble_local_options[@]}"
 }
 
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
