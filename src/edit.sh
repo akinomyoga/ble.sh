@@ -7439,6 +7439,13 @@ function _ble_edit_exec_gexec__save_lastarg {
     _ble_edit_exec_lastarg=$_ \
     _ble_edit_exec_PIPESTATUS=("${PIPESTATUS[@]}") \
     _ble_edit_exec_lastparams=("$@")
+
+  # Note: When ble-attach by a new ble.sh session is forced inside the user
+  # space, the adjustments for the editor mode is unnecessary.  Rather, it
+  # would wrongly saves the file descriptors for the editor space as those for
+  # the user space and causes a loss of the user's file descriptors.
+  [[ $_ble_edit_exec_inside_userspace ]] && return "$_ble_edit_exec_lastexit"
+
   _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
 

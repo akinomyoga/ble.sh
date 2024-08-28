@@ -7373,6 +7373,21 @@ bash_tips
 
 2024-08-28
 
+  * gexec: 中で source ble.sh --attach=attach を実行すると stderr が失われる (reported by JohEngstrom) [#D2271]
+    https://github.com/akinomyoga/ble.sh/discussions/491
+
+    これは ble-attach を強制的に実行した直後は redirect されていて、而もその後
+    でその redirect された状態が以前の ble.sh session が保存してしまうからであ
+    る。うーん。stdout.off になっている時には保存しない様にするべき? 既に保存し
+    ている筈だから。と思ったが、stdout.on か stdout.off かは idempotent になっ
+    ていて、現在の状態は特に記録していない。
+
+    x ok:然し変だ。5 から stderr をコピーしている筈なのに何故 redirect された
+      stderr が保存されているのだろうか。と思ったがこれは OK。4 5 の redirect
+      はユーザーコマンドの実行全体を囲んで行われた物ではなく
+      て、_ble_edit_exec_gexec__save_lastarg の呼び出し限定の物なので、4, 5 に
+      実際に user space で設定した fd が含まれている。
+
   * [OK] util(bleopt): BASH_REMATCH が上書きされている。 [#D2270]
 
     ble.sh --norc では再現しない。上書きされている時の値を見ると
