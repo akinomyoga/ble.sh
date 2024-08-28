@@ -55,6 +55,8 @@
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
 - highlight: reflect the top-level positional parameters `#D2246` f08e8f08
 - color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` d6a38c43 `#D2263` 0aa66b25
+  - syntax(highlight/vartype): add `ble-face varname_new` `#D2271` xxxxxxxx
+  - syntax(highlight/vartype): check variable existence for `${var?...}` `#D2272` xxxxxxxx
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
   - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` 9270b529

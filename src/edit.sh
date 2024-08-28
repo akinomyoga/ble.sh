@@ -3009,6 +3009,27 @@ function ble-edit/eval-IGNOREEOF {
   fi
 }
 
+function ble/variable#load-user-state/variable:PS1 {
+  __ble_var_set=${_ble_edit_PS1+set}
+  __ble_var_val=("${_ble_edit_exec_PS1[@]}")
+  ble/variable#get-attr -v __ble_var_att PS1
+}
+function ble/variable#load-user-state/variable:PROMPT_COMMAND {
+  if ble/is-array _ble_edit_PROMPT_COMMAND; then
+    __ble_var_set=set
+    ble/idict#copy __ble_var_val _ble_edit_PROMPT_COMMAND
+  else
+    __ble_var_set=${_ble_edit_PROMPT_COMMAND+set}
+    ble/variable#copy-state _ble_edit_PROMPT_COMMAND __ble_var_val
+  fi
+  ble/variable#get-attr -v __ble_var_att _ble_edit_PROMPT_COMMAND
+}
+function ble/variable#load-user-state/variable:IGNOREEOF {
+  __ble_var_set=${_ble_edit_IGNOREEOF+set}
+  __ble_var_val=${_ble_edit_IGNOREEOF-}
+  ble/variable#get-attr -v __ble_var_att _ble_edit_exec_IGNOREEOF
+}
+
 bleopt/declare -n canvas_winch_action redraw-here
 
 function ble-edit/attach/TRAPWINCH {

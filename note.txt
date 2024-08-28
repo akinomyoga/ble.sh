@@ -7373,6 +7373,27 @@ bash_tips
 
 2024-08-28
 
+  * highlight(vartype): ${var?...} をエラー着色にする可能性 [#D2272]
+
+    そもそもコマンドラインで使うかどうかは分からないが、他のエラーで停止する機
+    能については色で知らせているのにこれは知らせないというのも変な気がするので
+    対応する。
+
+  * highlight(vartype): add "ble-face variable_new" [#D2271]
+
+    varname_unset の色は変更したがやはり微妙かもしれない変数を代入する機会は多
+    くあるが大体変数は設定されていない。という事を考えると、存在しない変数を灰
+    色にするという機能は大体の代入における変数を灰色に表示するという事になる。
+    微妙。或いは代入の右辺にある時だけは存在しない変数に対しては "新しい変数"
+    を意味する色で着色する?
+
+    varname_new という物を作ってみる? 呼び出し元の文脈で unset を new に置き換
+    えれば良い。
+
+    * done: global の状態を取得するかどうかという事を考えていたが、よく見てみる
+      と glbal の状態を復元する試みが実は外側で実行されている。これは
+      ble/variable#load-user-staet に統合するべきなのでは → 統合した。
+
   * gexec: 中で source ble.sh --attach=attach を実行すると stderr が失われる (reported by JohEngstrom) [#D2271]
     https://github.com/akinomyoga/ble.sh/discussions/491
 

@@ -1945,6 +1945,35 @@ function ble/syntax:bash/initialize-vars {
 #------------------------------------------------------------------------------
 # 共通の字句の一致判定
 
+function ble/variable#load-user-state/.print-global-state {
+  # This function is a callback for "ble/util/for-global-variables"
+  local __ble_set= __ble_val= __ble_att=
+  if [[ :$2: == *:unset:* ]]; then
+    # This branch is selected when the global variable is hidden by a local
+    # readonly variable and its state cannot be accesed.  In this case, so that
+    # the default variable highlighting is chosen, we pretend that a scalar
+    # variable is set to be a non-empty value.
+    __ble_set=unknown
+    __ble_val=unknown
+    __ble_att=
+  else
+    __ble_set=${!1+set}
+    __ble_val=${!1-}
+    ble/variable#get-attr -v __ble_att "$1"
+
+    # Note: We remove the readonly attribute "r" because
+    # "ble/util/for-global-variables" uses the readonly attribute to access the
+    # global variable so we cannot correctly test the readonly attribute.
+    # Anyway, since we know that the global variable is hidden by a local
+    # variable, it is natural to consider the global variable is not readonly
+    # because a global readonly variable cannot be hidden by a local variable.
+    # An exceptional case is the case where the global variable is made
+    # readonly using "declare -gr" after it is hidden by a local variable.
+    __ble_att=${__ble_att//r}
+  fi
+  declare -p __ble_set __ble_val __ble_att
+}
+
 ## @fn ble/variable#load-user-state
 ##   @var[out] __ble_var_set __ble_var_val __ble_var_att
 function ble/variable#load-user-state {
@@ -1972,83 +2001,25 @@ function ble/variable#load-user-state {
     return 0
   fi
 
-  # XXX---We may possibly extract the global state, but this requires at least
-  # one fork to check if the currently visible variable is global or not, and
-  # even another fork and complicated processing if global.  To avoid the
-  # overhead, we currently do not process the hidden global variables.  When we
-  # support this, we should also consider it in the custom loader
-  # ble/variable#load-user-state/variable:"$1".
-  # if ble/variable#is-global "$1"; then
-  #   ...
-  # fi
+  # Extract global state. When we support this, we should also consider it in
+  # the custom loader ble/variable#load-user-state/variable:"$1".
+  if [[ :$2: == *:global:* ]] && ! ble/variable#is-global "$1"; then
+    local _ble_highlight_vartype_name=$1
+    local __ble_var_state
+    ble/util/assign __ble_var_state 'ble/util/for-global-variables ble/variable#load-user-state/.print-global-state "" "$_ble_highlight_vartype_name"'
+    if [[ $__ble_var_state ]]; then
+      local __ble_set __ble_val __ble_att
+      builtin eval -- "$__ble_var_state"
+      __ble_var_set=$__ble_set
+      __ble_var_val=$__ble_val
+      __ble_var_att=$__ble_att
+      return 0
+    fi
+  fi
 
   __ble_var_set=${!1+set}
   __ble_var_val=${!1-}
   ble/variable#get-attr -v __ble_var_att "$1"
-}
-
-## @fn ble/syntax/highlight/vartype/.impl name [opts [tail]]
-##   @arr[out] __ble_vartype_ret=(ret [lookahead])
-##     属性値 ret と先読み文字数 lookahead を返します。
-function ble/syntax/highlight/vartype/.impl {
-  if [[ ! $bleopt_highlight_variable ]]; then
-    __ble_vartype_ret=$ATTR_VAR
-    return 0
-  fi
-
-  local __ble_name=$1 __ble_opts=$2 __ble_tail=$3
-
-  local __ble_var_set __ble_var_val __ble_var_att
-  ble/variable#load-user-state "$__ble_name"
-
-  if [[ $__ble_var_set || $__ble_var_att == *[aA]* ]]; then
-    local __ble_rex='^-?[0-9]+(#[_a-zA-Z0-9@]*)?$'
-    if [[ $__ble_var_val && :$__ble_opts: == *:expr:* && ! ( $__ble_var_val =~ $__ble_rex ) ]]; then
-      __ble_vartype_ret=$ATTR_VAR_EXPR
-    elif [[ $__ble_var_set && $__ble_var_att == *x* ]]; then
-      # Note: 配列の場合には第0要素が設定されている時のみ。
-      __ble_vartype_ret=$ATTR_VAR_EXPORT
-    elif [[ $__ble_var_att == *a* ]]; then
-      __ble_vartype_ret=$ATTR_VAR_ARRAY
-    elif [[ $__ble_var_att == *A* ]]; then
-      __ble_vartype_ret=$ATTR_VAR_HASH
-    elif [[ $__ble_var_att == *r* && :$__ble_opts: != *:no-readonly:* ]]; then
-      __ble_vartype_ret=$ATTR_VAR_READONLY
-    elif [[ $__ble_var_att == *i* ]]; then
-      __ble_vartype_ret=$ATTR_VAR_NUMBER
-    elif [[ $__ble_var_att == *[luc]* ]]; then
-      __ble_vartype_ret=$ATTR_VAR_TRANSFORM
-    elif [[ ! $__ble_var_val ]]; then
-      __ble_vartype_ret=$ATTR_VAR_EMPTY
-    else
-      __ble_vartype_ret=$ATTR_VAR
-    fi
-  else
-    # set -u のチェック
-    if [[ :$__ble_opts: == *:readvar:* && $_ble_bash_set == *u* ]]; then
-      if [[ ! $__ble_tail ]] || {
-           local __ble_rex='^:?[-+?=]'
-           [[ $__ble_tail == :* ]] && __ble_vartype_ret[1]=2
-           ! [[ $__ble_tail =~ $__ble_rex ]]; }
-      then
-        __ble_vartype_ret=$ATTR_ERR
-        return 0
-      fi
-    fi
-
-    __ble_vartype_ret=$ATTR_VAR_UNSET
-  fi
-}
-function ble/syntax/highlight/vartype/.print {
-  if [[ :$2: == *:unset:* ]]; then
-    # local readonly で被覆されていて分からない時にここに来る。グローバル変数が
-    # 存在するかしないかもわからないのでデフォルトの変数着色にする。
-    ble/util/print "$ATTR_VAR"
-  else
-    local -a __ble_vartype_ret=()
-    ble/syntax/highlight/vartype/.impl "$1" "$_ble_highlight_vartype_opts" "$_ble_highlight_vartype_tail"
-    ble/util/print "${__ble_vartype_ret[@]}"
-  fi
 }
 
 ## @fn ble/syntax/highlight/vartype varname [opts [tail]]
@@ -2077,21 +2048,66 @@ function ble/syntax/highlight/vartype/.print {
 ##     内の先読み文字数を返します。
 ##
 function ble/syntax/highlight/vartype {
-  local -a __ble_vartype_ret=()
-  if [[ :$2: == *:global:* && $1 != __ble_* ]] && ! ble/variable#is-global "$1"; then
-    # Note: readonly を global 変数取得に使っているので readonly は正しく判定で
-    #   きない。何れにしてもローカル変数がある時点で global readonly ではないと
-    #   考えるのが (ローカル変数を定義した後に declare -gr するのでなければ) 普
-    #   通である。
-    local _ble_highlight_vartype_name=$1
-    local _ble_highlight_vartype_opts=$__ble_opts:no-readonly
-    local _ble_highlight_vartype_tail=$__ble_tail
-    ble/util/assign-words __ble_vartype_ret 'ble/util/for-global-variables ble/syntax/highlight/vartype/.print "" "$_ble_highlight_vartype_name"'
+  ret=$ATTR_VAR
+  [[ $bleopt_highlight_variable ]] || return 0
+
+  local __ble_name=$1 __ble_opts=${2-} __ble_tail=${3-}
+
+  local __ble_var_set __ble_var_val __ble_var_att
+  ble/variable#load-user-state "$__ble_name" "$__ble_opts"
+
+  if [[ $__ble_var_set || $__ble_var_att == *[aA]* ]]; then
+    if [[ $__ble_var_val && :$__ble_opts: == *:expr:* ]] && ! ble/string#match "$__ble_var_val" '^-?[0-9]+(#[_a-zA-Z0-9@]*)?$'; then
+      ret=$ATTR_VAR_EXPR
+    elif [[ $__ble_var_set && $__ble_var_att == *x* ]]; then
+      # Note: 配列の場合には第0要素が設定されている時のみ。
+      ret=$ATTR_VAR_EXPORT
+    elif [[ $__ble_var_att == *a* ]]; then
+      ret=$ATTR_VAR_ARRAY
+    elif [[ $__ble_var_att == *A* ]]; then
+      ret=$ATTR_VAR_HASH
+    elif [[ $__ble_var_att == *r* ]]; then
+      ret=$ATTR_VAR_READONLY
+    elif [[ $__ble_var_att == *i* ]]; then
+      ret=$ATTR_VAR_NUMBER
+    elif [[ $__ble_var_att == *[luc]* ]]; then
+      ret=$ATTR_VAR_TRANSFORM
+    elif [[ ! $__ble_var_val ]]; then
+      [[ $__ble_tail == :* ]] && lookahead=2
+      if [[ $__ble_tail == ':?'* ]]; then
+        ret=$ATTR_ERR
+      else
+        ret=$ATTR_VAR_EMPTY
+      fi
+    else
+      ret=$ATTR_VAR
+    fi
   else
-    ble/syntax/highlight/vartype/.impl "$@"
+    if [[ :$__ble_opts: == *:newvar:* ]]; then
+      # assignments var=, var+=
+      ret=$ATTR_VAR_NEW
+      return 0
+    elif
+      [[ $__ble_tail == :* ]] && lookahead=2
+      [[ $__ble_tail == ':?'* || $__ble_tail == '?'* ]]
+    then
+      ret=$ATTR_ERR
+      return 0
+    fi
+
+    # set -u のチェック
+    if [[ :$__ble_opts: == *:readvar:* && $_ble_bash_set == *u* ]]; then
+      if [[ ! $__ble_tail ]] || {
+           [[ $__ble_tail == :* ]] && lookahead=2
+           ! ble/string#match "$__ble_tail" '^:?[-+?=]'; }
+      then
+        ret=$ATTR_ERR
+        return 0
+      fi
+    fi
+
+    ret=$ATTR_VAR_UNSET
   fi
-  ret=${__ble_vartype_ret:-$ATTR_VAR}
-  [[ ${__ble_vartype_ret[1]+set} ]] && lookahead=${__ble_vartype_ret[1]}
   return 0
 }
 
@@ -3464,7 +3480,7 @@ function ble/syntax:bash/check-variable-assignment {
   local variable_assign=
   if ((ctx==CTX_CMDI||ctx==CTX_ARGVI||ctx==CTX_ARGEI&&${#rematch2})); then
     # 変数代入のときは ctx は先に CTX_VRHS, CTX_ARGVR に変換する
-    local ret; ble/syntax/highlight/vartype "$rematch1" global
+    local ret; ble/syntax/highlight/vartype "$rematch1" newvar:global
     ((wtype=ATTR_VAR,
       _ble_syntax_attr[i]=ret,
       i+=${#rematch},
@@ -6574,6 +6590,7 @@ function ble/syntax/attr2iface/color_defface.onload {
   ble/syntax/attr2iface/.define ATTR_VAR_READONLY  varname_readonly
   ble/syntax/attr2iface/.define ATTR_VAR_TRANSFORM varname_transform
   ble/syntax/attr2iface/.define ATTR_VAR_EXPORT    varname_export
+  ble/syntax/attr2iface/.define ATTR_VAR_NEW       varname_new
 }
 blehook/eval-after-load color_defface ble/syntax/attr2iface/color_defface.onload
 

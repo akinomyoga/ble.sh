@@ -629,6 +629,7 @@ ble-face -s varname_empty             fg=31
 ble-face -s varname_export            fg=200,bold
 ble-face -s varname_expr              fg=99,bold
 ble-face -s varname_hash              fg=70,bold
+ble-face -s varname_new               fg=34
 ble-face -s varname_number            fg=64
 ble-face -s varname_readonly          fg=200
 ble-face -s varname_transform         fg=29,bold

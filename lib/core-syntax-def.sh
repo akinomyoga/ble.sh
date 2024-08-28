@@ -171,6 +171,7 @@ function ble/syntax/defface.onload {
   ble/color/defface varname_readonly  fg=200
   ble/color/defface varname_transform fg=29,bold
   ble/color/defface varname_export    fg=200,bold
+  ble/color/defface varname_new       fg=34
   ble/color/defface argument_option   fg=teal
   ble/color/defface argument_error    fg=black,bg=225
 }
