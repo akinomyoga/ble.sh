@@ -2424,6 +2424,15 @@ function ble/function#evaldef {
   ble/base/evaldef "$1"
 }
 
+function ble/function#has-attr {
+  local __ble_tmp=$1
+  ble/util/assign-array __ble_tmp 'declare -pf -- "$__ble_tmp" 2>/dev/null'
+  local nline=${#__ble_tmp[@]}
+  ((nline)) &&
+    ble/string#match "${__ble_tmp[nline-1]}" '^declare -([a-zA-Z]*)' &&
+    [[ ${BASH_REMATCH[1]} == *["$2"]* ]]
+}
+
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_util_function_traced}"
 function ble/function#trace {
   local func
@@ -2432,16 +2441,24 @@ function ble/function#trace {
     ble/gdict#set _ble_util_function_traced "$func" 1
   done
 }
-function ble/function#has-trace {
+function ble/function#.has-trace {
   ble/gdict#has _ble_util_function_traced "$1"
 }
-function ble/function#has-attr {
-  local __ble_tmp=$1
-  ble/util/assign-array __ble_tmp 'declare -pf -- "$__ble_tmp" 2>/dev/null'
-  local nline=${#__ble_tmp[@]}
-  ((nline)) &&
-    ble/string#match "${__ble_tmp[nline-1]}" '^declare -([a-zA-Z]*)' &&
-    [[ ${BASH_REMATCH[1]} == *["$2"]* ]]
+function ble/function#has-trace {
+  ble/function#.has-trace "$1" || ble/function#has-attr "$1" t
+}
+function ble/function#copy-trace {
+  ble/function#has-trace "$1" && ble/function#trace "$2"
+}
+
+function ble/function#.copy-primitive {
+  local def
+  ble/function#getdef "$1" || return 1
+  local def_new=${def/#"$1"/"$2"}
+  [[ $def_new == "$def" ]] && return 1
+  ble/function#evaldef "$def_new" || return 1
+  ble/function#copy-trace "$1" "$2"
+  return 0
 }
 
 ## @fn ble/function/is-global-trace-context
@@ -2553,6 +2570,7 @@ function ble/function#advice/.proc {
   ble/function#try "ble/function#advice/after:$1"
   return "$ADVICE_EXIT"
 }
+ble/function#trace ble/function#advice/.proc
 function ble/function#advice {
   local type=$1 name=$2 proc=$3
   if ! ble/is-function "$name"; then
@@ -2575,6 +2593,7 @@ function ble/function#advice {
           builtin unset -f "$name"
         else
           ble/function#evaldef "${def#*:}"
+          ble/function#copy-trace "ble/function#advice/original:$name" "$name"
         fi
       fi
     fi
@@ -2583,11 +2602,14 @@ function ble/function#advice {
   (before|after|around)
     if [[ $def != *'ble/function#advice/.proc'* ]]; then
       ble/function#evaldef "ble/function#advice/original:$def"
+      ble/function#copy-trace "$name" "ble/function#advice/original:$name"
       builtin eval "function $name { ble/function#advice/.proc \"\$FUNCNAME\" \"\$@\"; }"
+      ble/function#copy-trace "ble/function#advice/original:$name" "$name"
     fi
 
     local q=\' Q="'\''"
-    builtin eval "ble/function#advice/$type:$name() { builtin eval '${proc//$q/$Q}'; }"
+    builtin eval "ble/function#advice/$type:$name() { builtin eval -- '${proc//$q/$Q}'; }"
+    ble/function#copy-trace "ble/function#advice/original:$name" "ble/function#advice/$type:$name"
     return 0 ;;
   (*)
     ble/util/print "ble/function#advice unknown advice type '$type'" >&2
@@ -2607,8 +2629,7 @@ function ble/function#push {
       ((++index))
     done
 
-    local def; ble/function#getdef "$name"
-    ble/function#evaldef "ble/function#push/$index:$def"
+    ble/function#.copy-primitive "$name" "ble/function#push/$index:$name"
   fi
 
   if [[ $proc ]]; then
@@ -2638,8 +2659,7 @@ function ble/function#pop {
       return 0
     fi
   else
-    local def; ble/function#getdef "ble/function#push/$index:$name"
-    ble/function#evaldef "${def#*:}"
+    ble/function#.copy-primitive "ble/function#push/$index:$name" "$name"
     builtin unset -f "ble/function#push/$index:$name"
     return 0
   fi
@@ -2663,6 +2683,7 @@ function ble/function#push/call-top {
     "ble/function#push/$((index-1)):$func" "$@"
   fi
 }
+ble/function#trace ble/function#push/call-top
 
 : "${_ble_util_lambda_count:=0}"
 ## @fn ble/function#lambda var body
@@ -2670,7 +2691,7 @@ function ble/function#push/call-top {
 function ble/function#lambda {
   local _ble_local_q=\' _ble_local_Q="'\''"
   if ((_ble_bash>=50300)); then
-    ble/util/set "$1" ".ble::function#lambda::$((_ble_util_lambda_count++))" # WA #D2221
+    ble/util/set "$1" "ble::function#lambda::$((_ble_util_lambda_count++))" # WA #D2221
   else
     ble/util/set "$1" "ble/function#lambda/$((_ble_util_lambda_count++))"
   fi
@@ -2689,12 +2710,60 @@ function ble/function#suppress-stderr {
   # 重複して suppress-stderr した時の為、未定義の時のみ実装を待避
   local lambda=ble/function#suppress-stderr:$name
   if ! ble/is-function "$lambda"; then
-    local def; ble/function#getdef "$name"
-    ble/function#evaldef "ble/function#suppress-stderr:$def"
+    ble/function#.copy-primitive "$name" "$lambda"
   fi
 
   builtin eval "function $name { $lambda \"\$@\" 2>/dev/null; }"
   return 0
+}
+
+## @fn ble/function#copy func1 func2
+##   Copy a function to another name with care of ble/function#advice,
+##   ble/function#push, and ble/function#suppress-error
+##   @var[in] func1
+##     The name of existing function to be copied.
+##   @var[in] func2
+##     The target function name to which func1 is copied.
+function ble/function#copy {
+  [[ $1 == "$2" ]] && return 0
+  ble/function#.copy-primitive "$1" "$2" || return 1
+
+  local prefix
+  for prefix in advice/{original,before,after,around} suppress-stderr; do
+    ble/function#.copy-primitive "ble/function#$prefix:$1" "ble/function#$prefix:$2"
+  done
+
+  local index=0
+  while ble/function#.copy-primitive "ble/function#push/$index:$1" "ble/function#push/$index:$2"; do
+    ((++index))
+  done
+
+  return 0
+}
+
+## @fn ble/function#copy func
+##   Remove a function ble/function#advice, ble/function#push, and
+##   ble/function#suppress-error
+function ble/function#remove {
+  ble/is-function "$1" || return 1
+
+  builtin unset -f "$1"
+
+  local prefix
+  for prefix in advice/{original,before,after,around} suppress-stderr; do
+    builtin unset -f "ble/function#$prefix:$1"
+  done
+
+  local index=0
+  while ble/is-function "ble/function#push/$index:$1"; do
+    builtin unset -f "ble/function#push/$((index++)):$1"
+  done
+
+  return 0
+}
+
+function ble/function#rename {
+  ble/function#copy "$1" "$2" && ble/function#remove "$1"
 }
 
 #

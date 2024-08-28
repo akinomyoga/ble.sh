@@ -1952,8 +1952,14 @@ function ble/variable#load-user-state {
   [[ $1 == __ble_* || $1 == _ble_local_* ]] && return 0
   ble/function#try ble/variable#load-user-state/variable:"$1" && return 0
 
-  # restore positional parameters if necesssary
-  if ble/string#match "$1" '^[1-9][0-9]*$'; then
+  # special parameters
+  if [[ $1 == '?' ]]; then
+    __ble_var_set=set
+    __ble_var_val=$_ble_edit_exec_lastexit
+    __ble_var_att=
+    return 0
+  elif ble/string#match "$1" '^[1-9][0-9]*$'; then
+    # positional parameters
     local __ble_name=$1
     if [[ ${_ble_edit_exec_lastparams[0]+set} ]]; then
       set -- "${_ble_edit_exec_lastparams[@]}"

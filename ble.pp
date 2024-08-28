@@ -2783,11 +2783,9 @@ function ble/base/install-prompt-attach {
 
     local prompt_command=ble/base/attach-from-PROMPT_COMMAND
     if ((_ble_bash>=50300)); then
-      ble/function#lambda prompt_command '
-        builtin eval -- "$_ble_bash_FUNCNEST_adjust"
-        builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
-        ble/base/attach-from-PROMPT_COMMAND'
-      ble/function#trace "$prompt_command"
+      local prompt_command_new=ble::base::attach-from-PROMPT_COMMAND
+      ble/function#copy "$prompt_command" "$prompt_command_new" &&
+        prompt_command=$prompt_command_new
     fi
     ble/array#push PROMPT_COMMAND "$prompt_command"
 
@@ -2803,8 +2801,10 @@ function ble/base/install-prompt-attach {
     # only when "ble-attach" fails, in such a case "ble-attach" already restore
     # them.
     ble/function#lambda PROMPT_COMMAND '
+      local _ble_local_lastexit=$? _ble_local_lastarg=$_
       builtin eval -- "$_ble_bash_FUNCNEST_adjust"
       builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
+      ble/util/setexit "$_ble_local_lastexit" "$_ble_local_lastarg"
       ble/base/attach-from-PROMPT_COMMAND '"$save_index"' "'"$FUNCNAME"'"'
     ble/function#trace "$PROMPT_COMMAND"
     if [[ $_ble_edit_detach_flag == reload ]]; then
@@ -2841,12 +2841,12 @@ function ble/base/attach-from-PROMPT_COMMAND {
 
     local is_last_PROMPT_COMMAND=1
     if (($#==0)); then
-      if local ret; ble/array#index PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND; then
+      if local ret; ble/array#index PROMPT_COMMAND "$FUNCNAME"; then
         local keys; keys=("${!PROMPT_COMMAND[@]}")
         ((ret==keys[${#keys[@]}-1])) || is_last_PROMPT_COMMAND=
-        ble/idict#replace PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
+        ble/idict#replace PROMPT_COMMAND "$FUNCNAME"
       fi
-      blehook internal_PRECMD-=ble/base/attach-from-PROMPT_COMMAND || ((1)) # set -e 対策
+      blehook internal_PRECMD-="$FUNCNAME" || ((1)) # set -e 対策
     else
       local save_index=$1 lambda=$2
 
@@ -2894,7 +2894,6 @@ function ble/base/attach-from-PROMPT_COMMAND {
 
   ble-attach force; local ext=$?
 
-#FUNCNEST?
   # Note: When POSIXLY_CORRECT is adjusted outside this function, and when
   # "ble-attach force" fails, the adjusted POSIXLY_CORRECT may be restored.
   # For such a case, we need to locally adjust POSIXLY_CORRECT to work around

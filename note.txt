@@ -7371,9 +7371,51 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-28
+
+  * [OK] util(bleopt): BASH_REMATCH が上書きされている。 [#D2270]
+
+    ble.sh --norc では再現しない。上書きされている時の値を見ると
+
+    'prompt_screen_title=\${SCREEN_WINDOW_TITLE}\${SCREEN_WINDOW_TITLE:+ }[\\h] \\j \\q{mshex/screen-pwd}'
+
+    に対して一致が試みられている。うーん。prompt 評価の途中の BASH_REMATCH が記
+    録されている? 然し何故? と思ったが別に上書きされている訳ではない様だ。どう
+    も bashrc の中で設定した bleopt に於いて BASH_REMATCH が上書きされている?
+
+    bleopt/.read-arguments の中で使われている。これは微妙。そもそも bleopt を
+    .blerc の中で呼び出している限りは問題なかった筈である。外側で呼び出している
+    のがいけない。然し一方で ble.sh があってもなくても動く設定を作ろうと思った
+    ら必然的に ~/.bashrc の中で直接 bleopt を呼び出す事になるのではないか?
+
+  * syntax: $_ が書き換わっている [#D2269]
+    Ref: #D2267
+
+    これは #D2267 で導入されたバグである。
+
+    "$_ble_bash_POSIXLY_CORRECT_adjust" の内容が $_ になっている。何処で設定さ
+    れているだろうか。うーん。記録自体はちゃんとできている様に見える。問題は復
+    元の方にあると思われる。と思ったが、_ble_edit_exec_lastarg の中身を出力して
+    みると実際に置き換わってしまっている。何故?
+
+    うーん。bash-5.3 以上で .ble::function#lambda::0 を通して
+    attach-from-PROMPT_COMMAND を呼び出す様にしたが、それがいけない。
+
+    x 先ず .ble::function#lambda::0 経由にすると attach-from-PROMPT_COMMAND が
+      削除されない。
+
+    x 呼び出された時に $? と $_ が正しく伝播できていない。また、同様の問題が
+      bash < 5.1 で既に PROMPT_COMMAND が設定されていた時にも存在する。
+
+    ble::function#lambda 経由で呼び出すのではなくて関数自体をコピーして実行する
+    事にした。
+
+    * $_ と $? も vartype の特別扱いの対象とする。特に $_ の着色で前の結果が空
+      文字列である事が判定できたら良い。
+
 2024-08-25
 
-  * syntax: FUNCNEST 等待避している変数の存在が構文着床kから見えない [#D2268]
+  * syntax: FUNCNEST 等待避している変数の存在が構文着色から見えない [#D2268]
     Ref: #D2267
 
     #D2267 のテスト中に気になった事。
@@ -7402,6 +7444,7 @@ bash_tips
     いたい。この変更は独立している気がするので項目は分ける事にする。
 
   * main: bash-5.3 -o posix で --atatch=prompt に失敗する [#D2267]
+    Ref: #D2268, #D2269
 
     prompt-attach に失敗する。ble-attach を明示的に呼び出した時は問題ない。set
     -o posix の状態管理を再確認する。

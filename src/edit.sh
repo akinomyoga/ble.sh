@@ -7459,6 +7459,17 @@ function _ble_edit_exec_gexec__save_lastarg {
 
   return "$_ble_edit_exec_lastexit"
 }
+function ble/variable#load-user-state/variable:_ {
+  __ble_var_set=set
+  __ble_var_val=$_ble_edit_exec_lastarg
+  __ble_var_att=
+}
+function ble/variable#load-user-state/variable:PIPESTATUS {
+  __ble_var_set=set
+  __ble_var_val=("${_ble_edit_exec_PIPESTATUS[@]}")
+  __ble_var_att=a
+}
+
 ## @fn ble-edit/exec:gexec/.epilogue (original name)
 ## @fn _ble_edit_exec_gexec__epilogue
 function _ble_edit_exec_gexec__epilogue {

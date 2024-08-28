@@ -16,7 +16,8 @@
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
   - progcomp: use Bash 5.3 `compgen -V` for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
-  - main: fix attach failure with `--attach=prompt` in Bash 5.3 POSIX mode `#D2267` xxxxxxxx
+  - main: fix attach failure with `--attach=prompt` in Bash 5.3 POSIX mode `#D2267` 49845707
+    - syntax: fix a problem that `$_` is not preserved `#D2269` xxxxxxxx
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
@@ -53,7 +54,7 @@
 - syntax: support arbitrary suffixes in `bleopt filename_ls_colors` `#D2213` e169e31d
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
 - highlight: reflect the top-level positional parameters `#D2246` f08e8f08
-- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` d6a38c43 `#D2263` xxxxxxxx
+- color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` d6a38c43 `#D2263` 0aa66b25
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
   - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` 9270b529
@@ -82,7 +83,7 @@
 - canvas: use `_ble_term_invis` to hide characters used to determine char-width modes (requested by tessus) `#D2223` 8bb302e0
   - canvas: hide cursor during char-width detection (requested by tessus) `#D2232` 0ff29b26
 - exec: refine the elapsed time resolution `#D2249` 67548656 713c4215
-- highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` xxxxxxxx
+- highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` 063249b4
 
 ## Fixes
 
@@ -129,7 +130,7 @@
   - edit: fix leftover region after command execution `#D2247` 75c4a848
 - keymap/vi: fix <kbd>C-w</kbd> not saving the word into kill ring `#D2208` aa7ca45d
 - edit: fix standard streams in `EXIT` trap with `ble/widget/exit` `#D2217` 89f0dab8
-  - edit: fix regressions of vbell and `ble/builtin/exit` in Bash 3.2 `#D2265` xxxxxxxx
+  - edit: fix regressions of vbell and `ble/builtin/exit` in Bash 3.2 `#D2265` f5955d5f
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
   - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e a9b962d2
