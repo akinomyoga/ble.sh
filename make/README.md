@@ -81,6 +81,22 @@ following command can be used.  The HTML output is available
 make/color.sample.sh generate-base16-sample [-t (ansi|html|markdown)]
 ```
 
+To convert iTerm2-Color-Schemes to base16 palettes, the following command can
+be used.:
+
+```bash
+git clone git@github.com:mbadolato/iTerm2-Color-Schemes.git ext/iTerm2-Color-Schemes
+make/color.sample.sh convert-iTerm2-palettes
+```
+
+To download and convert Gogh profiles to base16 palettes, the following command
+can be used.:
+
+```bash
+make/color.sample.sh convert-gogh-palettes
+```
+
+
 ## Update airline themes in the contrib repository
 
 First install `vim-airline` and `vim-airline-themes` using `vim-plug`. Then

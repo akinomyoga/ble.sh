@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+function mkd { [[ -d $1 ]] || mkdir -p "$1"; }
+
 function brightness/shuffled-string {
   local -a chars2 chars3=()
   chars2=({a..g})
@@ -522,7 +524,7 @@ function sub:generate-base16-sample {
         print "<title>List of base16 palettes (colorglass.base16.dat)</title>";
         print "<style>";
         print "table.blesh-color-sample {border-collapse: collapse;}";
-        print "table.blesh-color-sample>*>*>td, table.blesh-color-sample>*>*>th {border: 1px solid silver; padding: 0.5ex;}";
+        print "table.blesh-color-sample>*>tr>td, table.blesh-color-sample>*>td>th {border: 1px solid silver; padding: 0.5ex; color: inherit; background-color: inherit;}";
         print "</style>";
         print "</head>";
         print "<body>";
@@ -574,17 +576,19 @@ function sub:generate-base16-sample {
     {
       # vars: i color1 color2 line
       if (c_output_type == "html") {
-        print "<tr>";
+        fg = strtonum($18);
+        bg = strtonum($19);
+        printf("<tr style=\"color: #%06x; background-color: #%06x;\">\n", fg, bg);
         printf("  <td rowspan=\"2\">%s</td>\n", $1);
         for (i = 0; i < 8; i++) {
           color1 = strtonum($(i+2));
-          printf("  <td style=\"background-color: #%06x; width: 4ex;\"></td><td><code>#%06x</code></td>\n", color1, color1);
+          printf("  <td style=\"background-color: #%06x\"><code>#%06x</code></td><td style=\"color: #%06x;\"><code>#%06x</code></td>\n", color1, color1, color1, color1);
         }
         print "</tr>";
-        print "<tr>";
+        printf("<tr style=\"color: #%06x; background-color: #%06x;\">\n", fg, bg);
         for (i = 0; i < 8; i++) {
           color2 = strtonum($(i+10));
-          printf("  <td style=\"background-color: #%06x; width: 4ex;\"></td><td><code>#%06x</code></td>\n", color2, color2);
+          printf("  <td style=\"background-color: #%06x\"><code>#%06x</code></td><td style=\"color: #%06x;\"><code>#%06x</code></td>\n", color2, color2, color2, color2);
         }
         print "</tr>";
       } else if (c_output_type == "markdown") {
@@ -615,6 +619,75 @@ function sub:generate-base16-sample {
 
 #------------------------------------------------------------------------------
 
+# From iTerm2-Color-Schemes
+function sub:convert-iTerm2-palettes {
+  local repo=ext/iTerm2-Color-Schemes
+  if [[ ! -d $repo ]]; then
+    printf '%s: not found. Please clone "git@github.com:mbadolato/iTerm2-Color-Schemes.git" to "%s"\n' "$repo" "$repo" >&2
+    return 1
+  fi
+
+  awk '
+    sub(/^ColorForeground=#/, "0x") { fg = " " $1; }
+    sub(/^ColorBackground=#/, "0x") { bg = " " $1; }
+    sub(/^ColorCursor=#/, "0x") { cg = " " $1; }
+    sub(/^ColorPalette=/, "") {
+      gsub(/#/, "0x");
+      gsub(/;/, " ");
+      theme = FILENAME;
+      gsub(/^.*\/|[[:space:]]|\.theme$/, "", theme);
+
+      line = $0;
+      if (fg != "" && bg != "") {
+        line = line fg bg;
+        if (cg != "")
+          line = line cg;
+      }
+      printf("%-30s %s\n", theme, line);
+      fg = "";
+      bg = "";
+      cg = "";
+    }
+  ' "$repo"/xfce4terminal/*.theme
+}
+
+function sub:convert-gogh-palettes {
+  local url=https://raw.githubusercontent.com/Gogh-Co/Gogh/master/data/themes.json
+  local themes_json=out/data/Gogh-Co.Gogh.themes.json
+  mkd "${themes_json%/*}"
+  wget "$url" -O "$themes_json"
+  node make/color.sample.gogh.js "$themes_json" | awk '
+    mode == "existing" {
+      if (/^# SECTION Gogh/) {
+        g_existing_suppress = 1;
+      } else if (/^# SECTION /) {
+        # We probably want to ignore all the themes coming after Gogh.
+        #g_existing_suppress = 0;
+      } else if (!/^[[:space:]]*(#|$)/) {
+        if (!g_existing_suppress)
+          g_existing[$1] = 1;
+      }
+    }
+
+    mode == "gogh" {
+      if (/^[[:space:]]*(#|$)/) {
+        if (/^[[:space:]]*#/)
+          print > "/dev/stderr";
+      } else if (g_existing[$1]) {
+        g_duplicate_count++;
+      } else {
+        print;
+      }
+    }
+
+    END {
+      print "# " g_duplicate_count " duplicates are found." >"/dev/stderr";
+    }
+  ' mode=existing contrib/colorglass.base16.dat mode=gogh -
+}
+
+#------------------------------------------------------------------------------
+
 function print-lines {
   printf '%s\n' "$@"
 }
@@ -640,6 +713,12 @@ function sub:help {
     '' \
     '  generate-base16-sample [-t [ansi|html|markdown]]' \
     '    Show the list of base16 palettes' \
+    '' \
+    '  convert-iTerm2-palettes' \
+    '    Convert iTerm2-Color-Schemes/Gogh profiles themes to base16 palettes.' \
+    '' \
+    '  convert-gogh-palettes' \
+    '    Download Gogh profiles and convert them to base16 palettes' \
     '' \
     '  help' \
     '    Show this help.' \
