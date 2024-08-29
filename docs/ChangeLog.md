@@ -14,11 +14,11 @@
     - main: fix workaround for the posix vi-insert <kbd>C-i</kbd> binding in `bash <= 5.0` (reported by vasi786) `#D2243` 8e7ed824
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
-    - main: suppress "--bash-debug-version" in "ble-reload" `#D2274` xxxxxxxx
+    - main: suppress "--bash-debug-version" in "ble-reload" `#D2275` ec422115
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
   - progcomp: use Bash 5.3 `compgen -V` for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
   - main: fix attach failure with `--attach=prompt` in Bash 5.3 POSIX mode `#D2267` 49845707
-    - syntax: fix a problem that `$_` is not preserved `#D2269` xxxxxxxx
+    - syntax: fix a problem that `$_` is not preserved `#D2269` e053690d
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
@@ -56,15 +56,15 @@
 - util(vbell): support `bleopt vbell_align=panel` (requested by bb010g) `#D2228` fe85e0dd
 - highlight: reflect the top-level positional parameters `#D2246` f08e8f08
 - color: adjust default fg values in faces and add `bleopt color_scheme` (requested by mattmc3) `#D2248` e4cce0ea 5f5554a8 `#D2258` d6a38c43 `#D2263` 0aa66b25
-  - syntax(highlight/vartype): add `ble-face varname_new` `#D2271` xxxxxxxx
-  - syntax(highlight/vartype): check variable existence for `${var?...}` `#D2272` xxxxxxxx
+  - syntax(highlight/vartype): add `ble-face varname_new` `#D2272` 5bfc0ae5
+  - syntax(highlight/vartype): check variable existence for `${var?...}` `#D2273` 5bfc0ae5
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
   - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` 9270b529
 - make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 134a38d1
   - make: fix condition for the INSDIR_LICENSE rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
-- edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2275` xxxxxxxx
+- edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
 
 ## Changes
 
@@ -139,7 +139,8 @@
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
   - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e a9b962d2
 - mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` e0ffc418
-- edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2280` xxxxxxxx
+- edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618
+- util (`ble-import`): do not specify arguments to `-C callback` `#D2277` xxxxxxxx
 
 ## Compatibility
 
@@ -212,7 +213,7 @@
 - contrib: add `config/github48{1,3}` for elapsed-mark examples (motivated by paulzzy, TheFantasticWarrior) `#D2249` 67548656 ed5d451b
 - contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
-- contrib/colorglass:  color: import themes from `Gogh-Co/Gogh` (motivated by d4rkb4sh8) `#D2273` xxxxxxxx
+- contrib/colorglass:  color: import themes from `Gogh-Co/Gogh` (motivated by d4rkb4sh8) `#D2274` d2eb75b5
 
 ## Documentation
 

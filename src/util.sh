@@ -5170,7 +5170,7 @@ function ble/util/rlvar#bind-bleopt {
 function ble/util/invoke-hook {
   local -a hooks; builtin eval "hooks=(\"\${$1[@]}\")"
   local hook ext=0
-  for hook in "${hooks[@]}"; do builtin eval -- "$hook \"\${@:2}\"" || ext=$?; done
+  for hook in "${hooks[@]}"; do builtin eval -- "$hook" || ext=$?; done
   return "$ext"
 }
 

@@ -7371,9 +7371,19 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-08-29
+
+  * util(ble-import): -C 'if ... fi' を指定すると文法エラーになる [#D2277]
+
+    確認してみると callback は最終的に配列に登録して ble/util/invoke-hook を用
+    いて呼び出しているが、この ble/util/invoke-hook が末尾に "${@:2}" を指定し
+    て eval しようとしている。確認してみた所、現在、ble/util/invoke-hook の呼び
+    出し元で引数を指定しているものは存在しない。従って "${@:2}" はそもそも削除
+    してしまって良い。
+
 2024-08-28
 
-  * edit: PROMPT_COMMAND で BLE_PIPESTATUS を参照したい (requested by mattmc3) [#D2275]
+  * edit: PROMPT_COMMAND で BLE_PIPESTATUS を参照したい (requested by mattmc3) [#D2276]
     https://github.com/akinomyoga/ble.sh/issues/492
 
     取り敢えず実装した。というか実行箇所のコードは何れもほぼ同じなので関数にま
@@ -7386,7 +7396,7 @@ bash_tips
       もダミーコマンドが出力されるという事もない。何故? subshell だから? 分から
       ないが取り敢えず良い事にする。
 
-  * ble-reload 時に --bash-debug-version=... の設定が保持されない [#D2274]
+  * ble-reload 時に --bash-debug-version=... の設定が保持されない [#D2275]
 
     最初の source 時に指定したものを保持する様にしてみたが、よく考えてみれば再
     表示する必要はあるだろうか? そもそも一回だけ表示すれば良い物だけれども、も
@@ -7395,7 +7405,7 @@ bash_tips
     事を考えると実は ble-reload の時には完全に suppress するという事で良い気が
     する。
 
-  * color: Gogh なる framework から theme のデータベースを導入する (motivated by d4rkb4sh8) [#D2273]
+  * color: Gogh なる framework から theme のデータベースを導入する (motivated by d4rkb4sh8) [#D2274]
     https://github.com/akinomyoga/blesh-contrib/issues/23
 
     * スペースを含む名前が指定された場合はスペースは削除して解釈する。
@@ -7437,13 +7447,13 @@ bash_tips
 
     * done: 色サンプルで背景色・前景色を使う?
 
-  * highlight(vartype): ${var?...} をエラー着色にする可能性 [#D2272]
+  * highlight(vartype): ${var?...} をエラー着色にする可能性 [#D2273]
 
     そもそもコマンドラインで使うかどうかは分からないが、他のエラーで停止する機
     能については色で知らせているのにこれは知らせないというのも変な気がするので
     対応する。
 
-  * highlight(vartype): add "ble-face variable_new" [#D2271]
+  * highlight(vartype): add "ble-face variable_new" [#D2272]
 
     varname_unset の色は変更したがやはり微妙かもしれない変数を代入する機会は多
     くあるが大体変数は設定されていない。という事を考えると、存在しない変数を灰
