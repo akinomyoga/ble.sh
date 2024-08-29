@@ -6443,7 +6443,7 @@ function ble/widget/zap-to-char.hook {
   ble/widget/self-insert/.get-code
   ble/util/c2s "$code"
   char=$ret
-  
+
   # search nth occurrence of `char` and send it to the kill ring
   local arg; ble-edit/content/get-arg 1
   if ((arg>=0)); then
@@ -7509,7 +7509,7 @@ function _ble_edit_exec_gexec__save_lastarg {
   # space, the adjustments for the editor mode is unnecessary.  Rather, it
   # would wrongly saves the file descriptors for the editor space as those for
   # the user space and causes a loss of the user's file descriptors.
-  [[ $_ble_edit_exec_inside_userspace ]] && return "$_ble_edit_exec_lastexit"
+  [[ $_ble_edit_exec_inside_userspace ]] || return "$_ble_edit_exec_lastexit"
 
   _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
@@ -7548,6 +7548,9 @@ function _ble_edit_exec_gexec__epilogue {
   # Note: $_ は同じ eval の中でないと取れないのでここでは読み取らない。
   _ble_exec_time_EPOCHREALTIME_end=${_ble_exec_time_EPOCHREALTIME_end:-$EPOCHREALTIME} \
     _ble_edit_exec_lastexit=$?
+
+  [[ $_ble_edit_exec_inside_prologue ]] || return 0
+
   _ble_edit_exec_inside_userspace=
   _ble_edit_exec_TRAPDEBUG_enabled=
   # Note: 他の関数呼び出しよりも先

@@ -139,7 +139,7 @@
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
   - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e a9b962d2
 - mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` e0ffc418
-- edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618
+- edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 xxxxxxxx
 - util (`ble-import`): do not specify arguments to `-C callback` `#D2277` xxxxxxxx
 
 ## Compatibility
