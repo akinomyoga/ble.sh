@@ -2559,7 +2559,7 @@ function ble/complete/source:command/.print-command {
     # Note: cygwin では cyg,x86,i68 等で始まる場合にとても遅い。他の環境でも空
     #   の補完を実行すると遅くなる可能性がある。
     local slow_compgen=
-    if [[ ! $COMPV ]] || [[ -f /proc/sys/fs/binfmt_misc/WSLInterop ]]; then
+    if [[ ! $COMPV || ble/base/is-wsl ]]; then
       slow_compgen=1
     elif [[ $OSTYPE == cygwin* ]]; then
       case $COMPV in
