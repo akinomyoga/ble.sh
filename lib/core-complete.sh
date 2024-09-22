@@ -2559,7 +2559,10 @@ function ble/complete/source:command/.print-command {
     # Note: cygwin では cyg,x86,i68 等で始まる場合にとても遅い。他の環境でも空
     #   の補完を実行すると遅くなる可能性がある。
     local slow_compgen=
-    if [[ ! $COMPV || ble/base/is-wsl ]]; then
+    if [[ !$COMPV ]]; then
+      shopt -q no_empty_cmd_completion && return 0
+      slow_compgen=1
+    elif [[ ble/base/is-wsl ]]; then
       slow_compgen=1
     elif [[ $OSTYPE == cygwin* ]]; then
       case $COMPV in
@@ -2568,11 +2571,11 @@ function ble/complete/source:command/.print-command {
       esac
     fi
 
+
     # Note: 何故か compgen -A command はクォート除去が実行されない。compgen -A
     #   function はクォート除去が実行される。従って、compgen -A command には直
     #   接 COMPV を渡し、compgen -A function には compv_quoted を渡す。
     if [[ $slow_compgen ]]; then
-      [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 0
       ble/util/conditional-sync \
         'builtin compgen -c -- "$COMPV"' \
         '! ble/complete/check-cancel' 128 progressive-weight
