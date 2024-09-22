@@ -1774,7 +1774,7 @@ function ble-decode-key/bind {
   # Check existence of widget
   if local widget=${cmd%%[$_ble_term_IFS]*}; ! ble/is-function "$widget"; then
     local message="ble-bind: Unknown widget \`${widget#'ble/widget/'}'."
-    [[ $command == ble/widget/ble/widget/* ]] &&
+    [[ $cmd == ble/widget/ble/widget/* ]] &&
       message="$message Note: The prefix 'ble/widget/' is redundant."
     ble/util/print "$message" >&2
     return 1
