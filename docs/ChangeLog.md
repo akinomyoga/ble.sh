@@ -88,6 +88,7 @@
   - canvas: hide cursor during char-width detection (requested by tessus) `#D2232` 0ff29b26
 - exec: refine the elapsed time resolution `#D2249` 67548656 713c4215
 - highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` 063249b4
+- complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` xxxxxxxx
 
 ## Fixes
 
@@ -139,8 +140,8 @@
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
   - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e a9b962d2
 - mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` e0ffc418
-- edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 xxxxxxxx
-- util (`ble-import`): do not specify arguments to `-C callback` `#D2277` xxxxxxxx
+- edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 670c7ea0
+- util (`ble-import`): do not specify arguments to `-C callback` `#D2277` 4f0e94a2
 
 ## Compatibility
 

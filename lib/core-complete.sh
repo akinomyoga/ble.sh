@@ -6548,9 +6548,23 @@ function ble/complete/candidates/.pick-nearest-sources {
         comps_flags=$comps_flags${simple_flags}v
         COMPV=$reconstructed
       fi
-    elif ble/complete/source/eval-simple-word "$reconstructed"; local ext=$?; ((ext==148)) && return 148; ((ext==0)); then
-      # 展開後の値を COMPV に格納する (既定)
-      COMPV=("${ret[@]}")
+    elif
+      if ble/complete/source/eval-simple-word "$reconstructed" && ((${#ret[@]})) || { (($?==148)) && return 148; }; then
+        # 展開後の値を COMPV に格納する (既定)
+        COMPV=("${ret[@]}")
+      elif ble/complete/source/eval-simple-word "$reconstructed*" && ((${#ret[@]})) || { (($?==148)) && return 148; }; then
+        # failglob で失敗したが続きを入力すれば一致する可能性があるとき
+        COMPV=()
+        local word suffix
+        for word in "${ret[@]}"; do
+          suffix=${word#$reconstructed}
+          [[ $suffix != "$word" ]] &&
+            ble/array#push COMPV "${word::${#word}-${#suffix}}"
+        done
+      else
+        ble/util/setexit 1
+      fi
+    then
       comps_flags=$comps_flags${simple_flags}v
 
       if ((${simple_ibrace%:*})); then

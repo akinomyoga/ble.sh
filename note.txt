@@ -7371,6 +7371,37 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-09-22
+
+  * 2024-09-13 complete: failglob があっても glob expansion に基づいた auto-complete が実行されない (reported by mcepl) [#D2278]
+    https://github.com/akinomyoga/ble.sh/discussions/498
+
+    またコマンド名についても途中のディレクトリ名に glob pattern があった時に続
+    けて補完できない。
+
+    nullglob に対する振る舞いはもっと考えるべき。
+
+    * cd のディレクトリ名の補完候補生成については ble/complete/source:file が担っ
+      ている。そして、この関数では
+      ble/complete/source:file/.construct-pathname-pattern "$COMPV" を用いてパ
+      ターンを生成している。この時の "$COMPV" のパターンはどの様になっているだ
+      ろうか。
+
+      →うーん。'*python3'* の様になっている。つまり、pathname expansions は処
+      理されない。では何故ちゃんと動いている様に見えるのか。曖昧補完の場合にも
+      試してみたがその場合でも '*' という具合に quote されている。
+
+      と思ったが COMPV の時点で既に展開済みの値が渡されている。うーん。何故これ
+      で動く? と思ったが単に COMPV= としているから現在ディレクトリの中にある全
+      てのファイルが列挙されて、結果として候補を生成できている様に見えただけだっ
+      た。また遡った書き換えが起こった理由もこれで分かる。
+
+      ble/complete/candidates/.pick-nearest-sources で eval-simple-word を呼ん
+      でいるが、この時点で * を suffix した物を試しても良いのではないか? ただし
+      その場合に一致した文字列から元々あった単語に対応する部分を除去する必要が
+      ある。これは単純に ${result#$pattern} で特定できるだろうか?
+
+
 2024-08-29
 
   * util(ble-import): -C 'if ... fi' を指定すると文法エラーになる [#D2277]
