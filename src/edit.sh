@@ -7437,6 +7437,7 @@ function ble-edit/exec:gexec/.end {
   blehook/invoke exec_end
   [[ $PWD != "$_ble_edit_exec_PWD" ]] && blehook/invoke CHPWD
   ble/util/joblist.flush >&"$_ble_util_fd_tui_stderr"
+  ble/util/notify-broken-locale
   ble-edit/bind/.check-detach && return 0
   ble/term/enter
   ble-edit/exec:gexec/TERM/enter || return 0 # rebind に失敗した時 .tail せずに抜ける

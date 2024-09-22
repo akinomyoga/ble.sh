@@ -2561,13 +2561,13 @@ function ble/function#advice/.proc {
   done
   ble/util/unlocal func
 
-  ble/function#try "ble/function#advice/before:$1"
-  if ble/is-function "ble/function#advice/around:$1"; then
-    "ble/function#advice/around:$1"
+  ble/function#try ble/function#advice/before:"${ADVICE_WORDS[@]}"
+  if ble/is-function ble/function#advice/around:"${ADVICE_WORDS[0]}"; then
+    ble/function#advice/around:"${ADVICE_WORDS[@]}"
   else
     ble/function#advice/do
   fi
-  ble/function#try "ble/function#advice/after:$1"
+  ble/function#try ble/function#advice/after:"${ADVICE_WORDS[@]}"
   return "$ADVICE_EXIT"
 }
 ble/function#trace ble/function#advice/.proc
@@ -7856,11 +7856,26 @@ _ble_util_locale_triple=
 _ble_util_locale_ctype=
 _ble_util_locale_encoding=UTF-8
 _ble_util_locale_broken=
+function ble/util/.test-utf8-locale {
+  # Note: To test the specified locale in WSL, it seems one needs to activate
+  # the locale by setting the locale to another one at least once.  We first
+  # set the locale to "C" and use it to obtain the number of bytes, 3, and then
+  # check the target locale.
+  local LC_ALL= LC_CTYPE= LANG=C
+  local s='あ' ext=0
+  ((${#s}==3)) || ext=1
+  LANG=$ctype
+  ((${#s}==1)) || ext=1
+  ble/util/unlocal LC_ALL LC_CTYPE LANG
+  return "$ext"
+} 2>/dev/null # suppress locale error #D1440
+
 function ble/util/.update-locale-cache {
   _ble_util_locale_triple=$LC_ALL:$LC_CTYPE:$LANG
 
   # clear cache if LC_CTYPE is changed
-  local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
+  local ctype=${LC_ALL:-${LC_CTYPE:-$LANG}}
+  local ret; ble/string#tolower "$ctype"
   if [[ $_ble_util_locale_ctype != "$ret" ]]; then
     _ble_util_locale_ctype=$ret
     _ble_util_c2s_table=()
@@ -7875,7 +7890,7 @@ function ble/util/.update-locale-cache {
         enc=UTF-8
       fi
 
-      if [[ $enc == UTF-8 ]] && ret='あ' && ((${#ret}!=1)); then
+      if [[ $enc == UTF-8 ]] && ! ble/util/.test-utf8-locale "$ctype"; then
         _ble_util_locale_broken=1
 
         # Note #D2281: In WSL, even when the current locale is broken, builtin
@@ -7885,15 +7900,29 @@ function ble/util/.update-locale-cache {
         # syntax, etc. within the current locale.  In such a case, we
         # explicitly generate the fallback string of the form \uXXXX or
         # \UXXXXXXXX for the multibyte UTF-8 characters.
-        if ble/util/is-wsl; then
+        if ble/base/is-wsl; then
           ble/function#advice around ble/util/c2s.impl '
-            local char=$1
+            local char=${ADVICE_WORDS[1]}
             if [[ $_ble_util_locale_broken ]] && ((char>=0x80)); then
               if ((char<0x10000)); then
                 ble/util/sprintf ret '\''\\u%04X'\'' "$char"
               else
                 ble/util/sprintf ret '\''\\U%08X'\'' "$char"
               fi
+            else
+              ble/function#advice/do
+            fi
+          '
+
+          ble/function#advice around ble/util/chars2s.impl '
+            local char=${ADVICE_WORDS[1]}
+            if [[ $_ble_util_locale_broken ]]; then
+              local out= char
+              for char in "${ADVICE_WORDS[@]:1}"; do
+                ble/util/c2s "$char"
+                out=$out$ret
+              done
+              ret=$out
             else
               ble/function#advice/do
             fi

@@ -7621,6 +7621,42 @@ bash_tips
     locale が壊れている時に、明示的に \uXXXX 及び \UXXXXXXXX を c2s.impl で生成
     する様に振る舞いを上書きする事にした。
 
+    2024-09-23 実際に WSL で試してみたが workaround が動いていない。
+
+    x fixed: そもそも ble/function#advice が設定されていない。と思ったら
+      ble/base/is-wsl で WSL をチェックするべき所で ble/util/is-wsl を呼び出し
+      ていた。修正する。
+
+    x fixed: 然し、実際に WSL の上で試すとこれでも動く様にならない。advice は今
+      度はちゃんと設置されている。と思ったら advice の中では元々の引数は
+      ADVICE_WORDS から参照する必要があったのだった。元の ble/function#advice
+      の実装を確認したら無引数で関数を呼び出していたので、引数をつけて呼び出す
+      様に変更する事にした。これで "$1" でも "${ADVICE_WORDS[1]}" でも引数にア
+      クセスする事ができる。
+
+    x fixed: 更に、初回の _ble_util_locale_broken が正しく更新されていない。
+      triple はちゃんと設定されている。うーん。何と初期化中は変な locale が設定
+      されていたとしてもちゃんと動いてしまう? うーん。不思議だ。LC_CTYPE を明示
+      的に設定してもちゃんと動いている。一旦別の LANG に設定してから再び現在の
+      LANG に設定し直すと問題が発生する様になる → 明示的に LANG を設定して
+      locale をテストする事にした。
+
+    * done: 後気づいたのは、別に壊れた locale にしたとしても必ずしも bash がエ
+      ラーメッセージを出力するとは限らないという事。やはり ble.sh も自前で警告
+      を出力するべきである。
+
+    x fixed: テストが失敗している。色々の locale 文字列の解釈のテストだったが、
+      存在していない物も含めて色々テストしているのがいけなかった。locale が正し
+      く動作しているか確認する関数を push で上書きする事にした。
+
+    x fixed: 一気に文字を入力すると結局文字化けしてしまう。うーん。一気に
+      Unicode 文字を複数入力した場合には c2s を使わずに挿入されてしまうのだろう
+      か? 或いは、受信の時点で壊れているのだろうか? → 受信の時点ではちゃんと正
+      しい code points になっている → これは ble/util/chars2s.impl も上書きし
+      なければならないのだった。
+
+    今度はちゃんと実際の WSL の上で動作を確認した。
+
   * complete: generate command names in background with slow WSL2 PATHs (contributed by musou1500) [#D2280]
     https://github.com/akinomyoga/ble.sh/pull/504
 

@@ -61,7 +61,7 @@
 - highlight: add `bleopt highlight_eval_word_limit` (motivated by orionalves) `#D2256` 6833bdf8
 - progcomp: support `complete -E` `#D2257` ffac4205
   - progcomp: fix `complete -I` for empty words (reported by blackteahamburger) `#D2262` 9270b529
-- make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 134a38d1 xxxxxxxx
+- make: support make variable `USE_DOC=no` (requested by blackteahamburger) `#D2260` 40fe9c95 134a38d1 c5caedf7
   - make: fix condition for the `INSDIR_LICENSE` rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
 - edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
@@ -88,7 +88,7 @@
   - canvas: hide cursor during char-width detection (requested by tessus) `#D2232` 0ff29b26
 - exec: refine the elapsed time resolution `#D2249` 67548656 713c4215
 - highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` 063249b4
-- complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` xxxxxxxx
+- complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` 6a426954
 
 ## Fixes
 
@@ -271,7 +271,7 @@
 - util (`ble/util/buffer.flush`): use <kbd>DECSET(2026)</kbd> in terminals with the support `#D2226` c3df08be
 - main: refactor initialization sequence `#D2231` cc9d7f39
 - util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
-- decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` xxxxxxxx
+- decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` 21b1bb3d
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
@@ -706,7 +706,7 @@
   - util (`ble/string#split`): optimize `#D1826` 7bb10a7
   - global: avoid passing arbitrary strings through `awk -v var=value` `#D1827` 82232de
   - edit: properly set `LINENO` for `PS1`, `PROMPT_COMMAND`, and `DEBUG` `#D1830` 4d24f84
-- complete: generate command names in background with slow WSL2 `PATH`s (contributed by musou1500) `#D2280` xxxxxxxx
+- complete: generate command names in background with slow WSL2 `PATH`s (contributed by musou1500) `#D2280` 0914a119
 
 ## Compatibility
 
@@ -785,7 +785,7 @@
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
 - progcomp: work around slow `nix` completion `#D1997` 2c1aacf
 - complete: suppress error messages from `_adb` (reported by mozirilla213) `#D2005` f2aa32b0
-- util: test the UTF-8 support of the current `LC_CTYPE` `#D2281` xxxxxxx
+- util: test the UTF-8 support of the current `LC_CTYPE` `#D2281` 537c6504 xxxxxxxx
 
 ## Test
 

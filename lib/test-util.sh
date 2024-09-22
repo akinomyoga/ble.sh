@@ -2138,6 +2138,12 @@ fi
 (
   function clear-locale { LC_ALL= LANG= LC_CTYPE=; }
 
+  # The current implementation of "ble/util/is-unicode-output" tests whether
+  # the specified locale is actually working, so the locales not installed in
+  # the test environment would be rejected.  We suppress the test by
+  # overwriting "ble/util/.test-utf8-locale".
+  ble/function#push ble/util/.test-utf8-locale 'return 0'
+
   for lang in {C,en_US,ja{_JP,}}.{UTF-8,utf8} ja_JP.{utf8,UTF-8}@cjk{wide,narrow,single}; do
     clear-locale
     ble/test "LANG=$lang; ble/util/is-unicode-output"
@@ -2155,6 +2161,8 @@ fi
     clear-locale
     ble/test "LC_CTYPE=C LANG=C LC_ALL=$lang; ble/util/is-unicode-output" exit=1
   done
+
+  ble/function#pop ble/util/.test-utf8-locale
 )
 
 ble/test/end-section
