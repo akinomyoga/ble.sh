@@ -2563,6 +2563,10 @@ function ble/complete/source:command/.print-command {
       shopt -q no_empty_cmd_completion && return 0
       slow_compgen=1
     elif [[ :$PATH: == *:/mnt/*:* ]] && ble/base/is-wsl; then
+      # Note #D2280: Since the upstream WSL2 doesn't seem to be going to fix
+      # the slow filesystem issue with /mnt/*, we decided to add a workaround.
+      # https://github.com/akinomyoga/ble.sh/issues/96
+      # https://github.com/akinomyoga/ble.sh/pull/504
       slow_compgen=1
     elif [[ $OSTYPE == cygwin* ]]; then
       case $COMPV in

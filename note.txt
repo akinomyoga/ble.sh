@@ -1926,6 +1926,119 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-09-22
+
+  * complete: skim integration (reported by cmm)
+    https://github.com/akinomyoga/ble.sh/issues/502#event-14354810067
+
+  * starship と併用した時に初期化時に余分に prompt が表示される?
+    https://www.reddit.com/r/linuxquestions/comments/1fm84u4/the_terminal_prompt_starts_a_bit_lower_than_it/?show=original
+
+    うーん。複数行プロンプトで正しく処理できているか?
+
+  * complete: bash-completion のコマンド名生成も WSL2 PATH に対して調整が必要では
+
+    Ref #D2280
+
+    うーん。bash-completion が内部で compgen -c を呼び出している場合にはこれで
+    は対応できていないがどうするのか? 或いは手動で bash-completion の関数を上書
+    きする?
+
+    調べてみると compgen -c を呼び出しているのは _comp_compgen_commands だけの
+    気がする。後 completions/complete で compgen -A command が呼び出されている。
+    なのでこれらの関数だけ上書きすれば良い?
+
+2024-09-19
+
+  * complete: '\:' が無駄に escape される問題 (reported by mcepl)
+    https://github.com/akinomyoga/ble.sh/issues/501
+
+    調べると bash-completion が使っている compgen の出力結果が変化している何の
+    条件で結果が変わるのだろうか。関連する変数や引数の内容が全て同一でも異なる
+    結果を生成する。そもそも Bash の振る舞いとして、コマンドラインの中身に応じ
+    て compgen 自体の振る舞いが変化する。これは一体どういう事だろうか。
+
+    test1 ~/tmp1/a\:b/ が既に入力されていている時には unquoted な結果が生成され
+    る。一方で test1 [TAB] を試みると quoted な結果が生成される。特に現在補完対
+    象の単語に \ が含まれているかどうかで振る舞いが変化している? 何故補完対象の
+    単語に \ が含まれていると quote しなくなるのか? ' の中の文脈と等価に扱おう
+    としている?
+
+    しかし、この振る舞いは bash-completion やその他の補完に対しても影響を与える
+    のではないか?
+
+    bash の中を見ると最初に何やら dequoting やら何やらしているがこれは関係ない?
+    何れの場合でも同様に実行している。結局よく分からない。実際に動かしながら後
+    で観察する必要がある。
+
+    ? ok: rl_filename_completion_function の中で convfn を確保した後に
+      complete_fncmp が失敗したら free していない気がする。と思ったがずっと後で
+      free している。
+
+2024-09-13
+
+  * 履歴検索して行を挿入する
+    https://github.com/akinomyoga/ble.sh/discussions/499
+
+    * そもそも本当にそのような使い方は理想的な使い方なのか。その使い方は bash
+      の限られた機能の上でコマンドラインを編集する為にしみついた bad practice
+      のような気がする。例えばテキストエディタでその様な機能を使っているのだろ
+      うか?
+
+    * nsearch action=replace-command, action=insert, etc. は便利な気がするので
+      この request とは関係なく実装して良い。
+
+    * 或いはもっと単純な interface で良いのではないか? 例えば M-insert で現在位
+      置 (履歴番号、カーソル位置) を記録して、その後で履歴の中を移動した末に
+      M-w を押すと元の場所に戻ってその場に選択した行を挿入するなど。
+
+  * https://github.com/akinomyoga/ble.sh/discussions/500
+    bashrc で多重にロードしている時に警告を出すべきでは。
+
+2024-09-02
+
+  * contra に ?5h のバグがあるかも。ちょっとした拍子に反転が戻っておかしな事に
+    なる? 或いは screen の方かもしれない。と思ったがそもそも screen の中では反
+    転できないという事が分かった。これは関係ない。
+
+  * 依然として古い ble.sh の version から update した時に BASHPID のエラーが発生する
+
+    うーん。_ble_bash を定義している箇所が ble-unload よりも上になった為に
+    ble-unload によって _ble_bash が削除される様になってしまったという事?
+
+2024-08-25
+
+  * build 時に network がないと怒られるという話 (reported by pallaswept)
+    https://github.com/akinomyoga/ble.sh/issues/488
+
+    それで commit hash が決定できないという話。何故?
+
+    もしかすると shallow clone だと駄目ということ?
+
+2024-08-23
+
+  * menu-complete: ページ構築途中で中断すると現在位置がクリアされる
+
+    最近の ble/util/is-stdin-ready の変更で動かなくなったのかと思ったが前から動
+    かなかった様だ。と思ったが動作確認をミスしたかもしれない。また後でどの時点
+    で発生する様になったのかを確認する。何故?
+
+    ble/widget/menu/forward-line は ble/complete/menu#select を呼び出して、これ
+    は ble/complete/menu/show を呼び出して、更に ble/complete/menu#construct が
+    呼び出されている。そして、この関数は最初に menu_items や現在位置等の情報を
+    設定している…あたかも新しい menu を開始する時の様に。必要なのは新しいメニュー
+    を開始する時の処理と、別のページの内容を構築する処理を分離する事なのではな
+    いか。
+
+2024-08-21
+
+  * decode: function name slash workaround 後にキーボード入力ができない (reported by teutat3s)
+    https://github.com/akinomyoga/ble.sh/issues/484
+
+    * alacritty に於いて prompt_status_line が動かなくなっている
+
+  * edit: M-x execute-named-command の補完
+
 2024-06-05
 
   * 何処かの時点で ret -> REPLY に書き換えたい。
@@ -7372,6 +7485,165 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-09-22
+
+  * util: check sanity of the locale (WSL2 で日本語を入力すると表示が変になる) [#D2281]
+
+    何故か文字が分割して入力されている。ble/debug/keylog#start で受診した文字列
+    を見るとちゃんと日本語の文字として入力されている。うーん。何故そのような事
+    になる? と思ったら locale ja_JP.UTF-8 がインストールされていなかった。
+
+    locale が install されていないという事を事前に検出する方法はあるだろうか?
+    例えば .utf8 もしくは .UTF-8 が指定されているのにも拘らず ble/util/c2s
+    12354; ble/util/s2c の結果が元に戻らないなど? 今どき locale の設定として
+    non-ASCII な物はほぼ UTF-8 と想定して良いので UTF-8 の時だけチェックすると
+    いう形で問題ない。そもそも親切に警告しなくても良いのだから、UTF-8 以外でも
+    警告を表示する強い必要性はない。というかよく考えたら ble.sh は入力 encoding
+    として UTF-8 しか対応していないのだからそれ以外の文字コードはそもそも動作保
+    証対象外である。e
+
+    ? 問題はどの時点で警告を表示するのかという事。
+
+      a ble.pp の最初の環境チェックで utf8 サポートもチェックする? 然し、ble.pp
+        ロード時は ble.sh で使っている Unicode サポートの判定用の関数は未だ定義
+        されていない。複雑な処理をしているので、ble.pp 冒頭で同様の判定を行って
+        util での処理と一貫する様に管理するのはコストが高い。
+
+      b 或いは ble-attach 時に検出を行う? 然しその場合は普通に stderr 等に警告
+        メッセージを出力しても問題ないだろうか? UI を上書きしない様にする為には
+        prompt を初めとして何かを出力するよりも前にチェックを行って警告を表示す
+        る必要がある。
+
+      更にユーザーが試しに LANG 変数を書き換える等して存在しない locale を指定
+      した場合にはどうなるのか? そう思うと ble-attach 時ではなくて、ユーザーが
+      コマンドを実行する度にチェックするべき?
+
+      c コマンド実行直後に locale 関連の変数が更新されていたら unicode のチェッ
+        クを行う。
+
+        既存の ble/util/.cache/update-locale の更新チェックで一緒に unicode に
+        正しく対応できているかを確認しようと思ったが ble.sh util.sh の枠組みで
+        色々な場所から is-unicode-output が呼ばれていて、そこから update-locale
+        が呼び出されている。ユーザーが呼び出した様々の便利関数 (例えば ble-bind
+        -P など) で既に locale が更新されるかもしれない。なので、コマンド実行直
+        後の更新が "locale 変数変更直後の最初の update-locale" である事を保証で
+        きない。
+
+        →実際に簡単に実装してみて分かったのは、実は bash の起動後に誤った
+        locale に設定しようとした時には bash 自体がエラーメッセージを発するとい
+        う事。なので ble.sh がわざわざそれを検出して報告する必要はない。寧ろ、
+        bash がエラーメッセージを発した後は、bash の実際の LC_CTYPE の状態が現
+        在の LANG, LC_CTYPE, LC_ALL などの変数と異なる状態になるので、locale が
+        壊れているのかどうか正しく判定する事ができなくなる。偽陰性 (見落とし)
+        が発生する可能性がある。偽陽性はないと思われるので一応は現在のチェック
+        のままでも問題はないと思われるが。
+
+      そもそも update-locale に於いても、もし unicode support が完全でなかった
+      場合には C に fallback するべきである。何れにしても update-locale では現
+      在の LC_CTYPE がちゃんと動いている事を確認する必要がある。
+
+    * もし現在指定された locale がシステムでサポートしていないのだとしたら、そ
+      れはそれで、それに応じた幅計算を実装するべきではないのか?
+
+      幅計算は ble/util/c2w だが、ble/util/c2w は単に Unicode code point を幅に
+      変換しているだけで、もし出力が UTF-8 に対応していないのだったらそもそも
+      Unicode code point が生成されないという前提になっている。うーん。対応して
+      いない locale の時にコマンド内容の幅計算が壊れるのは何故だろう? 代替表示
+      が有効になっているのであればその代替表示の幅が使われるのではないのか? 不
+      思議だ。
+
+      ? ok: 問題を簡単に再現しようと思って、単に LANG=C として日本語を入力する
+        と入力内容が \u3042 などの表現に置換されてしまい、問題は発生しない。何
+        故?
+
+        うーん。M-^A 等の代替表現が現れるのはどういう状況か?  locale 変数が
+        UTF-8 等で終わっている事によって、bash も UTF-8 に対応していると勘違い
+        して printf が UTF-8 表現を出力する → コマンドラインに UTF-8 bytes が
+        raw characters として挿入される → 配置計算で問題を生じるという事。
+
+        LANG=C 等の様に explicit に non UTF-8 の場合には bash printf の時点で
+        \u3042 等の様な文字列に変換されるので、実際のコマンドラインには表現でき
+        ない文字列は挿入されず、結果として問題が見えないという事。
+
+      * reject: ble/canvas/trace etc の幅調整
+
+        また、vim mode indicator の "-- 挿入 --" の幅計算に失敗している問題につ
+        いても、単に locale を C として計算すれば良い訳ではない。これは
+        ble/canvas/trace が byte 事に処理を行って幅を決定しているが、utf8 に現
+        在の環境が対応していないという事が分かったとしても、どうしようもない。
+        実際の端末が utf8 に対応しているのかしていないのか分からない。端末が
+        utf8 を処理すると勝手に期待して、出力内容を変更する訳には行かない。結局
+        端末にはそのまま元の文字列を送るしかないし、一方で手元の幅計算では現在
+        指定された locale に基づいて幅を計算するしかない。事前の
+        char_width_mode=auto の結果によって端末が Unicode に対応しているという
+        事が分かっていたとしても、現在の locale が UTF-8 を正しく処理できないと
+        いう状況で ble/canvas/trace が正しく動作する様に調整するのは困難である。
+
+        或いは現在の locale が壊れている場合には ble/canvas/trace の実装を切り
+        替えて LC_CTYPE=C で時前で decode も行いながら処理を行う様にする? 然し
+        それはやりすぎであるし、処理がもっと複雑になる。
+
+        結局システムが UTF-8 locale に対応していないとしても端末の側で UTF-8 に
+        対応しているかしていないか分からないので、結局正しい幅計算は不可能であ
+        る。端末の振る舞いと locale が一致していないという事なので ble.sh の責
+        任ではない。これは対応しなくて良い。
+
+      つまり問題はコマンドライン文字列に UTF-8 文字が含まれているが、システムが
+      正しくそれを扱えない時に何が起こるのかという事。うーん。或いは、C1 に属す
+      る文字に関してはちゃんと代替表現になっているが、それ以外の文字については
+      生で文字が出力される事によって文字幅のずれが起こっているという事? 実際 "
+      あ" は 3 bytes からなるが端末上の表示では M-^A などの代替表現二つ分子しか
+      見えていない。つまり、最初の byte がスキップされて問題になっていた?
+
+      →実際に振る舞いを確認してみたらそうだった。"あ" の最初の文字は直接表示さ
+      れて、然しそれが端末によって無視されていたのでカーソル位置計算がずれてい
+      たのだった。
+
+      この様な場合にはどうすれば良いのだろうか。例えば、c2s に於いて \u3042 等
+      を出力する様に変更する? 既に非 unicode 時には \u3042 等に変換しているとい
+      う事を考えるとこれが正しい実装の気がする。
+
+      と思ったが現状の ble/util/c2s.impl の実装では手動で \u3042 等の表現に切り
+      替えている訳ではなくて、bash の builtin printf が勝手に \u3042 等の表現を
+      出力するのに任せている。今、bash の builtin printf とは別に実装を切り替え
+      る様にしようとすると、毎回値についてチェックしなければならなくなり処理が
+      遅くなる原因である。とはいえ、結局 ble/util/c2s の結果はキャッシュされて
+      いるので余り気にしても仕方がないのかもしれない。
+
+      * うーん Linux で LANG=alpha.UTF-8 等適当な物にしてみたが、その場合にはちゃ
+        んと bash builtin printf は \u3042 という文字列を出力してくれる。Cygwin
+        でもちゃんと \u3042 になる (というかそもそも Cygwin では変な locale 文
+        字列を指定した時には自動的に C に fallback している?)。つまり、これは
+        WSL 特有の問題だろうか?
+
+        となると対策は wsl の時にだけ考えれば良い?
+
+    取り敢えず ble-attach 時に locale のチェックを行う事にした。また、WSL では
+    locale が壊れている時に、明示的に \uXXXX 及び \UXXXXXXXX を c2s.impl で生成
+    する様に振る舞いを上書きする事にした。
+
+  * complete: generate command names in background with slow WSL2 PATHs (contributed by musou1500) [#D2280]
+    https://github.com/akinomyoga/ble.sh/pull/504
+
+    WSL2 で PATH に /mnt/* が含まれている時はコマンド名の生成には
+    ble/util/conditional-sync を用いる事にした。
+
+    後 no_empty_cmd_completion は今まで Cygwin における cyg* や x86* に対しても
+    適用していたが、元のオプションの意味通りに本当に空の時にのみ補完抑制する様
+    に変更する運びとなった。
+
+    * done: https://github.com/akinomyoga/ble.sh/issues/96 のコメントに
+      workaround が追加された事について返信する。
+
+  * decode (ble-decode-key/bind): reference the argument to check the widget name (contributed by musou1500) [#D2279]
+    https://github.com/akinomyoga/ble.sh/issues/505
+    https://github.com/akinomyoga/ble.sh/pull/506
+
+    ble-bind で存在しない widget を指定した時のエラーメッセージで、余分な
+    "ble/widget/" を指定した場合の検出で存在しない変数名 command を参照している。
+    これはこのチェックを導入した時からずっとその様になっている。と思ったが、何
+    故かチェックはちゃんと動いている。と思ったら、外側で定義されている変数名を
+    参照していたので動いている様に見えていたが、コードコメントを見る限りはこれ
+    は意図した実装ではないだろう。
 
   * 2024-09-13 complete: failglob があっても glob expansion に基づいた auto-complete が実行されない (reported by mcepl) [#D2278]
     https://github.com/akinomyoga/ble.sh/discussions/498

@@ -1475,15 +1475,18 @@ function ble/base/is-msys1 {
   [[ $OSTYPE == msys && ! $cr ]]
 }
 
-_ble_base_is_wsl_status=
 function ble/base/is-wsl {
-  [[ $_ble_base_is_wsl_status ]] && return "$_ble_base_is_wsl_status"
-  _ble_base_is_wsl_status=1
-  [[ -d /usr/lib/wsl/lib && -r /proc/version ]] || return 1
   local kernel_version
-  ble/bash/read kernel_version < /proc/version || return 1
-  [[ $kernel_version == *-microsoft-* ]] || return 1
-  _ble_base_is_wsl_status=0
+  if [[ -d /usr/lib/wsl/lib && -r /proc/version ]] &&
+       ble/bash/read kernel_version < /proc/version &&
+       [[ $kernel_version == *-microsoft-* ]]
+  then
+    function ble/base/is-wsl { return 0; }
+    return 0
+  else
+    function ble/base/is-wsl { return 1; }
+    return 1
+  fi
 }
 
 function ble/util/mkd {
@@ -1734,11 +1737,9 @@ function ble/base/initialize-runtime-directory/.xdg {
     [[ -d $runtime_dir && -O $runtime_dir ]] || return 1
   fi
 
-  # Note: Some versions of WSL around 2023-09 seem to have an issue in the
+  # Note: Some versions of WSL around 2023-09 seem to have an issue with the
   # permission of /run/user/*, so we avoid to use them in WSL.
-  [[ $runtime_dir == /run/user/* ]] &&
-    ble/base/is-wsl &&
-    return 1
+  [[ $runtime_dir == /run/user/* ]] && ble/base/is-wsl && return 1
 
   if ! [[ -r $runtime_dir && -w $runtime_dir && -x $runtime_dir ]]; then
     [[ $runtime_dir == "$XDG_RUNTIME_DIR" ]] &&
@@ -2612,6 +2613,7 @@ ble/debug/leakvar#check $"leakvar" A4b2
   #   terminal state and send requests.  We then calculate the first prompt,
   #   which takes about 50ms, while waiting for the responses from the
   #   terminal.
+  ble/util/notify-broken-locale
   ble/term/initialize     # 0.4ms
   ble/term/attach noflush # 2.5ms (起動時のずれ防止の為 stty -echo は早期に)
   ble/canvas/attach       # 1.8ms (requests for char_width_mode=auto)

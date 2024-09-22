@@ -4473,7 +4473,7 @@ function ble/util/conditional-sync/.kill {
 ##       at the value specified by WEIGHT.
 ##     @opt timeout=TIMEOUT
 ##       When this is specified, COMMAND is unconditionally terminated when
-##       it does not end until the time specified by TIMEOUT in milliseconds
+##       it does not end within the time specified by TIMEOUT in milliseconds
 ##     @opt killall
 ##       Kill also all the children and descendant processes. When this is
 ##       unspecified, only the subshell used to run COMMAND is killed.
@@ -4482,7 +4482,7 @@ function ble/util/conditional-sync/.kill {
 ##       processes are killed by SIGTERM.
 ##
 ##     @opt pid=PID
-##       When specified, COMMAND is not evaluate, and the function instead
+##       When specified, COMMAND is not evaluated, and the function instead
 ##       waits for the exit of the process specified by PID.  If a negative
 ##       integer is specified, it is treated as PGID.  When the condition is
 ##       unsatisfied or the timeout has been reached, the specified process
@@ -7666,7 +7666,7 @@ elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   _ble_util_s2c_table_enabled=1
   function ble/util/s2c {
     [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
-      ble/util/.cache/update-locale
+      ble/util/.update-locale-cache
 
     local s=${1::1}
     ret=${_ble_util_s2c_table[x$s]}
@@ -7814,7 +7814,7 @@ _ble_util_c2s_table=()
 ##   @var[out] ret
 function ble/util/c2s {
   [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
-    ble/util/.cache/update-locale
+    ble/util/.update-locale-cache
 
   ret=${_ble_util_c2s_table[$1]-}
   if [[ ! $ret ]]; then
@@ -7832,7 +7832,7 @@ function ble/util/c2s.cached {
 }
 function ble/util/chars2s {
   [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
-    ble/util/.cache/update-locale
+    ble/util/.update-locale-cache
   ble/util/chars2s.impl "$@"
 }
 
@@ -7845,17 +7845,18 @@ function ble/util/c2bc {
   "ble/encoding:$bleopt_input_encoding/c2bc" "$1"
 }
 
-## @fn ble/util/.cache/update-locale
+## @fn ble/util/.update-locale-cache
 ##
 ##  使い方
 ##
 ##    [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
-##      ble/util/.cache/update-locale
+##      ble/util/.update-locale-cache
 ##
 _ble_util_locale_triple=
 _ble_util_locale_ctype=
 _ble_util_locale_encoding=UTF-8
-function ble/util/.cache/update-locale {
+_ble_util_locale_broken=
+function ble/util/.update-locale-cache {
   _ble_util_locale_triple=$LC_ALL:$LC_CTYPE:$LANG
 
   # clear cache if LC_CTYPE is changed
@@ -7867,21 +7868,60 @@ function ble/util/.cache/update-locale {
       _ble_util_s2c_table=()
 
     _ble_util_locale_encoding=C
+    _ble_util_locale_broken=
     if local rex='\.([^@]+)'; [[ $_ble_util_locale_ctype =~ $rex ]]; then
       local enc=${BASH_REMATCH[1]}
       if [[ $enc == utf-8 || $enc == utf8 ]]; then
         enc=UTF-8
       fi
 
-      ble/is-function "ble/encoding:$enc/b2c" &&
+      if [[ $enc == UTF-8 ]] && ret='あ' && ((${#ret}!=1)); then
+        _ble_util_locale_broken=1
+
+        # Note #D2281: In WSL, even when the current locale is broken, builtin
+        # printf seems to produce the UTF-8 representation of the specified
+        # codepoint, which will be stored in "_ble_edit_str".  This causes
+        # problems because they cannot be properly processed by textmap,
+        # syntax, etc. within the current locale.  In such a case, we
+        # explicitly generate the fallback string of the form \uXXXX or
+        # \UXXXXXXXX for the multibyte UTF-8 characters.
+        if ble/util/is-wsl; then
+          ble/function#advice around ble/util/c2s.impl '
+            local char=$1
+            if [[ $_ble_util_locale_broken ]] && ((char>=0x80)); then
+              if ((char<0x10000)); then
+                ble/util/sprintf ret '\''\\u%04X'\'' "$char"
+              else
+                ble/util/sprintf ret '\''\\U%08X'\'' "$char"
+              fi
+            else
+              ble/function#advice/do
+            fi
+          '
+        fi
+      elif ble/is-function "ble/encoding:$enc/b2c"; then
         _ble_util_locale_encoding=$enc
+      fi
     fi
   fi
 }
 
+builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_util_locale_broken_notified}"
+function ble/util/notify-broken-locale {
+  [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    ble/util/.update-locale-cache
+
+  [[ $_ble_util_locale_broken ]] || return 0
+
+  local lc_ctype=${LC_ALL:-${LC_CTYPE:-$LANG}}
+  ble/gdict#has _ble_util_locale_broken_notified "$lc_ctype" && return 0
+  ble/gdict#set _ble_util_locale_broken_notified "$lc_ctype" 1
+  ble/util/print "ble.sh: The locale '$lc_ctype' (LC_CTYPE) seems broken. Please check that the locale exists in the system." >&2
+}
+
 function ble/util/is-unicode-output {
   [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
-    ble/util/.cache/update-locale
+    ble/util/.update-locale-cache
   [[ $_ble_util_locale_encoding == UTF-8 ]]
 }
 
@@ -7902,7 +7942,7 @@ function ble/util/s2bytes {
   local LC_ALL= LC_CTYPE=C
   ble/util/s2chars "$1"; local ext=$?
   ble/util/unlocal LC_ALL LC_CTYPE
-  ble/util/.cache/update-locale
+  ble/util/.update-locale-cache
   return "$?"
 } &>/dev/null
 

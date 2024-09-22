@@ -271,6 +271,7 @@
 - util (`ble/util/buffer.flush`): use <kbd>DECSET(2026)</kbd> in terminals with the support `#D2226` c3df08be
 - main: refactor initialization sequence `#D2231` cc9d7f39
 - util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
+- decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
@@ -705,6 +706,7 @@
   - util (`ble/string#split`): optimize `#D1826` 7bb10a7
   - global: avoid passing arbitrary strings through `awk -v var=value` `#D1827` 82232de
   - edit: properly set `LINENO` for `PS1`, `PROMPT_COMMAND`, and `DEBUG` `#D1830` 4d24f84
+- complete: generate command names in background with slow WSL2 `PATH`s (contributed by musou1500) `#D2280` xxxxxxxx
 
 ## Compatibility
 
@@ -783,6 +785,7 @@
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
 - progcomp: work around slow `nix` completion `#D1997` 2c1aacf
 - complete: suppress error messages from `_adb` (reported by mozirilla213) `#D2005` f2aa32b0
+- util: test the UTF-8 support of the current `LC_CTYPE` `#D2281` xxxxxxx
 
 ## Test
 
