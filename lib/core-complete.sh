@@ -2562,7 +2562,7 @@ function ble/complete/source:command/.print-command {
     if [[ ! $COMPV ]]; then
       shopt -q no_empty_cmd_completion && return 0
       slow_compgen=1
-    elif [[ :$PATH: == *:/mnt/*:* && ble/base/is-wsl ]]; then
+    elif [[ :$PATH: == *:/mnt/*:* ]] && ble/base/is-wsl; then
       slow_compgen=1
     elif [[ $OSTYPE == cygwin* ]]; then
       case $COMPV in
