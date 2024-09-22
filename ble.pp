@@ -1475,6 +1475,17 @@ function ble/base/is-msys1 {
   [[ $OSTYPE == msys && ! $cr ]]
 }
 
+_ble_base_is_wsl_status=
+function ble/base/is-wsl {
+  [[ $_ble_base_is_wsl_status ]] && return "$_ble_base_is_wsl_status"
+  _ble_base_is_wsl_status=1
+  [[ -d /usr/lib/wsl/lib && -r /proc/version ]] || return 1
+  local kernel_version
+  ble/bash/read kernel_version < /proc/version || return 1
+  [[ $kernel_version == *-microsoft-* ]] || return 1
+  _ble_base_is_wsl_status=0
+}
+
 function ble/util/mkd {
   local dir
   for dir; do
@@ -1702,16 +1713,6 @@ fi
 ##   2. /tmp/blesh/$UID を作成可能ならば、それを使う。
 ##   3. $_ble_base/tmp/$UID を使う。
 ##
-_ble_base_is_wsl_status=
-function ble/base/initialize-runtime-directory/.is-wsl {
-  [[ $_ble_base_is_wsl_status ]] && return "$_ble_base_is_wsl_status"
-  _ble_base_is_wsl_status=1
-  [[ -d /usr/lib/wsl/lib && -r /proc/version ]] || return 1
-  local kernel_version
-  ble/bash/read kernel_version < /proc/version || return 1
-  [[ $kernel_version == *-microsoft-* ]] || return 1
-  _ble_base_is_wsl_status=0
-}
 function ble/base/initialize-runtime-directory/.xdg {
   local runtime_dir=
   if [[ $XDG_RUNTIME_DIR ]]; then
@@ -1736,7 +1737,7 @@ function ble/base/initialize-runtime-directory/.xdg {
   # Note: Some versions of WSL around 2023-09 seem to have an issue in the
   # permission of /run/user/*, so we avoid to use them in WSL.
   [[ $runtime_dir == /run/user/* ]] &&
-    ble/base/initialize-runtime-directory/.is-wsl &&
+    ble/base/is-wsl &&
     return 1
 
   if ! [[ -r $runtime_dir && -w $runtime_dir && -x $runtime_dir ]]; then
@@ -1754,7 +1755,7 @@ function ble/base/initialize-runtime-directory/.tmp {
   # which causes a problem of missing /tmp after blesh's initialization.
   # https://github.com/microsoft/WSL/issues/8441#issuecomment-1139434972
   # https://github.com/akinomyoga/ble.sh/discussions/462
-  ble/base/initialize-runtime-directory/.is-wsl && return 1
+  ble/base/is-wsl && return 1
 
   local tmp_dir=/tmp/blesh
   if [[ ! -d $tmp_dir ]]; then
