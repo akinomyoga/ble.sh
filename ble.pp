@@ -1486,7 +1486,6 @@ function ble/base/is-wsl {
   _ble_base_is_wsl_status=0
 }
 
-
 function ble/util/mkd {
   local dir
   for dir; do
