@@ -1098,10 +1098,9 @@ fi
 
 if [[ ${_ble_base-} ]]; then
   [[ $_ble_init_command ]] && _ble_init_attached=$_ble_attached
-  if ! ble/base/unload-for-reload; then
+  if ! _ble_bash=$_ble_bash ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
     ble/init/clean-up 2>/dev/null # set -x 対策 #D0930
-    builtin unset -v _ble_bash
     return 1 2>/dev/null || builtin exit 1
   fi
 fi

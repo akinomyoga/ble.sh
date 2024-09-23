@@ -2001,11 +2001,6 @@ bash_tips
     なる? 或いは screen の方かもしれない。と思ったがそもそも screen の中では反
     転できないという事が分かった。これは関係ない。
 
-  * 依然として古い ble.sh の version から update した時に BASHPID のエラーが発生する
-
-    うーん。_ble_bash を定義している箇所が ble-unload よりも上になった為に
-    ble-unload によって _ble_bash が削除される様になってしまったという事?
-
 2024-08-25
 
   * build 時に network がないと怒られるという話 (reported by pallaswept)
@@ -8890,6 +8885,23 @@ bash_tips
     るのでそれによって _ble_bash が削除されている。今まで _ble_bash の初期化を
     遅延していた理由があった様な気がしていたが、それは reload 時の
     ble/util/unload よりも後にしたかったからだろう。
+
+    2024-09-23 古い version から update した時に未だ _ble_bash が消失する。
+
+    | 依然として古い ble.sh の version から update した時に BASHPID のエラーが
+    | 発生する
+    |
+    | うーん。_ble_bash を定義している箇所が ble-unload よりも上になった為に
+    | ble-unload によって _ble_bash が削除される様になってしまったという事?
+
+    a9b962d2 で ble/base/unload-for-reload を追加修正したと思ったが、よく考えた
+    ら古い version の ble/base/unload-for-reload の方が使われるのだから此処で修
+    正しても意味がない。呼び出し元でも _ble_bash を保存する様にした。
+
+    またよく考えたら ble/base/unload-for-reload を拒否された場合に _ble_bash を
+    削除しているがこれも駄目だ。元々の ble.sh インスタンスが動かなくなってしま
+    う恐らく ble/init/clean-up に関しては大丈夫だろう。この関数は初期化の時に一
+    時的に記録した変数を消去するだけの筈だから。
 
   * main: --clear-cache で長々しい devel version では遅い warning を出力する必要はあるのか [#D2241]
     Ref. #D2222
