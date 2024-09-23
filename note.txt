@@ -1931,10 +1931,11 @@ bash_tips
   * complete: skim integration (reported by cmm)
     https://github.com/akinomyoga/ble.sh/issues/502#event-14354810067
 
-  * starship と併用した時に初期化時に余分に prompt が表示される?
+  * [保留] starship と併用した時に初期化時に余分に prompt が表示される?
     https://www.reddit.com/r/linuxquestions/comments/1fm84u4/the_terminal_prompt_starts_a_bit_lower_than_it/?show=original
 
-    うーん。複数行プロンプトで正しく処理できているか?
+    うーん。初期プロンプトの再描画で複数行プロンプトの時に正しく処理できていな
+    い可能性? と思ったが別に問題は再現しない。
 
   * complete: bash-completion のコマンド名生成も WSL2 PATH に対して調整が必要では
 
@@ -2003,7 +2004,7 @@ bash_tips
 
 2024-08-25
 
-  * build 時に network がないと怒られるという話 (reported by pallaswept)
+  * [保留] build 時に network がないと怒られるという話 (reported by pallaswept)
     https://github.com/akinomyoga/ble.sh/issues/488
 
     それで commit hash が決定できないという話。何故?
@@ -2027,10 +2028,8 @@ bash_tips
 
 2024-08-21
 
-  * decode: function name slash workaround 後にキーボード入力ができない (reported by teutat3s)
+  * [保留] decode: function name slash workaround 後にキーボード入力ができない (reported by teutat3s)
     https://github.com/akinomyoga/ble.sh/issues/484
-
-    * alacritty に於いて prompt_status_line が動かなくなっている
 
   * edit: M-x execute-named-command の補完
 
@@ -7478,6 +7477,26 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-09-23
+
+  * canvas: Unicode 16.0.0 [#D2283]
+
+    どうやら 2024-09-10 頃に Unicode 16.0.0 が公開された様である。更新する。書
+    記素クラスターにまた修正があったかと思ったが、規則は変わっていなくて単にテー
+    ブルの割当が更新された事と、説明が丁寧になった事だけの様である。文字幅テー
+    ブルについても更新した。emoji のテーブルも更新した。文字幅判定に使う文字も
+    追加した。
+
+    過去の Unicode 15.1.0 で他に何か更新していないか確認しようとしたが、スクリ
+    プトが大幅に整理されているので何処が更新されたのか・何処を今回も更新するべ
+    きかを其処から読み取るのは大変である。取り敢えず自動生成対象のファイルは全
+    て更新したので良い事にする。
+
+  * [設定ミス] canvas: alacritty に於いて prompt_status_line が動かなくなっている [#D2282]
+
+    9889 (U+26A1) の文字幅が実際には 2 なのに 1 と判定されている。と思ったら
+    char_width_mode=emacs になっていた。auto にしたら直った。
 
 2024-09-22
 

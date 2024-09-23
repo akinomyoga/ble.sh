@@ -493,10 +493,10 @@ fi
   fi
 )
 
-ble/test/start-section 'ble/canvas/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 6244
+ble/test/start-section 'ble/canvas/GraphemeCluster/c2break (GraphemeBreakTest.txt)' 5783
 (
   bleopt grapheme_cluster=extended
-  _ble_unicode_c2w_version=17 # Test cases contain 15.1.0 features
+  _ble_unicode_c2w_version=18 # Test cases contain 15.1.0 features
   # Disable terminal-specific tailored grapheme cluster for testing purpose.
   _ble_unicode_GraphemeClusterBreak_custom=()
 

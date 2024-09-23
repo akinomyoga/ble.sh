@@ -37,9 +37,13 @@ function sub:help {
 
 #------------------------------------------------------------------------------
 
+_ble_canvas_c2w_UnicodeUcdVersions=({4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0,15.{0,1},16.0}.0)
+_ble_canvas_c2w_UnicodeUcdVersion_latest=16.0.0
+_ble_canvas_c2w_UnicodeEmojiVersion_latest=16.0
+
 function sub:c2w {
   local version
-  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0,15.{0,1}}.0; do
+  for version in "${_ble_canvas_c2w_UnicodeUcdVersions[@]}"; do
     local data=out/data/unicode-EastAsianWidth-$version.txt
     download http://www.unicode.org/Public/$version/ucd/EastAsianWidth.txt "$data"
     echo "__unicode_version__ $version"
@@ -284,7 +288,7 @@ function sub:convert-custom-c2w {
 function sub:emoji {
   local -x name=${1:-_ble_unicode_EmojiStatus}
 
-  local unicode_version=15.1
+  local unicode_version=$_ble_canvas_c2w_UnicodeEmojiVersion_latest
   local cache=out/data/unicode-emoji-$unicode_version.txt
   download "https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt" "$cache"
 
@@ -431,7 +435,8 @@ function sub:emoji {
 
 function sub:GraphemeClusterBreak {
   #local unicode_version=latest base_url=http://www.unicode.org/Public/UCD/latest/ucd
-  local unicode_version=15.1.0 base_url=https://www.unicode.org/Public/15.1.0/ucd
+  local unicode_version=$_ble_canvas_c2w_UnicodeUcdVersion_latest
+  local base_url=https://www.unicode.org/Public/$unicode_version/ucd
 
   local cache=out/data/unicode-GraphemeBreakProperty-$unicode_version.txt
   download "$base_url/auxiliary/GraphemeBreakProperty.txt" "$cache"
@@ -763,7 +768,8 @@ function sub:GraphemeClusterBreak {
 # currently unused
 function sub:IndicConjunctBreak {
   #local unicode_version=latest base_url=http://www.unicode.org/Public/UCD/latest/ucd
-  local unicode_version=15.1.0 base_url=https://www.unicode.org/Public/15.1.0/ucd
+  local unicode_version=$_ble_canvas_c2w_UnicodeUcdVersion_latest
+  local base_url=https://www.unicode.org/Public/$unicode_version/ucd
 
   local cache=out/data/unicode-DerivedCoreProperties-$unicode_version.txt
   download "$base_url/DerivedCoreProperties.txt" "$cache"
@@ -865,7 +871,7 @@ function sub:IndicConjunctBreak {
 # currently unused
 function sub:update-EastAsianWidth {
   local version
-  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0,15.{0,1}}.0; do
+  for version in "${_ble_canvas_c2w_UnicodeUcdVersions[@]}"; do
     local data=out/data/unicode-EastAsianWidth-$version.txt
     download http://www.unicode.org/Public/$version/ucd/EastAsianWidth.txt "$data"
     gawk '
@@ -1084,7 +1090,7 @@ function sub:update-EastAsianWidth {
 # currently unused
 function sub:update-GeneralCategory {
   local version
-  for version in {4.1,5.{0,1,2},6.{0..3},{7..11}.0,12.{0,1},13.0,14.0,15.{0,1}}.0; do
+  for version in "${_ble_canvas_c2w_UnicodeUcdVersions[@]}"; do
     local data=out/data/unicode-UnicodeData-$version.txt
     download "http://www.unicode.org/Public/$version/ucd/UnicodeData.txt" "$data" || continue
 

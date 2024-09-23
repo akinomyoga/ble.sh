@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if ! declare -f ble/unicode/EmojiStatus &>/dev/null; then
   source out/ble.sh --lib
@@ -49,10 +49,11 @@ function list-range-code-for-version-detection {
 
   printf '               | %-*s|musl\n' "$((nversion*3))" '-----Unicode EAW+GeneralCategory'
   local -a keys=(
-    U+9FBC  U+9FC4  U+31B8  U+D7B0
-    U+3099  U+9FCD  U+1F93B U+312E
-    U+312F  U+16FE2 U+32FF  U+31BB
-    U+9FFD  U+1B132)
+    U+9FBC  U+9FC4  U+31B8  U+D7B0  U+3099
+    U+9FCD  U+1F93B U+312E  U+312F  U+16FE2
+    U+32FF  U+31BB  U+9FFD  U+1B132 U+2FFC
+    U+31E4
+  )
   local code index=0 ret
   for code in "${keys[@]}"; do
     ((code=16#${code#U+}))
