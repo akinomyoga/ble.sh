@@ -65,6 +65,7 @@
   - make: fix condition for the `INSDIR_LICENSE` rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
 - edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
+- nsearch: support `action={load-{line,command},insert{,-line}}` (motivated by vaab) `#D2286` xxxxxxxx
 
 ## Changes
 
@@ -216,6 +217,9 @@
 - contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 - contrib/colorglass:  color: import themes from `Gogh-Co/Gogh` (motivated by d4rkb4sh8) `#D2274` d2eb75b5
+- contrib/integration/fzf-completion: suppress unexpected quoting by compgen in dynamic completions (reported by mcepl) `#D2284` xxxxxxxx
+- contrib/integration/fzf-initialize: use `fzf --bash` when shell integration files are not found (motivated by louiss0) `#D2285` xxxxxxxx
+- config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` xxxxxxxx
 
 ## Documentation
 

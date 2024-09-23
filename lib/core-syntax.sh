@@ -6221,6 +6221,7 @@ function ble/syntax:bash/extract-command/.construct-proc {
     if ((wtype==CTX_CMDI||wtype==CTX_CMDX0)); then
       if ((EC_pos<wbegin)); then
         comp_line= comp_point= comp_cword= comp_words=()
+        [[ $EC_opts == *:treeinfo:* ]] && tree_words=()
       else
         ble/syntax:bash/extract-command/.register-word
         ble/syntax/tree-enumerate-break
@@ -6236,6 +6237,7 @@ function ble/syntax:bash/extract-command/.construct-proc {
 
 function ble/syntax:bash/extract-command/.construct {
   comp_line= comp_point= comp_cword= comp_words=()
+  [[ $EC_opts == *:treeinfo:* ]] && tree_words=()
 
   if [[ $1 == nested ]]; then
     ble/syntax/tree-enumerate-children \

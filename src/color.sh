@@ -2101,13 +2101,24 @@ function ble/highlight/layer:region/update {
       fi
     fi
 
+    sel=("${selection[@]}")
+    local nsel=$((${#sel[@]}/2))
+
     # gflags の決定
     local face=region
     ble/function#try ble/highlight/layer:region/mark:"$_ble_edit_mark_active"/get-face
-    local ret; ble/color/face2g "$face"; local g=$ret
-
-    sel=("${selection[@]}")
-    ble/array#fill-range gflags 0 "$((${#selection[@]}/2))" "$g"
+    face=("${face[@]::nsel}")
+    local f ret
+    for f in "${face[@]}"; do
+      ble/color/face2g "$f"
+      ble/array#push gflags "$ret"
+    done
+    if ((${#gflags[@]}<nsel)); then
+      local i
+      for ((i=${#gflags[@]};i<nsel;i++)); do
+        gflags[i]=${gflags[i%${#face[@]}]}
+      done
+    fi
   fi
 
   ble/highlight/layer:{selection}/update region "$@"

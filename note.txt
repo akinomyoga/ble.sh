@@ -1949,49 +1949,7 @@ bash_tips
     気がする。後 completions/complete で compgen -A command が呼び出されている。
     なのでこれらの関数だけ上書きすれば良い?
 
-2024-09-19
-
-  * complete: '\:' が無駄に escape される問題 (reported by mcepl)
-    https://github.com/akinomyoga/ble.sh/issues/501
-
-    調べると bash-completion が使っている compgen の出力結果が変化している何の
-    条件で結果が変わるのだろうか。関連する変数や引数の内容が全て同一でも異なる
-    結果を生成する。そもそも Bash の振る舞いとして、コマンドラインの中身に応じ
-    て compgen 自体の振る舞いが変化する。これは一体どういう事だろうか。
-
-    test1 ~/tmp1/a\:b/ が既に入力されていている時には unquoted な結果が生成され
-    る。一方で test1 [TAB] を試みると quoted な結果が生成される。特に現在補完対
-    象の単語に \ が含まれているかどうかで振る舞いが変化している? 何故補完対象の
-    単語に \ が含まれていると quote しなくなるのか? ' の中の文脈と等価に扱おう
-    としている?
-
-    しかし、この振る舞いは bash-completion やその他の補完に対しても影響を与える
-    のではないか?
-
-    bash の中を見ると最初に何やら dequoting やら何やらしているがこれは関係ない?
-    何れの場合でも同様に実行している。結局よく分からない。実際に動かしながら後
-    で観察する必要がある。
-
-    ? ok: rl_filename_completion_function の中で convfn を確保した後に
-      complete_fncmp が失敗したら free していない気がする。と思ったがずっと後で
-      free している。
-
 2024-09-13
-
-  * 履歴検索して行を挿入する
-    https://github.com/akinomyoga/ble.sh/discussions/499
-
-    * そもそも本当にそのような使い方は理想的な使い方なのか。その使い方は bash
-      の限られた機能の上でコマンドラインを編集する為にしみついた bad practice
-      のような気がする。例えばテキストエディタでその様な機能を使っているのだろ
-      うか?
-
-    * nsearch action=replace-command, action=insert, etc. は便利な気がするので
-      この request とは関係なく実装して良い。
-
-    * 或いはもっと単純な interface で良いのではないか? 例えば M-insert で現在位
-      置 (履歴番号、カーソル位置) を記録して、その後で履歴の中を移動した末に
-      M-w を押すと元の場所に戻ってその場に選択した行を挿入するなど。
 
   * https://github.com/akinomyoga/ble.sh/discussions/500
     bashrc で多重にロードしている時に警告を出すべきでは。
@@ -7479,6 +7437,185 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-09-23
+
+  * nsearch: 履歴検索して行を挿入する (motivated by vaab) [#D2286]
+    https://github.com/akinomyoga/ble.sh/discussions/499
+
+    * そもそも本当にそのような使い方は理想的な使い方なのか。その使い方は bash
+      の限られた機能の上でコマンドラインを編集する為にしみついた bad practice
+      のような気がする。例えばテキストエディタでその様な機能を使っているのだろ
+      うか?
+
+    * nsearch action=replace-command, action=insert, etc. は便利な気がするので
+      この request とは関係なく実装して良い。
+
+      うーん。needle の決め方と一緒に指定するべきの気がする。どの様な needle の
+      決め方があるだろうか。
+
+      ? 既存の実装で C-g でキャンセルした時には何が起こるか。どうも C-g に
+        _ble_edit_nsearch_stack に状態が記録されている様で、それを使って元の状
+        態を復元している。開始時に内容を記録してるという訳ではない様だ。
+
+        そうだとすると「C-g で使っている情報を拡張して書き換えを行う」という方
+        法は使えない。全コマンドラインの内容を記録しているのだとしたらどの範囲
+        が置換対象なのかの情報などは分からないし、そもそも記録しておく必要もな
+        い。_ble_edit_nsearch_stack に記録している全 step で置換範囲を記録して
+        おく必要もない
+
+        → と思ったがロードした文字列が挿入されると置換対象の終端点は変わるので
+          は? と思ったが、これは一番最初の文字列と一番最初の文字列における置換
+          範囲の位置を記録しておけば良い。何も挿入後の状態を使って更に別の挿入
+          を行った時の状態を生成しなくても良い。
+
+      動作を実装するうえで何を考えるべきか。
+
+      * needle に関しては初回に決定するのでグローバルに改めて新しく記録する必要
+        および記録の仕方を変更する必要性はない。
+
+      * action=load の時は加えて元の文字列と置換対象範囲を記録すれば良い → 取
+        り敢えず元の文字列と置換範囲を記録してそれを元に load を行う様に修正し
+        た。
+
+      設定の interface はどの様にするべきだろうか。例えば action=load-command
+      にした時は現在のカーソルがある位置のコマンドを置き換える様にするなど? そ
+      の場合には既に入力済みのコマンドを検索文字列にする。うーん。これが良い気
+      がする。その他の行単位にロードするなどの機能は理論的には便利かもしれない
+      が微妙の気がする。
+
+    * 或いはもっと単純な interface で良いのではないか? 例えば M-insert で現在位
+      置 (履歴番号、カーソル位置) を記録して、その後で履歴の中を移動した末に
+      M-w を押すと元の場所に戻ってその場に選択した行を挿入するなど。
+
+      或いは最後に非履歴移動を行った履歴項目を記録しておく。もしくは履歴移動
+      widget の chain の中で最初に履歴移動を行った場所を記録しておく。履歴移動
+      に関するコマンドの中で常に履歴項目を記録する事にして、但し前回の widget
+      も履歴移動だった時には更新を抑制するという形にすれば良い。しかし、up や
+      down 等はカーソル移動と履歴移動が組み合わさっている。この場合も履歴項目の
+      起点は更新しない様にしたい。という事を考えると、実は最後に編集を行った位
+      置を参照すれば良い?
+
+      a _ble_edit_undo_hindex に記録されている筈である。
+
+        と思って実際に実装してみたがどうも _ble_edit_undo_hindex は undo/add が
+        実行されていなくても頻繁に更新される様だ? というかそもそも undo を記録
+        する為に初期の状態を記録している。なので何れにしても
+        _ble_edit_undo_hindex には現在の位置が設定されていると考えるべきである。
+
+        undo は keymap の __before_widget__ で処理されている。なので、last
+        modified entry の記録も __before_widget__ を自分で設定する事によって行
+        う事になるのだろうか。last modified の検出方法はどの様にするべきだろう
+        か。履歴項目が移動した事によって _ble_edit_str が変化したのと編集によっ
+        て _ble_edit_str が変化したのは区別する必要がある。履歴項目の移動に関し
+        ては比較対象を更新する事にして、widget 実行後に比較対象と現在の値が違っ
+        ていたら modified として記録する。auto_complete や menu_complete によっ
+        て一時的に挿入されている内容を検出したら駄目の気がするので、これらは基
+        底の __after_widget__ で処理するべきだろうか? 然し、
+        auto_complete/cancel-default などの場合にちゃんと __after_widget__ が実
+        行されるだろうか?
+
+      b 改めてコードを見ていて気付いたが ble-edit/content/reset に対して監視を
+        行えば良いのである。変更の reason で履歴移動も除外できる。そもそも
+        observer を登録する為の配列 _ble_edit_dirty_observer も用意している →
+        これを使って実装したらいい感じに動いている気がする。
+
+  * contrib/fzf-initialize: "fzf --bash" を使う (motivated by louiss0) [#D2285]
+    https://github.com/akinomyoga/ble.sh/issues/494
+
+    やはり各ファイルを package に含めてもらうのが一番である。速度もそちらの方が
+    速い。然し駄目なパッケージは幾らでも今後出てきそうなので workaround として
+    $(fzf --bash) を使う様にする。
+
+  * contrib/fzf-complete: '\:' が無駄に escape される問題 (reported by mcepl) [#D2284]
+    https://github.com/akinomyoga/ble.sh/issues/501
+
+    調べると bash-completion が使っている compgen の出力結果が変化している何の
+    条件で結果が変わるのだろうか。関連する変数や引数の内容が全て同一でも異なる
+    結果を生成する。そもそも Bash の振る舞いとして、コマンドラインの中身に応じ
+    て compgen 自体の振る舞いが変化する。これは一体どういう事だろうか。
+
+    test1 ~/tmp1/a\:b/ が既に入力されていている時には unquoted な結果が生成され
+    る。一方で test1 [TAB] を試みると quoted な結果が生成される。特に現在補完対
+    象の単語に \ が含まれているかどうかで振る舞いが変化している? 何故補完対象の
+    単語に \ が含まれていると quote しなくなるのか? ' の中の文脈と等価に扱おう
+    としている?
+
+    しかし、この振る舞いは bash-completion やその他の補完に対しても影響を与える
+    のではないか?
+
+    bash の中を見ると最初に何やら dequoting やら何やらしているがこれは関係ない?
+    何れの場合でも同様に実行している。結局よく分からない。実際に動かしながら後
+    で観察する必要がある。
+
+    ? ok: rl_filename_completion_function の中で convfn を確保した後に
+      complete_fncmp が失敗したら free していない気がする。と思ったがずっと後で
+      free している。
+
+    うーん。bash-completion に介入するにしても bash の正確な振る舞いが分からな
+    いとどう修正したら良いか分からない。例えば、bash-completion の生成するファ
+    イル名を常に unquote してしまって良いのかそれとも何らかの条件でそのままにす
+    るべきか。
+
+    [Bash の振る舞い]
+
+    bash の中での動きを見るしかない。どうやら rl_filename_completion_function
+    の戻り値の段階で quote しているかしていないかが変化する様だ。引数に渡されて
+    いる文字列は同じである。rl_filename_rewrite_hook による書き換えかと思ったが
+    そういう訳でもない? rl_directory_rewrite_hook が時々 off になっている可能性?
+    と思ったが常に有効の様である。うーん。どうやら dirname と users_dirname の
+    二種類の変数があって、users_dirname の中身がそのまま候補生成に使われている
+    様だ。そして users_dirname が異なる内容になっている。何故だろうか。
+
+    うーん。2回目の呼び出しの時 (bash-completion の通常の状況と一致) の場合には
+    rl_completion_found_quote が有効になっていて、この時には
+    rl_filename_dequoting_function によって dequoting が実施される。
+
+    うーん。complete.c の rl_complete_internal の中で現在の単語に quote が含ま
+    れるかどうかをテストして、もし含まれていた場合には found_quote を 4 にして
+    いる。そして、それが rl_completion_found_quote にコピーされて振る舞いが変化
+    している。found_quote は " または ' または \ を見ている気がする。つま
+    り、'...' や "..." の中にいると勘違いしている? うーん。試してみた所 ' だと
+    found_quote = 1 になり、" だと found_quote = 2 になり、\ があると
+    found_quote = 4 になる様だ。何れにしても quote の中身だと思って dequoting
+    を実行しているという事の様だ。うーん。かなり微妙。
+
+    bash-completion / progcomp の中ではユーザーが \: を入力している場合には ;
+    に変換した物が候補として生成される様になっている。これを COMPREPLY に格納し
+    た時に最終的に挿入される文字列は? どうも \ が除去された物が挿入されている様
+    な気がする。
+
+    - うーん。\ がある時に found_quote になって結果として dequote された物が生
+      成され、更にそれがそのまま挿入されるのは bash のバグの気がする。
+
+    - bash-completion は余り関知していない様な気がするが bash 的には compgen で
+      quote 済みの文字列を生成して、それをそのまま挿入する想定になっている気が
+      する。但し、現在の単語に何らかの quote が含まれる場合には余分な quote を
+      避ける為に dequote を実行している。この中途半端な振る舞いが混乱の元になっ
+      ている気がする。更に compopt -o filenames を用いてファイル名に一致するか
+      どうかで振る舞いを変えたりしていておかしな実装になっている。
+
+      うーん。quote 済みの単語を生成しているつもりなのであれば勝手に quote する
+      のは良くない?
+
+    或いはそもそも compgen に \: を含んだ文字列を指定するのがいけないのだろうか?
+    然し quote がない状態で compgen に単語を渡すとやはり正しく候補が生成されな
+    くなる。うーん。\ ではなくて " で quote する様にすれば良いのか?
+
+    [fzf completion 有効の時だけ問題になる理由]
+
+    うーん。改めて振る舞いを確認すると fzf-completion と組み合わせた時に特に問
+    題が生じている。単に bash-completion & blesh では問題は再現しない。何故
+    fzf-completion と組み合わせた時にだけ問題が生じるのだろうか? cur の値が変に
+    なっている?
+
+    どうやら fzf-completion が有効でない場合には ble.sh の側で実行して言える調
+    整 (~/tmp1/a:b -> '/home/tmp1/a:b' の書き換え) によって問題が回避されている
+    様である。しかし、fzf-completion は文法レベルで処理をしようとするのでこの
+    ble.sh の調整を無効にしている。然し、これが fzf-completion から呼び出してい
+    る dynamic completion にも影響を与えているという事。dynamic completion につ
+    いては文法に直接作用する調整は必要ない気がする。
+
+    fzf から呼び出される dynamic completion では ble/syntax-raw の処理を外す様
+    にしたら問題は発生しなくなった。
 
   * canvas: Unicode 16.0.0 [#D2283]
 

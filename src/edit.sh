@@ -9574,6 +9574,11 @@ function ble-decode/keymap:isearch/define {
 ##   最後にユーザ入力された検索対象を保持します。
 ## @var _ble_edit_nsearch_opts
 ##   検索の振る舞いを制御するオプションを保持します。
+## @arr _ble_edit_nsearch_loadctx
+##   現在のコマンドラインの一部に履歴項目をロードする時に
+##   _ble_edit_nsearch_loadctx[0]=beg を設定します。_ble_edit_nsearch_loadctx[1]
+##   は置換範囲の左側の文字列、_ble_edit_nsearch_loadctx[1] は置換範囲の右側の
+##   文字列を保持します。
 ## @arr _ble_edit_nsearch_stack[]
 ##   検索が一致する度に記録される。
 ##   各要素は "direction,index,ind,mark:line" の形式をしている。
@@ -9592,18 +9597,24 @@ _ble_edit_nsearch_input=
 _ble_edit_nsearch_needle=
 _ble_edit_nsearch_index0=
 _ble_edit_nsearch_opts=
+_ble_edit_nsearch_loadctx=
 _ble_edit_nsearch_stack=()
 _ble_edit_nsearch_match=
 _ble_edit_nsearch_index=
 _ble_edit_nsearch_prev=
 
 function ble/highlight/layer:region/mark:nsearch/get-face {
-  face=region_match
+  face=(region_match)
+  [[ ${_ble_edit_nsearch_loadctx[2]-} ]] &&
+    ble/array#push face region_insert
 }
 function ble/highlight/layer:region/mark:nsearch/get-selection {
   local beg=$_ble_edit_mark
   local end=$((_ble_edit_mark+${#_ble_edit_nsearch_needle}))
   selection=("$beg" "$end")
+
+  local suffix=${_ble_edit_nsearch_loadctx[2]-}
+  [[ $suffix ]] && ble/array#push selection "$end" "$((${#_ble_edit_str}-${#suffix}))"
 }
 
 ## @fn ble-edit/nsearch/.show-status.fib [pos_progress]
@@ -9655,20 +9666,26 @@ function ble-edit/nsearch/.goto-match {
   local old_match=$_ble_edit_nsearch_match
   ble/array#push _ble_edit_nsearch_stack "$direction,$old_match,$_ble_edit_ind,$_ble_edit_mark:$_ble_edit_str"
 
+  local left= line= right=
   if [[ ! $index ]]; then
     ble/history/get-index
-  elif [[ :$opts: == *:action=load:* ]]; then
+    line=$_ble_edit_str
+  elif [[ $_ble_edit_nsearch_loadctx ]]; then
+    left=${_ble_edit_nsearch_loadctx[1]-}
+    right=${_ble_edit_nsearch_loadctx[2]-}
+
     local old_index; ble/history/get-index -v old_index
     if ((index!=old_index)); then
       local line; ble/history/get-edited-entry -v line "$index"
-      ble-edit/content/reset-and-check-dirty "$line"
+      ble-edit/content/reset-and-check-dirty "$left$line$right"
     fi
   else
     ble-edit/history/goto "$index"
+    line=$_ble_edit_str
   fi
 
   # 一致範囲の決定
-  local s=$_ble_edit_str n=$needle
+  local s=$line n=$needle
   if [[ :$opts: == *:ignore-case:* ]]; then
     local ret
     ble/string#tolower "$s"; s=$ret
@@ -9686,10 +9703,13 @@ function ble-edit/nsearch/.goto-match {
   [[ :$opts: =~ $rex ]]
   case ${BASH_REMATCH[1]} in
   (begin)       _ble_edit_ind=0 ;;
-  (end)         _ble_edit_ind=${#_ble_edit_str} is_end_marker=1 ;;
+  (end)         _ble_edit_ind=${#line} is_end_marker=1 ;;
   (match-begin) _ble_edit_ind=$beg ;;
   (match-end|*) _ble_edit_ind=$end is_end_marker=1 ;;
   esac
+
+  local left_len=${#left}
+  ((_ble_edit_mark+=left_len,_ble_edit_ind+=left_len))
 
   # vi_nmap の中にいる時は一致範囲の最後の文字にカーソルを置く
   if [[ $is_end_marker ]] && ((_ble_edit_ind)); then
@@ -9698,7 +9718,7 @@ function ble-edit/nsearch/.goto-match {
     fi
   fi
 
-  if ((beg!=end)); then
+  if ((beg!=end)) || [[ ${_ble_edit_nsearch_loadctx[2]-} ]]; then
     _ble_edit_mark_active=nsearch
   else
     _ble_edit_mark_active=
@@ -9727,7 +9747,7 @@ function ble-edit/nsearch/.search.fib {
       local record line=${ret#*:}
       ble/string#split record , "${ret%%:*}"
 
-      if [[ :$opts: == *:action=load:* ]]; then
+      if [[ $_ble_edit_nsearch_loadctx ]]; then
         ble-edit/content/reset-and-check-dirty "$line"
       else
         ble-edit/history/goto "${record[1]}"
@@ -9832,6 +9852,53 @@ function ble-edit/nsearch/.test {
   return "$ext"
 }
 
+## @fn ble-edit/nsearch/action:load-command/initialize
+##   @arr[out] _ble_edit_nsearch_loadctx
+##   @exit
+function ble-edit/nsearch/action:load-command/initialize {
+  [[ $_ble_syntax_lang == bash ]] || return 1
+
+  ble-edit/content/update-syntax
+
+  local pos=$_ble_edit_ind
+  ble/string#match "${_ble_edit_str:pos}" $'^[ \t]+[^[:space:]]' &&
+    ((pos+=${#BASH_REMATCH}-1))
+  local comp_cword comp_words comp_line comp_point tree_words
+  if ble/syntax:bash/extract-command "$pos" treeinfo && ((${#tree_words[@]})); then
+    # Retrieve the location of the first word (the command name)
+    local wend=${tree_words[0]%:*} nofs=${tree_words[0]#*:}
+    ble/string#split-words node "${_ble_syntax_tree[wend-1]}"
+    local wlen=${node[nofs+1]}
+    local wbeg=$((wlen<0?wlen:wend-wlen))
+
+    local beg=$wbeg end=${tree_words[${#tree_words[@]}-1]%:*}
+    ble/string#match "${_ble_edit_str:end}" $'^[ \t]+($|\n)' &&
+      ((end+=${#BASH_REMATCH}))
+    if ((_ble_edit_ind<=end)) || { ble/string#match "${_ble_edit_str:end:_ble_edit_ind-end}" $'^[[:space:]\n]+$' && end=$_ble_edit_ind; }; then
+      if ((beg>=0&&beg<end)); then
+        ((_ble_edit_ind<beg)) && _ble_edit_ind=$beg
+        _ble_edit_nsearch_loadctx=("$beg" "${_ble_edit_str::beg}" "${_ble_edit_str:end}")
+        return 0
+      fi
+    fi
+  fi
+
+  # If the current cursor position is a location where we expect a new command
+  # name, we directly load a command in the current position.
+  local ret stat
+  if ble/syntax/completion-context/.search-last-istat "$_ble_edit_ind" &&
+     ble/string#match "${_ble_edit_str:ret:_ble_edit_ind-ret}" '^[[:space:]]*$'
+  then
+    ble/string#split-words stat "${_ble_syntax_stat[ret]}"
+    if [[ ${_ble_syntax_bash_complete_check_prefix[stat[0]]} == next-command ]]; then
+      _ble_edit_nsearch_loadctx=("$_ble_edit_ind" "${_ble_edit_str::_ble_edit_ind}" "${_ble_edit_str:_ble_edit_ind}")
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 ## @widget history-search opts
 ##   @param[in] opts
 ##
@@ -9851,8 +9918,12 @@ function ble-edit/nsearch/.test {
 ##
 ##     action=ACTION
 ##       文字列が見つかった時の動作を指定します。
-##       goto 見つかった履歴項目に移動します [既定]
-##       load 現在の履歴項目の位置で見つかったコマンド文字列をロードします
+##       goto         見つかった履歴項目に移動します [既定]
+##       load         現在の履歴項目を見つかったコマンド文字列で置き換えます。
+##       load-line    現在の行を置き換えます。
+##       load-command 文法に従って現在のコマンドを置き換えます。
+##       insert       現在位置に挿入します。
+##       insert-line  現在位置に新しい行として挿入します。
 ##
 ##     point=POINT
 ##       文字列が見つかった時のカーソル位置を指定します。
@@ -9871,19 +9942,48 @@ function ble/widget/history-search {
   local opts=$1
 
   # initialize variables
+
+  _ble_edit_nsearch_loadctx=('')
+  local ret
+  ble/opts#extract-last-optarg "$opts" action
+  local action=$ret
+  case $action in
+  (load)
+    _ble_edit_nsearch_loadctx=(0 '' '') ;;
+  (load-line)
+    ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
+    ble-edit/content/find-logical-eol "$_ble_edit_ind" 0; local end=$ret
+    _ble_edit_nsearch_loadctx=("$beg" "${_ble_edit_str::beg}" "${_ble_edit_str:end}") ;;
+  (load-command)
+    ble-edit/nsearch/action:load-command/initialize ||
+      _ble_edit_nsearch_loadctx=(0 '' '') ;;
+  (insert)
+    _ble_edit_nsearch_loadctx=("$_ble_edit_ind" "${_ble_edit_str::_ble_edit_ind}" "${_ble_edit_str:_ble_edit_ind}") ;;
+  (insert-line)
+    local left=${_ble_edit_str::_ble_edit_ind}
+    ble-edit/content/bolp || left=$left$'\n'
+    local right=${_ble_edit_str:_ble_edit_ind}
+    ble-edit/content/eolp || right=$'\n'$right
+    _ble_edit_nsearch_loadctx=("$_ble_edit_ind" "$left" "$right") ;;
+  esac
+
+  local needle
   if [[ :$opts: == *:input:* || :$opts: == *:again:* && ! $_ble_edit_nsearch_input ]]; then
-    ble/builtin/read -ep "nsearch> " _ble_edit_nsearch_needle || return 1
-    _ble_edit_nsearch_input=$_ble_edit_nsearch_needle
+    ble/builtin/read -ep "nsearch> " needle || return 1
+    _ble_edit_nsearch_input=$needle
   elif [[ :$opts: == *:again:* ]]; then
-    _ble_edit_nsearch_needle=$_ble_edit_nsearch_input
+    needle=$_ble_edit_nsearch_input
   else
     local len=$_ble_edit_ind
     if [[ $_ble_decode_keymap == vi_[noxs]map ]]; then
       # vi_nmap の中にいる時は現在カーソルがある文字も検索文字列に含める
       ble-edit/content/eolp || ((len++))
     fi
-    _ble_edit_nsearch_needle=${_ble_edit_str::len}
+    needle=${_ble_edit_str::len}
+    [[ ${_ble_edit_nsearch_loadctx[0]} ]] &&
+      needle=${needle:_ble_edit_nsearch_loadctx[0]}
   fi
+  _ble_edit_nsearch_needle=$needle
 
   # 検索文字列が空の時は別の動作を行う
   if [[ ! $_ble_edit_nsearch_needle ]]; then
@@ -10012,7 +10112,7 @@ function ble/widget/nsearch/cancel {
     if [[ $record ]]; then
       local line=${record#*:}
       ble/string#split record , "${record%%:*}"
-      if [[ :$_ble_edit_nsearch_opts: == *:action=load:* ]]; then
+      if [[ $_ble_edit_nsearch_loadctx ]]; then
         ble-edit/content/reset-and-check-dirty "$line"
       else
         ble-edit/history/goto "$_ble_edit_nsearch_index0"
