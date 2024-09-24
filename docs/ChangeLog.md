@@ -65,7 +65,7 @@
   - make: fix condition for the `INSDIR_LICENSE` rule (reported by Jai-JAP) `#D2260` 5a8dcb4b
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
 - edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
-- nsearch: support `action={load-{line,command},insert{,-line}}` (motivated by vaab) `#D2286` xxxxxxxx
+- nsearch: support `action={load-{line,command},insert{,-line}}` (motivated by vaab) `#D2286` 32f290df
 
 ## Changes
 
@@ -139,7 +139,7 @@
   - edit: fix regressions of vbell and `ble/builtin/exit` in Bash 3.2 `#D2265` f5955d5f
 - util(`ble/fd#cloexec`): check `fdflags` compatibility to avoid crash `#D2227` c3b3aaf8
 - util(`ble/function#evaldef`): suppress alias expansions (reported by 103sbavert) `#D2240` 51e762fe
-  - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e a9b962d2 xxxxxxxx
+  - main: fix a bug that `_ble_bash` is missing (reported by tessus and Knusper) `#D2242` bb2dae6e a9b962d2 9eb1fee7
 - mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` e0ffc418
 - edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 670c7ea0
 - util (`ble-import`): do not specify arguments to `-C callback` `#D2277` 4f0e94a2
@@ -190,7 +190,7 @@
 - decode(`ble/builtin/bind`): support single quotes in the macro/command strings `#D2236` 2f90120e
 - mandb: process less formatting sequences in parsing `--help` `#D2244` 60d36ba5
 - mandb: hook into bash-completion's `_comp_command_offset` `#D2255` cbcce625
-- canvas: update tables for Unicode 16.0.0 `#D2283` xxxxxxxx xxxxxxxx
+- canvas: update tables for Unicode 16.0.0 `#D2283` 5b43ca3f 25a10a6f
 
 ## Contrib
 
@@ -217,9 +217,11 @@
 - contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 - contrib/colorglass:  color: import themes from `Gogh-Co/Gogh` (motivated by d4rkb4sh8) `#D2274` d2eb75b5
-- contrib/integration/fzf-completion: suppress unexpected quoting by compgen in dynamic completions (reported by mcepl) `#D2284` xxxxxxxx
-- contrib/integration/fzf-initialize: use `fzf --bash` when shell integration files are not found (motivated by louiss0) `#D2285` xxxxxxxx
-- config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` xxxxxxxx
+- contrib/integration/fzf-completion: suppress unexpected quoting by compgen in dynamic completions (reported by mcepl) `#D2284` 32f290df
+- contrib/integration/fzf-initialize: use `fzf --bash` when shell integration files are not found (motivated by louiss0) `#D2285` 32f290df
+  - integration/fzf-initialize: (reported by 3ximus) `#D2285` xxxxxxxx
+- config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` 32f290df
+- integration: add `skim` integration for completion (reported by cmm) `#D2287` xxxxxxxx
 
 ## Documentation
 
@@ -790,7 +792,7 @@
 - syntax: suppress brace expansions in designated array initialization in Bash 5.3 `#D1989` 1e7b884
 - progcomp: work around slow `nix` completion `#D1997` 2c1aacf
 - complete: suppress error messages from `_adb` (reported by mozirilla213) `#D2005` f2aa32b0
-- util: test the UTF-8 support of the current `LC_CTYPE` `#D2281` 537c6504 xxxxxxxx
+- util: test the UTF-8 support of the current `LC_CTYPE` `#D2281` 537c6504 aa1b6f35
 
 ## Test
 

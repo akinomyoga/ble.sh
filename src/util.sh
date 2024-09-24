@@ -2514,8 +2514,12 @@ function ble/function#get-source-and-lineno {
   return "$ext"
 }
 
-## @fn ble/function#advice type function proc
+## @fn ble/function#advice [-f] type function proc
 ##   既存の関数の振る舞いを変更します。
+##
+##   @option -f
+##     関数が存在している時にのみ処理を行います。関数が存在しない場合はエラーメッ
+##     セージを表示せずに失敗します。
 ##
 ##   @param[in] type
 ##     before を指定した時、処理 proc を関数 function の前に挿入します。
@@ -2572,14 +2576,22 @@ function ble/function#advice/.proc {
 }
 ble/function#trace ble/function#advice/.proc
 function ble/function#advice {
+  local flags=
+  while [[ ${1-} == -[!-]* ]]; do
+    flags=$flags${1#-}
+    shift
+  done
+
   local type=$1 name=$2 proc=$3
   if ! ble/is-function "$name"; then
     local t=; ble/util/type t "$name"
     case $t in
     (builtin|file) builtin eval "function $name { : ZBe85Oe28nBdg; command $name \"\$@\"; }" ;;
     (*)
-      ble/util/print "ble/function#advice: $name is not a function." >&2
-      return 1 ;;
+      if [[ $flags == *f* ]]; then
+        ble/util/print "ble/function#advice: $name is not a function." >&2
+        return 1
+      fi ;;
     esac
   fi
 

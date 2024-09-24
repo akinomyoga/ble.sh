@@ -4179,8 +4179,11 @@ function ble/complete/progcomp/.adjust-third-party-completions {
   # WA: Workarounds for third-party plugins
   if [[ $comp_func ]]; then
     # fzf
-    [[ $comp_func == _fzf_* ]] &&
+    if [[ $comp_func == _fzf_* ]]; then
       ble-import -f contrib/integration/fzf-completion
+    elif [[ $comp_func == _skim_* ]]; then
+      ble-import -f contrib/integration/skim-completion
+    fi
 
     # bash_completion
     if ble/is-function _comp_initialize || ble/is-function _quote_readline_by_ref; then

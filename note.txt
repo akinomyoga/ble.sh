@@ -1928,9 +1928,6 @@ bash_tips
 
 2024-09-22
 
-  * complete: skim integration (reported by cmm)
-    https://github.com/akinomyoga/ble.sh/issues/502#event-14354810067
-
   * [保留] starship と併用した時に初期化時に余分に prompt が表示される?
     https://www.reddit.com/r/linuxquestions/comments/1fm84u4/the_terminal_prompt_starts_a_bit_lower_than_it/?show=original
 
@@ -7436,6 +7433,38 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-09-24
+
+  * complete: skim integration (reported by cmm) [#D2287]
+    https://github.com/akinomyoga/ble.sh/issues/502#event-14354810067
+
+    うーん。内容的にはほぼ fzf と同じである。fzf-completion 及び
+    fzf-key-bindings から共通部分を抽出してそれを使うべき? 然し、そうすると
+    fzf-completion-lib と fzf-completion, fzf-key-bindings-lib と
+    fzf-key-bindings 等のように分離しなければならなくなり、無駄にファイルが増え
+    てしまう。或いはほぼすべての実装は fzf-base 等のファイルに定義する事にして、
+    fzf-initialize, fzf-completion, fzf-key-bindings では hook だけ定義する様に
+    する?
+
+    結局 skim shell settings がどの様に配置されるのかよく分からないので、ロード
+    しようと思った時にどの様に場所を特定したらよいのかは謎である。fzf と全く同
+    じ方針で探索しておけば良いのだろうか? 或いはもっと別の場所も探すべき? うー
+    ん。取り敢えずわからないので fzf と全く同じに処理する? だとすると
+    fzf-initialize の処理も共通化する必要がある。
+
+    取り敢えず実装した。fzf-completion 及び fzf-key-bindings は問題なく動いてい
+    る。
+
+    x fixed: うーん。#D2285 の変更によってユーザーの指定した
+      _ble_contrib_fzf_base が無視される様になってしまっていた。これは修正する
+      必要がある。
+
+    * done: skim が実際に動作するかどうかを確認する必要がある。また、fzf や
+      skim の completion.bash が直接 source された時に後付けで integration
+      script が読み込まれた時にも正しく動作するか確認する必要があるのでは。
+
+      取り敢えず動いている様である。
+
 2024-09-23
 
   * nsearch: 履歴検索して行を挿入する (motivated by vaab) [#D2286]
@@ -7524,6 +7553,12 @@ bash_tips
     やはり各ファイルを package に含めてもらうのが一番である。速度もそちらの方が
     速い。然し駄目なパッケージは幾らでも今後出てきそうなので workaround として
     $(fzf --bash) を使う様にする。
+
+    2024-10-10  _ble_contrib_fzf_base が動かなくなっている (reported by 3ximus)
+    https://github.com/akinomyoga/blesh-contrib/issues/26
+
+    これは既に気付いて手元では修正していたが、報告があったので記録のために残し
+    ておくことにする。
 
   * contrib/fzf-complete: '\:' が無駄に escape される問題 (reported by mcepl) [#D2284]
     https://github.com/akinomyoga/ble.sh/issues/501
