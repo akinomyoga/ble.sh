@@ -290,6 +290,7 @@
 - decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` 21b1bb3d
 - global: normalize quoting of function names of the form `prefix:$name` `#D2296` 3d7c98bb
 - global: use `[:blank:]` instead of `[:space:]` `#D2299` xxxxxxxx
+- global: rename `ret` not used as `REPLY` `#D2300` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

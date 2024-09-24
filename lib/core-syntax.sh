@@ -4852,17 +4852,17 @@ function ble/syntax:bash/ctx-heredoc-word/remove-quotes {
 ## @fn ble/syntax:bash/ctx-heredoc-word/remove-quotes delimiter
 ##   @var[out] escaped
 function ble/syntax:bash/ctx-heredoc-word/escape-delimiter {
-  local ret=$1
-  if [[ $ret == *[\\\'$_ble_term_IFS$_ble_term_FS]* ]]; then
+  local out=$1
+  if [[ $out == *[\\\'$_ble_term_IFS$_ble_term_FS]* ]]; then
     local a b fs=$_ble_term_FS
-    a=\\   ; b='\'$a; ret=${ret//"$a"/"$b"}
-    a=\'   ; b='\'$a; ret=${ret//"$a"/"$b"}
-    a=' '  ; b=$_ble_syntax_bash_heredoc_EscSP; ret=${ret//"$a"/"$b"}
-    a=$'\t'; b=$_ble_syntax_bash_heredoc_EscHT; ret=${ret//"$a"/"$b"}
-    a=$'\n'; b=$_ble_syntax_bash_heredoc_EscLF; ret=${ret//"$a"/"$b"}
-    a=$fs  ; b=$_ble_syntax_bash_heredoc_EscFS; ret=${ret//"$a"/"$b"}
+    a=\\   ; b='\'$a; out=${out//"$a"/"$b"}
+    a=\'   ; b='\'$a; out=${out//"$a"/"$b"}
+    a=' '  ; b=$_ble_syntax_bash_heredoc_EscSP; out=${out//"$a"/"$b"}
+    a=$'\t'; b=$_ble_syntax_bash_heredoc_EscHT; out=${out//"$a"/"$b"}
+    a=$'\n'; b=$_ble_syntax_bash_heredoc_EscLF; out=${out//"$a"/"$b"}
+    a=$fs  ; b=$_ble_syntax_bash_heredoc_EscFS; out=${out//"$a"/"$b"}
   fi
-  escaped=$ret
+  escaped=$out
 }
 function ble/syntax:bash/ctx-heredoc-word/unescape-delimiter {
   builtin eval "delimiter=\$'$1'"

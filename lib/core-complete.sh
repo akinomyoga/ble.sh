@@ -3654,13 +3654,13 @@ function ble/complete/progcomp/.compgen-helper-func {
   #   completion functions
   ble/function#push command_not_found_handle
 
-  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"; local ret=$?
+  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null >&"$_ble_util_fd_tui_stdout" 2>&"$_ble_util_fd_tui_stderr"; local ext=$?
 
   ble/function#pop command_not_found_handle
   ble/function#pop ssh
   ble/function#pop compopt
 
-  [[ $ret == 124 ]] && progcomp_retry=1
+  [[ $ext == 124 ]] && progcomp_retry=1
   return 0
 }
 

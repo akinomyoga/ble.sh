@@ -5511,9 +5511,9 @@ function ble/keymap:vi/search/invoke-search {
     fi
   fi
 
-  ble-edit/isearch/search "$needle" "$dir":regex; local ret=$?
+  ble-edit/isearch/search "$needle" "$dir":regex; local ext=$?
   _ble_edit_ind=$ind
-  return "$ret"
+  return "$ext"
 }
 
 ## @fn ble/widget/vi-command/search.core
