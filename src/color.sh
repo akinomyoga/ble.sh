@@ -1578,7 +1578,7 @@ function ble/highlight/layer/update {
   for ((LEVEL=0;LEVEL<nlevel;LEVEL++)); do
     layer=${_ble_highlight_layer_list[LEVEL]}
 
-    "ble/highlight/layer:$layer/update" "$text" "$player"
+    ble/highlight/layer:"$layer"/update "$text" "$player"
     # echo "PREV($LEVEL) $PREV_UMIN $PREV_UMAX" >> 1.tmp
 
     player=$layer
@@ -1614,7 +1614,7 @@ function ble/highlight/layer/update/getg {
   g=
   local LEVEL=$LEVEL
   while ((--LEVEL>=0)); do
-    "ble/highlight/layer:${_ble_highlight_layer_list[LEVEL]}/getg" "$1"
+    ble/highlight/layer:"${_ble_highlight_layer_list[LEVEL]}"/getg "$1"
     [[ $g ]] && return 0
   done
   g=0

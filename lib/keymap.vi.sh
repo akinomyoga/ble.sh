@@ -5363,7 +5363,7 @@ function ble/widget/vi-command/commandline {
 function ble/widget/vi-command/commandline.hook {
   local command
   ble/string#split-words command "$1"
-  local cmd="ble/widget/vi-command:${command[0]}"
+  local cmd=ble/widget/vi-command:"${command[0]}"
   if ble/is-function "$cmd"; then
     "$cmd" "${command[@]:1}"; local ext=$?
   else
@@ -7352,7 +7352,7 @@ function ble/widget/vi_xmap/connect-line.impl {
   _ble_keymap_vi_oparg=
   _ble_keymap_vi_opfunc=
   _ble_keymap_vi_reg=
-  "ble/widget/$name"
+  ble/widget/"$name"
 }
 # xmap J
 function ble/widget/vi_xmap/connect-line-with-space {

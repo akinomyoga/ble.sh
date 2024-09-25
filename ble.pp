@@ -1224,8 +1224,8 @@ function ble/bin#freeze-utility-path {
       flags=n$flags
       continue
     fi
-    [[ $flags == *n* ]] && ble/bin#has "ble/bin/$cmd" && continue
-    ble/bin#has "ble/bin/.frozen:$cmd" && continue
+    [[ $flags == *n* ]] && ble/bin#has ble/bin/"$cmd" && continue
+    ble/bin#has ble/bin/.frozen:"$cmd" && continue
     if ble/bin#get-path "$cmd"; then
       [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
@@ -1419,7 +1419,7 @@ function ble/bin/awk/.instantiate {
           ble/util/unlocal LC_ALL LC_CTYPE LC_COLLATE 2>/dev/null
           return "$ext"
         }
-      elif [[ $_ble_bin_awk_type == [gmn]awk ]] && ! ble/is-function "ble/bin/$_ble_bin_awk_type" ; then
+      elif [[ $_ble_bin_awk_type == [gmn]awk ]] && ! ble/is-function ble/bin/"$_ble_bin_awk_type" ; then
         builtin eval "function ble/bin/$_ble_bin_awk_type { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
       fi
     fi
@@ -2507,8 +2507,8 @@ function ble/dispatch {
   (check|--test) ble/base/sub:test "$@" ;;
   (*)
     if ble/string#match "$cmd" '^[-a-zA-Z0-9]+$'; then
-      if ble/is-function "ble/dispatch:$cmd"; then
-        "ble/dispatch:$cmd" "$@"
+      if ble/is-function ble/dispatch:"$cmd"; then
+        ble/dispatch:"$cmd" "$@"
         return "$?"
       elif ble/is-function "ble-$cmd"; then
         "ble-$cmd" "$@"

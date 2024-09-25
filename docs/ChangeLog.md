@@ -92,7 +92,7 @@
 - exec: refine the elapsed time resolution `#D2249` 67548656 713c4215
 - highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` 063249b4
 - complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` 6a426954
-- make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` xxxxxxxx
+- make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` 31f264ad
 
 ## Fixes
 
@@ -146,7 +146,7 @@
 - mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` e0ffc418
 - edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 670c7ea0
 - util (`ble-import`): do not specify arguments to `-C callback` `#D2277` 4f0e94a2
-- main: fix issues with `ble/bin/awk` (reported by devidw) `#D2292` xxxxxxxx
+- main: fix issues with `ble/bin/awk` (reported by devidw) `#D2292` b0a7adcb
 
 ## Compatibility
 
@@ -195,7 +195,7 @@
 - mandb: process less formatting sequences in parsing `--help` `#D2244` 60d36ba5
 - mandb: hook into bash-completion's `_comp_command_offset` `#D2255` cbcce625
 - canvas: update tables for Unicode 16.0.0 `#D2283` 5b43ca3f 25a10a6f
-- complete: work around `mawk <= 1.3.4-20200525` type-inference bug (reported by KaKi87) `#D2295` xxxxxxxx
+- complete: work around `mawk <= 1.3.4-20230525` type-inference bug (reported by KaKi87) `#D2295` 546499b5
 
 ## Contrib
 
@@ -240,7 +240,7 @@
 - docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` 208eaa9d
 - docs(README): move disclaimers to a later section `#D2250` ad6f58b7
 - README: use `[[ ! ${BLE_VERSION-} ]] || ble-attach` `#D2264` ed11901a
-- github: update GitHub issue templates `#D2294` xxxxxxxx
+- github: update GitHub issue templates `#D2294` aa396f60
 
 ## Test
 
@@ -286,6 +286,7 @@
 - main: refactor initialization sequence `#D2231` cc9d7f39
 - util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
 - decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` 21b1bb3d
+- global: normalize quoting of function names of the form `prefix:$name` `#D2296` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

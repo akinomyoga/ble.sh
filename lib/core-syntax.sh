@@ -6086,7 +6086,7 @@ function ble/syntax/completion-context/.check-prefix {
   local wbeg=$((wlen<0?wlen:istat-wlen))
   local name=${_ble_syntax_completion_context_check_prefix[ctx]}
   if [[ $name ]]; then
-    builtin eval "ble/syntax/completion-context/prefix:$name"
+    builtin eval ble/syntax/completion-context/prefix:"$name"
   fi
 }
 
@@ -6231,7 +6231,7 @@ function ble/syntax/completion-context/.check-here {
     #   補完文脈が他に生成しようがない状況に限定される。この時、実は
     #   .check-here の側は修正は必要なかった。
     local proc=${_ble_syntax_completion_context_check_here[stat[0]]-}
-    builtin eval "ble/syntax/completion-context/here:$proc"
+    builtin eval ble/syntax/completion-context/here:"$proc"
   fi
 }
 

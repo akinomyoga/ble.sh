@@ -1087,7 +1087,7 @@ function ble/builtin/trap/install-hook {
       # る事は想定していないので、builtin trap から読み取った結果は ble.sh ロー
       # ド前と想定して良い。
       ! ble/builtin/trap/user-handler#has "$sig" &&
-      builtin eval -- "ble/builtin/$trap_string"
+      builtin eval -- ble/builtin/"$trap_string"
   fi
 
   return "$ext"

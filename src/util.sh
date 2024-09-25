@@ -311,23 +311,23 @@ function bleopt/reinitialize {
 ## @bleopt input_encoding
 bleopt/declare -n input_encoding UTF-8
 function bleopt/check:input_encoding {
-  if ! ble/is-function "ble/encoding:$value/decode"; then
+  if ! ble/is-function ble/encoding:"$value"/decode; then
     ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/decode' is not defined." >&2
     return 1
-  elif ! ble/is-function "ble/encoding:$value/b2c"; then
+  elif ! ble/is-function ble/encoding:"$value"/b2c; then
     ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/b2c' is not defined." >&2
     return 1
-  elif ! ble/is-function "ble/encoding:$value/c2bc"; then
+  elif ! ble/is-function ble/encoding:"$value"/c2bc; then
     ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/c2bc' is not defined." >&2
     return 1
-  elif ! ble/is-function "ble/encoding:$value/generate-binder"; then
+  elif ! ble/is-function ble/encoding:"$value"/generate-binder; then
     ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/generate-binder' is not defined." >&2
     return 1
-  elif ! ble/is-function "ble/encoding:$value/is-intermediate"; then
+  elif ! ble/is-function ble/encoding:"$value"/is-intermediate; then
     ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
     return 1
@@ -2609,13 +2609,13 @@ function ble/function#advice {
   case $type in
   (remove)
     if [[ $def == *'ble/function#advice/.proc'* ]]; then
-      ble/function#getdef "ble/function#advice/original:$name"
+      ble/function#getdef ble/function#advice/original:"$name"
       if [[ $def ]]; then
         if [[ $def == *ZBe85Oe28nBdg* ]]; then
           builtin unset -f "$name"
         else
           ble/function#evaldef "${def#*:}"
-          ble/function#copy-trace "ble/function#advice/original:$name" "$name"
+          ble/function#copy-trace ble/function#advice/original:"$name" "$name"
         fi
       fi
     fi
@@ -2623,15 +2623,15 @@ function ble/function#advice {
     return 0 ;;
   (before|after|around)
     if [[ $def != *'ble/function#advice/.proc'* ]]; then
-      ble/function#evaldef "ble/function#advice/original:$def"
-      ble/function#copy-trace "$name" "ble/function#advice/original:$name"
+      ble/function#evaldef ble/function#advice/original:"$def"
+      ble/function#copy-trace "$name" ble/function#advice/original:"$name"
       builtin eval "function $name { ble/function#advice/.proc \"\$FUNCNAME\" \"\$@\"; }"
-      ble/function#copy-trace "ble/function#advice/original:$name" "$name"
+      ble/function#copy-trace ble/function#advice/original:"$name" "$name"
     fi
 
     local q=\' Q="'\''"
     builtin eval "ble/function#advice/$type:$name() { builtin eval -- '${proc//$q/$Q}'; }"
-    ble/function#copy-trace "ble/function#advice/original:$name" "ble/function#advice/$type:$name"
+    ble/function#copy-trace ble/function#advice/original:"$name" ble/function#advice/$type:"$name"
     return 0 ;;
   (*)
     ble/util/print "ble/function#advice unknown advice type '$type'" >&2
@@ -7728,7 +7728,7 @@ else
       done <<< "$s"
       IFS=$_ble_term_IFS
     '
-    "ble/encoding:$bleopt_input_encoding/b2c" $bytes
+    ble/encoding:"$bleopt_input_encoding"/b2c $bytes
   }
 fi
 
@@ -7864,7 +7864,7 @@ function ble/util/chars2s {
 ##   @param[in]  $1 = code
 ##   @param[out] ret
 function ble/util/c2bc {
-  "ble/encoding:$bleopt_input_encoding/c2bc" "$1"
+  ble/encoding:"$bleopt_input_encoding"/c2bc "$1"
 }
 
 ## @fn ble/util/.update-locale-cache
@@ -7950,7 +7950,7 @@ function ble/util/.update-locale-cache {
             fi
           '
         fi
-      elif ble/is-function "ble/encoding:$enc/b2c"; then
+      elif ble/is-function ble/encoding:"$enc"/b2c; then
         _ble_util_locale_encoding=$enc
       fi
     fi

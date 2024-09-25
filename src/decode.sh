@@ -838,7 +838,7 @@ ble/debug/leakvar#check $"leakvar" H2-abort
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" "[H3b1: before decode $chars...]"
 #%end.i
-      "ble/encoding:$bleopt_input_encoding/decode" "${chars[@]:i:B}"
+      ble/encoding:"$bleopt_input_encoding/decode" "${chars[@]:i:B}"
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" "[H3b1: after decode $chars...]"
 #%end.i
@@ -853,7 +853,7 @@ ble/debug/leakvar#check $"leakvar" "[H3b1: after decode $chars...]"
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" "[H3b2: before decode $c]"
 #%end.i
-      "ble/encoding:$bleopt_input_encoding/decode" "$c"
+      ble/encoding:"$bleopt_input_encoding/decode" "$c"
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" "[H3b2: after decode $c]"
 #%end.i
@@ -884,7 +884,7 @@ ble/debug/leakvar#check $"leakvar" H4-EPILOGUE
 ##     この関数はユーザが呼び出す事を想定した関数です。
 function ble-decode-byte {
   while (($#)); do
-    "ble/encoding:$bleopt_input_encoding/decode" "$1"
+    ble/encoding:"$bleopt_input_encoding"/decode "$1"
     shift
   done
 }
@@ -2422,7 +2422,7 @@ ble/debug/leakvar#check $"leakvar" "widget $WIDGET"
 }
 ## @fn ble/decode/widget/dispatch widget args...
 function ble/decode/widget/dispatch {
-  local ret; ble/string#quote-command "ble/widget/${1#ble/widget/}" "${@:2}"
+  local ret; ble/string#quote-command ble/widget/"${1#ble/widget/}" "${@:2}"
   local WIDGET=$ret
   _ble_decode_widget_last=$WIDGET
 #%if leakvar

@@ -4626,14 +4626,14 @@ function ble/complete/progcomp {
         orig_qcmds_set=1 orig_qcmds=("${qcmds[@]}")
     fi
 
-    if ble/is-function "ble/cmdinfo/complete:$ucmd"; then
+    if ble/is-function ble/cmdinfo/complete:"$ucmd"; then
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
-      "ble/cmdinfo/complete:$ucmd" "$opts"
+      ble/cmdinfo/complete:"$ucmd" "$opts"
       return "$?"
-    elif [[ $ucmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${ucmd##*/}"; then
+    elif [[ $ucmd == */?* ]] && ble/is-function ble/cmdinfo/complete:"${ucmd##*/}"; then
       ble/string#quote-word "${ucmd##*/}"; qcmds[0]=$ret
       ble/complete/progcomp/.compline-rewrite-command "${qcmds[@]}" "${alias_args[@]}"
-      "ble/cmdinfo/complete:${ucmd##*/}" "$opts"
+      ble/cmdinfo/complete:"${ucmd##*/}" "$opts"
       return "$?"
     elif builtin complete -p -- "$ucmd" &>/dev/null; then
       cmd=$ucmd

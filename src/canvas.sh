@@ -62,7 +62,7 @@ function ble/util/c2w/clear-cache {
 ##     定義 ble/util/c2w:$bleopt_char_width_mode
 bleopt/declare -n char_width_mode auto
 function bleopt/check:char_width_mode {
-  if ! ble/is-function "ble/util/c2w:$value"; then
+  if ! ble/is-function ble/util/c2w:"$value"; then
     ble/util/print "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w:$value' is not defined." >&2
     return 1
   fi
@@ -83,7 +83,7 @@ function bleopt/check:char_width_mode {
 function ble/util/c2w {
   ret=${_ble_util_c2w_cache[$1]:-${_ble_util_c2w[$1]}}
   if [[ ! $ret ]]; then
-    "ble/util/c2w:$bleopt_char_width_mode" "$1"
+    ble/util/c2w:"$bleopt_char_width_mode" "$1"
     _ble_util_c2w_cache[$1]=$ret
   fi
 }
