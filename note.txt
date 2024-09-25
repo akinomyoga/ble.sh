@@ -1926,6 +1926,72 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-09-25
+
+  * complete: ble/complete/candidates/filter#test 候補毎の COMPV の評価方法
+    Ref #D2288
+
+    [背景]
+
+    現在の実装では候補毎に絞り込みに使う COMPV の値が異なる可能性がある。(1) 例
+    えば或る候補が simple-word/eval によって得られた COMPV (既定) に合致する候
+    補名として生成された場合は、その候補は新しい COMPS から生成された COMPV を
+    用いて絞り込むべきである。(2) 或いは、別の候補が COMPS に直接合致する物とし
+    て生成された場合には絞り込みも COMPS を用いて実施するべきである。(3) 或いは
+    更に別の候補が COMPS を別の方法で評価した結果として得られた my_compv を用い
+    て生成された場合は、その絞り込みも新しい COMPS から同じ方法で得られた新しい
+    my_compv を用いて実施されるべきである。この様な事はシェルとは別の言語が途中
+    に含まれるコマンドラインで発生しうる。或いは、引用符の中の一部の単語に対し
+    て補完を試みた場合 (例 "hello \"wor[TAB] ") 等も、通常の simple-word/eval
+    とは異なる単語評価の方法を用いる必要がある。
+
+    既に fzf による compopt -o ble/syntax-raw で生成された候補や、
+    execute-named-command の入力プロンプトにおける COMPS による候補生成などにお
+    いて、menu-filter のフィルタリングの仕方を調整するべきだが、現状ちゃんと実
+    装されていない物がある。これらの特別な取り扱いが必要になるかどうかというの
+    は、候補の生成者 (source) が関知している。従って、cand_pack の内部に "compv
+    生成方法" に関する情報を埋め込むのが自然と思われる。
+
+    [修正項目]
+
+    * compv 生成方法 (word-eval) に対して番号 iWE を割り当てる。`0` は `COMPS`
+      をそのまま使うものとし、`1` は `COMPS` から
+      `ble/syntax:bash/simple-word/eval` を用いて `COMPV` に変換するものとする。
+      `2` 以降は新しい word-eval の方法が現れる度に追加して管理することにする。
+
+    * cand_pack の中に word-eval の種類を記録できる様にする。データ形式について
+      はよく考える必要がある。
+
+      _ble_complete_cand_varnames には新しい変数を追加する。これまで大文字を使っ
+      て来たがグローバル読み取り専用変数と衝突したら嫌なのでそろそろ prefix つ
+      きの小文字の変数に少しずつ移行したい。或いは以降のデータについては配列に
+      して、無駄に変数を増やさなくて良い様にする。
+
+      cand_pack の形式については ble/complete/cand/yield が定義していると思って
+      良い。PREFIX_LEN の次に整数を追加すれば良い気がする。
+
+    * comp_filter_pattern は配列に拡張し comp_filter_pattern[iWE] とする。
+
+      ble/complete/candidates/filter#init filter_type COMPS [COMPV...] は
+      filter_type を記録する。COMPS は comp_filter_type[1] 等に格納する。それを
+      用いて作られたパターンを comp_filter_pattern[0] に格納して良い (或いは必
+      要になった時に使い手の側で comp_filter_type[1] を使って
+      comp_filter_pattern[0] を初期化して良い)。追加で COMPV... が指定されてい
+      る時には、それらの文字列を使って生成したパターンを
+      comp_filter_pattern[1]... に格納する。これは遅延しない。
+
+      ble/complete/candidates/filter#test str [iWE] はテストを行う。iWE が省略
+      された場合は 1 とみなす。comp_fitler_pattern[iWE] に対応するパターンが未
+      だ初期化されていない場合には、記録していた COMPS を元にしてその場でパター
+      ンを生成する。
+
+    * menu-filter や ble/complete/menu-filter/.filter-candidates 等では
+      ble/complete/candidates/filter#init や
+      ble/complete/candidates/filter#test の呼び出しを適切に更新して、候補毎に
+      正しい種類の word-eval を用いて候補をフィルタリングできる様にする。その他
+      の ble/complete/candidates/filter#test 呼び出しについても一つ一つ確認を行
+      う。
+
 2024-09-22
 
   * [保留] starship と併用した時に初期化時に余分に prompt が表示される?
@@ -1986,7 +2052,15 @@ bash_tips
   * [保留] decode: function name slash workaround 後にキーボード入力ができない (reported by teutat3s)
     https://github.com/akinomyoga/ble.sh/issues/484
 
-  * edit: M-x execute-named-command の補完
+  * histdb: 様々の種類の履歴についても個別に記録するべき? 全てコマンド履歴とし
+    て記録していると異なる場所で異なる物を提案する様になって余り好ましくない。
+
+  * history: 様々の種類の履歴についてもファイルに記録する。単純なファイル形式で
+    良い。というか、実は通常のコマンド履歴についても bash によって一々消去され
+    る .bash_history ではなくて、それとは別の場所に記録しても良いのではないか?
+
+    それが histdb であるという考え方もあるかもしれないが、histdb は sqlite3 を
+    要求している。もっと簡単で追加の依存性を要求しない物もあるべきである。
 
 2024-06-05
 
@@ -7432,6 +7506,265 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-10-07
+
+  * histdb: calendar の着色が消滅している。何故? [#D2289]
+
+    これは既定の histdb palette の halloween の指定が誤っている為だった。10月に
+    なったので halloween の配色を指定する様になったから問題が出るようになったの
+    であって昔からあったバグだった。github-light を halloween-light に書き換え
+    るべき所を github-halloween に書き換えていたのが問題。
+
+2024-09-25
+
+  * edit: M-x execute-named-command の補完 [#D2288]
+
+    * fixed: histdb-history が auto-complete でコマンドを生成している。うーん。
+      調べてみると source:history については .search-light では
+      $_ble_history_prefix が設定されている場合には処理をキャンセルする様になっ
+      ている。これと同様にするべきである (因みに .search-heavy については直接履
+      歴を検索するので問題ない)。
+
+    decode.sh の ble/builtin/bind/rlfunc2widget で配列に読み込んでいる部分を分
+    離して別の関数にする。そして、それを用いて現在の入力に合致する候補を生成す
+    る。
+
+    うーん。これは ble/widget/complete とは別の枠組みになる? と思ったが同じ枠組
+    みで補完できる様になっているべきである。ちゃんとそれに対応できているだろう
+    か? これは一般の補完の枠組みの再考にもなる。
+
+    * 既存の実装の syntax/completion-context は現在の言語に関する分岐は何もして
+      いない。どのように拡張するべきか。
+
+      check-here は bash の文法について hardcode されていて拡張性がない形になっ
+      ている。check-prefix に関しては配列に設定を代入できる様になっているので、
+      別の言語の場合にも
+
+      新しい言語に対応させる方法はどの様にするべきだろうか。
+
+      a 現在の文法文脈 ctx に補完を結びつける方法をそのまま拡張して、別の言語で
+        も別の文法文脈にしてそれによって補完を生成するべきだろうか。
+
+        x この方法だと現在の言語に応じて同じ文法要素でも生成する候補を切り替え
+          たりする様な場合には困るかもしれない。然し実際にそのような状況が存在
+          するだろうか。
+
+        x また文法が何もない plain な時の補完についてはこれだと対応できない?
+
+          →しかしその場合には plain な時の補完関数の中で _ble_syntax_lang に応
+          じた補完を実行すれば良いのである。拡張の為の interface も用意する。
+
+          →或いは補完を提供するのであればその為だけに新しく ctx を定義しても良
+          いのではないか。もし補完を提供するのであればそれと同時に着色も提供し
+          たくなる。そうすると更に ctx を提供する理由が出てくる。
+
+      b reject: 或いは、現在の言語 _ble_syntax_lang の値に応じて補完の仕方を変
+        更するべきだろうか。
+
+        x 複数の言語が途中で切り替わったり混ざったりする様な状況を考えると、こ
+          の方法だと複雑になってしまう。基本的には言語が混ざっている場合にはそ
+          の言語に対応する関数を下請けにして呼び出す様にすれば良い気がするが、
+          そもそも ctx base で parse した結果として、それぞれの位置がどの言語に
+          対応していたのかを後で決定するのは非自明である。
+
+        そもそも _ble_syntax_lang は一番最初の ctx を指定するぐらいの役割しか無
+        かったのではないか? だとすると _ble_syntax_lang に基づいて全体的に振る
+        舞いを変更するというのも変である。
+
+        実際調べてみると _ble_syntax_lang によって切り替わっている処理は
+        ble/syntax:bash/initialize-ctx, ble/syntax:bash/initialize-vars だけの
+        様である。だとすれば _ble_syntax_lang で振る舞いを変更するというのは設
+        計として不自然である。
+
+    * done: execute-named-command に対応する文脈を追加する
+
+    * done: execute-named-command に対応する着色を提供する
+
+      これについてはもっと考察が必要である。文法解析の辞典で単語の種類まで特定
+      し始めるとキー入力をする度に処理が走る事になって遅くなる? なので単語を設
+      置して単語着色として単語の種類を決定してそれに基づいて着色する? と思った
+      が、よく考えたら文法解析だって連続でユーザーが文字を入力した場合には最後
+      の文字を入力するまで suppress されるのだし、別に問題ない。
+
+      また補完の為に単語を設置しようとも思ったが completion-context で word が
+      見えるのは単語の途中に解析再開点を設置した時だけである。
+
+      単語を設置しても処理が複雑になるだけなので気にしなくて良い気がする。と思っ
+      たが一度実装したので取り敢えずはそのままにしておく?
+
+    * done: execute-named-command に対応する補完を提供する
+
+      * done: check-prefix については取り敢えず実装した。
+
+      * done: check-here についてはどうするか? 特に一番最初の補完ができない。現
+        在の枠組みでは check-here は hardcode されている → check-here について
+        も check-prefix と同様に配列に登録する形に変更した。
+
+        これも取り敢えず実装した。動いている。
+
+      * done: completion-context/.add は completion-context/add に名前を変更す
+        るべきである。
+
+    x fixed: 入れ子で M-x を実行しようとすると assertion failure になる。
+
+      | assertion failure: [[ ! $_ble_edit_async_read_prefix ]]
+      | it is already inside the async-read mode.
+
+      うーん。async-read-mode の keymap では execute-named-command を無効化しよ
+      うと思ったが、async-read-mode はユーザーが指定した keymap を元にして実行
+      できる様になっている。また、既定の keymap は read である。然し、read でも
+      execute-named-command を実行したくなる事もあるだろうし、keymap から完全に
+      削除するのも微妙な気がする。execute-named-command は keymap に入っていて
+      もいいが呼び出した時には無視する様にする事にした。
+
+      と思ったが普通に実行した read -e の中で execute-named-command を実行する
+      と描画が変な事になる事が分かった。一応動いている事には動いているが、同じ
+      panel を使って処理されている? そして、処理が終わった時に元々の表示済みだっ
+      た文字列が再描画されない。という事を考えるとやはり read -e は subprompt
+      が発生する様な入力について想定していなかったという事?
+
+      然し plain bash の read -p に関してはちゃんと M-x を正しく処理できている。
+      なので、read だからと言って subprompt が出せないという訳には行かない。現
+      在の panel の構成は以下の様になっている:
+
+      - panel0 ble/textarea
+      - panel1 ble/textarea
+      - panel2 ble/edit/info
+      - panel3 ble/edit/visible-bell
+      - panel4 ble/prompt/status
+
+      read -e は panel1 を使っている。async-read-mode も panel1 を使っている。
+
+      a 更に新しい panel を用意してその上で描画する? わざわざそれだけの為に
+        panel を増やしたくない。そもそも本当に必要なのだろうか?
+
+      b 或いはコマンド実行時は read -e は panel0 を使う? 然しこれだと ble.sh
+        context の中で read -e をユーザーが設定したスクリプトが使った時に問題に
+        なるのでは? と思ったがその場合には panel1 を使うので大丈夫。
+
+        うーん。この方針で良いのではないか? command-layout では panel0 を使い
+        M-x は独立した行に表示される。非 command-layout では read は panel1 を
+        使い、M-x は同じ位置に置き換える形で描画される。但し、M-x から戻った時
+        に元の内容をちゃんと復元する。
+
+      c panel1 の上で上書きする様に実行する。但し、元に戻る時に再描画を要求する。
+        これだと read の中で更にコマンドを入力している時に元の入力文字列が一時
+        的に見えなくなる。しかし、plain bash の実装が既にその様になっているので
+        それは許されるのではないか。
+
+      d やはり read -e の中では execute-named-command は禁止する?
+
+      取り敢えず b の方針で調整する事にした。動作確認した。良い。
+
+    x ok: COMPV 生成方法に関する議論: COMPS -> COMPV に変換するのは COMPV がフィ
+      ルタリングに使われる物である事を考えると必要である。然し一方で文脈によっ
+      ては COMPS -> COMPV の変換は bash の文法ではなくてその文脈固有の方法で実
+      行する必要がある。その様な場合にどの様に処理するべきか。
+
+      | comps_flags や comps_fixed による変な作用も考慮に入れる必要がある。
+      | pick-nearest-sources で同じ位置から始まる source を全てまとめてしまって
+      | いるが、本当は文法的な取り扱いに応じて分類して同じ分類になる物だけをま
+      | とめて実行するようにするべきである。
+      |
+      | うーん。COMPV の生成は pick-nearest-sources が担っているのでこの関数の
+      | 振る舞いさえ調整すれば問題ない筈である。うーん。word-eval の方法を指定
+      | できる様にする? どの様に指定できる様にするべきか?
+      |
+      | a 各 source 毎に word-eval の方法を指定できる様にする。例えば追加の関数
+      |   を定義させる等して。この場合には複数の source が混ざっていて、それぞ
+      |   れの source が異なる word-eval の規則を要求した時にどうするのか非自明
+      |   である。例えば同じ種類の word-eval の物だけまとめて最初に処理する?
+      |
+      |   またどの様に指定させるのかも非自明である。例えば comp1 の field を拡
+      |   張して comp1,word-eval 等の形に指定できる様にする? この様にすれば同じ
+      |   種類の補完の grouping は簡単になる。
+      |
+      | b そもそも word-eval は top-level で実行する必要があるのだったか?
+      |   filtering についても生成された候補が主張する文字列で filter すれば良
+      |   いのではないのか。例えば complete の時に改めて COMPV を確認する必要が
+      |   あったのだったか。改めて COMPV の使われ方について確認する必要がある。
+      |
+      |   単に速度の問題として共通に使いそうな word-eval を top-level で提供し
+      |   ているだけなのだとしたら、実は内部で生成する時に COMPV を好きに上書き
+      |   して処理すれば良いので余り気にしなくて良い事になる。
+      |
+      |   - というか既に fzf 等の補完では COMPV を勝手に書き換えて処理している。
+      |     特に問題は発生していないのでそれで良いという事なのでは?
+      |
+      |   * 実際に実装を確認してみると選択された sources で使われた COMPV を
+      |     menu_common_part の着色に使用している。つまり、現在の入力内容に基づ
+      |     いて filtering をしてまた候補に着色をする時に、その候補に対応する
+      |     word-eval で得られた現在の値を用いて着色を行う必要がある。
+      |
+      |     これにちゃんと対応するには各候補毎に word-eval の方法を記録して、そ
+      |     の候補毎に値を取得して部分着色を実行する必要があるのでは? 大変であ
+      |     る。
+      |
+      |     →確認した所やはり menu_common_part を使っているのは
+      |     ble/complete/menu-complete.class/render-item である。他では値を引き
+      |     回しているだけで使っているようには見えない。疑問は
+      |     menu-filter/auto-menu で incremental に絞っている時に
+      |     menu_common_part がどの様に更新されているのかという事。
+      |
+      |     うーん ble/complete/menu-filter が menu_common_part を再設定してい
+      |     る様だ。
+      |
+      |   ? menu-filter による filter-candidates で無駄に制限されたりしないのだ
+      |     ろうか? filter-candidates は COMPV (simple-word/eval) による
+      |     filtering を前提にしている。
+      |
+      |     うーん。 ble/complete/menu-filter/.filter-candidates の中で
+      |     ble/complete/candidates/filter#init と
+      |     ble/complete/candidates/filter#test のペアを使っているが、此処で候
+      |     補毎に compv の取得方法の指定をできる様にしたら良いのではないか? 例
+      |     えば ble/complete/candidates/filter#test の第二引数に word-eval の
+      |     種類を指定した時は対応する COMPV を特別の方法で取得してそれを使って
+      |     制限する様にする。追加で comp_filter_type[index] にキャッシュしても
+      |     良い。word-eval の方法と index の対応付は事前に行っておく必要がある。
+      |
+      |   これは複雑になりそうなので別項目で処理することにする。
+      |
+      | c 或いは、ble/complete/context:* の側で word-eval の方法を指定する。つ
+      |   まり context:syntax の場合には現在の COMPV を生成を用いてそれ以外の時
+      |   にはそれぞれに応じた展開・評価を実行する。と思ったが、複数の言語が混
+      |   ざる場合などを考えると、ble/complete/context:syntax のレベルでも
+      |   source 毎に異なる word-eval の方法を用いたい様な気がする。
+
+      取り敢えず b の方針で考える事にする。然し、現時点で既に menu-filter によ
+      る filtering は不完全 (例えば compopt -o ble/syntax-raw で生成された候補
+      など) なので、これに対処しようと思うと広範囲にチェックが必要になる。なの
+      で、取り敢えず今回の修正では menu-filter の事は考えずに source の内部だけ
+      でのみ COMPV を書き換えて評価する事にする。今後の COMPV の様々な評価方法
+      への対処については独立した項目として残す事にする。
+
+    * done: compgen -V を使う。というかそもそも compgen 自体を抽象化して良いの
+      ではないか?
+
+      既存の compgen の呼び出しも置き換えられるのではないか。と思ったが既にある
+      コアの compgen の呼び出しでは compgen -V に対応していない場合には完全に行
+      指向の処理として後段の処理を awk で行っていて、それによって効率化している。
+      という事を考えると現在の一番外側の compgen の利用の場合には assign-array
+      を用いる理由がない。
+
+      一方で個別の処理で assign-array compgen 云々を呼び出している箇所が3箇所ほ
+      どある。これらについては新しい関数で置き換える事ができる。
+
+      * うーん。既存の生成で compgen で標準出力に出しているのは compgen -V がな
+        かったからではないか。今となっては、実は素直に compgen -V を使うのが良
+        いのではないか。
+
+        x と思ったが、依然として古い bash では標準出力を経由する必要がある。
+        assign を何回も実行するよりはやはり assign 一回で生成するのが効率が良い。
+
+        うーん。既存の tilde, command の生成では結局 sort -u を実行する必要があ
+        るので、わざわざ配列に格納する必要性もない様に思われる。また改行が含ま
+        れる候補が生成される場合も考えにくいので、compgen -V を使う理由は効率以
+        外にない。結局 sort -u を使うのだとしたら compgen -V にするよりも直接
+        stdout に出力した方が効率的である。という事を考えると、これらは当面は現
+        状の様に stdout に出力するのが妥当である。
+
+        何か変わるとしたら compgen に "sort -u" の機能がついた時である。
 
 2024-09-24
 

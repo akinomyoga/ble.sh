@@ -2360,6 +2360,16 @@ function ble/util/assign-words {
   ble/string#split-words "$1" "${!1}"
 }
 
+if ((_ble_bash>=50300)); then
+  function ble/util/compgen { builtin compgen -V "$@"; }
+else
+  function ble/util/compgen {
+    local _ble_local_args
+    _ble_local_compgen_args=("${@:2}")
+    ble/util/assign-array "$1" 'builtin compgen "${_ble_local_compgen_args[@]}"'
+  }
+fi
+
 
 # ble/bin/awk の初期化に ble/util/assign を使うので
 ble/bin/awk/.instantiate

@@ -3897,9 +3897,9 @@ function ble/builtin/bind/option:r {
 _ble_decode_rlfunc2widget_emacs=()
 _ble_decode_rlfunc2widget_vi_imap=()
 _ble_decode_rlfunc2widget_vi_nmap=()
-function ble/builtin/bind/rlfunc2widget {
-  local kmap=$1 rlfunc=$2
-  local IFS=$_ble_term_IFS
+function ble/builtin/bind/rlfunc2widget/load-dict {
+  local kmap=${1-}
+  ble/decode/bind/.initialize-kmap
 
   local rlfunc_file= rlfunc_dict=
   case $kmap in
@@ -3911,17 +3911,25 @@ function ble/builtin/bind/rlfunc2widget {
             rlfunc_dict=_ble_decode_rlfunc2widget_vi_nmap ;;
   esac
 
-  if [[ $rlfunc_file ]]; then
-    local dict script='
-      ((${#NAME[@]})) ||
-        ble/util/mapfile NAME < "$rlfunc_file"
-      dict=("${NAME[@]}")
-    '; builtin eval -- "${script//NAME/$rlfunc_dict}"
+  [[ $rlfunc_file ]] || return 1
 
+  local script='
+    if ((!${#NAME[@]})); then
+      ble/util/mapfile NAME < "$rlfunc_file"
+      [[ $OSTYPE == msys* ]] && NAME=("${NAME[@]%$_ble_term_nl}")
+    fi
+    dict=("${NAME[@]}")
+  '; builtin eval -- "${script//NAME/$rlfunc_dict}"
+}
+
+function ble/builtin/bind/rlfunc2widget {
+  local kmap=$1 rlfunc=$2
+  local IFS=$_ble_term_IFS
+
+  if ble/builtin/bind/rlfunc2widget/load-dict "$kmap"; then
     local line
     for line in "${dict[@]}"; do
       [[ $line == "$rlfunc "* ]] || continue
-      [[ $OSTYPE == msys* ]] && line=${line%$'\r'}
       local rl widget; ble/bash/read rl widget <<< "$line"
       if [[ $widget == - ]]; then
         ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'." >&2
@@ -3940,6 +3948,29 @@ function ble/builtin/bind/rlfunc2widget {
   fi
 
   ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}'." >&2
+  return 1
+}
+
+## @fn ble/builtin/bind/rlfunc2widget/type rlfunc [kmap]
+##   @var[out] ret
+function ble/builtin/bind/rlfunc2widget/type {
+  local rlfunc=$1 dict
+  if ble/builtin/bind/rlfunc2widget/load-dict "$2"; then
+    local line
+    for line in "${dict[@]}"; do
+      if [[ $line == "$rlfunc "* ]]; then
+        ret=rlfunc
+        return 0
+      fi
+    done
+  fi
+
+  if ble/is-function ble/widget/"$rlfunc"; then
+    ret=widget
+    return 0
+  fi
+
+  ret=unknown
   return 1
 }
 

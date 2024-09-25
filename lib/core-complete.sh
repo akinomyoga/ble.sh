@@ -1801,11 +1801,15 @@ function ble/complete/action:plain/initialize.batch {
 function ble/complete/action:plain/complete {
   ble/complete/action/requote-final-insert
 }
+function ble/complete/action:plain/get-desc {
+  [[ $DATA ]] && desc=$DATA
+}
 
 # action:literal-substr
 function ble/complete/action:literal-substr/initialize { return 0; }
 function ble/complete/action:literal-substr/initialize.batch { inserts=("${cands[@]}"); }
 function ble/complete/action:literal-substr/complete { return 0; }
+function ble/complete/action:literal-substr/get-desc { ble/complete/action:plain/get-desc; }
 
 # action:substr (equivalent to plain)
 function ble/complete/action:substr/initialize {
@@ -1817,6 +1821,7 @@ function ble/complete/action:substr/initialize.batch {
 function ble/complete/action:substr/complete {
   ble/complete/action/requote-final-insert
 }
+function ble/complete/action:substr/get-desc { ble/complete/action:plain/get-desc; }
 
 # action:literal-word
 function ble/complete/action:literal-word/initialize { return 0; }
@@ -1828,6 +1833,7 @@ function ble/complete/action:literal-word/complete {
     ble/complete/action/complete.addtail ' '
   fi
 }
+function ble/complete/action:literal-word/get-desc { ble/complete/action:plain/get-desc; }
 
 # action:word
 #
@@ -1845,7 +1851,7 @@ function ble/complete/action:word/complete {
   ble/complete/action:literal-word/complete
 }
 function ble/complete/action:word/get-desc {
-  [[ $DATA ]] && desc=$DATA
+  ble/complete/action:plain/get-desc
 }
 
 # action:file
@@ -2238,6 +2244,7 @@ function ble/complete/source/evaluate-path-spec {
 
 ## @fn ble/complete/source/reduce-compv-for-ambiguous-match
 ##   曖昧補完の為に擬似的な COMPV と COMPS を生成・設定します。
+##   @var[in] comp_type comps_flags comps_fixed
 ##   @var[in,out] COMPS COMPV
 function ble/complete/source/reduce-compv-for-ambiguous-match {
   [[ :$comp_type: == *:[maA]:* ]] || return 0
@@ -2927,7 +2934,7 @@ function ble/complete/source:file {
   #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0714 #M0009)
   #
   #     local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
-  #     local candidates; ble/util/assign-array candidates 'builtin compgen -A file -- "$compv_quoted"'
+  #     local candidates; ble/util/compgen candidates -A file -- "$compv_quoted"
 
   ble/complete/source:tilde; local ext=$?
   ((ext==148||ext==0)) && return "$ext"
@@ -3009,7 +3016,6 @@ function ble/complete/source:tilde/.generate {
   local dirstack_max=$((${#DIRSTACK[@]}-1))
   ((dirstack_max>=0)) &&
     builtin eval "printf '%s\n' '~'{0..$dirstack_max}"
-
 }
 
 # tilde expansion
@@ -6249,7 +6255,7 @@ function ble/complete/source/compgen {
   local q="'" Q="'\''"
   local compv_quoted="'${COMPV//$q/$Q}'"
   local arr
-  ble/util/assign-array arr 'builtin compgen -A "$compgen_action" -- "$compv_quoted"'
+  ble/util/compgen arr -A "$compgen_action" -- "$compv_quoted"
 
   ble/complete/source/test-limit "${#arr[@]}" || return 1
 
@@ -7339,9 +7345,9 @@ function ble/complete/menu/get-footprint {
 ##
 ##     @opt init
 ##       When this is specified, the variables containing the current
-##       completion ccontext, "_ble_complete_menu{,0}_*", are initialized.
-##       When this is specified, the following variables need to be supplied by
-##       the caller:
+##       completion context, "_ble_complete_menu{,0}_*", are initialized.  When
+##       this is specified, the following variables need to be supplied by the
+##       caller:
 ##
 ##       @var[in] _ble_edit_str _ble_edit_ind
 ##       @var[in] COMP1 COMP2 COMPS COMPV comps_flags comps_fixed
@@ -8288,23 +8294,20 @@ function ble/widget/complete {
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
           :$opts: != *:context=*:* && ${#_ble_complete_menu_items[@]} -gt 0 ]]
   then
-    if [[ $_ble_complete_menu_filter_enabled && $bleopt_complete_menu_filter ]] || {
-         ble/complete/menu-filter; local ext=$?
-         ((ext==148)) && return 148
-         ((ext==0)); }; then
-      ble/complete/menu/generate-candidates-from-menu; local ext=$?
-      ((ext==148)) && return 148
-      if ((ext==0&&cand_count)); then
-        menu_show_opts=update-context:update-items
+    if [[ $_ble_complete_menu_filter_enabled && $bleopt_complete_menu_filter ]] ||
+         ble/complete/menu-filter || { (($?==148)) && return 148; }
+    then
+      if ble/complete/menu/generate-candidates-from-menu || { (($?==148)) && return 148; }; then
+        if ((cand_count)); then
+          menu_show_opts=update-context:update-items
+        fi
       fi
     fi
   fi
   if ((cand_count==0)); then
     local bleopt_complete_menu_style=$bleopt_complete_menu_style # source 等に一次変更を認める。
     ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
-    if ((ext==148)); then
-      return 148
-    fi
+    ((ext==148)) && return 148
     if [[ $cand_limit_reached ]]; then
       [[ :$opts: != *:no-bell:* ]] &&
         ble/widget/.bell 'complete: limit reached'
@@ -8333,10 +8336,10 @@ function ble/widget/complete {
   elif [[ :$opts: == *:enter_menu:* ]]; then
     local menu_common_part=$COMPV
     ble/complete/menu/show "$menu_show_opts" || return "$?"
-    ble/complete/menu-complete/enter "$opts"; local ext=$?
-    ((ext==148)) && return 148
-    ((ext)) && [[ :$opts: != *:no-bell:* ]] &&
-      ble/widget/.bell 'menu-complete: no completions'
+    ble/complete/menu-complete/enter "$opts" || {
+      (($?==148)) && return 148
+      [[ :$opts: == *:no-bell:* ]] || ble/widget/.bell 'menu-complete: no completions'
+    }
     return 0
 
   elif [[ :$opts: == *:show_menu:* ]]; then
@@ -10413,7 +10416,7 @@ function ble/cmdinfo/complete:cd/generate-cdable_vars {
   shopt -q cdable_vars || return 1
   ble/string#match "$COMPV" '^[_a-zA-Z0-9][_a-zA-Z0-9]*$' || return 1
   local arr
-  ble/util/assign-array arr 'builtin compgen -vX "_ble*" -- "$COMPV"'
+  ble/util/compgen arr -vX "_ble*" -- "$COMPV"
 
   ble/complete/source/test-limit "${#arr[@]}" || return 1
 

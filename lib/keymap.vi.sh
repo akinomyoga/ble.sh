@@ -6466,9 +6466,11 @@ function ble/widget/vi-command/execute-named-command/accept.hook {
 }
 function ble/widget/vi-command/execute-named-command {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/execute-named-command/accept.hook'
-  _ble_edit_PS1='!'
   _ble_keymap_vi_cmap_before_widget=ble/edit/async-read-mode/empty-cancel.hook
   ble/history/set-prefix _ble_edit_rlfunc
+  _ble_edit_PS1='!'
+  _ble_syntax_lang=edit.named-command
+  _ble_highlight_layer_list=(plain syntax region overwrite_mode)
   return 147
 }
 

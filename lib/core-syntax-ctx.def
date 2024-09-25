@@ -1,4 +1,4 @@
-# -*- mode: conf-space -*-
+# -*- mode: conf-space; fill-column: 79 -*-
 #
 # ble-syntax:bash
 #
@@ -151,3 +151,8 @@ ATTR_VAR_READONLY   131
 ATTR_VAR_TRANSFORM  133
 ATTR_VAR_EXPORT     134
 ATTR_VAR_NEW        137
+
+#------------------------------------------------------------------------------
+# 各種入力内容
+
+CTX_EDIT_NamedCommand 201

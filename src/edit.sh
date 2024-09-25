@@ -4517,14 +4517,20 @@ function ble/widget/execute-named-command/accept.hook {
   fi
 }
 function ble/widget/execute-named-command {
+  # If we are already in async-read-mode, execute-named-command is disabled.
+  [[ $_ble_edit_async_read_prefix ]] && return 1
+
   ble/edit/async-read-mode 'ble/widget/execute-named-command/accept.hook'
   _ble_edit_async_read_before_widget=ble/edit/async-read-mode/empty-cancel.hook
   ble/history/set-prefix _ble_edit_rlfunc
   _ble_edit_PS1='!'
-  # _ble_syntax_lang=bash
-  # _ble_highlight_layer_list=(plain region overwrite_mode)
+  _ble_syntax_lang=edit.named-command
+  _ble_highlight_layer_list=(plain syntax region overwrite_mode)
   return 147
 }
+
+ble/util/autoload "$_ble_base/contrib/syntax/edit.named-command.bash" \
+  ble/syntax:edit.named-command/initialize-ctx
 
 # **** mark, kill, copy ****                                       @widget.mark
 
@@ -9890,7 +9896,7 @@ function ble-edit/nsearch/action:load-command/initialize {
      ble/string#match "${_ble_edit_str:ret:_ble_edit_ind-ret}" '^[[:space:]]*$'
   then
     ble/string#split-words stat "${_ble_syntax_stat[ret]}"
-    if [[ ${_ble_syntax_bash_complete_check_prefix[stat[0]]} == next-command ]]; then
+    if [[ ${_ble_syntax_completion_context_check_prefix[stat[0]]} == next-command ]]; then
       _ble_edit_nsearch_loadctx=("$_ble_edit_ind" "${_ble_edit_str::_ble_edit_ind}" "${_ble_edit_str:_ble_edit_ind}")
       return 0
     fi
@@ -10597,8 +10603,12 @@ function ble/builtin/read/.set-up-textarea {
     _ble_canvas_panel_height[0]=0
 
   # textarea, info
-  _ble_textarea_panel=1
-  _ble_canvas_panel_focus=1
+  if ble/edit/is-command-layout; then
+    _ble_textarea_panel=0
+  else
+    _ble_textarea_panel=1
+  fi
+  _ble_canvas_panel_focus=$_ble_textarea_panel
   ble/textarea#invalidate
   ble/edit/info/set-default ansi ''
 
@@ -10621,6 +10631,7 @@ function ble/builtin/read/.set-up-textarea {
 
   # syntax, highlight
   _ble_syntax_lang=text
+  _ble_edit_dirty_syntax_end0=1 # force ble/syntax/parse
   _ble_highlight_layer_list=(plain region overwrite_mode disabled)
   return 0
 }
@@ -10883,7 +10894,19 @@ function ble/edit/async-read-mode {
   ble/util/set "${prefix}_cancel_hook" ''
 
   # 記録
-  ble/textarea#render
+  if ((_ble_textarea_panel==0)); then
+    # Note #D2288: When the current textarea is shown in panel 0, its contents
+    # will be visible while editing the text in async-read-mode, so we render
+    # the latest state of textarea before switching to the textarea of
+    # async-read-mode.
+    ble/textarea#render
+  else
+    # Note #D2288: When the current textarea is already rendered in panel 1,
+    # the textarea of async-read-mode will replace it.  To rerender the
+    # original textarea after async-read-mode finishes, we perform
+    # "ble/textarea#invalidate" so that the invalidated state is saved.
+    ble/textarea#invalidate
+  fi
   ble/textarea#save-state "$prefix"
   ble/util/save-vars "$prefix" _ble_canvas_panel_focus
   ble/util/set "${prefix}_history_prefix" "$_ble_history_prefix"
@@ -10918,6 +10941,7 @@ function ble/edit/async-read-mode {
 
   # set up syntax, highlight
   _ble_syntax_lang=text
+  _ble_edit_dirty_syntax_end0=1 # force ble/syntax/parse
   _ble_highlight_layer_list=(plain region overwrite_mode)
   return 147
 }

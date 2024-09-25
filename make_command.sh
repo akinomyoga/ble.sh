@@ -617,6 +617,7 @@ function sub:scan {
   sub:scan/builtin 'eval' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\('\''eval'\''\)Zd
+      \Z\(eval\)Zd
       \Zbuiltins1=\(.* eval .*\)Zd
       \Z\^eval --Zd
       \Zt = "eval -- \$"Zd
@@ -625,6 +626,7 @@ function sub:scan {
       \Z\$\(eval \$\(call .*\)\)Zd
       \Z^[[:space:]]*local rex_[_a-zA-Z0-9]+='\''[^'\'']*'\''[[:space:]]*$Zd
       \ZLINENO='\''\$lineno'\'' evalZd
+      \Z'\''argument eval'\''Zd
       \Z^ble/cmdspec/opts Zd
       g'
   sub:scan/builtin 'unset' |

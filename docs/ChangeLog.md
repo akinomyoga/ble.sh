@@ -66,6 +66,7 @@
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
 - edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
 - nsearch: support `action={load-{line,command},insert{,-line}}` (motivated by vaab) `#D2286` 32f290df
+- complete: support completion for `execute-named-command` `#D2288` xxxxxxxx
 
 ## Changes
 
@@ -203,6 +204,7 @@
   - histdb: support subcommands `#D2167` 4d7dd1ee
   - histdb: support `top`, `stats`, `calendar`, and `week` `#D2167` 4d7dd1ee
   - histdb: unify the color palette selection `#D2167` 4d7dd1ee
+  - histdb: fix the seasonal default palette names `#D2289` xxxxxxxx
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
