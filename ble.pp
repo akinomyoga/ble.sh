@@ -399,24 +399,17 @@ function ble/base/evaldef {
   return "$ext"
 }
 
+# will be overwritten by src/util.sh
+if ((_ble_bash>=50300)); then
+  function ble/util/assign { builtin eval -- "$1=\${ builtin eval -- \"\$2\"; }"; }
+else
+  function ble/util/assign { builtin eval -- "$1=\$(builtin eval -- \"\$2\")"; }
+fi
+
 {
   _ble_bash_builtins_adjusted=
   _ble_bash_builtins_save=
 } 2>/dev/null # set -x 対策
-## @fn ble/base/adjust-builtin-wrappers/.assign
-##   @remarks This function may be called with POSIXLY_CORRECT=y
-function ble/base/adjust-builtin-wrappers/.assign {
-  if [[ ${_ble_util_assign_base-} ]]; then
-    local _ble_local_tmpfile; ble/util/assign/mktmp
-    builtin eval -- "$1" >| "$_ble_local_tmpfile"
-    local IFS=
-    ble/bash/read -d '' defs < "$_ble_local_tmpfile"
-    IFS=$_ble_term_IFS
-    ble/util/assign/rmtmp
-  else
-    defs=$(builtin eval -- "$1")
-  fi || ((1))
-}
 function ble/base/adjust-builtin-wrappers/.impl1 {
   # Note: 何故か local POSIXLY_CORRECT の効果が
   #   builtin unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
@@ -431,7 +424,7 @@ function ble/base/adjust-builtin-wrappers/.impl1 {
     _ble_bash_builtins_adjusted=1
 
     builtin local defs
-    ble/base/adjust-builtin-wrappers/.assign '
+    ble/util/assign defs '
       \builtin declare -f "${builtins1[@]}" || ((1))
       \builtin alias "${builtins1[@]}" "${keywords1[@]}" || ((1))' # set -e 対策
     _ble_bash_builtins_save=$defs
@@ -452,7 +445,7 @@ function ble/base/adjust-builtin-wrappers/.impl2 {
 
   # function :, alias : の保存
   local defs
-  ble/base/adjust-builtin-wrappers/.assign 'LC_ALL= LC_MESSAGES=C builtin type :; alias :' || ((1)) # set -e 対策
+  ble/util/assign defs 'LC_ALL= LC_MESSAGES=C builtin type :; alias :' || ((1)) # set -e 対策
   defs=${defs#$': is a shell builtin\n'}
   _ble_bash_builtins_save=$_ble_bash_builtins_save$'\n'$defs
 
@@ -534,7 +527,9 @@ function ble/base/xtrace/.log {
   if ((_ble_bash>=40200)); then
     builtin printf '%s [%(%F %T %Z)T] %s %s\n' "$open" -1 "$1" "$close"
   else
-    builtin printf '%s [%s] %s %s\n' "$open" "$(date 2>/dev/null)" "$1" "$close"
+    local date
+    ble/util/assign date 'date 2>/dev/null'
+    builtin printf '%s [%s] %s %s\n' "$open" "$date" "$1" "$close"
   fi >&"${BASH_XTRACEFD:-2}"
 }
 function ble/base/xtrace/adjust {
@@ -751,13 +746,20 @@ function ble/variable#load-user-state/variable:LANG {
 
 { ble/base/adjust-bash-options; } &>/dev/null # set -x 対策 #D0930
 
-builtin bind &>/dev/null # force to load .inputrc
+function ble/init/force-load-inputrc {
+  builtin unset -f "$FUNCNAME"
 
-# WA #D1534 workaround for msys2 .inputrc
-if [[ $OSTYPE == msys* ]]; then
-  [[ $(builtin bind -m emacs -p 2>/dev/null | grep '"\\C-?"') == '"\C-?": backward-kill-line' ]] &&
-    builtin bind -m emacs '"\C-?": backward-delete-char' 2>/dev/null
-fi
+  builtin bind &>/dev/null # force to load .inputrc
+
+  # WA #D1534 workaround for msys2 .inputrc
+  if [[ $OSTYPE == msys* ]]; then
+    local bind_emacs
+    ble/util/assign bind_emacs 'builtin bind -m emacs -p 2>/dev/null'
+    [[ $'\n'$bind_emacs$'\n' == *$'\n"\\C-?": backward-kill-line\n' ]] &&
+      builtin bind -m emacs '"\C-?": backward-delete-char' 2>/dev/null
+  fi
+}
+ble/init/force-load-inputrc
 
 if [[ ! -o emacs && ! -o vi && ! $_ble_init_command ]]; then
   builtin echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
@@ -1177,13 +1179,6 @@ fi
 #------------------------------------------------------------------------------
 # check environment
 
-# will be overwritten by src/util.sh
-if ((_ble_bash>=50300)); then
-  function ble/util/assign { builtin eval "$1=\${ builtin eval -- \"\$2\"; }"; }
-else
-  function ble/util/assign { builtin eval "$1=\$(builtin eval -- \"\$2\")"; }
-fi
-
 # ble/bin
 
 if ((_ble_bash>=40000)); then
@@ -1250,7 +1245,8 @@ function ble/init/check-environment {
     ble/util/print "ble.sh: insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
 
     # try to fix PATH
-    local default_path=$(command -p getconf PATH 2>/dev/null)
+    local default_path
+    ble/util/assign default_path 'command -p getconf PATH 2>/dev/null'
     [[ $default_path ]] || return 1
 
     local original_path=$PATH
@@ -1266,7 +1262,7 @@ function ble/init/check-environment {
 
   if [[ ! ${USER-} ]]; then
     ble/util/print "ble.sh: insane environment: \$USER is empty." >&2
-    if USER=$(id -un 2>/dev/null) && [[ $USER ]]; then
+    if ble/util/assign USER 'id -un 2>/dev/null' && [[ $USER ]]; then
       export USER
       ble/util/print "ble.sh: modified USER=$USER" >&2
     fi
@@ -1275,7 +1271,7 @@ function ble/init/check-environment {
 
   if [[ ! ${HOSTNAME-} ]]; then
     ble/util/print "ble.sh: suspicious environment: \$HOSTNAME is empty."
-    if HOSTNAME=$(uname -n 2>/dev/null) && [[ $HOSTNAME ]]; then
+    if ble/util/assign HOSTNAME 'uname -n 2>/dev/null' && [[ $HOSTNAME ]]; then
       export HOSTNAME
       ble/util/print "ble.sh: fixed HOSTNAME=$HOSTNAME" >&2
     fi
@@ -1285,7 +1281,7 @@ function ble/init/check-environment {
   if [[ ! ${HOME-} ]]; then
     ble/util/print "ble.sh: insane environment: \$HOME is empty." >&2
     local home
-    if home=$(getent passwd 2>/dev/null | awk -F : -v UID="$UID" '$3 == UID {print $6}') && [[ $home && -d $home ]] ||
+    if ble/util/assign home 'getent passwd 2>/dev/null | awk -F : -v UID="$UID" '\''$3 == UID {print $6}'\''' && [[ $home && -d $home ]] ||
         { [[ $USER && -d /home/$USER && -O /home/$USER ]] && home=/home/$USER; } ||
         { [[ $USER && -d /Users/$USER && -O /Users/$USER ]] && home=/Users/$USER; } ||
         { [[ $home && ! ( -e $home && -h $home ) ]] && ble/bin/mkdir -p "$home" 2>/dev/null; }
@@ -3031,7 +3027,9 @@ function ble/base/sub:test {
 
   if (($#==0)); then
     set -- bash main util canvas decode edit syntax complete keymap.vi
-    logfile=$_ble_base_cache/test.$(date +'%Y%m%d.%H%M%S').log
+    local timestamp
+    ble/util/strftime -v timestamp '%Y%m%d.%H%M%S'
+    logfile=$_ble_base_cache/test.$timestamp.log
     >| "$logfile"
     ble/test/log#open "$logfile"
   fi

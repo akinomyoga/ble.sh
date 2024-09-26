@@ -7728,6 +7728,17 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-12-31
+
+  * global: ble/util/assign をもっと広く使う [#D2312]
+
+    初期化の段階で $() を使っていた箇所があるが、もっと早く ble/util/assign の
+    一時実装を用意して良い筈である。特に bash-5.3 では ${ ...; } を単純に使えば
+    良いので最初に定義するのが効率的である。
+
+    そもそも builtin eval -- "$(...)" だって今後は builtin eval -- "${ ...; }"
+    に置き換えることができる筈。
+
 2024-12-30
 
   * decode (bind): print the filename and line in error messages (motivated by excited-bore) [#D2311]

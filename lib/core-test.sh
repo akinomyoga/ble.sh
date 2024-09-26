@@ -40,12 +40,12 @@ function ble/test/log#open {
     local h10=----------
     [[ -s $file ]] &&
       ble/util/print "$h10$h10$h10$h10$h10$h10$h10" >&"$_ble_test_logfile_fd"
-    ble/util/print "[$(date +'%F %T %Z')] test: start logging" >&"$_ble_test_logfile_fd"
+    ble/util/strftime "[%F %T %Z] test: start logging" >&"$_ble_test_logfile_fd"
   fi
 }
 function ble/test/log#close {
   if [[ $_ble_test_logfile_fd ]]; then
-    ble/util/print "[$(date +'%F %T %Z')] test: end logging" >&"$_ble_test_logfile_fd"
+    ble/util/strftime "[%F %T %Z] test: end logging" >&"$_ble_test_logfile_fd"
     ble/fd#close _ble_test_logfile_fd
     _ble_test_logfile_fd=
   fi
@@ -102,14 +102,13 @@ function ble/test/end-section {
   local ntest npass count=$_ble_test_section_count
 
   local ntest nfail npass
-  builtin eval -- $(
-    ble/bin/awk '
-      BEGIN{test=0;fail=0;pass=0;}
-      /^test /{test++}
-      /^fail /{fail++}
-      /^pass /{pass++}
-      END{print "ntest="test" nfail="fail" npass="pass;}
-    ' "$_ble_test_section_file")
+  local awk_script='
+    BEGIN{test=0;fail=0;pass=0;}
+    /^test /{test++}
+    /^fail /{fail++}
+    /^pass /{pass++}
+    END{print "ntest="test" nfail="fail" npass="pass;}'
+  ble/util/eval-stdout 'ble/bin/awk "$awk_script" "$_ble_test_section_file"'
 
   local sgr=$'\e[32m' sgr0=$'\e[m'
   ((npass==ntest)) || sgr=$'\e[31m'

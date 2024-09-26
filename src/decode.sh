@@ -4575,7 +4575,7 @@ function ble/decode/attach {
   ble/util/reset-keymap-of-editing-mode
 
   # 元のキー割り当ての保存・unbind
-  builtin eval -- "$(ble/decode/readline/.generate-source-to-unbind-default)" # 21ms
+  ble/util/eval-stdout 'ble/decode/readline/.generate-source-to-unbind-default' # 21ms
 
   # ble.sh bind の設置
   ble/decode/readline/bind # 20ms

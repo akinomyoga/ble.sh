@@ -2249,6 +2249,10 @@ function ble/util/readarray {
 ##   files.  In the function substitutions, the update of the job list is
 ##   suppressed, so the notified dead jobs are not flushed on just running
 ##   ble/util/assign jobs jobs.
+##
+## @remarks This function is intended to work under POSIXLY_CORRECT=y when it
+##   is called by ble/base/adjust-builtin-wrappers/.impl1.
+##
 _ble_util_assign_base=$_ble_base_run/$$.util.assign.tmp
 _ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
@@ -2276,7 +2280,7 @@ function ble/util/assign/rmtmp {
 }
 if ((_ble_bash>=50300)); then
   function ble/util/assign {
-    builtin eval "$1=\${ builtin eval -- \"\$2\"; }"
+    builtin eval -- "$1=\${ builtin eval -- \"\$2\"; }"
   }
 elif ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
@@ -2286,7 +2290,8 @@ elif ((_ble_bash>=40000)); then
     local _ble_local_ret=$? _ble_local_arr=
     mapfile -t _ble_local_arr < "$_ble_local_tmpfile"
     ble/util/assign/rmtmp
-    IFS=$'\n' builtin eval "$1=\"\${_ble_local_arr[*]}\""
+    local IFS=$'\n' # avoid tmpenv to make it POSIXLY_CORRECT-safe
+    builtin eval -- "$1=\"\${_ble_local_arr[*]}\""
     return "$_ble_local_ret"
   }
 else
@@ -2296,7 +2301,7 @@ else
     local _ble_local_ret=$? IFS=
     ble/bash/read -d '' "$1" < "$_ble_local_tmpfile"
     ble/util/assign/rmtmp
-    builtin eval "$1=\${$1%\$_ble_term_nl}"
+    builtin eval -- "$1=\${$1%\$_ble_term_nl}"
     return "$_ble_local_ret"
   }
 fi
@@ -2368,6 +2373,12 @@ function ble/util/assign.has-output {
 function ble/util/assign-words {
   ble/util/assign "$1" "$2"
   ble/string#split-words "$1" "${!1}"
+}
+
+function ble/util/eval-stdout {
+  local _ble_local_script
+  ble/util/assign _ble_local_script "$1"
+  builtin eval -- "$_ble_local_script"
 }
 
 if ((_ble_bash>=50300)); then

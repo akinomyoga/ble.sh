@@ -508,6 +508,7 @@ function sub:scan/check-readonly-unsafe {
 
       # Exceptions in each file
       /^\.\/ble.pp:[0-9]*:BLEOPT=$/d
+      /^\.\/ble.pp:[0-9]*:\/assign (USER|HOSTNAME)/d
       /^\.\/lib\/core-complete.sh:[0-9]+:KEY=$/d
       /^\.\/lib\/core-syntax.sh:[0-9]+:VAR=$/d
       /^\.\/lib\/init-(cmap|term).sh:[0-9]+:TERM=$/d

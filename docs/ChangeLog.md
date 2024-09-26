@@ -17,7 +17,7 @@
     - main: suppress "--bash-debug-version" in "ble-reload" `#D2275` ec422115
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
   - progcomp: use Bash 5.3 `compgen -V` for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
-    - progcomp: fix a bug that `x` at the end of the last completion is trimmed `#D2308` xxxxxxxx
+    - progcomp: fix a bug that `x` at the end of the last completion is trimmed `#D2308` d9faeb37
   - main: fix attach failure with `--attach=prompt` in Bash 5.3 POSIX mode `#D2267` 49845707
     - syntax: fix a problem that `$_` is not preserved `#D2269` e053690d
   - keymap/vi: support bash-5.3 readline bindable function `bash-vi-complete` in `vi_nmap` `#D2305` 55e0ee71
@@ -157,8 +157,8 @@
 - edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 670c7ea0
 - util (`ble-import`): do not specify arguments to `-C callback` `#D2277` 4f0e94a2
 - main: fix issues with `ble/bin/awk` (reported by devidw) `#D2292` b0a7adcb
-- util (`ble/path#remove-glob`): fix a bug that `*` matches and removes multiple paths `#D2310` xxxxxxxx
-- decode (`bind`): print the filename and line in error messages (motivated by excited-bore) `#D2311` xxxxxxxx
+- util (`ble/path#remove-glob`): fix a bug that `*` matches and removes multiple paths `#D2310` fd518d24
+- decode (`bind`): print the filename and line in error messages (motivated by excited-bore) `#D2311` 89c69077
 
 ## Compatibility
 
@@ -302,7 +302,8 @@
 - global: normalize quoting of function names of the form `prefix:$name` `#D2296` 3d7c98bb
 - global: use `[:blank:]` instead of `[:space:]` `#D2299` e2fd8f0f
 - global: rename `ret` not used as `REPLY` `#D2300` 86cbf78e
-- global: avoid raw word splitting `#D2309` xxxxxxxx
+- global: avoid raw word splitting `#D2309` b55c4003
+- global: use `ble/util/assign` in more places `#D2312` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

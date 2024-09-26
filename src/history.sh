@@ -127,7 +127,7 @@ if ((_ble_bash>=50200)); then
       # following command produces SIGPIPE because "head -1" or "sed 1q"
       # terminates prematurely.  To prevent Bash from changing the TTY state on
       # exit, we intentionally run the following command in a subshell.
-      ble/string#split-words min "$(builtin history | ble/bin/sed -n '1{p;q;}')"
+      ble/string#split-words min "$(builtin history | ble/bin/sed -n '1{p;q;}')" # subshell
     else
       ble/util/assign-words min 'builtin history | ble/bin/sed -n "1{p;q;}"'
     fi
@@ -504,7 +504,7 @@ else
     # * プロセス置換にしてもファイルに書き出しても大した違いはない。
     #   270ms for 16437 entries (generate-source の時間は除く)
     # * プロセス置換×source は bash-3 で動かない。eval に変更する。
-    local result=$(ble/history:bash/load/.generate-source)
+    local result=$(ble/history:bash/load/.generate-source) # subshell
     local IFS=$_ble_term_IFS
     if [[ $opt_append ]]; then
       if ((_ble_bash>=30100)); then
@@ -968,7 +968,7 @@ function ble/builtin/history/.initialize {
   fi
 
   local histfile=${HISTFILE-} rskip=0
-  [[ -e $histfile ]] && rskip=$(ble/bin/wc -l "$histfile" 2>/dev/null)
+  [[ -e $histfile ]] && ble/util/assign rskip 'ble/bin/wc -l "$histfile" 2>/dev/null'
   ble/string#split-words rskip "$rskip"
   local min; ble/builtin/history/.get-min
   local max; ble/builtin/history/.get-max
@@ -1044,16 +1044,15 @@ function ble/builtin/history/.read {
   local file=$1 skip=${2:-0} fetch=$3
   local -x histnew=$_ble_base_run/$$.history.new
   if [[ -s $file ]]; then
-    local script=$(ble/bin/awk -v skip="$skip" '
+    local awk_script='
       BEGIN { histnew = ENVIRON["histnew"]; count = 0; }
       NR <= skip { next; }
       { print $0 >> histnew; count++; }
       END {
         print "ble/builtin/history/.set-rskip \"$file\" " NR;
         print "((_ble_builtin_history_histnew_count+=" count "))";
-      }
-    ' "$file")
-    builtin eval -- "$script"
+      }'
+    ble/util/eval-stdout 'ble/bin/awk -v skip="$skip" "$awk_script" "$file"'
   else
     ble/builtin/history/.set-rskip "$file" 0
   fi

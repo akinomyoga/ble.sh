@@ -11419,13 +11419,13 @@ function ble/widget/command-help.core {
   if ble/is-function ble/bin/man; then
     MANOPT= ble/bin/man "${command##*/}" 2>/dev/null && return 0
     # Note: $(man "${command##*/}") だと (特に日本語で) 正しい結果が得られない。
-    # if local content=$(MANOPT= ble/bin/man "${command##*/}" 2>&1) && [[ $content ]]; then
+    # if local content; ble/util/assign content 'MANOPT= ble/bin/man "${command##*/}" 2>&1' && [[ $content ]]; then
     #   ble/util/print "$content" | ble/util/pager
     #   return 0
     # fi
   fi
 
-  if local content; content=$("$command" --help 2>&1) && [[ $content ]]; then
+  if local content; ble/util/assign content '"$command" --help 2>&1' && [[ $content ]]; then
     ble/util/print "$content" | ble/util/pager
     return 0
   fi
@@ -11496,7 +11496,8 @@ function ble/widget/command-help/.type {
 
   # alias の時はサブシェルで解決
   if [[ $type == alias ]]; then
-    builtin eval -- "$(ble/widget/command-help/.type/.resolve-alias "$literal" "$command")"
+    # Note: This has a side effect so is done in a subshell
+    builtin eval -- "$(ble/widget/command-help/.type/.resolve-alias "$literal" "$command")" # subshell
   fi
 
   if [[ $type == keyword && $command != "$literal" ]]; then
