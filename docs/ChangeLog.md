@@ -91,6 +91,7 @@
 - exec: refine the elapsed time resolution `#D2249` 67548656 713c4215
 - highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` 063249b4
 - complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` 6a426954
+- make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` xxxxxxxx
 
 ## Fixes
 

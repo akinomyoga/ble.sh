@@ -76,7 +76,7 @@ time {
 # check --help or --version
 
 {
-  #%[commit_hash = system("git show -s --format=%h")]
+  #%[commit_hash = getenv("BLE_GIT_COMMIT_ID")]
   #%[ble_version = getenv("FULLVER") + "+" + commit_hash]
   #%expand
   ##%if commit_hash != ""
@@ -2061,12 +2061,19 @@ function ble-reload {
   source "$_ble_base/ble.sh" "${_ble_local_options[@]}"
 }
 
-#%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
-#%$ echo "_ble_base_branch=$(git rev-parse --abbrev-ref HEAD)"
+#%[quoted_repository   = "'" + getenv("PWD"               ).replace("'", "'\\''") + "'"]
+#%[quoted_branch       = "'" + getenv("BLE_GIT_BRANCH"    ).replace("'", "'\\''") + "'"]
+#%[quoted_git_version  = "'" + getenv("BUILD_GIT_VERSION" ).replace("'", "'\\''") + "'"]
+#%[quoted_make_version = "'" + getenv("BUILD_MAKE_VERSION").replace("'", "'\\''") + "'"]
+#%[quoted_gawk_version = "'" + getenv("BUILD_GAWK_VERSION").replace("'", "'\\''") + "'"]
+#%expand
+_ble_base_repository=$"quoted_repository"
+_ble_base_branch=$"quoted_branch"
 _ble_base_repository_url=https://github.com/akinomyoga/ble.sh
-#%$ echo "_ble_base_build_git_version=\"$BUILD_GIT_VERSION\""
-#%$ echo "_ble_base_build_make_version=\"$BUILD_MAKE_VERSION\""
-#%$ echo "_ble_base_build_gawk_version=\"$BUILD_GAWK_VERSION\""
+_ble_base_build_git_version=$"quoted_git_version"
+_ble_base_build_make_version=$"quoted_make_version"
+_ble_base_build_gawk_version=$"quoted_gawk_version"
+#%end.i
 function ble-update/.check-install-directory-ownership {
   if [[ ! -O $_ble_base ]]; then
     ble/util/print 'ble-update: install directory is owned by another user:' >&2

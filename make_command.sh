@@ -84,12 +84,17 @@ function sub:install {
       script=$script'\
 #\
 # Source: /ble.pp'
-      local file
-      for file in $(git ls-files src); do
-        [[ $file == *.sh ]] || continue
-        script=$script"\\
+      if [[ -s out/ble.dep ]]; then
+        script=$script'\
+'$(awk 'sub(/^  /, "") { sub(/ \\$/, "\\"); print "# Source: /" $0; }' out/ble.dep)
+      else
+        local file
+        for file in $(git ls-files src); do
+          [[ $file == *.sh ]] || continue
+          script=$script"\\
 # Source: /$file"
-      done
+        done
+      fi
     else
       script=$script'\
 #\

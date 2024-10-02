@@ -7509,6 +7509,31 @@ bash_tips
 
 2024-10-07
 
+  * make: .git に依存しない設定のために (requested by LecrisUT, blackteahamburger) [#D2290]
+    https://github.com/akinomyoga/ble.sh/issues/509
+
+    * edit: git archive で .git の代わりに commit-id を埋め込む (requested by LecrisUT)
+
+      issue title は git archive が build できないという物だが、提示されている
+      解決法は部分的な解決でしかない。結局 submodule の中身が含まれないので依然
+      として build できない。
+
+      .git に対する prerequisites は消す事にする。何故なら別に .git を作成する
+      規則を用意している訳でもないので、別に prerequisites のエラーとして処理し
+      なければならない必要性もないから。単に $(error ...) でエラーを出色すれば
+      良いだけの話である。
+
+      ble.pp の内部で解決するのも面倒なので GNUmakefile の中でまとめて git 関連
+      の情報取得を行って、環境変数経由で ble.pp に渡す事にした。
+
+    * 元々 git 前提だし git なしでビルドできる様にするのには色々困難があるので、
+      中途半端に対応しても仕方がないと考えていたが、修正しようとする人が余りに
+      も多い (しかも何故 .git repository を禁止している package manager がこん
+      なにもあるのだろうか) ので或る程度修正する事にした。
+
+    * ble.sh の依存性を git ls-files を用いて抽出しようとする部分があるが、これ
+      は out/ble.dep から依存ファイルを抜き出せば良いのでは → 実装した。
+
   * histdb: calendar の着色が消滅している。何故? [#D2289]
 
     これは既定の histdb palette の halloween の指定が誤っている為だった。10月に

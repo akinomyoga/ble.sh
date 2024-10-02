@@ -3,10 +3,14 @@
 all:
 .PHONY: all
 
+# git version
+GIT_VERSION = $(shell LANG=C git --version)
+
 # check GNU Make
 ifeq ($(.FEATURES),)
   $(error Sorry, please use a newer version (3.81 or later) of gmake (GNU Make).)
 endif
+MAKE_VERSION := $(shell LANG=C $(MAKE) --version | head -1)
 
 # check gawk
 GAWK := $(shell which gawk 2>/dev/null || bash -c 'builtin type -P gawk' 2>/dev/null)
@@ -26,7 +30,7 @@ else
   endif
 endif
 
-MWGPP:=$(GAWK) -f make/mwg_pp.awk
+MWGPP := $(GAWK) -f make/mwg_pp.awk
 
 # Note (#D2058): we had used "cp -p xxx out/xxx" to copy files to the build
 # directory, but some filesystem (ecryptfs) has a bug that the subsecond
@@ -40,21 +44,33 @@ CP := cp
 
 FULLVER := 0.4.0-devel4
 
+BLE_GIT_COMMIT_ID :=
+BLE_GIT_BRANCH :=
+ifneq ($(wildcard .git),)
+  BLE_GIT_COMMIT_ID := $(shell git show -s --format=%h)
+  BLE_GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+else ifneq ($(wildcard make/.git-archive-export.mk),)
+  ifeq ($(shell grep '\$$Format:.*\$$' make/.git-archive-export.mk),)
+    include make/.git-archive-export.mk
+  endif
+endif
+ifeq ($(BLE_GIT_COMMIT_ID),)
+  $(error Failed to determine the commit id of the current tree.  The .git directory is required to build ble.sh.)
+endif
+
 OUTDIR:=out
 
 outdirs += $(OUTDIR)
 
-# Note: the following line is a workaround for the missing
-#   DEPENDENCIES_PHONY option for mwg_pp in older Makefile
-ble-form.sh:
-
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
-$(OUTDIR)/ble.sh: ble.pp GNUmakefile | .git $(OUTDIR)
+$(OUTDIR)/ble.sh: ble.pp GNUmakefile | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT="$(@:%.sh=%.dep)" DEPENDENCIES_TARGET="$@" \
 	  FULLVER=$(FULLVER) \
-	  BUILD_GIT_VERSION="$(shell LANG=C git --version)" \
-	  BUILD_MAKE_VERSION="$(shell LANG=C $(MAKE) --version | head -1)" \
+	  BLE_GIT_COMMIT_ID="$(BLE_GIT_COMMIT_ID)" \
+	  BLE_GIT_BRANCH="$(BLE_GIT_BRANCH)" \
+	  BUILD_GIT_VERSION="$(GIT_VERSION)" \
+	  BUILD_MAKE_VERSION="$(MAKE_VERSION)" \
 	  BUILD_GAWK_VERSION="$(GAWK_VERSION)" \
 	  $(MWGPP) $< >/dev/null
 .DELETE_ON_ERROR: $(OUTDIR)/ble.sh
@@ -70,6 +86,10 @@ src/canvas.emoji.sh:
 	$(GENTABLE) emoji
 src/canvas.GraphemeClusterBreak.sh:
 	$(GENTABLE) GraphemeClusterBreak
+
+# Note: the following line is a workaround for the missing
+#   DEPENDENCIES_PHONY option for mwg_pp in older Makefile
+ble-form.sh:
 
 #------------------------------------------------------------------------------
 # lib
