@@ -67,6 +67,7 @@
 - edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
 - nsearch: support `action={load-{line,command},insert{,-line}}` (motivated by vaab) `#D2286` 32f290df
 - complete: support completion for `execute-named-command` `#D2288` xxxxxxxx
+- complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` xxxxxxxx
 
 ## Changes
 

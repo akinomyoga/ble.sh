@@ -338,7 +338,7 @@ function ble/color/g#setbg {
 }
 ## @fn ble/color/g#append g g2
 ##   g に描画属性 g2 を上書きします。
-##   @param[in,out] g
+##   @param[ref] g
 ##   @param[in] g2
 function ble/color/g#append {
   local _ble_local_g2=$2
@@ -346,7 +346,9 @@ function ble/color/g#append {
     (($1&=~(_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed)))
   ((_ble_local_g2&(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed))) &&
     (($1&=~(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed)))
-  (($1|=_ble_local_g2))
+  (($1|=_ble_local_g2&~_ble_color_gflags_Revert))
+  (($1^=_ble_local_g2&_ble_color_gflags_Revert))
+  return 0
 }
 function ble/color/g#compose {
   (($1=($2)))

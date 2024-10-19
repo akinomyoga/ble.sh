@@ -6857,17 +6857,23 @@ function ble/syntax/highlight/filetype {
 ## @dict _ble_syntax_highlight_lscolors_suffix
 ##   Those dictionaries are defined in core-syntax-def.sh
 
+_ble_syntax_highlight_lscolors=()
+_ble_syntax_highlight_lscolors_rl_colored_completion_prefix=
+
 function ble/syntax/highlight/ls_colors/.clear {
   _ble_syntax_highlight_lscolors=()
   ble/gdict#clear _ble_syntax_highlight_lscolors_ext
   ble/gdict#clear _ble_syntax_highlight_lscolors_suffix
+  _ble_syntax_highlight_lscolors_rl_colored_completion_prefix=
 }
 
 ## @fn ble/syntax/highlight/ls_colors/.register-suffix suffix value
 ##   @param[in] suffix value
 function ble/syntax/highlight/ls_colors/.register-suffix {
   local suffix=$1 value=$2
-  if [[ $suffix == .* ]]; then
+  if [[ $suffix == .readline-colored-completion-prefix ]]; then
+    _ble_syntax_highlight_lscolors_rl_colored_completion_prefix=$value
+  elif [[ $suffix == .* ]]; then
     ble/gdict#set _ble_syntax_highlight_lscolors_ext "$suffix" "$value"
   else
     ble/gdict#set _ble_syntax_highlight_lscolors_suffix "$suffix" "$value"

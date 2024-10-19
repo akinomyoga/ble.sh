@@ -7240,18 +7240,28 @@ function ble/complete/menu-complete.class/render-item {
   fi
 
   # 基本色の初期化 (Note: 高速化の為、直接 _ble_color_g2sgr を参照する)
+  if [[ :$opts: == *:selected:* ]]; then
+    ble/color/face2g menu_complete_selected
+    ble/color/g#append g0 "$ret"
+  fi
+  # @var sgrN0 sgrN1
+  #   The graphics for unmatchinig part of the completion item.  sgrN0 and
+  #   sgrN1 are specified to "ble/canvas/trace-text $esc external-sgr" as sgr0
+  #   and sgr1; sgr0 specifies the default graphics and sgr1 specifies the
+  #   graphics for the visible representation of the control characters.
   local sgrN0= sgrN1= sgrB0= sgrB1=
-  [[ :$opts: == *:selected:* ]] && ((g0^=_ble_color_gflags_Revert))
-  ret=${_ble_color_g2sgr[g=g0]}
-  [[ $ret ]] || ble/color/g2sgr "$g"; sgrN0=$ret
-  ret=${_ble_color_g2sgr[g=g0^_ble_color_gflags_Revert]}
-  [[ $ret ]] || ble/color/g2sgr "$g"; sgrN1=$ret
+  ble/color/g2sgr "$g0"; sgrN0=$ret
+  ble/color/g2sgr "$((g0^_ble_color_gflags_Revert))"; sgrN1=$ret
+  # @var sgrB0 sgrB1
+  #   The graphics for matching part of the completion item.
   if ((${#m[@]})); then
     # 一致色の初期化
-    ret=${_ble_color_g2sgr[g=g0|_ble_color_gflags_Bold]}
-    [[ $ret ]] || ble/color/g2sgr "$g"; sgrB0=$ret
-    ret=${_ble_color_g2sgr[g=(g0|_ble_color_gflags_Bold)^_ble_color_gflags_Revert]}
-    [[ $ret ]] || ble/color/g2sgr "$g"; sgrB1=$ret
+    g=$g0
+    ret=$_ble_syntax_highlight_lscolors_rl_colored_completion_prefix
+    [[ $ret ]] || ble/color/face2g menu_complete_match
+    ble/color/g#append g "$ret"
+    ble/color/g2sgr "$g"; sgrB0=$ret
+    ble/color/g2sgr "$((g^_ble_color_gflags_Revert))"; sgrB1=$ret
   fi
 
   # 前置部分の出力

@@ -1926,6 +1926,21 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-10-19
+
+  * [保留] complete: menu-complete の背景色
+
+    Ref #D2291 fish には pager_background や pager_secondary_background がある。
+    各項目の文字列の pager_background は必要ない気がするが、各項目の領域の背景
+    色を指定できるようにしても良い気はする。
+
+    ただし、pager_secondary_background (交互に背景色を変える) などによって項目
+    の配置ごとに背景色が異なる様にすると実装上の問題が生じる。現在の実装では
+    esc 生成と出力サイズの計測を行って、それを元にして配置を決定している。背景
+    色を配置を決定した後に決める様にすると、esc を再生成しなければならないので
+    無駄に処理を二回しなければならなくなる。其処までの需要があるとは思われない
+    ので、fish の pager_secondary_background は対応しなくて良い気がする。
+
 2024-09-25
 
   * complete: ble/complete/candidates/filter#test 候補毎の COMPV の評価方法
@@ -7506,6 +7521,144 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-10-19
+
+  * complete: make menu-item styles configurable (requested by simonLeary42) [#D2291]
+    https://github.com/akinomyoga/ble.sh/issues/519
+
+    * done: fish の menu 関連の着色を確認する
+
+      HighlightRole::pager_prefix => L!("fish_pager_color_prefix"),
+        これが今回の色。
+
+      HighlightRole::pager_progress => L!("fish_pager_color_progress"),
+        これは処理中の表示の着色に使う色。
+
+      HighlightRole::pager_background => L!("fish_pager_color_background"),
+        全体の背景色? これは必要だろうか? でも secondary や selected などで同様
+        のものがある事を考えるとやはりそれぞれの項目の色? でもそれなら普通に
+        --background= で指定すれば良いはず。
+
+      HighlightRole::pager_completion => L!("fish_pager_color_completion"),
+        謎。fg は全ての候補に適用される。bg は選択された項目だけに適用されてい
+        る。background と conflict しないのか?
+
+      HighlightRole::pager_description => L!("fish_pager_color_description"),
+        これは既に menu_desc_default がある。
+
+      HighlightRole::pager_secondary_background => L!("fish_pager_color_secondary_background"),
+      HighlightRole::pager_secondary_prefix => L!("fish_pager_color_secondary_prefix"),
+      HighlightRole::pager_secondary_completion => L!("fish_pager_color_secondary_completion"),
+      HighlightRole::pager_secondary_description => L!("fish_pager_color_secondary_description"),
+
+      HighlightRole::pager_selected_background => L!("fish_pager_color_selected_background"),
+      HighlightRole::pager_selected_prefix => L!("fish_pager_color_selected_prefix"),
+      HighlightRole::pager_selected_completion => L!("fish_pager_color_selected_completion"),
+      HighlightRole::pager_selected_description => L!("fish_pager_color_selected_description"),
+
+      意味が分からない。コードを見てみたがそれでも良く分からない。background は
+      bg を決定するだけの為に使われている様に見える。そして {selected_,
+      secondary_, }background は排他的に指定されている?
+
+      prefix の着色には prefix を、それ以外の部分については completion を使って
+      いる。うーん。fg と bg は独立に指定している? ちょっと意味が分からない。
+      https://fishshell.com/docs/current/interactive.html に一応説明があった。
+      secondary に関しては候補について交互に着色を切り替えるための物らしい。背
+      景色ぐらいはこれで指定できる様にして良い気がする。
+
+      fg = prefix || completion で、bg = background || prefix || completion 的
+      な優先順位で決まっているという事だろうか。一方で ble.sh では候補毎に着色
+      を決められる様にしているのでこれを外部から指定するのは変な気がする (或い
+      は何も指定しなかった時の着色をこれにする?)。何れにしてもこれらは
+
+      * prefix の時の追加描画属性
+      * 選択時の追加描画属性
+
+      として実装するべきの気がする。背景色については普通に指定すれば良い。
+      secondary については背景色は指定できる様にしても良いかもしれないが、文字
+      色やスタイルまで変えるのは変な気がする。また、背景色についてはその文字の
+      位置だけではなくて領域全体に広がって指定できる様にしたい気がする。
+
+    * done: update wiki for filename_ls_colors #D2213 (e169e31d) で色々修正した
+      筈。ln=target と '.'* と '*'?* が追加されている。
+
+    * done: g#append で reverse を xor で合成するべきか、或いは加算的に合成する
+      べきか。うーん。地の文の描画属性に対して g#append で部分的な文字列の描画
+      属性を作る時には xor で合成するべきである。一方で、face の設定として
+      reverse を使う時には微妙である。うーん。xor で良い気がする。そもそも現状
+      で g#append を使う時に reverse は使っていない気がするので、振る舞いを変更
+      しても問題ないのでは?
+
+      現在の使用箇所について確認を行う。
+
+      * ble/canvas/trace/.put-sgr.draw で trace に指定した地の文に対して esc で
+        指定された着色を追加する時に使われている。これは寧ろ xor を使うべきパター
+        ンである。
+
+      * ble/highlight/layer:menu_filter/getg において menu_filter_{fixed,input}
+        の region 着色を求める時に、下の layer の着色を元にして色を決定している。
+        これは xor で良い気がする。というかこれも xor を使うべき?
+
+      * ble/syntax/highlight/ls_colors では face filename_ls_colors で指定した
+        着色の上に LS_COLORS 由来の着色を合成している。これは xor ではなくて or
+        でも良い様な気がする、というか寧ろ or の方が良いかもしれない、と思うが、
+        そもそも LS_COLORS に反転を使うのかという話もあるし、filename_ls_colors
+        を用いて一律に反転している時に、元々 LS_COLORS で指定していた物が紛れて
+        しまうというのも意図に合致するのか分からない。そう考えると xor でも or
+        でも良い様にも思われる。
+
+      現状ではこれだけでしか使われていない。
+
+      * face の合成については将来的に対応するかもしれないが、現状では未実装であ
+        る。face の合成については or の方が良いのではとも思ったが、よく考えると
+        上記のパターンと同様の使い方をする場合もあるから xor の方が良いパターン
+        もあるだろう。という事を考えるとやはり振る舞いは統一して xor にするべき
+        である。そもそも合成する場合に reverse を用いるのが非自明である。
+
+    * done; menu_complete_match, menu_complete_selected には対応した。動作も確
+      認した。
+
+    * done: .readline-colored-completion-prefix
+
+      うーん。これは現在の LS_COLORS を参照するべきか、或いは bleopt
+      filename_ls_colors に指定した値を参照するべきか。filename_ls_colors で対
+      応しようと思っていたが、考えてみれば readline は LS_COLORS の値を反映して
+      動作するのだった。filename_ls_colors は LS_COLORS という本来は ls の為の
+      変数を ble.sh に流用する時に用いる変数だったので、独立した設定にしていた。
+      一方で、.readline-colored-completion-prefix は readline 専用の項目なので
+      積極的に取り込んで良いのではないか。
+
+      と思ったが、bleopt には bleopt の設定変数があって、指定方法など考えるとそ
+      ちらの方を優先したい様にも思う。そもそも
+      *.readline-colored-completion-prefix は ble.sh の為ではなくて readline 用
+      に設定している場合もあるだろうから、積極的に設定を読みに行くのも問題があ
+      る気がする。
+
+      等の事を考えると、やはり filename_ls_colors に明示的に指定した時にだけ着
+      色が反映される用にするという事で良い気がする。
+
+      →対応した。
+
+    * reject: 背景色および交互背景色を指定できる様にする? 交互指定については背
+      景色にしか対応しない。文字色やスタイルも一緒に変えるのは変だ。
+
+      背景色に関してはその項目の文字列部分だけの背景色ではなくて、desc も含めた
+      その項目の領域の背景色にする。逆に言うとその項目の領域を明確に定義する必
+      要があるという事。マウスサポート等も考えると元より領域は定義するべきの気
+      がするのでこれ自体は問題ない。
+
+      うーん。実装を確認すると例えば align の場合には measure-item で先に各項目
+      の esc を生成しつつサイズを測り、その後で配置を決定している。つまり esc
+      を生成している時点ではどの様な配置になるか分かっていないという事になる。
+      もし交互に背景色を変えようと思ったら配置が決まった後に再度 esc の生成を実
+      行しなければならなくなり処理が倍増する。これは実装しなくて良い気がする。
+
+      一方で menu-complete を表示する領域全体の背景色を設定できる様にする可能性
+      はあるかもしれない。ただ、だからと言ってそれほど便利な気もしないので取り
+      敢えず今は対応しないという事で良い。
+
+    * done: blerc.template 及び wiki に新しく追加した face の説明を追加する。
 
 2024-10-07
 

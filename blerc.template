@@ -798,7 +798,17 @@
 #bleopt menu_desc_multicolumn_width=65
 
 
-## These faces control graphics styles used in the menu descriptions.  Face
+## These faces specifies additional graphic styles used to highlight completion
+## candidates.  Face "menu_complete_match" specifies the additional style for
+## the candidate parts matching the filtering text.  Face
+## "menu_complete_selected" specifies the additional style for the selected
+## candidate.
+
+#ble-face menu_complete_match=bold
+#ble-face menu_complete_selected=reverse
+
+
+## These faces control graphic styles used in the menu descriptions.  Face
 ## "menu_desc_default" is used as a default highlighting of the description.
 ## Face "menu_desc_type" is used for the prefix string "(type) " to indicate
 ## the type of the menu item.  Face "menu_desc_quote" is used to quote strings

@@ -682,6 +682,8 @@ ble-face -s argument_error            fg=black,bg=225
 
 # highlighting for completions
 ble-face -s auto_complete             fg=238,bg=254
+ble-face -s menu_complete_match       bold
+ble-face -s menu_complete_selected    reverse
 ble-face -s menu_desc_default         none
 ble-face -s menu_desc_type            ref:syntax_delimiter
 ble-face -s menu_desc_quote           ref:syntax_quoted

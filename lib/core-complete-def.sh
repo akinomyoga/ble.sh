@@ -151,3 +151,6 @@ ble/color/defface menu_filter_input fg=16,bg=229
 ble/color/defface menu_desc_default none
 ble/color/defface menu_desc_type    ref:syntax_delimiter
 ble/color/defface menu_desc_quote   ref:syntax_quoted
+
+ble/color/defface menu_complete_match    bold
+ble/color/defface menu_complete_selected reverse
