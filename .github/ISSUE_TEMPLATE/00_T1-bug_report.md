@@ -4,15 +4,22 @@ about: Create a report to fix problems
 
 ---
 
-**ble version**: <!-- The version and commit-hash or the result of `echo "$BLE_VERSION"` -->
-**Bash version**: <!-- The result of `echo "$BASH_VERSION ($MACHTYPE)"` -->
-<!-- Instead of the above, you can copy and paste the result of running the
-  command "ble/widget/display-shell-version" or the result of pressing
-  [Ctrl-x][Ctrl-v] in a ble.sh session with the issue. -->
+```console
+$ ble summary
 
-<!-- Describe the problem here.  If example terminal contents (in either the
-  text form or an image) are available, you may paste/insert them to explain
-  the situation more clearly.
+<!-- Include the output of the above command in the ble.sh session in which the
+  problem occurs.  If you cannot get the command result, see
+  https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issue#user-content-ble-summary
+-->
+```
+
+<!-- Describe the problem here.
+
+  Additionally, if example terminal contents (in either the text or image form)
+  are available, you may paste/insert them to explain the situation more
+  clearly.  Even with examples, please explain "what you did" and "what you
+  expect" in text.  For details, see
+  https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issue#user-content-video
 
   Note: In most cases, in reply, we will ask further questions to investigate
   the problem in detail.  Please don't hesitate to RESPOND TO THE QUESTIONS, or

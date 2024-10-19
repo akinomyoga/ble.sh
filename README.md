@@ -490,6 +490,13 @@ Basically you can simply delete the installed directory and the settings that th
 - Remove the cache directory `~/.cache/blesh` if any.
 - Remove the temporary directory `/tmp/blesh` if any [ Only needed when your system does not automatically clear `/tmp` ].
 
+## 1.7 Troubleshooting
+
+- [Performance](https://github.com/akinomyoga/ble.sh/wiki/Performance)
+  describes hints for perfomance issue is described
+- [Reportin Issues](https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issues)
+  describes information that you may check before reporting an issue.
+
 # 2 Basic settings
 
 Here, some of the settings for `~/.blerc` are picked up.

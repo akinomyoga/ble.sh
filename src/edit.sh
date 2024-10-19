@@ -4425,7 +4425,7 @@ function ble/widget/display-shell-version {
   # locale
   local q=\'
   local ret='(unset)'
-  local var line=${_ble_term_bold}locale$sgr0:
+  local var line=${bold}locale$sgr0:
   for var in _ble_bash_LANG "${!_ble_bash_LC_@}" LANG "${!LC_@}"; do
     case $var in
     (LC_ALL|LC_COLLATE) continue ;;
@@ -4441,7 +4441,7 @@ function ble/widget/display-shell-version {
   # terminal
   ret='(unset)'
   [[ ${TERM+set} ]] && ble/string#quote-word "$TERM" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
-  local i line="${_ble_term_bold}terminal$sgr0: ${sgr2}TERM$sgrV=$sgr0$ret"
+  local i line="${bold}terminal$sgr0: ${sgr2}TERM$sgrV=$sgr0$ret"
   line="$line ${sgr2}wcwidth$sgrV=$sgr0$bleopt_char_width_version-$bleopt_char_width_mode${bleopt_emoji_width:+/$bleopt_emoji_version-$bleopt_emoji_width+$bleopt_emoji_opts}"
   [[ ${MC_SID-} ]] && line="$line, ${sgrC}mc$sgr0 (${sgrV}MC_SID:$MC_SID$sgr0)"
   for i in "${!_ble_term_DA2R[@]}"; do
@@ -4459,12 +4459,12 @@ function ble/widget/display-shell-version {
     { shopt -po; shopt; } >| "$tmpfile2"
     local diff awk_script='/^[-+].*[[:space:]]on$/ {print $1} /^[-+]set -o .*$/ {print substr($0,1,1) $3}' IFS=$' \t\n'
     ble/util/assign-words diff 'ble/bin/diff -bwu "$tmpfile1" "$tmpfile2" | ble/bin/awk "$awk_script"'
-    line="${_ble_term_bold}options$sgr0: ${diff[*]}"
+    line="${bold}options$sgr0: ${diff[*]}"
 
     _ble_local_tmpfile=$tmpfile2 ble/util/assign/rmtmp
     _ble_local_tmpfile=$tmpfile1 ble/util/assign/rmtmp
   else
-    line="${_ble_term_bold}options$sgr0: ${sgr2}SHELLOPTS$sgrV=$sgr0$SHELLOPTS"
+    line="${bold}options$sgr0: ${sgr2}SHELLOPTS$sgrV=$sgr0$SHELLOPTS"
     ((_ble_bash>=40100)) && line="$line, ${sgr2}BASHOPTS$sgrV=$sgr0$BASHOPTS"
   fi
   lines[iline++]=$line

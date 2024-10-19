@@ -449,6 +449,13 @@ make INSDIR="$HOME/.local/share/blesh" install
 - キャッシュディレクトリ `~/.cache/blesh` が生成されていればそれを削除します。
 - 一時ディレクトリ `/tmp/blesh` が生成されていればそれを削除します。これは `/tmp` の内容が自動的にクリアされないシステムで必要です。
 
+## 1.7 トラブルシューティング
+
+- [Performance](https://github.com/akinomyoga/ble.sh/wiki/Performance) (英語)
+  では `ble.sh` の動作速度の改善に関する情報について説明しています。
+- [Reportin Issues](https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issues)
+  (英語) では問題報告をする前に確認しておくと良い情報を説明しています。
+
 # 2 基本設定
 
 ここでは `~/.blerc` に記述する基本的な設定を幾つか紹介します。

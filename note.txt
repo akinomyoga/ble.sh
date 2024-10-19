@@ -1926,6 +1926,154 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-12-09
+
+  * highlight: cd を bind -x 経由で実行するとコマンドキャッシュがクリアされないので
+    ./docker.sh などの着色がエラー着色のまま or 存在しないのに存在するかのよう
+    になってしまう。ディレクトリを記録して変更があればキャッシュをクリアするべき。
+
+2024-12-06
+
+  * edit: more widgets in vi_nmap (requested by excited-bore)
+    https://github.com/akinomyoga/ble.sh/issues/534
+
+    menu-complete, menu-complete-backward: これは complete と一緒に対応する必要
+    がある。
+
+    * カーソル位置をどの様に処理するのかが微妙だと思ったが、p や insert mode か
+      ら戻った時のカーソル移動やその行の最後の文字の右にカーソルをおけない事な
+      どを考えると、現在位置の右にある文字も既に入力された文字列の一部として取
+      り扱うのが自然である。
+
+    vi-undo: これは undo と全く同じで良い。Bash のソースコードを見たら単に undo
+    の関数を呼び出しているだけであった。5.2 で新しく vi-undo が追加されたのは、
+    Bash の中で存在していた synonym にちゃんと一対一対応する様に名前を付与した
+    という事なのだろう。或いは、一覧にリストされる様になったか。
+
+  * edit: url-quote-magic (requested by Bluey26):
+    https://github.com/akinomyoga/ble.sh/issues/533
+
+    magic-space 等に追加の処理を自分で登録できる枠組みを作るのが良い気がする。
+    そして、提案された機能は contrib　に実装例を追加するという形にする。
+
+  * README: シェルで実装する理由、ble.sh の目的
+
+    * Criticism にシェルで commandline editor を実装するべきではないという批判。
+      これについても何回か何処かで返信した様な気がする。うーん。これは README
+      の中で書くよりかは wiki の中に書くべきだろうか? うーん。
+
+      恐らくこのあたりだろうか。これは結局 performance に関係しての言及であって、
+      複雑なプログラムをシェルで書く事にういての議論ではない。
+
+      https://github.com/akinomyoga/ble.sh/issues/214#issuecomment-1193390781
+
+    * そもそも何故 ble.sh を現在の形に作ったのかという事を何処にも書いていない
+      気がする。これは何処かに書いても良い気がする。その議論は以下に書かれてい
+      る。
+
+      https://github.com/akinomyoga/ble.sh/issues/422#issuecomment-1986840459
+
+  * wiki: Questions-for-bug-reports.md は Reporting-Issue.md に統合する
+
+2024-11-26
+
+  * read PS1: read -e の内部で PROMPT_COMMAND によって PS1 が書き換わる
+    https://github.com/akinomyoga/ble.sh/discussions/528#discussioncomment-11339978
+
+  * menu-style: 複数行 description
+    https://github.com/akinomyoga/ble.sh/discussions/532#discussioncomment-11372936
+
+    これは preview pane 付きの menu-style と同時なのではないか。
+
+  * nsearch: nop search が無限に stack する
+    https://github.com/akinomyoga/ble.sh/issues/531#issuecomment-2499092693
+
+    同じ位置のゼロ幅一致は連続で発生しない様にするべきである
+
+  * contrib/fzf-menu: util-linux >= 2.39 を requirements に追加する
+    https://github.com/akinomyoga/ble.sh/issues/530
+
+  * wiki: bleopt line_limit_type=editor
+    https://github.com/akinomyoga/ble.sh/issues/520#issuecomment-2423335161
+
+    history_limit_length > line_limit_length
+
+  * wiki: Unresolved Issues を拾ってまとめる
+
+    既に閉じたものもそうだが、昔から開きっぱなしになっている issues の幾つかは
+    もう閉じてしまっても良いと思われる物や、解決・再現の見込みのないものがある。
+    これらは Unresolved-Issues に移動して閉じることにする。
+
+    また、閉じた物でも Information Needed ラベルのついた物も同様に確認する。
+
+  * wiki: ble/function#advice の説明を何処かに記述する。他の関数についても記述する
+    ことにする。
+
+    Functions.md という名前の wiki ページでも作成することにする。
+
+    うーん。これはまた新しいファイルを作る事になる。stuck しているので取り敢え
+    ず分割してこれは後で記述する事にする。
+
+  * complete: contrib に completion-util.bash 等を導入してそれを使って progcomp
+    設定の振る舞いを調整できる様にする。opts 経由でどのような調整を行うかを指定
+    できる様にしたい。
+
+    - timeout=MSEC
+    - timeout-auto=MSEC
+    - disable-auto
+    - subshell
+    - term-leave
+
+    等、様々な調整を追加する。
+
+    * また実装したら wiki/{Performance.md,Reporting-Issue.md} の auto-complete
+      の項目でそれぞれ引用する。
+
+  * wiki/Reporting-Issues: keylog の使い方について記述する。syntax_debug や、
+    leavar や、debug_xtrace など。
+
+    物によっては CONTRIBUTING の方に記述するべきかもしれない。特に自分で何か実
+    装しながらチェックするべきもの (make scan など)。print-variables 等もこれに
+    該当するのでは。
+
+  * wiki/Questions-for-bug-reports: Reporting Issues に統合する
+
+  * wiki/Performance.md: より詳細な設定 with contrib
+
+    * auto-complete: contrib: auto-complete/ TAB completion 用の timeout を設定
+      する関数も用意して良いのでは。
+
+    * profiler, is-stdin-ready, conditional-sync, assign 等の関数について説明を
+      用意する。下の Functions.md の項目にも注意する。
+
+    * completion setting に対して個別に set -x 及び profiling を有効にする機
+      能があっても良いのではないかという気がする。コマンドの実行結果 (入力の
+      COMP_* および出力の COMPREPLY, exit status, etc.) も記録して良いのでは。
+      それをユーザーに提供してもらう。然し、これはまた一つの大きな課題になる。
+
+      うーん。その様に考えると無限に記述することが増えるので適当な所で議論を切
+      り分ける必要がある。
+
+    * 指定した関数の時間を計測する関数? これは core-debug か
+      contrib/debug-utils 的な場所に関数を定義してそれを読んでもらう事にする。
+
+  * wiki: describe wiki page
+    https://github.com/akinomyoga/ble.sh/issues/531
+
+    empty=emulate-readline について記述する。
+
+  * wiki: Functions.md: 自動生成・抽出
+
+    本当はソースコードの記述を自動的に集める関数を作りたい気もするが、うーん。
+    沢山ある関数を全て含めるのは現実的でないし、説明も日本語の物と英語の物があ
+    る。現状では取り敢えず別々に記述することにして、必要があれば指定した関数に
+    ついてだけ抽出する機能を実装する
+
+    * reject: マニュアルに含める関数のコメントに含めるマークアップを定義する?
+      @export-doc など? と思ったがその様にしたとしてもどういう順番でマニュアル
+      に含めるのかという問題が生じる。そう思うと結局マニュアルの側でコメントを
+      参照するのが現実的ではないか。
+
 2024-10-19
 
   * [保留] complete: menu-complete の背景色
@@ -2009,12 +2157,6 @@ bash_tips
 
 2024-09-22
 
-  * [保留] starship と併用した時に初期化時に余分に prompt が表示される?
-    https://www.reddit.com/r/linuxquestions/comments/1fm84u4/the_terminal_prompt_starts_a_bit_lower_than_it/?show=original
-
-    うーん。初期プロンプトの再描画で複数行プロンプトの時に正しく処理できていな
-    い可能性? と思ったが別に問題は再現しない。
-
   * complete: bash-completion のコマンド名生成も WSL2 PATH に対して調整が必要では
 
     Ref #D2280
@@ -2027,10 +2169,46 @@ bash_tips
     気がする。後 completions/complete で compgen -A command が呼び出されている。
     なのでこれらの関数だけ上書きすれば良い?
 
+  * segment ベースのプロンプトの為の枠組み?
+    https://github.com/akinomyoga/ble.sh/discussions/503
+    https://github.com/akinomyoga/ble.sh/discussions/282
+
+    airline と同様に縮んで来た時に長さを調整する機能? airline ではどの様に実行
+    していたか確認する。基本的にはそれと同様に実行すれば良い。但し、その為には
+    単純に自分の一つ左の要素を使って境界の文字を生成すれば良いという訳ではない。
+
+    境界の種類についても幾つかから選択できる様にしたい。全体で一括で決めるので
+    はなくて個別に選べる様にする?
+
+    segment 毎に関数を定義できる様にする。ユーザーが定義できる様にする。と思っ
+    たが、単に配列に prompt sequence を記述する様にすれば良いのではないか。境界
+    についてもそれを指定する専用の prompt sequence を定義して、その中で変数に値
+    を指定するなどすれば良いのではないか。
+
+    sbp や liquidprompt や powerline などの構造を参考にする。それらの既存の
+    segments を最小限の変更で再利用できる様にする?
+
 2024-09-13
 
   * https://github.com/akinomyoga/ble.sh/discussions/500
     bashrc で多重にロードしている時に警告を出すべきでは。
+
+    警告を出すにしてもどの様にして検出すれば良いのか。例えば BASH_SOURCE を見て
+    .bashrc からどの様に呼び出されているかを記録する (source ble.sh を実行して
+    いる行数も特定しておく)。その呼出パターンが複数種類ある場合に警告を発する?
+
+    x 然し、例えばループの中で重複して呼び出している場合等には呼び出しパターン
+      は同じになるのでこの方法だと検出できない。
+
+    x また状況に応じて異なる経路で source ble.sh を実行するような設定になってい
+      る場合には、改めてユーザーが source ~/.bashrc 等をした場合に、初回と異な
+      る呼び出しのされ方をして、それに対して警告を発してしまう事になる。
+
+    例えば ble.sh が source されてから PROMPT_COMMAND が実行される迄に次の
+    source ble.sh が実行されたら警告を発する様にする? コマンドの実行回数・行番
+    号については初期化時には小さな数になっている筈である。その情報も用いて最初
+    のプロンプトよりも前に ble.sh が複数回呼び出されているという事は検出可能で
+    ある。
 
 2024-09-02
 
@@ -7521,6 +7699,144 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-11-28
+
+  * README: README 及び wiki によく行う説明をまとめる [#D2294]
+
+    * auto-complete 関連のエラーに関して説明を何処かに書くべきである。
+      CONTRIBUTING か何かに説明を書いてそれを読む様に指示する。
+
+      * done: 問題がこちらでも再現するとは限らないこと。再現することが大事ということ。
+      * done: 問題解決のために協力がほしいということ。
+
+      元々 template に書かれている内容についてもそちらに移動する? 取り敢えず最
+      低限の内容だけにして其処に記述する事にする。
+
+      * ok: fzf や skim の設定についての説明は何処かの issue comment を参照する
+        のが良い。何回かそういう説明をした気がする。
+
+        取り敢えず記述だけはした。改めてリンク先の内容を見て記述漏れの内容や未
+        だ書きたいことがないかを確認したら完了という事にする→これは良い気がす
+        る。
+
+      * done: また Performance からリンクを貼る: hang しているのは単におかしな
+        状態になったからかもしれない。
+
+      * done: auto-complete についての説明の様に書かれているが後半の殆ど全ての
+        部分は TAB completion にも当て嵌る事である。構成を調整する必要がある。
+        →適当に書き加えた。TAB completion 専用の短い section を追加した。
+
+    * done: 常に ble/widget/display-shell-version の結果を載せる様に要求する?
+      但し ble.sh をロードする事ができない、session を開始できない時に限って
+      Bash version と ble.sh version を記述する様にする。
+
+    * done: "line_limit_type=editor" の時には history_limit_length も一緒に調整
+      するべきという事を wiki, blerc.template に追記する。
+
+    * done: 未解決のまま放置されることとなった巷の問題の一覧を wiki の中に移動する。
+
+      > 溜まってきた "保留" 的な項目については一旦 wiki の何処かにまとめてしまっ
+      > て忘れる事にする? 返事のない Issue や再現できない物についてずっと Issue
+      > を開いておくのだと際限なく open issue が増えていく事になるが、それらが
+      > いつか改めて情報を得て解決されるという事はない様な気がする。また、この
+      > note.txt の中にも噂だけで再現しない項目が色々ある。それらについては一つ
+      > の文書を用意してその中に記録しておくという事にすれば良い気がする。
+
+      取り敢えず作ったが少ししか記述していない。うーん。また色々 Issues を漁る
+      のは大変である。取り敢えず Information Needed の issue は拾って良い気がす
+      るがこれも後にする。
+
+    * Performance issue に関連するページも作成すると良いかも。典型的な問題及び
+      解決法について。
+
+      https://github.com/akinomyoga/ble.sh/discussions/525
+
+      以下に書いてある様な内容についてまとめる。
+
+      done: https://github.com/akinomyoga/ble.sh/issues/457#issuecomment-2291920637
+      done: https://twitter.com/akinomyoga/status/1633101778894958595
+
+      * done: auto-complete に関しては auto-complete で補完生成を turnoff する
+        関数や、或いは background で候補生成を実行する様に変更する関数などを用
+        意しても良い。それを contrib に入れて於いて呼び出させるなど。或いは、そ
+        もそも core-complete.sh の中にある workaround についても、同様の処理は
+        実装している筈なのでそのコードを使い回せる様にするべきではないか。
+
+        https://github.com/akinomyoga/ble.sh/issues/522#issuecomment-2425293437
+
+        ここにある設定を記述する? contrib に入れるとしたら何処に入れる?
+        complete-utils.bash 的な名前の設定?
+
+      * 返信 https://www.reddit.com/r/bash/comments/1gkv8y1/modern_bash_setup/
+
+        Performance のページを用意する。それに対する pointer を提供する。
+
+        > (i can't even ctrl-c in there)
+
+        Have you checked ble.sh's README for the vi editing mode? Please check
+        [the item of `C-c` in the linked
+        page](https://github.com/akinomyoga/ble.sh/wiki/Vi-%28Vim%29-editing-mode#normalinsert-mode-c-c-cancel--discard-line).
+
+        と思ったがやはりこれは関係ない事の気がするし、いつの間にかに他の人が色々
+        別の話をしているので気にしない事にする。
+
+      * 返信 https://www.reddit.com/r/bash/comments/1gzn6gu/blesh_performance_tune_help/?show=original
+
+      * done: profiler の使い方等についても記述するべきではないか。というか、そ
+        もそも performance を改善する為にできることはないかと質問しているのは、
+        もしかしたら開発者視点での質問かもしれない。ble.sh のコードベースを修正
+        する為に何ができるかなどの意味。その為に書けることも実はたくさんあるの
+        ではないか。
+
+    x resolved: ble/widget/display-shell-version が set -o posix で正しく動作しない (reported by devidw)
+
+      ユーザーに出力結果の提供を要求する以上は set -o posix であっても動作する
+      様にしなければならない。というか、そもそも 5.3 以上では set -o posix の状
+      態だと ble/widget/display-shell-version の関数自体呼び出すことができない。
+
+      だとすると C-x C-v で結果を出力するのを主要な方法にするか? 或いは (set +o
+      posix; ble/widget/display-shell-version) という形で呼び出してもらう事にす
+      るか。然し、それは複雑過ぎる。或いはこれもまた関数名を変更して
+      _ble_widget_display_shell_version 等にするべきか。しかしその様にはしたく
+      ない。というより ble status とかで表示できる様にするか、或いは ble
+      version の中に含めるか。"ble summary" というコマンドで出力できる様にする
+      事にした。今後は "ble summary" の結果を出力してもらう事にする。
+
+    x fixed: ble/widget/display-shell-version | cat とした時に _ble_term_bold
+      だけ直接使われている為に出力の中に混入する。
+
+    * ok: 実は README 本体は何も更新していない?
+
+      * C で書けだとかシェルで実装するのは云々みたいな批判に対して。これは現時
+        点で必要という気もしないので取り敢えず別項目にして後で気が向いたら対応
+        する事にする。
+
+      * done: Performance 記事へのリンク。Limitation/Criticism に performance
+        を乗せる? 或いは最近頻出なのでもっと上の方に乗せるべきだろうか → うー
+        ん。丁度言及できそうな場所が余りない。Limitation という程 limitation で
+        もない気がするし、 performance が ble.sh が欠陥の一つとして他の本質的な
+        問題と一緒に列挙されるのも嫌な気がする。一番下に troubleshooting の項目
+        を乗せてみたがこれだと気づかないかもしれない。Basic settings の丁度上の
+        Uninstalling の下に挿入するのが良い気がしてきたので取り敢えずそうする事
+        にする。
+
+2024-11-07
+
+  * kitty で _command_offset のエラーが発生する (reported by ozmodeuz) [#D2293]
+    https://github.com/akinomyoga/ble.sh/issues/512#issuecomment-2392121827
+
+    これは kitty の側で修正されるべきである。
+
+    ? kitty が bash_completion を load していてしかし何らかの理由で失敗している
+      可能性? 実際に g grep で検索してみると bash_completion_script なるものが
+      見える。これが何なのか確認する。と思ったがこれは単に kitty が inject して
+      いる script のことをそう呼んでいるだけだった。bash-completion に一致する
+      文字列はなかった。
+
+    これは kitty に PR を提出したらすぐに merge された。
+
+    →kitty はなかなか新しい version が release されないがこれで解決という事にする。
 
 2024-10-20
 

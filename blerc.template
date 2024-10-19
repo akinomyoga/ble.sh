@@ -365,7 +365,10 @@
 ## characters exceeds the capacity.  The value `truncate` means that the
 ## command line is truncated from its end to fit into the capacity.  The value
 ## `editor` means that the widget `edit-and-execute` will be invoked to open an
-## editor to edit the command line contents.
+## editor to edit the command line contents.  When the value `editor` is
+## specified, `bleopt history_limit_length` is recommended to be less than or
+## equal to `bleopt line_limit_length`.  Otherwise, the text editor may be
+## unexpectedly executed in navigating through the history.
 
 #bleopt line_limit_type=none
 

@@ -66,8 +66,8 @@
 - edit (`ble/widget/display-shell-version`): print shell options `#D2261` 70b89e5e ed5d451b
 - edit: enable `BLE_PIPESTATUS` and `PIPESTATUS` in `PROMPT_COMMAND` and prompts (requested by mattmc3) `#D2276` 27888830
 - nsearch: support `action={load-{line,command},insert{,-line}}` (motivated by vaab) `#D2286` 32f290df
-- complete: support completion for `execute-named-command` `#D2288` xxxxxxxx
-- complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` xxxxxxxx
+- complete: support completion for `execute-named-command` `#D2288` 4fee44e6
+- complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
 
 ## Changes
 
@@ -207,7 +207,7 @@
   - histdb: support subcommands `#D2167` 4d7dd1ee
   - histdb: support `top`, `stats`, `calendar`, and `week` `#D2167` 4d7dd1ee
   - histdb: unify the color palette selection `#D2167` 4d7dd1ee
-  - histdb: fix the seasonal default palette names `#D2289` xxxxxxxx
+  - histdb: fix the seasonal default palette names `#D2289` 4fee44e6
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
@@ -224,9 +224,9 @@
 - contrib/colorglass:  color: import themes from `Gogh-Co/Gogh` (motivated by d4rkb4sh8) `#D2274` d2eb75b5
 - contrib/integration/fzf-completion: suppress unexpected quoting by compgen in dynamic completions (reported by mcepl) `#D2284` 32f290df
 - contrib/integration/fzf-initialize: use `fzf --bash` when shell integration files are not found (motivated by louiss0) `#D2285` 32f290df
-  - integration/fzf-initialize: (reported by 3ximus) `#D2285` xxxxxxxx
+  - integration/fzf-initialize: (reported by 3ximus) `#D2285` a36d13ce
 - config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` 32f290df
-- integration: add `skim` integration for completion (reported by cmm) `#D2287` xxxxxxxx
+- integration: add `skim` integration for completion (reported by cmm) `#D2287` a36d13ce
 
 ## Documentation
 
@@ -238,7 +238,8 @@
 - docs(README): add sabbrev example for named directories `#D2115` a9a21a0e
 - docs(README): note `bleopt prompt_command_changes_layout=1` `#D2196` 208eaa9d
 - docs(README): move disclaimers to a later section `#D2250` ad6f58b7
-- README: use `[[ ! ${BLE_VERSION-} ]] || ble-attach` `#D2264` xxxxxxx
+- README: use `[[ ! ${BLE_VERSION-} ]] || ble-attach` `#D2264` ed11901a
+- github: update GitHub issue templates `#D2294` xxxxxxxx
 
 ## Test
 

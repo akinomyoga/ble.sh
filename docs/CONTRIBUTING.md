@@ -6,10 +6,10 @@
 
 You can freely create an issue using the following links:
 
-- Report and fixes for bugs and performance issues [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=bug_report.md)
-- Questions on usage [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=feature_request.md)
-- Feature request [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=help.md)
-- Others (suggestions, projects, discussion, complaints, news, information or anything) [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=free_style.md)
+- Report and fixes for bugs and performance issues [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=00_T1-bug_report.md)
+- Questions on usage [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=00_T2-feature_request.md)
+- Feature request [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=00_T3-help.md)
+- Others (suggestions, projects, discussion, complaints, news, information or anything) [[Here]](https://github.com/akinomyoga/ble.sh/issues/new?template=00_T4-free_style.md)
 
 ### Pull requests
 

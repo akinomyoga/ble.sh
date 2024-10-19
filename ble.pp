@@ -2474,8 +2474,15 @@ function ble/dispatch/.help {
     '  hook    ... alias of blehook' \
     '  sabbrev ... alias of ble-sabbrev' \
     '  palette ... alias of ble-color-show' \
+    '' \
+    '  # Diagnostics' \
+    '  summary ... Summarize the current shell setup' \
     ''
 }
+function ble/dispatch:summary {
+  ble/widget/display-shell-version
+}
+
 function ble/dispatch {
   if (($#==0)); then
     [[ $_ble_attached && ! $_ble_edit_exec_inside_userspace ]]
@@ -2499,14 +2506,33 @@ function ble/dispatch {
   (version|--version) ble/util/print "ble.sh, version $BLE_VERSION (noarch)" ;;
   (check|--test) ble/base/sub:test "$@" ;;
   (*)
-    if ble/string#match "$cmd" '^[-a-zA-Z0-9]+$' && ble/is-function "ble-$cmd"; then
-      "ble-$cmd" "$@"
-    elif ble/is-function ble/bin/ble; then
-      ble/bin/ble "$cmd" "$@"
-    else
-      ble/util/print "ble (ble.sh): unrecognized subcommand '$cmd'." >&2
-      return 2
+    if ble/string#match "$cmd" '^[-a-zA-Z0-9]+$'; then
+      if ble/is-function "ble/dispatch:$cmd"; then
+        "ble/dispatch:$cmd" "$@"
+        return "$?"
+      elif ble/is-function "ble-$cmd"; then
+        "ble-$cmd" "$@"
+        return "$?"
+      fi
     fi
+
+    if ble/is-function ble/bin/ble; then
+      # There seems to be an existing command "ble" for BLE (Bluetooth Low
+      # Energy) which has the following subcommands [1]: abort, begin,
+      # callback, characteristics, close, connect, descriptors, disable,
+      # disconnect, dread, dwrite, enable, equal, execute, expand, getrssi,
+      # info, mtu, pair, read, reconnect, scanner, services, shorten, start,
+      # stop, unpair, userdata, write.  If we receive an unknown subcommand and
+      # an external command "ble" exists, we redirect the call to the external
+      # command "ble".
+      #
+      # [1] https://www.androwish.org/home/wiki?name=ble+command
+      ble/bin/ble "$cmd" "$@"
+      return "$?"
+    fi
+
+    ble/util/print "ble (ble.sh): unrecognized subcommand '$cmd'." >&2
+    return 2
   esac
 }
 function ble {
