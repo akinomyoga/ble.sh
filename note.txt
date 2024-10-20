@@ -7522,6 +7522,35 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-10-20
+
+  * complete: macOS awk の "towc: multibyte conversion failure on: '...'"エラー (reported by devidw) [#D2292]
+    https://github.com/akinomyoga/ble.sh/issues/515
+
+    Ref #D1974
+
+    x fixed: macOS awk の workaround として LC_CTYPE を指定していたが単に local
+      を指定しているだけなので呼び出している awk に対してちゃんと環境変数として
+      渡せていなかったのではないか。local -x として宣言する必要がある。
+
+      更に LC_CTYPE だけでなく LC_COLLATE についてもちゃんと指定しないと正規表
+      現の中にある範囲指定が正しく動作しない (可能性がある)。
+
+      https://github.com/akinomyoga/ble.sh/issues/515#issuecomment-2425177424
+      を見る限りは LC_CTYPE さえ指定していれば問題は発生しない様である。なので、
+      報告された問題は、本来、前回の workaround の LC_CTYPE が正しく export さ
+      れていれば発生しなかった筈の物である。
+
+    x fixed: nawk の判定が正しく動作していない。
+
+      "$path" -W version || "$path" --version
+
+      で version を取得しようとしているが、nawk は "-W" に対応してないというエ
+      ラーメッセージが出るにも拘らず 'version' を AWK script だと思って実行し、
+      成功する。従って "$path" --version が呼び出されずに version 文字列の取得
+      に失敗する。"$path" -W version の実行結果を確認して、それが空だった時は
+      "$path" --version を使う様に変更する事にした。
+
 2024-10-19
 
   * complete: make menu-item styles configurable (requested by simonLeary42) [#D2291]

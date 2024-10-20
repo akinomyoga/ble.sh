@@ -146,6 +146,7 @@
 - mandb: fix incorrect use of `groff` in place of `nroff` `#D2245` e0ffc418
 - edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 670c7ea0
 - util (`ble-import`): do not specify arguments to `-C callback` `#D2277` 4f0e94a2
+- main: fix issues with `ble/bin/awk` (reported by devidw) `#D2292` xxxxxxxx
 
 ## Compatibility
 

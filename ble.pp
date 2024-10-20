@@ -1354,8 +1354,10 @@ function ble/bin/awk/.instantiate {
   if ble/bin#get-path nawk; then
     [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     # Note: Some distribution (like Ubuntu) provides gawk as "nawk" by
-    # default. To avoid wrongly picking gawk as nawk, we need to check the
-    # version output from the command.
+    # default. To avoid wrongly picking up gawk as nawk, we need to check the
+    # version output from the command.  2024-12-10 In KaKi87's server [1],
+    # Debian 12 provided mawk as "nawk".
+    # [1] https://github.com/akinomyoga/ble.sh/issues/535#issuecomment-2528258996
     local version
     ble/util/assign version '"$path" -W version' 2>/dev/null </dev/null
     if [[ $version != *'GNU Awk'* && $version != *mawk* ]]; then
@@ -1393,7 +1395,8 @@ function ble/bin/awk/.instantiate {
     elif ble/bin#get-path awk; then
       [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       local version
-      ble/util/assign version '"$path" -W version || "$path" --version' 2>/dev/null </dev/null
+      ble/util/assign version '"$path" -W version' 2>/dev/null </dev/null && [[ $version ]] ||
+        ble/util/assign version '"$path" --version' 2>/dev/null </dev/null
       if [[ $version == *'GNU Awk'* ]]; then
         _ble_bin_awk_type=gawk
       elif [[ $version == *mawk* ]]; then
@@ -1411,9 +1414,9 @@ function ble/bin/awk/.instantiate {
         #   る。テスト不可能だが、そもそも nawk は UTF-8 に対応していない前提な
         #   ので、取り敢えず LC_CTYPE=C で実行する。
         function ble/bin/awk {
-          local LC_ALL= LC_CTYPE=C 2>/dev/null
+          local -x LC_ALL= LC_CTYPE=C LC_COLLATE=C 2>/dev/null
           /usr/bin/awk -v AWKTYPE=nawk "$@"; local ext=$?
-          ble/util/unlocal LC_ALL LC_CTYPE 2>/dev/null
+          ble/util/unlocal LC_ALL LC_CTYPE LC_COLLATE 2>/dev/null
           return "$ext"
         }
       elif [[ $_ble_bin_awk_type == [gmn]awk ]] && ! ble/is-function "ble/bin/$_ble_bin_awk_type" ; then
