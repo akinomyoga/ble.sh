@@ -3941,8 +3941,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       }
     }
 
-    function mandb_process_items(items, _, i, n, items_count, item, name, entry, record, desc, option, optarg, suffix) {
-      n = length(items);
+    function mandb_process_items(items, n, _, i, items_count, item, name, entry, record, desc, option, optarg, suffix) {
       items_count = 0;
       mandb_count = 0;
       for (i = 1; i <= n; i++) {
@@ -3989,8 +3988,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
     # filters
 
     # uniq, remove empty
-    function uniq_items(items, _, n, m, i, item, uniq) {
-      n = length(items);
+    function uniq_items(items, n, _, m, i, item, uniq) {
       m = 0;
       for (i = 1; i <= n; i++) {
         item = items[i];
@@ -4003,8 +4001,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
     }
 
     # filter by regex, restore if nothing matches
-    function filter_items_by_regex(items, rex_filter, _, n, m, i, item) {
-      n = length(items);
+    function filter_items_by_regex(items, n, rex_filter, _, m, i, item) {
       m = 0;
       for (i = 1; i <= item_count; i++) {
         item = items[i];
@@ -4049,7 +4046,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       }
 
       # 1. uniq
-      item_count = uniq_items(items);
+      item_count = uniq_items(items, item_count);
 
       # 2. rtrim
       if (c_enable_rtrim) {
@@ -4059,7 +4056,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
 
       # 3. filter-by-prefix
       if (c_enable_filter) {
-        item_count = filter_items_by_regex(items, c_rex_filter);
+        item_count = filter_items_by_regex(items, item_count, c_rex_filter);
       }
 
       # 4. sort
@@ -4073,7 +4070,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       # 5. mandb
       has_mandb = 0;
       if (c_enable_mandb) {
-        item_count = mandb_process_items(items);
+        item_count = mandb_process_items(items, item_count);
         has_mandb = mandb_count != 0;
       }
 

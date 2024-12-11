@@ -195,6 +195,7 @@
 - mandb: process less formatting sequences in parsing `--help` `#D2244` 60d36ba5
 - mandb: hook into bash-completion's `_comp_command_offset` `#D2255` cbcce625
 - canvas: update tables for Unicode 16.0.0 `#D2283` 5b43ca3f 25a10a6f
+- complete: work around `mawk <= 1.3.4-20200525` type-inference bug (reported by KaKi87) `#D2295` xxxxxxxx
 
 ## Contrib
 

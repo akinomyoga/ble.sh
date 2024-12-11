@@ -7700,6 +7700,21 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-12-11
+
+  * complete: mawk-1.3.4-20230525 以前でプログラム補完が全く効かない (reported by KaKi87) [#D2295]
+    https://github.com/akinomyoga/ble.sh/issues/535
+
+    どうも mawk-1.3.4-20230525 以前では関数引数が配列の時に a[] よりも前に
+    length(a) があると、勝手にその引数はスカラー文字列と判定してコンパイルを実
+    行する様である。そしてこの振る舞いはずっと昔からだった様である。これまで報
+    告を受けなかったのは、gawk が入っているシステムでは mawk よりも gawk を優先
+    してこの部分の処理で使っていたため。git clone してビルドする方式だと何れに
+    しても gawk が要求されるので、殆どのユーザーは gawk をいれていたのだった。
+    一方で、報告者は nightly version を使っていた。
+
+    取り敢えず修正した。動作確認もした。
+
 2024-11-28
 
   * README: README 及び wiki によく行う説明をまとめる [#D2294]
@@ -7781,7 +7796,8 @@ bash_tips
         と思ったがやはりこれは関係ない事の気がするし、いつの間にかに他の人が色々
         別の話をしているので気にしない事にする。
 
-      * 返信 https://www.reddit.com/r/bash/comments/1gzn6gu/blesh_performance_tune_help/?show=original
+      * done; 返信 https://www.reddit.com/r/bash/comments/1gzn6gu/blesh_performance_tune_help/?show=original
+      * done: 返信 https://github.com/akinomyoga/ble.sh/discussions/525
 
       * done: profiler の使い方等についても記述するべきではないか。というか、そ
         もそも performance を改善する為にできることはないかと質問しているのは、
