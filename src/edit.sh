@@ -11597,7 +11597,8 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
         local content cmd
         ble/util/readfile content "$file"
         >| "$file"
-        for cmd in $content; do
+        ble/string#split-words content "$content"
+        for cmd in "${content[@]}"; do
           case $cmd in
           (eof)
             # C-d

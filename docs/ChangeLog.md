@@ -20,7 +20,7 @@
     - progcomp: fix a bug that `x` at the end of the last completion is trimmed `#D2308` xxxxxxxx
   - main: fix attach failure with `--attach=prompt` in Bash 5.3 POSIX mode `#D2267` 49845707
     - syntax: fix a problem that `$_` is not preserved `#D2269` e053690d
-  - keymap/vi: support bash-5.3 readline bindable function `bash-vi-complete` in `vi_nmap` `#D2305` xxxxxxxx
+  - keymap/vi: support bash-5.3 readline bindable function `bash-vi-complete` in `vi_nmap` `#D2305` 55e0ee71
 - bgproc: support opts `kill9-timeout=TIMEOUT` `#D2034` 3ab41652
 - progcomp(cd): change display name and support mandb desc (requested by EmilySeville7cfg) `#D2039` 74402098
 - cmdspec: add completion options for builtins (motivated by EmilySeville7cfg) `#D2040` 9bd24691
@@ -71,10 +71,10 @@
 - complete: support completion for `execute-named-command` `#D2288` 4fee44e6
 - complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
 - edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` 37291ff1
-- edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` xxxxxxxx
-- keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` xxxxxxxx
-- edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` xxxxxxxx
-- edit: support readline bindable function `paste-from-buffer` in more environments `#D2307` xxxxxxxx
+- edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` 99af0ece
+- keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` d7ec488a
+- edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33
+- edit: support readline bindable function `paste-from-clipboard` in more environments `#D2307` 17646524
 
 ## Changes
 
@@ -101,7 +101,7 @@
 - complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` 6a426954
 - make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` 31f264ad
 - edit: revert edits with widget `discard-line` (reported by dezza) `#D2301` 3b2b4b81
-- vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` xxxxxxxx
+- vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
 
 ## Fixes
 
@@ -299,6 +299,7 @@
 - global: normalize quoting of function names of the form `prefix:$name` `#D2296` 3d7c98bb
 - global: use `[:blank:]` instead of `[:space:]` `#D2299` e2fd8f0f
 - global: rename `ret` not used as `REPLY` `#D2300` 86cbf78e
+- global: avoid raw word splitting `#D2309` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

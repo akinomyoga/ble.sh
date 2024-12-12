@@ -7730,6 +7730,11 @@ bash_tips
 
 2024-12-30
 
+  * global: avoid raw word splitting [#D2309]
+
+    未だ $bytes 等の様に quote されていない箇所があって気になるので、
+    "ble/string#split-words" や "ble/util/assign-words" を使う様に修正する。
+
   * progcomp: fix a bug that "x" at the end of the last completion is trimmed [#D2308]
 
     l ~/.opt/tilix を補完しようとすると何故か "~/.opt/tili " になってしまう。色々

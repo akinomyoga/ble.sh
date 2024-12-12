@@ -3,6 +3,7 @@
 --exclude=./?.sh
 --exclude=./test/install
 --exclude=./ble.sh
+--exclude=./gh[0-9][0-9][0-9][0-9]{,.*}
 GNUmakefile
 ble.pp
 blerc.template

@@ -4016,7 +4016,7 @@ else
       local fmt=$3 time=$4
       ble/util/assign "$2" "ble/bin/date +\"\$fmt\" $time"
     else
-      ble/bin/date +"$1" $2
+      ble/bin/date +"$1" ${2+"$2"}
     fi
   }
 fi
@@ -7716,14 +7716,14 @@ else
     fi
 
     local bytes byte
-    ble/util/assign bytes '
+    ble/util/assign-words bytes '
       local IFS=
       while ble/bash/read -n 1 byte; do
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
       IFS=$_ble_term_IFS
     '
-    ble/encoding:"$bleopt_input_encoding"/b2c $bytes
+    ble/encoding:"$bleopt_input_encoding"/b2c "${bytes[@]}"
   }
 fi
 

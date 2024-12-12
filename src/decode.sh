@@ -1330,7 +1330,9 @@ function ble-decode-char/.getent {
   if [[ $csistat && ! ${ent%_} ]]; then
     if ((csistat==_ble_decode_KCODE_ERROR)); then
       if [[ $bleopt_decode_error_cseq_vbell ]]; then
-        local ret; ble-decode-unkbd ${_ble_decode_char2_seq//_/ } $char
+        local ret
+        ble/string#split ret "${_ble_decode_char2_seq//_/ } $char"
+        ble-decode-unkbd "${ret[@]}"
         ble/term/visible-bell "unrecognized CSI sequence: $ret"
       fi
       [[ $bleopt_decode_error_cseq_abell ]] && ble/term/audible-bell
@@ -4178,13 +4180,13 @@ function ble/builtin/bind/.process {
         [[ -s "$_ble_base_run/$$.bind.save" ]] &&
           source "$_ble_base_run/$$.bind.save"
         [[ $opt_print ]] &&
-          builtin bind ${opt_keymap:+-m $opt_keymap} -$opt_print
+          builtin bind ${opt_keymap:+-m "$opt_keymap"} -"$opt_print"
         declare rlfunc
         for rlfunc in "${opt_queries[@]}"; do
-          builtin bind ${opt_keymap:+-m $opt_keymap} -q "$rlfunc"
+          builtin bind ${opt_keymap:+-m "$opt_keymap"} -q "$rlfunc"
         done )
     elif [[ $opt_print ]]; then
-      builtin bind ${opt_keymap:+-m $opt_keymap} -$opt_print
+      builtin bind ${opt_keymap:+-m "$opt_keymap"} -"$opt_print"
     fi
   fi
 
