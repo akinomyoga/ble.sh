@@ -493,7 +493,7 @@ Basically you can simply delete the installed directory and the settings that th
 ## 1.7 Troubleshooting
 
 - [Performance](https://github.com/akinomyoga/ble.sh/wiki/Performance)
-  describes hints for perfomance issue is described
+  describes hints for perfomance issue.
 - [Reportin Issues](https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issues)
   describes information that you may check before reporting an issue.
 
@@ -750,6 +750,8 @@ The list of widgets is shown by the following command:
 ```console
 $ ble-bind -L
 ```
+
+Descriptions of widgets can be found in the manual on the wiki.
 
 If you want to run multiple widgets with a key, you can define your own widget by creating a function of the name `ble/widget/YOUR_WIDGET_NAME`
 as illustrated in the following example.

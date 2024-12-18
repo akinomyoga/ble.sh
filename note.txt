@@ -7714,6 +7714,16 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-12-20
+
+  * main: work around macOS sed (reported by Mossop) [#D2298]
+    https://github.com/akinomyoga/ble.sh/issues/538
+
+    macOS awk と同様の問題があるようだ。バイナリデータがあると問答無用で失敗し
+    何も実行しない。取り敢えず locale に C を指定して動くかどうか確認する。もし
+    かすると、encoding 固定で locale を C にしても動かない可能性もあるが、もし
+    そうだったらそれは macOS が悪い。
+
 2024-12-18
 
   * edit: 履歴移動を行った時のカーソル位置の設定 (requested by miltieIV2) [#D2297]

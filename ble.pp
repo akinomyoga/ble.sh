@@ -1436,11 +1436,44 @@ function ble/bin/awk {
   fi
 }
 
-# Do not overwrite by .freeze-utility-path
+# Do not overwrite by ble/bin#freeze-utility-path
 function ble/bin/.frozen:awk { return 0; }
 function ble/bin/.frozen:nawk { return 0; }
 function ble/bin/.frozen:mawk { return 0; }
 function ble/bin/.frozen:gawk { return 0; }
+
+if [[ $OSTYPE == darwin* ]]; then
+  function ble/bin/sed/.instantiate {
+    local path=
+    ble/bin#get-path sed || return 1
+
+    if [[ $path == /usr/bin/sed ]]; then
+      # macOS sed seems to have the same issue as macOS awk.  In macOS, we
+      # always run "sed" in the C locale.
+      function ble/bin/sed {
+        local -x LC_ALL= LC_CTYPE=C LC_COLLATE=C 2>/dev/null
+        /usr/bin/sed "$@"; local ext=$?
+        ble/util/unlocal LC_ALL LC_CTYPE LC_COLLATE 2>/dev/null
+        return "$ext"
+      }
+    else
+      [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
+      local q=\' Q="'\''"
+      builtin eval "function ble/bin/sed { '${path//$q/$Q}' \"\$@\"; }"
+    fi
+    return 0
+  }
+  function ble/bin/sed {
+    if ble/bin/sed/.instantiate; then
+      ble/bin/sed "$@"
+    else
+      command sed "$@"
+    fi
+  }
+  function ble/bin/.frozen:sed { return 0; }
+else
+  function ble/bin/sed/.instantiate { return 0; }
+fi
 
 ## @fn ble/bin/awk0
 ##   awk implementation that supports NUL record separator
@@ -2347,6 +2380,7 @@ bleopt/declare -v debug_xtrace_ps4 '+ '
 ble/bin#freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 ble/bin#freeze-utility-path man
 ble/bin#freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
+ble/bin/sed/.instantiate
 
 ble/function#trace trap ble/builtin/trap ble/builtin/trap/finalize
 ble/function#trace ble/builtin/trap/.handler ble/builtin/trap/invoke ble/builtin/trap/invoke.sandbox
