@@ -2702,7 +2702,7 @@ function ble/widget/vi-command/goto-global-mark.impl {
       ble/widget/vi-command/bell
       return 1
     fi
-    ble-edit/history/goto "${data[0]}"
+    ble-edit/history/goto "${data[0]}" point=near
   fi
 
   # find position by data[1]:data[2]
@@ -4068,18 +4068,17 @@ function ble/widget/vi-command/.history-goto {
     return 1
   fi
 
+  local point_opts point point_x
+  if ((new_index>old_index)); then
+    point_opts=forward
+  else
+    point_opts=backward
+  fi
+
   ble-edit/history/goto "$new_index"
 
   # adjust the cursor position
-  local ret
-  if ((new_index<old_index)); then
-    ble-edit/content/find-logical-eol 0 "$((nline-count-1))"
-    ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
-  else
-    ble-edit/content/find-logical-bol 0 "$count"
-  fi
-  _ble_edit_ind=$ret
-
+  ble/keymap:vi/needs-eol-fix && ((_ble_edit_ind--))
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -5568,7 +5567,7 @@ function ble/widget/vi-command/search.core {
     if ((r==0)); then
       local new_index; ble/history/get-index -v new_index
       [[ $index != "$new_index" ]] &&
-        ble-edit/history/goto "$index"
+        ble-edit/history/goto "$index" point=none
       if ((opt_backward)); then
         local i=${#_ble_edit_str}
         ble/keymap:vi/needs-eol-fix "$i" && ((i--))

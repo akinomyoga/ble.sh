@@ -174,7 +174,7 @@ function bleopt/check:edit_line_type {
 }
 
 function ble/edit/performs-on-graphical-line {
-  [[ $edit_line_type == graphical ]] || return 1
+  [[ $bleopt_edit_line_type == graphical ]] || return 1
   ble/textmap#is-up-to-date && return 0
   ((bleopt_edit_forced_textmap)) || return 1
   ble/widget/.update-textmap
@@ -5814,18 +5814,31 @@ function ble/widget/kill-logical-line {
   ((bol<eol)) && ble/widget/.kill-range "$bol" "$eol"
 }
 
+## @fn ble/widget/forward-history-line.impl arg opts
 function ble/widget/forward-history-line.impl {
-  local arg=$1
+  local arg=$1 opts=$2
   ((arg==0)) && return 0
 
-  local rest=$((arg>0?arg:-arg))
   if ((arg>0)); then
     if [[ ! $_ble_history_prefix && ! $_ble_history_load_done ]]; then
       # 履歴を未だロードしていないので次の項目は存在しない
+      _ble_edit_ind=${#_ble_edit_str}
       ble/widget/.bell 'end of history'
       return 1
     fi
   fi
+
+  # Handle "history_default_point" in this function instead of using the
+  # handling by "ble-edit/history/goto"
+  local point_opts point point_x
+  if ((arg>0)); then
+    opts=$opts:linewise:forward
+  else
+    opts=$opts:linewise:backward
+  fi
+  ble-edit/history/goto/.prepare-point "$opts"
+
+  local rest=$((arg>0?arg:-arg))
 
   ble/history/initialize
   local index=$_ble_history_INDEX
@@ -5838,21 +5851,17 @@ function ble/widget/forward-history-line.impl {
 
   while ((expr_next)); do
     if ((--rest<=0)); then
-      ble-edit/history/goto "$index" # 位置は goto に任せる
-      return "$?"
+      ble-edit/history/goto "$index" point=none
+      ble-edit/history/goto/.set-point 0
+      return 0
     fi
 
     local entry; ble/history/get-edited-entry "$index"
     if [[ $entry == *$'\n'* ]]; then
       local ret; ble/string#count-char "$entry" $'\n'
       if ((rest<=ret)); then
-        ble-edit/history/goto "$index"
-        if ((arg>0)); then
-          ble-edit/content/find-logical-eol 0 "$rest"
-        else
-          ble-edit/content/find-logical-eol "${#entry}" "$((-rest))"
-        fi
-        _ble_edit_ind=$ret
+        ble-edit/history/goto "$index" point=none
+        ble-edit/history/goto/.set-point "$rest"
         return 0
       fi
       ((rest-=ret))
@@ -5860,11 +5869,11 @@ function ble/widget/forward-history-line.impl {
   done
 
   if ((arg>0)); then
-    ble-edit/history/goto "$count"
+    ble-edit/history/goto "$count" point=none
     _ble_edit_ind=${#_ble_edit_str}
     ble/widget/.bell 'end of history'
   else
-    ble-edit/history/goto 0
+    ble-edit/history/goto 0 point=none
     _ble_edit_ind=0
     ble/widget/.bell 'beginning of history'
   fi
@@ -5913,6 +5922,12 @@ function ble/widget/forward-logical-line.impl {
     return 0
   fi
 
+  # 履歴項目の移動を行う場合
+  if [[ :$opts: == *:history:* && ! $_ble_edit_mark_active ]]; then
+    ble/widget/forward-history-line.impl "$arg" logical
+    return "$?"
+  fi
+
   # 取り敢えず移動できる所まで移動する
   if ((arg>0)); then
     ble-edit/content/find-logical-eol "$bol2"
@@ -5921,18 +5936,13 @@ function ble/widget/forward-logical-line.impl {
   fi
   _ble_edit_ind=$ret
 
-  # 履歴項目の移動を行う場合
-  if [[ :$opts: == *:history:* && ! $_ble_edit_mark_active ]]; then
-    ble/widget/forward-history-line.impl "$arg"
-    return "$?"
-  fi
-
   # 移動先行がない場合は bell
   if ((arg>0)); then
     ble/widget/.bell 'end of string'
   else
     ble/widget/.bell 'beginning of string'
   fi
+
   return 0
 }
 function ble/widget/forward-logical-line {
@@ -5946,9 +5956,9 @@ function ble/widget/backward-logical-line {
   ble/widget/forward-logical-line.impl "$((-arg))" "$opts"
 }
 
-## @fn ble/keymap:emacs/find-graphical-eol [index [offset]]
+## @fn ble-edit/content/find-graphical-eol [index [offset]]
 ##   @var[out] ret
-function ble/keymap:emacs/find-graphical-eol {
+function ble-edit/content/find-graphical-eol {
   local axis=${1:-$_ble_edit_ind} arg=${2:-0}
   local x y index
   ble/textmap#getxy.cur "$axis"
@@ -5972,7 +5982,7 @@ function ble/widget/beginning-of-graphical-line {
 function ble/widget/end-of-graphical-line {
   ble/textmap#is-up-to-date || ble/widget/.update-textmap
   local arg; ble-edit/content/get-arg 1
-  local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" "$((arg-1))"
+  local ret; ble-edit/content/find-graphical-eol "$_ble_edit_ind" "$((arg-1))"
   _ble_edit_ind=$ret
 }
 
@@ -5990,7 +6000,7 @@ function ble/widget/kill-backward-graphical-line {
     ((index==_ble_edit_ind&&index>0&&index--))
     ble/widget/.kill-range "$index" "$_ble_edit_ind"
   else
-    local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" "$((-arg))"
+    local ret; ble-edit/content/find-graphical-eol "$_ble_edit_ind" "$((-arg))"
     ble/widget/.kill-range "$ret" "$_ble_edit_ind"
   fi
 }
@@ -6031,25 +6041,30 @@ function ble/widget/forward-graphical-line.impl {
   local arg=$1 opts=$2
   ((arg==0)) && return 0
 
+  local old_edit_ind=$_ble_edit_ind
   local x y index ax ay
   ble/textmap#getxy.cur "$_ble_edit_ind"
   ble/textmap#get-index-at "$x" "$((y+arg))"
   ble/textmap#getxy.cur --prefix=a "$index"
   ((arg-=ay-y))
-  _ble_edit_ind=$index # 何れにしても移動は行う
 
   # 現在の履歴項目内で移動が完結する場合
-  ((arg==0)) && return 0
+  if ((arg==0)); then
+    _ble_edit_ind=$index
+    return 0
+  fi
 
   # 履歴項目の移動を行う場合
   if [[ :$opts: == *:history:* && ! $_ble_edit_mark_active ]]; then
-    ble/widget/forward-history-line.impl "$arg"
+    ble/widget/forward-history-line.impl "$arg" graphical
     return "$?"
   fi
 
   if ((arg>0)); then
+    _ble_edit_ind=${#_ble_edit_str}
     ble/widget/.bell 'end of string'
   else
+    _ble_edit_ind=0
     ble/widget/.bell 'beginning of string'
   fi
   return 0
@@ -8607,8 +8622,44 @@ function ble/widget/print-keyboard-macro {
 #------------------------------------------------------------------------------
 # **** history ****                                                    @history
 
-bleopt/declare -v history_preserve_point ''
+bleopt/declare -v history_default_point 'end'
+function bleopt/check:history_default_point {
+  case $value in
+  (begin|end|near|far|preserve) return 0 ;;
+  (beginning-of-line|end-of-line|preserve-column) return 0 ;;
+  (beginning-of-logical-line|end-of-logical-line|preserve-logical-column) return 0 ;;
+  (beginning-of-graphical-line|end-of-graphical-line|preserve-graphical-column) return 0;;
+  (*)
+    ble/util/print "bleopt: Unrecognized value history_default_point='$value'." >&2
+    return 1
+  esac
+}
 
+bleopt/declare -o history_preserve_point history_default_point
+function bleopt/check:history_preserve_point {
+  case $value in
+  (begin|end|near|far|preserve) ;;
+  (beginning-of-line|end-of-line|preserve-column) ;;
+  (beginning-of-logical-line|end-of-logical-line|preserve-logical-column) ;;
+  (beginning-of-graphical-line|end-of-graphical-line|preserve-graphical-column) ;;
+  ('') value=end ;;
+  (*) value=preserve ;;
+  esac
+  bleopt/declare/.check-renamed-option history_preserve_point history_default_point
+}
+
+## @fn ble-edit/history/goto index [opts]
+##   @param[in] index
+##   @param[in,opt] opts
+##     @opt point=POINT ... When this is specified, the cursor position after
+##       the history movement is placed based on POINT instead of "bleopt
+##       history_default_point".
+##     @opt point=none ... When this is specified, the cursor position is set
+##       to 0 instead of placing at the position specified by "bleopt
+##       history_default_point".
+##     @opt linewise ... When this is specified, the cursor position
+##       arrangement specified by "point" is converted to a linewise version.
+##       In particular, "begin", "end", "near", and "far" are affected.
 function ble-edit/history/goto {
   ble/history/initialize
 
@@ -8638,7 +8689,7 @@ function ble-edit/history/goto {
       local histlen2=$_ble_history_COUNT
       if ((histlen!=histlen2)); then
         ble/textarea#invalidate
-        ble-edit/history/goto "$((index1==histlen?histlen:index1))"
+        ble-edit/history/goto "$((index1==histlen?histlen:index1))" "$2"
         return "$?"
       fi
     fi
@@ -8648,28 +8699,164 @@ function ble-edit/history/goto {
   ble/history/set-edited-entry "$index0" "$_ble_edit_str"
   ble/history/onleave.fire
 
+  local opts=$2
+  if ((index1>=index0)); then
+    opts=$opts:forward
+  else
+    opts=$opts:backward
+  fi
+  local point point_x point_opts
+  ble-edit/history/goto/.prepare-point "$opts"
+
   # restore
   ble/history/set-index "$index1"
   local entry; ble/history/get-edited-entry -v entry "$index1"
   ble-edit/content/reset "$entry" history
 
-  # point
-  if [[ $bleopt_history_preserve_point ]]; then
-    if ((_ble_edit_ind>${#_ble_edit_str})); then
-      _ble_edit_ind=${#_ble_edit_str}
-    fi
-  else
-    if ((index1<index0)); then
-      # 遡ったときは最後の行の末尾
-      _ble_edit_ind=${#_ble_edit_str}
-    else
-      # 進んだときは最初の行の末尾
-      local first_line=${_ble_edit_str%%$'\n'*}
-      _ble_edit_ind=${#first_line}
-    fi
-  fi
+  _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
+  ble-edit/history/goto/.set-point
+}
+
+## @fn ble-edit/history/goto/.prepare-point opts
+##   @param[in] opts
+##   @bleopt history_default_point
+##   @bleopt edit_line_type
+##   @var[out] point point_x point_opts
+function ble-edit/history/goto/.prepare-point {
+  point_opts=$1
+  point_x=
+
+  local ret
+  ble/opts#extract-last-optarg "$point_opts" point
+  [[ $ret ]] || ret=$bleopt_history_default_point
+  point=$ret
+
+  case $point in
+  (near)
+    if [[ :$point_opts: == *:backward:* ]]; then
+      # 遡ったときは最後
+      point=end
+    else
+      # 進んだときは最初
+      point=begin
+    fi ;;
+  (far)
+    # near の逆。連続した履歴移動がしやすくなる。
+    if [[ :$point_opts: == *:backward:* ]]; then
+      point=begin
+    else
+      point=end
+    fi ;;
+  esac
+
+  if [[ :$point_opts: == *:linewise:* ]]; then
+    case $point in
+    (begin) point=beginning-of-line ;;
+    (end) point=end-of-line ;;
+    (preserve) point=preserve-column ;;
+    esac
+  fi
+  case $point in
+  (end-of-line|beginning-of-line|preserve-column)
+    local prefix
+    if [[ :$point_opts: == *:graphical:* ]]; then
+      prefix=graphical
+    elif [[ :$point_opts: == *:logical:* ]]; then
+      prefix=logical
+    elif [[ $bleopt_edit_line_type == graphical ]]; then
+      prefix=graphical
+    else
+      prefix=logical
+    fi
+    point=${point%-*}-$prefix-${point##*-} ;;
+  esac
+
+  # record column position
+  case $point in
+  (preserve)
+    point_x=$_ble_edit_ind ;;
+  (preserve-logical-column)
+    point_x=${_ble_edit_str::_ble_edit_ind}
+    point_x=${point_x##*$'\n'}
+    point_x=${#point_x} ;;
+  (preserve-graphical-column)
+    ble/textmap#is-up-to-date || ble/widget/.update-textmap
+    local x y
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    point_x=$x ;;
+  (beginning-of-logical-line)
+    point=preserve-logical-column
+    point_x=0 ;;
+  (beginning-of-graphical-line)
+    point=preserve-graphical-column
+    point_x=0 ;;
+  esac
+}
+
+## @fn ble-edit/history/goto/.set-point [delta]
+##   @param[in] delta
+##   @var[in] index0 index1
+##   @var[in] point point_x point_opts
+##
+##   @var[in] _ble_edit_str
+##   @var[ref] _ble_edit_ind
+function ble-edit/history/goto/.set-point {
+  local delta=${1:-0} ret
+
+  case $point in
+  (begin)
+    _ble_edit_ind=0 ;;
+  (end)
+    _ble_edit_ind=${#_ble_edit_str} ;;
+  (end-of-logical-line)
+    if [[ :$point_opts: == *:backward:* ]]; then
+      # 遡ったときは最後の行の末尾
+      ble-edit/content/find-logical-eol "${#_ble_edit_str}" "$((-delta))"
+    else
+      # 進んだときは最初の行の末尾
+      ble-edit/content/find-logical-eol 0 "$delta"
+    fi
+    _ble_edit_ind=$ret ;;
+  (end-of-graphical-line)
+    ble/textmap#is-up-to-date || ble/widget/.update-textmap
+    if [[ :$point_opts: == *:backward:* ]]; then
+      ble-edit/content/find-graphical-eol "${#_ble_edit_str}" "$((-delta))"
+    else
+      ble-edit/content/find-graphical-eol "$index" "$delta"
+    fi
+    _ble_edit_ind=$ret ;;
+  (preserve)
+    _ble_edit_ind=$point_x
+    if ((_ble_edit_ind>${#_ble_edit_str})); then
+      _ble_edit_ind=${#_ble_edit_str}
+    fi ;;
+  (preserve-logical-column)
+    if [[ :$point_opts: == *:backward:* ]]; then
+      ble-edit/content/find-logical-bol 0 "$delta"; local beg=$ret
+    else
+      ble-edit/content/find-logical-bol "${#_ble_edit_str}" "$((-delta))"; local beg=$ret
+    fi
+    _ble_edit_ind=$beg
+    if ((point_x)); then
+      ((_ble_edit_ind+=point_x))
+      ble-edit/content/find-logical-eol "$beg"
+      ((_ble_edit_ind>ret)) && _ble_edit_ind=$ret
+    fi ;;
+  (preserve-graphical-column)
+    ble/textmap#is-up-to-date || ble/widget/.update-textmap
+    if [[ :$point_opts: == *:backward:* ]]; then
+      local x y
+      ble/textmap#getxy.cur "${#_ble_edit_str}"
+      ((y-=delta))
+    else
+      local y=$delta
+    fi
+    local index
+    ble/textmap#get-index-at "$point_x" "$y"
+    _ble_edit_ind=$index ;;
+  esac
 }
 
 function ble-edit/history/history-message.hook {
@@ -9493,7 +9680,7 @@ function ble/widget/isearch/cancel {
     if ((${#_ble_edit_isearch_arr[@]})); then
       local step
       ble/string#split step : "${_ble_edit_isearch_arr[0]}"
-      ble-edit/history/goto "${step[0]}"
+      ble-edit/history/goto "${step[0]}" point=none
     fi
 
     ble/widget/isearch/exit.impl
@@ -9686,7 +9873,7 @@ function ble-edit/nsearch/.goto-match {
       ble-edit/content/reset-and-check-dirty "$left$line$right"
     fi
   else
-    ble-edit/history/goto "$index"
+    ble-edit/history/goto "$index" point=none
     line=$_ble_edit_str
   fi
 
@@ -9756,7 +9943,7 @@ function ble-edit/nsearch/.search.fib {
       if [[ $_ble_edit_nsearch_loadctx ]]; then
         ble-edit/content/reset-and-check-dirty "$line"
       else
-        ble-edit/history/goto "${record[1]}"
+        ble-edit/history/goto "${record[1]}" point=none
       fi
       _ble_edit_nsearch_match=${record[1]}
       _ble_edit_nsearch_index=${record[1]}
@@ -10121,7 +10308,7 @@ function ble/widget/nsearch/cancel {
       if [[ $_ble_edit_nsearch_loadctx ]]; then
         ble-edit/content/reset-and-check-dirty "$line"
       else
-        ble-edit/history/goto "$_ble_edit_nsearch_index0"
+        ble-edit/history/goto "$_ble_edit_nsearch_index0" point=none
       fi
       _ble_edit_ind=${record[2]}
       _ble_edit_mark=${record[3]}

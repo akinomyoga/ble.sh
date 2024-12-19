@@ -313,13 +313,25 @@
 #bleopt allow_exit_with_jobs=
 
 
-## The following setting controls the cursor position after the move to other
-## history entries. When non-empty values are specified, the offset of the
-## cursor from the beginning of the command line is preserved. When an empty
-## value is specified the cursor position is the beginning or the end of the
-## command lines when the move is to a newer or older entry, respectively.
+## The following setting controls the default cursor position after moving to
+## another history entry.  When "preserve" is specified, ble.sh tries to
+## preserve the cursor position before moving the history entry.  When "begin"
+## and "end" are specified, the cursor is placed at the beginning and end,
+## respectively, of the entry.  When "near" is specified, when we move to an
+## older (newer) history entry, the cursor is placed at the end (beginning) of
+## the text.  When "far" is specified, when we move to an older (newer) history
+## entry, the cursor is palced at the beginning (end) of the text.  When
+## "beginning-of-{,graphical-,logical-}line" is specified, the cursor is placed
+## at the beginning of the last (first) line when we move to an older (newer)
+## history entry.  When "end-of-{,graphical-,logical-}line" is specified, the
+## cursor is placed at the end of the last (first) line when we move to an
+## older (newer) history entry.  When "preserve-{,graphical-,logical-}-column"
+## is specified, te cursor is placed at the same column as before moving the
+## history entry.  When the versions without "graphical" or "logical" is used,
+## a logical or graphical line is used based on "bleopt edit_line_type".  The
+## default is "end-of-line".
 
-#bleopt history_preserve_point=
+#bleopt history_default_point=
 
 
 ## The following setting controls the history sharing. If it has non-empty

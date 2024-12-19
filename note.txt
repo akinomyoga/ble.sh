@@ -1926,6 +1926,20 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2024-12-18
+
+  * edit: C-c 後の履歴位置が変だ (reported by dezza)
+    https://github.com/akinomyoga/ble.sh/discussions/540
+
+    C-c を実行した後は C-m を実行した時と同様に全ての編集をクリアして、履歴位置
+    は履歴の末端に移動するべきである。
+
+  * global: 実は [:space:] は \v\f\r\n にも一致する
+
+    一方で [:blank:] は全く使われていない。実は [:space:] になっている箇所は全
+    て [:blank:] なのでは? ただし改行 \n も意図していた可能性があるのでそれにつ
+    いては $_ble_term_IFS に置き換える。
+
 2024-12-09
 
   * highlight: cd を bind -x 経由で実行するとコマンドキャッシュがクリアされないので
@@ -7699,6 +7713,72 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-12-18
+
+  * edit: 履歴移動を行った時のカーソル位置の設定 (requested by miltieIV2) [#D2297]
+    https://github.com/akinomyoga/ble.sh/issues/537
+
+    * fixed: 何と今まで "bleopt edit_line_type" が動いていなかった様だ。
+
+    * fixed: 何と今まで bleopt/check:input_encoding のエラーメッセージの一部が
+      表示されていなかった様だ。
+
+      * ok: ble-0.3 では ble/util/print ではなく echo を使っているので問題なかっ
+        た。
+
+      * ok: 類似のものは他にはないようだ。
+
+    * done: wiki, blerc
+
+    x fixed: preserve にしても位置が preserve されていない
+
+      これは何処かの時点で壊れたという事だろうか。上に遡る時には必ずカーソルは
+      先頭に移動してしまう。また、下に移動する時には前のコマンドラインの末端位
+      置に移動しようとする。現在のカーソル位置は全く保持していない。keymap.vi
+      特有の問題ではないようだ。emacs モードでも同様の現象が起こっている。
+
+      うーん。呼び出しの順序的に履歴移動が発生しなかった時に正しい位置にカーソ
+      ルを移動してエラーメッセージも必要に応じて出力しなければならない。しかし
+      現在の枠組みだと履歴移動が発生したかどうかを forward-history-line.impl の
+      呼び出し元で知ることができない。
+
+      振る舞いについて確認する forward-history-line.impl は先ず行を追跡して適切
+      な履歴項目の位置を探し出している。その後で対応する行が見つかれば其処に移
+      動するし、見つからなければ先頭項目か末端項目に移動して終了する。
+
+      * 先ず ble/widget/forward-history-line.impl を呼び出したら、履歴移動が発
+        生しなかったとしても、必ずカーソル位置は適切な位置に設置することにする。
+
+    x resolved: forward-history-line etc 等との consistency はどうなっているの
+      か?  複数行の時に forward-history-line も位置を調整しようとしている。履歴
+      移動後にどの位置にいるのかは実は ble-edit/history/goto で管理するのではな
+      くて forward-history-line 等の実装ごとに適切に処理する必要があるのではな
+      いか?
+
+      * done: ble-edit/history/goto でもカーソル位置を調整するしその呼び出し元
+        でもカーソル位置を調整しているというのは無駄の処理の気がする。→これは
+        ble-edit/history/goto で opts を受け取って clear-point が指定されている
+        場合には、単に _ble_edit_ind=0 にする事にした。
+
+      forward-history-line 等の行指向の履歴移動の場合には振る舞いを行指向に変更
+      した物を別に実装することにした。
+
+    * done: preserve-{,graphical,logical-}column 等も用意するべきではないか?
+
+    * done: clear-point ではなく point=none にする。point=near 等に対応する
+
+    * done: graphical, logical も外から指定できるようにする? graphical-linewise
+      もしくは logical-linewise の形で。と思ったが、そもそも
+      forward-history-line.impl の時点でどちらか分からないので、これも更に外側
+      から種類を受け取る様に修正する必要がある→面倒だと思ったが結局対応した。
+
+    [動作確認]
+
+    x fixed: 全く動かなくなっている。と思ったら graphica/logical の決定による
+      point の書き換えに失敗していた。修正した。
+
+    その他は大体動いている様だ。
 
 2024-12-12
 

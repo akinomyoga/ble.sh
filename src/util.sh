@@ -312,24 +312,19 @@ function bleopt/reinitialize {
 bleopt/declare -n input_encoding UTF-8
 function bleopt/check:input_encoding {
   if ! ble/is-function ble/encoding:"$value"/decode; then
-    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
-                 "A function 'ble/encoding:$value/decode' is not defined." >&2
+    ble/util/print "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/decode' is not defined." >&2
     return 1
   elif ! ble/is-function ble/encoding:"$value"/b2c; then
-    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
-                 "A function 'ble/encoding:$value/b2c' is not defined." >&2
+    ble/util/print "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/b2c' is not defined." >&2
     return 1
   elif ! ble/is-function ble/encoding:"$value"/c2bc; then
-    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
-                 "A function 'ble/encoding:$value/c2bc' is not defined." >&2
+    ble/util/print "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/c2bc' is not defined." >&2
     return 1
   elif ! ble/is-function ble/encoding:"$value"/generate-binder; then
-    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
-                 "A function 'ble/encoding:$value/generate-binder' is not defined." >&2
+    ble/util/print "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/generate-binder' is not defined." >&2
     return 1
   elif ! ble/is-function ble/encoding:"$value"/is-intermediate; then
-    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
-                 "A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
+    ble/util/print "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
     return 1
   fi
 
