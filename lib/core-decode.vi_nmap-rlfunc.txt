@@ -119,6 +119,7 @@ upcase-word                       vi_nmap/upcase-eword
 vi-append-eol                     vi_nmap/append-mode-at-end-of-line
 vi-append-mode                    vi_nmap/append-mode
 vi-arg-digit                      vi-command/append-arg
+vi-back-to-indent                 -
 vi-prev-word                      vi-rlfunc/prev-word
 vi-backward-word                  vi-command/backward-vword
 vi-backward-bigword               vi-command/backward-uword
@@ -133,7 +134,6 @@ vi-forward-word                   vi-command/forward-vword
 vi-forward-bigword                vi-command/forward-uword
 vi-fword                          vi-command/forward-vword
 vi-fWord                          vi-command/forward-uword
-vi-back-to-indent                 -
 vi-change-case                    vi-command/operator toggle_case
 vi-change-char                    vi_nmap/replace-char
 vi-change-to                      vi-rlfunc/change-to
@@ -142,6 +142,7 @@ vi-column                         vi-command/nth-column
 vi-complete                       vi-rlfunc/vi-complete
 vi-delete                         vi_nmap/kill-forward-char
 vi-delete-to                      vi-rlfunc/delete-to
+vi-edit-and-execute-command       vi-command/edit-and-execute-command
 vi-editing-mode                   vi_nmap/insert-mode
 vi-eof-maybe                      vi-rlfunc/eof-maybe
 vi-fetch-history                  vi-command/history-goto
@@ -171,3 +172,4 @@ yank                              yank
 yank-last-arg                     -
 yank-nth-arg                      -
 yank-pop                          -
+paste-from-clipboard              -

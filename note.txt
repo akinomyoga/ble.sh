@@ -1928,6 +1928,8 @@ bash_tips
 
 2024-12-23
 
+  * vi_[in]map: rlfunc "paste-from-clipboard" の対応
+
   * vi_cmap: :marks の対応。ないと marks のデバグの時に不便
 
   * vi_nmap: pu をした時のカーソル位置が vim と一致しない
@@ -3459,16 +3461,6 @@ bash_tips
 2022-05-12
 
   * isearch: 現在行と全く同じ内容の行には一致しないというオプション
-
-2022-04-13
-
-  * bash が `vi-edit-and-execute-command' を追加している。
-
-    これは自分が以下で報告した事が元になっているのだろう。
-    https://lists.gnu.org/archive/html/help-bash/2022-02/msg00031.html
-
-    d70b5339 で追加されている。つまり help-bash で発言した次の日には修正が入っ
-    ていたのだった。
 
 2022-03-19
 
@@ -7702,6 +7694,16 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-12-23
+
+  * 2022-04-13 bash が `vi-edit-and-execute-command' を追加している [#D2306]
+
+    これは自分が以下で報告した事が元になっているのだろう。
+    https://lists.gnu.org/archive/html/help-bash/2022-02/msg00031.html
+
+    d70b5339 で追加されている。つまり help-bash で発言した次の日には修正が入っ
+    ていたのだった。
+
+    2024-12-23 これはエディタを指定して実行する物。新しく追加する事にした。
 
   * edit: bash-5.3 "bash-vi-complete" を実装 [#D2305]
 

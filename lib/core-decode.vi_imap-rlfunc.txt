@@ -142,6 +142,7 @@ vi-column                         -
 vi-complete                       -
 vi-delete                         -
 vi-delete-to                      -
+vi-edit-and-execute-command       edit-and-execute-command vi
 vi-editing-mode                   nop
 vi-eof-maybe                      -
 vi-fetch-history                  history-goto
@@ -171,3 +172,4 @@ yank                              yank
 yank-last-arg                     insert-last-argument
 yank-nth-arg                      insert-nth-argument
 yank-pop                          yank-pop
+paste-from-clipboard              -

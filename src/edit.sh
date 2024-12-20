@@ -8133,6 +8133,26 @@ function ble/widget/default/accept-single-line-or {
 function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
 }
+function ble/widget/edit-and-execute-command.editor {
+  ret=${bleopt_editor:-${VISUAL:-${EDITOR-}}}
+  [[ $ret ]] && return 0
+
+  local -a editors=()
+  if [[ :$opts: == *:vi:* ]] && ble/bin#has vim; then
+    editors=(vim vi emacs nano)
+  elif [[ :$opts: == *:emacs:* ]]; then
+    editors=(emacs nano vim vi)
+  else
+    editors=(emacs vim nano vi)
+  fi
+
+  for ret in "${editors[@]}"; do
+    ble/bin#has "$ret" && return 0
+  done
+
+  ret=vi
+  return 1
+}
 ## @fn ble/widget/edit-and-execute-command.edit content opts
 ##   @var[in] content
 ##   @var[in] opts
@@ -8145,22 +8165,16 @@ function ble/widget/edit-and-execute-command.edit {
   local file=$_ble_base_run/$$.blesh-fc.bash
   ble/util/print "$content" >| "$file"
 
-  local fallback=vi
-  if ble/bin#has emacs; then
-    fallback='emacs -nw'
-  elif ble/bin#has vim; then
-    fallback=vim
-  elif ble/bin#has nano; then
-    fallback=nano
-  fi
+  local ret
+  ble/widget/edit-and-execute-command.editor; local editor=$ret
 
-  if [[ $opts != *:no-newline:* ]]; then
+  if [[ :$opts: != *:no-newline:* ]]; then
     _ble_edit_line_disabled=1 ble/textarea#render leave
     ble/widget/.newline # #D1800 (呼び出し元で exec/register)
   fi
 
   ble/term/leave
-  ${bleopt_editor:-${VISUAL:-${EDITOR:-$fallback}}} "$file"; local ext=$?
+  "$editor" "$file"; local ext=$?
   ble/term/enter
 
   if ((ext)); then
@@ -8173,7 +8187,7 @@ function ble/widget/edit-and-execute-command.edit {
 }
 function ble/widget/edit-and-execute-command.impl {
   local ret=
-  ble/widget/edit-and-execute-command.edit "$1"
+  ble/widget/edit-and-execute-command.edit "$1" "$2"
   local command=$ret
 
   ble/string#match "$command" $'[\n]+$' &&
@@ -8192,7 +8206,7 @@ function ble/widget/edit-and-execute-command.impl {
 }
 function ble/widget/edit-and-execute-command {
   ble-edit/content/clear-arg
-  ble/widget/edit-and-execute-command.impl "$_ble_edit_str"
+  ble/widget/edit-and-execute-command.impl "$_ble_edit_str" "$1"
 }
 
 function ble/widget/insert-comment/.remove-comment {

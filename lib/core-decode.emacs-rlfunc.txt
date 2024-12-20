@@ -119,6 +119,7 @@ upcase-word                       upcase-eword
 vi-append-eol                     -
 vi-append-mode                    -
 vi-arg-digit                      -
+vi-back-to-indent                 -
 vi-prev-word                      vi-rlfunc/prev-word
 vi-backward-word                  vi-command/backward-vword
 vi-backward-bigword               vi-command/backward-uword
@@ -133,7 +134,6 @@ vi-forward-word                   vi-command/forward-vword
 vi-forward-bigword                vi-command/forward-uword
 vi-fword                          vi-command/forward-vword
 vi-fWord                          vi-command/forward-uword
-vi-back-to-indent                 -
 vi-change-case                    -
 vi-change-char                    -
 vi-change-to                      -
@@ -142,6 +142,7 @@ vi-column                         -
 vi-complete                       -
 vi-delete                         -
 vi-delete-to                      -
+vi-edit-and-execute-command       edit-and-execute-command vi
 vi-editing-mode                   vi-editing-mode
 vi-eof-maybe                      -
 vi-fetch-history                  history-goto
