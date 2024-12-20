@@ -17,7 +17,7 @@ function print_error(title, msg) {
 
 function trim(text) {
   #gsub(/^[ \t]+|[ \t]+$/, "", text);
-  gsub(/^[[:space:]]+|[[:space:]]+$/, "", text);
+  gsub(/^[[:blank:]]+|[[:blank:]]+$/, "", text);
   return text;
 }
 
@@ -30,7 +30,7 @@ function slice(text, start, end, _l) {
 }
 
 #function head_token(text, ret, _, _i, _l) {
-#  _i = match(text, /[^-a-zA-Z:0-9_]/);
+#  _i = match(text, /[^-_a-zA-Z0-9:]/);
 #  _l = _i ? _i - 1 : length(text);
 #  ret[0] = trim(substr(text, 1, _l));
 #  ret[1] = trim(substr(text, _l + 1));
@@ -231,7 +231,7 @@ function ev1scan_scan(expression, words, _wlen, _i, _len, _c, _t, _w) {
           _w = _w _c;
         }
       }
-    } else if (_c ~ /[[:space:]]/) {
+    } else if (_c ~ /[[:blank:]]/) {
       continue; # ignore blank
     } else {
       print_error("mwg_pp.eval_expr", "unrecognizable character '" _c "'");
@@ -653,7 +653,7 @@ function ev2_funcall(dDict, dName, funcname, aDict, aName, _a, _i, _c, _result, 
   } else if (funcname == "trim") {
     _resultT = TYPE_STR;
     _result = _a[0];
-    gsub(/^[[:space:]]+|[[:space:]]+$/, "", _result);
+    gsub(/^[[:blank:]]+|[[:blank:]]+$/, "", _result);
   } else if (funcname == "sprintf") {
     _resultT = TYPE_STR;
     _result = sprintf(_a[0], _a[1], _a[2], _a[3], _a[4], _a[5], _a[6], _a[7], _a[8], _a[9]);
@@ -896,19 +896,19 @@ function inline_expand(text, _, _ret, _ltext, _rtext, _mtext, _name, _r, _s, _a,
     _mtext = substr(text, RSTART, RLENGTH);
     _rtext = substr(text, RSTART + RLENGTH);
     _name = unescape(slice(_mtext, 2, -1));
-    if (match(_name, /^[-a-zA-Z0-9_]+$/) > 0) {                     # ${key}
+    if (match(_name, /^[-_a-zA-Z0-9]+$/) > 0) {                     # ${key}
       _r = "" d_data[_name];
-    } else if (match(_name, /^[-a-zA-Z0-9_]+:-/) > 0) {             # ${key:-alter}
+    } else if (match(_name, /^[-_a-zA-Z0-9]+:-/) > 0) {             # ${key:-alter}
       _s["key"] = slice(_name, 0, RLENGTH - 2);
       _s["alter"] = slice(_name, RLENGTH);
       _r = "" d_data[_s["key"]];
       if (_r == "") _r = _s["alter"];
-    } else if (match(_name, /^[-a-zA-Z0-9_]+:\+/) > 0) {            # ${key:+value}
+    } else if (match(_name, /^[-_a-zA-Z0-9]+:\+/) > 0) {            # ${key:+value}
       _s["key"] = slice(_name, 0, RLENGTH - 2);
       _s["value"] = slice(_name, RLENGTH);
       _r = "" d_data[_s["key"]];
       _r = _r == "" ? "" : _s["value"];
-    } else if (match(_name, /^[-a-zA-Z0-9_]+:\?/) > 0) {            # ${key:?warn}
+    } else if (match(_name, /^[-_a-zA-Z0-9]+:\?/) > 0) {            # ${key:?warn}
       _s["key"] = slice(_name, 0, RLENGTH - 2);
       _s["warn"] = slice(_name, RLENGTH);
       _r = "" d_data[_s["key"]];
@@ -917,15 +917,15 @@ function inline_expand(text, _, _ret, _ltext, _rtext, _mtext, _name, _r, _s, _a,
         _ltext = _ltext _mtext;
         _r = "";
       }
-    } else if (match(_name, /^([-a-zA-Z0-9_]+):([0-9]+):([0-9]+)$/, _caps) > 0) { # ${key:start:length}
+    } else if (match(_name, /^([-_a-zA-Z0-9]+):([0-9]+):([0-9]+)$/, _caps) > 0) { # ${key:start:length}
       _r = substr(d_data[_caps[1]], _caps[2] + 1, _caps[3]);
-    } else if (match(_name, /^([-a-zA-Z0-9_]+)(\/\/?)(([^/]|\\.)+)\/(.*)$/, _caps) > 0) { # ${key/before/after}
+    } else if (match(_name, /^([-_a-zA-Z0-9]+)(\/\/?)(([^/]|\\.)+)\/(.*)$/, _caps) > 0) { # ${key/before/after}
       _r = d_data[_caps[1]];
       if (_caps[3] == "/")
         sub(_caps[3], _caps[5], _r);
       else
         gsub(_caps[3], _caps[5], _r);
-    } else if (match(_name, /^([-a-zA-Z0-9_]+)(##?|%%?)(.+)$/, _caps) > 0) { # ${key#head} ${key%tail}
+    } else if (match(_name, /^([-_a-zA-Z0-9]+)(##?|%%?)(.+)$/, _caps) > 0) { # ${key#head} ${key%tail}
       if (length(_caps[2]) == 2) {
         # TODO
         gsub(/\./, /\./, _caps[3]);
@@ -940,12 +940,12 @@ function inline_expand(text, _, _ret, _ltext, _rtext, _mtext, _name, _r, _s, _a,
 
       _r = d_data[_caps[1]];
       sub(_caps[3], "", _r);
-    } else if (match(_name, /^#[-a-zA-Z0-9_]+$/) > 0) {             # ${#key}
+    } else if (match(_name, /^#[-_a-zA-Z0-9]+$/) > 0) {             # ${#key}
       _r = length("" d_data[substr(_name, 2)]);
-    } else if (match(_name, /^([-a-zA-Z0-9_]+)(\..+)$/, _caps) > 0) { # ${key.modifiers}
+    } else if (match(_name, /^([-_a-zA-Z0-9]+)(\..+)$/, _caps) > 0) { # ${key.modifiers}
       _r = modify_text(d_data[_caps[1]], _caps[2]);
-    } else if (match(_name, /^\.[-a-zA-Z0-9_]+./) > 0) {             # ${.function:args...}
-      match(_name, /^\.[-a-zA-Z0-9_]+./);
+    } else if (match(_name, /^\.[-_a-zA-Z0-9]+./) > 0) {             # ${.function:args...}
+      match(_name, /^\.[-_a-zA-Z0-9]+./);
       _s["i"] = RLENGTH;
       _s["func"] = substr(_name, 2, _s["i"] - 2);
       _s["sep"] =substr(_name, _s["i"], 1);
@@ -1187,7 +1187,7 @@ function range_end(args, _cmd, _arg, _txt, _clines, _cfiles) {
 }
 
 function dctv_define(args, _, _cap, _name, _name2) {
-  if (match(args, /^([-A-Za-z0-9_:]+)[[:space:]]*(\([[:space:]]*)?$/, _cap) > 0) {
+  if (match(args, /^([-_a-zA-Z0-9:]+)[[:blank:]]*(\([[:blank:]]*)?$/, _cap) > 0) {
     # dctv: #%define hoge
     # dctv: #%define hoge (
     _name = _cap[1];
@@ -1195,7 +1195,7 @@ function dctv_define(args, _, _cap, _name, _name2) {
       range_end("");
     else
       range_begin("define", _name);
-  } else if (match(args, /^([-_:[:alnum:]]+)[[:space:]]+([-_:[:alnum:]]+)(.*)$/, _cap) > 0) {
+  } else if (match(args, /^([-_:[:alnum:]]+)[[:blank:]]+([-_:[:alnum:]]+)(.*)$/, _cap) > 0) {
     # dctv: #%define a b.mods
     _name = _cap[1];
     _name2 = _cap[2];
@@ -1287,7 +1287,7 @@ function dctv_else(_, _cap, _cmd) {
 }
 
 function dctv_expand(args, _, _cap, _txt, _type) {
-  if (match(args, /^([-a-zA-Z:0-9_]+|[\(])(.*)$/, _cap) > 0) {
+  if (match(args, /^([-_a-zA-Z0-9:]+|[\(])(.*)$/, _cap) > 0) {
     if (_cap[1] == "(") {
       _type = 1;
     } else {
@@ -1295,7 +1295,7 @@ function dctv_expand(args, _, _cap, _txt, _type) {
       _txt = modify_text(_txt, _cap[2]);
       process_multiline(_txt, d_data[_cap[1], "L"], d_data[_cap[1], "F"]);
     }
-  } else if (match(args, /^[[:space:]]*$/) > 0) {
+  } else if (match(args, /^[[:blank:]]*$/) > 0) {
     _type = 1;
   } else {
     print "mwg_pp.awk:#%expand: missing data name" > "/dev/stderr"
@@ -1309,7 +1309,7 @@ function dctv_expand(args, _, _cap, _txt, _type) {
 }
 
 function dctv_modify(args, _, _i, _len, _name, _content) {
-  _i = match(args, /[^-a-zA-Z:0-9_]/);
+  _i = match(args, /[^-_a-zA-Z0-9:]/);
   _len = _i?_i - 1:length(args);
   _name = substr(args, 1, _len);
   args = trim(substr(args, _len + 1));
@@ -1398,7 +1398,7 @@ function data_print(key) {
   add_line(d_data[key]);
 }
 function execute(command, _line, _caps, _n, _cfile) {
-  if (match(command, /^(>>?)[[:space:]]*([^[:space:]]*)/, _caps) > 0) {
+  if (match(command, /^(>>?)[[:blank:]]*([^[:blank:]]*)/, _caps) > 0) {
     # 出力先の変更
     fflush(m_outpath);
     m_outpath = _caps[2];
@@ -1482,16 +1482,16 @@ function process_line(line, _line, _text, _ind, _len, _directive, _cap) {
   if (m_comment_cpp)
     sub(/^\/\//, "#", _line);
   if (m_comment_pragma)
-    sub(/^[[:space:]]*#[[:space:]]*pragma/, "#", _line);
+    sub(/^[[:blank:]]*#[[:blank:]]*pragma/, "#", _line);
   if (m_comment_c && match(_line, /^\/\*(.+)\*\/$/, _cap) > 0)
     _line = "#" _cap[1];
 
   if (_line ~ /^#%[^%]/) {
     # cut directive
-    if (match(_line, /^#%[ \t]*([-a-zA-Z_0-9:]+)(.*)$/, _cap) > 0) {
+    if (match(_line, /^#%[ \t]*([-_a-zA-Z0-9:]+)(.*)$/, _cap) > 0) {
       _directive = _cap[1];
       _text = trim(_cap[2]);
-    } else if (match(_line, /^#%[ \t]*([^-a-zA-Z_0-9:])(.*)$/, _cap) > 0) {
+    } else if (match(_line, /^#%[ \t]*([^-_a-zA-Z0-9:])(.*)$/, _cap) > 0) {
       _directive = _cap[1];
       _text = trim(_cap[2]);
     } else {
@@ -1597,7 +1597,7 @@ function dependency_generate(output, target, is_phony, _i, _iMax, _line, _file) 
     _iMax = m_dependency_count - 1;
     for (_i = 0; _i < m_dependency_count; _i++) {
       _file = m_dependency[_i];
-      gsub(/[[:space:]]/, "\\\\&", _file);
+      gsub(/[[:blank:]]/, "\\\\&", _file);
       _line = _i == 0? target ": ": "  ";
       _line = _line _file;
       if (_i < _iMax) _line = _line " \\";
@@ -1607,7 +1607,7 @@ function dependency_generate(output, target, is_phony, _i, _iMax, _line, _file) 
     if (is_phony) {
       for (_i = 0; _i < m_dependency_count; _i++) {
         _file = m_dependency[_i];
-        gsub(/[[:space:]]/, "\\\\&", _file);
+        gsub(/[[:blank:]]/, "\\\\&", _file);
         printf("%s:\n\n", _file) > output;
       }
     }

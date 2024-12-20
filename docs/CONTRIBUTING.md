@@ -301,7 +301,7 @@ Use `==` instead of the operator `=` inside conditional commands.
 The right-hand sides of `=~` inside the conditional commands `[[ ... ]]` should be specified by a single parameter expansion
 as `[[ word =~ $rex ]]`, or one can use `ble/string#match 'word' "$rex"` instead.
 In other contexts, the arguments of the conditional command should not be quoted
-unless raw special characters ``[[:space:]|&;<>\`"$]`` are contained in the argument.
+unless raw special characters ``[[:blank:]|&;<>\`"$]`` are contained in the argument.
 
 **No `-eq` etc**--Basically use arithmetic commands `((expr))`
 instead of the operators `-eq`, `-ne`, `-gt`, `-ge`, `-lt`, and `-le` of the conditional command.
@@ -329,7 +329,7 @@ This is because the builtin `echo` can change its behavior depending on the shel
 **Quote/unquote**--The arguments where the word splitting and pathname expansions can take place need to be always quoted.
 When the subject word of the `case` statement and the right-hand sides of variable assignments
 (including those specified to assignment builtins `declare`, `typeset`, `local`, `export`, and `readonly`)
-contains `$*`, `${arr[*]}`, or raw special characters ``[[:space:]|&;<>\`"$]``, they need to be quoted.
+contains `$*`, `${arr[*]}`, or raw special characters ``[[:blank:]|&;<>\`"$]``, they need to be quoted.
 In other contexts, the subject word of `case` and the right-hand sides of variable assignments should not be quoted.
 In these contexts, the word splitting and pathname expansions will never happen, so the quoting is unnecessary.
 

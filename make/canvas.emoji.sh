@@ -16,8 +16,8 @@ function make/canvas.emoji/get-emoji-data {
   fi
 
   local gawk_script='
-      /^[[:space:]]*#/ { next; }
-      sub(/;.*$/, "") { print $0; }'
+    /^[[:blank:]]*#/ { next; }
+    sub(/;.*$/, "") { print $0; }'
   ble/util/assign-array emoji_data 'gawk "$gawk_script" "$emoji_cache_file"'
 }
 
@@ -25,7 +25,7 @@ function make/canvas.emoji/sub:help {
   ble/util/print "usage: source ${BASH_SOURCE##*/}${BASH_SOURCE:-canvas.emoji.sh} SUBCOMMAND ARGS..."
   ble/util/print
   ble/util/print "SUBCOMMAND"
-  declare -F | sed -n 's/^declare -f make\/canvas.emoji\/sub:\([^[:space:]]*\)/  \1/p'
+  declare -F | sed -n 's/^declare -f make\/canvas.emoji\/sub:\([^[:blank:]]*\)/  \1/p'
   ble/util/print
 }
 
@@ -33,7 +33,7 @@ function make/canvas.emoji/sub:save-emoji-type {
   local emoji_data emoji_cache_file
   make/canvas.emoji/get-emoji-data
   gawk '
-    /^[[:space:]]*#/ { next; }
+    /^[[:blank:]]*#/ { next; }
     {
       if (/unqualified/) {
         type = "UQ";

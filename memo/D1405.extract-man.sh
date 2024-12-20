@@ -82,7 +82,7 @@ fi |
       if (g_name ~ /\034/) return;
       gsub(/\034/, "\x1b[7m^\\\x1b[27m", desc);
 
-      n = split(name, names, /,[[:space:]]*/);
+      n = split(name, names, /,[[:blank:]]*/);
       sub(/(\.  |; ).*/, ".", desc);
       for (i = 1; i <= n; i++) {
         name = names[i];
@@ -114,11 +114,11 @@ fi |
       g_desc = "";
     }
 
-    sub(/^[[:space:]]*__ble_key__/, "", $0) {
+    sub(/^[[:blank:]]*__ble_key__/, "", $0) {
       flush_pair();
       mode = "key";
     }
-    sub(/^[[:space:]]*__ble_desc__/, "", $0) {
+    sub(/^[[:blank:]]*__ble_desc__/, "", $0) {
       mode = "desc";
     }
 
@@ -128,8 +128,8 @@ fi |
       gsub(/\x1b[ -/]*[0-~]/, "", line); # ESC seq
       gsub(/\x0E/, "", line);
       gsub(/\x0F/, "", line);
-      gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
-      #gsub(/[[:space:]]+/, " ", line);
+      gsub(/^[[:blank:]]*|[[:blank:]]*$/, "", line);
+      #gsub(/[[:blank:]]+/, " ", line);
       if (line == "") next;
       if (g_name != "") g_name = g_name " ";
       g_name = g_name line;
@@ -137,8 +137,8 @@ fi |
 
     mode == "desc" {
       line = $0;
-      gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
-      #gsub(/[[:space:]]+/, " ", line);
+      gsub(/^[[:blank:]]*|[[:blank:]]*$/, "", line);
+      #gsub(/[[:blank:]]+/, " ", line);
       if (line == "") {
         if (g_desc != "") mode = "";
         next;

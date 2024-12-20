@@ -564,7 +564,7 @@ function sub:generate-base16-sample {
       }
     }
 
-    /^[[:space:]]*(#|$)/ || NF < 17 { next; }
+    /^[[:blank:]]*(#|$)/ || NF < 17 { next; }
 
     function ansi_color_sample(c, _, R, G, B) {
       R = int(c / 0x10000);
@@ -635,7 +635,7 @@ function sub:convert-iTerm2-palettes {
       gsub(/#/, "0x");
       gsub(/;/, " ");
       theme = FILENAME;
-      gsub(/^.*\/|[[:space:]]|\.theme$/, "", theme);
+      gsub(/^.*\/|[[:blank:]]|\.theme$/, "", theme);
 
       line = $0;
       if (fg != "" && bg != "") {
@@ -663,15 +663,15 @@ function sub:convert-gogh-palettes {
       } else if (/^# SECTION /) {
         # We probably want to ignore all the themes coming after Gogh.
         #g_existing_suppress = 0;
-      } else if (!/^[[:space:]]*(#|$)/) {
+      } else if (!/^[[:blank:]]*(#|$)/) {
         if (!g_existing_suppress)
           g_existing[$1] = 1;
       }
     }
 
     mode == "gogh" {
-      if (/^[[:space:]]*(#|$)/) {
-        if (/^[[:space:]]*#/)
+      if (/^[[:blank:]]*(#|$)/) {
+        if (/^[[:blank:]]*#/)
           print > "/dev/stderr";
       } else if (g_existing[$1]) {
         g_duplicate_count++;

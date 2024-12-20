@@ -88,9 +88,9 @@ function sub:summarize-markdown {
   paste \
     -d '|' \
     <(bash-4.3 "$0" test-markdown) \
-    <(bash-4.4 "$0" test-markdown | sed 's/.* \([^[:space:]]\{1,\}\)$/ \1 /') \
-    <(bash-5.1 "$0" test-markdown | sed 's/.* \([^[:space:]]\{1,\}\)$/ \1 /') \
-    <(bash-5.2 "$0" test-markdown | sed 's/.* \([^[:space:]]\{1,\}\)$/ \1 |/')
+    <(bash-4.4 "$0" test-markdown | sed 's/.* \([^[:blank:]]\{1,\}\)$/ \1 /') \
+    <(bash-5.1 "$0" test-markdown | sed 's/.* \([^[:blank:]]\{1,\}\)$/ \1 /') \
+    <(bash-5.2 "$0" test-markdown | sed 's/.* \([^[:blank:]]\{1,\}\)$/ \1 |/')
 }
 
 if declare -f "sub:$1" >/dev/null; then

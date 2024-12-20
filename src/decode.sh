@@ -3304,7 +3304,7 @@ function ble/decode/bind/option:csi {
 }
 
 function ble/decode/bind/option:list-widgets {
-  declare -f | ble/bin/sed -n 's/^ble\/widget\/\([a-zA-Z][^.[:space:]();&|]\{1,\}\)[[:space:]]*()[[:space:]]*$/\1/p'
+  declare -f | ble/bin/sed -n 's/^ble\/widget\/\([a-zA-Z][^.[:blank:]();&|]\{1,\}\)[[:blank:]]*()[[:blank:]]*$/\1/p'
 }
 function ble/decode/bind/option:dump {
   if (($#)); then

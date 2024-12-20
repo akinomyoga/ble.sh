@@ -989,7 +989,7 @@ function ble/builtin/trap/.handler {
       # ユーザートラップを外で実行 (Note: user-trap lastarg は反映されず)
       local q=\' Q="'\''" _ble_trap_handler postproc=
       ble/builtin/trap/user-handler#load "$_ble_trap_sig"
-      if [[ $_ble_trap_handler == *[![:space:]]* ]]; then
+      if [[ $_ble_trap_handler == *[!$_ble_term_IFS]* ]]; then
         postproc="ble/util/setexit $_ble_trap_lastexit '${_ble_trap_lastarg//$q/$Q}'"
         postproc=$postproc";LINENO=$BLE_TRAP_LINENO builtin eval -- '${_ble_trap_handler//$q/$Q}'"
       else

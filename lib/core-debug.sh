@@ -804,8 +804,8 @@ function ble/debug/profiler/stop {
       pids_clear();
     }
 
-    mode == "line_stat" { if ($0 ~ /^['"$_ble_term_space"']*[^#'"$_ble_term_space"']/) lines_load_line(); next; }
-    mode == "func_stat" { if ($0 ~ /^['"$_ble_term_space"']*[^#'"$_ble_term_space"']/) funcs_load_line(); next; }
+    mode == "line_stat" { if ($0 ~ /^['"$_ble_term_blank"']*[^#'"$_ble_term_blank"']/) lines_load_line(); next; }
+    mode == "func_stat" { if ($0 ~ /^['"$_ble_term_blank"']*[^#'"$_ble_term_blank"']/) funcs_load_line(); next; }
 
     progress_interval && ++iline % progress_interval == 0 {
       print "\x1b[A\rble/debug/profiler: collecting information... " int((iline * 100) / nline) "%" >"/dev/stderr";
@@ -820,7 +820,7 @@ function ble/debug/profiler/stop {
         if (command ~ /^(ble-decode\/.hook|_ble_decode_hook) [0-9]+$/) flush_stack();
 
         label = command;
-        sub(/^['"$_ble_term_space"']+|['"$_ble_term_space"'].*/, "", label);
+        sub(/^['"$_ble_term_blank"']+|['"$_ble_term_blank"'].*/, "", label);
         label = sprintf("\x1b[35m%s\x1b[36m:\x1b[32m%s\x1b[36m (%s):\x1b[m", source, lineno, label);
       }
 

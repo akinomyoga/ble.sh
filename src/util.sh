@@ -1984,7 +1984,7 @@ function ble/util/writearray {
   local __ble_rex_dq='^"([^\\"]|\\.)*"'
   local __ble_rex_es='^\$'\''([^\\'\'']|\\.)*'\'''
   local __ble_rex_sq='^'\''([^'\'']|'\'\\\\\'\'')*'\'''
-  local __ble_rex_normal=$'^[^'$_ble_term_space'$`"'\''()|&;<>\\]' # Note: []{}?*#!~^, @(), +() は quote されていなくても OK とする
+  local __ble_rex_normal=$'^[^'$_ble_term_blank'$`"'\''()|&;<>\\]' # Note: []{}?*#!~^, @(), +() は quote されていなくても OK とする
   declare -p "$_ble_local_array" | "$__ble_awk" -v _ble_bash="$_ble_bash" '
     '"$__ble_function_gensub_dummy"'
     BEGIN {
@@ -2170,8 +2170,8 @@ function ble/util/writearray {
         gsub(/\001\177/, "\177", decl);
       }
 
-      sub(/^([_a-zA-Z][_a-zA-Z0-9]*)=\(['"$_ble_term_space"']*/, "", decl);
-      sub(/['"$_ble_term_space"']*\)['"$_ble_term_space"']*$/, "", decl);
+      sub(/^([_a-zA-Z][_a-zA-Z0-9]*)=\(['"$_ble_term_blank"']*/, "", decl);
+      sub(/['"$_ble_term_blank"']*\)['"$_ble_term_blank"']*$/, "", decl);
 
 #%    # 空配列
       if (decl == "") return 1;
@@ -3623,9 +3623,9 @@ function ble/util/print-quoted-command {
 function ble/util/declare-print-definitions {
   (($#==0)) && return 0
 
-  # Note (#D2055): mawk 1.3.3-20090705 bug の為に [:space:] を正規表現内部で使
+  # Note (#D2055): mawk 1.3.3-20090705 bug の為に [:blank:] を正規表現内部で使
   # 用する事ができない。Ubuntu 16.04 LTS 及び Ubuntu 18.04 LTS で mawk
-  # 1.3.3-20090705 が使用されている。なので _ble_term_space という変数に
+  # 1.3.3-20090705 が使用されている。なので _ble_term_blank という変数に
   # <SP><TAB> を入れて使う。
 
   declare -p "$@" | ble/bin/awk -v _ble_bash="$_ble_bash" -v OSTYPE="$OSTYPE" '
@@ -3665,7 +3665,7 @@ function ble/util/declare-print-definitions {
       if (match(decl, /^[_a-zA-Z][_a-zA-Z0-9]*=\(/) == 0) return 0;
       name = substr(decl, 1, RLENGTH - 2);
       decl = substr(decl, RLENGTH + 1, length(decl) - RLENGTH - 1);
-      sub(/^['"$_ble_term_space"']+/, decl);
+      sub(/^['"$_ble_term_blank"']+/, decl);
 
       out = name "=()\n";
 
@@ -3674,13 +3674,13 @@ function ble/util/declare-print-definitions {
         decl = substr(decl, RLENGTH + 1);
 
         value = "";
-        if (match(decl, /^('\''[^'\'']*'\''|\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^'"$_ble_term_space"'"'\''`;&|()])*/)) {
+        if (match(decl, /^('\''[^'\'']*'\''|\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^'"$_ble_term_blank"'"'\''`;&|()])*/)) {
           value = substr(decl, 1, RLENGTH)
           decl = substr(decl, RLENGTH + 1)
         }
 
         out = out name "[" key "]=" fix_value(value) "\n";
-        sub(/^['"$_ble_term_space"']+/, decl);
+        sub(/^['"$_ble_term_blank"']+/, decl);
       }
 
       if (decl != "") return 0;

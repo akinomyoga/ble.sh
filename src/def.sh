@@ -7,7 +7,7 @@ _ble_term_SOH=$'\001'
 _ble_term_DEL=$'\177'
 _ble_term_IFS=$' \t\n'
 _ble_term_CR=$'\r'
-_ble_term_space=$' \t' # WA #D2055
+_ble_term_blank=$' \t' # WA #D2055
 
 function blehook/declare {
   local name=$1

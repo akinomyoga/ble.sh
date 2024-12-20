@@ -893,11 +893,11 @@ function ble/syntax/parse/touch-updated-word {
 #
 
 # 文脈値達 from lib/core-syntax-ctx.def
-#%$ sed 's/[[:space:]]*#.*//;/^$/d' lib/core-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print $1 "=" $2;}'
+#%$ sed 's/[[:blank:]]*#.*//;/^$/d' lib/core-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print $1 "=" $2;}'
 
 # for debug
 _ble_syntax_bash_ctx_names=(
-#%$ sed 's/[[:space:]]*#.*//;/^$/d' lib/core-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
+#%$ sed 's/[[:blank:]]*#.*//;/^$/d' lib/core-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
 
 ## @fn ble/syntax/ctx#get-name ctx

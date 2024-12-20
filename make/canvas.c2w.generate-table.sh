@@ -105,7 +105,7 @@ function sub:c2w {
       iucsver = -1;
     }
 
-    /^[[:space:]]*(#|$)/ {next;}
+    /^[[:blank:]]*(#|$)/ {next;}
 
     $1 == "__unicode_version__" {
       print "Processing ucsver " $2 > "/dev/stderr";
@@ -126,12 +126,12 @@ function sub:c2w {
       # EastAsianWidth.txt in Unicode 4.0..15.0.0 has the line form
       # "0021..0023;Na # Po"
       if ($2 == "#") {
-        if (match($1, /^([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        if (match($1, /^([0-9a-fA-F]+);([^[:blank:]]+)/, m)) {
           beg = strtonum("0x" m[1]);
           end = beg + 1;
           eaw = m[2];
           gencat = $3;
-        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:blank:]]+)/, m)) {
           beg = strtonum("0x" m[1]);
           end = strtonum("0x" m[2]) + 1;
           eaw = m[3];
@@ -211,8 +211,8 @@ function sub:c2w {
       ranges[irange++] = 0x110000;
       output_ranges = output_ranges " " 0x110000;
 
-      sub(/^[[:space:]]+/, "", output_values);
-      sub(/^[[:space:]]+/, "", output_ranges);
+      sub(/^[[:blank:]]+/, "", output_values);
+      sub(/^[[:blank:]]+/, "", output_ranges);
       print "_ble_unicode_c2w=(" output_values ")"
       print "_ble_unicode_c2w_ranges=(" output_ranges ")"
 
@@ -241,7 +241,7 @@ function sub:c2w {
           output_index = output_index " " i1 ":" i2;
       }
 
-      sub(/^[[:space:]]+/, "", output_index);
+      sub(/^[[:blank:]]+/, "", output_index);
       print "_ble_unicode_c2w_index=(" output_index ")";
     }
 
@@ -269,7 +269,7 @@ function sub:c2w {
 function sub:convert-custom-c2w {
   local -x name=$1
   gawk '
-    match($0, /^[[:space:]]*U\+([[:xdigit:]]+)[[:space:]]+([0-9]+)/, m) {
+    match($0, /^[[:blank:]]*U\+([[:xdigit:]]+)[[:blank:]]+([0-9]+)/, m) {
       code = strtonum("0x" m[1]);
       w = m[2];
 
@@ -459,7 +459,7 @@ function sub:GraphemeClusterBreak {
       out_length = 3;
       out_count = 0;
     }
-    { sub(/[[:space:]]*#.*$/, ""); sub(/[[:space:]]+$/, ""); }
+    { sub(/[[:blank:]]*#.*$/, ""); sub(/[[:blank:]]+$/, ""); }
     $0 == "" {next}
 
     function out_flush() {
@@ -474,7 +474,7 @@ function sub:GraphemeClusterBreak {
       i = b = 0;
       ans = "";
       str = "";
-      while (match(line, /([÷×])[[:space:]]*([[:xdigit:]]+)[[:space:]]*/, m) > 0) {
+      while (match(line, /([÷×])[[:blank:]]*([[:xdigit:]]+)[[:blank:]]*/, m) > 0) {
         if (m[1] == "÷") b = i;
         str = str "\\U" m[2];
         ans = ans (ans == "" ? "" : ",") b;
@@ -581,7 +581,7 @@ function sub:GraphemeClusterBreak {
       if (e > max_code) max_code = e;
     }
     function process_IndicConjunctBreak(_, m, code, InCB, b, e, i) {
-      if (match($0, /^([[:xdigit:].]+)[[:space:]]*;[[:space:]]*InCB[[:space:]]*;[[:space:]]*(Consonant|Extend|Linker)[[:space:];#]/, m) > 0) {
+      if (match($0, /^([[:xdigit:].]+)[[:blank:]]*;[[:blank:]]*InCB[[:blank:]]*;[[:blank:]]*(Consonant|Extend|Linker)[[:blank:];#]/, m) > 0) {
         code = m[1];
         InCB = m[2];
         if (match(code, /^([[:xdigit:]]+)\.\.([[:xdigit:]]+)$/, m) > 0) {
@@ -623,7 +623,7 @@ function sub:GraphemeClusterBreak {
     /__Grapheme_Cluster_Break__/ { mode = "break"; }
     /__Extended_Pictographic__/ { mode = "picto"; }
     /__Indic_Conjunct_Break__/ { mode = "indic"; }
-    /^[[:space:]]*(#|$)/ {next;}
+    /^[[:blank:]]*(#|$)/ {next;}
     mode == "break" && $2 == ";" { process_GraphemeClusterBreak($1, $3); }
     mode == "picto" && /Extended_Pictographic/ { process_ExtendedPictographic(); }
     mode == "indic" {
@@ -762,7 +762,7 @@ function sub:GraphemeClusterBreak {
       rule_initialize();
       rule_print();
     }
-  ' | sed 's/[[:space:]]\{1,\}$//' > src/canvas.GraphemeClusterBreak.sh
+  ' | sed 's/[[:blank:]]\{1,\}$//' > src/canvas.GraphemeClusterBreak.sh
 }
 
 # currently unused
@@ -774,7 +774,7 @@ function sub:IndicConjunctBreak {
   local cache=out/data/unicode-DerivedCoreProperties-$unicode_version.txt
   download "$base_url/DerivedCoreProperties.txt" "$cache"
 
-  gawk -F '[[:space:]]*[;#][[:space:]]*' '
+  gawk -F '[[:blank:]]*[;#][[:blank:]]*' '
     BEGIN {
       PropertyCount = 4;
       prop2v["None"]      = None      = 0;
@@ -798,7 +798,7 @@ function sub:IndicConjunctBreak {
       if (e > max_code) max_code = e;
     }
 
-    /^[[:space:]]*(#|$)/ {next;}
+    /^[[:blank:]]*(#|$)/ {next;}
 
     $2 == "InCB" { process_IndicConjunctBreak($1, $3); }
 
@@ -865,7 +865,7 @@ function sub:IndicConjunctBreak {
       print_isolated();
       print_ranges();
     }
-  ' "$cache" | sed 's/[[:space:]]\{1,\}$//' > src/canvas.IndicConjunctBreak.sh
+  ' "$cache" | sed 's/[[:blank:]]\{1,\}$//' > src/canvas.IndicConjunctBreak.sh
 }
 
 # currently unused
@@ -875,7 +875,7 @@ function sub:update-EastAsianWidth {
     local data=out/data/unicode-EastAsianWidth-$version.txt
     download http://www.unicode.org/Public/$version/ucd/EastAsianWidth.txt "$data"
     gawk '
-      /^[[:space:]]*(#|$)/ {next;}
+      /^[[:blank:]]*(#|$)/ {next;}
 
       BEGIN {
         prev_end = 0;
@@ -905,11 +905,11 @@ function sub:update-EastAsianWidth {
       }
 
       $2 == "#" {
-        if (match($1, /^([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        if (match($1, /^([0-9a-fA-F]+);([^[:blank:]]+)/, m)) {
           beg = strtonum("0x" m[1]);
           end = beg + 1;
           eaw = m[2];
-        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:blank:]]+)/, m)) {
           beg = strtonum("0x" m[1]);
           end = strtonum("0x" m[2]) + 1;
           eaw = m[3];
@@ -966,7 +966,7 @@ function sub:update-EastAsianWidth {
         return i;
       }
 
-      /^[[:space:]]*(#|$)/ {next;}
+      /^[[:blank:]]*(#|$)/ {next;}
 
       BEGIN {
         cjkwidth = 3;
@@ -990,11 +990,11 @@ function sub:update-EastAsianWidth {
       }
 
       $2 == "#" {
-        if (match($1, /^([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        if (match($1, /^([0-9a-fA-F]+);([^[:blank:]]+)/, m)) {
           beg = strtonum("0x" m[1]);
           end = beg + 1;
           eaw = m[2];
-        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:space:]]+)/, m)) {
+        } else if (match($1, /^([0-9a-fA-F]+)\.\.([0-9a-fA-F]+);([^[:blank:]]+)/, m)) {
           beg = strtonum("0x" m[1]);
           end = strtonum("0x" m[2]) + 1;
           eaw = m[3];
@@ -1044,8 +1044,8 @@ function sub:update-EastAsianWidth {
         ranges[irange++] = 0x110000;
         output_ranges = output_ranges " " 0x110000;
 
-        sub(/^[[:space:]]+/, "", output_values);
-        sub(/^[[:space:]]+/, "", output_ranges);
+        sub(/^[[:blank:]]+/, "", output_values);
+        sub(/^[[:blank:]]+/, "", output_ranges);
         print "_ble_unicode_EastAsianWidth_c2w=(" output_values ")"
         print "_ble_unicode_EastAsianWidth_c2w_ranges=(" output_ranges ")"
 
@@ -1074,7 +1074,7 @@ function sub:update-EastAsianWidth {
             output_index = output_index " " i1 ":" i2;
         }
 
-        sub(/^[[:space:]]+/, "", output_index);
+        sub(/^[[:blank:]]+/, "", output_index);
         print "_ble_unicode_EastAsianWidth_c2w_index=(" output_index ")";
       }
 

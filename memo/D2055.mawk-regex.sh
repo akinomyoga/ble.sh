@@ -2,7 +2,7 @@
 
 test-mawk-version() {
   local v=$1
-  local r=$(echo yes | ~/opt/mawk/"$v"/bin/mawk '/^('\''[^'\'']*'\''|\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^[:space:]"'\''`;&|()])*/')
+  local r=$(echo yes | ~/opt/mawk/"$v"/bin/mawk '/^('\''[^'\'']*'\''|\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^[:blank:]"'\''`;&|()])*/')
   echo "$v: ${r:-no}"
 }
 
@@ -20,19 +20,19 @@ function test-regex-matching {
   echo "mawk-path = $mawk"
   echo
 
-  # echo yes | "$mawk" '/'\''[^'\'']*'\''|\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^[:space:]"'\''`;&|()]/'
-  # echo yes | "$mawk" '/\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^[:space:]"'\''`;&|()]/'
-  # echo yes | "$mawk" '/\$?"([^\\"]|\\.)*"|\\.|[^[:space:]"'\''`;&|()]/'
-  # echo yes | "$mawk" '/\\.|[^[:space:]"'\''`;&|()]/'
-  # echo yes | "$mawk" '/[^[:space:]"'\''`;&|()]/'
-  # echo yes | "$mawk" '/[^[:space:]()]/'
-  echo yes | "$mawk" '{if (/[[:space:]()]/) print "no"; else print "yes";}'           # 文法エラー
-  echo '(' | "$mawk" '{if (/[()[:space:]]/) print "yes"; else print "no";}'           # 駄目
+  # echo yes | "$mawk" '/'\''[^'\'']*'\''|\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^[:blank:]"'\''`;&|()]/'
+  # echo yes | "$mawk" '/\$'\''([^\\'\'']|\\.)*'\''|\$?"([^\\"]|\\.)*"|\\.|[^[:blank:]"'\''`;&|()]/'
+  # echo yes | "$mawk" '/\$?"([^\\"]|\\.)*"|\\.|[^[:blank:]"'\''`;&|()]/'
+  # echo yes | "$mawk" '/\\.|[^[:blank:]"'\''`;&|()]/'
+  # echo yes | "$mawk" '/[^[:blank:]"'\''`;&|()]/'
+  # echo yes | "$mawk" '/[^[:blank:]()]/'
+  echo yes | "$mawk" '{if (/[[:blank:]()]/) print "no"; else print "yes";}'           # 文法エラー
+  echo '(' | "$mawk" '{if (/[()[:blank:]]/) print "yes"; else print "no";}'           # 駄目
   echo '(' | "$mawk" '{if (/[()]/) print "yes"; else print "no";}'                    # OK
-  echo ' ' | "$mawk" '{if (/[[:space:]]/) print "yes"; else print "no";}'             # 駄目
+  echo ' ' | "$mawk" '{if (/[[:blank:]]/) print "yes"; else print "no";}'             # 駄目
   echo ' ' | "$mawk" '{if (/[ 	]/) print "yes"; else print "no";}'                   # OK
-  echo 'a b c' | "$mawk" '{gsub(/[[:space:]]/, ""); print "[" $0 "] expect:[abc]";}'  # 駄目
-  echo 'a b c' | "$mawk" '{gsub(/[^[:space:]]/, ""); print "[" $0 "] expect:[  ]";}'  # 駄目
+  echo 'a b c' | "$mawk" '{gsub(/[[:blank:]]/, ""); print "[" $0 "] expect:[abc]";}'  # 駄目
+  echo 'a b c' | "$mawk" '{gsub(/[^[:blank:]]/, ""); print "[" $0 "] expect:[  ]";}'  # 駄目
   echo 'a b c' | "$mawk" '{gsub(/[[:alpha:]]/, ""); print "[" $0 "] expect:[  ]";}'   # 駄目
   echo 'a b c' | "$mawk" '{gsub(/[^[:alpha:]]/, ""); print "[" $0 "] expect:[abc]";}' # 駄目
   echo 'a b c' | "$mawk" '{gsub(/[[=a=]]/, ""); print "[" $0 "] expect:[ b c]";}'     # 駄目

@@ -1934,12 +1934,6 @@ bash_tips
     C-c を実行した後は C-m を実行した時と同様に全ての編集をクリアして、履歴位置
     は履歴の末端に移動するべきである。
 
-  * global: 実は [:space:] は \v\f\r\n にも一致する
-
-    一方で [:blank:] は全く使われていない。実は [:space:] になっている箇所は全
-    て [:blank:] なのでは? ただし改行 \n も意図していた可能性があるのでそれにつ
-    いては $_ble_term_IFS に置き換える。
-
 2024-12-09
 
   * highlight: cd を bind -x 経由で実行するとコマンドキャッシュがクリアされないので
@@ -7715,6 +7709,14 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-12-20
+
+  * global: 実は [:space:] は \v\f\r\n にも一致する。代わりに [:blank:] を使う [#D2299]
+
+    一方で [:blank:] は全く使われていない。実は [:space:] になっている箇所は全
+    て [:blank:] なのでは? ただし改行 \n も意図していた可能性があるのでそれにつ
+    いては $_ble_term_IFS に置き換える。
+
+    関連して _ble_term_space も _ble_term_blank に改名する。
 
   * main: work around macOS sed (reported by Mossop) [#D2298]
     https://github.com/akinomyoga/ble.sh/issues/538

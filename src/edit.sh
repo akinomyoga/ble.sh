@@ -1986,7 +1986,7 @@ else
 fi
 
 function ble/prompt/update/.has-prompt_command {
-  [[ ${_ble_edit_PROMPT_COMMAND[*]} == *[![:space:]]* ]]
+  [[ ${_ble_edit_PROMPT_COMMAND[*]} == *[!$_ble_term_IFS]* ]]
 }
 function ble/prompt/update/.eval-prompt_command {
   ((${#PROMPT_COMMAND[@]})) || return 0
@@ -2158,9 +2158,9 @@ function ble/prompt/print-ruler.draw {
   [[ $bleopt_prompt_ruler ]] || return 0
 
   local command=$1 opts=$2 cols=$COLUMNS
-  local rex_eval_prefix='(([!{]|time|if|then|elif|while|until|do|exec|eval|command|env|nice|nohup|xargs|sudo)[[:space:]]+)?'
-  local rex_clear_command='(tput[[:space:]]+)?(clear|reset)'
-  local rex=$'(^|[\n;&|(])[[:space:]]*'$rex_eval_prefix$rex_clear_command'([ \t\n;&|)]|$)'
+  local rex_eval_prefix='(([!{]|time|if|then|elif|while|until|do|exec|eval|command|env|nice|nohup|xargs|sudo)[[:blank:]]+)?'
+  local rex_clear_command='(tput[[:blank:]]+)?(clear|reset)'
+  local rex=$'(^|[\n;&|(])[[:blank:]]*'$rex_eval_prefix$rex_clear_command'([ \t\n;&|)]|$)'
   [[ $command =~ $rex ]] && return 0
 
   if [[ :$opts: == *:keep-info:* ]]; then
@@ -4226,7 +4226,7 @@ function ble/edit/display-version/check:starship {
   ble/function#get-source-and-lineno starship_precmd || return 1
 
   # get starship path
-  local starship sed_script='s/^[[:space:]]*PS1="\$(\(.\{1,\}\) prompt .*)";\{0,1\}$/\1/p'
+  local starship sed_script='s/^[[:blank:]]*PS1="\$(\(.\{1,\}\) prompt .*)";\{0,1\}$/\1/p'
   ble/util/assign-array starship 'declare -f starship_precmd | ble/bin/sed -n "$sed_script"'
   if ! ble/bin#has "$starship"; then
     { builtin eval -- "starship=$starship" && ble/bin#has "$starship"; } ||
@@ -4235,8 +4235,8 @@ function ble/edit/display-version/check:starship {
 
   local awk_script='
     sub(/^starship /, "") { version = $0; next; }
-    sub(/^branch:/, "") { gsub(/['"$_ble_term_space"']/, "_"); if ($0 != "") version = version "-" $0; next; }
-    sub(/^commit_hash:/, "") { gsub(/['"$_ble_term_space"']/, "_"); if ($0 != "") version = version "+" $0; next; }
+    sub(/^branch:/, "") { gsub(/['"$_ble_term_blank"']/, "_"); if ($0 != "") version = version "-" $0; next; }
+    sub(/^commit_hash:/, "") { gsub(/['"$_ble_term_blank"']/, "_"); if ($0 != "") version = version "+" $0; next; }
     sub(/^build_time:/, "") { build_time = $0; }
     sub(/^build_env:/, "") { build_env = $0; }
     END {
@@ -4457,7 +4457,7 @@ function ble/widget/display-shell-version {
 
     "$BASH" --norc --noprofile  -ic 'shopt -po; shopt' >| "$tmpfile1"
     { shopt -po; shopt; } >| "$tmpfile2"
-    local diff awk_script='/^[-+].*[[:space:]]on$/ {print $1} /^[-+]set -o .*$/ {print substr($0,1,1) $3}' IFS=$' \t\n'
+    local diff awk_script='/^[-+].*[[:blank:]]on$/ {print $1} /^[-+]set -o .*$/ {print substr($0,1,1) $3}' IFS=$' \t\n'
     ble/util/assign-words diff 'ble/bin/diff -bwu "$tmpfile1" "$tmpfile2" | ble/bin/awk "$awk_script"'
     line="${bold}options$sgr0: ${diff[*]}"
 
@@ -9217,7 +9217,7 @@ function ble-edit/isearch/.shift-backward-references {
     # 後方参照 (backward references) の番号を 1 ずつ増やす。
     # bash 正規表現は 2 桁以上の後方参照に対応していないので、
     # \1 - \8 を \2-\9 にずらすだけにする (\9 が存在するときに問題になるが仕方がない)。
-    local rex_cc='\[[@][^]@]+[@]\]' # [:space:] [=a=] [.a.] など。
+    local rex_cc='\[[@][^]@]+[@]\]' # [:blank:] [=a=] [.a.] など。
     local rex_bracket_expr='\[\^?]?('${rex_cc//@/:}'|'${rex_cc//@/=}'|'${rex_cc//@/.}'|[^][]|\[[^]:=.])*\[?\]'
     local rex='^('$rex_bracket_expr'|\\[^1-8])*\\[1-8]'
     local buff=
@@ -10054,7 +10054,7 @@ function ble-edit/nsearch/action:load-command/initialize {
   ble-edit/content/update-syntax
 
   local pos=$_ble_edit_ind
-  ble/string#match "${_ble_edit_str:pos}" $'^[ \t]+[^[:space:]]' &&
+  ble/string#match "${_ble_edit_str:pos}" $'^[ \t]+[^ \t\n]' &&
     ((pos+=${#BASH_REMATCH}-1))
   local comp_cword comp_words comp_line comp_point tree_words
   if ble/syntax:bash/extract-command "$pos" treeinfo && ((${#tree_words[@]})); then
@@ -10067,7 +10067,7 @@ function ble-edit/nsearch/action:load-command/initialize {
     local beg=$wbeg end=${tree_words[${#tree_words[@]}-1]%:*}
     ble/string#match "${_ble_edit_str:end}" $'^[ \t]+($|\n)' &&
       ((end+=${#BASH_REMATCH}))
-    if ((_ble_edit_ind<=end)) || { ble/string#match "${_ble_edit_str:end:_ble_edit_ind-end}" $'^[[:space:]\n]+$' && end=$_ble_edit_ind; }; then
+    if ((_ble_edit_ind<=end)) || { ble/string#match "${_ble_edit_str:end:_ble_edit_ind-end}" $'^[[:blank:]\n]+$' && end=$_ble_edit_ind; }; then
       if ((beg>=0&&beg<end)); then
         ((_ble_edit_ind<beg)) && _ble_edit_ind=$beg
         _ble_edit_nsearch_loadctx=("$beg" "${_ble_edit_str::beg}" "${_ble_edit_str:end}")
@@ -10080,7 +10080,7 @@ function ble-edit/nsearch/action:load-command/initialize {
   # name, we directly load a command in the current position.
   local ret stat
   if ble/syntax/completion-context/.search-last-istat "$_ble_edit_ind" &&
-     ble/string#match "${_ble_edit_str:ret:_ble_edit_ind-ret}" '^[[:space:]]*$'
+     ble/string#match "${_ble_edit_str:ret:_ble_edit_ind-ret}" '^[[:blank:]]*$'
   then
     ble/string#split-words stat "${_ble_syntax_stat[ret]}"
     if [[ ${_ble_syntax_completion_context_check_prefix[stat[0]]} == next-command ]]; then
@@ -11236,8 +11236,8 @@ function ble/widget/command-help/.locate-in-man-bash {
   rex='\b$'; [[ $awk == gawk && $cmd_awk =~ $rex ]] && rex_awk=$rex_awk'\y'
   local awk_script='{
     gsub(/'"$rex_esc"'/, "");
-    if (!par && $0 ~ /^['"$_ble_term_space"']*'"$rex_awk"'/) { print NR; exit; }
-    par = !($0 ~ /^['"$_ble_term_space"']*$/);
+    if (!par && $0 ~ /^['"$_ble_term_blank"']*'"$rex_awk"'/) { print NR; exit; }
+    par = !($0 ~ /^['"$_ble_term_blank"']*$/);
   }'
   local awk_out; ble/util/assign awk_out '"$awk" "$awk_script" 2>/dev/null <<< "$man_content"' || return 1 # 206ms (1 fork)
   local iline=${awk_out%$'\n'}; [[ $iline ]] || return 1

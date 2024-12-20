@@ -68,7 +68,7 @@
 - nsearch: support `action={load-{line,command},insert{,-line}}` (motivated by vaab) `#D2286` 32f290df
 - complete: support completion for `execute-named-command` `#D2288` 4fee44e6
 - complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
-- edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` xxxxxxxx
+- edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` 37291ff1
 
 ## Changes
 
@@ -288,7 +288,8 @@
 - main: refactor initialization sequence `#D2231` cc9d7f39
 - util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
 - decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` 21b1bb3d
-- global: normalize quoting of function names of the form `prefix:$name` `#D2296` xxxxxxxx
+- global: normalize quoting of function names of the form `prefix:$name` `#D2296` 3d7c98bb
+- global: use `[:blank:]` instead of `[:space:]` `#D2299` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

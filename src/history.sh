@@ -1354,7 +1354,7 @@ function ble/builtin/history/option:p {
   builtin history -p -- '' &>/dev/null
   ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
   if [[ $line1 != "$line2" ]]; then
-    local rex_head='^[[:space:]]*[0-9]+\*?[[:space:]]*'
+    local rex_head='^[[:blank:]]*[0-9]+\*?[[:blank:]]*'
     [[ $line1 =~ $rex_head ]] &&
       line1=${line1:${#BASH_REMATCH}}
 

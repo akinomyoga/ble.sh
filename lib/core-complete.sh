@@ -2108,7 +2108,7 @@ function ble/complete/action:command/get-desc {
       ble/function#get-source-and-lineno "$CAND"
 
       local def; ble/function#getdef "$CAND"
-      ble/string#match "$def" '^[^()]*\(\)[[:space:]]*\{[[:space:]]+(.*[^[:space:]])[[:space:]]+\}[[:space:]]*$' &&
+      ble/string#match "$def" '^[^()]*\(\)[[:blank:]]*\{[[:blank:]]+(.*[^[:blank:]])[[:blank:]]+\}[[:blank:]]*$' &&
         def=${BASH_REMATCH[1]} # 関数の中身を抽出する
       local ret sgr0=$'\e[27m' sgr1=$'\e[7m' # Note: sgr-ansi で生成
       lines=1 cols=${COLUMNS:-80} x=0 y=0 ble/canvas/trace-text "$def" external-sgr
@@ -3435,7 +3435,7 @@ function ble/complete/progcomp/.compgen-helper-prog {
       # WA: aws_completer
       local compreply
       ble/util/assign compreply '"$comp_prog" "$cmd" "$cur" "$prev" < /dev/null'
-      ble/bin/sed "s/[[:space:]]\{1,\}\$//" <<< "$compreply"
+      ble/bin/sed "s/[[:blank:]]\{1,\}\$//" <<< "$compreply"
     else
       "$comp_prog" "$cmd" "$cur" "$prev" < /dev/null
     fi
@@ -3707,7 +3707,7 @@ function ble/complete/progcomp/.parse-complete {
   flag_noquote=
   local compdef=${1#'complete '}
 
-  local arg optarg rex='^([^][*?;&|[:space:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:space:]]+' # #D1709 safe (WA gawk 4.0.2)
+  local arg optarg rex='^([^][*?;&|[:blank:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:blank:]]+' # #D1709 safe (WA gawk 4.0.2)
   while ble/complete/progcomp/.parse-complete/next; do
     case $arg in
     (-*)
@@ -3959,7 +3959,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
             split(entry, record, FS);
             if ((desc = record[4])) {
               desc = "\033[1mReverse[\033[m " desc " \033[;1m]\033[m";
-              if (match(item, /['"$_ble_term_space"']*[:=[]/)) {
+              if (match(item, /['"$_ble_term_blank"']*[:=[]/)) {
                 option = substr(item, 1, RSTART - 1);
                 optarg = substr(item, RSTART);
                 suffix = substr(item, RSTART, 1);
@@ -4051,7 +4051,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       # 2. rtrim
       if (c_enable_rtrim) {
         for (i = 1; i <= item_count; i++)
-          sub(/[[:space:]]+$/, "", items[i]);
+          sub(/[[:blank:]]+$/, "", items[i]);
       }
 
       # 3. filter-by-prefix
@@ -4405,20 +4405,20 @@ function ble/complete/progcomp/.compgen {
   #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、
   #   挿入時のエスケープ対象であるので末尾の space もエスケープされてしまう。
   #
-  #   仕方がないので sed で各候補の末端の [[:space:]]+ を除去する。
+  #   仕方がないので sed で各候補の末端の [[:blank:]]+ を除去する。
   #   これだとスペースで終わるファイル名を挿入できないという実害が発生するが、
   #   そのような変な補完関数を作るのが悪いのである。
   if [[ $comp_func == __git* && $comp_opts == *:nospace:* ]]; then
     filter_opts=$filter_opts:workaround-for-git
     if ((_ble_bash>=50300)); then
-      # If all the candidates end with [[:space:]], we remove "compopt -o
+      # If all the candidates end with [[:blank:]], we remove "compopt -o
       # nospace".
       local tmp
       tmp=("${compgen[@]}")
-      ble/array#remove-by-glob tmp '*[[:space:]]'
+      ble/array#remove-by-glob tmp '*[[:blank:]]'
       ((${#tmp[@]}==0)) && comp_opts=${comp_opts//:nospace:/:}
     else
-      ble/string#match "$compgen" $'(^|\n|[^[:space:]])(\n|$)' ||
+      ble/string#match "$compgen" $'(^|\n|[^[:blank:]])(\n|$)' ||
         comp_opts=${comp_opts//:nospace:/:}
     fi
   fi
@@ -5030,8 +5030,8 @@ function ble/complete/mandb/.generate-cache-from-man {
 
     # ".Dd" seems to be the include directive for macros?
     # ".Nm" (in mdoc) specifies the name of the target the man page describes
-    mode == "begin" && /^\.(Dd|Nm)['"$_ble_term_space"']/ {
-      if (type == "man" && /^\.Dd['"$_ble_term_space"']+\$Mdoc/) topic_start = "";
+    mode == "begin" && /^\.(Dd|Nm)['"$_ble_term_blank"']/ {
+      if (type == "man" && /^\.Dd['"$_ble_term_blank"']+\$Mdoc/) topic_start = "";
       print $0;
     }
 
@@ -5056,12 +5056,12 @@ function ble/complete/mandb/.generate-cache-from-man {
     # Comment: [.ig \n comments \n ..]
     /^\.ig/ { mode = "ignore"; next; }
     mode == "ignore" {
-      if (/^\.\.['"$_ble_term_space"']*/) mode = "none";
+      if (/^\.\.['"$_ble_term_blank"']*/) mode = "none";
       next;
     }
 
     {
-      sub(/['"$_ble_term_space"']+$/, "");
+      sub(/['"$_ble_term_blank"']+$/, "");
       REQ = match($0, /^\.[_a-zA-Z0-9]+/) ? substr($0, 2, RLENGTH - 1) : "";
     }
 
@@ -5150,7 +5150,7 @@ function ble/complete/mandb/.generate-cache-from-man {
 
       if (fmt3_state == "key") {
         if (REQ == "IP") { fmt3_state = "desc"; return; }
-        if (match($0, /(	|    )['"$_ble_term_space"']*/)) {
+        if (match($0, /(	|    )['"$_ble_term_blank"']*/)) {
           fmt3_keys[fmt3_key_count++] = substr($0, 1, RSTART - 1);
           fmt3_desc = substr($0, RSTART + RLENGTH);
           fmt3_state = "desc";
@@ -5184,7 +5184,7 @@ function ble/complete/mandb/.generate-cache-from-man {
     # Format #4: [[.IP "key" 4 \n .IX Item "..."]+ \n .PD \n desc]
     # This format is used by "wget".
 
-    /^\.IP['"$_ble_term_space"']+".*"(['"$_ble_term_space"']+[0-9]+)?$/ && fmt3_state != "key" {
+    /^\.IP['"$_ble_term_blank"']+".*"(['"$_ble_term_blank"']+[0-9]+)?$/ && fmt3_state != "key" {
       fmt6_init();
       fmt4_init();
       next;
@@ -5194,7 +5194,7 @@ function ble/complete/mandb/.generate-cache-from-man {
       if (mode != "fmt4_desc")
         if (!(g_keys_count && g_desc == "")) all_flush();
 
-      gsub(/^\.IP['"$_ble_term_space"']+"|"(['"$_ble_term_space"']+[0-9]+)?$/, "");
+      gsub(/^\.IP['"$_ble_term_blank"']+"|"(['"$_ble_term_blank"']+[0-9]+)?$/, "");
       stage_key($0);
       mode = "fmt4_desc";
     }
@@ -5213,7 +5213,7 @@ function ble/complete/mandb/.generate-cache-from-man {
       }
 
       if (REQ == "PD") next;
-      if (/^\.IX['"$_ble_term_space"']+Item['"$_ble_term_space"']+/) next;
+      if (/^\.IX['"$_ble_term_blank"']+Item['"$_ble_term_blank"']+/) next;
 
       stage_desc($0);
     }
@@ -5261,7 +5261,7 @@ function ble/complete/mandb/.generate-cache-from-man {
       next;
     }
     mode == "fmt2_keyc" {
-      if (/^\.PD['"$_ble_term_space"']*([0-9]+['"$_ble_term_space"']*)?$/) next;
+      if (/^\.PD['"$_ble_term_blank"']*([0-9]+['"$_ble_term_blank"']*)?$/) next;
       g_current_key = g_current_key "\n" $0;
       if (REQ == "Xc") {
         stage_key(g_current_key);
@@ -5283,10 +5283,10 @@ function ble/complete/mandb/.generate-cache-from-man {
       # In Japanese version of "man ls", key and desc is separated by multiple
       # spaces, where the number of spaces seem to vary from 5 to more than 10
       # spaces.
-      if (match(line, /['"$_ble_term_space"']['"$_ble_term_space"']['"$_ble_term_space"']/) > 0) {
+      if (match(line, /['"$_ble_term_blank"']['"$_ble_term_blank"']['"$_ble_term_blank"']/) > 0) {
         key = substr(line, 1, RSTART - 1)
         desc = substr(line, RSTART);
-        sub(/^['"$_ble_term_space"']+/, "", desc);
+        sub(/^['"$_ble_term_blank"']+/, "", desc);
 
         stage_key(key);
         stage_desc(desc);
@@ -5297,7 +5297,7 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
 
     mode == "key1" {
-      if (/^\.PD['"$_ble_term_space"']*([0-9]+['"$_ble_term_space"']*)?$/) next;
+      if (/^\.PD['"$_ble_term_blank"']*([0-9]+['"$_ble_term_blank"']*)?$/) next;
       fmt1_process_key($0);
       next;
     }
@@ -5336,7 +5336,7 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
 
     function process_key(line, _, n, specs, i, spec, option, optarg, suffix) {
-      gsub(/^['"$_ble_term_space"']+|['"$_ble_term_space"']+$/, "", line);
+      gsub(/^['"$_ble_term_blank"']+|['"$_ble_term_blank"']+$/, "", line);
       if (line == "") return;
 
       gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
@@ -5346,21 +5346,21 @@ function ble/complete/mandb/.generate-cache-from-man {
       gsub(/\x0E/, "", line); # SO
       gsub(/\x0F/, "", line); # SI
       gsub(/[\x00-\x1F]/, "", line); # Give up all the other control chars
-      gsub(/^['"$_ble_term_space"']*|['"$_ble_term_space"']*$/, "", line);
-      gsub(/['"$_ble_term_space"']+/, " ", line);
+      gsub(/^['"$_ble_term_blank"']*|['"$_ble_term_blank"']*$/, "", line);
+      gsub(/['"$_ble_term_blank"']+/, " ", line);
       if (line !~ /^[-+]./) return;
 
-      n = split(line, specs, /,(['"$_ble_term_space"']+|$)| or /);
+      n = split(line, specs, /,(['"$_ble_term_blank"']+|$)| or /);
       prev_optarg = "";
       for (i = n; i > 0; i--) {
         spec = specs[i];
-        sub(/,['"$_ble_term_space"']+$/, "", spec);
+        sub(/,['"$_ble_term_blank"']+$/, "", spec);
 
         # Exclude non-options.
         # Exclude FS (\034) because it is used for separators in the cache format.
         if (spec !~ /^[-+]/ || spec ~ /\034/) { specs[i] = ""; continue; }
 
-        if (match(spec, /\[[:=]?|[:='"$_ble_term_space"']/)) {
+        if (match(spec, /\[[:=]?|[:='"$_ble_term_blank"']/)) {
           option = substr(spec, 1, RSTART - 1);
           optarg = substr(spec, RSTART);
           suffix = substr(spec, RSTART + RLENGTH - 1, 1);
@@ -5377,15 +5377,15 @@ function ble/complete/mandb/.generate-cache-from-man {
             if (option ~ /^[-+].$/) {
               sub(/^\[=/, "[", optarg);
               sub(/^=/, "", optarg);
-              sub(/^[^'"$_ble_term_space"'[]/, " &", optarg);
+              sub(/^[^'"$_ble_term_blank"'[]/, " &", optarg);
             } else {
               if (optarg ~ /^\[[^:=]/)
                 sub(/^\[/, "[=", optarg);
-              else if (optarg ~ /^[^:='"$_ble_term_space"'[]/)
+              else if (optarg ~ /^[^:='"$_ble_term_blank"'[]/)
                 optarg = " " optarg;
             }
 
-            if (match(optarg, /^\[[:=]?|^[:='"$_ble_term_space"']/)) {
+            if (match(optarg, /^\[[:=]?|^[:='"$_ble_term_blank"']/)) {
               suffix = substr(optarg, RSTART + RLENGTH - 1, 1);
               if (suffix == "[") suffix = "";
             }
@@ -5404,13 +5404,13 @@ function ble/complete/mandb/.generate-cache-from-man {
     }
 
     function process_desc(line) {
-      gsub(/^['"$_ble_term_space"']*|['"$_ble_term_space"']*$/, "", line);
+      gsub(/^['"$_ble_term_blank"']*|['"$_ble_term_blank"']*$/, "", line);
       if (line == "") {
         if (g_desc != "") return 0;
         return 1;
       }
 
-      gsub(/['"$_ble_term_space"']['"$_ble_term_space"']+/, " ", line);
+      gsub(/['"$_ble_term_blank"']['"$_ble_term_blank"']+/, " ", line);
       if (g_desc != "") g_desc = g_desc " ";
       g_desc = g_desc line;
       return 1;
@@ -5461,7 +5461,7 @@ function ble/complete/mandb:help/generate-cache {
 
   local space=$' \t' # for #D1709 (WA gawk 4.0.2)
   local rex_argsep='(\[?[:=]|  ?|\[)'
-  local rex_option='[-+](,|[^]:='$space',[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|\[[^][]+\]|[^-'"$_ble_term_space"'、。][^'"$_ble_term_space"'、。]*))?([,'"$_ble_term_space"']|$)'
+  local rex_option='[-+](,|[^]:='$space',[]+)('$rex_argsep'(<[^<>]+>|\([^()]+\)|\[[^][]+\]|[^-'"$_ble_term_blank"'、。][^'"$_ble_term_blank"'、。]*))?([,'"$_ble_term_blank"']|$)'
   local LC_ALL= LC_COLLATE=C 2>/dev/null
   ble/bin/awk -F "$_ble_term_FS" '
     BEGIN {
@@ -5607,7 +5607,7 @@ function ble/complete/mandb:help/generate-cache {
     # Extract usage [-DEI] [-f[helo] | --prefix=PATH]
 
     function usage_parse(line, _, optspec, optspec1, option, optarg, n, i, o) {
-      while (match(line, /\[['"$_ble_term_space"']*([^][]|\[[^][]*\])+['"$_ble_term_space"']*\]/)) {
+      while (match(line, /\[['"$_ble_term_blank"']*([^][]|\[[^][]*\])+['"$_ble_term_blank"']*\]/)) {
         optspec = substr(line, RSTART + 1, RLENGTH - 2);
         line = substr(line, RSTART + RLENGTH);
 
@@ -5615,7 +5615,7 @@ function ble/complete/mandb:help/generate-cache {
         while (match(optspec, /([^][|]|\[[^][]*\])+/)) {
           optspec1 = substr(optspec, RSTART, RLENGTH);
           optspec = substr(optspec, RSTART + RLENGTH);
-          gsub(/^['"$_ble_term_space"']+|['"$_ble_term_space"']+$/, "", optspec1);
+          gsub(/^['"$_ble_term_blank"']+|['"$_ble_term_blank"']+$/, "", optspec1);
 
           # optspec1: "--option optarg", "-f[optarg]", "-xzvf", etc.
           if (match(optspec1, /^[-+][^]:='"$space"'[]+/)) {
@@ -5641,10 +5641,10 @@ function ble/complete/mandb:help/generate-cache {
     }
 
     cfg_usage {
-      if (NR <= 20 && (g_usage_start || $0 ~ /^[_a-zA-Z0-9]|^[^-'"$_ble_term_space"'][^'"$_ble_term_space"']*(: |：)/) ) {
+      if (NR <= 20 && (g_usage_start || $0 ~ /^[_a-zA-Z0-9]|^[^-'"$_ble_term_blank"'][^'"$_ble_term_blank"']*(: |：)/) ) {
         g_usage_start = 1;
         usage_parse($0);
-      } else if (/^['"$_ble_term_space"']*$/)
+      } else if (/^['"$_ble_term_blank"']*$/)
         cfg_usage = 0;
     }
 
@@ -5695,13 +5695,13 @@ function ble/complete/mandb:help/generate-cache {
 
       nkey = 0;
       for (;;) {
-        sub(/^,?['"$_ble_term_space"']+/, "", keydef);
+        sub(/^,?['"$_ble_term_blank"']+/, "", keydef);
 
         if (match(keydef, /^'"$rex_option"'/) <= 0) break;
         key = substr(keydef, 1, RLENGTH);
         keydef = substr(keydef, RLENGTH + 1);
 
-        sub(/[,'"$_ble_term_space"']$/, "", key);
+        sub(/[,'"$_ble_term_blank"']$/, "", key);
         keys[nkey++] = key;
       }
 
@@ -5711,20 +5711,20 @@ function ble/complete/mandb:help/generate-cache {
         for (i = nkey; --i >= 0; ) {
           if (match(keys[i], /'"$rex_argsep"'/) > 0) {
             optarg = substr(keys[i], RSTART);
-            sub(/^['"$_ble_term_space"']+/, "", optarg);
+            sub(/^['"$_ble_term_blank"']+/, "", optarg);
             if (optarg !~ /[A-Z]|<.+>/) optarg = "";
           } else if (optarg != ""){
             if (keys[i] ~ /^[-+].$/) {
               optarg2 = optarg;
               sub(/^\[=/, "[", optarg2);
               sub(/^=/, "", optarg2);
-              sub(/^[^'"$_ble_term_space"'[]/, " &", optarg2);
+              sub(/^[^'"$_ble_term_blank"'[]/, " &", optarg2);
               keys[i] = keys[i] optarg2;
             } else {
               optarg2 = optarg;
               if (optarg2 ~ /^\[[^:=]/)
                 sub(/^\[/, "[=", optarg2);
-              else if (optarg2 ~ /^[^:='"$_ble_term_space"'[]/)
+              else if (optarg2 ~ /^[^:='"$_ble_term_blank"'[]/)
                 optarg2 = " " optarg2;
               keys[i] = keys[i] optarg2;
             }
@@ -5737,7 +5737,7 @@ function ble/complete/mandb:help/generate-cache {
           g_help_keys[g_help_keys_count++] = keyinfo;
     }
     function help_append_desc(desc) {
-      gsub(/^['"$_ble_term_space"']+|['"$_ble_term_space"']$/, "", desc);
+      gsub(/^['"$_ble_term_blank"']+|['"$_ble_term_blank"']$/, "", desc);
       if (desc == "") return;
       desc = str_convert_bs2ansi(desc);
 
@@ -5750,17 +5750,17 @@ function ble/complete/mandb:help/generate-cache {
     # Note (#D1847): We here restrict the number of spaces between synonymous
     # options within 2 or 3.  Note that "rex_option" already contains the
     # trailing comma or space.
-    cfg_help && match($0, /^['"$_ble_term_space"']*'"$rex_option"'((['"$_ble_term_space"']['"$_ble_term_space"']?)?'"$rex_option"')*/) {
+    cfg_help && match($0, /^['"$_ble_term_blank"']*'"$rex_option"'((['"$_ble_term_blank"']['"$_ble_term_blank"']?)?'"$rex_option"')*/) {
       key = substr($0, 1, RLENGTH);
       desc = substr($0, RLENGTH + 1);
       if (desc ~ /^,/) next;
       help_start(key);
       help_append_desc(desc);
-      if (desc !~ /^['"$_ble_term_space"']/) g_help_score += 100;
+      if (desc !~ /^['"$_ble_term_blank"']/) g_help_score += 100;
       next;
     }
     g_help_indent >= 0 {
-      sub(/['"$_ble_term_space"']+$/, "");
+      sub(/['"$_ble_term_blank"']+$/, "");
       indent = get_indent($0);
       if (indent <= g_help_indent)
         help_flush();
