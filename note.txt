@@ -1926,14 +1926,6 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
-2024-12-18
-
-  * edit: C-c 後の履歴位置が変だ (reported by dezza)
-    https://github.com/akinomyoga/ble.sh/discussions/540
-
-    C-c を実行した後は C-m を実行した時と同様に全ての編集をクリアして、履歴位置
-    は履歴の末端に移動するべきである。
-
 2024-12-09
 
   * highlight: cd を bind -x 経由で実行するとコマンドキャッシュがクリアされないので
@@ -7710,6 +7702,12 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2024-12-20
+
+  * edit: C-c 後の履歴位置が変だ (reported by dezza) [#D2301]
+    https://github.com/akinomyoga/ble.sh/discussions/540
+
+    C-c を実行した後は C-m を実行した時と同様に全ての編集をクリアして、履歴位置
+    は履歴の末端に移動するべきである。
 
   * global: rename "ret" not used as REPLY [#D2300]
     Ref #T0009

@@ -7853,6 +7853,7 @@ function ble/widget/discard-line {
   [[ $bleopt_history_share ]] && ble/builtin/history/option:n
   _ble_edit_line_disabled=1 ble/textarea#render leave
   ble/widget/.newline keep-info
+  ble/history/revert-edits
   ble/textarea#render
 }
 

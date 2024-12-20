@@ -1997,6 +1997,42 @@ function ble/history/set-edited-entry {
   builtin eval -- "${code//PREFIX/${_ble_history_prefix:-_ble}}"
 }
 
+
+## @fn ble/history/revert-edits
+##   This function reverts the temporary editing of the current history.
+function ble/history/revert-edits {
+  if [[ $_ble_history_prefix ]]; then
+    local code='
+      # PREFIX_history_edit を未編集状態に戻す
+      local index
+      for index in "${!PREFIX_history_dirt[@]}"; do
+        PREFIX_history_edit[index]=${PREFIX_history[index]}
+      done
+      PREFIX_history_dirt=()
+
+      local topIndex=${#PREFIX_history[@]}
+      _ble_history_COUNT=$topIndex
+      _ble_history_INDEX=$topIndex'
+    builtin eval -- "${code//PREFIX/$_ble_history_prefix}"
+  else
+    if [[ $_ble_history_load_done ]]; then
+      # 登録・不登録に拘わらず取り敢えず初期化
+      _ble_history_index=${#_ble_history[@]}
+      ble/history/.update-position
+
+      # _ble_history_edit を未編集状態に戻す
+      local index
+      for index in "${!_ble_history_dirt[@]}"; do
+        _ble_history_edit[index]=${_ble_history[index]}
+      done
+      _ble_history_dirt=()
+
+      # 同時に _ble_edit_undo も初期化する。
+      ble-edit/undo/clear-all
+    fi
+  fi
+}
+
 ## @fn ble/history/.add-command-history command
 ## @var[in,out] HISTINDEX_NEXT
 ##   used by ble/widget/accept-and-next to get modified next-entry positions
@@ -2006,22 +2042,6 @@ function ble/history/.add-command-history {
 
   # Note: mc (midnight commander) が初期化スクリプトを送ってくる #D1392
   [[ $MC_SID == $$ && $_ble_edit_LINENO -le 2 && ( $1 == *PROMPT_COMMAND=* || $1 == *PS1=* ) ]] && return 1
-
-  if [[ $_ble_history_load_done ]]; then
-    # 登録・不登録に拘わらず取り敢えず初期化
-    _ble_history_index=${#_ble_history[@]}
-    ble/history/.update-position
-
-    # _ble_history_edit を未編集状態に戻す
-    local index
-    for index in "${!_ble_history_dirt[@]}"; do
-      _ble_history_edit[index]=${_ble_history[index]}
-    done
-    _ble_history_dirt=()
-
-    # 同時に _ble_edit_undo も初期化する。
-    ble-edit/undo/clear-all
-  fi
 
   if [[ $bleopt_history_share ]]; then
     ble/builtin/history/option:n
@@ -2037,15 +2057,9 @@ function ble/history/add {
   local command=$1
   ((bleopt_history_limit_length>0&&${#command}>bleopt_history_limit_length)) && return 1
 
+  ble/history/revert-edits
   if [[ $_ble_history_prefix ]]; then
     local code='
-      # PREFIX_history_edit を未編集状態に戻す
-      local index
-      for index in "${!PREFIX_history_dirt[@]}"; do
-        PREFIX_history_edit[index]=${PREFIX_history[index]}
-      done
-      PREFIX_history_dirt=()
-
       local topIndex=${#PREFIX_history[@]}
       PREFIX_history[topIndex]=$command
       PREFIX_history_edit[topIndex]=$command

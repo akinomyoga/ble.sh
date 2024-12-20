@@ -94,6 +94,7 @@
 - highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` 063249b4
 - complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` 6a426954
 - make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` 31f264ad
+- edit: revert edits with widget `discard-line` (reported by dezza) `#D2301` xxxxxxxx
 
 ## Fixes
 
