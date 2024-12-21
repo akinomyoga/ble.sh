@@ -7701,6 +7701,37 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-12-23
+
+  * vi_nmap: C-o の内部で vi_nmap/complete を呼び出すと何だかよく分からない状態になる [#D2302]
+
+    先ず、カーソル位置がちゃんと元に戻っていない。これは C-o の特性だろうか?
+
+    うーん。vim ではそもそも C-o を押した時にカーソルの位置が変化したりはしな
+    い。行末に居る時にだけカーソルの位置が後退する様である。先ずはこの振る舞
+    いを修正する必要がある気がする→修正した。
+
+    また、vi_nmap/complete で menu_complete 等の特別な状態にならない限りは
+    adjust-command-mode を呼び出す様にした。これによりちゃんと一回コマンドを実
+    行した後に insert に戻る振る舞いが可能になる。
+
+    改めて試してみたが変な事にはなっていない様なので取り敢えずは良しとすること
+    にする?
+
+    ? でも何故 menu-complete になって元に戻った時にちゃんと insert になっている
+      のだろうか? vi_imap vi_nmap menu-complete の様な keymap 状態になる訳では
+      ないのか? 或いは adjust-command-mode が menu-complete 終了後に実施される
+      という事か? うーん。少なくとも complete/insert.hook の中では vi_imap
+      vi_nmap menu_complete という状態になっている。という事はその後で vi_imap
+      まで状態が pop するという事になる。試しに adjust-command-mode を調べてみ
+      ると確かに呼び出されている。何処から呼び出されているのかを確認すると、
+
+      [1]="ble/complete/menu-complete/exit"
+      [2]="ble/widget/menu_complete/exit"
+
+      となっている。うーん。これは自分で新しく追加したコードだった。つまり、こ
+      れについてもちゃんと対策ができている。
+
 2024-12-20
 
   * edit: C-c 後の履歴位置が変だ (reported by dezza) [#D2301]

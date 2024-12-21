@@ -592,7 +592,11 @@ function ble/widget/vi_imap/normal-mode.impl {
   _ble_keymap_vi_insert_leave=
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
-  ble-edit/content/bolp || ((_ble_edit_ind--))
+  if [[ :$opts: == *:SingleCommand:* ]]; then
+    ble-edit/content/nonbol-eolp && ((_ble_edit_ind--))
+  else
+    ble-edit/content/bolp || ((_ble_edit_ind--))
+  fi
   ble/decode/keymap/push vi_nmap
 }
 function ble/widget/vi_imap/normal-mode {
@@ -619,7 +623,7 @@ function ble/widget/vi_imap/single-command-mode {
   ble-edit/content/eolp && _ble_keymap_vi_single_command=2
 
   ble/keymap:vi/imap-repeat/pop
-  ble/widget/vi_imap/normal-mode.impl
+  ble/widget/vi_imap/normal-mode.impl SingleCommand
   _ble_keymap_vi_single_command=$single_command
   _ble_keymap_vi_single_command_overwrite=$single_command_overwrite
   ble/keymap:vi/update-mode-indicator

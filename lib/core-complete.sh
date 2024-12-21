@@ -8645,9 +8645,16 @@ function ble/complete/menu-complete/enter {
   return 0
 }
 
+function ble/complete/menu-complete/exit {
+  ble/decode/keymap/pop
+  if [[ $_ble_decode_keymap == vi_nmap ]]; then
+    ble/keymap:vi/needs-eol-fix && ((_ble_edit_ind--))
+    ble/keymap:vi/adjust-command-mode
+  fi
+}
+
 function ble/widget/menu_complete/exit {
   local opts=$1
-  ble/decode/keymap/pop
 
   if ((_ble_complete_menu_selected>=0)); then
     # 置換情報を再構成
@@ -8699,12 +8706,13 @@ function ble/widget/menu_complete/exit {
   ble/complete/menu/clear
   _ble_edit_mark_active=
   _ble_complete_menu_original=
+  ble/complete/menu-complete/exit
 }
 function ble/widget/menu_complete/cancel {
-  ble/decode/keymap/pop
   ble/complete/menu#select -1
   _ble_edit_mark_active=
   _ble_complete_menu_original=
+  ble/complete/menu-complete/exit
 }
 function ble/widget/menu_complete/accept {
   ble/widget/menu_complete/exit complete
