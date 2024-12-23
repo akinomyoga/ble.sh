@@ -4,9 +4,9 @@ alias-expand-line                 vi_nmap/@edit alias-expand-line
 arrow-key-prefix                  -
 backward-byte                     vi-command/backward-byte
 backward-char                     vi-command/backward-char
-backward-delete-char              -
-backward-kill-line                -
-backward-kill-word                -
+backward-delete-char              vi-rlfunc/backward-delete-char
+backward-kill-line                vi-rlfunc/backward-kill-line
+backward-kill-word                vi-rlfunc/backward-kill-word
 backward-word                     vi-command/backward-vword
 beginning-of-history              vi-command/history-beginning
 beginning-of-line                 vi-command/beginning-of-line
@@ -17,15 +17,15 @@ character-search                  vi_nmap/@motion character-search-forward
 character-search-backward         vi_nmap/@motion character-search-backward
 clear-display                     clear-display
 clear-screen                      clear-screen
-complete                          -
-complete-command                  -
-complete-filename                 -
-complete-hostname                 -
-complete-into-braces              -
-complete-username                 -
-complete-variable                 -
-copy-backward-word                -
-copy-forward-word                 -
+complete                          vi_nmap/complete
+complete-command                  vi_nmap/complete context=command
+complete-filename                 vi_nmap/complete context=filename
+complete-hostname                 vi_nmap/complete context=hostname
+complete-into-braces              vi_nmap/complete insert_braces
+complete-username                 vi_nmap/complete context=username
+complete-variable                 vi_nmap/complete context=variable
+copy-backward-word                vi-rlfunc/copy-backward-word
+copy-forward-word                 vi-rlfunc/copy-forward-word
 copy-region-as-kill               -
 dabbrev-expand                    -
 delete-char                       vi_nmap/kill-forward-char
@@ -38,7 +38,7 @@ downcase-word                     vi_nmap/downcase-eword
 dump-functions                    vi_nmap/@adjust readline-dump-functions
 dump-macros                       vi_nmap/@adjust readline-dump-macros
 dump-variables                    vi_nmap/@adjust readline-dump-variables
-dynamic-complete-history          -
+dynamic-complete-history          vi_nmap/complete context=dynamic-history
 edit-and-execute-command          vi-command/edit-and-execute-command
 emacs-editing-mode                emacs-editing-mode
 end-kbd-macro                     end-keyboard-macro
@@ -52,9 +52,9 @@ forward-byte                      vi-command/forward-byte
 forward-char                      vi-command/forward-char
 forward-search-history            history-isearch-forward
 forward-word                      vi-command/forward-vword
-glob-complete-word                -
-glob-expand-word                  -
-glob-list-expansions              -
+glob-complete-word                vi_nmap/complete context=glob
+glob-expand-word                  vi_nmap/complete context=glob:insert-all
+glob-list-expansions              vi_nmap/complete context=glob:show_menu
 history-and-alias-expand-line     vi_nmap/@edit history-and-alias-expand-line
 history-expand-line               vi_nmap/@edit history-expand-line
 history-search-backward           history-search-backward empty=emulate-readline
@@ -62,15 +62,15 @@ history-search-forward            history-search-forward empty=emulate-readline
 history-substring-search-backward history-substring-search-backward
 history-substring-search-forward  history-substring-search-forward
 insert-comment                    vi-rlfunc/insert-comment
-insert-completions                -
+insert-completions                vi_nmap/complete insert_all
 insert-last-argument              -
 kill-line                         vi_nmap/kill-forward-line
 kill-region                       -
-kill-whole-line                   -
+kill-whole-line                   vi_nmap/kill-current-line
 kill-word                         vi-rlfunc/kill-word
 magic-space                       -
-menu-complete                     -
-menu-complete-backward            -
+menu-complete                     vi_nmap/menu-complete
+menu-complete-backward            vi_nmap/menu-complete backward
 next-history                      vi-command/history-next
 next-screen-line                  -
 non-incremental-forward-search-history        history-nsearch-forward
@@ -80,12 +80,12 @@ non-incremental-reverse-search-history-again  history-nsearch-backward-again
 old-menu-complete                 -
 operate-and-get-next              -
 overwrite-mode                    vi_nmap/replace-mode
-possible-command-completions      complete show_menu:context=command
-possible-completions              complete show_menu
-possible-filename-completions     complete show_menu:context=filename
-possible-hostname-completions     complete show_menu:context=hostname
-possible-username-completions     complete show_menu:context=username
-possible-variable-completions     complete show_menu:context=variable
+possible-command-completions      vi_nmap/complete show_menu:context=command
+possible-completions              vi_nmap/complete show_menu
+possible-filename-completions     vi_nmap/complete show_menu:context=filename
+possible-hostname-completions     vi_nmap/complete show_menu:context=hostname
+possible-username-completions     vi_nmap/complete show_menu:context=username
+possible-variable-completions     vi_nmap/complete show_menu:context=variable
 previous-history                  vi-command/history-prev
 previous-screen-line              -
 print-last-kbd-macro              print-keyboard-macro
@@ -138,7 +138,7 @@ vi-change-char                    vi_nmap/replace-char
 vi-change-to                      vi-rlfunc/change-to
 vi-char-search                    vi-rlfunc/char-search
 vi-column                         vi-command/nth-column
-vi-complete                       -
+vi-complete                       vi_nmap/complete
 vi-delete                         vi_nmap/kill-forward-char
 vi-delete-to                      vi-rlfunc/delete-to
 vi-editing-mode                   vi_nmap/insert-mode

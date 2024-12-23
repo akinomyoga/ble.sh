@@ -153,7 +153,7 @@ vi-movement-mode                  -
 vi-overstrike                     -
 vi-overstrike-delete              -
 vi-put                            -
-vi-redo                           -
+vi-redo                           emacs/redo
 vi-replace                        -
 vi-rubout                         -
 vi-search                         -
@@ -161,6 +161,7 @@ vi-search-again                   -
 vi-set-mark                       -
 vi-subst                          -
 vi-tilde-expand                   -
+vi-undo                           emacs/undo
 vi-unix-word-rubout               -
 vi-yank-arg                       -
 vi-yank-pop                       -

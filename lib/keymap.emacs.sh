@@ -21,7 +21,12 @@ ble/util/autoload "$_ble_base/lib/keymap.vi.sh" \
 bleopt/declare -v keymap_emacs_mode_string_multiline $'\e[1m-- MULTILINE --\e[m'
 
 #------------------------------------------------------------------------------
+# undo
 
+# The following widgets do not invoke the automatic "ble-edit/undo/add".  The
+# widgets of the name "emacs/*" also do not invoke the automatic
+# "ble-edit/undo/add", so if necessary, one needs to manually call
+# "ble-edit/undo/add" in those widgets.
 _ble_keymap_emacs_white_list=(
   self-insert
   batch-insert
@@ -54,22 +59,11 @@ function ble/widget/emacs/__before_widget__ {
   fi
 }
 
-#------------------------------------------------------------------------------
-# 注意: ble/widget/emacs/* の名称の編集関数では、
-# 必要に応じて手動で ble-edit/undo/add を呼び出さなければならない。
-
-function ble/widget/emacs/undo {
-  local arg; ble-edit/content/get-arg 1
-  ble-edit/undo/undo "$arg" || ble/widget/.bell 'no more older undo history'
-}
-function ble/widget/emacs/redo {
-  local arg; ble-edit/content/get-arg 1
-  ble-edit/undo/redo "$arg" || ble/widget/.bell 'no more recent undo history'
-}
-function ble/widget/emacs/revert {
-  local arg; ble-edit/content/clear-arg
-  ble-edit/undo/revert
-}
+# Note: The following widgets need to have the name of the form "emacs/*" to
+# suppress the invokation of "ble-edit/undo/add".
+function ble/widget/emacs/undo { ble/widget/undo "$@"; }
+function ble/widget/emacs/redo { ble/widget/redo "$@"; }
+function ble/widget/emacs/revert { ble/widget/revert "$@"; }
 
 #------------------------------------------------------------------------------
 # mode name

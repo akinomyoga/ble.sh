@@ -7498,7 +7498,7 @@ function ble/complete/menu/get-active-range {
   local mend=$_ble_complete_menu0_end
   local left=${_ble_complete_menu0_str::mend}
   local right=${_ble_complete_menu0_str:mend}
-  if [[ ${str::_ble_edit_ind} == "$left"* && ${str:_ble_edit_ind} == *"$right" ]]; then
+  if [[ ${str::ind} == "$left"* && ${str:ind} == *"$right" ]]; then
     ((beg=mbeg,end=${#str}-${#right}))
     return 0
   else
@@ -7610,6 +7610,7 @@ function ble/complete/insert {
   ((_ble_edit_ind=insert_beg+${#ins},
     _ble_edit_ind>${#_ble_edit_str}&&
       (_ble_edit_ind=${#_ble_edit_str})))
+  return 0
 }
 
 ## @fn ble/complete/insert-common
@@ -8421,24 +8422,33 @@ function ble/complete/menu-filter/.filter-candidates {
     ((${#cand_pack[@]}!=0)) && return 0
   done
 }
+## @fn ble/complete/menu-filter/.get-filter-target
+##   @var[out] str ind
 function ble/complete/menu-filter/.get-filter-target {
   if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]]; then
-    ret=$_ble_edit_str
+    str=$_ble_edit_str
+    ind=$_ble_edit_ind
+  elif [[ $_ble_decode_keymap == vi_nmap ]]; then
+    str=$_ble_edit_str
+    ind=$_ble_edit_ind
+    ble-edit/content/eolp "$ind" || ((ind++))
   elif [[ $_ble_decode_keymap == auto_complete ]]; then
-    ret=${_ble_edit_str::_ble_edit_ind}${_ble_edit_str:_ble_edit_mark}
+    str=${_ble_edit_str::_ble_edit_ind}${_ble_edit_str:_ble_edit_mark}
+    ind=$_ble_edit_ind
   else
     return 1
   fi
 }
 function ble/complete/menu-filter {
   [[ $_ble_decode_keymap == menu_complete ]] && return 0
-  local ret; ble/complete/menu-filter/.get-filter-target || return 1; local str=$ret
+  local str ind
+  ble/complete/menu-filter/.get-filter-target || return 1
 
-  local beg end; ble/complete/menu/get-active-range "$str" "$_ble_edit_ind" || return 1
+  local beg end; ble/complete/menu/get-active-range "$str" "$ind" || return 1
   local input=${str:beg:end-beg}
   [[ $input == "${_ble_complete_menu_comp[2]}" ]] && return 0
 
-  local simple_flags simple_ibrace
+  local ret simple_flags simple_ibrace
   if ! ble/syntax:bash/simple-word/reconstruct-incomplete-word "$input"; then
     ble/syntax:bash/simple-word/is-never-word "$input" && return 1
     return 0
@@ -8515,10 +8525,11 @@ function ble/highlight/layer:menu_filter/update {
   _ble_highlight_layer_menu_filter_end=$oend
 
   # determine range
-  local beg= end= ret
+  local beg= end=
   if [[ $bleopt_complete_menu_filter && $_ble_complete_menu_active && ${#_ble_complete_menu_items[@]} -gt 0 ]]; then
-    ble/complete/menu-filter/.get-filter-target && local str=$ret &&
-      ble/complete/menu/get-active-range "$str" "$_ble_edit_ind" &&
+    local str ind
+    ble/complete/menu-filter/.get-filter-target &&
+      ble/complete/menu/get-active-range "$str" "$ind" &&
       [[ ${str:beg:end-beg} != "${_ble_complete_menu0_comp[2]}" ]] || beg= end=
   fi
 
@@ -8529,6 +8540,7 @@ function ble/highlight/layer:menu_filter/update {
 
   local umin=$PREV_UMIN umax=$PREV_UMAX
   if [[ $beg ]]; then
+    local ret
     ble/color/face2g menu_filter_fixed; local gF=$ret
     ble/color/face2g menu_filter_input; local gI=$ret
     local mid=$_ble_complete_menu0_end

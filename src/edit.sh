@@ -1606,15 +1606,7 @@ function ble/prompt/.escape {
 ##   @var[out] keymap
 function ble/prompt/.get-keymap-for-current-mode {
   ble/prompt/unit/add-hash '$_ble_decode_keymap,${_ble_decode_keymap_stack[*]}'
-
-  keymap=$_ble_decode_keymap
-  local index=${#_ble_decode_keymap_stack[@]}
-  while :; do
-    case $keymap in (vi_?map|emacs) return 0 ;; esac
-    ((--index<0)) && break
-    keymap=${_ble_decode_keymap_stack[index]}
-  done
-  return 1
+  ble/decode/keymap/get-major-keymap
 }
 
 function ble/prompt/.uses-builtin-prompt-expansion {
@@ -8587,6 +8579,22 @@ function ble-edit/undo/revert-toggle {
   else
     return 1
   fi
+}
+
+# Note: The following three functions are designed to be called in the "emacs"
+# and "vi_imap" keymaps.  In the actual code, these need to be called under the
+# name "emacs/*" and "vi_imap/*" to suppress unwanted "undo" registration.
+function ble/widget/undo {
+  local arg; ble-edit/content/get-arg 1
+  ble-edit/undo/undo "$arg" || ble/widget/.bell 'no more older undo history'
+}
+function ble/widget/redo {
+  local arg; ble-edit/content/get-arg 1
+  ble-edit/undo/redo "$arg" || ble/widget/.bell 'no more recent undo history'
+}
+function ble/widget/revert {
+  local arg; ble-edit/content/clear-arg
+  ble-edit/undo/revert
 }
 
 # 

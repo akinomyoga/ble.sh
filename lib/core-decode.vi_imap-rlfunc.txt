@@ -17,13 +17,13 @@ character-search                  character-search-forward
 character-search-backward         character-search-backward
 clear-display                     clear-display
 clear-screen                      clear-screen
-complete                          complete
-complete-command                  complete context=command
-complete-filename                 complete context=filename
-complete-hostname                 complete context=hostname
-complete-into-braces              complete insert_braces
-complete-username                 complete context=username
-complete-variable                 complete context=variable
+complete                          vi_imap/complete
+complete-command                  vi_imap/complete context=command
+complete-filename                 vi_imap/complete context=filename
+complete-hostname                 vi_imap/complete context=hostname
+complete-into-braces              vi_imap/complete insert_braces
+complete-username                 vi_imap/complete context=username
+complete-variable                 vi_imap/complete context=variable
 copy-backward-word                copy-backward-sword
 copy-forward-word                 copy-forward-sword
 copy-region-as-kill               copy-region-or copy-uword
@@ -38,7 +38,7 @@ downcase-word                     downcase-eword
 dump-functions                    readline-dump-functions
 dump-macros                       readline-dump-macros
 dump-variables                    readline-dump-variables
-dynamic-complete-history          complete context=dynamic-history
+dynamic-complete-history          vi_imap/complete context=dynamic-history
 edit-and-execute-command          edit-and-execute-command
 emacs-editing-mode                emacs-editing-mode
 end-kbd-macro                     end-keyboard-macro
@@ -52,9 +52,9 @@ forward-byte                      forward-byte
 forward-char                      forward-char
 forward-search-history            history-isearch-forward
 forward-word                      forward-uword
-glob-complete-word                complete context=glob
-glob-expand-word                  complete context=glob:insert-all
-glob-list-expansions              complete context=glob:show_menu
+glob-complete-word                vi_imap/complete context=glob
+glob-expand-word                  vi_imap/complete context=glob:insert-all
+glob-list-expansions              vi_imap/complete context=glob:show_menu
 history-and-alias-expand-line     history-and-alias-expand-line
 history-expand-line               history-expand-line
 history-search-backward           history-search-backward empty=emulate-readline
@@ -62,15 +62,15 @@ history-search-forward            history-search-forward empty=emulate-readline
 history-substring-search-backward history-substring-search-backward
 history-substring-search-forward  history-substring-search-forward
 insert-comment                    insert-comment
-insert-completions                complete insert_all
+insert-completions                vi_imap/complete insert_all
 insert-last-argument              insert-last-argument
 kill-line                         kill-forward-line
 kill-region                       kill-region-or kill-uword
 kill-whole-line                   kill-line
 kill-word                         kill-forward-uword
 magic-space                       magic-space
-menu-complete                     menu-complete
-menu-complete-backward            menu-complete backward
+menu-complete                     vi_imap/menu-complete
+menu-complete-backward            vi_imap/menu-complete backward
 next-history                      history-next
 next-screen-line                  forward-graphical-line
 non-incremental-forward-search-history        history-nsearch-forward
@@ -80,12 +80,12 @@ non-incremental-reverse-search-history-again  history-nsearch-backward-again
 old-menu-complete                 menu-complete
 operate-and-get-next              accept-and-next
 overwrite-mode                    vi_imap/overwrite-mode
-possible-command-completions      complete show_menu:context=command
-possible-completions              complete show_menu
-possible-filename-completions     complete show_menu:context=filename
-possible-hostname-completions     complete show_menu:context=hostname
-possible-username-completions     complete show_menu:context=username
-possible-variable-completions     complete show_menu:context=variable
+possible-command-completions      vi_imap/complete show_menu:context=command
+possible-completions              vi_imap/complete show_menu
+possible-filename-completions     vi_imap/complete show_menu:context=filename
+possible-hostname-completions     vi_imap/complete show_menu:context=hostname
+possible-username-completions     vi_imap/complete show_menu:context=username
+possible-variable-completions     vi_imap/complete show_menu:context=variable
 previous-history                  history-prev
 previous-screen-line              backward-graphical-line
 print-last-kbd-macro              print-keyboard-macro
@@ -93,7 +93,7 @@ quoted-insert                     vi_imap/quoted-insert
 re-read-init-file                 re-read-init-file
 redraw-current-line               redraw-line
 reverse-search-history            history-isearch-backward
-revert-line                       -
+revert-line                       vi_imap/revert
 self-insert                       self-insert
 set-mark                          set-mark
 shell-backward-kill-word          kill-backward-sword
@@ -109,7 +109,7 @@ tilde-expand                      tilde-expand
 transpose-chars                   transpose-chars
 transpose-words                   transpose-ewords
 tty-status                        -
-undo                              -
+undo                              vi_imap/undo
 universal-argument                universal-arg
 unix-filename-rubout              kill-backward-fword
 unix-line-discard                 kill-backward-line
@@ -153,7 +153,7 @@ vi-movement-mode                  vi_imap/normal-mode
 vi-overstrike                     -
 vi-overstrike-delete              -
 vi-put                            -
-vi-redo                           -
+vi-redo                           vi_imap/redo
 vi-replace                        vi_imap/overwrite-mode
 vi-rubout                         -
 vi-search                         -
@@ -161,6 +161,7 @@ vi-search-again                   -
 vi-set-mark                       -
 vi-subst                          -
 vi-tilde-expand                   -
+vi-undo                           vi_imap/undo
 vi-unix-word-rubout               vi_imap/delete-backward-word
 vi-yank-arg                       -
 vi-yank-pop                       -

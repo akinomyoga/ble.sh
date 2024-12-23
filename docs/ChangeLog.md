@@ -70,6 +70,7 @@
 - complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
 - edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` 37291ff1
 - edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` xxxxxxxx
+- keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` xxxxxxxx
 
 ## Changes
 

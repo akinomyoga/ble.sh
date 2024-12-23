@@ -253,6 +253,12 @@ function ble/widget/vi_imap/__before_widget__ {
   fi
 }
 
+# Note: The following widgets need to have the name of the form "vi_imap/*" to
+# suppress the invokation of "ble-edit/undo/add".
+function ble/widget/vi_imap/undo { ble/widget/undo "$@"; }
+function ble/widget/vi_imap/redo { ble/widget/redo "$@"; }
+function ble/widget/vi_imap/revert { ble/widget/revert "$@"; }
+
 #------------------------------------------------------------------------------
 # vi_imap/complete
 
@@ -261,38 +267,89 @@ function ble/widget/vi_imap/complete {
   ble/keymap:vi/undo/add more
   ble/widget/complete "$@"
 }
-function ble/keymap:vi/complete/insert.hook {
-  [[ $_ble_decode_keymap == vi_imap ||
-       $_ble_decode_keymap == auto_complete ]] || return 1
+function ble/widget/vi_imap/menu-complete {
+  ble/widget/vi_imap/complete "enter_menu:insert_unique:$@"
+}
 
-  local original=${comp_text:insert_beg:insert_end-insert_beg}
+function ble/widget/vi_nmap/complete {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble-edit/content/eolp || ((_ble_edit_ind++))
+  local keymap=$_ble_decode_keymap
+  ble/widget/complete "$@"; local ext=$?
+  if [[ $_ble_decode_keymap == "$keymap" ]]; then
+    # Note: We record the editing area `[`] through
+    #   "ble/keymap:vi/complete/insert.hook", so we do not need to manually set
+    #   up the edit area by calling "ble/keymap:vi/mark/{start,end}-edit-area".
+    #   "ble-edit/undo/add" is also called through
+    #   "ble/keymap:vi/mark/set-previous-edit-area" called from
+    #   "ble/keymap:vi/complete/insert.hook".
+    # Note: if "ble/widget/complete" enters another mode such as the
+    #   menu-complete mode, we do not try to adjust the state here.  Instead,
+    #   we adjust the state in "ble/complete/menu_complete/exit" after the
+    #   corresponding "ble/decode/keymap/pop".
+    ble-edit/content/bolp || ((_ble_edit_ind--))
+    ble/keymap:vi/adjust-command-mode
+  fi
+  return "$ext"
+}
+function ble/widget/vi_nmap/menu-complete {
+  ble/widget/vi_nmap/complete "enter_menu:insert_unique:$@"
+}
+function ble/widget/vi_nmap/complete-insert {
+  local original=$1 insert=$2 suffix=$3
+  ble-edit/content/eolp || ((_ble_edit_ind++))
+  local ind=$_ble_edit_ind
+  if ble/widget/complete-insert "$@"; then
+    local beg=$((ind-${#original}))
+    local end=$((beg+${#insert}+${#suffix}))
+    ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
+  fi
+  ble-edit/content/bolp || ((_ble_edit_ind--))
+}
+
+function ble/keymap:vi/complete/insert.hook {
+  local keymap
+  ble/decode/keymap/get-major-keymap
+  [[ $keymap == vi_[in]map ]] || return 0
+
   local q="'" Q="'\''"
+  local original=${comp_text:insert_beg:insert_end-insert_beg}
   local WIDGET="ble/widget/complete-insert '${original//$q/$Q}' '${insert//$q/$Q}' '${suffix//$q/$Q}'"
-  ble/keymap:vi/imap-repeat/push
-  [[ $_ble_decode_keymap == vi_imap ]] &&
-    ble/keymap:vi/undo/add more
+
+  case $keymap in
+  (vi_imap)
+    ble/keymap:vi/imap-repeat/push # @var[in] WIDGET
+    [[ $_ble_decode_keymap == vi_imap ]] &&
+      ble/keymap:vi/undo/add more ;;
+  (vi_nmap)
+    local beg=$insert_beg end=$((insert_beg+${#insert}+${#suffix}))
+    ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
+    local KEYMAP=vi_nmap ARG= FLAG= REG=
+    WIDGET=ble/widget/vi_nmap/${WIDGET#ble/widget/}
+    ble/keymap:vi/repeat/record-normal ;; # @var[in] KEYMAP WIDGET ARG FLAG REG
+  esac
 }
 blehook complete_insert!=ble/keymap:vi/complete/insert.hook
 
 function ble-decode/keymap:vi_imap/bind-complete {
   ble-bind -f 'C-i'                 'vi_imap/complete'
   ble-bind -f 'TAB'                 'vi_imap/complete'
-  ble-bind -f 'C-TAB'               'menu-complete'
-  ble-bind -f 'S-C-i'               'menu-complete backward'
-  ble-bind -f 'S-TAB'               'menu-complete backward'
+  ble-bind -f 'C-TAB'               'vi_imap/menu-complete'
+  ble-bind -f 'S-C-i'               'vi_imap/menu-complete backward'
+  ble-bind -f 'S-TAB'               'vi_imap/menu-complete backward'
   ble-bind -f 'auto_complete_enter' 'auto-complete-enter'
 
-  ble-bind -f 'C-x /' 'menu-complete context=filename'
-  ble-bind -f 'C-x ~' 'menu-complete context=username'
-  ble-bind -f 'C-x $' 'menu-complete context=variable'
-  ble-bind -f 'C-x @' 'menu-complete context=hostname'
-  ble-bind -f 'C-x !' 'menu-complete context=command'
+  ble-bind -f 'C-x /' 'vi_imap/menu-complete context=filename'
+  ble-bind -f 'C-x ~' 'vi_imap/menu-complete context=username'
+  ble-bind -f 'C-x $' 'vi_imap/menu-complete context=variable'
+  ble-bind -f 'C-x @' 'vi_imap/menu-complete context=hostname'
+  ble-bind -f 'C-x !' 'vi_imap/menu-complete context=command'
 
   ble-bind -f 'C-]'     'sabbrev-expand'
   ble-bind -f 'C-x C-r' 'dabbrev-expand'
 
-  ble-bind -f 'C-x *' 'complete insert_all:context=glob'
-  ble-bind -f 'C-x g' 'complete show_menu:context=glob'
+  ble-bind -f 'C-x *' 'vi_imap/complete insert_all:context=glob'
+  ble-bind -f 'C-x g' 'vi_imap/complete show_menu:context=glob'
 }
 
 #------------------------------------------------------------------------------
@@ -504,15 +561,20 @@ function ble/keymap:vi/update-mode-indicator {
     str=$str${str:+' '}$'\e[1;31mREC\e[m'
   fi
 
+  # Note: If the completion menu is activated, we deactivate the menu before
+  # updating the mode indicator in the info panel.
+  if [[ $_ble_complete_menu_active ]]; then
+    ble/complete/menu/clear
+  fi
+
   # Note #D2062: mc-4.8.29 以降ではコマンド終了直後に "-- INSERT --" 等の mode
   # indicator を出力すると、それをプロンプトと勘違いして抽出してしまう。仕方が
   # ないので mc の中では imap に対しては mode indicator は表示しない様にする。
   if [[ $_ble_edit_integration_mc_precmd_stop && $keymap == vi_imap ]]; then
     ble/edit/info/clear
-    return 0
+  else
+    ble/edit/info/default ansi "$str" # 6ms
   fi
-
-  ble/edit/info/default ansi "$str" # 6ms
 }
 blehook internal_PRECMD!=ble/keymap:vi/update-mode-indicator
 
@@ -6378,6 +6440,34 @@ function ble/widget/vi-rlfunc/kill-word {
   _ble_keymap_vi_opfunc=d
   ble/widget/vi-command/forward-vword-end
 }
+
+# rl_nmap -
+function ble/widget/vi-rlfunc/backward-delete-char {
+  _ble_keymap_vi_opfunc=d
+  _ble_keymap_vi_reg=95 # use black-hole register ("_) to discard the text
+  ble/widget/vi-command/backward-char
+}
+function ble/widget/vi-rlfunc/backward-kill-line {
+  _ble_keymap_vi_opfunc=d
+  ble/widget/vi-command/beginning-of-line
+}
+function ble/widget/vi-rlfunc/backward-kill-word {
+  _ble_keymap_vi_opfunc=d
+  ble/widget/vi-command/backward-vword
+}
+function ble/widget/vi-rlfunc/copy-backward-word {
+  # Note: We use vword instead of cword used in the emacs keymap.  This may be
+  # replaced with a cword implementation later.
+  _ble_keymap_vi_opfunc=y
+  ble/widget/vi-command/backward-vword
+}
+function ble/widget/vi-rlfunc/copy-forward-word {
+  # Note: We use vword instead of cword used in the emacs keymap.  This may be
+  # replaced with a cword implementation later.
+  _ble_keymap_vi_opfunc=y
+  ble/widget/vi-command/forward-vword
+}
+
 # rl_nmap C-u
 function ble/widget/vi-rlfunc/unix-line-discard {
   _ble_keymap_vi_opfunc=d
