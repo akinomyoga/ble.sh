@@ -272,23 +272,38 @@ function ble/widget/vi_imap/menu-complete {
 }
 
 function ble/widget/vi_nmap/complete {
-  local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble-edit/content/eolp || ((_ble_edit_ind++))
+  # We reset the edit argument for "ble/widget/complete".
+  local ARG FLAG REG; ble/keymap:vi/get-arg ''
+  _ble_edit_arg=$ARG
+
+  # Note: We adjust the cursor position unless we are at the end of a line.  To
+  #   be consistent with Bash's "bash-vi-complete" and "vi-complete", we do not
+  #   adjust the cursor position also when the current position is tab or
+  #   space.  This behavior seems also natural for the user's perspective,
+  #   though it introduces a non-trivial behavioral variation.
+  ble-edit/content/eolp ||
+    [[ ${_ble_edit_str:_ble_edit_ind:1} == ["$_ble_term_IFS"] ]] ||
+    ((_ble_edit_ind++))
+
   local keymap=$_ble_decode_keymap
   ble/widget/complete "$@"; local ext=$?
   if [[ $_ble_decode_keymap == "$keymap" ]]; then
-    # Note: We record the editing area `[`] through
-    #   "ble/keymap:vi/complete/insert.hook", so we do not need to manually set
-    #   up the edit area by calling "ble/keymap:vi/mark/{start,end}-edit-area".
-    #   "ble-edit/undo/add" is also called through
-    #   "ble/keymap:vi/mark/set-previous-edit-area" called from
-    #   "ble/keymap:vi/complete/insert.hook".
-    # Note: if "ble/widget/complete" enters another mode such as the
-    #   menu-complete mode, we do not try to adjust the state here.  Instead,
-    #   we adjust the state in "ble/complete/menu_complete/exit" after the
-    #   corresponding "ble/decode/keymap/pop".
-    ble-edit/content/bolp || ((_ble_edit_ind--))
-    ble/keymap:vi/adjust-command-mode
+    if [[ :$1: == *:vi_nmap/insert-mode:* ]]; then
+      ble/widget/vi_nmap/.insert-mode
+    else
+      # Note: We record the editing area `[`] through
+      #   "ble/keymap:vi/complete/insert.hook", so we do not need to manually set
+      #   up the edit area by calling "ble/keymap:vi/mark/{start,end}-edit-area".
+      #   "ble-edit/undo/add" is also called through
+      #   "ble/keymap:vi/mark/set-previous-edit-area" called from
+      #   "ble/keymap:vi/complete/insert.hook".
+      # Note: if "ble/widget/complete" enters another mode such as the
+      #   menu-complete mode, we do not try to adjust the state here.  Instead,
+      #   we adjust the state in "ble/complete/menu_complete/exit" after the
+      #   corresponding "ble/decode/keymap/pop".
+      ble-edit/content/bolp || ((_ble_edit_ind--))
+      ble/keymap:vi/adjust-command-mode
+    fi
   fi
   return "$ext"
 }
@@ -350,6 +365,47 @@ function ble-decode/keymap:vi_imap/bind-complete {
 
   ble-bind -f 'C-x *' 'vi_imap/complete insert_all:context=glob'
   ble-bind -f 'C-x g' 'vi_imap/complete show_menu:context=glob'
+}
+
+function ble/widget/vi-rlfunc/vi-complete {
+  local key=0
+  ((${#KEYS[@]})) && key=${KEYS[${#KEYS[@]}-1]:-0}
+
+  if ((key==0x2a)); then # '*'
+    ble/widget/vi_nmap/complete "insert-all:vi_nmap/insert-mode:$@"
+  elif ((key==0x3d)); then # '='
+    ble/widget/vi_nmap/complete "show-menu:$@"
+  elif ((key==0x5c)); then # '\'
+    ble/complete/menu/clear
+    ble/widget/vi_nmap/complete "vi_nmap/insert-mode:$@"
+  else
+    # Note: Bash does not enter the insert mode in the other cases, but it
+    # seems inconsistent.  We here enter the insert mode also with the other
+    # types of completions.  In our implementation, '=' is the only exception,
+    # which makes sense because "show-menu" only shows the status in the info
+    # panel and doesn't change the command line.  The users who want the Bash
+    # behavior that doesn't enter the insert mode should use widget
+    # "vi_nmap/complete".
+    ble/widget/vi_nmap/complete "vi_nmap/insert-mode:$@"
+  fi
+}
+
+function ble/widget/vi-rlfunc/bash-vi-complete {
+  local key=0
+  ((${#KEYS[@]})) && key=${KEYS[${#KEYS[@]}-1]:-0}
+
+  if ((key==0x2a)); then # '*'
+    ble/widget/vi_nmap/complete "context=glob:insert-all:vi_nmap/insert-mode:$@"
+  elif ((key==0x3d)); then # '='
+    ble/widget/vi_nmap/complete "context=glob:show-menu:$@"
+  elif ((key==0x5c)); then # '\'
+    ble/complete/menu/clear
+    ble/widget/vi_nmap/complete "context=glob:vi_nmap/insert-mode:$@"
+  else
+    # Note: This implementation enters the insert mode in this case.  See the
+    # code comment in ble/widget/vi-rlfunc/vi-complete.
+    ble/widget/vi_nmap/complete "vi_nmap/insert-mode:$@"
+  fi
 }
 
 #------------------------------------------------------------------------------

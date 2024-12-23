@@ -7703,6 +7703,104 @@ bash_tips
 
 2024-12-23
 
+  * edit: bash-5.3 "bash-vi-complete" を実装 [#D2305]
+
+    bash-vi-complete は vi-complete に似た readline bindable function の様だが
+    そもそも vi-complete が実装されていない。
+
+    ? vi-complete と complete の違いは何か? これは Bash の実装を確認する必要が
+      ある → 実はこれは結構振る舞いが異なるのでは。key によって振る舞いを切り
+      替える様になっている。更に bash-vi-complete という物もあって、その違いは
+      よく分からない。
+
+    * bash-vi-complete は何なのか説明を探そうとしたが見つからない。そもそも
+      readline に備わっている昨日なので man readline には見つからない。一方で、
+      devel の man bash の方にも載っていない。ソースコードを見て振る舞いを調べ
+      るしかないのか? 一応 bashline.c (bash_vi_complete) の最初にコメントで何か
+      書かれているが結局よく分からない。rl_vi_complete との違いは bash の glob
+      を使うという事? 或いは、途中の文字列も glob pattern として展開してしまう
+      という事?
+
+    取り合えず Bash における両実装を確認する。vi-complete と bash-vi-complete
+    は両者とも最初にカーソル位置を修正している。前方が空白でない場合にカーソル
+    位置を一つ進めている。
+
+    ? done: うーん。これについては vi_nmap/complete も同様に実装するべき?
+
+      と思ったが、まあ、敢えて vi-complete ではなく complete を選んだ場合には
+      やはり vi として consistent な振る舞いということで現在の振る舞いを保持
+      する? 勝手にユーザーにとって non-trivial な振る舞いをするのも考え物であ
+      る…
+
+      が空白の位置にカーソルが置かれている場合には文字を一つ進めて補完を試み
+      るのも変な感じがするのでやはり既定で文字を進めない様にする?
+
+
+    構造としては類似だが vi-complete と bash-vi-complete では実際に実行する操作
+    が全く異なる? よく分からないので先ずは vi-complete について確認する事にする。
+    vi-complete では次に key に応じて振る舞いを分けている。`*` -> `*`, `=` ->
+    `?`, `\\` -> TAB に変換して rl_internal_complete に渡している。具体的な振る
+    舞いについては rl_internal_complete のコメントに書かれている。
+
+    > `*' means insert all of the possible completions.
+    > `?' means list the possible completions.
+    > TAB means do standard completion.
+
+    うーん。つまり…  `\\` を指定した場合には既存の補完を削除して改めて最初から
+    補完を実行するという事? ble/complete/menu/clear を呼び出してから実行すると
+    いう事だろうか。
+
+    更に、'*' と '\\' の場合には挿入モードに移行している。どういう事だろうか?
+
+    ? これが POSIX の要求という事なのだろうか? 然し XCU を見ても set -o vi で
+      vi editor になるという事が書かれているだけで TAB がどう振る舞うべきか等に
+      ついては何も記述されていない気がする? そもそも XCU では補完の話はしていな
+      い。completion で色々記述があるが何れも "コマンド実行完了" や "文法として
+      のコマンド終わり" を意味している様だ。一方で XCU vi の方を見ても何処にも
+      補完の話は書かれていない。<tab> の振る舞いの説明についても書かれていない
+      (insert mode で生の tab を入力すること以外は)。<control>-I についての記述
+      もない。うーん。謎だ。
+
+    具体的に振る舞いを確認してみても、'*' と '\\' の時にだけ insert-mode に移行
+    して、'?' の時などには insert-mode に移行しないようだ。これは変だ。或いは、
+    これは話が逆で '?' の時だけ insert-mode に移行しないという事で、その他の場
+    合には予期しない呼び出しだから適当に処理しているという事だろうか。
+
+    さて、次に bash-vi-complete の実装を確認する。うーん。これは結局既存の
+    widget たちを呼び出している様な気がする。という事は、ble.sh 側の実装でも単
+    に opts に context=glob を追加して呼び出せば良い様な気がする。
+
+    bash-vi-complete では他に bigWord に対する処理という物が加わっている。うー
+    ん。どうやら現在の単語を抽出して、現在の単語に glob 文字が含まれていなけれ
+    ば glob pattern の末尾に * を追加している様だ。うーん。面倒だ。
+
+    ? そもそも現在の実装の context=glob はどの様に振る舞っていたか。先ず展開を
+      試みている。それで何も生成されなければ * を追加して再展開を実行している。
+
+      これは bash-vi-complete の動作と同じになるだろうか? うーんならない気がす
+      る。例えば glob 文字を含まない場合を考える。この場合は、bash-vi-complete
+      だとそれから始まるファイルが全て生成されるが、ble.sh の context=glob では
+      完全一致するファイルが存在する時ただ一個の候補が生成されてそれに確定する。
+      glob 文字を含む場合には bash-vi-complete だと一致するファイルが存在しない
+      時に何もしない事になるが、ble.sh の context=glob では末尾に * をつけて再
+      展開を行うのでファイルが生成される場合がある。
+
+      そもそも bash の M-g はどの様に振る舞うのかと調べてみたが glob 文字が含ま
+      れていても問答無用で末尾に * をつけて生成している気がする。従って候補が生
+      成されなかった時にだけ * を末尾につけて再展開するというのは ble.sh による
+      拡張である。
+
+      ? bash の M-g の振る舞いは何処で実装されているのか。もしこれが編集関数に
+        よって実装されているのだとしたら bash-vi-complete で * を末尾に付加して
+        いるのは果たして必要な物なのだろうか?
+
+        うーん。調べてみると bash は emacs mode でかつ M-g の時だけ * を末尾に
+        付加する様である。M-* や C-x* など他の場合には * を末尾には付加しない。
+        不思議な仕様だし余り consistent とは言えない。
+
+      うーん。bash の実装が何か変な気がするので、この * が付加される条件は勝手
+      に単純化する事にする。
+
   * edit: more widgets in vi_nmap (requested by excited-bore) [#D2304]
     https://github.com/akinomyoga/ble.sh/issues/534
 

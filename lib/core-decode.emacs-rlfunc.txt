@@ -8,6 +8,7 @@ backward-delete-char              delete-region-or delete-backward-char
 backward-kill-line                kill-backward-line
 backward-kill-word                kill-backward-cword
 backward-word                     backward-cword
+bash-vi-complete                  -
 beginning-of-history              history-beginning
 beginning-of-line                 beginning-of-line
 bracketed-paste-begin             bracketed-paste

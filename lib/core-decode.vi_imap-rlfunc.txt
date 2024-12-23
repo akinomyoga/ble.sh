@@ -8,6 +8,7 @@ backward-delete-char              vi_imap/delete-region-or vi_imap/delete-backwa
 backward-kill-line                kill-backward-line
 backward-kill-word                kill-backward-cword
 backward-word                     backward-sword
+bash-vi-complete                  -
 beginning-of-history              history-beginning
 beginning-of-line                 beginning-of-line
 bracketed-paste-begin             vi_imap/bracketed-paste

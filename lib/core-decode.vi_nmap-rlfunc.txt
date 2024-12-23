@@ -8,6 +8,7 @@ backward-delete-char              vi-rlfunc/backward-delete-char
 backward-kill-line                vi-rlfunc/backward-kill-line
 backward-kill-word                vi-rlfunc/backward-kill-word
 backward-word                     vi-command/backward-vword
+bash-vi-complete                  vi-rlfunc/bash-vi-complete
 beginning-of-history              vi-command/history-beginning
 beginning-of-line                 vi-command/beginning-of-line
 bracketed-paste-begin             vi-command/bracketed-paste
@@ -138,7 +139,7 @@ vi-change-char                    vi_nmap/replace-char
 vi-change-to                      vi-rlfunc/change-to
 vi-char-search                    vi-rlfunc/char-search
 vi-column                         vi-command/nth-column
-vi-complete                       vi_nmap/complete
+vi-complete                       vi-rlfunc/vi-complete
 vi-delete                         vi_nmap/kill-forward-char
 vi-delete-to                      vi-rlfunc/delete-to
 vi-editing-mode                   vi_nmap/insert-mode

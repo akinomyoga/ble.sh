@@ -6370,6 +6370,26 @@ function ble/complete/context:hostname/generate-sources {
   ble/complete/context/overwrite-sources hostname
 }
 
+# Note: The behavior of the glob completion in Bash seems inconsistent or
+# really complicated, so we simplify the behavior so that the user can predict
+# the consequence.  In Bash, * is appended to the pattern when one of the
+# following condition is met:
+#
+# * An argument to the readline bindable function is specified.
+# * "glob-complete-word" is called inside the emacs editing mode.
+# * "bash-vi-command" is attempted on a word that does not contain any glob
+#   characters
+#
+# Note: Even though "glob-complete-word" appends '*', the bindable functions
+# "glob-expand-word" and "glob-list-word" do not append '*' unles an argument
+# is supplied.  This does not satisfy the command duration.
+#
+# In this implementation, we first attempt the pathname expansion without
+# appending '*', and if it doesn't produce any words or only produces the
+# original word, we attempt another pathname expansion by appending '*'.  When
+# an argument is specified, we attempt the pathname expansion with suffix '*'
+# from the beginning.
+#
 function ble/complete/context:glob/generate-sources {
   comp_type=$comp_type:raw
   ble/complete/context:syntax/generate-sources || return "$?"
@@ -6379,9 +6399,25 @@ function ble/complete/source:glob {
   [[ $comps_flags == *v* ]] || return 1
   [[ :$comp_type: == *:[maA]:* ]] && return 1
 
-  local pattern=$COMPV
-  ble/complete/source/eval-simple-word "$pattern"; (($?==148)) && return 148
-  if ((!${#ret[@]})) && [[ $pattern != *'*' ]]; then
+  local ret pattern=$COMPV
+
+  # We first attempt pathname expansion without appending '*'.
+  local prefix_expansion=
+  if [[ ${comp_edit_arg-} ]]; then
+    # Note: When an edit arg is specified, we attempt the pathname expansion
+    # with suffix '*' from the beginning.  This mimics Bash's behavior.
+    prefix_expansion=1
+  else
+    ble/complete/source/eval-simple-word "$pattern"; (($?==148)) && return 148
+    if ((!${#ret[@]})) && [[ $pattern != *'*' ]]; then
+      prefix_expansion=1
+    elif ((${#ret[@]}==1)) && [[ $ret == "$pattern" ]]; then
+      prefix_expansion=1
+    fi
+  fi
+
+  # We then attempt pathname expansion with suffix '*' if necessary.
+  if [[ $prefix_expansion ]]; then
     ble/complete/source/eval-simple-word "$pattern*"; (($?==148)) && return 148
   fi
 
@@ -8257,8 +8293,9 @@ _ble_complete_state=
 ##       一部の補完源で complete_limit に達した時に補完全体を中止します。
 ##
 function ble/widget/complete {
-  local opts=$1
-  ble-edit/content/clear-arg
+  local opts=$1 arg=
+  ble-edit/content/get-arg
+  local comp_edit_arg=$arg # Note: referenced by source:glob
 
   local state=$_ble_complete_state
   _ble_complete_state=start
