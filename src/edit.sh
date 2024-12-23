@@ -106,10 +106,17 @@ bleopt/declare -n indent_tabs 1
 ##     undo/redo によって変化のあった範囲の先頭に移動します。
 ##   undo_point=end
 ##     undo/redo によって変化のあった範囲の末端に移動します。
-##   その他の時
-##     undo/redo 後の状態が記録された時のカーソル位置を復元します。
+##   undo_point=first
+##     その文字列が最初に記録された位置に移動します。
+##   undo_point=last
+##     その文字列が最後に記録された位置に移動します。
+##   undo_point=near
+##     undo 時は "last" として振る舞い、redo 時は "first" として振る舞います。
+##   undo_point=auto, undo_point=, またはその他の値
+##     emacs editing mode では "near" として振る舞います。vi editing mode では
+##     beg として振る舞います。
 ##
-bleopt/declare -v undo_point end
+bleopt/declare -v undo_point auto
 
 ## @bleopt edit_forced_textmap
 ##   1 が設定されているとき、矩形選択に先立って配置計算を強制します。
@@ -8455,18 +8462,44 @@ function ble-edit/undo/.get-current-state {
 function ble-edit/undo/add {
   ble-edit/undo/.check-hindex
 
-  # 変更がない場合は記録しない
   local str ind; ble-edit/undo/.get-current-state
-  [[ $str == "$_ble_edit_str" ]] && return 0
-
-  _ble_edit_undo[_ble_edit_undo_index++]=$_ble_edit_ind:$_ble_edit_str
-  if ((${#_ble_edit_undo[@]}>_ble_edit_undo_index)); then
-    _ble_edit_undo=("${_ble_edit_undo[@]::_ble_edit_undo_index}")
+  if [[ $_ble_edit_str != "$str" ]]; then
+    # add a new entry
+    _ble_edit_undo[_ble_edit_undo_index++]=$_ble_edit_ind:$_ble_edit_str
+    if ((${#_ble_edit_undo[@]}>_ble_edit_undo_index)); then
+      # clear redo history on change of the command line
+      _ble_edit_undo=("${_ble_edit_undo[@]::_ble_edit_undo_index}")
+    fi
+  elif ((_ble_edit_undo_index>0&&_ble_edit_ind!=${ind##*,})); then
+    # update the latest position in the existing entry
+    _ble_edit_undo[_ble_edit_undo_index-1]=${ind%%,*},$_ble_edit_ind:$_ble_edit_str
   fi
 }
+## @fn ble-edit/undo/.load [opts]
+##   @var[in] opts
+##     @opt redo
 function ble-edit/undo/.load {
+  # resolve the default policy for the cursor position
+  local point=$bleopt_undo_point
+  case $point in
+  (beg|end|first|last|near) ;;
+  (auto|*)
+    if local keymap; ble/decode/keymap/get-major-keymap; [[ $keymap == vi_[noxs]map ]]; then
+      point=near
+    else
+      point=beg
+    fi ;;
+  esac
+  if [[ $point == near ]]; then
+    if [[ :$1: == *:redo:* ]]; then
+      point=first
+    else
+      point=last
+    fi
+  fi
+
   local str ind; ble-edit/undo/.get-current-state
-  if [[ $bleopt_undo_point == end || $bleopt_undo_point == beg ]]; then
+  if [[ $point == end || $point == beg ]]; then
 
     # Note: 実際の編集過程に依らず、現在位置 _ble_edit_ind の周辺で
     #   変更前と変更後の文字列だけから「変更範囲」を決定する事にする。
@@ -8494,10 +8527,20 @@ function ble-edit/undo/.load {
 
     if [[ $bleopt_undo_point == end ]]; then
       ind=$end
+      if ((beg<end)); then
+        local keymap
+        ble/decode/keymap/get-major-keymap
+        [[ $keymap == vi_nmap ]] && ((end--))
+      fi
     else
       ind=$beg
     fi
   else
+    if [[ $point == first ]]; then
+      ind=${ind%%,*}
+    else
+      ind=${ind##*,}
+    fi
     ble-edit/content/reset-and-check-dirty "$str"
   fi
 
@@ -8521,7 +8564,7 @@ function ble-edit/undo/redo {
   ((_ble_edit_undo_index<ucount)) || return 1
   ((_ble_edit_undo_index+=arg))
   ((_ble_edit_undo_index>=ucount&&(_ble_edit_undo_index=ucount)))
-  ble-edit/undo/.load
+  ble-edit/undo/.load redo
 }
 function ble-edit/undo/revert {
   ble-edit/undo/.check-hindex
@@ -8540,7 +8583,7 @@ function ble-edit/undo/revert-toggle {
     ble-edit/undo/.load
   elif ((${#_ble_edit_undo[@]})); then
     ((_ble_edit_undo_index=${#_ble_edit_undo[@]}))
-    ble-edit/undo/.load
+    ble-edit/undo/.load redo
   else
     return 1
   fi

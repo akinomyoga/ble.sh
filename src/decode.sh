@@ -2026,6 +2026,18 @@ function ble/decode/keymap/get-parent {
     ret=
   fi
 }
+## @fn ble/decode/keymap/get-major-keymap
+##   @var[out] keymap
+function ble/decode/keymap/get-major-keymap {
+  keymap=$_ble_decode_keymap
+  local index=${#_ble_decode_keymap_stack[@]}
+  while :; do
+    case $keymap in (vi_?map|emacs) return 0 ;; esac
+    ((--index<0)) && break
+    keymap=${_ble_decode_keymap_stack[index]}
+  done
+  return 1
+}
 
 ## @arr _ble_decode_key__chars
 ##   ble-decode-key から参照される配列です。引数に指定したキーを生成した文字シー

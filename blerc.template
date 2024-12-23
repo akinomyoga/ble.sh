@@ -98,12 +98,16 @@
 #bleopt indent_tabs=1
 
 
-## "undo_point" controls the cursor position after "undo". When "beg" or "end"
-## is specified, the cursor will be moved to the beginning or the end of the
-## dirty section, respectively. When other values are specified, the original
-## cursor position is reproduced.
+## "undo_point" controls the cursor position after "undo".  When "beg" and
+## "end" are specified, the cursor will be moved to the beginning and the end,
+## respectively, of the dirty section.  When "first" and "last" are specified,
+## the cursor position will be the first and last positions, respectively, for
+## which the resulting line content is recorded.  When "near" is specified, it
+## behaves like "last" for undo and "first" for redo.  Otherwise, it behaves
+## like "beg" for vi command modes and "near" for the other modes.  The default
+## is "auto".
 
-#bleopt undo_point=end
+#bleopt undo_point=near
 
 
 ## The following setting controls forced layout calculations before graphical

@@ -69,6 +69,7 @@
 - complete: support completion for `execute-named-command` `#D2288` 4fee44e6
 - complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
 - edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` 37291ff1
+- edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` xxxxxxxx
 
 ## Changes
 
