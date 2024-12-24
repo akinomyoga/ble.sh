@@ -172,4 +172,4 @@ yank                              yank
 yank-last-arg                     -
 yank-nth-arg                      -
 yank-pop                          -
-paste-from-clipboard              -
+paste-from-clipboard              vi-rlfunc/paste-from-clipboard

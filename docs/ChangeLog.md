@@ -73,6 +73,7 @@
 - edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` xxxxxxxx
 - keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` xxxxxxxx
 - edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` xxxxxxxx
+- edit: support readline bindable function `paste-from-buffer` in more environments `#D2307` xxxxxxxx
 
 ## Changes
 
@@ -98,7 +99,7 @@
 - highlight (`ble/syntax/highlight/vartype`): reference the saved states of variables `#D2268` 063249b4
 - complete: attempt pathname expansions of incomplete pattern for `COMPV` (reported by mcepl) `#D2278` 6a426954
 - make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` 31f264ad
-- edit: revert edits with widget `discard-line` (reported by dezza) `#D2301` xxxxxxxx
+- edit: revert edits with widget `discard-line` (reported by dezza) `#D2301` 3b2b4b81
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` xxxxxxxx
 
 ## Fixes
@@ -203,7 +204,7 @@
 - mandb: hook into bash-completion's `_comp_command_offset` `#D2255` cbcce625
 - canvas: update tables for Unicode 16.0.0 `#D2283` 5b43ca3f 25a10a6f
 - complete: work around `mawk <= 1.3.4-20230525` type-inference bug (reported by KaKi87) `#D2295` 546499b5
-- main: work around macOS sed (reported by Mossop) `#D2298` xxxxxxxx
+- main: work around macOS sed (reported by Mossop) `#D2298` a16aa594
 
 ## Contrib
 
@@ -295,8 +296,8 @@
 - util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
 - decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` 21b1bb3d
 - global: normalize quoting of function names of the form `prefix:$name` `#D2296` 3d7c98bb
-- global: use `[:blank:]` instead of `[:space:]` `#D2299` xxxxxxxx
-- global: rename `ret` not used as `REPLY` `#D2300` xxxxxxxx
+- global: use `[:blank:]` instead of `[:space:]` `#D2299` e2fd8f0f
+- global: rename `ret` not used as `REPLY` `#D2300` 86cbf78e
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

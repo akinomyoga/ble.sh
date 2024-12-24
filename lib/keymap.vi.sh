@@ -3959,6 +3959,21 @@ function ble/widget/vi_nmap/paste-before {
   ble/widget/vi_nmap/paste.impl "$ARG" "$REG" 0
 }
 
+function ble/widget/vi-rlfunc/paste-from-clipboard {
+  ble/keymap:vi/clear-arg
+
+  local clipboard
+  if ! ble/edit/get-clipboard; then
+    ble/widget/.bell
+    return 1
+  fi
+
+  local _ble_edit_kill_ring=$clipboard
+  local _ble_edit_kill_type=
+  ble/widget/vi_nmap/paste.impl 1 '' 1
+  return 0
+}
+
 #------------------------------------------------------------------------------
 # command: x s X C D
 

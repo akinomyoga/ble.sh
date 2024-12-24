@@ -4915,18 +4915,68 @@ function ble/widget/.insert-string {
   ))
   _ble_edit_mark_active=
 }
-if [[ -c /dev/clipboard ]]; then
-  function ble/widget/paste-from-clipboard {
-    local clipboard
-    if ! ble/util/readfile clipboard /dev/clipboard; then
-      ble/widget/.bell
-      return 1
-    fi
 
+# One can find various ways to get the clipboard content in Ref. [1].
+# [1] https://stackoverflow.com/questions/5130968
+if [[ -c /dev/clipboard ]]; then
+  # Cygwin and MSYS2 has a character device "/dev/clipboard".
+  function ble/edit/get-clipboard { ble/util/readfile clipboard /dev/clipboard; }
+elif ble/base/is-wsl && ble/bin#freeze-utility-path powershell.exe; then
+  # WSL system may use "powershell.exe" if it exists
+  function ble/edit/get-clipboard { ble/util/assign clipboard 'powershell.exe -command Get-Clipboard 2>/dev/null'; }
+elif ble/bin#freeze-utility-path pbpaste; then
+  # macOS seems to have "pbpaste" command.
+  function ble/edit/get-clipboard { ble/util/assign clipboard 'pbpaste 2>/dev/null'; }
+elif ble/bin#freeze-utility-path xclip; then
+  # Linux with X Window system may also have the "xlip" command.
+  function ble/edit/get-clipboard { ble/util/assign clipboard 'xclip -selection clipboard -o 2>/dev/null'; }
+elif ble/bin#freeze-utility-path xsel; then
+  # Linux with X Window system may have the "xsel" command.
+  function ble/edit/get-clipboard { ble/util/assign clipboard 'xsel --clipboard --output 2>/dev/null'; }
+elif ble/bin#freeze-utility-path pbpaste; then
+  # wmaker-utils had "wxpaste", but it seems to have failed in recent versions
+  # of Linux?
+  # [2] https://askubuntu.com/questions/110347
+  function ble/edit/get-clipboard { ble/util/assign clipboard 'wxpaste 2>/dev/null'; }
+elif ble/bin#freeze-utility-path pbpaste; then
+  # The xcb command seems to extract the cut buffer in the present xterm.
+  # [3] https://askubuntu.com/questions/237942
+  function ble/edit/get-clipboard { ble/util/assign clipboard 'xcb -p 0 2>/dev/null'; }
+elif [[ ${TMUX-} && ${TMUX_PANE-} ]] && ble/bin#freeze-utility-path screen; then
+  # Tmux seems to have a similar mechanism of the paste buffer as GNU screen
+  # [4], though Ref. [4] describes the solution for the opposite purpose of
+  # setting the buffer.  The way to extract the content of the buffer using a
+  # command is described in Ref. [5].
+  #
+  # [4] https://stackoverflow.com/questions/35509163
+  # [5] https://unix.stackexchange.com/questions/15715
+  function ble/edit/get-clipboard { ble/util/assign clipboard 'tmux save-buffer - 2>/dev/null'; }
+elif [[ ${STY-} && ${WINDOW-} ]] && ble/bin#freeze-utility-path screen; then
+  # If we are inside GNU Screen, we might try to read a text from the
+  # bufferfile for the paste buffer [6-8].  The default location of the
+  # bufferfile seems to be "/tmp/screen-exchange", though a user might
+  # configure it to another directory.  The user can press [C-a >] to save the
+  # current paste buffer content to "/tmp/screen-exchange".  Then, one can read
+  # its content using "ble/edit/get-clipboard".
+  #
+  # [6] https://www.gnu.org/software/screen/manual/html_node/Screen-Exchange.html
+  # [7] https://superuser.com/questions/183051
+  # [8] https://qiita.com/k_ui/items/d0ae1e7b4d553830ccb9
+  function ble/edit/get-clipboard { ble/util/readfile clipboard /tmp/screen-exchange; }
+else
+  function ble/edit/get-clipboard { return 1; }
+fi
+
+function ble/widget/paste-from-clipboard {
+  local clipboard
+  if ble/edit/get-clipboard; then
     ble/widget/insert-string "$clipboard"
     return 0
-  }
-fi
+  else
+    ble/widget/.bell
+    return 1
+  fi
+}
 
 ## @fn ble/widget/insert-arg.impl beg end index delta nth
 ##   @param[in] beg end

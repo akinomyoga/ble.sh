@@ -1926,9 +1926,44 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
-2024-12-23
+2024-12-24
 
-  * vi_[in]map: rlfunc "paste-from-clipboard" の対応
+  * vscode における初期化問題
+    https://github.com/akinomyoga/ble.sh/discussions/524
+
+    [ble-attach の問題]
+
+    ble-attach を呼び出すと venv が初期化されない。どうも変だと思ったら vscode
+    は .bashrc を shellIntegration-bash.sh 云々から読み込まれている様だ。単に
+    PS1 が反映されていないという事だった様である。これの対策についてはまた考え
+    なければならないだろうか。或いは、ユーザーに ble-attach ではなくそのまま書
+    く方式を試す様にお願いするか。wiki に記述しても良い。
+
+    或いは、既に VS Code の何かの Extension に対する対策を含めているのだから、
+    VS Code Python Extension に対する workaround も ble.sh の中に含めるべき? し
+    かしそうするとしてもどの様に処理したら良いか分からない。
+
+    a ble-attach を無効化するにしても、ble-attach をわざわざ記述した理由がある
+      のかもしれない。
+
+    b 或いは、ble-attach の時点で VSCODE_* の環境変数が存在して未処理の場合には
+      それを ble.sh の側で自前で処理して、その後で ble-attach する? 然し、そう
+      するにしても shellIntegration-bash.sh が変更されたらそれで動かなくなって
+      しまう。upstream を追跡するのは大変だし、追跡したとしてもどの version の
+      shellIntegration-bash.sh を使っているのかまで検出しなければならない。
+
+    c 或いは、呼び出し元が shellIntegration-bash.sh だと分かった時点で、それを
+      自前で呼び出してそれから ble-attach を実施する?
+
+    [source .venv/bin/activate の問題]
+
+    一方で、これは結局報告者の問題とは関係ない様だ。報告者のビデオによると
+    source .venv/bin/activate が書き込まれてその後に C-c が送信されて、それから
+    実行スべきコマンドが書き込まれて実行されている様だ。然し、source ... C-c は
+    自分の環境では実行されている気配が全くない。そもそも .venv/bin/activate は
+    全く読み込まれていない様に見える。
+
+2024-12-23
 
   * vi_cmap: :marks の対応。ないと marks のデバグの時に不便
 
@@ -7692,6 +7727,17 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2024-12-24
+
+  * vi_[in]map: rlfunc "paste-from-clipboard" の対応 [#D2307]
+
+    vi_imap は paste-from-clipboard で良さそうな気がする。一方で、vi_nmap に関
+    しては特別な配慮が必要になる。面倒なので p を呼び出す様にすれば良い気がする。
+
+    今まで Cygwin 上でしか paste-from-clipboard を友好にしていなかったが、
+    rlfunc.txt にあるのに使えないというのも混乱の元なので全ての環境で widget は
+    定義する事にした。また、clipboard から抽出する様々の方法を追加する事にした。
 
 2024-12-23
 
