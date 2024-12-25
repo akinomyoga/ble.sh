@@ -3541,7 +3541,7 @@ function ble/decode/bind {
 function ble/decode/read-inputrc/test {
   local text=$1
   if [[ ! $text ]]; then
-    ble/util/print "ble.sh (bind):\$if: test condition is not supplied." >&2
+    ble/builtin/bind/.print-error "\$if: test condition is not supplied."
     return 1
   elif local rex=$'[ \t]*([<>]=?|[=!]?=)[ \t]*(.*)$'; [[ $text =~ $rex ]]; then
     local op=${BASH_REMATCH[1]}
@@ -3609,7 +3609,7 @@ function ble/decode/read-inputrc/test {
       builtin test "$ret" "$op" "$rhs"
       return "$?"
     else
-      ble/util/print "ble.sh (bind):\$if: unknown readline variable '${lhs//$q/$Q}'." >&2
+      ble/builtin/bind/.print-error "\$if: unknown readline variable '${lhs//$q/$Q}'."
       return 1
     fi ;;
   esac
@@ -3621,15 +3621,16 @@ function ble/decode/read-inputrc {
     local relative_file=${ref%/*}/$file
     [[ -f $relative_file ]] && file=$relative_file
   fi
-  if [[ ! -f $file ]]; then
-    ble/util/print "ble.sh (bind):\$include: the file '${1//$q/$Q}' not found." >&2
+  local inputrc_file=$file inputrc_iline=0
+  if [[ ! -f $inputrc_file ]]; then
+    ble/builtin/bind/.print-error "\$include: the file '${1//$q/$Q}' not found."
     return 1
   fi
 
   local -a script=()
-  local ret line= iline=0
+  local ret line= inputrc_iline=0
   while ble/bash/read line || [[ $line ]]; do
-    ((++iline))
+    ((++inputrc_iline))
     ble/string#trim "$line"; line=$ret
     [[ ! $line || $line == '#'* ]] && continue
 
@@ -3639,20 +3640,23 @@ function ble/decode/read-inputrc {
       ('$if')
         local args=${line#'$if'}
         ble/string#trim "$args"; args=$ret
+        ble/array#push script "inputrc_iline=$inputrc_iline"
         ble/array#push script "if ble/decode/read-inputrc/test '${args//$q/$Q}'; then :" ;;
       ('$else')  ble/array#push script 'else :' ;;
       ('$endif') ble/array#push script 'fi' ;;
       ('$include')
         local args=${line#'$include'}
         ble/string#trim "$args"; args=$ret
-        ble/array#push script "ble/decode/read-inputrc '${args//$q/$Q}' '${file//$q/$Q}'" ;;
+        ble/array#push script "inputrc_iline=$inputrc_iline"
+        ble/array#push script "ble/decode/read-inputrc '${args//$q/$Q}' '${inputrc_file//$q/$Q}'" ;;
       (*)
-        ble/util/print "ble.sh (bind):$file:$iline: unrecognized directive '$directive'." >&2 ;;
+        ble/builtin/bind/.print-error "unrecognized directive '$directive'." ;;
       esac
     else
+      ble/array#push script "inputrc_iline=$inputrc_iline"
       ble/array#push script "ble/builtin/bind/.process -- '${line//$q/$Q}'"
     fi
-  done < "$file"
+  done < "$inputrc_file"
 
   IFS=$'\n' builtin eval 'script="${script[*]}"'
   builtin eval -- "$script"
@@ -3669,6 +3673,47 @@ function ble/builtin/bind/set-keymap {
   return 0
 }
 
+## @fn ble/builtin/bind/.print-error.find-caller
+##   @var[ref] level f
+function ble/builtin/bind/.print-error.find-caller {
+  for ((;level<${#FUNCNAME[@]}+1;level++)); do
+    f=${FUNCNAME[1+level]-}
+    case $f in
+    (ble/builtin/bind|ble/builtin/bind/*|bind|ble/decode/read-inputrc/test) ;;
+    (*) return 0 ;;
+    esac
+  done
+  f=
+}
+function ble/builtin/bind/.print-error {
+  local title='bind (ble.sh)'
+
+  local level=1 f
+  ble/builtin/bind/.print-error.find-caller
+
+  # If the current invocation of bind is from ble/decode/read-inputrc, we try
+  # to use the filename and line number of the inputrc file.
+  if [[ $f == ble/decode/read-inputrc ]]; then
+    if ((inputrc_iline)); then
+      title="$inputrc_file:$inputrc_iline: bind (ble.sh)"
+      f=
+    else
+      ((++level))
+      ble/builtin/bind/.print-error.find-caller
+      # Note: we currently do not recursively process ble/decode/read-inputrc.
+      # If one supports it, one needs to extract the previous-scope values of
+      # $inputrc_file and $inputrc_iline without affecting the caller.  To do
+      # that, we will need to unlocal those variables in a subshell.
+    fi
+  fi
+
+  if [[ $f && ${BASH_SOURCE[level]} ]]; then
+    title="${BASH_SOURCE[level]}:${BASH_LINENO[level-1]}: bind (ble.sh)"
+  fi
+
+  ble/util/print "$title: $1" >&2
+}
+
 ## @fn ble/builtin/bind/option:m keymap
 ##   @var[in,out] opt_keymap flags
 function ble/builtin/bind/option:m {
@@ -3680,7 +3725,7 @@ function ble/builtin/bind/option:m {
   (*) keymap= ;;
   esac
   if [[ ! $keymap ]]; then
-    ble/util/print "ble.sh (bind): unrecognized keymap name '$name'" >&2
+    ble/builtin/bind/.print-error "unrecognized keymap name '$name'"
     flags=e$flags
     return 1
   else
@@ -3702,11 +3747,11 @@ function ble/builtin/bind/.unquote-macro-string {
 
   local rex='^'$delim'(([^\'$delim']|\\.)*)'$delim'['$_ble_term_IFS']*'
   if ! [[ $value =~ $rex ]]; then
-    ble/util/print "ble.sh (bind): no closing '${delim//$q/$Q}' in spec: '${spec//$q/$Q}'" >&2
+    ble/builtin/bind/.print-error "no closing '${delim//$q/$Q}' in spec: '${spec//$q/$Q}'"
     return 1
   elif ((${#BASH_REMATCH}<${#value})); then
     local fragment=${value:${#BASH_REMATCH}}
-    ble/util/print "ble.sh (bind): warning: unprocessed fragments '${fragment//$q/$Q}' in spec: '${spec//$q/$Q}'" >&2
+    ble/builtin/bind/.print-error "warning: unprocessed fragments '${fragment//$q/$Q}' in spec: '${spec//$q/$Q}'"
   fi
   ret=${BASH_REMATCH[1]}
 }
@@ -3730,7 +3775,7 @@ function ble/builtin/bind/.decompose-pair.impl {
     # bind -x 'keyseq: "command"'
     # bind -x 'keyseq "command"'
     if ! ble/string#match "$spec" "$rex_keyseq[$ifs]*[:$ifs]"; then
-      ble/util/print "ble.sh (bind): no colon or space after keyseq: '${spec//$q/$Q}'" >&3
+      ble/builtin/bind/.print-error "no colon or space after keyseq: '${spec//$q/$Q}'" 2>&3
       return 1
     fi
 
@@ -3750,7 +3795,7 @@ function ble/builtin/bind/.decompose-pair.impl {
         ble/util/keyseq2chars "$ret"
         ble/util/chars2s "${ret[@]}"
       else
-        ble/util/print "ble.sh (bind): the user command needs to be surrounded by \"..\": '${spec//$q/$Q}'" >&3
+        ble/builtin/bind/.print-error "the user command needs to be surrounded by \"..\": '${spec//$q/$Q}'" 2>&3
         return 1
       fi
     fi
@@ -3778,16 +3823,16 @@ function ble/builtin/bind/.decompose-pair.impl {
     # Parser directives such as $if, $else, $endif, $include
     return 3
   elif [[ ! $keyseq ]]; then
-    ble/util/print "ble.sh (bind): empty keyseq in spec: '${spec//$q/$Q}'" >&3
+    ble/builtin/bind/.print-error "empty keyseq in spec: '${spec//$q/$Q}'" 2>&3
     return 1
   elif ble/string#match "$keyseq" '^"([^\"]|\\.)*$'; then
-    ble/util/print "ble.sh (bind): no closing '\"' in keyseq: '${keyseq//$q/$Q}'" >&3
+    ble/builtin/bind/.print-error "no closing '\"' in keyseq: '${keyseq//$q/$Q}'" 2>&3
     return 1
   elif ble/string#match "$keyseq" '^"([^\"]|\\.)*"'; then
     local rematch=${BASH_REMATCH[0]}
     if ((${#rematch}<${#keyseq})); then
       local fragment=${keyseq:${#rematch}}
-      ble/util/print "ble.sh (bind): warning: unprocessed fragments in keyseq '${fragment//$q/$Q}'" >&3
+      ble/builtin/bind/.print-error "warning: unprocessed fragments in keyseq '${fragment//$q/$Q}'" 2>&3
     fi
     keyseq=$rematch
     return 0
@@ -3866,10 +3911,10 @@ function ble/builtin/bind/.initialize-keys-and-value {
   if [[ $keyseq == \"*\" ]]; then
     local ret; ble/util/keyseq2chars "${keyseq:1:${#keyseq}-2}"
     chars=("${ret[@]}")
-    ((${#chars[@]})) || ble/util/print "ble.sh (bind): warning: empty keyseq" >&2
+    ((${#chars[@]})) || ble/builtin/bind/.print-error "warning: empty keyseq: $keyseq"
   else
     [[ :$opts: == *:nokeyname:* ]] &&
-      ble/util/print "ble.sh (bind): warning: readline \"bind -x\" does not support \"keyname\" spec" >&2
+      ble/builtin/bind/.print-error "warning: readline \"bind -x\" does not support \"keyname\" spec"
     ble/builtin/bind/.parse-keyname "$keyseq"
   fi
   ble/decode/cmap/decode-chars "${chars[@]}"
@@ -3881,11 +3926,11 @@ function ble/builtin/bind/option:x {
   local q=\' Q="''\'"
   local keys value kmap
   if ! ble/builtin/bind/.initialize-keys-and-value "$1" nokeyname:user-command; then
-    ble/util/print "ble.sh (bind): unrecognized user-command spec '${1//$q/$Q}'." >&2
+    ble/builtin/bind/.print-error "unrecognized user-command spec '${1//$q/$Q}'."
     flags=e$flags
     return 1
   elif ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
-    ble/util/print "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    ble/builtin/bind/.print-error "sorry, failed to initialize keymap:'$opt_keymap'."
     flags=e$flags
     return 1
   fi
@@ -3946,7 +3991,7 @@ function ble/builtin/bind/rlfunc2widget {
       [[ $line == "$rlfunc "* ]] || continue
       local rl widget; ble/bash/read rl widget <<< "$line"
       if [[ $widget == - ]]; then
-        ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'." >&2
+        ble/builtin/bind/.print-error "unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'."
         return 1
       elif [[ $widget == '<IGNORE>' ]]; then
         return 2
@@ -3961,7 +4006,7 @@ function ble/builtin/bind/rlfunc2widget {
     return 0
   fi
 
-  ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}'." >&2
+  ble/builtin/bind/.print-error "unsupported readline function '${rlfunc//$q/$Q}'."
   return 1
 }
 
@@ -3995,7 +4040,7 @@ function ble/builtin/bind/option:u {
 
   local kmap
   if ! ble/builtin/bind/.initialize-kmap "$opt_keymap" || ! ble/decode/keymap#load "$kmap"; then
-    ble/util/print "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    ble/builtin/bind/.print-error "sorry, failed to initialize keymap:'$opt_keymap'."
     flags=e$flags
     return 1
   fi
@@ -4066,11 +4111,11 @@ function ble/builtin/bind/option:- {
   local keys value kmap
   if ! ble/builtin/bind/.initialize-keys-and-value "$arg"; then
     local q=\' Q="''\'"
-    ble/util/print "ble.sh (bind): unrecognized readline command '${arg//$q/$Q}'." >&2
+    ble/builtin/bind/.print-error "unrecognized readline command '${arg//$q/$Q}'."
     flags=e$flags
     return 1
   elif ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
-    ble/util/print "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    ble/builtin/bind/.print-error "sorry, failed to initialize keymap:'$opt_keymap'."
     flags=e$flags
     return 1
   fi
@@ -4098,7 +4143,7 @@ function ble/builtin/bind/option:- {
       return 1
     fi
   else
-    ble/util/print "ble.sh (bind): readline function name is not specified ($arg)." >&2
+    ble/builtin/bind/.print-error "readline function name is not specified ($arg)."
     return 1
   fi
 }
@@ -4115,7 +4160,7 @@ function ble/builtin/bind/.process {
            continue ;;
       (--help)
         if ((_ble_bash<40400)); then
-          ble/util/print "ble.sh (bind): unrecognized option $arg" >&2
+          ble/builtin/bind/.print-error "unrecognized option $arg"
           flags=e$flags
         else
           # Note: Bash-4.4, 5.0 のバグで unwind_frame が壊れているので
@@ -4127,7 +4172,7 @@ function ble/builtin/bind/.process {
         fi
         continue ;;
       (--*)
-        ble/util/print "ble.sh (bind): unrecognized option $arg" >&2
+        ble/builtin/bind/.print-error "unrecognized option $arg"
         flags=e$flags
         continue ;;
       (-*)
@@ -4143,7 +4188,7 @@ function ble/builtin/bind/.process {
             arg=
             if [[ ! $optarg ]]; then
               if (($#==0)); then
-                ble/util/print "ble.sh (bind): missing option argument for -$c" >&2
+                ble/builtin/bind/.print-error "missing option argument for -$c"
                 flags=e$flags
                 break
               fi
@@ -4157,11 +4202,11 @@ function ble/builtin/bind/.process {
             (q) ble/array#push opt_queries "$optarg" ;;
             (f) ble/decode/read-inputrc "$optarg" ;;
             (*)
-              ble/util/print "ble.sh (bind): unsupported option -$c $optarg" >&2
+              ble/builtin/bind/.print-error "unsupported option -$c $optarg"
               flags=e$flags ;;
             esac ;;
           (*)
-            ble/util/print "ble.sh (bind): unrecognized option -$c" >&2
+            ble/builtin/bind/.print-error "unrecognized option -$c"
             flags=e$flags ;;
           esac
         done

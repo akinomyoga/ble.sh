@@ -606,6 +606,9 @@ function sub:scan {
       \Z^alias bind cd command compgenZd
       \Zoutputs of the "bind" builtinZd
       \Zif ble/string#match "\$_ble_edit_str" '\''bindZd
+      \Z\(ble/builtin/bind\|ble/builtin/bind/\*\|bind\|ble/decode/read-inputrc/test\)Zd
+      \Ztitle=['\''"]([^"]*: )?bind \(ble\.sh\)['\''"]Zd
+      \Zwarning: readline \\"bind -x\\" does not supportZd
       g'
   sub:scan/builtin 'read' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//

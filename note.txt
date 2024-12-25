@@ -7730,6 +7730,13 @@ bash_tips
 
 2024-12-30
 
+  * decode (bind): print the filename and line in error messages (motivated by excited-bore) [#D2311]
+    https://github.com/akinomyoga/ble.sh/issues/534
+
+    bind のエラーメッセージで問題のあった keyseq をエラーメッセージに含める。ま
+    た、その呼出に対応するファイル名と行番号もエラーメッセージの中に含める事に
+    する。これで少なくともユーザーはそのファイルを確認することができるだろう。
+
   * util: ble/path#remove-glob で * を指定すると後ろまで全て削除してしまう [#D2310]
 
     これはとんでもない振る舞いである。元々は恐らく * を使うつもりはなかったが、
