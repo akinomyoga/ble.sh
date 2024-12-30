@@ -8738,10 +8738,10 @@ function ble/widget/print-keyboard-macro {
 #------------------------------------------------------------------------------
 # **** history ****                                                    @history
 
-bleopt/declare -v history_default_point 'end'
+bleopt/declare -v history_default_point 'auto'
 function bleopt/check:history_default_point {
   case $value in
-  (begin|end|near|far|preserve) return 0 ;;
+  (begin|end|near|far|preserve|auto) return 0 ;;
   (beginning-of-line|end-of-line|preserve-column) return 0 ;;
   (beginning-of-logical-line|end-of-logical-line|preserve-logical-column) return 0 ;;
   (beginning-of-graphical-line|end-of-graphical-line|preserve-graphical-column) return 0;;
@@ -8754,7 +8754,7 @@ function bleopt/check:history_default_point {
 bleopt/declare -o history_preserve_point history_default_point
 function bleopt/check:history_preserve_point {
   case $value in
-  (begin|end|near|far|preserve) ;;
+  (begin|end|near|far|preserve|auto) ;;
   (beginning-of-line|end-of-line|preserve-column) ;;
   (beginning-of-logical-line|end-of-logical-line|preserve-logical-column) ;;
   (beginning-of-graphical-line|end-of-graphical-line|preserve-graphical-column) ;;
@@ -8849,6 +8849,15 @@ function ble-edit/history/goto/.prepare-point {
   [[ $ret ]] || ret=$bleopt_history_default_point
   point=$ret
 
+  if [[ $point == auto ]]; then
+    ble/opts#extract-last-optarg "$point_opts" default-point
+    if [[ $ret ]]; then
+      point=$ret
+    else
+      point=end
+    fi
+  fi
+
   case $point in
   (near)
     if [[ :$point_opts: == *:backward:* ]]; then
@@ -8913,7 +8922,6 @@ function ble-edit/history/goto/.prepare-point {
 
 ## @fn ble-edit/history/goto/.set-point [delta]
 ##   @param[in] delta
-##   @var[in] index0 index1
 ##   @var[in] point point_x point_opts
 ##
 ##   @var[in] _ble_edit_str

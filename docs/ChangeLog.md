@@ -71,6 +71,7 @@
 - complete: support completion for `execute-named-command` `#D2288` 4fee44e6
 - complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
 - edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` 37291ff1
+  - edit: support `bleopt history_default_point=auto` (reported by miltieIV2) `#D2297` xxxxxxxx
 - edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` 99af0ece
 - keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` d7ec488a
 - edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33

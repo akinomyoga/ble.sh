@@ -3111,36 +3111,37 @@ function ble/widget/vi-command/.history-relative-line {
   local index histsize
   ble/history/get-index
   ble/history/get-count -v histsize
+  local index0=$index
 
-  local ret count=$((offset<0?-offset:offset)) exit=1
+  local ret count=$((offset<0?-offset:offset))
   ((count--))
   while ((count>=0)); do
     if ((offset<0)); then
-      ((index>0)) || return "$exit"
-      ble/widget/history-prev
-      ret=${#_ble_edit_str}
-      ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
-      _ble_edit_ind=$ret
+      ((--index))
+      ((index>=0)) || break
     else
-      ((index<histsize)) || return "$exit"
-      ble/widget/history-next
-      _ble_edit_ind=0
+      ((++index))
+      ((index<=histsize)) || break
     fi
-    exit=0
-    ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
+    local entry; ble/history/get-edited-entry "$index"
+    ble/string#count-char "$entry" $'\n'; local nline=$((ret+1))
     ((count<nline)) && break
     ((count-=nline))
   done
+  ((index!=index0)) || return 1
 
-  if ((count)); then
-    if ((offset<0)); then
-      ble-edit/content/find-logical-eol 0 "$((nline-count-1))"
-      ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
-    else
-      ble-edit/content/find-logical-bol 0 "$count"
-    fi
-    _ble_edit_ind=$ret
+  if ((index<0)); then
+    # reached the beginning of history
+    ble-edit/history/goto 0 point=none
+    _ble_edit_ind=0
+  elif ((index>histsize)); then
+    # reached the end of history
+    ble-edit/history/goto "$histsize" point=none
+    _ble_edit_ind=${#_ble_edit_str}
+  else
+    ble-edit/history/goto "$index" linewise:default-point=near
   fi
+  ble/keymap:vi/needs-eol-fix && ((_ble_edit_ind--))
 
   return 0
 }

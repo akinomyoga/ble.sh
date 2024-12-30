@@ -8097,6 +8097,8 @@ bash_tips
   * edit: 履歴移動を行った時のカーソル位置の設定 (requested by miltieIV2) [#D2297]
     https://github.com/akinomyoga/ble.sh/issues/537
 
+    Note: これにより history_preserve_point -> history_default_point に変更した。
+
     * fixed: 何と今まで "bleopt edit_line_type" が動いていなかった様だ。
 
     * fixed: 何と今まで bleopt/check:input_encoding のエラーメッセージの一部が
@@ -8157,6 +8159,24 @@ bash_tips
       point の書き換えに失敗していた。修正した。
 
     その他は大体動いている様だ。
+
+    2024-12-31 実は keymap.vi の vi motion 経由で呼び出される履歴移動は
+    ble/widget/history-{prev,next} を用いていた為に、今回の新しいカーソル位置の
+    設定が適用されていなかった? 取り敢えず対応した。
+
+    ? done: と思ったが、本来は ble/widget/history-{prev,next} が正しく位置を設
+      定する筈だったのでは…? 何故動いていないのだろう? 後で確認する必要がある。
+
+      →確認した。history-{prev,next} の直後にカーソル位置を手動で設定している
+      ので折角 ble/widget/history-{prev,next} がカーソル位置を設定してもそれが
+      上書きされていた。その処理を削除されたら期待通りの振る舞いになる事も確認
+      できた。然し、更に引数付きで履歴項目内を移動した時には何れにしてもカーソ
+      ル位置を調整する必要がある。そもそも処理をよく見てみると
+      ble/widget/history-{prev,next} を呼び出す意味はない。単に index を追跡し
+      てその都度 get-edited-entry で取り出した文字列に含まれる改行を数えれば良
+      いだけである。
+
+      最後に ble-edit/history/goto を一回呼び出すだけにする事にした。
 
 2024-12-12
 

@@ -333,9 +333,10 @@
 ## is specified, te cursor is placed at the same column as before moving the
 ## history entry.  When the versions without "graphical" or "logical" is used,
 ## a logical or graphical line is used based on "bleopt edit_line_type".  The
-## default is "end-of-line".
+## default is "end-of-line".  When "auto" is specified, the behavior is "end"
+## by default, but it becomes similar to "near" when called by vi motion.
 
-#bleopt history_default_point=
+#bleopt history_default_point=auto
 
 
 ## The following setting controls the history sharing. If it has non-empty
