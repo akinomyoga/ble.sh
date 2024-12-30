@@ -156,6 +156,7 @@
 - edit: fix fd broken by ble-attach of new session in user space (reported by JohEngstrom) `#D2271` 49f97618 670c7ea0
 - util (`ble-import`): do not specify arguments to `-C callback` `#D2277` 4f0e94a2
 - main: fix issues with `ble/bin/awk` (reported by devidw) `#D2292` b0a7adcb
+- util (`ble/path#remove-glob`): fix a bug that `*` matches and removes multiple paths `#D2310` xxxxxxxx
 
 ## Compatibility
 

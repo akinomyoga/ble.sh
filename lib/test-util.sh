@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1243
+ble/test/start-section 'ble/util' 1244
 
 # bleopt
 
@@ -931,6 +931,8 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
   ble/test code:'ret=stdX:stdY:usrZ; ble/path#remove-glob ret "std[a-zX-Z]"' ret=usrZ
   ble/test code:'ret=stdX:usrZ:stdY; ble/path#remove-glob ret "std[a-zX-Z]"' ret=usrZ
   ble/test code:'ret=usrZ:stdX:stdY; ble/path#remove-glob ret "std[a-zX-Z]"' ret=usrZ
+
+  ble/test code:'ret=/usr/bin:/usr/local/bin:/usr/sbin:/usr/local/sbin; ble/path#remove-glob ret "/usr/local/*"' ret=/usr/bin:/usr/sbin
 )
 
 # ble/path#{append,prepend,contains}

@@ -1390,18 +1390,33 @@ function ble/path#remove {
   fi
   builtin eval -- "$_ble_local_script"
 }
-function ble/path#remove-glob {
-  [[ $2 ]] || return 1
-  local _ble_local_script='
-    opts=:${opts//:/::}:
-    opts=${opts//:$2:}
-    opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
-  _ble_local_script=${_ble_local_script//opts/"$1"}
+## @fn ble/path#remove-glob/.impl str pat
+##   @var[out] ret
+function ble/path#remove-glob/.impl {
+  local IFS=: nocasematch=
   if shopt -q nocasematch 2>/dev/null; then
     shopt -u nocasematch
-    _ble_local_script=$_ble_local_script';shopt -s nocasematch'
+    nocasematch=1
   fi
-  builtin eval -- "$_ble_local_script"
+
+  local str=$1 pat=$2 paths i
+  ble/string#split paths : "$str"
+  for i in "${!paths[@]}"; do
+    if [[ ${paths[i]} == $pat ]]; then
+      builtin unset -v 'paths[i]'
+    fi
+  done
+  ret="${paths[*]}"
+
+  if [[ $nocasematch ]]; then
+    shopt -s nocasematch
+  fi
+}
+function ble/path#remove-glob {
+  [[ $2 ]] || return 1
+  [[ $1 == ret ]] || local ret
+  IFS=: ble/path#remove-glob/.impl "${!1}" "$2"
+  [[ $1 == ret ]] || builtin eval -- "$1=\$ret"
 }
 function ble/path#contains {
   builtin eval "[[ :\${$1}: == *:\"\$2\":* ]]"

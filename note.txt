@@ -7730,6 +7730,12 @@ bash_tips
 
 2024-12-30
 
+  * util: ble/path#remove-glob で * を指定すると後ろまで全て削除してしまう [#D2310]
+
+    これはとんでもない振る舞いである。元々は恐らく * を使うつもりはなかったが、
+    実際のところ例えば WSL2 で /mnt を除外する為に remove-glob PATH '/mnt/*' 等
+    を指定するので考慮に入れる必要がある。これは修正するべき。
+
   * global: avoid raw word splitting [#D2309]
 
     未だ $bytes 等の様に quote されていない箇所があって気になるので、
