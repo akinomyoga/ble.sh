@@ -17,6 +17,7 @@
     - main: suppress "--bash-debug-version" in "ble-reload" `#D2275` ec422115
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
   - progcomp: use Bash 5.3 `compgen -V` for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
+    - progcomp: fix a bug that `x` at the end of the last completion is trimmed `#D2308` xxxxxxxx
   - main: fix attach failure with `--attach=prompt` in Bash 5.3 POSIX mode `#D2267` 49845707
     - syntax: fix a problem that `$_` is not preserved `#D2269` e053690d
   - keymap/vi: support bash-5.3 readline bindable function `bash-vi-complete` in `vi_nmap` `#D2305` xxxxxxxx

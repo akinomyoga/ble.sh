@@ -7728,6 +7728,27 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2024-12-30
+
+  * progcomp: fix a bug that "x" at the end of the last completion is trimmed [#D2308]
+
+    l ~/.opt/tilix を補完しようとすると何故か "~/.opt/tili " になってしまう。色々
+    試すと progcomp でファイル名を補完した時に発生する様である。builtin の補完
+    生成では発生しない。また、"touch fixfixfix" 等で作った "x" で終わるファイル
+    名に対しても発生するという事が分かった。"touch fixfixfix1" 等 "x" 以外で終
+    わるファイル名に対しては問題は発生しいない。
+
+    問題は ble/complete/progcomp/.filter-and-split-compgen で発生している様だ。
+    この中で x が消滅している。最近修正した mawk bug に対する workaround が問題
+    かもしれないと思ったが、その処理よりも前の時点で既に x が失われている様だ。
+    と思ったら out=${out%x} として明示的に "x" を消去している場所がある。これは
+    その直前に ${out%nlfix} というダミー文字列消去の処理があるので、それの一時
+    的な実装の時のコードが残留していたという事の気がする。単純に対象の行を消す
+    事にした。
+
+    これは 5.3 compgen -V 対応によって追加されたコードなので殆どのユーザーに対
+    しては影響がない物である。
+
 2024-12-24
 
   * vi_[in]map: rlfunc "paste-from-clipboard" の対応 [#D2307]

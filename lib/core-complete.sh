@@ -3817,7 +3817,6 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       nlfix=1
       out=${out%$'\n'nlfix}
     fi
-    out=${out%x}
   else
     out=$compgen
   fi
