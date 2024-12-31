@@ -304,6 +304,7 @@
 - global: rename `ret` not used as `REPLY` `#D2300` 86cbf78e
 - global: avoid raw word splitting `#D2309` b55c4003
 - global: use `ble/util/assign` in more places `#D2312` xxxxxxxx
+- main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

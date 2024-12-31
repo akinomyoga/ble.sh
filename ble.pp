@@ -6,14 +6,40 @@
 #%[leakvar = ""]
 #%#----------------------------------------------------------------------------
 #%if measure_load_time
+_ble_init_measure_prev=
+_ble_init_measure_section=
+function ble/init/measure/section {
+  local now=${EPOCHREALTIME:-$(date +'%s.%N')}
+
+  local s=${now%%[!0-9]*} u=000000
+  if [[ $s != "$now" ]]; then
+    u=${now##*[!0-9]}000000
+    u=${u::6}
+  fi
+  local stime=$s.$u time=$((s*1000000+10#0$u))
+
+  if [[ $_ble_init_measure_section ]]; then
+    local elapsed=$((time-_ble_init_measure_prev))
+    s=$((elapsed/1000))
+    u=00$((elapsed%1000))
+    u=${u:${#u}-3}
+    elapsed=$s.${u}ms
+    builtin printf '[ble.sh init %s] %s done (%s)\n' "$stime" "$_ble_init_measure_section" "$elapsed" >&2
+  else
+    builtin printf '[ble.sh init %s] start\n' "$stime" >&2
+  fi
+
+  _ble_init_measure_section=$1
+  _ble_init_measure_prev=$time
+}
 _ble_debug_measure_fork_count=$(echo $BASHPID)
-TIMEFORMAT='[Elapsed %Rs; CPU U:%Us S:%Ss (%P%%)]'
+TIMEFORMAT='  [Elapsed %Rs; CPU U:%Us S:%Ss (%P%%)]'
 function ble/debug/measure-set-timeformat {
   local title=$1 opts=$2
   local new=$(echo $BASHPID)
   local fork=$(((new-_ble_debug_measure_fork_count-1)&0xFFFF))
   _ble_debug_measure_fork_count=$new
-  TIMEFORMAT="[Elapsed %Rs; CPU U:%Us S:%Ss (%P%%)] $title"
+  TIMEFORMAT="  [Elapsed %Rs; CPU U:%Us S:%Ss (%P%%)] $title"
   [[ :$opts: != *:nofork:* ]] &&
     TIMEFORMAT=$TIMEFORMAT" ($fork forks)"
 }
@@ -60,9 +86,9 @@ ble/debug/leakvar#check $"leakvar" "[after include @.sh]"
 #
 
 #%if measure_load_time
-echo "ble.sh: $EPOCHREALTIME load start" >&2
+ble/init/measure/section 'parse'
 time {
-echo "ble.sh: $EPOCHREALTIME parsed" >&2
+ble/init/measure/section 'source'
 # load_time (2015-12-03)
 #   core           12ms
 #   decode         10ms
@@ -2625,6 +2651,9 @@ ble/debug/leakvar#check $"leakvar" A2-arg
   fi
 
   [[ ! $_ble_attached ]] || return 0
+#%if measure_load_time
+  ble/init/measure/section 'prompt'
+#%end
   _ble_attached=1
   BLE_ATTACHED=1
 
@@ -2694,6 +2723,10 @@ ble/debug/leakvar#check $"leakvar" A5-term/init
   ble_attach_first_prompt=1 \
     ble/canvas/panel/render # 42ms
   ble/util/buffer.flush     # 0.2ms
+#%if measure_load_time
+  ble/util/print >&2
+  ble/init/measure/section 'bind'
+#%end
 
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A6-edit
@@ -2746,6 +2779,9 @@ ble/debug/leakvar#check $"leakvar" A10-redraw
   # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。
   ble/edit/info/default
+#%if measure_load_time
+  ble/init/measure/section 'idle'
+#%end
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A11-info
 #%end.i
@@ -3150,9 +3186,9 @@ else
 fi
 
 #%if measure_load_time
-ble/debug/measure-set-timeformat Total nofork; }
+ble/debug/measure-set-timeformat 'Total' nofork; }
 _ble_init_exit=$?
-echo "ble.sh: $EPOCHREALTIME load end" >&2
+[[ ${BLE_ATTACHED-} ]] || ble/init/measure/section 'wait'
 ble/util/setexit "$_ble_init_exit"
 #%end
 

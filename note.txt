@@ -7730,6 +7730,15 @@ bash_tips
 
 2024-12-31
 
+  * main: 初期化時刻の表示 (motivated by tessus, Darukutsu) [#D2313]
+    https://github.com/akinomyoga/ble.sh/issues/340
+    https://forum.atuin.sh/t/atuin-bash-and-ble-sh/175/26?u=akinomyoga
+
+    議論に上る度に修正して自分で計算してまた元に戻すのは面倒なので、parse,
+    load, attach, prompt, bind の一連の処理の時間も全て計測して表示する事にした。
+    idle についてはユーザーが勘違いしそうなので積極的には表示しない。必要であれ
+    ば自分で書き換えて表示して使う事にする。
+
   * global: ble/util/assign をもっと広く使う [#D2312]
 
     初期化の段階で $() を使っていた箇所があるが、もっと早く ble/util/assign の
