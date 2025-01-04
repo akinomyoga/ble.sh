@@ -7728,7 +7728,56 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-01-07
+
+  * integration/zoxide: compopt -o noquote は余分 (reported by tessus) [#D2316]
+    https://github.com/akinomyoga/ble.sh/issues/549
+
+    うーん。integration/zoxide.bash で明示的に compopt -o noquote を指定してい
+    るのが悪かった。元々何処からこの compopt -o noquote が来たのかと思ったが、
+    最初の commit から存在している様だ。そして、どうもこれは
+    fzf-completion.bash を zoxide 用に修正した時に、fzf 用の設定をそのまま持っ
+    てきたという事の様である。
+
+    そもそも fzf で compopt -o noquote を指定していたのは fzf によって履歴項目
+    が補完された時には余分の quote は不要だと判断したからであった。然し、zoxide
+    は単にディレクトリ名を指定するだけのコマンドなので compopt -o noquote を指
+    定する必要性もない様に思われる。
+
+    更に、fzf に関しては以下の報告によって compopt -o noquote は使用しない形に
+    改められた。つまり、その修正の漏れとも言える。
+
+    https://github.com/akinomyoga/ble.sh/issues/250
+    https://github.com/akinomyoga/ble.sh/commit/0c6291f0c1609b6159013e6ba4aeae3acb35db14
+    https://github.com/akinomyoga/blesh-contrib/commit/e102241466dfda8cf3e7efb6891e223102e0b2a9
+
+    何れにしても単に compopt -o noquote を削除すれば良いだけの話に思われる。
+
 2025-01-05
+
+  * main: 特定の環境で ble-attach の実行を延期する [#D2315]
+    https://github.com/akinomyoga/ble.sh/issues/543
+    https://github.com/akinomyoga/ble.sh/discussions/524#discussioncomment-11656742
+
+    ghostty も kitty を真似して ENV 経由で初期化して .bashrc をスキップし、手動
+    で .bashrc を読み込もうとしている。その後で PS1 を修正している。これによっ
+    て問題が発生しているのである。これはマニュアルにある通りに設定していないか
+    ら悪いのだと書いたが issue を閉じてくれない。というか説明したのにバグだとか
+    主張している。
+
+    実は既に nix shell では ble-attach を延期して prompt-attach に切り替える様
+    にしている。なので、ghostty についてもその様に変更する事にする。kitty も同
+    様に修正する。更に VS Code terminal でも同様の事をしている為に問題が起こっ
+    ていた。これについても修正する。
+
+    ? 或いはトップレベルのファイルで ble-attach しているかどうかをチェックして
+      そうでなかったら警告を発生する様にする? 然し、既に関数内部やファイル内部
+      から呼び出すように設定している人も多いし、そもそも問題が起こらないように
+      ちゃんとしている人もいる。という事を考えると、単にそれで警告を出力するよ
+      うに変更するのも気が引ける。
+
+      もしその様にするのであれば最初から警告を出力する様にするべきだった。今に
+      なって変更する事はできない。
 
   * edit (TMOUT): (reported by Anyborr, georglauterbach) [#D2314]
     https://github.com/akinomyoga/ble.sh/issues/424#issuecomment-2016531757

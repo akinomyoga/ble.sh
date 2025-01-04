@@ -1670,6 +1670,20 @@ function ble/util/readlink {
 
 #---------------------------------------
 
+function ble/init/adjust-environment {
+  builtin unset -f "$FUNCNAME"
+
+  if [[ ${IN_NIX_SHELL-} ]]; then
+    # Since "nix-shell" overwrites BASH to the path to a binary image different
+    # from the current one, the Bash process crashes on attempting loading
+    # loadable builtins.  We rewrite it to the correct one.
+    local ret=
+    ble/util/readlink "/proc/$$/exe" 2>/dev/null
+    [[ -x $ret ]] && BASH=$ret
+  fi
+}
+ble/init/adjust-environment
+
 _ble_bash_path=
 function ble/bin/.load-builtin {
   local name=$1 path=$2
@@ -2624,6 +2638,47 @@ function ble/base/load-rcfile {
   fi
 }
 
+# ble-attach needs to be performed at the very end of the Bash startup file.
+# However, in some environment, the terminal or the session manager would start
+# Bash with a custom startup file, and ~/.bashrc is sourced from the custom
+# startup file.  In this case, when the user puts "ble-attach" at the end of
+# ~/.bashrc, other settings would continue to be executed even after the
+# execution of "ble-attach".
+function ble/base/attach/.needs-prompt-attach {
+  local ext=1
+
+  [[ $1 == *:force:* ]] && return 1
+
+  # nix-shell loads the Bash startup file from inside its custom file "rc".
+  if [[ ${IN_NIX_SHELL-} && "${BASH_SOURCE[*]}" == */rc ]]; then
+    # We force prompt-attach when ble-attach is run inside "nix-shell rc".
+    ext=0
+  fi
+
+  if [[ ${VSCODE_INJECTION-} ]]; then
+    # VS Code also tries to source ~/.bashrc from its
+    # "shellIntegration-bash.sh". VS Code shell integration seems to set the
+    # variable "VSCODE_INJECTION" while it sources the user's startup file, and
+    # it unsets the variable after the initialization.
+    ext=0
+  elif [[ ${kitty_bash_inject-} ]]; then
+    # When the startup file is sourced from kitty's shell ingteration
+    # "kitty.bash", the variable "kitty_bash_inject" is set.  The variable is
+    # unset after the initialization.  If we find it, we cancel the manual
+    # attaching and switch to the prompt attach.
+    ext=0
+  elif [[ ${ghostty_bash_inject-} ]]; then
+    # Ghostty seems to use a shell-integration code derived from kitty's.  By
+    # the way, kitty is licensed under GPL-3.0, while Ghostty is licensed under
+    # the MIT license.  Is it allowed to include a derivative of a part of
+    # kitty in the MIT-licensed Ghostty?  It may be non-trivial whether the
+    # shell integration is an essential part of Ghostty.
+    ext=0
+  fi
+
+  return "$ext"
+}
+
 ## @fn ble-attach [opts]
 function ble-attach {
 #%if leakvar
@@ -2670,31 +2725,24 @@ ble/debug/leakvar#check $"leakvar" A3-guard
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A4-adjust
 #%end.i
-  if [[ ${IN_NIX_SHELL-} ]]; then
-    # nix-shell rc の中から実行している時は強制的に prompt-attach にする
-    if [[ "${BASH_SOURCE[*]}" == */rc && $1 != *:force:* ]]; then
-      ble/base/install-prompt-attach
-      _ble_attached=
-      BLE_ATTACHED=
-      ble/base/restore-BASH_REMATCH
-      ble/base/restore-bash-options
-      ble/base/restore-builtin-wrappers
-      ble/base/restore-POSIXLY_CORRECT
+
+  if ble/base/attach/.needs-prompt-attach; then
+    ble/base/install-prompt-attach
+    _ble_attached=
+    BLE_ATTACHED=
+    ble/base/restore-BASH_REMATCH
+    ble/base/restore-bash-options
+    ble/base/restore-builtin-wrappers
+    ble/base/restore-POSIXLY_CORRECT
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A4b1
 #%end.i
-      builtin eval -- "$_ble_bash_FUNCNEST_restore"
-      return 0
-    fi
-
-    # nix-shell は BASH を誤った値に書き換えるので上書きする。
-    local ret
-    ble/util/readlink "/proc/$$/exe"
-    [[ -x $ret ]] && BASH=$ret
+    builtin eval -- "$_ble_bash_FUNCNEST_restore"
+    return 0
+  fi
 #%if leakvar
 ble/debug/leakvar#check $"leakvar" A4b2
 #%end.i
-  fi
 
   # reconnect standard streams
   ble/fd/save-external-standard-streams

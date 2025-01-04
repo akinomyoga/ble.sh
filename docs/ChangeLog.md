@@ -210,6 +210,7 @@
 - canvas: update tables for Unicode 16.0.0 `#D2283` 5b43ca3f 25a10a6f
 - complete: work around `mawk <= 1.3.4-20230525` type-inference bug (reported by KaKi87) `#D2295` 546499b5
 - main: work around macOS sed (reported by Mossop) `#D2298` a16aa594
+- main: delay attaching in kitty, Ghostty, and VS Code Terminal `#D2215` xxxxxxxx
 
 ## Contrib
 
@@ -242,6 +243,7 @@
   - integration/fzf-initialize: (reported by 3ximus) `#D2285` a36d13ce
 - config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` 32f290df
 - integration: add `skim` integration for completion (reported by cmm) `#D2287` a36d13ce
+- integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` xxxxxxxx
 
 ## Documentation
 
