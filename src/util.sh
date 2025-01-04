@@ -6270,23 +6270,24 @@ if ((_ble_bash>=40000)); then
     ble_util_idle_status=R
   }
 
-  function ble/util/idle/.delare-external-modifier {
+  function ble/util/idle/.declare-external-modifier {
     local name=$1
-    builtin eval -- 'function ble/util/idle#'$name' {
+    builtin eval -- 'function ble/util/idle#'"$name"' {
       local index=$1
       [[ ${_ble_util_idle_task[index]+set} ]] || return 2
       local ble_util_idle_status=${_ble_util_idle_task[index]%%"$_ble_util_idle_SEP"*}
       local ble_util_idle_command=${_ble_util_idle_task[index]#*"$_ble_util_idle_SEP"}
-      ble/util/idle.'$name' "${@:2}"
+      ble/util/idle.clock/.initialize
+      ble/util/idle.'"$name"' "${@:2}"
       _ble_util_idle_task[index]=$ble_util_idle_status$_ble_util_idle_SEP$ble_util_idle_command
     }'
   }
   # @fn ble/util/idle#suspend
   # @fn ble/util/idle#sleep time
   # @fn ble/util/idle#isleep time
-  ble/util/idle/.delare-external-modifier suspend
-  ble/util/idle/.delare-external-modifier sleep
-  ble/util/idle/.delare-external-modifier isleep
+  ble/util/idle/.declare-external-modifier suspend
+  ble/util/idle/.declare-external-modifier sleep
+  ble/util/idle/.declare-external-modifier isleep
 
   ble/util/idle.push-background 'ble/util/msleep/calibrate'
 else

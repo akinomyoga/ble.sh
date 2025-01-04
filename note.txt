@@ -7728,6 +7728,22 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-01-05
+
+  * edit (TMOUT): (reported by Anyborr, georglauterbach) [#D2314]
+    https://github.com/akinomyoga/ble.sh/issues/424#issuecomment-2016531757
+    https://github.com/akinomyoga/ble.sh/issues/548
+
+    "bash: ble/util/idle.clock: No such file or directory" というエラーが出ると
+    いう話。これは以前にも報告されていた。今回の別の症状として端末を放置してい
+    るといつの間にかに閉じているという物があったので TMOUT が設定されているので
+    はないかと思ったら、実際にそうだった。そして、TMOUT を設定すると
+    ble/util/idle.clock のエラーも再現するという事が分かった。
+
+    結局 ble/util/idle.sleep が TMOUT の初期化コードから呼び出されているという
+    事が分かった。以前調べた時にこれを特定できなかったのは、ble/util/idle#sleep
+    という自動生成された関数を通して呼び出されていたからだった。
+
 2024-12-31
 
   * main: 初期化時刻の表示 (motivated by tessus, Darukutsu) [#D2313]
