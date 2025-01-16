@@ -11950,6 +11950,22 @@ function ble/widget/.EDIT_COMMAND {
   local N=${#_ble_edit_str}
   ((_ble_edit_ind<0?_ble_edit_ind=0:(_ble_edit_ind>N&&(_ble_edit_ind=N))))
   ((_ble_edit_mark<0?_ble_edit_mark=0:(_ble_edit_mark>N&&(_ble_edit_mark=N))))
+  if [[ $_ble_decode_keymap == vi_nmap ]]; then
+    if [[ $KEYMAP == vi_nmap ]]; then
+      # Note: If the command did not change the current keymap, we perform the
+      # adjustment for a normal command in vi_nmap.  For example, this exits
+      # the single command mode by C-o.  We do not support the shell commands
+      # that tries to adjust arguments and registers without exiting the single
+      # command mode.  There are already limitations with such a command
+      # because we clear the arguments after evaluating the shell command.
+      ble/keymap:vi/adjust-command-mode
+    else
+      # If the current keymap became vi_nmap due to the command, we do not
+      # perform extra adjustment for C-o, etc.  We just fix the current cursor
+      # position.
+      ble/keymap:vi/needs-eol-fix && ((_ble_edit_ind--))
+    fi
+  fi
 
   return "$ext"
 }
