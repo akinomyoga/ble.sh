@@ -8215,7 +8215,6 @@ function ble/widget/edit-and-execute-command.edit {
   local file=$_ble_base_run/$$.blesh-fc.bash
   ble/util/print "$content" >| "$file"
 
-  local ret
   ble/widget/edit-and-execute-command.editor; local editor=$ret
 
   if [[ :$opts: != *:no-newline:* ]]; then
@@ -8228,6 +8227,7 @@ function ble/widget/edit-and-execute-command.edit {
   ble/term/enter
 
   if ((ext)); then
+    ret=
     ble/widget/.bell
     return 127
   fi

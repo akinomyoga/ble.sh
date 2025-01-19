@@ -7944,6 +7944,9 @@ bash_tips
 
     2024-12-23 これはエディタを指定して実行する物。新しく追加する事にした。
 
+    2025-01-20 edit: edit-and-execute-command が動かなくなっていると思ったら
+    c395eb33 で壊していた。修正する。
+
   * edit: bash-5.3 "bash-vi-complete" を実装 [#D2305]
 
     bash-vi-complete は vi-complete に似た readline bindable function の様だが
