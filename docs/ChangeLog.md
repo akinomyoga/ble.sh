@@ -71,7 +71,8 @@
 - complete: support completion for `execute-named-command` `#D2288` 4fee44e6
 - complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
 - edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` 37291ff1
-  - edit: support `bleopt history_default_point=auto` (reported by miltieIV2) `#D2297` xxxxxxxx
+  - edit: support `bleopt history_default_point=auto` (reported by miltieIV2) `#D2297` 2a3351e7
+  - color: fix a bug that reverse rendition vanishes `#D2318` xxxxxxxx
 - edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` 99af0ece
 - keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` d7ec488a
 - edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33 xxxxxxxx
@@ -159,7 +160,7 @@
 - main: fix issues with `ble/bin/awk` (reported by devidw) `#D2292` b0a7adcb
 - util (`ble/path#remove-glob`): fix a bug that `*` matches and removes multiple paths `#D2310` fd518d24
 - decode (`bind`): print the filename and line in error messages (motivated by excited-bore) `#D2311` 89c69077
-- util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` xxxxxxxx
+- util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` 154386de
 
 ## Compatibility
 
@@ -210,8 +211,8 @@
 - canvas: update tables for Unicode 16.0.0 `#D2283` 5b43ca3f 25a10a6f
 - complete: work around `mawk <= 1.3.4-20230525` type-inference bug (reported by KaKi87) `#D2295` 546499b5
 - main: work around macOS sed (reported by Mossop) `#D2298` a16aa594
-- main: delay attaching in kitty, Ghostty, and VS Code Terminal `#D2215` xxxxxxxx
-- edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` xxxxxxxx
+- main: delay attaching in kitty, Ghostty, and VS Code Terminal `#D2215` 430a1746
+- edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
 
 ## Contrib
 
@@ -244,7 +245,7 @@
   - integration/fzf-initialize: (reported by 3ximus) `#D2285` a36d13ce
 - config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` 32f290df
 - integration: add `skim` integration for completion (reported by cmm) `#D2287` a36d13ce
-- integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` xxxxxxxx
+- integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` 430a1746
 
 ## Documentation
 
@@ -307,8 +308,8 @@
 - global: use `[:blank:]` instead of `[:space:]` `#D2299` e2fd8f0f
 - global: rename `ret` not used as `REPLY` `#D2300` 86cbf78e
 - global: avoid raw word splitting `#D2309` b55c4003
-- global: use `ble/util/assign` in more places `#D2312` xxxxxxxx
-- main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` xxxxxxxx
+- global: use `ble/util/assign` in more places `#D2312` b0e39732
+- main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

@@ -351,8 +351,8 @@ function ble/color/g#append {
   return 0
 }
 function ble/color/g#compose {
-  (($1=($2)))
-  local _ble_local_g2
+  local _ble_local_g2=$2
+  (($1=_ble_local_g2))
   for _ble_local_g2 in "${@:3}"; do
     ble/color/g#append "$1" "$_ble_local_g2"
   done
