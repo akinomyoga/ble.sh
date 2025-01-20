@@ -91,16 +91,8 @@ function ble/util/c2w {
 ##   編集画面での表示上の文字幅を返します。
 ##   @var[out] ret
 function ble/util/c2w-edit {
-  local cs=${_ble_unicode_GraphemeCluster_ControlRepresentation[$1]}
-  if [[ $cs ]]; then
-    ret=${#cs}
-  elif (($1<32||127<=$1&&$1<160)); then
-    # 制御文字は ^? と表示される。
-    ret=2
-    # TAB は???
-
-    # 128-159: M-^?
-    ((128<=$1&&(ret=4)))
+  if ble/unicode/GraphemeCluster/ControlRepresentation "$1"; then
+    ret=${#ret}
   else
     ble/util/c2w "$1"
   fi
@@ -120,6 +112,29 @@ function ble/util/s2w-edit {
 }
 function ble/util/s2w {
   ble/util/s2w-edit "$1" R
+}
+
+## @fn ble/util/c2s-edit ccode [opts]
+##   編集画面での表現を返します。
+##   @param[opt] opts
+##     @opt sgr1 sgr0
+##       制御文字の代替表現を囲むのに使用する文字列を指定します。
+##
+##   @var[out] ret
+function ble/util/c2s-edit {
+  if ble/unicode/GraphemeCluster/ControlRepresentation "$1"; then
+    if [[ ${2-} ]]; then
+      local cr=$ret sgr0= sgr1=
+      if ble/opts#extract-last-optarg "$2" sgr1 "$_ble_term_rev"; then
+        sgr1=$ret
+        ble/opts#extract-last-optarg "$2" sgr0 "$_ble_term_sgr0"
+        sgr0=$ret
+        ret=$sgr1$cr$sgr0
+      fi
+    fi
+  else
+    ble/util/c2s "$1"
+  fi
 }
 
 # ---- 文字種判定 ----
@@ -943,6 +958,27 @@ function ble/unicode/GraphemeCluster/.get-ascii-rep {
       ble/util/sprintf cs 'U+%X' "$c"
     fi
     _ble_unicode_GraphemeCluster_ControlRepresentation[c]=$cs
+  fi
+}
+
+function ble/unicode/GraphemeCluster/ControlRepresentation {
+  # cache
+  if [[ ${_ble_unicode_GraphemeCluster_ControlRepresentation[$1]+set} ]]; then
+    ret=${_ble_unicode_GraphemeCluster_ControlRepresentation[$1]}
+    [[ $ret ]]
+    return "$?"
+  fi
+
+  if (($1<32||127<=$1&&$1<160)) || {
+       ble/unicode/GraphemeCluster/c2break "$1"
+       ((ret==_ble_unicode_GraphemeClusterBreak_Control)); }; then
+    local cs
+    ble/unicode/GraphemeCluster/.get-ascii-rep "$1"
+    ret=$cs
+    return 0
+  else
+    _ble_unicode_GraphemeCluster_ControlRepresentation[$1]=
+    return 1
   fi
 }
 

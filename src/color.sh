@@ -1726,18 +1726,9 @@ function ble/highlight/layer:plain/update/.getch {
       ch='^?'
     fi
   else
-    local ret; ble/util/s2c "$ch"
-    local cs=${_ble_unicode_GraphemeCluster_ControlRepresentation[ret]}
-    if [[ $cs ]]; then
-      ch=$cs
-    elif ((ret<0x20)); then
-      ble/util/c2s "$((ret+64))"
-      ch="^$ret"
-    elif ((0x80<=ret&&ret<=0x9F)); then
-      # C1 characters
-      ble/util/c2s "$((ret-64))"
-      ch="M-^$ret"
-    fi
+    local ret
+    ble/util/s2c "$ch"
+    ble/unicode/GraphemeCluster/ControlRepresentation "$ret" && ch=$ret
   fi
 }
 

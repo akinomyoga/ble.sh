@@ -5190,6 +5190,8 @@ function ble/widget/self-insert {
       # 上書きモードの時は Unicode 文字幅を考慮して既存の文字を置き換える。
       # ※現在の LC_CTYPE で対応する文字がない場合でも、意図しない動作を防ぐために、
       #   対応していたと想定した時の文字幅で削除する。
+      # TODO: c2w-edit では TAB は "^I" として扱われるが、本当は現在の列に応じ
+      # て計算するべき?
       local ret w; ble/util/c2w-edit "$code"; w=$((arg*ret))
 
       local iN=${#_ble_edit_str}
@@ -5432,6 +5434,8 @@ function ble/widget/.delete-backward-char {
         local w=0 ret i
         for ((i=0;i<a;i++)); do
           ble/util/s2c "${_ble_edit_str:_ble_edit_ind-a+i:1}"
+          # TODO: c2w-edit では TAB は "^I" として扱われるが、本当は現在の列に
+          # 応じて計算するべき?
           ble/util/c2w-edit "$ret"
           ((w+=ret))
         done

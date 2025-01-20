@@ -1137,35 +1137,6 @@ function ble/keymap:vi/register#play {
   ble/widget/.MACRO "${ret[@]}"
   return 0
 }
-## @fn ble/keymap:vi/register#dump/escape text
-##   @var[out] ret
-function ble/keymap:vi/register#dump/escape {
-  local text=$1
-  local out= i=0 iN=${#text}
-  while ((i<iN)); do
-    local tail=${text:i}
-    if ble/util/isprint+ "$tail"; then
-      out=$out$BASH_REMATCH
-      ((i+=${#BASH_REMATCH}))
-    else
-      ble/util/s2c "$tail"
-      local code=$ret
-      if ((code<32)); then
-        ble/util/c2s "$((code+64))"
-        out=$out$_ble_term_rev^$ret$_ble_term_sgr0
-      elif ((code==127)); then
-        out=$out$_ble_term_rev^?$_ble_term_sgr0
-      elif ((128<=code&&code<160)); then
-        ble/util/c2s "$((code-64))"
-        out=$out${_ble_term_rev}M-^$ret$_ble_term_sgr0
-      else
-        out=$out${tail::1}
-      fi
-      ((i++))
-    fi
-  done
-  ret=$out
-}
 function ble/keymap:vi/register#dump {
   local k ret out=
   local value type content
@@ -1184,19 +1155,13 @@ function ble/keymap:vi/register#dump {
     (B:*) type=block ;;
     (*)   type=char ;;
     esac
-    ble/keymap:vi/register#dump/escape "$content"; content=$ret
 
-    out=$out'"'$k' ('$type') '$content$'\n'
+    ble/string#escape-for-display "$content" sgr1="$_ble_term_rev":sgr0="$_ble_term_sgr0"
+    out=$out'"'$k' ('$type') '$ret$'\n'
   done
   ble/edit/info/show ansi "$out"
   return 0
 }
-function ble/widget/vi-command:reg { ble/keymap:vi/register#dump; }
-function ble/widget/vi-command:regi { ble/keymap:vi/register#dump; }
-function ble/widget/vi-command:regis { ble/keymap:vi/register#dump; }
-function ble/widget/vi-command:regist { ble/keymap:vi/register#dump; }
-function ble/widget/vi-command:registe { ble/keymap:vi/register#dump; }
-function ble/widget/vi-command:register { ble/keymap:vi/register#dump; }
 function ble/widget/vi-command:registers { ble/keymap:vi/register#dump; }
 
 function ble/widget/vi-command/append-arg {
@@ -2710,7 +2675,7 @@ function ble/keymap:vi/mark/get-mark.impl {
   ret=$index
   return 0
 }
-## @fn ble/keymap:vi/mark/get-mark.impl c
+## @fn ble/keymap:vi/mark/get-local-mark
 ##   @param[in] c
 ##     mark の番号 (文字コード) を指定します。
 ##   @var[out] ret
@@ -2853,6 +2818,55 @@ function ble/widget/vi-command/goto-mark.hook {
   ble/keymap:vi/clear-arg
   ble/widget/vi-command/bell
   return 1
+}
+
+function ble/widget/vi-command:marks {
+  ble/keymap:vi/mark/update-mark-history
+
+  local -a entries=() # <char>:<hindex>:<bol>:<col>
+  local c
+  for c in "${!_ble_keymap_vi_mark_local[@]}"; do
+    local value=${_ble_keymap_vi_mark_local[c]}
+    [[ $value ]] && ble/array#push entries "$c::$value"
+  done
+  for c in "${!_ble_keymap_vi_mark_global[@]}"; do
+    local value=${_ble_keymap_vi_mark_global[c]}
+    [[ $value ]] && ble/array#push entries "$c:$value"
+  done
+
+  local -a fields=()
+  local data ret
+  for data in "${entries[@]}"; do
+    ble/string#split data : "$data"
+
+    ble/util/c2s-edit "${data[0]}" sgr1=$'\e[9807m':sgr0=$'\e[9807m'; local s=$ret
+
+    # determine the line number and history position
+    local line hlabel=
+    if [[ ${data[1]} ]]; then
+      local entry
+      ble/history/get-edited-entry "$index"
+      line=$entry
+      hlabel=' !'${data[1]}
+    else
+      line=$_ble_edit_str
+    fi
+    ble/string#count-char "${line::data[2]}" $'\n'
+    ((line=1+ret))
+
+    ble/keymap:vi/mark/get-mark.impl "$line" "${data[3]}"; local ind=$ret
+
+    ble/array#push fields "${data[0]}" "$s" "$line" "${data[3]}" "$ind" "$hlabel"
+  done
+
+  if ((${#fields[@]})); then
+    local content
+    ble/util/sprintf content '%7d %s\t(%3d, %3d) %5d%s\n' "${fields[@]}"
+    content=${content%$'\n'}
+    local mydbg=1
+    ble/edit/info/show ansi "$content"
+  fi
+  return 0
 }
 
 #------------------------------------------------------------------------------
@@ -5502,6 +5516,8 @@ function ble/widget/vi-command/commandline.hook {
   ble/string#split-words command "$1"
   local cmd=ble/widget/vi-command:"${command[0]}"
   if ble/is-function "$cmd"; then
+    "$cmd" "${command[@]:1}"; local ext=$?
+  elif ble/util/compgen cmd -A function -- "ble/widget/vi-command:${command[@]}" && ((${#cmd[@]}==1)); then
     "$cmd" "${command[@]:1}"; local ext=$?
   else
     ble/widget/vi-command/bell "unknown command $1"; local ext=1

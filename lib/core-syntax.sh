@@ -355,16 +355,9 @@ function ble/syntax/print-status/.graph {
     return 0
   else
     local ret
-    ble/util/s2c "$char"
-    local code=$ret
-    if ((code<32)); then
-      ble/util/c2s "$((code+64))"
-      graph="$_ble_term_rev^$ret$_ble_term_sgr0"
-    elif ((code==127)); then
-      graph="$_ble_term_rev^?$_ble_term_sgr0"
-    elif ((128<=code&&code<160)); then
-      ble/util/c2s "$((code-64))"
-      graph="${_ble_term_rev}M-^$ret$_ble_term_sgr0"
+    ble/util/s2c "$char"; local code=$ret
+    if ble/unicode/GraphemeCluster/ControlRepresentation "$code"; then
+      graph=$_ble_term_rev$ret$_ble_term_sgr0
     else
       graph="'$char' ($code)"
     fi

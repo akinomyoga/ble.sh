@@ -1182,19 +1182,12 @@ function ble/string#escape-for-display {
 
   while [[ $tail ]]; do
     if ble/util/isprint+ "$tail"; then
-      head=$head${BASH_REMATCH}
+      head=$head$BASH_REMATCH
       tail=${tail:${#BASH_REMATCH}}
     else
-      ble/util/s2c "${tail::1}"
-      local code=$ret
-      if ((code<32)); then
-        ble/util/c2s "$((code+64))"
-        ret=$sgr1^$ret$sgr0
-      elif ((code==127)); then
-        ret=$sgr1^?$sgr0
-      elif ((128<=code&&code<160)); then
-        ble/util/c2s "$((code-64))"
-        ret=${sgr1}M-^$ret$sgr0
+      ble/util/s2c "${tail::1}"; local code=$ret
+      if ble/unicode/GraphemeCluster/ControlRepresentation "$ret"; then
+        ret=$sgr1$ret$sgr0
       else
         ret=${tail::1}
       fi

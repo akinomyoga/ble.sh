@@ -77,6 +77,7 @@
 - keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` d7ec488a
 - edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33 xxxxxxxx
 - edit: support readline bindable function `paste-from-clipboard` in more environments `#D2307` 17646524
+- keymap/vi: support `:marks` `#D2320` xxxxxxxx
 
 ## Changes
 
