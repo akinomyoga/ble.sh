@@ -161,6 +161,7 @@
 - util (`ble/path#remove-glob`): fix a bug that `*` matches and removes multiple paths `#D2310` fd518d24
 - decode (`bind`): print the filename and line in error messages (motivated by excited-bore) `#D2311` 89c69077
 - util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` 154386de
+- util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` xxxxxxxx
 
 ## Compatibility
 

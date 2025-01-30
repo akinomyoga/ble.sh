@@ -412,7 +412,11 @@ function ble/util/save-vars {
   local __ble_name __ble_prefix=$1; shift
   for __ble_name; do
     if ble/is-array "$__ble_name"; then
-      builtin eval "$__ble_prefix$__ble_name=(\"\${$__ble_name[@]}\")"
+      if ble/array#is-sparse "$__ble_name"; then
+        ble/idict#copy "$__ble_prefix$__ble_name" "$__ble_name"
+      else
+        builtin eval "$__ble_prefix$__ble_name=(\"\${$__ble_name[@]}\")"
+      fi
     else
       builtin eval "$__ble_prefix$__ble_name=\"\$$__ble_name\""
     fi
@@ -422,9 +426,13 @@ function ble/util/restore-vars {
   local __ble_name __ble_prefix=$1; shift
   for __ble_name; do
     if ble/is-array "$__ble_prefix$__ble_name"; then
-      # Note: bash-4.2 以下では set -u で空配列に対する "${arr[@]}" が失敗す
-      # るので ${arr[@]+"${arr[@]}"} とする。
-      builtin eval "$__ble_name=(\${$__ble_prefix$__ble_name[@]+\"\${$__ble_prefix$__ble_name[@]}\"})"
+      if ble/array#is-sparse "$__ble_name"; then
+        ble/idict#copy "$__ble_name" "$__ble_prefix$__ble_name"
+      else
+        # Note: bash-4.2 以下では set -u で空配列に対する "${arr[@]}" が失敗す
+        # るので ${arr[@]+"${arr[@]}"} とする。
+        builtin eval "$__ble_name=(\${$__ble_prefix$__ble_name[@]+\"\${$__ble_prefix$__ble_name[@]}\"})"
+      fi
     else
       builtin eval "$__ble_name=\"\${$__ble_prefix$__ble_name-}\""
     fi
@@ -526,6 +534,10 @@ else
   ((_ble_bash>=40000)) ||
     function ble/is-assoc { false; }
 fi
+
+function ble/array#is-sparse {
+  builtin eval "((\${#$1[@]})) && set -- \"\${$1[@]:\${#$1[@]}:1}\"" && (($#))
+}
 
 ## @fn ble/array#set arr value...
 ##   配列に値を設定します。
@@ -733,13 +745,13 @@ function ble/idict#replace {
 }
 
 function ble/idict#copy {
-  local _ble_script='
+  local __ble_script='
     '$1'=()
-    local i'$1$2'
-    for i'$1$2' in "${!'$2'[@]}"; do
-      '$1'[i'$1$2']=${'$2'[i'$1$2']}
+    local __ble_i
+    for __ble_i in "${!'$2'[@]}"; do
+      '$1'[__ble_i]=${'$2'[__ble_i]}
     done'
-  builtin eval -- "$_ble_script"
+  builtin eval -- "$__ble_script"
 }
 
 _ble_string_prototype='        '
