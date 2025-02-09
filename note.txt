@@ -7737,6 +7737,13 @@ bash_tips
 
 2025-02-09
 
+  * main (ble-attach): workaround for Ghostty が動かなくなった (reported by odili) [#D2322]
+    https://github.com/akinomyoga/ble.sh/issues/557
+
+    upstream で変数名を変えた様だ。修正する必要がある。一々動作確認するのも面倒
+    である。shell integration script を見る限りは、新しい変数名に対応しておけば
+    大丈夫だろうという気がする。
+
   * progcomp: dnf completion の workaround が動かなくなっている (reported by msr8) [#D2321]
     https://github.com/akinomyoga/ble.sh/issues/555
 

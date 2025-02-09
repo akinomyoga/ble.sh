@@ -2667,12 +2667,14 @@ function ble/base/attach/.needs-prompt-attach {
     # unset after the initialization.  If we find it, we cancel the manual
     # attaching and switch to the prompt attach.
     ext=0
-  elif [[ ${ghostty_bash_inject-} ]]; then
+  elif [[ ${ghostty_bash_inject-} || ${__ghostty_bash_flags-} ]]; then
     # Ghostty seems to use a shell-integration code derived from kitty's.  By
     # the way, kitty is licensed under GPL-3.0, while Ghostty is licensed under
     # the MIT license.  Is it allowed to include a derivative of a part of
     # kitty in the MIT-licensed Ghostty?  It may be non-trivial whether the
     # shell integration is an essential part of Ghostty.
+    # Note: Ghostty has updated the variable name on 2025-01-17 from
+    # "ghostty_bash_inject" to "__ghostty_bash_flags".
     ext=0
   fi
 

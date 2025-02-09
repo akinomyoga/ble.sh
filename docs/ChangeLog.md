@@ -214,6 +214,7 @@
 - complete: work around `mawk <= 1.3.4-20230525` type-inference bug (reported by KaKi87) `#D2295` 546499b5
 - main: work around macOS sed (reported by Mossop) `#D2298` a16aa594
 - main: delay attaching in kitty, Ghostty, and VS Code Terminal `#D2215` 430a1746
+  - main: update workaround for Ghostty (reported by odili) `#D2322` xxxxxxxx
 - edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
 - progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` xxxxxxxx
 
