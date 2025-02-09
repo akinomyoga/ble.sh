@@ -7735,6 +7735,23 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-02-09
+
+  * progcomp: dnf completion の workaround が動かなくなっている (reported by msr8) [#D2321]
+    https://github.com/akinomyoga/ble.sh/issues/555
+
+    どうやら dnf の補完設定の実装が切り替わった様だ。また、bash-completion に依
+    存した実装になっていたので、contrib/integration/bash-completion の中に実装
+    する事にした。dnf の新しい補完は dnf 自体を呼び出す事によって補完候補を生成
+    する仕組みになった様なので、この dnf の呼び出しを差し替えれば良い。dnf は直
+    接に呼び出しているので "$1" を一時的に上書きすれば良い。同様の処理を既に
+    _make, _comp_cmd_make で行っていたのでその .advice を流用する形に変更した。
+
+    実際に試してみると、dnf の補完は単に dnf 自身を呼び出すだけでなく、補完候補
+    に説明を添える機能まで付けた様だ。仕方がないので cobraV2 の workaround と同
+    様に説明と候補を抽出分離して、ble/complete/cand/yield word "$cand" "$desc"
+    を使って流し込む事にした。
+
 2025-01-30
 
   * 2024-12-23 vi_cmap: :marks の対応。ないと marks のデバグの時に不便 [#D2320]

@@ -215,6 +215,7 @@
 - main: work around macOS sed (reported by Mossop) `#D2298` a16aa594
 - main: delay attaching in kitty, Ghostty, and VS Code Terminal `#D2215` 430a1746
 - edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
+- progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` xxxxxxxx
 
 ## Contrib
 

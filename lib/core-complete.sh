@@ -4216,7 +4216,10 @@ function ble/complete/progcomp/.adjust-third-party-completions {
       fi
     fi
 
-    # conditional-sync for dnf completion
+    # conditional-sync for the dnf completion.
+    # Note: The workaround for the latest version of the dnf completion
+    # (comp_func=_do_dnf5_completion) is in contrib/integration/bash-completion
+    # because it relies on bash-completion.
     [[ $comp_func == _dnf ]] &&
       ble/complete/progcomp/call-by-conditional-sync _dnf_commands_helper
 
