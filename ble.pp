@@ -388,6 +388,8 @@ fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
     \return "$_ble_local_POSIXLY_CORRECT_ext"'
 #%if target == "osh"
   _ble_bash_POSIXLY_CORRECT_local_return=${_ble_bash_POSIXLY_CORRECT_local_return/'\return'/'return'}
+  _ble_bash_POSIXLY_CORRECT_local_adjust=${_ble_bash_POSIXLY_CORRECT_local_adjust/'\builtin local'/'builtin local'}
+  _ble_bash_POSIXLY_CORRECT_local_return=${_ble_bash_POSIXLY_CORRECT_local_return/'\builtin local'/'builtin local'}
 #%end
 } 2>/dev/null
 
