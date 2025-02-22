@@ -11293,10 +11293,17 @@ function ble/edit/async-read-mode/accept {
 
 ## @arr _ble_edit_async_read_is_cancel_key
 ##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
+#%if target == "osh"
+_ble_edit_async_read_is_cancel_key['63|_ble_decode_Ctrl']=1  # C-?
+_ble_edit_async_read_is_cancel_key[127]=1                  # DEL
+_ble_edit_async_read_is_cancel_key['104|_ble_decode_Ctrl']=1 # C-h
+_ble_edit_async_read_is_cancel_key[8]=1                    # BS
+#%else
 _ble_edit_async_read_is_cancel_key[63|_ble_decode_Ctrl]=1  # C-?
 _ble_edit_async_read_is_cancel_key[127]=1                  # DEL
 _ble_edit_async_read_is_cancel_key[104|_ble_decode_Ctrl]=1 # C-h
 _ble_edit_async_read_is_cancel_key[8]=1                    # BS
+#%end
 function ble/edit/async-read-mode/empty-cancel.hook {
   if [[ ! $_ble_edit_str ]] && ((_ble_edit_async_read_is_cancel_key[KEYS[0]])); then
     ble/widget/read/cancel
