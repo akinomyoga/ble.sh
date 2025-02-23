@@ -3,7 +3,7 @@
 
 #shopt -s parse_dynamic_arith
 #shopt -s compat_array
-shopt -s eval_unsafe_arith
+#shopt -s eval_unsafe_arith
 HISTFILE=$HOME/.osh_history
 
 source out/ble.osh --norc

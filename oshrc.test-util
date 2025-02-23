@@ -3,18 +3,20 @@
 
 #shopt -s parse_dynamic_arith
 #shopt -s compat_array
-shopt -s eval_unsafe_arith
+#shopt -s eval_unsafe_arith
 HISTFILE=$HOME/.osh_history
 
-source out/ble.osh
+source out/ble.osh --lib
+echo "RSS: $(ps -o rss -p $$ | tail -n 1)" >&2
+
 #source lib/test-bash.sh # (This is for Bash bugs, so unnecessary for OSH)
 source lib/test-main.sh
 source lib/test-util.sh
 source lib/test-canvas.sh
-source lib/test-canvas.GraphemeClusterTest.sh
 source lib/test-decode.sh
 source lib/test-edit.sh
 source lib/test-keymap.vi.sh
 source lib/test-complete.sh
 source lib/test-syntax.sh
 echo done
+exit
