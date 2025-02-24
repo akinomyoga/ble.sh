@@ -1,0 +1,8 @@
+#!/usr/bin/env osh
+# -*- mode: sh; mode: sh-bash -*-
+
+HISTFILE=$HOME/.osh_history
+[[ $BLE_SAFE_ARITH ]] || shopt -s eval_unsafe_arith
+source out/ble.osh --norc
+echo "RSS: $(ps -o rss -p $$ | tail -n 1)" >&2
+exit
