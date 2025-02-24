@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-HISTFILE=$HOME/.mwg/git/oilshell/oil/tmp/bash_history
+HISTFILE=out/.bash_history
 source out/ble.sh --norc --bash-debug-version=ignore
 echo "RSS: $(ps -o rss -p $$ | tail -n 1)" >&2
 exit
