@@ -7735,6 +7735,19 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-02-26
+
+  * histdb: 現在ディレクトリ消滅時 no such column ... None [#D2323]
+
+    他のセッションでディレクトリを削除するなどして、現在ディレクトリが存在しな
+    くなった時に no such column None というエラーが発生する。データを挿入する際
+    に git 情報を登録する二つ前の column に None が指定されている。その直前に
+    getcwd でエラーが発生したという状態になる。これは何だろう? どうやら inode
+    が None になっているのがいけない様だ。inode column は INTEGER で宣言されて
+    いる。INTEGER の場合は None にできないという事だろうか。
+
+    調べたら None じゃなくて NULL っぽい。修正した。
+
 2025-02-09
 
   * main (ble-attach): workaround for Ghostty が動かなくなった (reported by odili) [#D2322]

@@ -72,12 +72,12 @@
 - complete: support `ble-face menu_complete_{match,selected}` (requested by simonLeary42) `#D2291` 31f264ad
 - edit: support `bleopt history_default_point={preserve,begin,end,near,far,{beginning,end}-of-line,preserve-column,...}` (requested by miltieIV2) `#D2297` 37291ff1
   - edit: support `bleopt history_default_point=auto` (reported by miltieIV2) `#D2297` 2a3351e7
-  - color: fix a bug that reverse rendition vanishes `#D2318` xxxxxxxx
+  - color: fix a bug that reverse rendition vanishes `#D2318` 209b4da0
 - edit: support `bleopt undo_point={first,last,near,auto}` `#D2303` 99af0ece
 - keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` d7ec488a
-- edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33 xxxxxxxx
+- edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33 cc47acc2
 - edit: support readline bindable function `paste-from-clipboard` in more environments `#D2307` 17646524
-- keymap/vi: support `:marks` `#D2320` xxxxxxxx
+- keymap/vi: support `:marks` `#D2320` 01182d3b
 
 ## Changes
 
@@ -162,7 +162,7 @@
 - util (`ble/path#remove-glob`): fix a bug that `*` matches and removes multiple paths `#D2310` fd518d24
 - decode (`bind`): print the filename and line in error messages (motivated by excited-bore) `#D2311` 89c69077
 - util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` 154386de
-- util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` xxxxxxxx
+- util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` 486314c5
 
 ## Compatibility
 
@@ -214,9 +214,9 @@
 - complete: work around `mawk <= 1.3.4-20230525` type-inference bug (reported by KaKi87) `#D2295` 546499b5
 - main: work around macOS sed (reported by Mossop) `#D2298` a16aa594
 - main: delay attaching in kitty, Ghostty, and VS Code Terminal `#D2215` 430a1746
-  - main: update workaround for Ghostty (reported by odili) `#D2322` xxxxxxxx
+  - main: update workaround for Ghostty (reported by odili) `#D2322` 4338bbf7
 - edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
-- progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` xxxxxxxx
+- progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` 2a0c6ba6
 
 ## Contrib
 
@@ -230,6 +230,7 @@
   - histdb: support `top`, `stats`, `calendar`, and `week` `#D2167` 4d7dd1ee
   - histdb: unify the color palette selection `#D2167` 4d7dd1ee
   - histdb: fix the seasonal default palette names `#D2289` 4fee44e6
+  - histdb: fix the error with missing current working directory `#D2323` xxxxxxxx
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865

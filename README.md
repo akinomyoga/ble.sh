@@ -494,7 +494,7 @@ Basically you can simply delete the installed directory and the settings that th
 
 - [Performance](https://github.com/akinomyoga/ble.sh/wiki/Performance)
   describes hints for perfomance issue.
-- [Reportin Issues](https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issues)
+- [Reporting Issue](https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issue)
   describes information that you may check before reporting an issue.
 
 # 2 Basic settings
