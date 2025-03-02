@@ -4783,7 +4783,13 @@ function ble/util/buffer.print-lines {
   done
 }
 function ble/util/buffer.flush {
+#%if target == "osh"
+  local IFS=
+  local text="${_ble_util_buffer[*]-}"
+  IFS=$' \t\n'
+#%else
   IFS= builtin eval 'local text="${_ble_util_buffer[*]-}"'
+#%end
   _ble_util_buffer=()
   [[ $text ]] || return 0
 
