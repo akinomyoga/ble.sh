@@ -5,4 +5,5 @@ HISTFILE=out/.osh_history
 [[ $BLE_SAFE_ARITH ]] || shopt -s eval_unsafe_arith
 source out/ble.osh --norc
 echo "RSS: $(ps -o rss -p $$ | tail -n 1)" >&2
+echo "VSZ: $(ps -o vsz -p $$ | tail -n 1)" >&2
 exit
