@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 69
+ble/test/start-section 'bash' 72
 
 # case $word を quote する必要がある条件は?
 
@@ -49,6 +49,22 @@ ble/test/start-section 'bash' 69
   ble/test code:'ret=$b' ret="/*"
   ble/test 'case $b in ("/*") true ;; (*) false ;; esac'
   ble/test 'read -r ret <<< $b' ret="/*"
+)
+
+# Arithmetic bugs
+(
+  # BUG bash 3.0..4.1
+  #   && の遅延評価が働かない。従って愚直な条件付き算術式再帰はできない。
+  L='0&&L'
+  if ((40200<=_ble_bash)); then
+    ble/test '((L,1))'
+  else
+    ble/test '! ((L,1))'
+  fi
+
+  i=0 M='i++,M[i>=10]'
+  ble/test '((M,1))'
+  ble/test code:'ret=$i' ret=10
 )
 
 # Variable bugs

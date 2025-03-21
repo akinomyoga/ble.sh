@@ -105,7 +105,7 @@
 - make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` 31f264ad
 - edit: revert edits with widget `discard-line` (reported by dezza) `#D2301` 3b2b4b81
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
-- decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` xxxxxxxx
+- decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` 66e450d7
 
 ## Fixes
 
@@ -231,7 +231,7 @@
   - histdb: support `top`, `stats`, `calendar`, and `week` `#D2167` 4d7dd1ee
   - histdb: unify the color palette selection `#D2167` 4d7dd1ee
   - histdb: fix the seasonal default palette names `#D2289` 4fee44e6
-  - histdb: fix the error with missing current working directory `#D2323` xxxxxxxx
+  - histdb: fix the error with missing current working directory `#D2323` 98985f38
 - contrib/fzf-git: update to be consistent with the upstream (motivated by arnoldmashava) `#D2054` c78e5c9f
 - contrib/layer/pattern: add `{pattern}` layer `#D2074` 449d92ca
 - contrib/fzf-git: fix unsupported command modes (reported by dgudim) `#D2083` ba2b8865
@@ -316,7 +316,7 @@
 - global: avoid raw word splitting `#D2309` b55c4003
 - global: use `ble/util/assign` in more places `#D2312` b0e39732
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
-- canvas: optimize binary search in tables `#D2325` xxxxxxxx
+- canvas: optimize binary search in tables `#D2325` d56c7d2f xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
