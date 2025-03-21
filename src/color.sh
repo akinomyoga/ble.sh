@@ -2034,9 +2034,8 @@ function ble/highlight/layer:{selection}/getg {
     # When there are multiple selections, we identify the position of `index`
     # using bisection.
     local l=0 u=$((olen-1)) m
-    while ((l+1<u)); do
-      ((osel[m=(l+u)/2]<=index?(l=m):(u=m)))
-    done
+    local L='osel[m=(l+u)/2]<=index?(l=m):(u=m),l+1<u&&L'
+    ((l+1<u&&L))
 
     # When `l` sits at the end of a selection, check if the next selection
     # immediately starts.  If it is the case, we increment `l` to pick the

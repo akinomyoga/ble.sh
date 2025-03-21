@@ -316,6 +316,7 @@
 - global: avoid raw word splitting `#D2309` b55c4003
 - global: use `ble/util/assign` in more places `#D2312` b0e39732
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
+- canvas: optimize binary search in tables `#D2325` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

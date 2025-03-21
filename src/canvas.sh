@@ -188,14 +188,8 @@ function ble/unicode/c2w {
     ret=${_ble_unicode_c2w_index[c<0x20000?c>>8:((c>>12)-32+512)]}
     if [[ $ret == *:* ]]; then
       local l=${ret%:*} u=${ret#*:} m
-      while ((l+1<u)); do
-        ((m=(l+u)/2))
-        if ((_ble_unicode_c2w_ranges[m]<=c)); then
-          l=$m
-        else
-          u=$m
-        fi
-      done
+      local L='_ble_unicode_c2w_ranges[m=(l+u)/2]<=c?(l=m):(u=m),l+1<u&&L'
+      ((l+1<u&&L))
       ret=${_ble_unicode_c2w[_ble_unicode_c2w_ranges[l]]}
     fi
   fi
@@ -266,9 +260,8 @@ function ble/unicode/EmojiStatus {
     ret=$_ble_unicode_EmojiStatus_None
     if ((_ble_unicode_EmojiStatus_xmaybe)); then
       local l=0 u=${#_ble_unicode_EmojiStatus_ranges[@]} m
-      while ((l+1<u)); do
-        ((_ble_unicode_EmojiStatus_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
-      done
+      local L='_ble_unicode_EmojiStatus_ranges[m=(l+u)/2]<=code?(l=m):(u=m),l+1<u&&L'
+      ((l+1<u&&L))
       ret=${_ble_unicode_EmojiStatus[_ble_unicode_EmojiStatus_ranges[l]]:-0}
     fi
     _ble_unicode_EmojiStatus[code]=$ret
@@ -380,9 +373,8 @@ function ble/util/c2w:emacs {
   fi
 
   local l=0 u=${#_ble_util_c2w_emacs_wranges[@]} m
-  while ((l+1<u)); do
-    ((_ble_util_c2w_emacs_wranges[m=(l+u)/2]<=tIndex?(l=m):(u=m)))
-  done
+  local L='_ble_util_c2w_emacs_wranges[m=(l+u)/2]<=tIndex?(l=m):(u=m),l+1<u&&L'
+  ((l+1<u&&L))
   ((ret=((l&1)==0)?2:1))
   return 0
 }
@@ -401,9 +393,8 @@ function ble/util/c2w:musl {
   fi
 
   local l=0 u=${#_ble_util_c2w_musl_ranges[@]} m
-  while ((l+1<u)); do
-    ((_ble_util_c2w_musl_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
-  done
+  local L='_ble_util_c2w_musl_ranges[m=(l+u)/2]<=code?(l=m):(u=m),l+1<u&&L'
+  ((l+1<u&&L))
   ret=${_ble_util_c2w_musl[_ble_util_c2w_musl_ranges[l]]}
 }
 
@@ -594,9 +585,8 @@ function ble/unicode/GraphemeCluster/c2break {
   ((ret>_ble_unicode_GraphemeClusterBreak_MaxCode)) && { ret=0; return 0; }
 
   local l=0 u=${#_ble_unicode_GraphemeClusterBreak_ranges[@]} m
-  while ((l+1<u)); do
-    ((_ble_unicode_GraphemeClusterBreak_ranges[m=(l+u)/2]<=code?(l=m):(u=m)))
-  done
+  local L='_ble_unicode_GraphemeClusterBreak_ranges[m=(l+u)/2]<=code?(l=m):(u=m),l+1<u&&L'
+  ((l+1<u&&L))
 
   ret=${_ble_unicode_GraphemeClusterBreak[_ble_unicode_GraphemeClusterBreak_ranges[l]]:-0}
   _ble_unicode_GraphemeClusterBreak[code]=$ret

@@ -32,6 +32,49 @@ function ble/test:canvas/trace.contra {
            stdout="$expect"
 }
 
+ble/test/start-section 'ble/canvas' 36
+
+# ble/util/c2w
+(
+  ble/test 'ble/util/c2w:musl     0' ret=0
+  ble/test 'ble/util/c2w:musl     1' ret=1
+  ble/test 'ble/util/c2w:musl     9' ret=1 # HT
+  ble/test 'ble/util/c2w:musl    10' ret=1 # LF
+  ble/test 'ble/util/c2w:musl    13' ret=1 # CR
+  ble/test 'ble/util/c2w:musl    31' ret=1
+  ble/test 'ble/util/c2w:musl    32' ret=1 # SP
+  ble/test 'ble/util/c2w:musl  4717' ret=1
+  ble/test 'ble/util/c2w:musl  9703' ret=1
+  ble/test 'ble/util/c2w:musl 11492' ret=1
+  ble/test 'ble/util/c2w:musl 12529' ret=2
+  ble/test 'ble/util/c2w:musl 13055' ret=1 # "令和" 文字
+  ble/test 'ble/util/c2w:musl 13481' ret=2
+  ble/test 'ble/util/c2w:musl 24486' ret=2
+  ble/test 'ble/util/c2w:musl 25480' ret=2
+  ble/test 'ble/util/c2w:musl 26427' ret=2
+  ble/test 'ble/util/c2w:musl 29463' ret=2
+  ble/test 'ble/util/c2w:musl 31323' ret=2
+
+  ble/test 'ble/util/c2w:emacs     0' ret=1
+  ble/test 'ble/util/c2w:emacs     1' ret=1
+  ble/test 'ble/util/c2w:emacs     9' ret=1 # HT
+  ble/test 'ble/util/c2w:emacs    10' ret=1 # LF
+  ble/test 'ble/util/c2w:emacs    13' ret=1 # CR
+  ble/test 'ble/util/c2w:emacs    31' ret=1
+  ble/test 'ble/util/c2w:emacs    32' ret=1 # SP
+  ble/test 'ble/util/c2w:emacs  4717' ret=1
+  ble/test 'ble/util/c2w:emacs  9703' ret=1
+  ble/test 'ble/util/c2w:emacs 11492' ret=1
+  ble/test 'ble/util/c2w:emacs 12529' ret=2
+  ble/test 'ble/util/c2w:emacs 13055' ret=2 # "令和" 文字
+  ble/test 'ble/util/c2w:emacs 13481' ret=2
+  ble/test 'ble/util/c2w:emacs 24486' ret=2
+  ble/test 'ble/util/c2w:emacs 25480' ret=2
+  ble/test 'ble/util/c2w:emacs 26427' ret=2
+  ble/test 'ble/util/c2w:emacs 29463' ret=2
+  ble/test 'ble/util/c2w:emacs 31323' ret=2
+)
+
 #------------------------------------------------------------------------------
 # from lib/test-canvas.sh
 
