@@ -3331,7 +3331,10 @@ function ble/decode/bind/option:dump {
     ble/decode/keymap#dump
   fi
 }
-## @fn ble/decode/bind/option:print
+## @fn ble/decode/bind/option:print keymaps...
+##   @param keymaps
+##     Explicitly specified keymap names.  When a specified keymap has not yet
+##     initialized, an attempt of calling this function initializes the keymap.
 ##   @var[in] flags
 function ble/decode/bind/option:print {
   local ble_bind_print=1
@@ -3349,6 +3352,7 @@ function ble/decode/bind/option:print {
   ble-decode/INITIALIZE_DEFMAP -v keymap # 初期化を強制する
   if (($#)); then
     for keymap; do
+      ble/decode/keymap#load "$keymap"
       ble/decode/keymap#print "$keymap"
     done
   else

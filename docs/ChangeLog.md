@@ -105,6 +105,7 @@
 - make: save commit id and branch name with `git archive` (requested by LecrisUT, blackteahamburger) `#D2290` 31f264ad
 - edit: revert edits with widget `discard-line` (reported by dezza) `#D2301` 3b2b4b81
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
+- decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` xxxxxxxx
 
 ## Fixes
 
