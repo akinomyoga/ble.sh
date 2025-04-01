@@ -475,7 +475,7 @@ function sub:patch1 {
 }
 
 function sub:patch1-save {
-  sub:patch1 | sed 's/\x1b\[[0-9:;<>=?]*[@-~]//g' > a.patch
+  sub:patch1 | LC_COLLATE=C sed 's/\x1b\[[0-9:;<>=?]*[@-~]//g' > a.patch
 }
 
 # generate base16 palette samples from contrib/colorglass.base16.dat

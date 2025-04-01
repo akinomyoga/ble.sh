@@ -1167,15 +1167,15 @@ function ble/string#escape-for-display {
   local head= tail=$1 opts=$2
 
   local sgr0= sgr1=
-  local rex_csi=$'\e\\[[ -?]*[@-~]'
+  local rex_csi=$'\e\\[[ -?]*[@-~]' # disable=#D1440 (LC_COLLATE=C is set)
   if [[ :$opts: == *:revert:* ]]; then
     ble/color/g2sgr "$_ble_color_gflags_Revert"
     sgr1=$ret sgr0=$_ble_term_sgr0
   else
-    if local rex=':sgr1=(('$rex_csi'|[^:])*):'; [[ :$opts: =~ $rex ]]; then
+    if ble/string#match-safe ":$opts:" ":sgr1=(($rex_csi|[^:])*):"; then
       sgr1=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
     fi
-    if local rex=':sgr0=(('$rex_csi'|[^:])*):'; [[ :$opts: =~ $rex ]]; then
+    if ble/string#match-safe ":$opts:" ":sgr0=(($rex_csi|[^:])*):"; then
       sgr0=${BASH_REMATCH[1]}
     fi
   fi
@@ -1231,15 +1231,14 @@ fi
 function ble/string#quote-word {
   ret=${1-}
 
-  local rex_csi=$'\e\\[[ -?]*[@-~]'
   local opts=${2-} sgrq= sgr0=
   if [[ $opts ]]; then
-    local rex=':sgrq=(('$rex_csi'|[^:])*):'
-    if [[ :$opts: =~ $rex ]]; then
+    local rex_csi=$'\e\\[[ -?]*[@-~]' # disable=#D1440 (LC_COLLATE is set)
+
+    if ble/string#match-safe ":$opts:" ":sgrq=(($rex_csi|[^:])*):"; then
       sgrq=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
     fi
-    rex=':sgr0=(('$rex_csi'|[^:])*):'
-    if [[ :$opts: =~ $rex ]]; then
+    if ble/string#match-safe ":$opts:" ":sgr0=(($rex_csi|[^:])*):"; then
       sgr0=${BASH_REMATCH[1]}
     elif [[ :$opts: == *:ansi:* ]]; then
       sgr0=$'\e[m'
@@ -1877,7 +1876,7 @@ _ble_bin_awk_libES='
         # \\[uU][0-9]{1,4}
         head = head c2s(s2i(substr(s, 2, RLENGTH - 1), 16));
         s = substr(s, RLENGTH + 1);
-      } else if (match(s, /^c[ -~]/)) {
+      } else if (match(s, /^c[ -~]/)) { # disable=#D1440 (caller is checked)
         # \\c[ -~] (non-ascii characters are unsupported)
         c = es_s2c[substr(s, 2, 1)];
         head = head c2s(_ble_bash >= 40400 && c == 63 ? 127 : c % 32);
@@ -2057,13 +2056,13 @@ function ble/util/writearray {
       if (s ~ /^"/)
         return unquote_dq(substr(s, 2, length(s) - 2));
       else
-        return es_unescape(substr(s, 3, length(s) - 3));
+        return es_unescape(substr(s, 3, length(s) - 3)); # disable=#D1440 (\c? is unused)
     }
     function unquote(s) {
       if (s ~ /^"/)
         return unquote_dq(substr(s, 2, length(s) - 2));
       else if (s ~ /^\$/)
-        return es_unescape(substr(s, 3, length(s) - 3));
+        return es_unescape(substr(s, 3, length(s) - 3)); # disable=#D1440 (\c? is unused)
       else if (s ~ /^'\''/)
         return unquote_sq(substr(s, 2, length(s) - 2));
       else if (s ~ /^\\/)
@@ -3961,7 +3960,7 @@ function ble/util/eval-pathname-expansion {
 
 
 # 正規表現は _ble_bash>=30000
-_ble_util_rex_isprint='^[ -~]+'
+_ble_util_rex_isprint='^[ -~]+' # disable=#D1440 (LC_COLLATE is set)
 ## @fn ble/util/isprint+ str
 ##
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。

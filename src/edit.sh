@@ -3279,11 +3279,11 @@ function ble/textarea#slice-text-buffer {
     if [[ $_ble_textarea_bufferName == _ble_textarea_buffer ]]; then
       # Note #D1745: 自動折返し改行は \r で符号化されている。末尾及び \n 直前の
       # 自動折返し (\r) は \n に変換し、それ以外の \r は削除する。
-      local out= rex_nl='^(\[[ -?]*[@-~]|[ -/]+[@-~]|[])*'$_ble_term_nl
+      local out= rex_nl=$'^(\e\\[[ -?]*[@-~]|\e[ -/]+[@-~]|[\x0E\x0F])*'$_ble_term_nl # disable=#D1440 (LC_COLLATE=C is set)
       while [[ $ret == *"$_ble_term_cr"* ]]; do
         out=$out${ret%%"$_ble_term_cr"*}
         ret=${ret#*"$_ble_term_cr"}
-        if [[ $ret =~ $rex_nl ]]; then
+        if ble/string#match-safe "$ret" "$rex_nl"; then
           # 次の本物の改行がある場合には二重改行として表示する為に改行を挿入。
           out=$out$_ble_term_nl
         elif [[ ! $ret ]]; then
@@ -11335,7 +11335,6 @@ function ble/widget/command-help/.read-man {
 function ble/widget/command-help/.locate-in-man-bash {
   local command=$1
   local ret rex
-  local rex_esc=$'(\e\\[[ -?]*[@-~]||.\b)' cr=$'\r'
 
   # check if pager is less
   local pager; ble/util/get-pager pager
@@ -11362,6 +11361,9 @@ function ble/widget/command-help/.locate-in-man-bash {
   esac
   ble/string#escape-for-awk-regex "$cmd_awk"; local rex_awk=$ret
   rex='\b$'; [[ $awk == gawk && $cmd_awk =~ $rex ]] && rex_awk=$rex_awk'\y'
+
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
+  local rex_esc=$'(\e\\[[ -?]*[@-~]||.\b)' cr=$'\r' # disable=#D1440
   local awk_script='{
     gsub(/'"$rex_esc"'/, "");
     if (!par && $0 ~ /^['"$_ble_term_blank"']*'"$rex_awk"'/) { print NR; exit; }
@@ -11375,7 +11377,10 @@ function ble/widget/command-help/.locate-in-man-bash {
   rex='\b$'; [[ $command =~ $rex ]] && rex_ext=$rex_ext'\b'
   rex='^\b'; [[ $command =~ $rex ]] && rex_ext="($rex_esc|\b)$rex_ext"
   local manpager="$pager -r +'/$rex_ext$cr$((iline-1))g'"
-  builtin eval -- "$manpager" <<< "$man_content" # 1 fork
+  builtin eval -- "$manpager" <<< "$man_content"; local ext=$? # 1 fork
+
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
+  return "$ext"
 }
 function ble/widget/command-help/.show-bash-script {
   local _ble_local_pipeline=$1

@@ -2111,13 +2111,13 @@ function ble/canvas/trace/.impl {
   #-------------------------------------
 
   # CSI
-  local rex_csi='^\[[ -?]*[@-~]'
+  local rex_csi=$'^\e\\[[ -?]*[@-~]' # disable=#D1440 (LC_COLLATE=C is set)
   # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
   local rex_osc='^([]PX^_k])([^'$st']|+[^\'$st'])*(\\|'${st:+'|'}$st'|$)'
   # ISO-2022 関係 (3byte以上の物)
-  local rex_2022='^[ -/]+[@-~]'
+  local rex_2022=$'^\e[ -/]+[@-~]' # disable=#D1440 (LC_COLLATE=C is set)
   # ESC ?
-  local rex_esc='^[ -~]'
+  local rex_esc=$'^\e[ -~]' # disable=#D1440 (LC_COLLATE=C is set)
 
   # states
   local trace_sclevel=0
@@ -2468,7 +2468,7 @@ function ble/canvas/trace-text {
     # G0 だけで構成された文字列は先に単純に処理する
     ble/canvas/trace-text/.put-simple "${#1}" "$1"
   else
-    local glob='[ -~]*' globx='[! -~]*'
+    local glob='[ -~]*' globx='[! -~]*' # disable=#D1440 (LC_COLLATE=C is set)
     local i iN=${#1} text=$1
     for ((i=0;i<iN;)); do
       local tail=${text:i}

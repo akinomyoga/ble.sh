@@ -250,12 +250,12 @@ if ((_ble_bash>=40000)); then
 
         if (opt_null) {
           if (t ~ /^eval -- \$'"$apos"'([^'"$apos"'\\]|\\.)*'"$apos"'$/)
-            t = es_unescape(substr(t, 11, length(t) - 11));
+            t = es_unescape(substr(t, 11, length(t) - 11)); # disable=#D1440 (\c? is unsed)
           printf("%s%c", t, 0);
 
         } else if (opt_source) {
           if (t ~ /^eval -- \$'"$apos"'([^'"$apos"'\\]|\\.)*'"$apos"'$/)
-            t = es_unescape(substr(t, 11, length(t) - 11));
+            t = es_unescape(substr(t, 11, length(t) - 11)); # disable=#D1440 (\c? is unsed)
           gsub(/'"$apos"'/, "'"$apos"'\\'"$apos$apos"'", t);
           print "_ble_history[" hindex "]=" apos t apos;
 
@@ -1536,7 +1536,7 @@ function ble/builtin/history/erasedups/.impl-awk {
         for (i = 1; i <= n; i++) {
           elem = hist[indices[i]];
           if (elem ~ /^\$'\''.*'\''/)
-            hist[indices[i]] = es_unescape(substr(elem, 3, length(elem) - 3));
+            hist[indices[i]] = es_unescape(substr(elem, 3, length(elem) - 3)); # disable=#D1440 (\c? is unsed)
         }
         n = hist_index - 1;
         hist_index = 0;
@@ -1547,7 +1547,7 @@ function ble/builtin/history/erasedups/.impl-awk {
         for (i = 1; i <= n; i++) {
           elem = edit[indices[i]];
           if (elem ~ /^\$'\''.*'\''/)
-            edit[indices[i]] = es_unescape(substr(elem, 3, length(elem) - 3));
+            edit[indices[i]] = es_unescape(substr(elem, 3, length(elem) - 3)); # disable=#D1440 (\c? is unsed)
         }
         n = edit_index - 1;
         edit_index = 0;

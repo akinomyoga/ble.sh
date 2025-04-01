@@ -186,6 +186,7 @@ function ble/debug/profiler/stop {
     awk=ble/bin/gawk
   fi
 
+  local LC_ALL= LC_COLLATE=C 2>/dev/null
   "$awk" -v magic="$_ble_debug_profiler_magic" -v nline="$nline" '
     BEGIN {
       xtrace_debug_enabled = 1;
@@ -266,9 +267,9 @@ function ble/debug/profiler/stop {
     # util
 
     function str_strip_ansi(str) {
-      gsub(/\x1b\[[ -?]*[@-~]/, "", str);
-      gsub(/\x1b[ -\/]*[0-~]/, "", str);
-      gsub(/[\x01-\x1F\x7F]/, "", str);
+      gsub(/\x1b\[[ -?]*[@-~]/, "", str); # disable=#D1440 LC_COLLATE=C is set
+      gsub(/\x1b[ -\/]*[0-~]/, "", str);  # disable=#D1440 LC_COLLATE=C is set
+      gsub(/[\x01-\x1F\x7F]/, "", str);   # disable=#D1440 LC_COLLATE=C is set
       return str;
     }
 
@@ -851,7 +852,9 @@ function ble/debug/profiler/stop {
       funcs_finalize();
       tree_finalize();
     }
-  ' "${awk_args[@]}" || return "$?"
+  ' "${awk_args[@]}"; local ext=$?
+  ble/util/unlocal LC_COLLATE LC_ALL 2>/dev/null
+  ((ext==0)) || return "$ext"
 
   local -a files_to_remove
   files_to_remove=("$f1")

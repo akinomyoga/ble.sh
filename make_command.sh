@@ -190,7 +190,7 @@ function sub:scan/.mark {
 }
 
 function sub:scan/grc-source {
-  local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk} --exclude=./{GNUmakefile,make_command.sh})
+  local -a options=(--color --exclude=./{test,memo,ext,wiki,[TD]????.*} --exclude=\*.{md,awk} --exclude=./{GNUmakefile,make_command.sh})
   grc "${options[@]}" "$@"
 }
 function sub:scan/list-command {
@@ -562,6 +562,17 @@ function sub:scan/check-readonly-unsafe {
       g'
 }
 
+function sub:scan/check-LC_COLLATE {
+  echo "--- $FUNCNAME ---"
+  sub:scan/grc-source '\[[ @]-\\?[?/~]\]|es_unescape\(' |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
+      /^[[:space:]]*#/d
+      /#D1440\b/d
+      /function es_unescape\(/d
+      /LC_COLLATE=C\b/d
+      g'
+}
+
 function sub:scan/mistake-_ble_bash {
   echo "--- $FUNCNAME ---"
   sub:scan/grc-source '\(\(.*\b_ble_base\b.*\)\)'
@@ -737,6 +748,7 @@ function sub:scan {
   sub:scan/command-layout
   sub:scan/word-splitting-number
   sub:scan/check-readonly-unsafe
+  sub:scan/check-LC_COLLATE
 
   sub:scan/mistake-_ble_bash
   sub:scan/mistake-bleopt-declare

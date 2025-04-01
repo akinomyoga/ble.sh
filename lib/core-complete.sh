@@ -5341,8 +5341,8 @@ function ble/complete/mandb/.generate-cache-from-man {
       gsub(/^['"$_ble_term_blank"']+|['"$_ble_term_blank"']+$/, "", line);
       if (line == "") return;
 
-      gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
-      gsub(/\x1b[ -\/]*[0-~]/, "", line); # ESC seq
+      gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq # disable=#D1440 LC_COLLATE_C is set
+      gsub(/\x1b[ -\/]*[0-~]/, "", line);  # ESC seq # disable=#D1440 LC_COLLATE_C is set
       gsub(/\t/, "    ", line); # HT
       gsub(/.\x08/, "", line); # CHAR BS
       gsub(/\x0E/, "", line); # SO
@@ -5589,8 +5589,8 @@ function ble/complete/mandb:help/generate-cache {
     }
 
     {
-      gsub(/\x1b\[[ -?]*[@-~]/, ""); # CSI seq
-      gsub(/\x1b[ -\/]*[0-~]/, ""); # ESC seq
+      gsub(/\x1b\[[ -?]*[@-~]/, ""); # CSI seq # disable=#D1440 LC_COLLATE_C is set
+      gsub(/\x1b[ -\/]*[0-~]/, "");  # ESC seq # disable=#D1440 LC_COLLATE_C is set
       gsub(/\t/, "    "); # HT
       gsub(/[\x00-\x1F]/, ""); # Remove all the other C0 chars
     }
