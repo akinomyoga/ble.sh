@@ -7760,6 +7760,11 @@ bash_tips
 
 2025-05-02
 
+  * memo: テストコードに文法間違いがある (reported by andychu) [#D2329]
+    https://github.com/akinomyoga/ble.sh/issues/565
+
+    これは実際には使われていないコードではあるが何れにしても。
+
   * util: ble/fd#list で複雑な事をしていたが単に compgen -G を使えば良い [#D2328]
 
     自前で glob の設定を変更したり色々する必要はなかった。

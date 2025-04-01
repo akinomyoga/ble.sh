@@ -267,6 +267,7 @@
 - docs(README): move disclaimers to a later section `#D2250` ad6f58b7
 - README: use `[[ ! ${BLE_VERSION-} ]] || ble-attach` `#D2264` ed11901a
 - github: update GitHub issue templates `#D2294` aa396f60
+- memo: fix syntax error in the testing code for #D1779 (reported by andychu) `#D2329`
 
 ## Test
 

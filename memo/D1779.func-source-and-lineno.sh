@@ -38,7 +38,7 @@ function ble/function#get-source-and-lineno.impl2 {
     shopt -s extdebug
   fi
   ble/util/assign ret "declare -F -- '$1' &>/dev/null"; local ext=$?
-  if [[ $unset_extdebug ]]: then
+  if [[ $unset_extdebug ]]; then
      shopt -u extdebug
   fi
 
