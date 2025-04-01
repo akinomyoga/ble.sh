@@ -319,6 +319,7 @@
 - global: use `ble/util/assign` in more places `#D2312` b0e39732
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
+- util: optimize `ble/fd#list` using `compgen -G` `#D2328` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

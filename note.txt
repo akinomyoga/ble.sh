@@ -7760,6 +7760,10 @@ bash_tips
 
 2025-05-02
 
+  * util: ble/fd#list で複雑な事をしていたが単に compgen -G を使えば良い [#D2328]
+
+    自前で glob の設定を変更したり色々する必要はなかった。
+
   * complete: fzf completion が内部で呼び出す補完関数についても adjust する (motivated by tessus) [#D2327]
     https://github.com/akinomyoga/ble.sh/issues/580
 

@@ -3217,50 +3217,17 @@ ble/fd#is-open/.upgrade
 
 ## @fn ble/fd#list
 if [[ -d /proc/$$/fd ]]; then
-  ## @fn ble/fd#list/adjust-glob
-  ##   @var[out] set shopt gignore
-  function ble/fd#list/adjust-glob {
-    set=$- shopt= gignore=$GLOBIGNORE
-    ble/base/list-shopt failglob dotglob
-    shopt -u failglob
-    set +f
-    GLOBIGNORE=
-  }
-  ## @fn ble/fd#list/restore-glob
-  ##   @var[in] set shopt gignore
-  function ble/fd#list/restore-glob {
-    # Note: dotglob is changed by GLOBIGNORE
-    GLOBIGNORE=$gignore
-    if [[ :$shopt: == *:dotglob:* ]]; then shopt -s dotglob; else shopt -u dotglob; fi
-    [[ $set == *f* ]] && set -f
-    [[ :$shopt: == *:failglob:* ]] && shopt -s failglob
-  }
-  ## @fn ble/fd#list [pid]
-  ##   List the file descriptors opened for the specified process.  If PID is
-  ##   not specified, this returns the list for the current process.
-  ##   @arr[out] ret
-  function ble/fd#list {
-    ret=()
-    local set shopt gignore
-    ble/fd#list/adjust-glob
-
-    local pid=${1-}
-    if [[ ! $pid ]]; then
-      if ((_ble_bash<40000)); then
-        local BASHPID
-        ble/util/getpid
-      fi
-      pid=$BASHPID
-    fi
-
-    local fd
-    for fd in /proc/"$pid"/fd/[0-9]*; do
-      fd=${fd##*/}
-      [[ $fd && ! ${fd//[0-9]} ]] &&
-        ble/array#push ret "$fd"
-    done
-    ble/fd#list/restore-glob
-  }
+  if ((_ble_bash>=50300)); then
+    function ble/fd#list {
+      builtin compgen -V ret -G "/proc/$BASHPID/fd/[0-9]*"
+      ret=("${ret[@]##*/}")
+    }
+  else
+    function ble/fd#list {
+      ble/util/assign-array ret 'builtin compgen -G "/proc/$BASHPID/fd/[0-9]*"'
+      ret=("${ret[@]##*/}")
+    }
+  fi
 else
   ## @fn ble/fd#list
   ##   List the file descriptors opened for the current process.
@@ -3290,14 +3257,24 @@ elif ((_ble_bash>=40000)); then
   # undo fds.
   if [[ -d /proc/$$/fd ]]; then
     # Implementation of ble/fd#cloexec by procfs (1588us)
+    if ((_ble_bash>=50300)); then
+      function ble/fd#cloexec/.listfd {
+        local ret fd
+        builtin compgen -V ret -G "/proc/$$/fd/[0-9]*"
+        for fd in "${ret[@]##*/}"; do
+          ble/util/set "$1[fd]" 1
+        done
+      }
+    else
+      function ble/fd#cloexec/.listfd {
+        local ret fd
+        ble/util/assign-array ret 'builtin compgen -G "/proc/$$/fd/[0-9]*"'
+        for fd in "${ret[@]##*/}"; do
+          ble/util/set "$1[fd]" 1
+        done
+      }
+    fi
 
-    function ble/fd#cloexec/.listfd {
-      local fd
-      for fd in /proc/"$$"/fd/*; do
-        fd=${fd##*/}
-        [[ $fd && ! ${fd//[0-9]} ]] && ble/util/set "$1[fd]" 1
-      done
-    }
     ## @fn ble/fd#cloexec/.probe
     ##   @var[out] ret
     function ble/fd#cloexec/.probe {
@@ -3320,17 +3297,9 @@ elif ((_ble_bash>=40000)); then
     ## @fn ble/fd#cloexec/.dup-undo-redirection-fd
     ##   @var[out] ret
     function ble/fd#cloexec/.dup-undo-redirection-fd {
-      local set shopt gignore
-      ble/fd#list/adjust-glob
-
       local fd=$1 fdset1
       ble/fd#cloexec/.listfd fdset1
-
       builtin eval -- "ble/fd#cloexec/.probe $fd</dev/null"
-      local ext=$?
-
-      ble/fd#list/restore-glob
-      return "$ext"
     }
   else
     # Implementation of ble/fd#cloexec by manual fd scan (1996us)
