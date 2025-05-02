@@ -555,6 +555,7 @@ function sub:scan/check-readonly-unsafe {
       /^(ARG|FLAG|REG)$/d
       /^(COMP[12SV]|ACTION|CAND|DATA|INSERT|PREFIX_LEN)$/d
       /^(PRETTY_NAME|NAME|VERSION)$/d
+      /^(OPTIND|OPTERR)$/d
 
       # variables in awk/comments/etc
       /^AWKTYPE$/d

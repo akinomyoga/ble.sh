@@ -1928,8 +1928,11 @@ bash_tips
 
 2025-02-20
 
-  * _comp_load / __load_completion に hook する?
+  * complete: _comp_load / __load_completion に hook する? (reported by quantumfrost)
     https://github.com/akinomyoga/ble.sh/issues/561
+
+    github#561 では cykerway/complete_alias を使用した時に cobra based の補完が
+    説明を挿入してそれがそのまま候補に表示されるという事が発生している。
 
     cykerway/complete_alias が内部的に _command_offset を呼んでいる。それによっ
     て ble.sh による advice を免れている。
@@ -7756,6 +7759,92 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2025-05-02
+
+  * complete: fzf completion が内部で呼び出す補完関数についても adjust する (motivated by tessus) [#D2327]
+    https://github.com/akinomyoga/ble.sh/issues/580
+
+    fzf completion の時にはその fzf が内部で呼び出す補完関数についてもチェック
+    するべきなのではないか。或いは、補完関数に指定されていなくても関数が定義さ
+    れていれば積極的にチェックするべき? と思ったが、候補の関数名について全て
+    declare -F でチェックするのは overhead が気になる。やはり fzf の時にだけ特
+    別扱いするべき?
+
+    或いはもう一つの方法は integration/zoxide を明示的に呼び出してもらう様に指
+    示する。
+
+    或いは fzf の関数自体に介入して他の補完関数を呼び出す直前に介入を行う。
+    その為には core-complete の調整する部分だけ分離する必要がある。
+
+    * 丁度 fzf は __fzf_orig_completion_get_orig_func という関数に分離されてい
+      るので其処に介入すれば良さそう。
+
+    * それより前の fzf の version ではどの様にするべきか。或いは対応を諦めるべ
+      きだろうか。実装を確認した。これについても対処する事にする。取り敢えず既
+      に補完設定が読み出されている場合については _fzf_handle_dynamic_completion
+      に対して介入を行えば良い。
+
+      未だ読み取っていない場合については bash-completion の _completion_loader
+      を呼び出している。(最新版では $_fzf_completion_loader を呼び出しているが、
+      最新版では何れにしても __fzf_orig_completion_get_orig_func に対する
+      advice で対処できているので気にしなくて良い。また、結局何れも
+      bash-completion の loader を最終的には呼び出す様になっているので
+      bash-completion の側の対処だけで良い。) これらは bash-completion の側で対
+      処するべき。
+
+    * bash-completion の __load_completion 及び _comp_load に対しても同様に介入
+      するべき。以前にもそんな事を考えた様な気がするが今
+      contrib/integration/bash-completion を確認してみても別にそれらに対しての
+      介入はされていない様だ。
+
+      遡ってみるとこれは 2025-02-20 の項目で、未だ対処されていない。というか、
+      2025-02-20 の問題は _command_offset 経由の時の問題で、その対処方法として
+      _comp_load / __load_completion に介入する事を対処方法の一つとして考えたが、
+      既にある補完定義に関してはそれでは対処できないことから断念したのだった。
+      2025-02-20 の問題は別に修正する必要がある。
+
+      取り敢えず実装はした。然し、本当に動作するのかどうかについては未だテスト
+      していない。取り敢えず parse までうまく行っていることだけ確かめれば十分だ
+      ろう。
+
+      何だか呼び出されたり呼び出されなかったりで一定しない。不思議だ。取り敢え
+      ずまた試しにテストし直してみたらちゃんとロードされている気がする。sudo 経
+      由の時にも、sudo から呼び出されたコマンドについてちゃんと
+      adjust-third-party-completion が呼び出されている。取り敢えず OK という事
+      にする。
+
+    * skim の方はどうするか。skim の持っている version では
+      _skim_handle_dynamic_completion に介入するか或いは
+      __skim_orig_completion_filter に介入をする必要がある。後で確認が必要であ
+      る。
+
+      更に新しい version を確認すると commit 7df8b777 でまるっきり内容が書き換
+      わっている。というか、元々あった shell integration のコードは全てなくなっ
+      て代わりに skim 自身の補完関数だけ定義する様になっている。integration
+      code は何処か別の所に移動したのだろうか。対応する PR は
+      https://github.com/skim-rs/skim/pull/586 で clap に切り替えるということし
+      か述べられていない。何も考えずに勘違いで削除した? そもそも切り替えるにし
+      ても機能が異なるので置き換えるのは変だ。
+
+      README の completion.{shell} の説明の場所には単に sk の補完設定を提供する
+      としか書かれていないと思ったらこの記述はたった 5 日前に追加された物の様で
+      ある。元の issue を調べると https://github.com/skim-rs/skim/issues/726 で
+      ある。この issue も実に最近に議論が進んでいる。
+
+      と思ったら実は commit f87ff674 で completion.bash の中身は復元されている
+      様だ。しかし、元の completion.bash ではなく、key-bindings.bash の方に復元
+      されている。うーん。例えば completion.bash は clap が自動生成した物をその
+      まま保存しているだけだから其処は編集できないなどの理由があるのだろうか。
+
+      何れにしても skim-completion.bash と skim-key-bindings.bash の両方で調整
+      を実行すれば良いのではないか。
+
+      また再度追加されたコードについては新しい fzf のものを元に新たに作ったので
+      はなくて、以前の version のものがそのまま追加されただけである。なので、今
+      のところは skim に関しては新しい介入ではなくて古い介入だけを追加する事に
+      なる。
+
+      取り敢えず skim-{completion,key-bindings}.bash の両方に対処コードを書いて、
+      また顛末についてコメントで説明を書いた。
 
   * 2025-01-21 global: LC_COLLATE=C を設定せずに正規表現で [ -?] 等を使っている箇所がある [#D2326]
 

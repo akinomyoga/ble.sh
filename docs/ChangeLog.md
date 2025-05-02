@@ -253,6 +253,7 @@
 - config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` 32f290df
 - integration: add `skim` integration for completion (reported by cmm) `#D2287` a36d13ce
 - integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` 430a1746
+- integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` xxxxxxxx
 
 ## Documentation
 
@@ -317,7 +318,7 @@
 - global: avoid raw word splitting `#D2309` b55c4003
 - global: use `ble/util/assign` in more places `#D2312` b0e39732
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
-- canvas: optimize binary search in tables `#D2325` d56c7d2f xxxxxxxx
+- canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

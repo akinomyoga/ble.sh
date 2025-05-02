@@ -1596,7 +1596,7 @@ function ble/syntax:bash/simple-word/eval {
   return "$ext"
 }
 
-## @fn ble/syntax:bash/simple-word/eval word [opts]
+## @fn ble/syntax:bash/simple-word/safe-eval word [opts]
 ##   Evaluate the specified word only when the word is safe and take the first
 ##   word when the word is expanded to multiple words.
 ##

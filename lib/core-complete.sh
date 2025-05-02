@@ -3664,11 +3664,11 @@ function ble/complete/progcomp/.compgen-helper-func {
   return 0
 }
 
-## @fn ble/complete/progcomp/.parse-complete/next
+## @fn ble/complete/progcomp/parse-complete/.next
 ##   @var[out] optarg
 ##   @var[in,out] compdef
 ##   @var[in] rex
-function ble/complete/progcomp/.parse-complete/next {
+function ble/complete/progcomp/parse-complete/.next {
   if [[ $compdef =~ $rex ]]; then
     builtin eval "arg=$BASH_REMATCH"
     compdef=${compdef:${#BASH_REMATCH}}
@@ -3682,7 +3682,7 @@ function ble/complete/progcomp/.parse-complete/next {
     return 1
   fi
 }
-function ble/complete/progcomp/.parse-complete/optarg {
+function ble/complete/progcomp/parse-complete/.optarg {
   optarg=
   if ((ic+1<${#arg})); then
     optarg=${arg:ic+1}
@@ -3696,11 +3696,11 @@ function ble/complete/progcomp/.parse-complete/optarg {
     return 2
   fi
 }
-## @fn ble/complete/progcomp/.parse-complete compdef
+## @fn ble/complete/progcomp/parse-complete compdef
 ##   @param[in] compdef
 ##   @var[in,out] comp_opts
 ##   @var[out] compoptions comp_prog comp_func flag_noquote
-function ble/complete/progcomp/.parse-complete {
+function ble/complete/progcomp/parse-complete {
   compoptions=()
   comp_prog=
   comp_func=
@@ -3708,7 +3708,7 @@ function ble/complete/progcomp/.parse-complete {
   local compdef=${1#'complete '}
 
   local arg optarg rex='^([^][*?;&|[:blank:]<>()\`$"'\''{}#^!]|\\.|'\''[^'\'']*'\'')+[[:blank:]]+' # #D1709 safe (WA gawk 4.0.2)
-  while ble/complete/progcomp/.parse-complete/next; do
+  while ble/complete/progcomp/parse-complete/.next; do
     case $arg in
     (-*)
       local ic c
@@ -3727,7 +3727,7 @@ function ble/complete/progcomp/.parse-complete {
           ;; # 無視 (-p 表示 -r 削除)
         ([AGWXPS])
           # Note: workaround #D0714 #M0009 #D0870
-          ble/complete/progcomp/.parse-complete/optarg || break 2
+          ble/complete/progcomp/parse-complete/.optarg || break 2
           if [[ $c == A ]]; then
             case $optarg in
             (command) flag_noquote=1 ;;
@@ -3737,7 +3737,7 @@ function ble/complete/progcomp/.parse-complete {
           fi
           ble/array#push compoptions "-$c" "$optarg" ;;
         (o)
-          ble/complete/progcomp/.parse-complete/optarg || break 2
+          ble/complete/progcomp/parse-complete/.optarg || break 2
           comp_opts=${comp_opts//:"$optarg":/:}$optarg:
           ble/array#push compoptions "-$c" "$optarg" ;;
         (C)
@@ -3747,7 +3747,7 @@ function ble/complete/progcomp/.parse-complete {
             compdef=
           else
             # bash-4.0以降では -C は quoted
-            ble/complete/progcomp/.parse-complete/optarg || break 2
+            ble/complete/progcomp/parse-complete/.optarg || break 2
             comp_prog=$optarg
           fi
           ble/array#push compoptions "-$c" ble/complete/progcomp/.compgen-helper-prog ;;
@@ -4173,11 +4173,11 @@ function ble/complete/progcomp/call-by-conditional-sync {
       '\''! ble/complete/check-cancel'\'' 128 progressive-weight:killall'
 }
 
-## @fn ble/complete/progcomp/.adjust-third-party-completions
+## @fn ble/complete/progcomp/adjust-third-party-completions
 ##   This function sets up the workarounds for third-party plugins.
 ##   @var[in] comp_func comp_prog
 ##   @var[ref] comp_opts
-function ble/complete/progcomp/.adjust-third-party-completions {
+function ble/complete/progcomp/adjust-third-party-completions {
   # WA: Workarounds for third-party plugins
   if [[ $comp_func ]]; then
     # fzf
@@ -4331,10 +4331,10 @@ function ble/complete/progcomp/.compgen {
   compdef=${compdef%' '}' '
 
   local comp_prog comp_func compoptions flag_noquote
-  ble/complete/progcomp/.parse-complete "$compdef"
+  ble/complete/progcomp/parse-complete "$compdef"
   local comp_opts_parsed=$comp_opts
 
-  ble/complete/progcomp/.adjust-third-party-completions
+  ble/complete/progcomp/adjust-third-party-completions
 
   ble/complete/check-cancel && return 148
 
