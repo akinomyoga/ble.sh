@@ -7104,8 +7104,10 @@ function ble/term/DA2/initialize-term {
   # - 1;95;0    v3.5.0beta1     (2021-08-14) https://github.com/gnachman/iTerm2/commit/6c923fab1e78147b00a5867aa7e20617739608db
   # - 41;95;0   v3.5.0beta3     (2021-10-13) https://github.com/gnachman/iTerm2/commit/05dd985955736e222b4144c45dc7e33cafd76948
   # * 41;2500;0 v3.5.0beta3     (2021-10-13) https://github.com/gnachman/iTerm2/commit/2fef388179057cf0090d536350ed644c7d4499d7
+  # * 64;2500;0 v3.5.5beta1     (2024-07-28) https://github.com/gnachman/iTerm2/commit/cd9445d59c667cbae57987f1de0100e0a031d666
   ('0;95;0')    _ble_term_TERM[depth]=iTerm2:${LC_TERMINAL_VERSION-2.9+} ;;
-  ('41;2500;0') _ble_term_TERM[depth]=iTerm2:${LC_TERMINAL_VERSION-3.5+} ;;
+  ('41;2500;0') _ble_term_TERM[depth]=iTerm2:${LC_TERMINAL_VERSION-3.5.0+} ;;
+  ('64;2500;0') _ble_term_TERM[depth]=iTerm2:${LC_TERMINAL_VERSION-3.5.6+} ;;
 
   ('0;10;1') # Windows Terminal
     # 現状ハードコードされている。

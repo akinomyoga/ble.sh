@@ -220,6 +220,7 @@
 - edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
 - progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` 2a0c6ba6
 - global: check `LC_COLLATE=C` for range expressions `#D2326` xxxxxxxx
+- util: update the iTerm2 detection `#D2331` xxxxxxxx
 
 ## Contrib
 

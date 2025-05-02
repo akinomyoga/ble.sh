@@ -7760,6 +7760,22 @@ bash_tips
 
 2025-05-02
 
+  * util: iTerm2 がまた DA2 を変更している [#D2331]
+    https://github.com/akinomyoga/ble.sh/issues/580
+
+    恐らく以下のコードで変更が入ったのだと思われる。
+
+    https://github.com/gnachman/iTerm2/commit/cd9445d59c667cbae57987f1de0100e0a031d666
+
+    emulation level を新しく実装してその過程で今まで vt400 までだったのを vt500
+    まで対応する様になり、デフォルトを vt500 に変更した様だ。それに従って 41 の
+    代わりに 64 が使われる様になった。
+
+    これだとユーザーが特別の値を指定した時には検出できない事になるが、そもそも
+    敢えて vt level を下げる使い方をするのだとしたら vt の範囲を逸脱する機能を
+    使った時の問題に対しては責任を持てないとして良いのではないか。そもそも DA2
+    を偽装されたらこちらとしては何もできなくなる。
+
   * edit (display-shell-version): (integration: off) の様な表示もする [#D2330]
     https://github.com/akinomyoga/ble.sh/issues/580
 
