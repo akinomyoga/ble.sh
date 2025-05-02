@@ -7760,6 +7760,32 @@ bash_tips
 
 2025-05-02
 
+  * edit (display-shell-version): (integration: off) の様な表示もする [#D2330]
+    https://github.com/akinomyoga/ble.sh/issues/580
+
+    ble summary の時に zoxide integration off の時にそれを赤く表示するべきでは。
+    と思ったが、実は単に未だ補完を試みていないだけだったら微妙? そもそも ble
+    summary の zoxide の所に integration on/off の表示がない。表示を追加するべ
+    き。
+
+    と思って実装を確認したら、どうも integration がロードされている時はちゃんと
+    (integration: on) が表示される様になっている。他の bash-preexec や
+    fzf-completion, fzf-key-bindings でもロードされていない時には何も表示しない
+    様になっているので zoxide 特有ではない。また、zoxide や bash-preexec や
+    fzf-completion については必要に応じて自動的にロードされる様になっているので、
+    警告色にするなどして其処までロードされていない事を強調する必要もないのでは
+    ないかという気がする。一方で、fzf-key-bindings についてはロードされていない
+    時には赤字で表示するべきではないか…と思ったが、ロードされていない時には、
+    既に、独立した行で警告を表示する様になっているのでわざわざ (integration:
+    no) の表示を赤字強調で出す必要もない。
+
+    一方で、今回の様に zoxide integration の自動ロードしたいがスキップされて問
+    題が生じている時にユーザーが気付ける様に (integration: no) みたいな表示はあっ
+    て良いのではないか。但し、赤字にするなどの強調はしなくて良い。
+
+    最終的に物凄く小さな変更になってしまったが、何も表示しないよりは良い気がす
+    るのでやはりこの変更は入れる事にする。
+
   * memo: テストコードに文法間違いがある (reported by andychu) [#D2329]
     https://github.com/akinomyoga/ble.sh/issues/565
 

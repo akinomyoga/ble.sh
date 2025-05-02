@@ -4182,7 +4182,7 @@ function ble/edit/display-version/check:bash-preexec {
     file=" ($file)"
   fi
 
-  local integ=
+  local integ=$label_integration_off
   ble/util/import/is-loaded contrib/bash-preexec && integ=$label_integration
   ble/edit/display-version/add-line "${sgrF}bash-preexec$sgr0$file, $version$integ"
 }
@@ -4197,7 +4197,7 @@ function ble/edit/display-version/check:fzf {
       version="($ret)$label_noarch"
     fi
 
-    local integ=
+    local integ=$label_integration_off
     ble/util/import/is-loaded integration/fzf-key-bindings && integ=$label_integration
 
     ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}key-bindings$sgr0, $version$integ"
@@ -4213,7 +4213,7 @@ function ble/edit/display-version/check:fzf {
       version="($ret)$label_noarch"
     fi
 
-    local integ=
+    local integ=$label_integration_off
     ble/util/import/is-loaded integration/fzf-completion && integ=$label_integration
 
     ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}completion$sgr0, $version$integ"
@@ -4351,7 +4351,7 @@ function ble/edit/display-version/check:zoxide {
   version=${version#zoxide }
   version=${version#v}
 
-  local integ=
+  local integ=$label_integration_off
   ble/util/import/is-loaded contrib/integration/zoxide && integ=$label_integration
   ble/edit/display-version/add-line "${sgrF}zoxide${sgr0}, version $sgrV$version$sgr0 ($path)$integ"
 }
@@ -4390,6 +4390,7 @@ function ble/widget/display-shell-version {
   fi
   local label_noarch=" (${sgrA}noarch$sgr0)"
   local label_integration=" $_ble_term_bold(integration: on)$sgr0"
+  local label_integration_off=" $_ble_term_bold(integration: off)$sgr0"
   local label_warning="${bold}WARNING$sgr0"
 
   local os_release=
