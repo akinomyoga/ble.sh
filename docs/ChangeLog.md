@@ -106,8 +106,8 @@
 - edit: revert edits with widget `discard-line` (reported by dezza) `#D2301` 3b2b4b81
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
 - decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` 66e450d7
-- edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` xxxxxxxx
-- decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` xxxxxxxx
+- edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` 2ff03257
+- decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0
 
 ## Fixes
 
@@ -220,9 +220,9 @@
   - main: update workaround for Ghostty (reported by odili) `#D2322` 4338bbf7
 - edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
 - progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` 2a0c6ba6
-- global: check `LC_COLLATE=C` for range expressions `#D2326` xxxxxxxx
-- util: update the iTerm2 detection `#D2331` xxxxxxxx
-- decode: fix unrecoginized <kbd>ESC O A</kbd> in `4.0 <= bash < 5.0` `#D2333` xxxxxxxx
+- global: check `LC_COLLATE=C` for range expressions `#D2326` f507a1bc
+- util: update the iTerm2 detection `#D2331` dde63fa3 xxxxxxxx
+- decode: fix unrecoginized <kbd>ESC O A</kbd> in `4.0 <= bash < 5.0` `#D2333` 6f4d0401
 
 ## Contrib
 
@@ -257,7 +257,7 @@
 - config: add `github499-append-to-last-modified` (motivated by vaab) `#D2286` 32f290df
 - integration: add `skim` integration for completion (reported by cmm) `#D2287` a36d13ce
 - integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` 430a1746
-- integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` xxxxxxxx
+- integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` 788dfd15
 
 ## Documentation
 
@@ -324,8 +324,8 @@
 - global: use `ble/util/assign` in more places `#D2312` b0e39732
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
-- util: optimize `ble/fd#list` using `compgen -G` `#D2328` xxxxxxxx
-- bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` xxxxxxxx
+- util: optimize `ble/fd#list` using `compgen -G` `#D2328` 6f34012d
+- bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

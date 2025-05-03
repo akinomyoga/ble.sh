@@ -8357,6 +8357,9 @@ bash_tips
 
       結局 d の方法で、新しい配列を追加する事にした。
 
+    2025-05-03 キーボードマクロが全く動かなくなっている。と思ったら単に変数リー
+    クだった。修正した。
+
   * util: iTerm2 がまた DA2 を変更している [#D2331]
     https://github.com/akinomyoga/ble.sh/issues/580
 

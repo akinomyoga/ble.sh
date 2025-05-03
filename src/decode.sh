@@ -1326,6 +1326,7 @@ function ble/decode/char-hook/next-char {
 }
 
 function ble/decode/process-char/.keylog {
+  local char
   for char; do
 #%if debug_keylogger
     ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_chars "$char"
