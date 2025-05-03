@@ -55,6 +55,7 @@
 # 2024-01-21 _ble_decode_csimap_dict 追加に伴う更新
 # 2024-02-07 @ESC, @NUL コード変更に伴う更新
 # 2024-06-05 "ble-decode/.hook => _ble_decode_hook" に伴う更新
+# 2025-05-03 Add @PrO for "up" (ESC O A) vs "M-O" (ESC O) in Bash <= 4.4
 
 function ble/init:cmap/bind-single-csi {
   ble-bind -k "ESC [ $1" "$2"

@@ -222,6 +222,7 @@
 - progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` 2a0c6ba6
 - global: check `LC_COLLATE=C` for range expressions `#D2326` xxxxxxxx
 - util: update the iTerm2 detection `#D2331` xxxxxxxx
+- decode: fix unrecoginized <kbd>ESC O A</kbd> in `4.0 <= bash < 5.0` `#D2333` xxxxxxxx
 
 ## Contrib
 

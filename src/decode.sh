@@ -106,8 +106,15 @@ _ble_decode_Macr=0x20000000
 _ble_decode_Flag3=0x10000000 # unused
 _ble_decode_FlagA=0x00200000 # unused
 
-_ble_decode_IsolatedESC=$((0x07FC))
-_ble_decode_EscapedNUL=$((0x07FB)) # charlog#encode で用いる
+# Note: When receiving the function keys in the form of "ESC O A" in bash <=
+#   4.4, ble/util/is-stdin-ready always fails (probably due to the internal
+#   processing of the cursor keys by Readline).  Thus, we cannot naively judge
+#   whether the received "ESC O" means M-O or a prefix of the function-key
+#   sequences.  We instead use the following codepoint to receive the prefix
+#   "ESC O".
+_ble_decode_IsolatedESC=$((0x07BC))
+_ble_decode_EscapedNUL=$((0x07BB)) # Used by charlog#encode
+_ble_decode_PrefixO=$((0x07BA)) # Used to detect "ESC O A" in bash <= 4.4
 _ble_decode_FunctionKeyBase=0x110000
 
 ## @fn ble/decode/mod2flag mod
@@ -272,6 +279,7 @@ function ble-decode-kbd/.initialize {
 
   ble-decode-kbd/.set-keycode @ESC "$_ble_decode_IsolatedESC"
   ble-decode-kbd/.set-keycode @NUL "$_ble_decode_EscapedNUL"
+  ble-decode-kbd/.set-keycode @PrO "$_ble_decode_PrefixO"
 
   local ret
   ble-decode-kbd/generate-keycode __batch_char__
@@ -759,10 +767,10 @@ ble/debug/leakvar#check $"leakvar" H0-begin
 
       # その場で標準入力を読み切る
       local char=${_ble_decode_input_buffer[buflen-1]}
-      if ((_ble_bash<40000||char==0xC0||char==0xDF)); then
+      if ((_ble_bash<40000||char==0xC0||char==0xDE)); then
         # Note: これらの文字は bind -s マクロの非終端文字 (0xC0 for two-byte
-        # representations of C0 characters in the form \xC0\x??, 0xDF for
-        # Isolated ESC U+07FC represented as \xDF\xBC)。現在マクロの処理中であ
+        # representations of C0 characters in the form \xC0\x??, 0xDE for
+        # Isolated ESC U+07BC represented as \xDE\xBC)。現在マクロの処理中であ
         # る可能性があるので標準入力から読み取るとバイトの順序が変わる可能性が
         # ある。従って読み取りは行わない。
         builtin eval -- "$_ble_decode_show_progress_hook"
@@ -1208,6 +1216,7 @@ function ble-decode-char {
     rchar=${chars[ichar]} # raw char
     ble_decode_char_rchar=$rchar # used by ble/widget/.MACRO to test _ble_decode_Macr
     ((char=rchar&~_ble_decode_Macr))
+    ((char==_ble_decode_PrefixO)) && char=79 # Prefix O -> O
     ((ble_decode_char_rest--,ichar++))
 
     # decode error character
@@ -1337,7 +1346,15 @@ function ble/decode/process-char/.keylog {
 function ble/decode/process-char/.getent {
   builtin eval "ent=\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}"
   if [[ $ent == ?*_ || $ent == _ && $_ble_decode_char2_seq == _27 ]]; then
-    ble/decode/wait-input 5 char || ent=${ent%_}
+    # Note (_ble_decode_PrefixO): If the original character is @PrO (which is
+    #   enabled in bash <= 4.4), we do not exclude the possibility of a
+    #   matching key of the form "ESC O ?"  even if the pending input is not
+    #   detected.  In bash <= 4.4, ble/util/is-stdin-ready cannot be used to
+    #   test whether the present "ESC O" is immediately followed by a
+    #   character.
+    ((rchar==_ble_decode_PrefixO)) ||
+      ble/decode/wait-input 5 char ||
+      ent=${ent%_}
   fi
 
   # CSI sequence
@@ -4642,7 +4659,7 @@ function ble/encoding:UTF-8/generate-binder { return 0; }
 # ##   lib/init-bind.sh の中から呼び出される。
 # function ble/encoding:UTF-8/generate-binder {
 #   ble/init:bind/bind-s '"\C-@":"\xC0\x80"'
-#   ble/init:bind/bind-s '"\e":"\xDF\xBC"' # isolated ESC (U+07FC)
+#   ble/init:bind/bind-s '"\e":"\xDE\xBC"' # isolated ESC (U+07BC)
 #   local i ret
 #   for i in {0..255}; do
 #     ble/decode/c2dqs "$i"
@@ -4699,7 +4716,7 @@ function ble/encoding:UTF-8/c2bc {
 ##   lib/init-bind.sh の中から呼び出される。
 function ble/encoding:C/generate-binder {
   ble/init:bind/bind-s '"\C-@":"\x9B\x80"'
-  ble/init:bind/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FC) に後で変換
+  ble/init:bind/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07BC) に後で変換
   local i ret
   for i in {0..255}; do
     ble/decode/c2dqs "$i"
@@ -4713,7 +4730,7 @@ function ble/encoding:C/generate-binder {
 ##   但し、bind の都合 (bashbug の回避) により以下の変換を行う。
 ##
 ##   \x9B\x80 (155 128) → C-@
-##   \x9B\x8B (155 139) → isolated ESC U+07FC (2044)
+##   \x9B\x8B (155 139) → isolated ESC U+07BC (1980)
 ##   \x9B\x9B (155 155) → ESC
 ##
 ##   実際にこの組み合わせの入力が来ると誤変換されるが、
@@ -4736,7 +4753,7 @@ function ble/encoding:C/decode {
       case $b in
       (155) A[i++]=27 # ESC
             continue ;;
-      (139) A[i++]=2044 # isolated ESC U+07FC
+      (139) A[i++]=1980 # isolated ESC U+07BC
             continue ;;
       (128) A[i++]=0 # C-@
             continue ;;

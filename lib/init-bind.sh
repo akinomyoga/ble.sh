@@ -7,7 +7,7 @@
 #
 # Note: #D1300 bind -s で束縛するマクロの非終端文字は
 #   decode.sh (ble/decode/nonblocking-read) でチェックする必要がある。
-#   現在の実装では 0xC0 と 0xDF をチェックしている。
+#   現在の実装では 0xC0 と 0xDE をチェックしている。
 #   (( esc1B != 3 && esc1B1B )) の時には 0x1B も追加でチェックする必要がある。
 #   マクロを追加する時にはそれに応じてチェックを追加する必要がある。
 
@@ -38,9 +38,14 @@ function ble/init:bind/generate-binder {
   >| "$fbind2"
 
   local q=\' Q="'\\''"
+
+  # ENCODING: UTF-8 2-byte code of 0, C-x, and ESC (UTF-8依存)
   local altdqs00='\xC0\x80'
   local altdqs24='\xC0\x98'
   local altdqs27='\xC0\x9B'
+  # ENCODING: UTF-8 (_ble_decode_IsolatedESC U+07BC)
+  local isolated27='\xDE\xBC'
+  local prefixO='\xDE\xBA'
 
   # ※bash-4.3 以降は bind -x の振る舞いがこれまでと色々と違う様だ
   #   何より 3 byte 以上の物にも bind できる様になった点が大きい (が ble.sh では使っていない)
@@ -123,6 +128,17 @@ function ble/init:bind/generate-binder {
   #
   local esc1B=3
 
+  # bind1B4FXX (esc1B == 3 の時) 2025-05-03
+  #
+  # * bind1B4FXX=1: bash 4.4 以下では SS3 の矢印キー (ESC O A) を受信した時、常
+  #   に is-stdin-ready が常に失敗する (bash が内部的に先読みして何か処理してい
+  #   る?)  ので wait-input で M-O と区別しようとしてもできない。isolated ESC
+  #   と同様に ESC O と ESC ? の両方に登録して区別する。
+  #
+  #   "ESC O" に束縛を設定していることが前提。これは esc1B == 1 または esc1B ==
+  #   3 に対応する。
+  local bind1B4FXX=$(((esc1B==1||esc1B==3)&&40000<=_ble_bash&&_ble_bash<50000))
+
   # esc1B5B (esc1B == 1 の時に有効)
   #
   # * bash-3.1
@@ -162,7 +178,6 @@ function ble/init:bind/generate-binder {
     if ((i==0)); then
       # C-@
       if ((esc00)); then
-        # ENCODING: UTF-8 2-byte code of 0 (UTF-8依存)
         ble/init:bind/append-macro '\C-@' "$altdqs00"
       else
         ble/init:bind/append "$ret" "$i"
@@ -179,11 +194,9 @@ function ble/init:bind/generate-binder {
       if ((esc1B==0)); then
         ble/init:bind/append "$ret" "$i"
       elif ((esc1B==2)); then
-        # ENCODING: UTF-8
         ble/init:bind/append-macro '\e' "$altdqs27"
       elif ((esc1B==3)); then
-        # ENCODING: UTF-8 (_ble_decode_IsolatedESC U+07FC)
-        ble/init:bind/append-macro '\e' '\xDF\xBC' # C-[
+        ble/init:bind/append-macro '\e' "$isolated27" # C-[
       fi
     else
       # Note: Bash-5.0 では \C-\\ で bind すると変な事になる #D1162 #D1078
@@ -208,7 +221,7 @@ function ble/init:bind/generate-binder {
       fi
     fi
 
-    # ESC *
+    # ESC ?
     if ((esc1B==3)); then
       if ((i==0)); then
         ble/init:bind/append-macro '\e'"$ret" "$altdqs27$altdqs00"
@@ -228,7 +241,6 @@ function ble/init:bind/generate-binder {
           # printf 'bind %q' '"\e[":"\302\233"'               >> "$fbind1"
           # ble/util/print "ble-bind -f 'CSI' '.CHARS 27 91'" >> "$fbind1"
 
-          # ENCODING: \xC0\x9B is 2-byte code of ESC (UTF-8依存)
           ble/init:bind/append-macro '\e[' "$altdqs27["
         else
           ble/init:bind/append "\\e$ret" "27 $i"
@@ -241,6 +253,17 @@ function ble/init:bind/generate-binder {
         ble/init:bind/append-macro '\e\e' '\e[^'
         ble/util/print "ble-bind -k 'ESC [ ^' __esc__"      >> "$fbind1"
         ble/util/print "ble-bind -f __esc__ '.CHARS 27 27'" >> "$fbind1"
+      fi
+    fi
+
+    # ESC O ?
+    if ((bind1B4FXX)); then
+      if ((i==0)); then
+        ble/init:bind/append-macro '\eO'"$ret" "$altdqs27$prefixO$altdqs00"
+      elif ((bind18XX&&i==24)); then
+        ble/init:bind/append-macro '\eO'"$ret" "$altdqs27$prefixO$altdqs24"
+      else
+        ble/init:bind/append-macro '\eO'"$ret" "$altdqs27$prefixO$ret"
       fi
     fi
   done

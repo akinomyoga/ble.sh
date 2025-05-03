@@ -7760,6 +7760,403 @@ bash_tips
 
 2025-05-02
 
+  * decode: "ESC O A" vs "ESC O" の区別が 4.0 <= bash < 5.0 でついていない [#D2333]
+
+    solaris でキーボードが入力できない。上キーを押すと変な事になる。これは一体
+    何が起こっているのだろうか。ESC O D を受け取っている様に見える。元々 ble.sh
+    では既定で ESC O D に対応している筈なのに何故失敗するのだろうか?
+
+    或いは vi mode では ESC O を分解する様な処理にしていたのだったか? 何か変更
+    をした様な気がするが覚えていない。
+
+    うーん。2023-07-31 の項目と同じ現象と思われる。mercury の上で keylog をして
+    みると以下の結果になっている。何故 O が重複しているのだろう? 或いは vi mode
+    における再解析の問題?
+
+      ===== bytes =====
+      192 155 79 65 192 155 79 67 5 5 5 6 6 6
+      6 6 6 127 127 127 127 127 98 107 101 127
+       127 108 101 47 100 101 98 117 103 47 10
+      7 101 121 108 111 103 35 101 110 100 13
+
+      ===== chars =====
+      ESC O O A ESC O O C ENQ ENQ ENQ ACK ACK
+      ACK ACK ACK ACK DEL DEL DEL DEL DEL b k
+      e DEL DEL l e / d e b u g / k e y l o g
+      # e n d RET
+
+      ===== keys =====
+      M-O ESC O A auto_complete_enter M-O M-O
+      ESC O C C-e C-e C-e C-f C-f C-f C-f C-f
+      C-f C-? C-? C-? C-? C-? b k e auto_compl
+      ete_enter C-? C-? C-? l auto_complete_en
+      ter e / / auto_complete_enter d e b u g
+      / / auto_complete_enter k e y l o g # e
+      e auto_complete_enter n d C-m C-m
+
+    問題の起こっていないシェルでは以下の様な結果になる。
+
+      ===== bytes =====
+      192 155 79 65 127 127 127 127 127 101 11
+      0 100 13
+
+      ===== chars =====
+      ESC O A DEL DEL DEL DEL DEL e n d RET
+
+      ===== keys =====
+      up C-? C-? C-? C-? C-? e auto_complete_e
+      nter n d C-m
+
+    chat の上でも bash-4.4 を試すと問題が生じる。
+
+      ===== bytes =====
+      192 155 79 65 6 6 6 6 21 21 21 98 108 10
+      1 47 100 101 98 117 103 47 107 101 121 1
+      08 111 103 35 101 110 100 13
+
+      ===== chars =====
+      ESC O O A ACK ACK ACK ACK NAK NAK NAK b
+      l e / d e b u g / k e y l o g # e n d RE
+      T
+
+      ===== keys =====
+      M-O ESC O A C-f C-f C-f C-f C-u C-u C-u
+      b l e / auto_complete_enter d e b u g /
+      / auto_complete_enter k e y l o g # e e
+      auto_complete_enter n d C-m
+
+    受け取っている bytes は同じでもそれを chars にする時に違いが出ている…とい
+    う事は decoder の振る舞いがおかしいという事になるのだろうか? 算術式の問題?
+    UTF-9 decoder の出力を見たが問題はない様だ。という事は、ble-decode-char の
+    処理が問題という事になる?
+
+    問題がある状況での ble-decode-char の呼び出しを見ると以下の様になっている。
+
+      ble-decode-char:1(27)
+      27 (27)
+      ble-decode-char:1(79)
+      79 (79)
+      79 (79)
+
+    二つ気づく事がある。
+
+    x ok: 本来は 27 79 が同時に decode されて入ってきて欲しいのにばらばらに受信
+      している。これは何故だろう? UTF-8 の decode の時点でばらばらに渡している
+      という事だろうか。
+
+      →どうも bash-4.4 では "ESC O ?" に対しては is-stdin-ready が常に失敗する
+      様で、それによって各バイトが別々に処理される事になるようだ。但し、各バイ
+      トでコマンドライン編集やレンダリングが発生する訳ではないので、これ事態は
+      そんなに問題ではない。
+
+    * ok: もう一つ気づく事は ble-decode-char の二回目の呼び出しで受信したのは
+      79 単体の筈なのに、それに対するループが二回実行されている → #D2321。
+
+    より詳細に振る舞いを調べる。
+
+      正常な処理
+
+      ble-decode-char:1(27)
+      ble-decode-char:1(79)
+      ble-decode-char:1(65)
+      27 ichar=0 (27 79 65)
+      5:ichar=1 ent=(_)
+      6:ichar=1
+      79 ichar=1 (27 79 65)
+      ble-decode-char/.getent: ent=(_)
+      _ble_decode_char2_seq=_27
+      _ble_decode_char2_reach_key=67108955
+      5:ichar=2 ent=(_)
+      6:ichar=2
+      65 ichar=2 (27 79 65)
+      5:ichar=3 ent=(1114161)
+      6:ichar=3
+
+      問題の処理
+
+      ble-decode-char:1(27)
+      27 ichar=0 (27)
+      5:ichar=1 ent=(_)
+      6:ichar=1
+      ble-decode-char:1(79)
+      79 ichar=0 (79)
+      ble-decode-char/.getent: ent=() ... うーん。この時点で違う
+      _ble_decode_char2_seq=_27
+      _ble_decode_char2_reach_key=67108955
+      5:ichar=1 ent=()  ... ent が空になっている
+        51: rest=(79)   ... $_ble_decode_char2_reach_key のブランチに入っている
+        52: chars=(79)
+      6:ichar=0
+      79 ichar=0 (79)
+      5:ichar=1 ent=()
+      6:ichar=1
+
+    どうも ble/decode/wait-input の結果が異なっている気がする。bash-4.4 では
+    wait-input が常に失敗する事によって M-O 迄で独立したキーとして見做されてい
+    る。
+
+    * ok: しかしそうだとしても、未処理の部分として改めて O が処理されてしまうの
+      は問題である → これは独立した項目で修正する事にする: #D2332
+
+    | * wait-input の問題に対処する。これは ble-decode-char が一文字ずつ処理さ
+    |   れている事とも関係していそうである。というか、is-stdin-ready が壊れてい
+    |   る可能性?
+    |
+    |   ble/decode/process-char/.getent:1: ent=(_)
+    |   ble/decode/wait-input:1a
+    |   ble/decode/wait-input:2
+    |   ble/decode/wait-input:3 -> この後で is-stdin-ready が成功すれば抜ける筈
+    |   ble/decode/wait-input:4 -> 抜けていない。つまり is-stdin-ready が false
+    |   ble/decode/process-char/.getent:2: ent=()
+    |
+    |   正常な場合
+    |
+    |   ble/decode/process-char/.getent:1: ent=(_)
+    |   ble/decode/wait-input:1a -> この時点で未処理のバイトがあるので抜ける。
+    |   ble/decode/process-char/.getent:2: ent=(_)
+    |
+    |   つまり、is-stdin-ready が意図通りに動いていないのが原因である。何故だろ
+    |   う?  この振る舞いは以前からあったので、実はだいぶ昔から is-stdin-ready
+    |   が動かなくなっていた? 不思議だ。
+    |
+    |   * reject: 或いは既に読み取った後だったりする? うーん。そんな事はない。
+    |     実際に受信しているのは O までだけである。A は未だ受信していないので
+    |     stream の中に残っている筈。
+    |
+    |   実際に builtin read -t 0 の振る舞いを調べてみる。_ble_util_fd_tui_stdin
+    |   を経由しないようにしても駄目。直接 builtin read -t 0 を呼び出しても駄目。
+    |   何故だろう。それだと bash-4.* 全般に auto-complete 等も含めて動かない事
+    |   になってしまう気がするが、何故受信されない状態になってしまうのか。
+    |
+    |   というかそもそもずっと待っていても A が現れない…という事は idle task
+    |   が存在しなかったとしても駄目という事? 或いは idle task を待っている所為
+    |   でこの様な事態になっている可能性?
+    |
+    |   と思ったがよく見てみるとそもそも ESC O A の ESC (の ble.sh 内部コード)
+    |   を受け取る時点で is-stdin-ready が失敗していて後続がある事をちゃんと検
+    |   出できていない。一方で、貼り付けで "hello" 等を一気に入力した場合にはちゃ
+    |   んと後続があるという事を検出できている。何故このような違いが生まれるの
+    |   だろうか。
+    |
+    |   * 例えば文字列マクロの処理中だと次の文字を既に読み取った状態になってい
+    |     る可能性? マクロの処理中にはそういう変な事になるというのは実は前に認
+    |     識していたのでは? と思ったが、でもそれはマクロが終了した後に何も後続
+    |     の処理がない場合に、メモリ上にあるマクロの文字列を検出できないから
+    |     is-stdin-ready が失敗するという話で、今回の様に更に続きの文字があるの
+    |     に受信できないという状況とは別なのでは?
+    |
+    |     今回の場合とは独立にこれについても対処するべきでは? とも思ったが考え
+    |     てみれば char や key の sequence が中途半端である場合には何れにしても
+    |     続きの処理は実施されないので、特に overhead になるという事はない筈。
+    |     寧ろ、今回の様に M-O から来る ESC O と up から来る ESC O A を見分ける
+    |     必要がある場合には "ESC O" だけを見た状態でそれが中途半端な受信状態か
+    |     どうかを判定するのには使えない。
+    |
+    |     また改めて実行してみると _ble_decode_hook の段階では結局正常動作して
+    |     いる場合においても、is-stdin-ready は false のままで、キャッシュされ
+    |     ずにそのまま実行されている。但し、これは ESC [ A の場合。ESC O A の場
+    |     合は振る舞いが異なるのかもしれない。端末の状態が壊れた状態で試さない
+    |     と再現できない。
+    |
+    |     何れにしても受信中に is-stdin-ready になってしまう問題は今回の話と関
+    |     係ないかもしれない?
+    |
+    |   * reject: 今 4.4 では ESC O A の組み合わせに対して bind -x して受信してい
+    |     る。と思って改めて確認してみたがその様にはなっていない。何処かのタイミ
+    |     ングでその様になってしまうのだろうか。或いは、ログインした時の条件? 或
+    |     いは勘違い?
+    |
+    |   ? ok: 5.3 でも "ESC [ A" については一旦 "M-[" というキーとして解釈され
+    |     て、その後で "A" が来た時点で "up" に変化している気がする。何故ちゃん
+    |     と変換できている? どうやら csi 処理によってちゃんと続きがあるという事
+    |     を検出できている様だ。
+    |
+    |     もしかすると bash は 1 byte 程度なら先読みしてしまっているのかもしれ
+    |     ない? と思ったがそれも何だか変だ。うーん。或いは、CSI seq は認識して
+    |     先に読み取りを実行してしまっている可能性? でも CSI sequence に関して
+    |     は問題は生じていないという事。
+    |
+    |     bash-5.x で CSI sequence を認識する処理でも追加されたのかもしれないと
+    |     思って bash 5.0 を試してみたが、is-stdin-ready が失敗する動作は bash
+    |     5.0 でも同様である。依然として普通の文字列を貼り付けた場合には
+    |     bracketed-paste-mode の marker も含めて期待通りに is-stdin-ready が成
+    |     功している。これは一体どういう状態なのだろう? 或いは bash 5.0 になる
+    |     前から csi sequence についてはずっとそうだったのかもしれない。
+    |
+    |   * 改めて ESC [ A と ESC O A で系統的に実験する必要がある。
+    |
+    |     | bash-5.3
+    |     |
+    |     | ESC O A
+    |     |   _ble_decode_hook:(192) ready(tty)=0 read(0)=0,0
+    |     |   _ble_decode_hook:(155) ready(tty)=0 read(0)=0,0
+    |     |   _ble_decode_hook:(79) ready(tty)=0 read(0)=0,0
+    |     |   _ble_decode_hook:(65) ready(tty)=1 read(0)=1,1
+    |     |
+    |     | ESC [ A
+    |     |   _ble_decode_hook:(192) ready(tty)=1 read(0)=1,1
+    |     |   _ble_decode_hook:(155) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(27)
+    |     |   ble/decode/process-char/.getent:3: ent=(_)
+    |     |   _ble_decode_hook:(91) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(91)
+    |     |   ble/decode/process-char/.getent:1: ent=(_) is-stdin-ready=1
+    |     |   ble/decode/process-char/.getent:2: ent=()
+    |     |   ble/decode/process-char/.getent:3: ent=(_)
+    |     |   _ble_decode_hook:(65) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(65)
+    |     |   ble/decode/process-char/.getent:3: ent=(1114161)
+    |     |
+    |     | bash-4.4
+    |     |
+    |     | ESC O A
+    |     |   _ble_decode_hook:(192) ready(tty)=1 read(0)=1,1
+    |     |   _ble_decode_hook:(155) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(27)
+    |     |   ble/decode/process-char/.getent:3: ent=(_)
+    |     |   _ble_decode_hook:(79) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(79)
+    |     |   ble/decode/process-char/.getent:1: ent=(_) is-stdin-ready=1
+    |     |   ble/decode/process-char/.getent:2: ent=()
+    |     |   ble/decode/process-char/.getent:3: ent=()
+    |     |   ble/decode/process-char/.getent:3: ent=()
+    |     |
+    |     | ESC [ A
+    |     |   _ble_decode_hook:(192) ready(tty)=1 read(0)=1,1
+    |     |   _ble_decode_hook:(155) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(27)
+    |     |   ble/decode/process-char/.getent:3: ent=(_)
+    |     |   _ble_decode_hook:(91) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(91)
+    |     |   ble/decode/process-char/.getent:1: ent=(_) is-stdin-ready=1
+    |     |   ble/decode/process-char/.getent:2: ent=()
+    |     |   ble/decode/process-char/.getent:3: ent=(_)
+    |     |   _ble_decode_hook:(65) ready(tty)=1 read(0)=1,1
+    |     |   ble-decode-char:1(65)
+    |     |   ble/decode/process-char/.getent:3: ent=(1114161)
+    |
+    |     ESC [ A については一貫して is-stdin-ready は 1 である。つまり bash は
+    |     csi seq を特別に処理していると見るべきである。一方で、ESC O A は
+    |     bash-4.4 と 5.3 で振る舞いに違いがある。
+    |
+    |     これは bash-4.4 の bind 設定の違いによるものだろうか。或いは bash 自
+    |     体の振る舞いが変わったのだろうか。取り敢えず binding について確認をす
+    |     る→確認してみた所、4.4 と 5.3 で特に違いはない。5.3 で新しい widgets
+    |     が幾つも増えたという事ぐらいである。
+    |
+    |     従って bash 自体の振る舞いが変化して "ESC O x" について特別に処理しな
+    |     くなったということの気がする。
+
+    [結論] どうもキー受信時に is-stdin-ready が 1 になってしまう問題は bash-5.3
+    でも ESC [ A 等に対して存在している。しかし、これは ble.sh の csi seq 検出
+    によってちゃんと続きがあるという事を認識できている。ESC O A については
+    bash-4.4 と 5.3 で振る舞いが異なっていて、bash-4.4 の時には ESC [ A と同様
+    に先に既に文字列を全て読み取ってしまっている気がする。
+
+    [対処方法] これの対処方法としては "ESC O x" に対しては 4.4 では
+    is-stdin-ready が 1 であっても後続の文字があると想定する事? しかしそれだと
+    M-O を押した時に動作が固まってしまうという問題が生じる。そもそも端末の状態
+    が正しければ "ESC O x" 等を送ってくる事はない筈で、そう思うと M-O を優先さ
+    せるべきの様な気もする。
+
+    一つの対策方法は isolated ESC の時と同様に ESC O と ESC O A を両方 bind し
+    てしまうという事。以前これ関連の対処をしたようなしないような気がするが何処
+    へ行っただろうか。うーん。init-bind.sh を確認する限りは ESC O に対する特別
+    の処理は何もしていない。
+
+    これに対応する為には新しく IsolatedESC に類似の IsolatedMetaO 的な物を追加
+    する必要がある。
+
+    * 先ず新しいコードを割り当てる必要がある。#D2138 で変更したばかりだが、更に
+      新しいコードを割り当てるとしたら何処だろうか。判定的には UTF-8 表現の 1
+      byte 目が共通であって欲しい。現在は DF である。然し、UTF-8 の 1 byte 目が
+      DF である範囲 U+07C00..U+07FF にはもう空いている文字はない。という事は、
+      IsolatedESC も含めて一緒に移動する必要があるのではないか。
+
+    また IsolatedESC と同様に複雑な判定を諸々の場所に追加しなければならなくなる
+    可能性について考える。もし無駄に複雑になるのだったら別の方法を考えるか、諦
+    める方が良いかもしれない。
+
+    a reject: 例えば IsolatedSS3 にするとそれが後で ESC O の 2 chars に分裂する
+      事になるので処理として複雑になる。というより、例えば ESC だけを使った key
+      が発行された時にそれに対応する char の記録をどうするのかという問題が生じ
+      る。
+
+    b reject: という事を考えると IsolatedO みたいな物を用意する事になるのだろう
+      か?  しかしそれはそれで変な気がする。
+
+      →これは d と同じ理由で余り意味がない。
+
+    c reject: それよりは KeySeparator 的な sequence を挿入して其処で一つの key
+      としての解釈を強制的に中止するという機能を追加した方が良いのではないか。
+      実は IsolatedESC も不要になる?
+
+      と思って実装しかけたがこの方針は駄目だ。何故ならば "ESC O @sep" と "ESC O
+      A" で区別する事になり、またもう一つの可能性として bind1B4FXX が有効でない
+      場合には "ESC O" が単体で来る。なので "ESC O" の時点では次の文字が来てい
+      ることを期待して抜けて良いのかそうでないか判定できない。
+
+    d 或いは IsolatedESC に対応して Meta 確定の ESC として MetaESC 的なものを用
+      意する?
+
+      と思って実装仕掛けたがこれも駄目だ。今現れるのは (1) bash >= 5.0 で現れる
+      孤立 "ESC O" と、 (2) bash < 5.0 での孤立 "ESC O" と (3) bash < 5.0 での
+      "ESC O A" である。(2) だけ区別できる様にしても意味がない。というより (1)
+      と (2) は同じに取り扱って良いのだから、寧ろ (3) の場合を区別できる様にす
+      る必要がある。
+
+    e つまり「これを受け取ったら次の文字があるという事を示唆する ESC O」なる物
+      をどうにか表現しなければならない。ESC を修正するか或いは O を修正するか。
+      うーん。PrefixO なる文字を追加する? 或いは O を "@prefix O" みたいに
+      encode してどうにかする。と思ったがそれはそれで処理が面倒そうなので取り敢
+      えず PrefixO という文字を追加する方向で考える。
+
+    上記の e の方針で実装した。@PrO という文字を追加した。
+
+    * done: M-O で esc O を送信する端末でテストを行う (その様な端末は実際に存在
+      するか?) なければ自分で適当な端末をそのように設定する? 或いは何か簡単に送
+      る仕組みはないだろうか。
+
+      →これは mintty が (modifyOtherKeys を設定していなければ) ESC O を送信す
+      ると分かったので term_modifyOtherKeys_internal= を設定してテストしたちゃ
+      んと動いている。
+
+    * [保留]: keyboard macro に記録した時、M-O は isolatedSS3 として記録する必
+      要があるのではないか。macro の場合には自明に直後に文字が続いているので、
+      元々 M-O として解釈された物が後の文字に勝手にくっついて up 等に化けてしま
+      う事態が発生するのではないか。
+
+      うーん。結局 IsolatedSS3 も導入する必要が出てくるかもしれない。というか、
+      面倒なので、 bash >= 5.0 でも関係なく "SS3 ?" にフルに bind する? と思っ
+      たができるだけ clean にしたいのでやはり bash 5.0 以降では普通に
+      wait-input で処理する方法を保持したい。と思ったがマクロを考慮に入れるとや
+      はり色々考える必要がある?
+
+      然し改めて考えてみると timeout を利用した keybinding がある限りは
+      keyboard macro は何れにしても振る舞いが変わってしまうのではないか。そもそ
+      も bash の実装ではどうなっていたのか。もし bash の実装でちゃんと timeout
+      まで再現していないのだとしたら ble.sh で無理に実装する必要もないのでは?
+      と思ったが、別に ble.sh で振る舞いを改良したいという考え方もある。
+
+      ? plain Bash はどう振る舞うのか。うーん。どうやら曖昧なキーがあるとその時
+        点で keyboard macro の再生が中断してしまう様だ。また、keyboard macro の
+        記録に於いて、bind '"": ""' で新しく挿入された二次的な入力も一緒に記録
+        されてしまっていて、二重に挿入が行われる様になってしまう。いろいろな意
+        味で plain Bash のキーボードマクロは振る舞いが微妙である。なので余り参
+        考にはならない。
+
+      もし対応するにしてもこれは M-O vs SS3 に留まる話ではなくあらゆる曖昧なキー
+      に関係してくる。従って個別に対応するのではなくて全体的な枠組みとして処理
+      する必要があるのではないか。今回は保留という事にして、別項目を残しておく
+      事にする。
+
+    * 対策を bash <= 4.4 で一律にしているがこれは本当に bash <= 4.4 全部で起こ
+      る問題なのか? → 実際に試してみたら bash-3.2 では問題は発生しない様だ。つ
+      まり、これは 4.0 <= bash < 5.0 で起こる問題である。
+
+    * コードの再配置を忘れていた。DF を DE に変更する。7FC 7FB を 7BC 7BB に変
+      更する。2044 を 1980 に変更する。
+
   * decode: keylog/charlog で接頭辞部分一致で再解析された文字を記録しない [#D2332]
     Ref #D2333
 
