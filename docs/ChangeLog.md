@@ -78,7 +78,7 @@
 - edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33 cc47acc2
 - edit: support readline bindable function `paste-from-clipboard` in more environments `#D2307` 17646524
 - keymap/vi: support `:marks` `#D2320` 01182d3b
-- cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` xxxxxxxx
+- cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` adf53ed3
 
 ## Changes
 
@@ -167,7 +167,7 @@
 - decode (`bind`): print the filename and line in error messages (motivated by excited-bore) `#D2311` 89c69077
 - util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` 154386de
 - util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` 486314c5
-- main (`connect_tty`): do not reject `connect_tty=inherit` by the initial check of `ble.pp` `#D2335` xxxxxxxx
+- main (`connect_tty`): do not reject `connect_tty=inherit` by the initial check of `ble.pp` `#D2335` d6d69dad
 
 ## Compatibility
 
@@ -327,7 +327,7 @@
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
 - util: optimize `ble/fd#list` using `compgen -G` `#D2328` 6f34012d
-- bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e
+- bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

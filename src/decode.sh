@@ -2903,14 +2903,6 @@ function ble/decode/cmap/.generate-binder-template {
   done
 }
 
-function ble/decode/cmap/.emit-bindx {
-  local q="'" Q="'\''"
-  ble/util/print "builtin bind -x '\"${1//$q/$Q}\":_ble_decode_hook $2; builtin eval -- \"\$_ble_decode_bind_hook\"'"
-}
-function ble/decode/cmap/.emit-bindr {
-  ble/util/print "builtin bind -r \"$1\""
-}
-
 _ble_decode_cmap_initialized=
 function ble/decode/cmap/initialize {
   [[ $_ble_decode_cmap_initialized ]] && return 0
@@ -2934,20 +2926,6 @@ function ble/decode/cmap/initialize {
         print
       }
     ' >| "$dump"
-  fi
-
-  if ((_ble_bash>=40300)); then
-    # 3文字以上 bind/unbind ソースの生成 (init-bind.sh bindAllSeq で使用)
-    local fbinder=$_ble_base_cache/decode.cmap.allseq
-    _ble_decode_bind_fbinder=$fbinder
-    if ! [[ -s $_ble_decode_bind_fbinder.bind && $_ble_decode_bind_fbinder.bind -nt $init &&
-              -s $_ble_decode_bind_fbinder.unbind && $_ble_decode_bind_fbinder.unbind -nt $init ]]; then
-      ble/edit/info/immediate-show text  'ble.sh: initializing multi-character sequence binders... '
-      ble/decode/cmap/.generate-binder-template >| "$fbinder"
-      binder=ble/decode/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
-      binder=ble/decode/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
-      ble/edit/info/immediate-show text  'ble.sh: initializing multi-character sequence binders... done'
-    fi
   fi
 }
 
@@ -3363,8 +3341,8 @@ function ble/decode/bind/option:dump {
     ble/decode/keymap#dump
   fi
 }
-## @fn ble/decode/bind/option:print keymaps...
-##   @param keymaps
+## @fn ble/decode/bind/option:print [keymaps...]
+##   @param[opt] keymaps
 ##     Explicitly specified keymap names.  When a specified keymap has not yet
 ##     initialized, an attempt of calling this function initializes the keymap.
 ##   @var[in] flags

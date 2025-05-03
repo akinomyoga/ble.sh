@@ -2289,7 +2289,7 @@ bash_tips
       の項目でそれぞれ引用する。
 
   * wiki/Reporting-Issues: keylog の使い方について記述する。syntax_debug や、
-    leavar や、debug_xtrace など。
+    leakvar や、debug_xtrace など。
 
     物によっては CONTRIBUTING の方に記述するべきかもしれない。特に自分で何か実
     装しながらチェックするべきもの (make scan など)。print-variables 等もこれに

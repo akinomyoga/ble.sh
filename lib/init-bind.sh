@@ -9,6 +9,20 @@
 #   decode.sh (ble/decode/nonblocking-read) でチェックする必要がある。
 #   現在の実装では 0xC0 と 0xDE をチェックしている。
 #   マクロを追加する時にはそれに応じてチェックを追加する必要がある。
+#
+# 2025-05-04 Old attaching strategies have been removed in commit 514d177e.
+# * In the very initial code, to receive ESC, we have been binding the "-x"
+#   hook to all combinations of "ESC ?".  This strategy had problems with
+#   "bash_execute_unix_command: cannot find keymap for command", so one needed
+#   to convert "ESC [" to another sequence using a readline macro.  To work
+#   around the remaining entries in the internal keymap, we also tried to bind
+#   all the key combinations that existed before attaching.  In some Bash
+#   versions, we also needed to add a workaround for "ESC ESC".
+# * Those problems turned out to be able to be evaded by converting ESC using a
+#   readline macro.  The first attempt was based on « bind '"\e": "\xC0\x9B"' »
+#   to convert ESC to two bytes using the readline macro.
+# * We now use a similar method with all the combinations of "ESC ?" to
+#   distinguish isolated ESC and prefix ESC.
 
 function ble/init:bind/append {
   local xarg="\"$1\":_ble_decode_hook $2; builtin eval -- \"\$_ble_decode_bind_hook\""
