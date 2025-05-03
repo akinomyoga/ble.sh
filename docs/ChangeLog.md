@@ -107,6 +107,7 @@
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
 - decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` 66e450d7
 - edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` xxxxxxxx
+- decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` xxxxxxxx
 
 ## Fixes
 

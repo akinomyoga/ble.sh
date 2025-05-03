@@ -1164,8 +1164,10 @@ _ble_decode_cmap_=()
 # _ble_decode_char__seq が設定されている時は、
 # 必ず _ble_decode_char2_reach_key も設定されている様にする。
 _ble_decode_char2_seq=
+_ble_decode_char2_keylog=()
 _ble_decode_char2_reach_key=
 _ble_decode_char2_reach_seq=
+_ble_decode_char2_reach_keylog=()
 _ble_decode_char2_modifier=
 _ble_decode_char2_modkcode=
 _ble_decode_char2_modseq=()
@@ -1180,10 +1182,10 @@ function ble-decode-char {
   local iloop=0
   local ble_decode_char_total=$#
   local ble_decode_char_rest=$#
-  local ble_decode_char_char=
+  local ble_decode_char_rchar=
   # Note: ループ中で set -- ... を使っている。
 
-  local chars ichar char ent
+  local chars ichar rchar char ent
   chars=("$@") ichar=0
   while
     if ((iloop++%50==0)); then
@@ -1203,19 +1205,10 @@ function ble-decode-char {
     fi
     ((ble_decode_char_rest))
   do
-    char=${chars[ichar]}
-    ble_decode_char_char=$char # 補正前 char (_ble_decode_Macr 判定の為)
+    rchar=${chars[ichar]} # raw char
+    ble_decode_char_rchar=$rchar # used by ble/widget/.MACRO to test _ble_decode_Macr
+    ((char=rchar&~_ble_decode_Macr))
     ((ble_decode_char_rest--,ichar++))
-#%if debug_keylogger
-    ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_chars "$char"
-#%end
-    if [[ $_ble_decode_keylog_chars_enabled ]]; then
-      if ! ((char&_ble_decode_Macr)); then
-        ble/array#push _ble_decode_keylog_chars "$char"
-        ((_ble_decode_keylog_chars_count++))
-      fi
-    fi
-    ((char&=~_ble_decode_Macr))
 
     # decode error character
     if ((char&_ble_decode_Erro)); then
@@ -1225,7 +1218,10 @@ function ble-decode-char {
         ble/term/visible-bell "received a misencoded char $name"
       fi
       [[ $bleopt_decode_error_char_abell ]] && ble/term/audible-bell
-      [[ $bleopt_decode_error_char_discard ]] && continue
+      if [[ $bleopt_decode_error_char_discard ]]; then
+        ble/decode/process-char/.keylog "$rchar"
+        continue
+      fi
       # ((char&_ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?
     fi
 
@@ -1234,22 +1230,25 @@ function ble-decode-char {
       ((char==_ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
       local hook=$_ble_decode_char__hook
       _ble_decode_char__hook=
+      ble/decode/process-char/.keylog "$rchar"
       ble-decode/widget/.call-async-read "$hook $char" "$char"
       continue
     fi
 
-    ble-decode-char/.getent # -> ent
+    ble/decode/process-char/.getent # -> ent
     if [[ ! $ent ]]; then
       # シーケンスが登録されていない時
       if [[ $_ble_decode_char2_reach_key ]]; then
         local key=$_ble_decode_char2_reach_key
-        local seq=$_ble_decode_char2_reach_seq
-        local rest=${_ble_decode_char2_seq:${#seq}}
-        ble/string#split-words rest "${rest//_/ } $ble_decode_char_char"
+        local seq=$_ble_decode_char2_reach_seq rest
+        rest=("${_ble_decode_char2_keylog[@]:${#_ble_decode_char2_reach_keylog[@]}}" "$rchar")
+        ble/decode/process-char/.keylog "${_ble_decode_char2_reach_keylog[@]}"
 
         _ble_decode_char2_seq=
+        _ble_decode_char2_keylog=()
         _ble_decode_char2_reach_key=
         _ble_decode_char2_reach_seq=
+        _ble_decode_char2_reach_keylog=()
         ble-decode-char/csi/clear
 
         ble/decode/send-unmodified-key "$key" "$seq"
@@ -1257,6 +1256,7 @@ function ble-decode-char {
         ((ble_decode_char_rest+=${#rest[@]}))
         chars=("${rest[@]}" "${chars[@]:ichar}") ichar=0
       else
+        ble/decode/process-char/.keylog "$rchar"
         local ret
         ble/decode/process-char/.convert-c0 "$char"
         ble/decode/send-unmodified-key "$ret" "_$char"
@@ -1264,22 +1264,28 @@ function ble-decode-char {
     elif [[ $ent == *_ ]]; then
       # /\d*_/ (_ は続き (1つ以上の有効なシーケンス) がある事を示す)
       _ble_decode_char2_seq=${_ble_decode_char2_seq}_$char
+      ble/array#push _ble_decode_char2_keylog "$rchar"
       if [[ ${ent%_} ]]; then
         _ble_decode_char2_reach_key=${ent%_}
         _ble_decode_char2_reach_seq=$_ble_decode_char2_seq
+        _ble_decode_char2_reach_keylog=("${_ble_decode_char2_keylog[@]}")
       elif [[ ! $_ble_decode_char2_reach_key ]]; then
         # 1文字目
         local ret
         ble/decode/process-char/.convert-c0 "$char"
         _ble_decode_char2_reach_key=$ret
         _ble_decode_char2_reach_seq=$_ble_decode_char2_seq
+        _ble_decode_char2_reach_keylog=("${_ble_decode_char2_keylog[@]}")
       fi
     else
       # /\d+/  (続きのシーケンスはなく ent で確定である事を示す)
       local seq=${_ble_decode_char2_seq}_$char
+      ble/decode/process-char/.keylog "${_ble_decode_char2_keylog[@]}" "$rchar"
       _ble_decode_char2_seq=
+      _ble_decode_char2_keylog=()
       _ble_decode_char2_reach_key=
       _ble_decode_char2_reach_seq=
+      _ble_decode_char2_reach_keylog=()
       ble-decode-char/csi/clear
       ble/decode/send-unmodified-key "$ent" "$seq"
     fi
@@ -1310,11 +1316,25 @@ function ble/decode/char-hook/next-char {
   return 0
 }
 
-## @fn ble-decode-char/.getent
+function ble/decode/process-char/.keylog {
+  for char; do
+#%if debug_keylogger
+    ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_chars "$char"
+#%end
+    if [[ $_ble_decode_keylog_chars_enabled ]]; then
+      if ! ((char&_ble_decode_Macr)); then
+        ble/array#push _ble_decode_keylog_chars "$char"
+        ((_ble_decode_keylog_chars_count++))
+      fi
+    fi
+  done
+}
+
+## @fn ble/decode/process-char/.getent
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
 ##   @var[out] ent
-function ble-decode-char/.getent {
+function ble/decode/process-char/.getent {
   builtin eval "ent=\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}"
   if [[ $ent == ?*_ || $ent == _ && $_ble_decode_char2_seq == _27 ]]; then
     ble/decode/wait-input 5 char || ent=${ent%_}
@@ -2772,7 +2792,7 @@ function ble/decode/keylog#decode-chars {
 _ble_decode_macro_count=0
 function ble/widget/.MACRO {
   # マクロ無限再帰検出
-  if ((ble_decode_char_char&_ble_decode_Macr)); then
+  if ((ble_decode_char_rchar&_ble_decode_Macr)); then
     if ((_ble_decode_macro_count++>=bleopt_decode_macro_limit)); then
       ((_ble_decode_macro_count==bleopt_decode_macro_limit+1)) &&
         ble/term/visible-bell "Macro invocation is canceled by decode_macro_limit"
