@@ -8,7 +8,6 @@
 # Note: #D1300 bind -s で束縛するマクロの非終端文字は
 #   decode.sh (ble/decode/nonblocking-read) でチェックする必要がある。
 #   現在の実装では 0xC0 と 0xDE をチェックしている。
-#   (( esc1B != 3 && esc1B1B )) の時には 0x1B も追加でチェックする必要がある。
 #   マクロを追加する時にはそれに応じてチェックを追加する必要がある。
 
 function ble/init:bind/append {
@@ -100,69 +99,26 @@ function ble/init:bind/generate-binder {
     bind18XX=1
   fi
 
-  # ESC について
+  # ESC 受信方法
   #
-  # * esc1B=1: bash-3 では "ESC *" の組合せも全部登録しておかないと駄目??
-  #   (もしかすると bind -r 等に失敗していただけかも知れないが)
-  #
-  #   追記: bash-4.0 bash-4.3 でも必要
-  #   追記: bash-4.1 でも bind -x '"\ez":fg' 等を一回もしていない場合は必要
-  #   追記: この方法でも ESC を 2 つ以上連続で入力する時に
-  #     bash_execute_unix_command のエラーが発生する。
-  #
-  # * esc1B=2: 2017-10-22 実は bind '"\e": "\xC0\x9B"' とすれば全バージョンで OK の様だ。
-  #
-  #   しかし、これだと単体の ESC と続きのある ESC の区別ができない。
-  #   続きがあるとき Readline が標準入力からひとまとまりで読み取ってから hook を呼び出す。
-  #   従って、標準入力に文字が残っているかどうか見ても判定できないし、
-  #   標準入力から次の文字をタイムアウト付きで読み取るとシーケンスの順序が狂う。
-  #
-  # * esc1B=3: 2017-10-22 代替案として
+  # * 2017-10-22 新しい方法として
   #
   #     bind '"\e":"\e[27;5;91~"'
   #     bind '"\e?":"\xC0\x9B?"'
   #     bind '"\e\e":"\xC0\x9B\e[27;5;91~"'
   #
-  #   などの様に bind -s で1文字のものと2文字のものを両方登録して、
-  #   Readline に ESC に続きがあるかどうかを判定させて単独 ESC を区別するという手がある。
-  #
-  local esc1B=3
+  #   などの様に bind -s で1文字のものと2文字のものを両方登録して、Readline に
+  #   ESC に続きがあるかどうかを判定させて単独 ESC を区別するという手がある。
 
-  # bind1B4FXX (esc1B == 3 の時) 2025-05-03
+  # bind1B4FXX 2025-05-03
   #
   # * bind1B4FXX=1: bash 4.4 以下では SS3 の矢印キー (ESC O A) を受信した時、常
   #   に is-stdin-ready が常に失敗する (bash が内部的に先読みして何か処理してい
   #   る?)  ので wait-input で M-O と区別しようとしてもできない。isolated ESC
   #   と同様に ESC O と ESC ? の両方に登録して区別する。
   #
-  #   "ESC O" に束縛を設定していることが前提。これは esc1B == 1 または esc1B ==
-  #   3 に対応する。
-  local bind1B4FXX=$(((esc1B==1||esc1B==3)&&40000<=_ble_bash&&_ble_bash<50000))
-
-  # esc1B5B (esc1B == 1 の時に有効)
-  #
-  # * bash-3.1
-  #   ESC [ を bind -x で捕まえようとしてもエラーになるので、
-  #   一旦 "ESC [" の ESC を UTF-8 2-byte code にしてから受信し直す。
-  #   bash-3.1 で確認。bash-4.1 ではOK。他は未確認。
-  # * bash-4.3, bash-4.1
-  #   ESC *, ESC [ *, etc を全部割り当てないと以下のエラーになる。
-  #   bash_execute_unix_command: cannot find keymap for command
-  #   これを避ける為に二つの方針がある
-  #   1 全てを登録する方針 (bindAllSeq)
-  #   2 ESC [ を別のシーケンスに割り当てる (esc1B5B)
-  #   初め 1 の方法を用いていたが 2 でも動く事が分かったので 2 を使う。
-  #
-  local esc1B5B=1 bindAllSeq=0
-
-  # esc1B1B (esc1B != 3 の時に有効)
-  #
-  # * bash-4.1 では ESC ESC に bind すると
-  #   bash_execute_unix_command: cannot find keymap for command
-  #   が出るので ESC [ ^ に適当に redirect して ESC [ ^ を
-  #   ESC ESC として解釈する様にする。
-  #
-  local esc1B1B=$((40100<=_ble_bash&&_ble_bash<40300))
+  #   "ESC O" に束縛を設定していることが前提。
+  local bind1B4FXX=$((40000<=_ble_bash&&_ble_bash<50000))
 
   # Note: 'set convert-meta on' 対策
   #
@@ -191,13 +147,7 @@ function ble/init:bind/generate-binder {
       fi
     elif ((i==27)); then
       # C-[
-      if ((esc1B==0)); then
-        ble/init:bind/append "$ret" "$i"
-      elif ((esc1B==2)); then
-        ble/init:bind/append-macro '\e' "$altdqs27"
-      elif ((esc1B==3)); then
-        ble/init:bind/append-macro '\e' "$isolated27" # C-[
-      fi
+      ble/init:bind/append-macro '\e' "$isolated27" # C-[
     else
       # Note: Bash-5.0 では \C-\\ で bind すると変な事になる #D1162 #D1078
       ((i==28&&_ble_bash>=50000)) && ret='\x1C'
@@ -222,38 +172,12 @@ function ble/init:bind/generate-binder {
     fi
 
     # ESC ?
-    if ((esc1B==3)); then
-      if ((i==0)); then
-        ble/init:bind/append-macro '\e'"$ret" "$altdqs27$altdqs00"
-      elif ((bind18XX&&i==24)); then
-        ble/init:bind/append-macro '\e'"$ret" "$altdqs27$altdqs24"
-      else
-        ble/init:bind/append-macro '\e'"$ret" "$altdqs27$ret"
-      fi
+    if ((i==0)); then
+      ble/init:bind/append-macro '\e'"$ret" "$altdqs27$altdqs00"
+    elif ((bind18XX&&i==24)); then
+      ble/init:bind/append-macro '\e'"$ret" "$altdqs27$altdqs24"
     else
-      if ((esc1B==1)); then
-        # ESC [
-        if ((i==91&&esc1B5B)); then
-          # * obsoleted workaround
-          #   ESC [ を CSI (encoded in utf-8) に変換して受信する。
-          #   受信した後で CSI を ESC [ に戻す。
-          #   CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
-          # printf 'bind %q' '"\e[":"\302\233"'               >> "$fbind1"
-          # ble/util/print "ble-bind -f 'CSI' '.CHARS 27 91'" >> "$fbind1"
-
-          ble/init:bind/append-macro '\e[' "$altdqs27["
-        else
-          ble/init:bind/append "\\e$ret" "27 $i"
-        fi
-      fi
-
-      # ESC ESC
-      if ((i==27&&esc1B1B)); then
-        # ESC ESC for bash-4.1
-        ble/init:bind/append-macro '\e\e' '\e[^'
-        ble/util/print "ble-bind -k 'ESC [ ^' __esc__"      >> "$fbind1"
-        ble/util/print "ble-bind -f __esc__ '.CHARS 27 27'" >> "$fbind1"
-      fi
+      ble/init:bind/append-macro '\e'"$ret" "$altdqs27$ret"
     fi
 
     # ESC O ?
@@ -267,15 +191,6 @@ function ble/init:bind/generate-binder {
       fi
     fi
   done
-
-  if ((bindAllSeq)); then
-    # 決まったパターンのキーシーケンスは全て登録
-    #   bash-4.3 で keymap が見付かりませんのエラーが出るので。
-    # ※3文字以上の bind -x ができるのは bash-4.3 以降
-    #   (bash-4.3-alpha で bugfix が入っている)
-    ble/util/print 'source "$_ble_decode_bind_fbinder.bind"' >> "$fbind1"
-    ble/util/print 'source "$_ble_decode_bind_fbinder.unbind"' >> "$fbind2"
-  fi
 
   ble/function#try ble/encoding:"$bleopt_input_encoding"/generate-binder
 

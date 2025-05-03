@@ -2827,12 +2827,6 @@ function ble/widget/.MACRO {
   ble-decode-char "${chars[@]}"
 }
 
-## @fn ble/widget/.CHARS char...
-##   lib/init-bind.sh で特別なバイト列を受信するのに使う関数
-function ble/widget/.CHARS {
-  ble-decode-char "$@"
-}
-
 #------------------------------------------------------------------------------
 # key definitions (c.f. init-cmap.sh)                              @decode.cmap
 

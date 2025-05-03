@@ -1926,6 +1926,142 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2025-05-01
+
+  * decode: keyboard-macro 再生時に char -> key の timeout をどう処理するか
+    Ref #D2333
+
+    "C-x ( C-x ) C-x e" によるキーボードマクロの記録再生で ble/decode/charlog
+    という仕組みが実装されている。文字の列を記録して、それを再生する事で改めて
+    同じ操作をするのに使う。
+
+    ここで、文字の列から key の列への変換が一意でない場合がある。これらは普通の
+    入力時には timeout で区別している。具体的には或るキーの表現が別のキーの表現
+    の接頭辞になっている時に ble/decode/wait-input を用いて timeout したらその
+    キーを採択するという事になっている。しかし、charlog では当然時間間隔は記録
+    していないし、入力時の遅延まで再現したくはない。現在の愚直な実装だと、キー
+    ボードマクロとしての再生だと既に次の文字が来ている事になるので timeout はせ
+    ずにより長いキー表現の一致を必ず試みる事になる。結果として実際に生成される
+    キーの列が変わってしまうという問題が起こる。
+
+    * この区別は @ESC (IsolatedESC) と ESC の場合には (bash の version に関係な
+      く) 記録される char の値レベルで区別されている。
+
+    * 然し、一般のキーについて wait-input を使って区別をしている場合には、マク
+      ロ再生時にその区別を再現できない。或いは別の方法として key を直接 CSI u
+      形式でエンコードするという手もあるかもしれないが、現在の実装ではキーボー
+      ドマクロは実際に入力された文字列を使っている。そうしないとユーザーに対し
+      て現在記録しているマクロの内容を提示する時に不都合だからである。
+
+    * 特に "M-O" (ESC O) と "up" (ESC O A, bash <= 4.4) の区別は問題である。通
+      常の入力時には "ESC O A" の方については O を @PrO に変換して読み取ってい
+      るので、ちゃんと区別して記録される。一方で、M-O についてはそのまま ESC O
+      で受信しているので、本当に M-O として受け取ったのか bash <= 4.4 の
+      workaround を使わずに受け取ったのかの区別がつかない。というか bash >= 5.0
+      では結局 @PrO は使わずに完全に timeout だけで判定している。
+
+      もしこれだけ部分的に対応するのだとしたら IsolatedESC ならぬ IsolatedSS3
+      もしくは @IsO を定義することになる。もし全般に wait-input の枠組みを設計
+      し直すか、それに関する情報を charlog に埋め込む事にするのであれば、特別に
+      SS3 (M-O) の対策をする必要もない。
+
+2025-05-01
+
+  * update でキーボードが入力できなくなる報告がまたあった。
+    https://github.com/akinomyoga/ble.sh/issues/576
+    https://github.com/akinomyoga/ble.sh/issues/484
+
+    やっぱり何か対処する必要があるだろうか。
+
+    * 何も入力できなくなったら取り敢えず --clear-cache を試みてもらうというのは
+      README に書いても良い。
+
+    それとは別にキャッシュ不整合を検出して強制アップデートするのを実装する? そ
+    の為には
+
+    うーん。lib/init-cmap.sh を見てみたが最近の変更はない? なのに何故最近になっ
+    て動かなくなったという報告がたくさん出ているのか? 何れかの変更が問題を起こ
+    したという事? 或いは NixOS での利用が増えて問題が起こりやすくなったという事?
+
+2025-04-26
+
+  * connect_tty に inherit が設定されていても ble.pp の最初でそれをチェックして
+    いないから、結局 >/dev/tty も 1 も 2 も見つからなかった場合には、親 ble.sh
+    が記録した tty が未だ生きていても ble.sh のロードがキャンセルされてしまうの
+    では。
+
+    これは最近何処かのタイミングで諦める事にしたのだったか?
+
+2025-04-10
+
+  * complete: auto-complete を個別に off にする方法の記述
+    https://github.com/akinomyoga/ble.sh/issues/572
+
+    やはり set -x 等で出力する仕組みを作る
+
+    * cobra に関しては問答無用でコマンドを conditional-sync 経由の呼び出しに置
+      き換えても良いのではないか? と思ったがそんなに時間がかかると分かっていな
+      い物にまでそのような処理をするのも憚られる。やはり問題のある補完をリスト
+      にして適用する方が良いだろうか…
+
+      kubectl はリストに追加しておく。
+
+    * wiki: auto-complete で各補完を無効にする方法について。 _comp_load を先に
+      使える様にするということを明記するべき。また古い bash-completion の為に
+      _completion_loader だか __load_completion を使った方法についても記述する。
+
+      或いはそれ専用の設定関数を用意すれば良い。と思ったが bash-completion の読
+      み込みまでは制御できない気がする。また後で考える事にする。
+
+2025-04-03
+
+  * edit: zle の様々の関数
+    https://github.com/atuinsh/atuin/pull/1469
+
+    zle の次の様な widget は便利なのではないか。
+
+    - infer-next-history
+    - asccept-and-infer-next-history
+    - 加えて直前の同じ内容の履歴項目に移動する機能があっても良いのでは
+
+    zle には他にも様々な便利そうな widget が実装されている。それらを実装するの
+    も良いのではないか。
+
+  * complete: auto-menu もしくは menu-filter で絞り込み表示がされていて、tab を
+    押した時に共通部分がなくて何も起こらないとき、代わりに menu に入っても良い
+    のではないか?
+
+  * global: #D2192 で ":" の使用を抑制した筈なのに while :; do がたくさんある
+
+    他にも eval ": ${...}" というものが残っている。うーん。
+
+    ./src/edit.sh:11579:function ble-edit/bind/stdout.on { :;}
+    ./src/edit.sh:11581:function ble-edit/bind/stdout.finalize { :;}
+
+    以下も気になる。
+
+    ./lib/core-complete.sh:6761:function ble/complete/candidates/filter:none/test { true; }
+    ./lib/core-syntax-def.sh:50:function ble/highlight/layer:syntax/update { true; }
+    ./lib/core-syntax-def.sh:53:function ble/highlight/layer:syntax/getg { true; }
+    ./lib/core-syntax-def.sh:58:function ble/syntax:bash/is-complete { true; }
+    ./lib/test-bash.sh:140:  function f1/sub { true; }
+    ./lib/test-main.sh:45:  function ble/test/dummy-1 { true; }
+    ./lib/test-main.sh:46:  function ble/test/dummy-2 { true; }
+    ./lib/test-main.sh:47:  function ble/test/dummy-3 { true; }
+
+    ./ble.pp:1267:      if ! type "$cmd" &>/dev/null; then
+    ./ble.pp:1413:    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+
+    * 以下の D22XX がそのままになっている
+
+      ./src/edit.sh:6766:  # Note (#D22XX): In bash < 4.0, "_ble_builtin_trap_processing" may be set by
+
+    * iTerm2-Color-Schemes, Gogh の更新も bump 時の todo に入れるべきか?
+
+    * function ble/complete/source:argument の中の *f* をチェックしているのは実
+      際にここに来ることはあるのだろうか。この部分は c1b053253 で追加された。一
+      方で、最近 6a426954
+
 2025-02-20
 
   * complete: _comp_load / __load_completion に hook する? (reported by quantumfrost)
@@ -7757,6 +7893,12 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2025-05-03
+
+  * decode: 古い init-bind.sh の方針は削除して良い気がする [#D2334]
+
+    最近安定しているので今後改めて使うことはないのではないか。
 
 2025-05-02
 
