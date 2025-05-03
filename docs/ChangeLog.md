@@ -107,7 +107,7 @@
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
 - decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` 66e450d7
 - edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` 2ff03257
-- decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0
+- decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0 0379e034
 
 ## Fixes
 
@@ -166,6 +166,7 @@
 - decode (`bind`): print the filename and line in error messages (motivated by excited-bore) `#D2311` 89c69077
 - util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` 154386de
 - util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` 486314c5
+- main (`connect_tty`): do not reject `connect_tty=inherit` by the initial check of `ble.pp` `#D2335` xxxxxxxx
 
 ## Compatibility
 
@@ -221,7 +222,7 @@
 - edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
 - progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` 2a0c6ba6
 - global: check `LC_COLLATE=C` for range expressions `#D2326` f507a1bc
-- util: update the iTerm2 detection `#D2331` dde63fa3 xxxxxxxx
+- util: update the iTerm2 detection `#D2331` dde63fa3
 - decode: fix unrecoginized <kbd>ESC O A</kbd> in `4.0 <= bash < 5.0` `#D2333` 6f4d0401
 
 ## Contrib

@@ -236,7 +236,10 @@ if [[ ! $_ble_init_command ]]; then
     esac &&
       builtin echo "ble.sh: This is not an interactive session." >&3 || ((1))
     _ble_init_exit=1
-  elif ! [[ -t 4 && -t 5 ]] && ! { [[ ${bleopt_connect_tty-} ]] && >/dev/tty; }; then
+  elif ! [[ -t 4 && -t 5 ]] &&
+      ! [[ :${bleopt_connect_tty-}: == *:inherit:* && -t ${_ble_util_fd_tty_stdin:-} && -t ${_ble_util_fd_tty_stdout:-} ]] 2>/dev/null &&
+      ! { [[ ${bleopt_connect_tty-} ]] && >/dev/tty; }
+  then
     if [[ ${bleopt_connect_tty-} ]]; then
       builtin echo "ble.sh: cannot find a controlling TTY/PTY in this session." >&3
     else

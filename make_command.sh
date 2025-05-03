@@ -255,7 +255,7 @@ function sub:scan/a.txt {
     s/^[^:]*:[0-9]+:[[:blank:]]*//
       \Z^[[:blank:]]*#Zd
       \ZDEBUG_LEAKVARZd
-      \Z\[\[ -t 4 && -t 5 ]]Zd
+      \Z! \{ \[\[ \$\{bleopt_connect_tty-\} \]\] && >/dev/tty; \}Zd
       \Z^if ble/fd#alloc .*Zd
       \Zbuiltin read -et 0.000001 dummy </dev/ttyZd
       g'
