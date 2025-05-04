@@ -78,6 +78,7 @@
 - edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33 cc47acc2
 - edit: support readline bindable function `paste-from-clipboard` in more environments `#D2307` 17646524
 - keymap/vi: support `:marks` `#D2320` 01182d3b
+- cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` xxxxxxxx
 
 ## Changes
 

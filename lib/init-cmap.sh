@@ -56,6 +56,7 @@
 # 2024-02-07 @ESC, @NUL コード変更に伴う更新
 # 2024-06-05 "ble-decode/.hook => _ble_decode_hook" に伴う更新
 # 2025-05-03 Add @PrO for "up" (ESC O A) vs "M-O" (ESC O) in Bash <= 4.4
+# 2025-05-04 Add a new key "dsr0" for "ESC [ 0 n"
 
 function ble/init:cmap/bind-single-csi {
   ble-bind -k "ESC [ $1" "$2"
@@ -342,6 +343,11 @@ function ble/init:cmap/initialize {
   for keyname in "${_ble_decode_csimap_kitty_u[@]}"; do
     ble-decode-kbd/generate-keycode "$keyname"
   done
+
+  # DSR(0): DSR response for DSR(5) (operating status).
+  # Note: This is similar to kpdec described above, but the format of the
+  # payload is different from the function-key sequences.
+  ble/init:cmap/bind-single-csi '0 n' dsr0
 
   ble/edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
 }
