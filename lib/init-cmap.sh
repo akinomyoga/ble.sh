@@ -187,7 +187,7 @@ function ble/init:cmap/initialize-kbd {
 
   # Note: 以下は改めてそれぞれのファイルで参照される
   #   コードを固定する為にここで定義しておく。
-  ble/decode/kbd/.generate-keycode auto_complete_enter
+  ble/decode/kbd/.generate-keycode ac_enter
 
   builtin unset -f "$FUNCNAME"
 }

@@ -8910,7 +8910,7 @@ function ble/widget/menu/append-arg/.is-argument {
 
 function ble/complete/auto-complete/initialize {
   local ret
-  ble/decode/kbd/generate-keycode auto_complete_enter
+  ble/decode/kbd/generate-keycode ac_enter
   _ble_complete_KCODE_ENTER=$ret
 }
 ble/complete/auto-complete/initialize
@@ -9213,9 +9213,8 @@ ble/function#try ble/util/idle.push-background ble/complete/auto-menu.idle
 ##
 ##   Note:
 ##     キーボードマクロで自動補完を明示的に起動する時に用いる編集関数です。
-##     auto-complete.idle に於いて ble-decode-key を用いて
-##     キー auto_complete_enter を発生させ、
-##     再生時にはこのキーを通して自動補完が起動されます。
+##     auto-complete.idle に於いて ble-decode-key を用いてキー ac_enter を発生
+##     させ、再生時にはこのキーを通して自動補完が起動されます。
 ##
 function ble/widget/auto-complete-enter {
   ble/complete/auto-complete.impl sync
@@ -9449,21 +9448,21 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f __defchar__ auto_complete/self-insert
   ble-bind -f __default__ auto_complete/cancel-default
   ble-bind -f __line_limit__ nop
-  ble-bind -f 'C-g'       auto_complete/cancel
-  ble-bind -f 'C-x C-g'   auto_complete/cancel
-  ble-bind -f 'C-M-g'     auto_complete/cancel
-  ble-bind -f S-RET       auto_complete/insert
-  ble-bind -f S-C-m       auto_complete/insert
-  ble-bind -f C-f         'auto_complete/@end insert'
-  ble-bind -f right       'auto_complete/@end insert'
-  ble-bind -f C-e         'auto_complete/@end insert'
-  ble-bind -f end         'auto_complete/@end insert'
-  ble-bind -f M-f         'auto_complete/@end insert-cword'
-  ble-bind -f C-right     'auto_complete/@end insert-cword'
-  ble-bind -f M-right     'auto_complete/@end insert-word'
-  ble-bind -f C-j         auto_complete/accept-line
-  ble-bind -f C-RET       auto_complete/accept-line
-  ble-bind -f auto_complete_enter auto_complete/notify-enter
+  ble-bind -f 'C-g'     auto_complete/cancel
+  ble-bind -f 'C-x C-g' auto_complete/cancel
+  ble-bind -f 'C-M-g'   auto_complete/cancel
+  ble-bind -f S-RET     auto_complete/insert
+  ble-bind -f S-C-m     auto_complete/insert
+  ble-bind -f C-f       'auto_complete/@end insert'
+  ble-bind -f right     'auto_complete/@end insert'
+  ble-bind -f C-e       'auto_complete/@end insert'
+  ble-bind -f end       'auto_complete/@end insert'
+  ble-bind -f M-f       'auto_complete/@end insert-cword'
+  ble-bind -f C-right   'auto_complete/@end insert-cword'
+  ble-bind -f M-right   'auto_complete/@end insert-word'
+  ble-bind -f C-j       auto_complete/accept-line
+  ble-bind -f C-RET     auto_complete/accept-line
+  ble-bind -f ac_enter  auto_complete/notify-enter
 }
 
 #------------------------------------------------------------------------------

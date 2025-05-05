@@ -347,12 +347,12 @@ function ble/keymap:vi/complete/insert.hook {
 blehook complete_insert!=ble/keymap:vi/complete/insert.hook
 
 function ble-decode/keymap:vi_imap/bind-complete {
-  ble-bind -f 'C-i'                 'vi_imap/complete'
-  ble-bind -f 'TAB'                 'vi_imap/complete'
-  ble-bind -f 'C-TAB'               'vi_imap/menu-complete'
-  ble-bind -f 'S-C-i'               'vi_imap/menu-complete backward'
-  ble-bind -f 'S-TAB'               'vi_imap/menu-complete backward'
-  ble-bind -f 'auto_complete_enter' 'auto-complete-enter'
+  ble-bind -f 'C-i'      'vi_imap/complete'
+  ble-bind -f 'TAB'      'vi_imap/complete'
+  ble-bind -f 'C-TAB'    'vi_imap/menu-complete'
+  ble-bind -f 'S-C-i'    'vi_imap/menu-complete backward'
+  ble-bind -f 'S-TAB'    'vi_imap/menu-complete backward'
+  ble-bind -f 'ac_enter' 'auto-complete-enter'
 
   ble-bind -f 'C-x /' 'vi_imap/menu-complete context=filename'
   ble-bind -f 'C-x ~' 'vi_imap/menu-complete context=username'
@@ -6395,14 +6395,14 @@ function ble-decode/keymap:vi_nmap/define {
   #----------------------------------------------------------------------------
   # bash
 
-  ble-bind -f 'C-j'     'accept-line'
-  ble-bind -f 'C-RET'   'accept-line'
-  ble-bind -f 'C-m'     'accept-single-line-or vi-command/forward-first-non-space'
-  ble-bind -f 'RET'     'accept-single-line-or vi-command/forward-first-non-space'
-  #ble-bind -f 'C-x C-e' 'vi-command/edit-and-execute-command'
-  ble-bind -f 'C-l'     'clear-screen'
-  ble-bind -f 'C-d'     'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
-  ble-bind -f 'auto_complete_enter' auto-complete-enter
+  ble-bind -f 'C-j'      'accept-line'
+  ble-bind -f 'C-RET'    'accept-line'
+  ble-bind -f 'C-m'      'accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'RET'      'accept-single-line-or vi-command/forward-first-non-space'
+  #ble-bind -f 'C-x C-e'  'vi-command/edit-and-execute-command'
+  ble-bind -f 'C-l'      'clear-screen'
+  ble-bind -f 'C-d'      'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
+  ble-bind -f 'ac_enter' 'auto-complete-enter'
 
   # Note #D1256: Bash vi-command 互換性の為
   ble-bind -f M-left   'vi-command/backward-vword'
