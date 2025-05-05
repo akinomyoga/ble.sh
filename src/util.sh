@@ -7053,7 +7053,7 @@ function ble/term/DA2/request {
     # st は TERM で判定できるので DA2 はスキップできる。
     _ble_term_TERM=st:- ;;
   (*)
-    ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
+    ble/util/buffer $'\e[>c' # DA2 要求 (ble/decode/csi/.decode で受信)
   esac
 }
 

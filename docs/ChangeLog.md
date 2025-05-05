@@ -330,6 +330,7 @@
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
 - util: optimize `ble/fd#list` using `compgen -G` `#D2328` 6f34012d
 - bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e xxxxxxxx
+- decode: move key definitions into `lib/init-cmap.sh` `#D2341` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

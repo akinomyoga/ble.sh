@@ -7915,8 +7915,99 @@ bash_tips
 
 2025-05-05
 
+  * decode: キーの定義を decode.sh の中ではなく lib/init-cmap.sh の中で行う [#D2341]
+
+    キーの定義を decode.sh の中ではなく独立した registry ファイルの中で行った方
+    が明確で管理しやすいのではないかという可能性について。
+
+      a init-cmap.sh も本当はキーが追加された時に更新しなければならなくて、それ
+        を手動で init-cmap.sh に日付付コメントを追加することで行っているが、独
+        立したファイルにするならばそれも自動的に解決できるのではないだろうか。
+        と思ったが、今考えているのは最終的に ble.sh の内部に include する形なの
+        で、timestamp を得ることができず、結局 init-cmap.sh の自動更新には使え
+        ない。
+
+      b 或いはもう一つの可能性として init-cmap.sh の中にキーの定義も移動してし
+        まうという物。そしてキー登録で生成されるデータもキャッシュの一部とする。
+
+      c 更に別の可能性は init-cmap.sh に移動するが、そもそも init-cmap.sh の内
+        容をメインの ble.sh の中に含めてしまうという物。実のところファイルサイ
+        ズ的には微々たる物の気がする。9 KB である。一方で ble.sh 本体は 1053 KB
+        である。1% 程の大きさである…意外と大きかった。
+
+      キーの定義にかかっている時間を計測すると 4ms かかっている。意外と大きな時
+      間だ。やっぱり単に parse するのと処理を実行するのでは時間に差があるのだ。
+
+      ロードの仕方によって adict/gdict の二種類がある…と思ったが、これはファイ
+      ル名で分ければ良い。すでにその様なキャッシュファイルが存在している。とい
+      うより cmap cache が既にその様になっているので、単に cmap cache を拡張す
+      れば良いだけでは?
+
+      →確認してみると実は既に cmap cache の中に kbd のデータも含まれている様だ。
+
+      _ble_decode_KCODE_@ も cmap cache に含める様にしたら
+      ble-decode-kbd/.initialize を実行しなくても普通に動く様になった。うーん。
+      だとするとやはり ble-decode-kbd/.initialize の内容は init-cmap.sh に移動
+      してしまって良い気がする。
+
+    cmap/initialize は decode/initialize から呼び出されている。つまり、もし kbd
+    の定義を其処まで遅延すると kbd の定義も其処まで遅延される事になる。
+
+    ? ok: 現状で cmap/initialize を decode/initialize まで遅延しているのは問題
+      ないだろうか。例えば、ble-bind -k は decode/initialize が呼び出されるより
+      も前に実行されるのではないか。そうするとキャッシュされる内容はユーザーが
+      修正した後の物になるのではないか? と思ったが改めて確認してみると ble-bind
+      の先頭で ble/decode/initialize を実行しているから問題ないのだった。
+
+      つまり、もし kbd についても ble/decode/initialize まで遅延させるのであれ
+      ば、ble-decode-kbd や関連する関数からも ble/decode/initialize を呼び出す
+      事になるのではないか。
+
+    * reject: というかそもそも cmap/initialize を decode/initialize の中で実行
+      する理由は何か。即座に実行してしまっても良いのではないか。
+
+      と思ったが --lib で実行する時にも初期化をする必要があるのかという問題があ
+      る。と思ったが本来は decode.sh は実際に使う時にしかロードしないという想定
+      ならば、ロードした時点で必要な初期化を実行してしまって良い気がする。単に
+      現在の ble.sh --lib 的には使わない module まで全部含まれてしまっていると
+      いうだけで、本来は decode.sh は一つの module ファイルとして独立して提供し
+      ても良いのだ。
+
+      というか、ble/edit/info に進捗状況を表示しているが、もし decode.sh のロー
+      ド時に強制的にcmap/initialize を実行するのであれば、これは表示するべきで
+      はない。そもそも ble/edit/info を使っていたのは初期化に時間がかかっていた
+      からだと思われるが、allseq の生成を落とした今となっていは処理時間は大した
+      事はないのではないか。と思ったが、init-cmap.sh の中自体で色々
+      ble/edit/info を表示している。つまり、それぞれ実際に時間がかかるという事
+      ではないか。
+
+      実際にどれぐらいの時間がかかるのかについて計測する: 232ms かかっている。
+      意外と長いがそれ程長いという訳でもない? 微妙な長さである。遅い計算機では
+      より時間がかかるかもしれない。やはり ble/edit/info による表示はあった方が
+      良い気がする。
+
+      また --lib で読み込んだ時に使いもしない ble/decode の機能の為にキャッシュ
+      が生成されるのもやはり微妙な気がする。という訳なので、やはり
+      cmap/initialize は現状の様に ble/decode/initialize が呼び出されてから実行
+      するという事にする。
+
+    取り敢えず cmap/initialize の中から呼び出した init-cmap.sh の中で
+    ble-decode-kbd の初期化も行う事にした。
+
+    * done: 今やキャッシュしているので kitty の key にも全て keycode を初期化時
+      に割り当ててしまって良いのでは。恐らく今まで遅延初期化していたのは単に
+      kitty の特別キーが多すぎて初期化に時間がかかると予想されたからであろう。
+
+      と思って固定しようと思ったら既に init-cmap.sh の中で固定している。確認し
+      てみると commit fdfe62a4 で何も考えずに固定したという事の気がする。わざわ
+      ざ .generate-keycode の呼び出しを改めて呼び出す必要もないので削除する事に
+      する。と思ったが何れにしても name から key を得る必要があったので
+      .get-keycode を呼び出す必要はあったのだった。
+
+    * csi の関数名が気になるのでこの際なので変更しておく。
+
   * decode: bashrc の中で ble-bind を使うとキャッシュ初期化時に info が表示され残る [#D2340]
-    Ref #D23xx
+    Ref #D2341
 
     bashrc の中で ble-bind を実行した時に immediate-show が変な物を表示しないの
     か? → うーん。実際に表示してしまっている。これは対策が必要である。
@@ -8033,7 +8124,7 @@ bash_tips
       https://github.com/akinomyoga/ble.sh/issues/415
 
   * main: check-bash-debug-version: stderr が tty かチェックして出力する [#D2339]
-    Ref #D23xx
+    Ref #D2341
 
     そもそも release version チェックの警告を出力している時は出力先が tty かど
     うかチェックしているのだったか。うーん。確認してみた所チェックしていない。

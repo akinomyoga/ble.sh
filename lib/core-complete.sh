@@ -8910,7 +8910,7 @@ function ble/widget/menu/append-arg/.is-argument {
 
 function ble/complete/auto-complete/initialize {
   local ret
-  ble-decode-kbd/generate-keycode auto_complete_enter
+  ble/decode/kbd/generate-keycode auto_complete_enter
   _ble_complete_KCODE_ENTER=$ret
 }
 ble/complete/auto-complete/initialize
