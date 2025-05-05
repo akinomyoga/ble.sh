@@ -106,6 +106,7 @@ _ble_decode_Macr=0x20000000
 _ble_decode_Flag3=0x10000000 # unused
 _ble_decode_FlagA=0x00200000 # unused
 
+# The following are the special characters used for "builtin bind".
 # Note: When receiving the function keys in the form of "ESC O A" in bash <=
 #   4.4, ble/util/is-stdin-ready always fails (probably due to the internal
 #   processing of the cursor keys by Readline).  Thus, we cannot naively judge
@@ -113,8 +114,12 @@ _ble_decode_FlagA=0x00200000 # unused
 #   sequences.  We instead use the following codepoint to receive the prefix
 #   "ESC O".
 _ble_decode_IsolatedESC=$((0x07BC))
-_ble_decode_EscapedNUL=$((0x07BB)) # Used by charlog#encode
 _ble_decode_PrefixO=$((0x07BA)) # Used to detect "ESC O A" in bash <= 4.4
+
+# special characters used by charlog#encode
+_ble_decode_EscapedNUL=$((0x07BB)) # Used to record NUL
+_ble_decode_Timeout=$((0x07B9)) # Used to record ble/decode/wait-input failure
+
 _ble_decode_FunctionKeyBase=0x110000
 
 ## @fn ble/decode/mod2flag mod
@@ -1025,6 +1030,7 @@ function ble/decode/csi/consume {
 # ble_decode_char_nest=
 # ble_decode_char_sync=
 # ble_decode_char_rest=
+# ble_decode_char_next=
 
 _ble_decode_char_buffer=()
 function ble/decode/has-input-for-char {
@@ -1067,9 +1073,10 @@ function ble-decode-char {
   local ble_decode_char_total=$#
   local ble_decode_char_rest=$#
   local ble_decode_char_rchar=
+  local ble_decode_char_next=
   # Note: ループ中で set -- ... を使っている。
 
-  local chars ichar rchar char ent
+  local chars ichar rchar char ent ent_timeout
   chars=("$@") ichar=0
   while
     if ((iloop++%50==0)); then
@@ -1092,8 +1099,18 @@ function ble-decode-char {
     rchar=${chars[ichar]} # raw char
     ble_decode_char_rchar=$rchar # used by ble/widget/.MACRO to test _ble_decode_Macr
     ((char=rchar&~_ble_decode_Macr))
-    ((char==_ble_decode_PrefixO)) && char=79 # Prefix O -> O
     ((ble_decode_char_rest--,ichar++))
+
+    # process special decode characters
+    ble_decode_char_next=$((${chars[ichar]:-0}&~_ble_decode_Macr)) # for ble/decode/wait-input '...' char
+    if ((char==_ble_decode_PrefixO)); then
+      char=79 # @prefixO -> O
+    elif ((char==_ble_decode_Timeout)); then
+      # The special character @timeout is used only used as a marker
+      # (referenced through ble_decode_char_next) so is simply ignored for the
+      # actual processing.
+      continue
+    fi
 
     # decode error character
     if ((char&_ble_decode_Erro)); then
@@ -1120,7 +1137,7 @@ function ble-decode-char {
       continue
     fi
 
-    ble/decode/process-char/.getent # -> ent
+    ble/decode/process-char/.getent # -> ent ent_timeout
     if [[ ! $ent ]]; then
       # シーケンスが登録されていない時
       if [[ $_ble_decode_char2_reach_key ]]; then
@@ -1141,7 +1158,13 @@ function ble-decode-char {
         ((ble_decode_char_rest+=${#rest[@]}))
         chars=("${rest[@]}" "${chars[@]:ichar}") ichar=0
       else
-        ble/decode/process-char/.keylog "$rchar"
+        # The control should come here only when rchar is the first character
+        # of the key sequence because we always register the first character of
+        # a multichar sequence to the reach (cf the later if-branch for [[ !
+        # $_ble_decode_char2_reach_key ]]).
+        #ble-assert '((${#_ble_decode_char2_keylog[@]}==0))'
+
+        ble/decode/process-char/.keylog "$rchar" ${ent_timeout:+"$_ble_decode_Timeout"}
         local ret
         ble/decode/process-char/.convert-c0 "$char"
         ble/decode/send-unmodified-key "$ret" "_$char"
@@ -1165,7 +1188,7 @@ function ble-decode-char {
     else
       # /\d+/  (続きのシーケンスはなく ent で確定である事を示す)
       local seq=${_ble_decode_char2_seq}_$char
-      ble/decode/process-char/.keylog "${_ble_decode_char2_keylog[@]}" "$rchar"
+      ble/decode/process-char/.keylog "${_ble_decode_char2_keylog[@]}" "$rchar" ${ent_timeout:+"$_ble_decode_Timeout"}
       _ble_decode_char2_seq=
       _ble_decode_char2_keylog=()
       _ble_decode_char2_reach_key=
@@ -1201,37 +1224,51 @@ function ble/decode/char-hook/next-char {
   return 0
 }
 
+## @fn ble/decode/process-char/.keylog
 function ble/decode/process-char/.keylog {
-  local char
-  for char; do
 #%if debug_keylogger
-    ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_chars "$char"
+  if ((_ble_debug_keylog_enabled)); then
+    ble/array#push _ble_debug_keylog_chars "$@"
+  fi
 #%end
-    if [[ $_ble_decode_keylog_chars_enabled ]]; then
+
+  if [[ $_ble_decode_keylog_chars_enabled ]]; then
+    local char
+    for char; do
       if ! ((char&_ble_decode_Macr)); then
         ble/array#push _ble_decode_keylog_chars "$char"
         ((_ble_decode_keylog_chars_count++))
       fi
-    fi
-  done
+    done
+  fi
 }
 
 ## @fn ble/decode/process-char/.getent
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
 ##   @var[out] ent
+##   @var[out] ent_timeout
+##     Whether "ent" is determined by a timeout is stored.
 function ble/decode/process-char/.getent {
+  local csistat=
   builtin eval "ent=\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}"
+  ble/decode/csi/consume "$char"
+
+  # timeout---If there is an ambiguous match, we try to exclude longer
+  # sequences with a timeout.  We also check this for "ESC ?" because even if
+  # the entry "ESC ?" is not found in the table, the combination of "ESC ?" can
+  # be converted to "M-?" in a later stage.
   if [[ $ent == ?*_ || $ent == _ && $_ble_decode_char2_seq == _27 ]]; then
-    # Note (_ble_decode_PrefixO): If the original character is @PrO (which is
-    #   enabled in bash <= 4.4), we do not exclude the possibility of a
-    #   matching key of the form "ESC O ?"  even if the pending input is not
+    # Note (_ble_decode_PrefixO): If the original character is @prefixO (which
+    #   is enabled in bash <= 4.4), we do not exclude the possibility of a
+    #   matching key of the form "ESC O ?" even if the pending input is not
     #   detected.  In bash <= 4.4, ble/util/is-stdin-ready cannot be used to
     #   test whether the present "ESC O" is immediately followed by a
     #   character.
-    ((rchar==_ble_decode_PrefixO)) ||
-      ble/decode/wait-input 5 char ||
+    if ((rchar!=_ble_decode_PrefixO)) && ! ble/decode/wait-input 5 char; then
       ent=${ent%_}
+      ent_timeout=1
+    fi
   fi
 
   # CSI sequence
@@ -1239,10 +1276,14 @@ function ble/decode/process-char/.getent {
   #   ent=_    の時 → (CSI の結果) + _
   #   ent=num  の時 → num のまま (CSI の結果に拘わらず確定)
   #   ent=num_ の時 → num_ のまま
-  local csistat=
-  ble/decode/csi/consume "$char"
   if [[ $csistat && ! ${ent%_} ]]; then
-    if ((csistat==_ble_decode_KCODE_ERROR)); then
+    # Note: We manually disable the timeout while processing CSI sequences
+    # because ble/util/is-stdin-ready always fails while reading a part of a
+    # CSI sequence.  This is probably due to internal processing of CSI
+    # sequences by Bash/Readline.
+    ent_timeout=
+
+    if [[ $csistat == "$_ble_decode_KCODE_ERROR" ]]; then
       if [[ $bleopt_decode_error_cseq_vbell ]]; then
         local ret
         ble/string#split ret "${_ble_decode_char2_seq//_/ } $char"
@@ -2447,6 +2488,7 @@ function ble/decode/has-input-char {
 function ble/decode/wait-input {
   local timeout=$1 type=${2-}
   if [[ $type == char ]]; then
+    ((ble_decode_char_next==_ble_decode_Timeout)) && return 1
     ble/decode/has-input-char && return 0
   else
     ble/decode/has-input && return 0

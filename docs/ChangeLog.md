@@ -80,6 +80,7 @@
 - edit: support readline bindable function `paste-from-clipboard` in more environments `#D2307` 17646524
 - keymap/vi: support `:marks` `#D2320` 01182d3b
 - cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` adf53ed3
+- decode: record timeout in keyboard macro `#D2343` xxxxxxxx
 
 ## Changes
 

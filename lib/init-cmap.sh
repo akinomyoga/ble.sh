@@ -55,7 +55,7 @@
 # 2024-01-21 _ble_decode_csimap_dict 追加に伴う更新
 # 2024-02-07 @ESC, @NUL コード変更に伴う更新
 # 2024-06-05 "ble-decode/.hook => _ble_decode_hook" に伴う更新
-# 2025-05-03 Add @PrO for "up" (ESC O A) vs "M-O" (ESC O) in Bash <= 4.4
+# 2025-05-03 Add @prefixO for "up" (ESC O A) vs "M-O" (ESC O) in Bash <= 4.4
 # 2025-05-04 Add a new key "dsr0" for "ESC [ 0 n"
 
 function ble/init:cmap/initialize-kbd {
@@ -133,9 +133,10 @@ function ble/init:cmap/initialize-kbd {
   ble/decode/kbd/.set-keycode PM   158
   ble/decode/kbd/.set-keycode APC  159
 
-  ble/decode/kbd/.set-keycode @ESC "$_ble_decode_IsolatedESC"
-  ble/decode/kbd/.set-keycode @NUL "$_ble_decode_EscapedNUL"
-  ble/decode/kbd/.set-keycode @PrO "$_ble_decode_PrefixO"
+  ble/decode/kbd/.set-keycode @ESC     "$_ble_decode_IsolatedESC"
+  ble/decode/kbd/.set-keycode @NUL     "$_ble_decode_EscapedNUL"
+  ble/decode/kbd/.set-keycode @prefixO "$_ble_decode_PrefixO"
+  ble/decode/kbd/.set-keycode @timeout "$_ble_decode_Timeout"
 
   local ret
   ble/decode/kbd/.generate-keycode __batch_char__
