@@ -2298,6 +2298,17 @@ function ble/edit/info/.construct-content {
   esac
 }
 
+function ble/edit/info/.rendering-enabled {
+  # Note: We basically want to render the info panel after attaching.  However,
+  # even if ble.sh has not yet attached, we allow rendering the info panel
+  # through ble/edit/info/immediate-show while initialization.  To avoid
+  # outputting messages in non-interactive sessions, we check whether
+  # $_ble_util_fd_tui_stderr is connected to a TTY.
+  [[ $_ble_attached || -t $_ble_util_fd_tui_stderr ]] || return 1
+
+  [[ $_ble_app_render_mode == panel ]]
+}
+
 ## @fn ble/edit/info/.render-content x y content [opts]
 ##   @param[in] x y content
 function ble/edit/info/.render-content {
@@ -2310,7 +2321,7 @@ function ble/edit/info/.render-content {
   fi
 
   [[ :$opts: == *:defer:* ]] && return 0
-  [[ $_ble_app_render_mode == panel ]] || return 0
+  ble/edit/info/.rendering-enabled || return 0
   ble/edit/info#panel::render "$_ble_edit_info_panel"
 }
 
@@ -2366,24 +2377,40 @@ function ble/edit/info/default {
 }
 
 function ble/edit/info/clear {
-  [[ ${_ble_edit_info[2]} ]] || return 1
-  [[ $_ble_app_render_mode == panel ]] || return 0
   _ble_edit_info_scene=clear
   ble/edit/info/.render-content 0 0 ""
 }
 
+function ble/edit/info/immediate-clear {
+  if ble/edit/info/.rendering-enabled; then
+    local ret; ble/canvas/panel/save-position; local pos=$ret
+    ble/edit/info/clear
+    ble/canvas/panel/load-position "$pos"
+    ble/util/buffer.flush
+  else
+    ble/edit/info/clear
+  fi
+}
 function ble/edit/info/immediate-show {
-  local ret; ble/canvas/panel/save-position
-  ble/edit/info/show "$@"
-  ble/canvas/panel/load-position "$ret"
-  ble/util/buffer.flush
+  if ble/edit/info/.rendering-enabled; then
+    local ret; ble/canvas/panel/save-position; local pos=$ret
+    ble/edit/info/show "$@"
+    ble/canvas/panel/load-position "$pos"
+    ble/util/buffer.flush
+  else
+    ble/edit/info/show "$@"
+  fi
 }
 function ble/edit/info/immediate-default {
-  local ret; ble/canvas/panel/save-position
-  ble/edit/info/default
-  ble/edit/info/.render-content "${_ble_edit_info_default[@]}"
-  ble/canvas/panel/load-position "$ret"
-  ble/util/buffer.flush
+  if ble/edit/info/.rendering-enabled; then
+    local ret; ble/canvas/panel/save-position; local pos=$ret
+    ble/edit/info/default
+    ble/edit/info/.render-content "${_ble_edit_info_default[@]}"
+    ble/canvas/panel/load-position "$pos"
+    ble/util/buffer.flush
+  else
+    ble/edit/info/default
+  fi
 }
 
 # 

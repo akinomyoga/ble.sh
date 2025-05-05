@@ -2903,29 +2903,15 @@ function ble/decode/cmap/.generate-binder-template {
   done
 }
 
-_ble_decode_cmap_initialized=
 function ble/decode/cmap/initialize {
-  [[ $_ble_decode_cmap_initialized ]] && return 0
-  _ble_decode_cmap_initialized=1
+  function ble/decode/cmap/initialize { return 0; }
 
   local init=$_ble_base/lib/init-cmap.sh
   local dump=$_ble_base_cache/decode.cmap.$_ble_decode_kbd_ver.$TERM.dump
   if [[ -s $dump && $dump -nt $init ]]; then
     source "$dump"
   else
-    ble/edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
     source "$init"
-    ble-bind -D | ble/bin/awk '
-      {
-        sub(/^declare +(-[aAilucnrtxfFgGI]+ +)?/, "");
-        sub(/^-- +/, "");
-      }
-      /^_ble_decode_(cmap|csimap|kbd)/ {
-        if (!($0 ~ /^_ble_decode_csimap_kitty_u/))
-          gsub(/["'\'']/, "");
-        print
-      }
-    ' >| "$dump"
   fi
 }
 
@@ -4524,11 +4510,10 @@ function ble/decode/initialize/.has-broken-suse-inputrc {
   return 0
 }
 
-_ble_decode_initialized=
 _ble_decode_initialize_inputrc=auto
 function ble/decode/initialize {
-  [[ $_ble_decode_initialized ]] && return 0
-  _ble_decode_initialized=1
+  function ble/decode/initialize { return 0; }
+
   ble/decode/cmap/initialize
 
   if [[ $_ble_decode_initialize_inputrc == auto ]]; then

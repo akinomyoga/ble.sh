@@ -73,7 +73,7 @@ function ble/init:cmap/bind-keypad-key {
   (($3&2)) && ble-bind -k "ESC ? $Ft" "$name"
 }
 
-function ble/init:cmap/initialize {
+function ble/init:cmap/initialize-keys {
   # Synonyms
   #   paste = S-insert [rxvt]
   #   scroll_up = S-prior [rxvt]
@@ -350,6 +350,31 @@ function ble/init:cmap/initialize {
   ble/init:cmap/bind-single-csi '0 n' dsr0
 
   ble/edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
+
+  builtin unset -f "$FUNCNAME"
 }
 
+## @fn ble/init:cmap/initialize-keys
+##   @var[in] dump
+##     The filename to write the cache
+function ble/init:cmap/initialize {
+  ble/edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
+  ble/init:cmap/initialize-keys
+  ble-bind -D | ble/bin/awk '
+    {
+      sub(/^declare +(-[aAilucnrtxfFgGI]+ +)?/, "");
+      sub(/^-- +/, "");
+    }
+    /^_ble_decode_(cmap|csimap|kbd)/ {
+      if (!($0 ~ /^_ble_decode_csimap_kitty_u/))
+        gsub(/["'\'']/, "");
+      print
+    }
+  ' >| "$dump"
+
+  # If ble.sh has not yet attached, we want to clear the processing message.
+  [[ $_ble_attached ]] || ble/edit/info/immediate-clear
+
+  builtin unset -f "$FUNCNAME"
+}
 ble/init:cmap/initialize

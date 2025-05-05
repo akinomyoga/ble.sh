@@ -169,6 +169,7 @@
 - util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` 154386de
 - util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` 486314c5
 - main (`connect_tty`): do not reject `connect_tty=inherit` by the initial check of `ble.pp` `#D2335` d6d69dad
+- decode: clear info panel when cmap cache is updated before attaching `#D2340` xxxxxxxx
 
 ## Compatibility
 
