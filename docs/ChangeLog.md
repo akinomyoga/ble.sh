@@ -14,7 +14,8 @@
     - main: fix workaround for the posix vi-insert <kbd>C-i</kbd> binding in `bash <= 5.0` (reported by vasi786) `#D2243` 8e7ed824
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
-    - main: suppress "--bash-debug-version" in "ble-reload" `#D2275` ec422115
+    - main: suppress `--bash-debug-version` in `ble-reload` `#D2275` ec422115
+    - main (`ble/base/check-bash-debug-version`): print messages to stderr `#D2239` xxxxxxxx
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
   - progcomp: use Bash 5.3 `compgen -V` for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
     - progcomp: fix a bug that `x` at the end of the last completion is trimmed `#D2308` d9faeb37

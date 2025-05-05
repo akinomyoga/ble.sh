@@ -2445,6 +2445,13 @@ ble/base/initialize-session
 
 # DEBUG version の Bash では遅いという通知
 function ble/base/check-bash-debug-version {
+  # Unfortunately, because of /etc/gdm3/config-error-dialog.sh of Ubuntu, we
+  # cannot output anything to stderr if it is not TTY.  Ubuntu shows an error
+  # message on the user's login to the desktop manager when anything is printed
+  # to stderr.  Some other Debian/Ubuntu-based distributions may behave in a
+  # similar way.
+  [[ -t 2 ]] || return 0
+
   case ${BASH_VERSINFO[4]} in
   (alp*|bet*|dev*|rc*|releng*|maint*) ;;
   (*) return 0 ;;
@@ -2454,13 +2461,15 @@ function ble/base/check-bash-debug-version {
   ble/opts#extract-last-optarg "$_ble_base_arguments_opts" bash-debug-version check && type=$ret
   [[ $type == ignore ]] && return 0
 
-  local file=$_ble_base_cache/base.bash-debug-version-checked.txt
-  local -a checked=()
-  [[ ! -d $file && -r $file && -s $file ]] && ble/util/mapfile checked < "$file"
-  if ble/array#index checked "$BASH_VERSION"; then
-    [[ $type == once ]] && return 0
-  else
-    ble/util/print "$BASH_VERSION" >> "$file"
+  if [[ $type == once ]]; then
+    local file=$_ble_base_cache/base.bash-debug-version-checked.txt
+    local -a checked=()
+    [[ ! -d $file && -r $file && -s $file ]] && ble/util/mapfile checked < "$file"
+    if ble/array#index checked "$BASH_VERSION"; then
+      return 0
+    else
+      ble/util/print "$BASH_VERSION" >> "$file"
+    fi
   fi
 
   local sgr0=$_ble_term_sgr0
@@ -2471,7 +2480,7 @@ function ble/base/check-bash-debug-version {
   local bold=$_ble_term_bold
   if [[ $type == short || $_ble_init_command ]]; then
     ble/util/print-lines \
-      "Note: ble.sh can be very slow in a debug version of Bash: $sgr3$BASH_VERSION$sgr0"
+      "Note: ble.sh can be very slow in a debug version of Bash: $sgr3$BASH_VERSION$sgr0" >&2
   else
     ble/util/print-lines \
       "$bold# ble.sh with debug version of Bash$sgr0" \
@@ -2495,7 +2504,7 @@ function ble/base/check-bash-debug-version {
       '' \
       "  ${sgrC}# Show the warning message only once for each debug version of Bash$sgr0" \
       "  ${sgr1}source /path/to/ble.sh $bold--bash-debug-version=ignore$sgr0" \
-      ''
+      '' >&2
   fi
 }
 ble/base/check-bash-debug-version
