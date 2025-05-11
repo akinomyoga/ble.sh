@@ -7839,6 +7839,28 @@ bash_tips
 
 2025-05-13
 
+  * history: readonly HISTSIZE 対策 (reported by seefood) [#D2346]
+    https://github.com/akinomyoga/ble.sh/issues/343#issuecomment-2857492599
+
+    これは先に ble.sh なしで readonly HISTSIZE して、その後で ble.sh をロードし
+    た時に問題が発生する。ble.sh を先にロードしている場合には readonly を上書き
+    していてので、HISTSIZE を readonly にするのをブロックしているのでこの様な事
+    は発生しない。
+
+    然し、一々文句を行ってくる人がいると面倒なので対策を追加する。HISTSIZE は
+    readonly にする理由があるような気がするがその他の変数については特に
+    readonly にする理由がなければ対策をする必要はない。取り敢えず HISTSIZE だけ
+    でも対策をしておく。
+
+    ? ok: HISTIGNORE や HISTCONTROL まで readonly にしてしまう人はいるだろうか。
+      よく分からないがその様にする理由も思い浮かばない (例えば Bash-it では他の
+      plugin がこれらの変数を調整したいという状況が考えられるだろう) ので対策は
+      しなくて良い。
+
+    既存の値が unlimited に相当するかどうかの判定はどの様にするか? ダミーの履歴
+    ファイルを作成してそれを使っていろいろな値でテストするしかない? でもどの様
+    な値を使ってテストするべきか? bash の source を確認した方が早いのではないか。
+
   * decode: update でキーボードが入力できなくなる報告がまたあった (reported by teutat3s, bigbruno, giggio, erfan-star-1999) [#D2345]
     https://github.com/akinomyoga/ble.sh/issues/576
     https://github.com/akinomyoga/ble.sh/issues/484

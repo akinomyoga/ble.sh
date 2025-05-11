@@ -742,9 +742,27 @@ if ((_ble_bash>=30100)); then
       ble/util/print : >| "$tmpfile_base.sh"
     fi
   }
+  function ble/history:bash/resolve-multiline/.is-HISTSIZE-unlimited {
+    [[ ${HISTSIZE+set} ]] || return 1
+
+    # Note: When the value of HISTSIZE does not match a number, it seems that
+    # historical bash has consistently treated it as unlimited history size.
+    # When it matches a number, the history size is limited to the specified
+    # value in Bash <= 4.2.  In Bash >= 4.3, the interpretatiion of negative
+    # numbers (in 32-bit representation) has been changed to mean the unlimited
+    # history size.
+    ble/string#match "$HISTSIZE" '^[[:space:]]([-+]?[0-9]+)[[:space:]]*$' || return 0
+    local histsize=$((BASH_REMATCH[1]))
+    ((_ble_bash>=40300&&(histize&0x10000000)))
+  }
   function ble/history:bash/resolve-multiline/.load {
     local tmpfile_base=$_ble_base_run/$$.history.mlfix
-    local HISTCONTROL= HISTSIZE= HISTIGNORE=
+
+    # Note: We skip setting HISTSIZE= when it already means the unlimited
+    # history size in case HISTSIZE is marked as "readonly."
+    ble/history:bash/resolve-multiline/.is-HISTSIZE-unlimited || local HISTSIZE=
+
+    local HISTCONTROL= HISTIGNORE=
     source "$tmpfile_base.sh"
     ble/history:bash/resolve-multiline/.cleanup
   }
