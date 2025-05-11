@@ -190,6 +190,10 @@ function ble/init:cmap/initialize-kbd {
   #   コードを固定する為にここで定義しておく。
   ble/decode/kbd/.generate-keycode ac_enter
 
+  # Note: 将来的な不整合を防ぐためには新しいキーを追加する時には、必ず一番下に
+  # 追加する様にするべきである。さもないと、既に使われているコードがずれる事に
+  # なる。順番の整理は大きな節目ごとに行うべきである。
+
   builtin unset -f "$FUNCNAME"
 }
 
@@ -496,7 +500,8 @@ function ble/init:cmap/initialize {
   ble/edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
   ble/init:cmap/initialize-kbd
   ble/init:cmap/initialize-keys
-  ble-bind -D | ble/bin/awk '
+#%$ echo "  local hash='$(./make_command.sh hash lib/init-cmap.sh)'"
+  ble-bind -D | ble/bin/awk -v hash="$hash" '
     {
       sub(/^declare +(-[aAilucnrtxfFgGI]+ +)?/, "");
       sub(/^-- +/, "");
@@ -505,6 +510,9 @@ function ble/init:cmap/initialize {
       if (!($0 ~ /^_ble_decode_csimap_kitty_u/))
         gsub(/["'\'']/, "");
       print
+    }
+    END {
+      print "_ble_decode_cmap_cache_hash='\''" hash "'\''";
     }
   ' >| "$dump"
 

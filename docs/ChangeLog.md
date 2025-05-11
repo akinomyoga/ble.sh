@@ -229,6 +229,7 @@
 - global: check `LC_COLLATE=C` for range expressions `#D2326` f507a1bc
 - util: update the iTerm2 detection `#D2331` dde63fa3
 - decode: fix unrecoginized <kbd>ESC O A</kbd> in `4.0 <= bash < 5.0` `#D2333` 6f4d0401
+- decode: verify cache consistency by embedded hash (reported by teutat3s, bigbruno, giggio, erfan-star-1999) `#D2345` xxxxxxxx
 
 ## Contrib
 

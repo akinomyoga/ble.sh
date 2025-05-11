@@ -64,7 +64,9 @@ outdirs += $(OUTDIR)
 
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
-$(OUTDIR)/ble.sh: ble.pp GNUmakefile | $(OUTDIR)
+# Note: ble.sh depends on lib/init-cmap.sh and lib/init-bind.sh
+# because it contains the hash of these files for the cache.
+$(OUTDIR)/ble.sh: ble.pp GNUmakefile lib/init-cmap.sh lib/init-bind.sh | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT="$(@:%.sh=%.dep)" DEPENDENCIES_TARGET="$@" \
 	  FULLVER=$(FULLVER) \
 	  BLE_GIT_COMMIT_ID="$(BLE_GIT_COMMIT_ID)" \
@@ -145,6 +147,10 @@ $(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh lib/core-syntax-ctx.def | $(OUT
 $(OUTDIR)/lib/init-msys1.sh: lib/init-msys1.sh lib/init-msys1-helper.c | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 $(OUTDIR)/lib/test-canvas.sh: lib/test-canvas.sh lib/test-canvas.GraphemeClusterTest.sh | $(OUTDIR)/lib
+	$(MWGPP) $< > $@
+$(OUTDIR)/lib/init-cmap.sh: lib/init-cmap.sh | $(OUTDIR)/lib
+	$(MWGPP) $< > $@
+$(OUTDIR)/lib/init-bind.sh: lib/init-bind.sh | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 
 outfiles += $(OUTDIR)/lib/benchmark.ksh

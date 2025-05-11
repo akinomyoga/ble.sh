@@ -27,29 +27,21 @@
 function ble/init:bind/append {
   local xarg="\"$1\":_ble_decode_hook $2; builtin eval -- \"\$_ble_decode_bind_hook\""
   local rarg=$1 condition=$3${3:+' && '}
-  ble/util/print "${condition}builtin bind -x '${xarg//$q/$Q}'" >> "$fbind1"
-  ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >> "$fbind2"
+  ble/util/print "${condition}builtin bind -x '${xarg//$q/$Q}'" >&3
+  ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >&4
 }
 function ble/init:bind/append-macro {
   local kseq1=$1 kseq2=$2 condition=$3${3:+' && '}
   local sarg="\"$kseq1\":\"$kseq2\"" rarg=$kseq1
-  ble/util/print "${condition}builtin bind    '${sarg//$q/$Q}'" >> "$fbind1"
-  ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >> "$fbind2"
+  ble/util/print "${condition}builtin bind    '${sarg//$q/$Q}'" >&3
+  ble/util/print "${condition}builtin bind -r '${rarg//$q/$Q}'" >&4
 }
 function ble/init:bind/bind-s {
   local sarg=$1
-  ble/util/print "builtin bind '${sarg//$q/$Q}'" >> "$fbind1"
+  ble/util/print "builtin bind '${sarg//$q/$Q}'" >&3
 }
 
-function ble/init:bind/generate-binder {
-  local fbind1=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.bind
-  local fbind2=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.unbind
-
-  ble/edit/info/show text "ble.sh: updating binders..."
-
-  >| "$fbind1"
-  >| "$fbind2"
-
+function ble/init:bind/.generate {
   local q=\' Q="'\\''"
 
   # ENCODING: UTF-8 2-byte code of 0, C-x, and ESC (UTF-8依存)
@@ -107,8 +99,8 @@ function ble/init:bind/generate-binder {
   local bind18XX=0
   if ((40400<=_ble_bash&&_ble_bash<50000)); then
     # Insert a dummy entry in "cmd_xmap"
-    ble/util/print "[[ -o emacs ]] && builtin bind 'set keyseq-timeout 1'" >> "$fbind1"
-    fbind2=$fbind1 ble/init:bind/append '\C-x\C-x' 24 '[[ -o emacs ]]'
+    ble/util/print "[[ -o emacs ]] && builtin bind 'set keyseq-timeout 1'" >&3
+    ble/init:bind/append '\C-x\C-x' 24 '[[ -o emacs ]]' 4>&3
   elif ((_ble_bash<40300)); then
     bind18XX=1
   fi
@@ -207,6 +199,18 @@ function ble/init:bind/generate-binder {
   done
 
   ble/function#try ble/encoding:"$bleopt_input_encoding"/generate-binder
+
+#%$ echo "  local hash='$(./make_command.sh hash lib/init-bind.sh)'"
+  ble/util/print "_ble_decode_bind_cache_hash='$hash'" >&3
+}
+
+function ble/init:bind/generate-binder {
+  local fbind1=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.bind
+  local fbind2=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.unbind
+
+  ble/edit/info/show text "ble.sh: updating binders..."
+
+  ble/init:bind/.generate 3>| "$fbind1" 4>| "$fbind2"
 
   ble/edit/info/immediate-show text "ble.sh: updating binders... done"
 }

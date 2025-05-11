@@ -2826,11 +2826,13 @@ function ble/decode/cmap/initialize {
 
   local init=$_ble_base/lib/init-cmap.sh
   local dump=$_ble_base_cache/decode.cmap.$_ble_decode_kbd_ver.$TERM.dump
+#%$ echo "  local hash='$(./make_command.sh hash lib/init-cmap.sh)'"
   if [[ -s $dump && $dump -nt $init ]]; then
     source "$dump"
-  else
-    source "$init"
+    [[ $_ble_decode_cmap_cache_hash == "$hash" ]] && return 0
   fi
+
+  source "$init"
 }
 
 function ble/decode/cmap/decode-chars.hook {
@@ -3070,7 +3072,6 @@ _ble_decode_bind_encoding=
 function ble/decode/readline/bind {
   _ble_decode_bind_encoding=$bleopt_input_encoding
   local file=$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.bind
-  [[ -s $file && $file -nt $_ble_base/lib/init-bind.sh ]] || source "$_ble_base/lib/init-bind.sh"
 
   # * 一時的に 'set convert-meta off' にする。
   #
@@ -3084,7 +3085,15 @@ function ble/decode/readline/bind {
   #
   ble/term/rl-convert-meta/enter
 
-  source "$file"
+#%$ echo "  local hash='$(./make_command.sh hash lib/init-bind.sh)'"
+  local _ble_decode_bind_cache_hash=
+  [[ -s $file && $file -nt $_ble_base/lib/init-bind.sh ]] && source "$file"
+
+  if [[ $_ble_decode_bind_cache_hash != "$hash" ]]; then
+    source "$_ble_base/lib/init-bind.sh"
+    source "$file"
+  fi
+
   _ble_decode_bind__uvwflag=
   ble/util/assign _ble_decode_bind_bindp 'builtin bind -p' # TERM 変更検出用
 }

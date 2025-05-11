@@ -497,6 +497,35 @@ Basically you can simply delete the installed directory and the settings that th
 - [Reporting Issue](https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issue)
   describes information that you may check before reporting an issue.
 
+### Clearing cache
+
+It should not happen in theory, but users occasionally report that they
+happened to become unable to input anything with `ble.sh`.  We could not manage
+to reproduce the problem or identify the cause so far, but it seems to be
+solved by clearing the cache of `ble.sh` by running the following command from
+another session without `ble.sh`:
+
+```console
+$ bash /path/to/ble.sh --clear-cache
+```
+
+To start a session without `ble.sh`, one may directly edit `~/.bashrc` to
+comment out the line sourcing `ble.sh`.  Or one might launch a different shell
+such as `ash`, `dash`, `ksh`, or `zsh`.  Another option is to configure the
+terminal so that the command-line options passed to the shell include `--norc`.
+If the problem happens in the remote host and you do not have an access to the
+session without `ble.sh`, you can non-interactively rename your `~/.bashrc`:
+
+```console
+# Example (ssh)
+
+local$ ssh remote 'mv .bashrc .bashrc.backup'
+
+# Example (rsh)
+
+local$ rsh remote 'mv .bashrc .bashrc.backup'
+```
+
 # 2 Basic settings
 
 Here, some of the settings for `~/.blerc` are picked up.

@@ -45,6 +45,70 @@ function sub:help {
 
 #------------------------------------------------------------------------------
 
+function sub:hash/git-hash {
+  type -P git &>/dev/null &&
+    REPLY=$(git hash-object "$1" 2>/dev/null) &&
+    [[ $REPLY ]] && return 0
+
+  local size=$(wc -c < "$1" | awk '{print $1}')
+
+  type -P openssl &>/dev/null &&
+    REPLY=$({ printf 'blob %u\0' "$size"; cat "$1"; } | openssl sha1 -r 2>/dev/null | awk '{print $1}') &&
+    [[ $REPLY ]] && return 0
+
+  type -P sha1sum &>/dev/null &&
+    REPLY=$({ printf 'blob %u\0' "$size"; cat "$1"; } | sha1sum 2>/dev/null | awk '{print $1}') &&
+    [[ $REPLY ]] && return 0
+
+  type -P sha1 &>/dev/null &&
+    REPLY=$({ printf 'blob %u\0' "$size"; cat "$1"; } | sha1 -r 2>/dev/null | awk '{print $1}') &&
+    [[ $REPLY ]] && return 0
+
+  return 1
+}
+
+function sub:hash/sha256 {
+  local type=${2:-sha256}
+
+  type -P openssl &>/dev/null &&
+    REPLY=$(openssl "$type" -r < "$1" 2>/dev/null | awk '{print $1}') &&
+    [[ $REPLY ]] && return 0
+
+  type -P "${type}sum" &>/dev/null &&
+    REPLY=$("${type}sum" < "$1" 2>/dev/null | awk '{print $1}') &&
+    [[ $REPLY ]] && return 0
+
+  type -P "$type" &>/dev/null &&
+    REPLY=$("$type" -r < "$1" 2>/dev/null | awk '{print $1}') &&
+    [[ $REPLY ]] && return 0
+
+  return 1
+}
+
+function sub:hash/cksum {
+  type -P cksum &>/dev/null &&
+    REPLY=$(cksum < "$1" 2>/dev/null | sed 's/[[:space:]]*-$//;s/[^[:alnum:]]\{1,\}/,/') &&
+    [[ $REPLY ]] && return 0
+
+  return 1
+}
+
+function sub:hash {
+  local REPLY
+  if sub:hash/git-hash "$1"; then
+    printf '%s\n' "$REPLY"
+  elif sub:hash/sha256 "$1"; then
+    printf 'sha256:%s\n' "$REPLY"
+  elif sub:hash/sha256 "$1" md5; then
+    printf 'md5:%s\n' "$REPLY"
+  elif sub:hash/cksum; then
+    printf 'ck:%s\n' "$REPLY"
+  else
+    printf 'size:'
+    wc -c < "$1" | awk '{print $1}'
+  fi
+}
+
 function sub:install {
   # read options
   local flag_error= flag_release=

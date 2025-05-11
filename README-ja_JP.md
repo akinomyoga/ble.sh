@@ -456,6 +456,32 @@ make INSDIR="$HOME/.local/share/blesh" install
 - [Reporting Issue](https://github.com/akinomyoga/ble.sh/wiki/Reporting-Issue)
   (英語) では問題報告をする前に確認しておくと良い情報を説明しています。
 
+### キャッシュの消去
+
+原理的に発生しないはずなのですが「`ble.sh` で何も入力できなくなってしまった」という報告が偶にあります。
+原因不明で再現もできないため現在調査中ですが、`ble.sh` のキャッシュを消去すると直ることが多いようです。
+`ble.sh` をロードしていないセッションで以下のコマンドを実行することでキャッシュを消去できます。
+
+```bash
+$ bash /path/to/ble.sh --clear-cache
+```
+
+`ble.sh` をロードしていないセッションを開始するには、
+例えば `~/.bashrc` を編集して `ble.sh` をソースしている行をコメントアウトしてから Bash を開始してください。
+または Bash 以外のシェル (`ash`, `dash`, `ksh`, `zsh` など) を使うこともお考えください。
+もし問題が直接アクセスできないリモートホストで発生していて問題のない既存のセッションがない場合は、
+非対話的なコマンドで `~/.bashrc` を移動することで `~/.bashrc` を無効化できます。
+
+```console
+# 例 (ssh)
+
+local$ ssh remote 'mv .bashrc .bashrc.backup'
+
+# 例 (rsh)
+
+local$ rsh remote 'mv .bashrc .bashrc.backup'
+```
+
 # 2 基本設定
 
 ここでは `~/.blerc` に記述する基本的な設定を幾つか紹介します。
