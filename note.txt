@@ -7839,6 +7839,15 @@ bash_tips
 
 2025-05-13
 
+  * edit: display-shell-version で WARNING が表示されなくなっている [#D2347]
+
+    (integration: off) を表示した事によって判定が壊れている。
+
+    2025-05-28 integration/bash-preexec をロードしているのに integration: off
+    になっている。何故? → これは ble/util/import/is-loaded
+    contrib/bash-preexec を使っていたからだった。bash-preexec は integration/
+    の下に移動したのにそれが の path が更新されていなかったのが原因。
+
   * history: readonly HISTSIZE 対策 (reported by seefood) [#D2346]
     https://github.com/akinomyoga/ble.sh/issues/343#issuecomment-2857492599
 

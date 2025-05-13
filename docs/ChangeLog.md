@@ -111,6 +111,7 @@
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
 - decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` 66e450d7
 - edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` 2ff03257
+  - edit (`display-shell-version`): fix a bug that `WARNING` is never shown `#D2347` xxxxxxxx
 - decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0 0379e034
 
 ## Fixes
@@ -172,6 +173,7 @@
 - util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` 486314c5
 - main (`connect_tty`): do not reject `connect_tty=inherit` by the initial check of `ble.pp` `#D2335` d6d69dad
 - decode: clear info panel when cmap cache is updated before attaching `#D2340` xxxxxxxx
+- edit (`display-shell-version`): fix a bug that `contrib/integration/bash-preexec` is not detected `#D2347` xxxxxxxx
 
 ## Compatibility
 

@@ -4209,9 +4209,9 @@ function ble/edit/display-version/check:bash-preexec {
     file=" ($file)"
   fi
 
-  local integ=$label_integration_off
-  ble/util/import/is-loaded contrib/bash-preexec && integ=$label_integration
-  ble/edit/display-version/add-line "${sgrF}bash-preexec$sgr0$file, $version$integ"
+  local integ_label=$label_integration_off
+  ble/util/import/is-loaded contrib/integration/bash-preexec && integ_label=$label_integration
+  ble/edit/display-version/add-line "${sgrF}bash-preexec$sgr0$file, $version$integ_label"
 }
 function ble/edit/display-version/check:fzf {
   # fzf-key-bindings
@@ -4224,10 +4224,11 @@ function ble/edit/display-version/check:fzf {
       version="($ret)$label_noarch"
     fi
 
-    local integ=$label_integration_off
-    ble/util/import/is-loaded integration/fzf-key-bindings && integ=$label_integration
+    local integ= integ_label=$label_integration_off
+    ble/util/import/is-loaded integration/fzf-key-bindings &&
+      integ=1 integ_label=$label_integration
 
-    ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}key-bindings$sgr0, $version$integ"
+    ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}key-bindings$sgr0, $version$integ_label"
     [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"integration/fzf-key-bindings\" is not activated."
   fi
 
@@ -4240,10 +4241,11 @@ function ble/edit/display-version/check:fzf {
       version="($ret)$label_noarch"
     fi
 
-    local integ=$label_integration_off
-    ble/util/import/is-loaded integration/fzf-completion && integ=$label_integration
+    local integ= integ_label=$label_integration_off
+    ble/util/import/is-loaded integration/fzf-completion &&
+      integ=1 integ_label=$label_integration
 
-    ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}completion$sgr0, $version$integ"
+    ble/edit/display-version/add-line "${sgrC}fzf$sgr0 ${sgrF}completion$sgr0, $version$integ_label"
     [[ $integ ]] || ble/edit/display-version/add-line "$label_warning: fzf integration \"integration/fzf-completion\" is not activated."
   fi
 }
@@ -4378,9 +4380,9 @@ function ble/edit/display-version/check:zoxide {
   version=${version#zoxide }
   version=${version#v}
 
-  local integ=$label_integration_off
-  ble/util/import/is-loaded contrib/integration/zoxide && integ=$label_integration
-  ble/edit/display-version/add-line "${sgrF}zoxide${sgr0}, version $sgrV$version$sgr0 ($path)$integ"
+  local integ_label=$label_integration_off
+  ble/util/import/is-loaded contrib/integration/zoxide && integ_label=$label_integration
+  ble/edit/display-version/add-line "${sgrF}zoxide${sgr0}, version $sgrV$version$sgr0 ($path)$integ_label"
 }
 function ble/edit/display-version/check:atuin {
   # Atuin supported Bash in 7b5c3d543, where `_atuin_precmd` was defined.  The
