@@ -141,7 +141,7 @@ ble/test/start-section 'bash' 117
 
   # COMPAT bash-5.3+ (#D2221)
   #   Bash 5.3 以降ではスラッシュを名前に含む関数は POSIX mode で呼び出せない。
-  function f1/sub { true; }
+  function f1/sub { return 0; }
   if ((_ble_bash<50300)); then
     ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=0
   else

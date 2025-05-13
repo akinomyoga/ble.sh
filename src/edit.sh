@@ -2788,7 +2788,7 @@ function ble/widget/append-arg-or {
     if [[ $_ble_edit_arg == + ]]; then
       [[ $ch == [-0-9] ]] && _ble_edit_arg=
     elif [[ $_ble_edit_arg == +* ]]; then
-      false
+      builtin false
     elif [[ $_ble_edit_arg ]]; then
       [[ $ch == [0-9] ]]
     else
@@ -5043,7 +5043,7 @@ function ble/widget/insert-arg.impl {
   local decl=$(
     local original=${_ble_edit_str:beg:end-beg}
     local count=; ((delta>0)) && count=_ble_history_COUNT
-    while :; do
+    while ((1)); do
       # index = next history index to check
       if ((delta>0)); then
         ((index+1>=count)) && break
@@ -11507,7 +11507,7 @@ function ble/widget/command-help/.type/.resolve-alias {
     last_literal=$literal
     last_command=$command
     [[ $type == alias ]]
-  do :; done
+  do ((1)); done
 
   if [[ ! $type || $type == alias ]]; then
     # - command はエイリアスに一致するが literal では quote されている時、
@@ -11589,9 +11589,9 @@ function ble/widget/command-help {
 #------------------------------------------------------------------------------
 # **** ble-edit/bind ****                                                 @bind
 
-function ble-edit/bind/stdout.on { :;}
-function ble-edit/bind/stdout.off { ble/util/buffer.flush;}
-function ble-edit/bind/stdout.finalize { :;}
+function ble-edit/bind/stdout.on { return 0; }
+function ble-edit/bind/stdout.off { ble/util/buffer.flush; }
+function ble-edit/bind/stdout.finalize { return 0; }
 
 if [[ $bleopt_internal_suppress_bash_output ]]; then
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr

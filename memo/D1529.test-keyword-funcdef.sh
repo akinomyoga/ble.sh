@@ -7,7 +7,7 @@ builtins=('declare' 'readonly' 'typeset' 'local' 'export' 'alias'
           'eval')
 
 for word in "${keywords[@]}" "${builtins[@]}"; do
-  if (eval "$word () { :; }" 2>/dev/null); then
+  if (eval "$word () { return 0; }" 2>/dev/null); then
     ok+=("$word")
   else
     ng+=("$word")

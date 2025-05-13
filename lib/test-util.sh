@@ -26,7 +26,7 @@ ble/test/start-section 'ble/util' 1274
   function bleopt/check:a { value=123; }
   ble/test 'bleopt a=4 && bleopt a'
   stdout="bleopt a=123"
-  function bleopt/check:a { false; }
+  function bleopt/check:a { return 1; }
   ble/test 'bleopt a=5' \
            exit=1
   ble/test 'bleopt a' \

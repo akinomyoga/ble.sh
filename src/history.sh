@@ -97,7 +97,7 @@ if ((_ble_bash<40000)); then
     local -a args; args=("$@")
     ble/util/conditional-sync \
       ble/builtin/history/.dump.proc \
-      true 100 progressive-weight:timeout=3000:SIGKILL
+      'builtin true' 100 progressive-weight:timeout=3000:SIGKILL
     local ext=$?
     if ((ext==142)); then
       printf 'ble.sh: timeout: builtin history %s' "$*" >&"$_ble_util_fd_tui_stderr"
@@ -332,7 +332,7 @@ if ((_ble_bash>=40000)); then
 
     [[ ! $opt_async ]] && ((_ble_history_load_resume<6)) &&
       blehook/invoke history_message "loading history ..."
-    while :; do
+    while ((1)); do
       case $_ble_history_load_resume in
 
       # 42ms 履歴の読み込み
@@ -780,7 +780,7 @@ if ((_ble_bash>=30100)); then
 
     [[ ! $opt_async ]] && ((_ble_history_mlfix_resume<=4)) &&
       blehook/invoke history_message "resolving multiline history ..."
-    while :; do
+    while ((1)); do
       case $_ble_history_mlfix_resume in
 
       (0) if [[ $opt_async ]] && ble/builtin/history/is-empty; then
@@ -2197,7 +2197,7 @@ function ble/history/isearch-backward-blockwise {
   local flag_icase=; [[ :$opts: == *:ignore-case:* ]] && flag_icase=1
 
   local flag_cycled= range_min range_max
-  while :; do
+  while ((1)); do
     if ((i<=start)); then
       range_min=0 range_max=$start
     else
@@ -2276,7 +2276,7 @@ function ble/history/isearch-forward.impl {
 
   local flag_icase=; [[ :$opts: == *:ignore-case:* ]] && flag_icase=1
 
-  while :; do
+  while ((1)); do
     local flag_cycled= expr_cond expr_incr
     if ((has_backward)); then
       if ((index<=start)); then

@@ -345,6 +345,7 @@
 - decode: move key definitions into `lib/init-cmap.sh` `#D2341` xxxxxxxx
 - complete: rename key `{auto_complete => ac}_enter` `#D2342` xxxxxxxx
 - color: change color representation for faithful 24-bit black (reported by seefood) `#D2351` xxxxxxxx
+- global: reduce the uses of `:`, `true`, and `false` `#D2353` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

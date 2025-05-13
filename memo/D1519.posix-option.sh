@@ -5,19 +5,19 @@ cat <<EOF
 # identifier cannot be defined.  The following case fails.
 
 set -o posix
-function ble/base/workaround-POSIXLY_CORRECT { true; }
+function ble/base/workaround-POSIXLY_CORRECT { return 0; }
 
 # With "set -o posix", functions of non-POSIX name that are defined before
 # setting "set -o posix" can be called.  The following case runs.
 
-function ble/base/workaround-POSIXLY_CORRECT { true; }
+function ble/base/workaround-POSIXLY_CORRECT { return 0; }
 set -o posix
 ble/base/workaround-POSIXLY_CORRECT
 
 EOF
 
 
-# function ble/base/workaround-POSIXLY_CORRECT { true; }
+# function ble/base/workaround-POSIXLY_CORRECT { return 0; }
 # set -o posix
 # alias type=echo
 # LANG=C \type ble/base/workaround-POSIXLY_CORRECT

@@ -23,7 +23,7 @@ function sort.qsort1.1 {
   local p=${data[L+RANDOM*(U-L)/RANDSUP]}
 
   local i=$L j=$((U-1)) t
-  while :; do
+  while ((1)); do
     while ((data[i]<p)); do ((i++)); done
     while ((i<j&&p<=data[j])); do ((j--)); done
 
@@ -125,7 +125,7 @@ function sort.qsort3.1 {
     local p=${data[L+RANDOM*(U-L)/RANDSUP]}
 
     local i=$L j=$((U-1)) t
-    while :; do
+    while ((1)); do
       while ((data[i]<p)); do ((i++)); done
       while ((i<j&&p<=data[j])); do ((j--)); done
       ((i<j)) || break

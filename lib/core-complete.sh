@@ -4598,7 +4598,7 @@ function ble/complete/progcomp {
   local -a alias_args=()
   [[ :$opts: == *:__recursive__:* ]] ||
     local alias_checked=' '
-  while :; do
+  while ((1)); do
 
     # @var cmd   ... 元のコマンド名
     # @var ucmd  ... simple-word/eval したコマンド名
@@ -6726,7 +6726,7 @@ function ble/complete/candidates/filter#test {
 }
 
 function ble/complete/candidates/filter:none/init { ble/complete/candidates/filter:head/init "$@"; }
-function ble/complete/candidates/filter:none/test { true; }
+function ble/complete/candidates/filter:none/test { return 0; }
 function ble/complete/candidates/filter:none/count-match-chars { ble/complete/candidates/filter:head/count-match-chars "$@"; }
 function ble/complete/candidates/filter:none/match { ble/complete/candidates/filter:head/match "$@"; }
 
@@ -6879,7 +6879,7 @@ function ble/complete/candidates/filter:hsubseq/match {
   local pN=${#text} iN=${#needle}
   local first=1
   ret=()
-  while :; do
+  while ((1)); do
     if [[ $first ]]; then
       first=
       local p0=0 p=${#prefix} i=${#prefix}

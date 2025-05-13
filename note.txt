@@ -2011,36 +2011,17 @@ bash_tips
     押した時に共通部分がなくて何も起こらないとき、代わりに menu に入っても良い
     のではないか?
 
-  * global: #D2192 で ":" の使用を抑制した筈なのに while :; do がたくさんある
+  * 以下の D22XX がそのままになっている
 
-    他にも eval ": ${...}" というものが残っている。うーん。
+    ./src/edit.sh:6766:  # Note (#D22XX): In bash < 4.0, "_ble_builtin_trap_processing" may be set by
 
-    ./src/edit.sh:11579:function ble-edit/bind/stdout.on { :;}
-    ./src/edit.sh:11581:function ble-edit/bind/stdout.finalize { :;}
+  * iTerm2-Color-Schemes, Gogh の更新も bump 時の todo に入れるべきか?
 
-    以下も気になる。
+  * function ble/complete/source:argument の中の *f* をチェックしているのは実
+    際にここに来ることはあるのだろうか。この部分は c1b053253 で追加された。一
+    方で、最近 6a426954
 
-    ./lib/core-complete.sh:6761:function ble/complete/candidates/filter:none/test { true; }
-    ./lib/core-syntax-def.sh:50:function ble/highlight/layer:syntax/update { true; }
-    ./lib/core-syntax-def.sh:53:function ble/highlight/layer:syntax/getg { true; }
-    ./lib/core-syntax-def.sh:58:function ble/syntax:bash/is-complete { true; }
-    ./lib/test-bash.sh:140:  function f1/sub { true; }
-    ./lib/test-main.sh:45:  function ble/test/dummy-1 { true; }
-    ./lib/test-main.sh:46:  function ble/test/dummy-2 { true; }
-    ./lib/test-main.sh:47:  function ble/test/dummy-3 { true; }
-
-    ./ble.pp:1267:      if ! type "$cmd" &>/dev/null; then
-    ./ble.pp:1413:    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
-
-    * 以下の D22XX がそのままになっている
-
-      ./src/edit.sh:6766:  # Note (#D22XX): In bash < 4.0, "_ble_builtin_trap_processing" may be set by
-
-    * iTerm2-Color-Schemes, Gogh の更新も bump 時の todo に入れるべきか?
-
-    * function ble/complete/source:argument の中の *f* をチェックしているのは実
-      際にここに来ることはあるのだろうか。この部分は c1b053253 で追加された。一
-      方で、最近 6a426954
+  * d56c7d2f 関数にした方が良いのではないか?
 
 2025-02-20
 
@@ -7838,6 +7819,66 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2025-05-13
+
+  * global: #D2192 で ":" の使用を抑制した筈なのに while :; do がたくさんある [#D2353]
+
+    他にも eval ": ${...}" というものが残っている。うーん。
+
+    ./src/edit.sh:11579:function ble-edit/bind/stdout.on { :;}
+    ./src/edit.sh:11581:function ble-edit/bind/stdout.finalize { :;}
+
+    以下も気になる。
+
+    ./lib/core-complete.sh:6761:function ble/complete/candidates/filter:none/test { true; }
+    ./lib/core-syntax-def.sh:50:function ble/highlight/layer:syntax/update { true; }
+    ./lib/core-syntax-def.sh:53:function ble/highlight/layer:syntax/getg { true; }
+    ./lib/core-syntax-def.sh:58:function ble/syntax:bash/is-complete { true; }
+    ./lib/test-bash.sh:140:  function f1/sub { true; }
+    ./lib/test-main.sh:45:  function ble/test/dummy-1 { true; }
+    ./lib/test-main.sh:46:  function ble/test/dummy-2 { true; }
+    ./lib/test-main.sh:47:  function ble/test/dummy-3 { true; }
+
+    * "while :; do" に関しては単に "for ((;;)); do" に置き換えようと思ったが、
+      どうもそうすると emacs が ;; を case パターンの終わりだと勘違いしてインデ
+      ントが壊れてしまう。
+
+      或いは for ((; ;)) にする? もしくは while true にする? 或いは while
+      ble/util/setexit 0; にする? 或いは "while ((1)); do" にするしかない? 結局
+      今のところ一番無難なのはこれである。或いは "for ((;1;)); do" もあるかもし
+      れない? が変だ。
+
+      "while ((1)); do" に置き換える事にした。
+
+    * done: true が未だ何箇所か使われている。後でチェックする → これらは結局
+      builtin true / builtin false を使う事にした。
+
+      ./lib/core-syntax.sh:5754:    true
+      ./lib/core-syntax.sh:5811:    true
+        これらは空の if branch にダミーとして置かれているコマンドである。従って
+        ble/util/setexit 0 に置き換えるのも変である。また、if の後に共通処理も
+        あるので、単に return する訳にも行かない。
+
+        うーん。取り敢えずそのままにしておく事にする?
+
+      ./src/history.sh:100:      true 100 progressive-weight:timeout=3000:SIGKILL
+        これらは conditional-sync の引数である。
+
+        * reject: 実は単に空文字列を渡したら builtin eval -- '' が実行されて最
+          終的に true と同じになる? と思ったが空文字列を渡した時 (もしくは条件
+          を指定しなかった時) は has-input を用いて判定する様になっていたのだっ
+          た。なので空文字列に別の意味を割り当てることはできない。
+
+        これは明示的に ble/util/setexit 0 にしても良い気がするが、そのままでも
+        良い様な気がする。というかそれぐらいであれば ble/util/true や
+        ble/util/false に対応する? と思ったが、それなら最初から builtin true や
+        builtin false を呼び出せば良い。
+
+      ./src/util.sh:7262:      true
+        これも空の if branch に対応する様な気がするが、ここでは実際に $? を後で
+        使っているので $? を設定する役割がある。
+
+    * 序でに true / false の直接呼び出しも禁止して必ず builtin 経由で呼び出す様
+      にする。
 
   * util (ble/array#fill-range): bash-4.2 で構文着色の振る舞いが変だ [#D2352]
 

@@ -47,15 +47,15 @@ function ble/syntax/initialize-vars {
 
 ## @fn ble/highlight/layer:syntax/update (暫定)
 ##   PREV_BUFF, PREV_UMIN, PREV_UMAX を変更せずにそのまま戻れば良い。
-function ble/highlight/layer:syntax/update { true; }
+function ble/highlight/layer:syntax/update { return 0; }
 ## @fn ble/highlight/layer:region/getg (暫定)
 ##   g を設定せず戻ればそのまま上のレイヤーに問い合わせが行く。
-function ble/highlight/layer:syntax/getg { true; }
+function ble/highlight/layer:syntax/getg { return 0; }
 
 
 ## @fn ble/syntax:bash/is-complete
 ##   syntax がロードされる迄は常に真値。
-function ble/syntax:bash/is-complete { true; }
+function ble/syntax:bash/is-complete { return 0; }
 
 
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする

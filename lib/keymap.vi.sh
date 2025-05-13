@@ -6950,7 +6950,7 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
   local ret min_sfill=0
   local bol=$bol1 eol smin smax slpad srpad sfill
   sub_ranges=()
-  while :; do
+  while ((1)); do
     ble-edit/content/find-logical-eol "$bol"; eol=$ret
     slpad=0 srpad=0 sfill=0
     ((smin=bol+x1,smin>eol&&(smin=eol)))

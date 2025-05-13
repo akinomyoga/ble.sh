@@ -1162,7 +1162,7 @@ function ble-decode-char {
         # of the key sequence because we always register the first character of
         # a multichar sequence to the reach (cf the later if-branch for [[ !
         # $_ble_decode_char2_reach_key ]]).
-        #ble-assert '((${#_ble_decode_char2_keylog[@]}==0))'
+        #ble/util/assert '((${#_ble_decode_char2_keylog[@]}==0))'
 
         ble/decode/process-char/.keylog "$rchar" ${ent_timeout:+"$_ble_decode_Timeout"}
         local ret
@@ -1988,7 +1988,7 @@ function ble/decode/keymap/get-parent {
 function ble/decode/keymap/get-major-keymap {
   keymap=$_ble_decode_keymap
   local index=${#_ble_decode_keymap_stack[@]}
-  while :; do
+  while ((1)); do
     case $keymap in (vi_?map|emacs) return 0 ;; esac
     ((--index<0)) && break
     keymap=${_ble_decode_keymap_stack[index]}
@@ -3491,7 +3491,7 @@ function ble/decode/read-inputrc/test {
     elif [[ -o vi ]]; then
       builtin test vi "$op" "$rhs"
     else
-      false
+      builtin false
     fi
     return "$?" ;;
 

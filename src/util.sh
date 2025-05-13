@@ -529,7 +529,7 @@ else
     builtin eval "[[ \$decl$1 =~ \$rex ]]"
   }
   ((_ble_bash>=40000)) ||
-    function ble/is-assoc { false; }
+    function ble/is-assoc { return 1; }
 fi
 
 function ble/array#is-sparse {
@@ -2323,7 +2323,7 @@ function ble/util/readarray {
   else
     local _ble_local_script='
       local IFS= NAMEI=0; NAME=()
-      while ble/bash/read -d "$_ble_local_delim" "NAME[NAMEI++]"; do :; done'
+      while ble/bash/read -d "$_ble_local_delim" "NAME[NAMEI++]"; do ((1)); done'
   fi
 
   if [[ $_ble_local_nlfix ]]; then
@@ -2460,7 +2460,7 @@ else
     builtin eval -- "$2" >| "$_ble_local_tmpfile"
     local _ble_local_ret=$?
     local IFS= i=0 _ble_local_arr
-    while ble/bash/read -d '' "_ble_local_arr[i++]"; do :; done < "$_ble_local_tmpfile"
+    while ble/bash/read -d '' "_ble_local_arr[i++]"; do ((1)); done < "$_ble_local_tmpfile"
     ble/util/assign/rmtmp
     [[ ${_ble_local_arr[--i]} ]] || builtin unset -v "_ble_local_arr[i]"
     ble/util/unlocal i IFS
@@ -3459,8 +3459,8 @@ elif ((_ble_bash>=40000)); then
     fi
   }
 else
-  function ble/fd#cloexec/.add { false; }
-  function ble/fd#cloexec/.remove { false; }
+  function ble/fd#cloexec/.add { return 1; }
+  function ble/fd#cloexec/.remove { return 1; }
 fi
 
 function ble/fd#add-cloexec {
@@ -5812,6 +5812,13 @@ function ble/util/assert {
     return 0
   fi
 }
+function ble/util/assert-fail {
+  local message=$1
+  local _ble_util_stackdump_title='assertion failure'
+  local _ble_util_stackdump_start=3
+  ble/util/stackdump "$message" >&2
+  return 1
+}
 
 ## @fn ble/util/assert/.read-arguments args...
 ##   @var[out] args ext
@@ -6071,7 +6078,7 @@ if ((_ble_bash>=40000)); then
     local _ble_idle_processed=
     local _ble_idle_info_shown=
     local _ble_idle_after_task=0
-    while :; do
+    while ((1)); do
       local _ble_idle_key
       local _ble_idle_next_time= _ble_idle_next_itime= _ble_idle_running= _ble_idle_waiting=
       for _ble_idle_key in "${!_ble_util_idle_task[@]}"; do
@@ -6371,7 +6378,7 @@ if ((_ble_bash>=40000)); then
 
   ble/util/idle.push-background 'ble/util/msleep/calibrate'
 else
-  function ble/util/idle.do { false; }
+  function ble/util/idle.do { return 1; }
 fi
 
 #------------------------------------------------------------------------------
@@ -7285,7 +7292,7 @@ function ble/term/DA2/initialize-term {
     local version=$((da2r_vec[1]))
     if rex='^1;[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
       # Note: vte (2000以上), kitty (4000以上) は処理済み
-      true
+      builtin true
     elif rex='^0;[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
       ((95<=version))
     elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
@@ -7293,7 +7300,7 @@ function ble/term/DA2/initialize-term {
     elif rex='^32;[0-9]+;0$'; [[ $da2r =~ $rex ]]; then
       ((354<=version&&version<2000))
     else
-      false
+      builtin false
     fi && { _ble_term_TERM[depth]=xterm:$version; return 0; }
   fi
 

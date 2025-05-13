@@ -843,7 +843,7 @@ function ble/syntax/parse/nest-reset-tprev {
 ## @var _ble_syntax_stat[i]    新しい状態
 function ble/syntax/parse/nest-equals {
   local parent_inest=$1
-  while :; do
+  while ((1)); do
     ((parent_inest<i1)) && return 0 # 変更していない範囲 または -1
     ((parent_inest<i2)) && return 1 # 変更によって消えた範囲
 
@@ -2135,7 +2135,7 @@ function ble/syntax:bash/check-dollar {
     if
       [[ $tail =~ $rex1 ]] && {
         [[ ${BASH_REMATCH[2]} == *['[}'] || $BASH_REMATCH == "$tail" ]] ||
-          { ble/syntax/parse/set-lookahead "$((${#BASH_REMATCH}+1))"; false; } } ||
+          { ble/syntax/parse/set-lookahead "$((${#BASH_REMATCH}+1))"; builtin false; } } ||
         [[ $tail =~ $rex2 ]]
     then
       # <parameter> = [-*@#?-$!0] | [1-9][0-9]* | <varname> | <varname> [ ... ] | <varname> [ <@> ]
@@ -2987,7 +2987,7 @@ function ble/syntax:bash/ctx-expr/.count-paren {
     (expr-paren|expr-paren-ax|expr-paren-ai|expr-paren-di)
       ntype2=$ntype ;;
     ('$['|'a['|'v['|'d['|expr-brack|expr-brack-ai|expr-brack-di|'${'|'"${'|*)
-      ble/util/assert 'false' "unexpected ntype='$ntype' here" ;;
+      ble/util/assert-fail "unexpected ntype='$ntype' here" ;;
     esac
 
     ble/syntax/parse/nest-push "$CTX_EXPR" "$ntype2"
@@ -3058,7 +3058,7 @@ function ble/syntax:bash/ctx-expr/.count-bracket {
     (expr-brack|expr-brack-ai|expr-brack-di)
       ntype2=$ntype ;;
     ('(('|'$(('|expr-paren|expr-paren-ax|expr-paren-ai|expr-paren-di|'${'|'"${'|*)
-      ble/util/assert 'false' "unexpected ntype='$ntype' here" ;;
+      ble/util/assert-fail "unexpected ntype='$ntype' here" ;;
     esac
     ble/syntax/parse/nest-push "$CTX_EXPR" "$ntype2"
     ((_ble_syntax_attr[i++]=ctx))
@@ -3147,7 +3147,7 @@ function ble/syntax:bash/ctx-expr {
       #       = '"${' # "${var:offset:length}"
       ble/syntax:bash/ctx-expr/.count-brace && return 0
     else
-      ble/util/assert 'false' "unexpected ntype=$ntype for arithmetic expression"
+      ble/util/assert-fail "unexpected ntype=$ntype for arithmetic expression"
     fi
 
     # 入れ子処理されなかった文字は通常文字として処理
@@ -5731,7 +5731,7 @@ function ble/syntax/completion-context/prefix:next-command {
       fi
     fi
   elif ble/syntax/completion-context/.check-prefix/.test-redirection; then
-    true
+    builtin true
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
     # 単語が未だ開始していない時 (空白)
     shopt -q no_empty_cmd_completion ||
@@ -5788,7 +5788,7 @@ function ble/syntax/completion-context/prefix:next-argument {
       fi
     fi
   elif ble/syntax/completion-context/.check-prefix/.test-redirection "$word"; then
-    true
+    builtin true
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
     # 単語が未だ開始していない時 (空白)
     local src
@@ -6018,7 +6018,7 @@ function ble/syntax/completion-context/prefix:brace {
   local ctx1=$ctx istat1=$istat nlen1=${stat[3]}
   ((nlen1>=0)) || return 1
   local inest1=$((istat1-nlen1))
-  while :; do
+  while ((1)); do
     local nest=${_ble_syntax_nest[inest1]}
     [[ $nest ]] || return 1
     ble/string#split-words nest "$nest"
@@ -7575,7 +7575,7 @@ function ble/progcolor {
 
   local -a alias_args=()
   local checked=" " processed=
-  while :; do
+  while ((1)); do
     if ble/is-function ble/cmdinfo/cmd:"$cmd"/chroma; then
       ble/progcolor/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       ble/cmdinfo/cmd:"$cmd"/chroma "$opts"

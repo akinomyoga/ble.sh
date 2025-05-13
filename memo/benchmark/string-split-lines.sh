@@ -62,7 +62,7 @@ ble-measure split1.measure
 function split2 {
   local text=$1 rex=$'[^\n]*'
   ret=()
-  while :; do
+  while ((1)); do
     [[ $text =~ $rex ]]
     ret[${#ret[@]}]=$BASH_REMATCH
     text=${text:${#BASH_REMATCH}}
@@ -72,7 +72,7 @@ function split2 {
 
   # 以下のようにしてみたが微妙に遅くなった。
   # ${#BASH_REMATCH} の計算を変数に保存しても変わらない。
-  # while :; do
+  # while ((1)); do
   #   [[ $text =~ $rex ]]
   #   ret[${#ret[@]}]=$BASH_REMATCH
   #   ((${#BASH_REMATCH}<${#text})) || break
@@ -100,7 +100,7 @@ ble-measure split3.measure
 function split4 {
   local text=$1 value
   ret=()
-  while :; do
+  while ((1)); do
     if [[ $text == *$'\n'* ]]; then
       value=${text%%$'\n'*}
       ret[${#ret[@]}]=$value

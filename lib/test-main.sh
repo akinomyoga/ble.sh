@@ -42,9 +42,9 @@ ble/test/start-section 'ble/main' 29
 
 # ble/bin#has
 (
-  function ble/test/dummy-1 { true; }
-  function ble/test/dummy-2 { true; }
-  function ble/test/dummy-3 { true; }
+  function ble/test/dummy-1 { return 0; }
+  function ble/test/dummy-2 { return 0; }
+  function ble/test/dummy-3 { return 0; }
   ble/test ble/bin#has ble/test/dummy-1
   ble/test ble/bin#has ble/test/dummy-{1..3}
   ble/test ble/bin#has ble/test/dummy-0 exit=1
