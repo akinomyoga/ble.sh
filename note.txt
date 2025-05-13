@@ -7839,6 +7839,36 @@ bash_tips
 
 2025-05-13
 
+  * contrib/integration/fzf: bind も workaround の対象にする [#D2350]
+    https://github.com/ajeetdsouza/zoxide/pull/1048#issuecomment-2868556399
+    https://github.com/junegunn/fzf/pull/4377
+
+    うーん。zoxide の方も work around を追加する? と思ったが、zoxide の場合には
+    単に suppress すれば良い訳ではない。取り敢えず zoxide の内部で動いているみ
+    たいなので、取り敢えず現状で良い事にする。
+
+    * done: skim にも同様の修正を適用する必要がある。これは ajeetdsouza に催促
+      してみる → これは ajeetdsouza が PR を出した。すぐにマージされた様だ。
+
+      https://github.com/skim-rs/skim/pull/774
+
+    ? うーん。これによって fzf 経由で zoxide completion を呼び出した時に、
+      zoxide completion が動かなくなってしまう可能性はないのか?
+
+      そもそも、zoxide 以外であっても bind で DSR(0) を変更する補完が存在したら
+      これで動かなくなってしまう (と思ったが、そのような補完は従来の fzf を何れ
+      にしても破壊してしまう為、既存の補完設定で広く使われているとは思われない。
+      今回の zoxide の様に fzf の設定を外居してしまうので対処を強いられた筈であ
+      る。)
+
+      然し、今 fzf は直前に bind する様になったので、今後はそのような設定が増え
+      てくるのではないかと思われる。そしてそれらの設定に対しては DSR(0) に対す
+      る bind の抑制は適用するべきではない。fzf が自身の処理のために呼び出した
+      bind だけ抑制するべきである。
+
+    * 然しそうすると更に printf についてもちゃんと fzf から直接呼び出された時に
+      のみ DSR(5) 出力の抑制を行う様にしなければならない。
+
   * main (ble/bin#freeze-utility-path): command 経由で呼び出すようにする [#D2349]
 
     * ble/bin#freeze-utility ,etc. "command" 経由で呼び出した方が良いのでは?

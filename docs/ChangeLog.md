@@ -270,6 +270,7 @@
 - integration: add `skim` integration for completion (reported by cmm) `#D2287` a36d13ce
 - integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` 430a1746
 - integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` 788dfd15
+- integration/fzf: suppress dynamic binding `#D2350` xxxxxxxx
 
 ## Documentation
 
