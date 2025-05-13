@@ -7839,6 +7839,36 @@ bash_tips
 
 2025-05-13
 
+  * color: 24-bit black に専用の内部表現を与える (reported by seefood) [#D2351]
+    https://github.com/akinomyoga/ble.sh/issues/343#issuecomment-2857492599
+
+    今まで index color 16 に割り当てていたが、勝手にパレットを改造している人が
+    いる。xterm 256 color なのにパレットを勝手に変更するのが悪いのだが、端末の
+    規格的にはパレットは規定されていないし、寧ろ DEC にパレットを変更するシーケ
+    ンスがある。現代の端末アプリケーションではその様な物を使うことはないと思っ
+    ていたが、どうも WezTerm がそれを変更するインターフェイスを提供しているせい
+    で、実際にパレットを勝手に変更しているユーザーがいる。
+
+    一方で元々の 24-bit color sequence を実際に使って色を設定するとちゃんと黒で
+    表示されるので、振る舞いをちゃんと一致させる為には 24-bit black を index 16
+    に変換することはできない。24-bit black 専用の表現を割り当てる必要がある。
+
+    x fixed: #000000 に特別のコードを割り当てる方針で実装してみたが色々黒くなっ
+      てしまっている。何か間違えている → これは判定式の & 演算子の優先順位が
+      低いのを忘れて括弧をつけるのを忘れていた。
+
+    * done: 或いは別の方針として FgIndexed | FgMask の内部での割当方法を変更す
+      るという手がある。FgIndexed ではなく Fg24bit にして、また、FgIndexed は
+      FgMask の中に住まわせる。うーん。実はその方が自然な実装になるのでは?
+
+      そのあたりの議論は 24-bit 色を導入した時にもした様な気がする。その時の議
+      論を参照する。#D1184 (true color support) である。その時の議論だと、内部
+      表現はいつでも切り替えられるから気にせずに実装するという事になっている。
+      という事は現在の構成に特別の意味があるという訳でもない。内部表現を完全に
+      変える事にする。
+
+      変更した。動いている。
+
   * contrib/integration/fzf: bind も workaround の対象にする [#D2350]
     https://github.com/ajeetdsouza/zoxide/pull/1048#issuecomment-2868556399
     https://github.com/junegunn/fzf/pull/4377

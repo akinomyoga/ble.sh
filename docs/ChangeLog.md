@@ -341,6 +341,7 @@
 - bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e xxxxxxxx
 - decode: move key definitions into `lib/init-cmap.sh` `#D2341` xxxxxxxx
 - complete: rename key `{auto_complete => ac}_enter` `#D2342` xxxxxxxx
+- color: change color representation for faithful 24-bit black (reported by seefood) `#D2351` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

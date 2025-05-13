@@ -8524,10 +8524,8 @@ function ble/highlight/layer/buff#operate-gflags {
 
   if [[ $mask == auto ]]; then
     mask=0
-    ((gflags&(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask))) &&
-      ((mask|=_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask))
-    ((gflags&(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask))) &&
-      ((mask|=_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask))
+    ((gflags&_ble_color_gflags_FgMask)) && ((mask|=_ble_color_gflags_FgMask))
+    ((gflags&_ble_color_gflags_BgMask)) && ((mask|=_ble_color_gflags_BgMask))
   fi
 
   local i g ret
