@@ -3902,7 +3902,7 @@ function ble/builtin/bind/rlfunc2widget/load-dict {
   local script='
     if ((!${#NAME[@]})); then
       ble/util/mapfile NAME < "$rlfunc_file"
-      [[ $OSTYPE == msys* ]] && NAME=("${NAME[@]%$_ble_term_nl}")
+      [[ $OSTYPE == msys* ]] && NAME=("${NAME[@]%$_ble_term_nl}") # disable=#D2352
     fi
     dict=("${NAME[@]}")
   '; builtin eval -- "${script//NAME/$rlfunc_dict}"

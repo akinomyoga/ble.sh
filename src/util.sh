@@ -81,7 +81,8 @@ function bleopt/.read-arguments {
     (*)
       if local rex='^([_a-zA-Z0-9@*?]+)(:?=|$)(.*)'; [[ $arg =~ $rex ]]; then
         local name=${BASH_REMATCH[1]#bleopt_}
-        local var=bleopt_$name
+        local var
+        var=("bleopt_$name")
         local op=${BASH_REMATCH[2]}
         local value=${BASH_REMATCH[3]}
 
@@ -115,12 +116,8 @@ function bleopt/.read-arguments {
         fi
 
         if [[ $op ]]; then
-          var=("${var[@]}") # #D1570: WA bash-3.0 ${scal[@]/x} bug
-          if ((_ble_bash>=40300)) && ! shopt -q compat42; then
-            ble/array#push specs "${var[@]/%/"=$value"}" # WA #D1570 #D1751 checked
-          else
-            ble/array#push specs "${var[@]/%/=$value}" # WA #D1570 #D1738 checked
-          fi
+          ble/array#map-suffix var "=$value"
+          ble/array#push specs "${var[@]}"
         else
           ble/array#push pvars "${var[@]}"
         fi
@@ -713,15 +710,101 @@ function ble/array#remove-at {
     NAME=("${NAME[@]}")
   '; builtin eval -- "${_ble_local_script//NAME/$1}"
 }
+
+## @fn ble/array#map-prefix name prefix
+## @fn ble/array#map-suffix name suffix
+if ((_ble_bash>=50200)); then
+  # Note(#D1738): When Bash 5.2's patsub_replacement is turned on, one needs to
+  # quote the replacement to prevent '&' in the replacement from being replaced
+  # to a matching string (i.e., an empty string in the present case).  However,
+  # when compat42 is also turned on, the quoting of the replacement will remain
+  # in the result.  There is no solution without changing an shell option.
+  function ble/array#map-prefix {
+    local _ble_local_script='NAME=("${NAME[@]/#/"$2"}")' # disable=#D1570,#D1751,#D2352
+    if shopt -q compat42; then
+      shopt -u compat42
+      builtin eval -- "${_ble_local_script//NAME/$1}"
+      shopt -s compat42
+    else
+      builtin eval -- "${_ble_local_script//NAME/$1}"
+    fi
+  }
+  function ble/array#map-suffix {
+    local _ble_local_script='NAME=("${NAME[@]/%/"$2"}")' # disable=#D1570,#D1751,#D2352
+    if shopt -q compat42; then
+      shopt -u compat42
+      builtin eval -- "${_ble_local_script//NAME/$1}"
+      shopt -s compat42
+    else
+      builtin eval -- "${_ble_local_script//NAME/$1}"
+    fi
+  }
+elif ((_ble_bash<30100||40300<=_ble_bash&&_ble_bash<40400)); then
+  # Note (#D1570): Bash 3.0 has a bug that ${scalar[@]/...} (#D2352) produces
+  # an empty result if "scalar" is a scalar variable.  In Bash 4.3, in the same
+  # situation, the results are contaminated by internal escape character
+  # $'\001'.  We need to make sure that the target variable is an array.
+  function ble/array#map-prefix {
+    local _ble_local_script='
+      NAME=("${NAME[@]}") # WA for #D1570
+      NAME=("${NAME[@]/#/$2}") # disable=#D1570,#D1738,#D2352'
+    builtin eval -- "${_ble_local_script//NAME/$1}"
+  }
+  function ble/array#map-suffix {
+    local _ble_local_script='
+      NAME=("${NAME[@]}") # WA for #D1570
+      NAME=("${NAME[@]/%/$2}") # disable=#D1570,#D1738,#D2352'
+    builtin eval -- "${_ble_local_script//NAME/$1}"
+  }
+elif ((40200<=_ble_bash&&_ble_bash<40300)); then
+  # Note(#D2352): Bash 4.2 has a bug that for an array a=("") with a single
+  # empty element, the substitution "${a[@]/#}" (#D1570,#D2352) produces no
+  # elements.  This only happens when a has a single element, so we can treat
+  # it separately.
+  function ble/array#map-prefix {
+    local _ble_local_script='
+      if ((${#NAME[@]}==1)); then
+        NAME=("${NAME[@]}") # compaction
+        NAME[0]=$2${NAME[0]} # WA for #D2352
+      else
+        NAME=("${NAME[@]/#/$2}") # disable=#D1570,#D1738,#D2352
+      fi'
+    builtin eval -- "${_ble_local_script//NAME/$1}"
+  }
+  function ble/array#map-suffix {
+    local _ble_local_script='
+      if ((${#NAME[@]}==1)); then
+        NAME=("${NAME[@]}") # compaction
+        NAME[0]=${NAME[0]}$2 # WA for #D2352
+      else
+        NAME=("${NAME[@]/%/$2}") # disable=#D1570,#D1738,#D2352
+      fi'
+    builtin eval -- "${_ble_local_script//NAME/$1}"
+  }
+else
+  function ble/array#map-prefix {
+    local _ble_local_script='
+      NAME=("${NAME[@]/#/$2}") # disable=#D1570,#D1738,#D2352'
+    builtin eval -- "${_ble_local_script//NAME/$1}"
+  }
+  function ble/array#map-suffix {
+    local _ble_local_script='
+      NAME=("${NAME[@]/%/$2}") # disable=#D1570,#D1738,#D2352'
+    builtin eval -- "${_ble_local_script//NAME/$1}"
+  }
+fi
+
+## @fn ble/array#fill-range name begin end value
 function ble/array#fill-range {
-  ble/array#reserve-prototype "$(($3-$2))"
+  # We originally tried to combine multiple arrays, but it finally turned out
+  # to be even slower than simple assignments in a loop.  (cf
+  # memo/benchmark/array-fill-range.sh)
   local _ble_local_script='
-      local -a sNAME; sNAME=("${_ble_array_prototype[@]::$3-$2}")
-      NAME=("${NAME[@]::$2}" "${sNAME[@]/#/$4}" "${NAME[@]:$3}")' # WA #D1570 #D1738 checked
-  ((_ble_bash>=40300)) && ! shopt -q compat42 &&
-    _ble_local_script=${_ble_local_script//'$4'/'"$4"'}
+    local iNAME=$2
+    while ((iNAME<'"$(($3))"')); do NAME[iNAME++]=$4; done'
   builtin eval -- "${_ble_local_script//NAME/$1}"
 }
+
 ## @fn ble/idict#replace arr needle [replacement]
 ##   needle に一致する要素を全て replacement に置換します。
 ##   replacement が指定されていない時は該当要素を unset します。
@@ -1211,9 +1294,14 @@ if ((_ble_bash>=40400)); then
 else
   function ble/string#quote-words {
     local q=\' Q="'\''" IFS=$_ble_term_IFS
-    ret=("${@//$q/$Q}")
-    ret=("${ret[@]/%/$q}") # WA #D1570 #D1738 checked
-    ret="${ret[*]/#/$q}"   # WA #D1570 #D1738 checked
+    if (($#===1)); then
+      ret=("${1//$q/$Q}")    # WA for #D2352
+      ret=("${ret[0]/%/$q}") # WA for #D2352 (disable=#D1738)
+    else
+      ret=("${@//$q/$Q}")    # disable=#D2352
+      ret=("${ret[@]/%/$q}") # disable=#D1570,#D1738,#D2352
+    fi
+    ret="${ret[*]/#/$q}"   # disable=#D1570,#D1738
   }
   function ble/string#quote-command {
     if (($#<=1)); then
@@ -1222,9 +1310,9 @@ else
     fi
     local q=\' Q="'\''" IFS=$_ble_term_IFS
     ret=("${@:2}")
-    ret=("${ret[@]//$q/$Q}")  # WA #D1570 #D1738 checked
-    ret=("${ret[@]/%/$q}")    # WA #D1570 #D1738 checked
-    ret="$1 ${ret[*]/#/$q}"   # WA #D1570 #D1738 checked
+    ret=("${ret[@]//$q/$Q}")  # disable=#D1570,#D1738,#D2352
+    ret=("${ret[@]/%/$q}")    # disable=#D1570,#D1738,#D2352
+    ret="$1 ${ret[*]/#/$q}"   # disable=#D1570,#D1738
   }
 fi
 ## @fn ble/string#quote-word text opts
@@ -1584,8 +1672,13 @@ function ble/adict#keys {
   _ble_local_keylist=${!_ble_local_keylist%:}
   ble/string#split ret : "$_ble_local_keylist"
   if [[ $_ble_local_keylist == *"$_ble_term_FS"* ]]; then
-    ret=("${ret[@]//$_ble_term_FS./:}")             # WA #D1570 checked
-    ret=("${ret[@]//$_ble_term_FS,/$_ble_term_FS}") # WA #D1570 #D1738 checked
+    if ((40200<=_ble_bash&&_ble_bash<40300&&${#ret[@]}==1)); then
+      ret=("${ret[0]//$_ble_term_FS./:}")             # WA for #D2352
+      ret=("${ret[0]//$_ble_term_FS,/$_ble_term_FS}") # WA for #D2352 (disable=#D1738)
+    else
+      ret=("${ret[@]//$_ble_term_FS./:}")             # disable=#D1570,#D2352
+      ret=("${ret[@]//$_ble_term_FS,/$_ble_term_FS}") # disable=#D1570,#D1738,#D2352
+    fi
   fi
 
   # filter out unset elements
@@ -1604,7 +1697,19 @@ if ((_ble_bash>=40000)); then
   function ble/dict#unset { builtin eval -- "builtin unset -v '$1[x\$2]'"; }
   function ble/dict#has   { builtin eval -- "[[ \${$1[x\$2]+set} ]]"; }
   function ble/dict#clear { builtin eval -- "$1=()"; }
-  function ble/dict#keys  { builtin eval -- 'ret=("${!'"$1"'[@]}"); ret=("${ret[@]#x}")'; }
+  if ((40200<=_ble_bash&&_ble_bash<50200)); then
+    # WA for #D2352
+    function ble/dict#keys {
+      builtin eval -- 'ret=("${!'"$1"'[@]}")'
+      if ((${#ret[@]}==1)); then
+        ret[0]=${ret[0]#x} # WA for #D2352
+      else
+        ret=("${ret[@]#x}") # disable=#D2352
+      fi
+    }
+  else
+    function ble/dict#keys { builtin eval -- 'ret=("${!'"$1"'[@]}"); ret=("${ret[@]#x}")'; } # disable=#D2352
+  fi
 else
   _ble_util_dict_declare='declare NAME NAME_keylist='
   function ble/dict#set   { ble/adict#set   "$@"; }
@@ -3218,14 +3323,26 @@ ble/fd#is-open/.upgrade
 ## @fn ble/fd#list
 if [[ -d /proc/$$/fd ]]; then
   if ((_ble_bash>=50300)); then
-    function ble/fd#list {
-      builtin compgen -V ret -G "/proc/$BASHPID/fd/[0-9]*"
-      ret=("${ret[@]##*/}")
+    function ble/fd#list/.impl {
+      local pid=$1
+      builtin compgen -V ret -G "/proc/$pid/fd/[0-9]*"
+      ret=("${ret[@]##*/}") # disable=#D2352 (bash >= 5.3 are unaffected)
     }
   else
+    function ble/fd#list/.impl {
+      local pid=$1
+      ble/util/assign-array ret 'builtin compgen -G "/proc/$pid/fd/[0-9]*"'
+      ret=("${ret[@]##*/}") # disable=#D2352 (the results are ensured to be non-empty)
+    }
+  fi
+
+  if ((_ble_bash>=40000)); then
+    function ble/fd#list { ble/fd#list/.impl "$BASHPID"; }
+  else
     function ble/fd#list {
-      ble/util/assign-array ret 'builtin compgen -G "/proc/$BASHPID/fd/[0-9]*"'
-      ret=("${ret[@]##*/}")
+      local BASHPID
+      ble/util/getpid
+      ble/fd#list/.impl "$BASHPID"
     }
   fi
 else
@@ -3257,23 +3374,13 @@ elif ((_ble_bash>=40000)); then
   # undo fds.
   if [[ -d /proc/$$/fd ]]; then
     # Implementation of ble/fd#cloexec by procfs (1588us)
-    if ((_ble_bash>=50300)); then
-      function ble/fd#cloexec/.listfd {
-        local ret fd
-        builtin compgen -V ret -G "/proc/$$/fd/[0-9]*"
-        for fd in "${ret[@]##*/}"; do
-          ble/util/set "$1[fd]" 1
-        done
-      }
-    else
-      function ble/fd#cloexec/.listfd {
-        local ret fd
-        ble/util/assign-array ret 'builtin compgen -G "/proc/$$/fd/[0-9]*"'
-        for fd in "${ret[@]##*/}"; do
-          ble/util/set "$1[fd]" 1
-        done
-      }
-    fi
+    function ble/fd#cloexec/.listfd {
+      local ret fd
+      ble/fd#list/.impl "$$"
+      for fd in "${ret[@]}"; do
+        ble/util/set "$1[fd]" 1
+      done
+    }
 
     ## @fn ble/fd#cloexec/.probe
     ##   @var[out] ret

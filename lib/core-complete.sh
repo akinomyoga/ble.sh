@@ -2947,7 +2947,7 @@ function ble/complete/source:file {
   ble/complete/source/test-limit "${#ret[@]}" || return 1
 
   if [[ :$opts: == *:directory:* ]]; then
-    candidates=("${ret[@]%/}")
+    candidates=("${ret[@]%/}") # disable=#D2352 (filename should not be empty)
   else
     candidates=("${ret[@]}")
   fi
@@ -4478,11 +4478,7 @@ function ble/complete/progcomp/process-compgen-output {
     [[ $has_desc ]] && bleopt complete_menu_style=desc
   else
     [[ $progcomp_prefix ]] &&
-      if ((_ble_bash>=40300)) && ! shopt -q compat42; then
-        cands=("${cands[@]/#/"$progcomp_prefix"}") # WA #D1570 #D1751 checked
-      else
-        cands=("${cands[@]/#/$progcomp_prefix}") # WA #D1570 #D1738 checked
-      fi
+      ble/array#map-prefix cands "$progcomp_prefix}"
   fi
   ble/complete/cand/yield.batch "$action" "$comp_opts"
 }

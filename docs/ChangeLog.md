@@ -174,6 +174,7 @@
 - main (`connect_tty`): do not reject `connect_tty=inherit` by the initial check of `ble.pp` `#D2335` d6d69dad
 - decode: clear info panel when cmap cache is updated before attaching `#D2340` xxxxxxxx
 - edit (`display-shell-version`): fix a bug that `contrib/integration/bash-preexec` is not detected `#D2347` xxxxxxxx
+- util (`bleopt`): fix a bug that previous match result for `<pattern>=` affects `var:=` `#D2352` xxxxxxxx
 
 ## Compatibility
 
@@ -235,6 +236,7 @@
 - history: work around readonly `HISTSIZE` (reported by seefood) `#D2346` xxxxxxxx
 - main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, arc279) `#D2348` xxxxxxxx
 - main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` xxxxxxxx
+- util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` xxxxxxxx
 
 ## Contrib
 
@@ -338,6 +340,7 @@
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
 - util: optimize `ble/fd#list` using `compgen -G` `#D2328` 6f34012d
+  - util (`ble/fd#list`): fix a bug that `BASHPID` undefined in `bash < 4.3` is used (fixup 6f34012d) `#D2352` xxxxxxxx
 - bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e xxxxxxxx
 - decode: move key definitions into `lib/init-cmap.sh` `#D2341` xxxxxxxx
 - complete: rename key `{auto_complete => ac}_enter` `#D2342` xxxxxxxx

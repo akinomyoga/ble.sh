@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 72
+ble/test/start-section 'bash' 117
 
 # case $word を quote する必要がある条件は?
 
@@ -58,8 +58,12 @@ ble/test/start-section 'bash' 72
   L='0&&L'
   if ((40200<=_ble_bash)); then
     ble/test '((L,1))'
-  else
+  elif ((30200<=_ble_bash)); then
+    # bash 3.2..4.1 bug: infinite recursion
     ble/test '! ((L,1))'
+  else
+    # bash 3.0..3.1 bug: crashes?
+    ble/test '( ! ((L,1)) )'
   fi
 
   i=0 M='i++,M[i>=10]'
@@ -188,6 +192,42 @@ ble/test/start-section 'bash' 72
 
 # Array bugs
 (
+  ## @fn ble/test:bash/count-words generated expected [args...]
+  function ble/test:bash/count-words {
+    local generator=$1
+    local expected=$2
+    shift 2
+    builtin eval -- "b=($generator)"
+    ble/test --depth=1 --display-code="$generator (# of words)" code:'ret=${#b[@]}' ret="$expected"
+  }
+
+  # BUG bash-4.2..5.1 [Ref #D2352]
+  #   a=(""); b=("${a[@]#$empty}") で要素が消滅する。これは以下の bash-4.2 のバ
+  #   グと同系統のバグであろう。また a=(x); b=("${a[@]#x}") でも要素が消滅する。
+  #   要素が二個以上存在する時は問題ない。
+  empty= nonempty=x
+  if ((40200<=_ble_bash&&_ble_bash<50200)); then
+    # bash-4.2..5.1 bug: the element vanish
+    bugD2352=0
+  else
+    bugD2352=1
+  fi
+
+  a=("")
+  ble/test:bash/count-words '"${a[@]#}"'          1           ''
+  ble/test:bash/count-words '"${@#}"'             1           ''
+  ble/test:bash/count-words '"${a[@]#$empty}"'    "$bugD2352" ''
+  ble/test:bash/count-words '"${@#$empty}"'       "$bugD2352" ''
+  ble/test:bash/count-words '"${a[@]#$nonempty}"' "$bugD2352" ''
+  ble/test:bash/count-words '"${@#$nonempty}"'    "$bugD2352" ''
+  a=(x)
+  ble/test:bash/count-words '"${a[@]#x}"'         "$bugD2352" 'x'
+  ble/test:bash/count-words '"${@#x}"'            "$bugD2352" 'x'
+  ble/test:bash/count-words '"${a[@]#$empty}"'    1           'x'
+  ble/test:bash/count-words '"${@#$empty}"'       1           'x'
+  ble/test:bash/count-words '"${a[@]#$nonempty}"' "$bugD2352" 'x'
+  ble/test:bash/count-words '"${@#$nonempty}"'    "$bugD2352" 'x'
+
   # BUG bash-4.0..4.4 [Ref #D0924]
   #   ローカルで local -a x; local -A x とすると segfault する。
   #   ref http://lists.gnu.org/archive/html/bug-bash/2019-02/msg00047.html,
@@ -221,6 +261,75 @@ ble/test/start-section 'bash' 72
   ble/test 'case "${c[*]}" in ("axbxc") true ;; (*) false ;; esac'
   ble/test 'read -r ret <<< "${c[*]}"' ret="axbxc"
   IFS=$' \t\n'
+
+  # BUG bash-3.0 and 4.3 [Ref #D1570]
+  #   * "${var[@]/xxx/yyy}" (#D1570) はスカラー変数に対して空の結果を生む。
+  #     ${var[@]//xxx/yyy}, ${var[@]/%/yyy}, ${var[@]/#/yyy} (#D1570) について
+  #     も同様である。
+  #   * "${scalar[@]/xxxx}" (#D1570) は全て空になる。変数名が配列である事が保証
+  #     されている必要がある。
+  #   * bash-4.3 では \001 が各文字の前に追加されてしまうというバグが発生する。
+  builtin unset -v scalar
+  scalar=abcd
+  if ((_ble_bash<30100)); then
+    ble/test code:'ret=${scalar[@]//[bc]}' ret=''   # disable=#D1570
+    ble/test code:'ret=${scalar[*]//[bc]}' ret=''   # disable=#D1570
+  elif ((40300<=_ble_bash&&_ble_bash<40400)); then
+    ble/test code:'ret=${scalar[@]//[bc]}' ret=$'\001a\001\001\001d' # disable=#D1570
+    ble/test code:'ret=${scalar[*]//[bc]}' ret=$'\001a\001\001\001d' # disable=#D1570
+  else
+    ble/test code:'ret=${scalar[@]//[bc]}' ret='ad' # disable=#D1570
+    ble/test code:'ret=${scalar[*]//[bc]}' ret='ad' # disable=#D1570
+  fi
+
+  # BUG bash-4.2 [Ref #D2352]
+  #   a=(""); b=("${a[@]/#}") で要素が消滅する (disable=#D1570)。要素が二つ以上
+  #   ある時は問題ない。要素が非空文字列の時は問題ない。置換後の文字列が有限の
+  #   場合も問題ない。
+  empty= nonempty=1
+  if ((40200<=_ble_bash&&_ble_bash<40300)); then
+    # bash-4.2..5.1 bug: the element vanish
+    bugD2352=0
+  else
+    bugD2352=1
+  fi
+  a=("")
+  ble/test:bash/count-words '"${a[@]}"'             1           ''
+  # The problem happens with "${a[@]/#}" (disable=#D1570)
+  ble/test:bash/count-words '"${a[@]/#}"'           "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${a[@]/#/}"'          "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${a[@]/#/$empty}"'    "$bugD2352" '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${a[@]/#/$nonempty}"' 1           '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${@/#}"'              "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${@/#/}"'             "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${@/#/$empty}"'       "$bugD2352" '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${@/#/$nonempty}"'    1           '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${a[0]/#}"'           1           '' # disable=#D1570
+  ble/test:bash/count-words '"${a[0]/#/}"'          1           '' # disable=#D1570
+  ble/test:bash/count-words '"${a[0]/#/$empty}"'    1           '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${a[0]/#/$nonempty}"' 1           '' # disable=#D1570,#D1738
+  # The same problem also happens with "${a[@]/x}" (disable=#D1570)
+  ble/test:bash/count-words '"${a[@]/x}"'           "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${a[@]/x/}"'          "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${a[@]/x/$empty}"'    "$bugD2352" '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${@/x}"'              "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${@/x/}"'             "$bugD2352" '' # disable=#D1570
+  ble/test:bash/count-words '"${@/x/$empty}"'       "$bugD2352" '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${a[0]/x}"'           1           '' # disable=#D1570
+  ble/test:bash/count-words '"${a[0]/x/}"'          1           '' # disable=#D1570
+  ble/test:bash/count-words '"${a[0]/x/$empty}"'    1           '' # disable=#D1570,#D1738
+  # The problem doesn't happen when there are more than one element.
+  a=("" "")
+  ble/test:bash/count-words '"${a[@]}"'             2           '' '' # disable=#D1570
+  ble/test:bash/count-words '"${a[@]/#}"'           2           '' '' # disable=#D1570
+  ble/test:bash/count-words '"${a[@]/#/}"'          2           '' '' # disable=#D1570
+  ble/test:bash/count-words '"${a[@]/#/$empty}"'    2           '' '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${a[@]/#/$nonempty}"' 2           '' '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${@}"'                2           '' '' # disable=#D1570
+  ble/test:bash/count-words '"${@/#}"'              2           '' '' # disable=#D1570
+  ble/test:bash/count-words '"${@/#/}"'             2           '' '' # disable=#D1570
+  ble/test:bash/count-words '"${@/#/$empty}"'       2           '' '' # disable=#D1570,#D1738
+  ble/test:bash/count-words '"${@/#/$nonempty}"'    2           '' '' # disable=#D1570,#D1738
 
   # BUG bash-3.0..4.2
   #   配列要素を代入右辺で連結する時 IFS が " " に置き換わる。
@@ -391,22 +500,6 @@ ble/test/start-section 'bash' 72
     ble/test code:'ret=$a2' ret='1 2 3'
   fi
   IFS=$' \t\n'
-
-  # BUG bash-3.0 [Ref #D1570]
-  #   * "${var[@]/xxx/yyy}" (#D1570) はスカラー変数に対して空の結果を生む。
-  #     ${var[@]//xxx/yyy}, ${var[@]/%/yyy}, ${var[@]/#/yyy} (#D1570) について
-  #     も同様である。
-  #   * "${scalar[@]/xxxx}" (#D1570) は全て空になる。変数名が配列である事が保証
-  #     されている必要がある。
-  builtin unset -v scalar
-  scalar=abcd
-  if ((_ble_bash<30100)); then
-    ble/test code:'ret=${scalar[@]//[bc]}' ret=''   # disable=#D1570
-  elif ((40300<=_ble_bash&&_ble_bash<40400)); then
-    ble/test code:'ret=${scalar[@]//[bc]}' ret=$'\001a\001\001\001d' # disable=#D1570
-  else
-    ble/test code:'ret=${scalar[@]//[bc]}' ret='ad' # disable=#D1570
-  fi
 )
 
 # Other bugs

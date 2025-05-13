@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1244
+ble/test/start-section 'ble/util' 1274
 
 # bleopt
 
@@ -477,6 +477,53 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
   ble/test 'ble/array#remove-at a 0; status' stdout="24:(${a2[*]})"
   ble/test 'ble/array#remove-at a 7; status' stdout="23:(${a3[*]})"
 )
+# ble/array#map-prefix
+(
+  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  a=(); ble/test 'ble/array#map-prefix a hello; status' stdout='0:()'
+  a=(); ble/test 'ble/array#map-suffix a hello; status' stdout='0:()'
+  a=(); ble/test 'ble/array#map-prefix a ""; status' stdout='0:()'
+  a=(); ble/test 'ble/array#map-suffix a ""; status' stdout='0:()'
+  a=(''); ble/test 'ble/array#map-prefix a hello; status' stdout='1:(hello)'
+  a=(''); ble/test 'ble/array#map-suffix a hello; status' stdout='1:(hello)'
+  a=(''); ble/test 'ble/array#map-prefix a ""; status' stdout='1:()'
+  a=(''); ble/test 'ble/array#map-suffix a ""; status' stdout='1:()'
+  a=('' ''); ble/test 'ble/array#map-prefix a hello; status' stdout='2:(hello hello)'
+  a=('' ''); ble/test 'ble/array#map-suffix a hello; status' stdout='2:(hello hello)'
+  a=('' ''); ble/test 'ble/array#map-prefix a ""; status' stdout='2:( )'
+  a=('' ''); ble/test 'ble/array#map-suffix a ""; status' stdout='2:( )'
+  a=(ABC DEF); ble/test 'ble/array#map-prefix a hello; status' stdout='2:(helloABC helloDEF)'
+  a=(ABC DEF); ble/test 'ble/array#map-suffix a hello; status' stdout='2:(ABChello DEFhello)'
+  a=(ABC DEF); ble/test 'ble/array#map-prefix a ""; status' stdout='2:(ABC DEF)'
+  a=(ABC DEF); ble/test 'ble/array#map-suffix a ""; status' stdout='2:(ABC DEF)'
+  unset -v a; ble/test 'ble/array#map-prefix a hello; status' stdout='0:()'
+  unset -v a; ble/test 'ble/array#map-suffix a hello; status' stdout='0:()'
+  unset -v a; ble/test 'ble/array#map-prefix a ""; status' stdout='0:()'
+  unset -v a; ble/test 'ble/array#map-suffix a ""; status' stdout='0:()'
+  unset -v a; a=ABC; ble/test 'ble/array#map-prefix a hello; status' stdout='1:(helloABC)'
+  unset -v a; a=ABC; ble/test 'ble/array#map-suffix a hello; status' stdout='1:(ABChello)'
+  unset -v a; a=ABC; ble/test 'ble/array#map-prefix a ""; status' stdout='1:(ABC)'
+  unset -v a; a=ABC; ble/test 'ble/array#map-suffix a ""; status' stdout='1:(ABC)'
+)
+# ble/array#fill-range
+(
+  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  a=(1 2 3 4 5)
+  ble/test 'ble/array#fill-range a 2 4 x; status' stdout='5:(1 2 x x 5)'
+  a=(1 2 3 4 5)
+  ble/test 'ble/array#fill-range a 2 4 ""; status' stdout='5:(1 2   5)'
+  a=(1 2 3 4 5)
+  ble/test 'ble/array#fill-range a 2 3 x; status' stdout='5:(1 2 x 4 5)'
+  a=(1 2 3 4 5)
+  ble/test 'ble/array#fill-range a 2 3 ""; status' stdout='5:(1 2  4 5)'
+
+  a=(1 2 3 4 5)
+  ((_ble_bash>=40300)) && shopt -u compat42
+  ble/test 'ble/array#fill-range a 1 4 "A&B"; status' stdout='5:(1 A&B A&B A&B 5)'
+  a=(1 2 3 4 5)
+  ((_ble_bash>=40300)) && shopt -s compat42
+  ble/test 'ble/array#fill-range a 1 4 "A&B"; status' stdout='5:(1 A&B A&B A&B 5)'
+)
 
 # ble/string#reserve-prototype
 (
@@ -525,7 +572,6 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 # ble/array#remove-by-regex
 # ble/array#filter-by-glob
 # ble/array#remove-by-glob
-# ble/array#fill-range
 # ble/idict#replace
 # ble/idict#copy
 

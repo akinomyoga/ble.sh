@@ -168,11 +168,7 @@ function blehook/.read-arguments {
         flags=E$flags
         continue
       fi
-      if ((_ble_bash>=40300)) && ! shopt -q compat42; then
-        ret=("${ret[@]/%/"$type$value"}") # WA #D1570 #D1751 checked
-      else
-        ret=("${ret[@]/%/$type$value}") # WA #D1570 #D1738 checked
-      fi
+      ble/array#map-suffix ret "$type$value"
     else
       ret=("_ble_hook_h_$pat")
     fi

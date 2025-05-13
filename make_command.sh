@@ -338,6 +338,7 @@ function sub:scan/bash300bug {
     sub:scan/.mark '#D0525'
 
   # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
+  # bash-4.3 では "${scalar[@]/xxxx}" に内部エスケープ $'\001' が多数混入する。
   grc '\$\{[_a-zA-Z0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
     sub:scan/.mark '#D1570'
 
@@ -388,6 +389,20 @@ function sub:scan/bash401-histexpand-bgpid {
     sub:scan/.mark '#D2028'
 }
 
+function sub:scan/bash402-array-empty-element {
+  echo "--- $FUNCNAME ---"
+  # Note: bash-4.2 or bash-4.2..5.1 are affected depending on the detailed
+  # construct.
+  grc --color '\$\{(@|[[:alnum:]_]+\[@])([#%]|/[#%]/"?[}$]|/[^}#%/]|//[^/}/])' --exclude={test,\*.md,lib/test-bash.sh,make_command.sh} |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
+
+      \Z"\$\{_ble_util_set_declare\[@\]//NAME/.+\}"Zd
+
+      \Z#D2352Zd
+      g' |
+    sub:scan/.mark '#D2352'
+}
+
 function sub:scan/bash404-no-argument-return {
   echo "--- $FUNCNAME ---"
   grc --color 'return[[:blank:]]*($|[;|&<>])' --exclude={test,wiki,ChangeLog.md,make,docs,make_command.sh} |
@@ -429,12 +444,14 @@ function sub:scan/bash502-patsub_replacement {
 
       \Z#D1738Zd
       \Z\$\{_ble_edit_str//\$'\''\\n'\''/\$'\''\\n'\''"\$comment_begin"\}Zd # edit.sh
-      g'
+      g' |
+    sub:scan/.mark '#D1738'
 
   grc --color '"[^"]*\$\{[[:alnum:]_]+(\[[^][]*\])?//?([^{}]|\{[^{}]*\})+/[^{}"'\'']*"[^"]*([&$]|\\)' --exclude=./test |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
       \Z#D1751Zd
-      g'
+      g' |
+    sub:scan/.mark '#D1751'
 }
 
 function sub:scan/gawk402bug-regex-check {
@@ -801,6 +818,7 @@ function sub:scan {
   sub:scan/bash301bug
   sub:scan/bash400bug
   sub:scan/bash401-histexpand-bgpid
+  sub:scan/bash402-array-empty-element
   sub:scan/bash404-no-argument-return
   sub:scan/bash501-arith-base
   sub:scan/bash502-patsub_replacement
