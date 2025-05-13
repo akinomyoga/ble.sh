@@ -234,6 +234,7 @@
 - decode: verify cache consistency by embedded hash (reported by teutat3s, bigbruno, giggio, erfan-star-1999) `#D2345` xxxxxxxx
 - history: work around readonly `HISTSIZE` (reported by seefood) `#D2346` xxxxxxxx
 - main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, arc279) `#D2348` xxxxxxxx
+- main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` xxxxxxxx
 
 ## Contrib
 

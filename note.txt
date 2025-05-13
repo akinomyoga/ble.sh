@@ -7839,6 +7839,24 @@ bash_tips
 
 2025-05-13
 
+  * main (ble/bin#freeze-utility-path): command 経由で呼び出すようにする [#D2349]
+
+    * ble/bin#freeze-utility ,etc. "command" 経由で呼び出した方が良いのでは?
+      get-path で取得できたという事は関数ではなくファイルという事である。そして、
+      関数で上書きされる可能性 (or 既に上書きされている可能性) を考慮したら
+      command 経由で呼び出した方が良い気がする。
+
+    * ble/bin#get-path の中で relative path の resolution もするべきでは。
+      ble.pp の中の ble/bin#get-path を呼び出している箇所では全てで ./* と ../*
+      の修正を呼び出し元で行っている。それ以外の場所でも relative path は絶対パ
+      スに変更した方が良いだろう。
+
+    * 未だ type を直接呼び出してコマンド判定している箇所がある。これは
+      ble/bin#has に置き換えて良い。
+
+      ./ble.pp:1267:      if ! type "$cmd" &>/dev/null; then
+      ./ble.pp:1413:    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+
   * main: workaround coreutils stty in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, arc279) [#D2348]
     https://github.com/akinomyoga/ble.sh/issues/343#issuecomment-2857492599
     https://x.com/arc279/status/1920306857148649817

@@ -1224,7 +1224,14 @@ fi
 ##   @var[out] path
 function ble/bin#get-path {
   local cmd=$1
-  ble/util/assign path 'builtin type -P -- "$cmd" 2>/dev/null' && [[ $path ]]
+  ble/util/assign path 'builtin type -P -- "$cmd" 2>/dev/null' && [[ $path ]] || return 1
+
+  # Resolve relative paths
+  if [[ ( $path == ./* || $path == ../* ) && -r $PWD/$path && -x $PWD/$path ]]; then
+    path=$PWD/$path
+  fi
+
+  return 0
 }
 
 ## @fn ble/bin/.default-utility-path commands...
@@ -1251,8 +1258,7 @@ function ble/bin#freeze-utility-path {
     [[ $flags == *n* ]] && ble/bin#has ble/bin/"$cmd" && continue
     ble/bin#has ble/bin/.frozen:"$cmd" && continue
     if ble/bin#get-path "$cmd"; then
-      [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
-      builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
+      builtin eval "function ble/bin/$cmd { command '${path//$q/$Q}' \"\$@\"; }"
     else
       fail=1
     fi
@@ -1267,7 +1273,7 @@ function ble/init/check-environment {
   if ! ble/bin#has "${_ble_init_posix_command_list[@]}"; then
     local cmd commandMissing=
     for cmd in "${_ble_init_posix_command_list[@]}"; do
-      if ! type "$cmd" &>/dev/null; then
+      if ble/bin#has "$cmd"; then
         commandMissing="$commandMissing\`$cmd', "
       fi
     done
@@ -1377,7 +1383,6 @@ function ble/bin/awk/.instantiate {
   local path q=\' Q="'\''" ext=1
 
   if ble/bin#get-path nawk; then
-    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
     # Note: Some distribution (like Ubuntu) provides gawk as "nawk" by
     # default. To avoid wrongly picking up gawk as nawk, we need to check the
     # version output from the command.  2024-12-10 In KaKi87's server [1],
@@ -1386,39 +1391,36 @@ function ble/bin/awk/.instantiate {
     local version
     ble/util/assign version '"$path" -W version' 2>/dev/null </dev/null
     if [[ $version != *'GNU Awk'* && $version != *mawk* ]]; then
-      builtin eval "function ble/bin/nawk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }"
+      builtin eval "function ble/bin/nawk { command '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }"
       if [[ ! $_ble_bin_awk_type ]]; then
         _ble_bin_awk_type=nawk
-        builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }" && ext=0
+        builtin eval "function ble/bin/awk { command '${path//$q/$Q}' -v AWKTYPE=nawk \"\$@\"; }" && ext=0
       fi
     fi
   fi
 
   if ble/bin#get-path mawk; then
-    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
-    builtin eval "function ble/bin/mawk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
+    builtin eval "function ble/bin/mawk { command '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }"
     if [[ ! $_ble_bin_awk_type ]]; then
       _ble_bin_awk_type=mawk
-      builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }" && ext=0
+      builtin eval "function ble/bin/awk { command '${path//$q/$Q}' -v AWKTYPE=mawk \"\$@\"; }" && ext=0
     fi
   fi
 
   if ble/bin#get-path gawk; then
-    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
-    builtin eval "function ble/bin/gawk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
+    builtin eval "function ble/bin/gawk { command '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
     if [[ ! $_ble_bin_awk_type ]]; then
       _ble_bin_awk_type=gawk
-      builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }" && ext=0
+      builtin eval "function ble/bin/awk { command '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }" && ext=0
     fi
   fi
 
   if [[ ! $_ble_bin_awk_type ]]; then
-    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+    if [[ $OSTYPE == solaris* ]] && ble/bin#has /usr/xpg4/bin/awk; then
       # Solaris の既定の awk は全然駄目なので /usr/xpg4 以下の awk を使う。
       _ble_bin_awk_type=xpg4
       function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; } && ext=0
     elif ble/bin#get-path awk; then
-      [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       local version
       ble/util/assign version '"$path" -W version' 2>/dev/null </dev/null && [[ $version ]] ||
         ble/util/assign version '"$path" --version' 2>/dev/null </dev/null
@@ -1431,7 +1433,7 @@ function ble/bin/awk/.instantiate {
       else
         _ble_bin_awk_type=unknown
       fi
-      builtin eval "function ble/bin/awk { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }" && ext=0
+      builtin eval "function ble/bin/awk { command '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }" && ext=0
       if [[ $OSTYPE == darwin* && $path == /usr/bin/awk && $_ble_bin_awk_type == nawk ]]; then
         # Note #D1974: macOS の awk-32 の multibyte character support が怪しい。
         #   問題は GitHub Actions の上では再現できていないが特別の入力で失敗す
@@ -1445,7 +1447,7 @@ function ble/bin/awk/.instantiate {
           return "$ext"
         }
       elif [[ $_ble_bin_awk_type == [gmn]awk ]] && ! ble/is-function ble/bin/"$_ble_bin_awk_type" ; then
-        builtin eval "function ble/bin/$_ble_bin_awk_type { '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
+        builtin eval "function ble/bin/$_ble_bin_awk_type { command '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
       fi
     fi
   fi
@@ -1482,9 +1484,8 @@ if [[ $OSTYPE == darwin* ]]; then
         return "$ext"
       }
     else
-      [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
       local q=\' Q="'\''"
-      builtin eval "function ble/bin/sed { '${path//$q/$Q}' \"\$@\"; }"
+      builtin eval "function ble/bin/sed { command '${path//$q/$Q}' \"\$@\"; }"
     fi
     return 0
   }
@@ -1500,7 +1501,6 @@ if [[ $OSTYPE == darwin* ]]; then
   function ble/bin/stty/.instantiate {
     local path=
     ble/bin#get-path stty || return 1
-    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
 
     # Some macOS users install coreutils using Homebrew and overwrite basic
     # utilities with the coreutils versions.  The problem is that stty provided
@@ -1516,7 +1516,7 @@ if [[ $OSTYPE == darwin* ]]; then
     fi
 
     local q=\' Q="'\''"
-    builtin eval "function ble/bin/stty { '${path//$q/$Q}' \"\$@\"; }"
+    builtin eval "function ble/bin/stty { command '${path//$q/$Q}' \"\$@\"; }"
     return 0
   }
   function ble/bin/stty {
