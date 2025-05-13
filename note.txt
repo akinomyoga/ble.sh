@@ -7839,6 +7839,13 @@ bash_tips
 
 2025-05-13
 
+  * main: workaround coreutils stty in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, arc279) [#D2348]
+    https://github.com/akinomyoga/ble.sh/issues/343#issuecomment-2857492599
+    https://x.com/arc279/status/1920306857148649817
+    https://github.com/akinomyoga/ble.sh/issues/63
+
+    余り多いし面倒なので検出して対策を入れる事にした。
+
   * edit: display-shell-version で WARNING が表示されなくなっている [#D2347]
 
     (integration: off) を表示した事によって判定が壊れている。

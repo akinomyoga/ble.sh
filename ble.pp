@@ -1496,8 +1496,40 @@ if [[ $OSTYPE == darwin* ]]; then
     fi
   }
   function ble/bin/.frozen:sed { return 0; }
+
+  function ble/bin/stty/.instantiate {
+    local path=
+    ble/bin#get-path stty || return 1
+    [[ $path == ./* || $path == ../* ]] && path=$PWD/$path
+
+    # Some macOS users install coreutils using Homebrew and overwrite basic
+    # utilities with the coreutils versions.  The problem is that stty provided
+    # by coreutils is not fully functional in macOS, yet the user replaces it.
+    # I have been thinking that such a setup is simply broken, but too many
+    # users seem to commit the same mistake, I decided to detect coreutils stty
+    # and avoid using it.  Coreutils stty installed by Homebrew can be detected
+    # by checking whether the path ends with /coreutils/libexec/gnubin/stty.
+    if [[ $path == */coreutils/libexec/gnubin/stty ]]; then
+      if [[ -r /bin/stty && -x /bin/stty ]]; then
+        path=/bin/stty
+      fi
+    fi
+
+    local q=\' Q="'\''"
+    builtin eval "function ble/bin/stty { '${path//$q/$Q}' \"\$@\"; }"
+    return 0
+  }
+  function ble/bin/stty {
+    if ble/bin/stty/.instantiate; then
+      ble/bin/stty "$@"
+    else
+      command stty "$@"
+    fi
+  }
+  function ble/bin/.frozen:stty { return 0; }
 else
   function ble/bin/sed/.instantiate { return 0; }
+  function ble/bin/stty/.instantiate { return 0; }
 fi
 
 ## @fn ble/bin/awk0
@@ -2420,6 +2452,7 @@ ble/bin#freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses 
 ble/bin#freeze-utility-path man
 ble/bin#freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
 ble/bin/sed/.instantiate
+ble/bin/stty/.instantiate
 
 ble/function#trace trap ble/builtin/trap ble/builtin/trap/finalize
 ble/function#trace ble/builtin/trap/.handler ble/builtin/trap/invoke ble/builtin/trap/invoke.sandbox

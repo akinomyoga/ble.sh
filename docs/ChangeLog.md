@@ -233,6 +233,7 @@
 - decode: fix unrecoginized <kbd>ESC O A</kbd> in `4.0 <= bash < 5.0` `#D2333` 6f4d0401
 - decode: verify cache consistency by embedded hash (reported by teutat3s, bigbruno, giggio, erfan-star-1999) `#D2345` xxxxxxxx
 - history: work around readonly `HISTSIZE` (reported by seefood) `#D2346` xxxxxxxx
+- main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, arc279) `#D2348` xxxxxxxx
 
 ## Contrib
 
