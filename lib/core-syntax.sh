@@ -5730,7 +5730,7 @@ function ble/syntax/completion-context/prefix:next-command {
         ble/syntax/completion-context/add argument "$index"
       fi
     fi
-  elif ble/syntax/completion-context/.check-prefix/.test-redirection; then
+  elif ble/syntax/completion-context/.check-prefix/.test-redirection "$word"; then
     builtin true
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
     # 単語が未だ開始していない時 (空白)

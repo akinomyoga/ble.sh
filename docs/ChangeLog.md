@@ -175,6 +175,7 @@
 - decode: clear info panel when cmap cache is updated before attaching `#D2340` xxxxxxxx
 - edit (`display-shell-version`): fix a bug that `contrib/integration/bash-preexec` is not detected `#D2347` xxxxxxxx
 - util (`bleopt`): fix a bug that previous match result for `<pattern>=` affects `var:=` `#D2352` xxxxxxxx
+- syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` xxxxxxxx
 
 ## Compatibility
 

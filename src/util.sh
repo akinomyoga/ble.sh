@@ -5803,7 +5803,6 @@ function ble-stackdump {
 function ble/util/assert {
   local expr=$1 message=$2
   if ! builtin eval -- "$expr"; then
-    shift
     local _ble_util_stackdump_title='assertion failure'
     local _ble_util_stackdump_start=3
     ble/util/stackdump "$expr$_ble_term_nl$message" >&2
