@@ -1926,6 +1926,24 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2025-06-04
+
+  * bas-5.3: 再度チェック
+
+    * read -E: 対応するべき。言語は bash という事にする?
+    * source -p PATH: 普通に source する時は -- を指定するべき。もしくは . を使う。
+    * bind -pP の後の引数は解釈しない
+    * compopt -o fullquote
+    * BASH_TRAPSIG が使えるかも? また自前でシグナルを発生させる時に
+      BASH_TRAPSIG を設定するべき?  ble/builtin/trap/invoke の中で。
+
+      * ble-edit/io/TRAPUSR1 で ble/builtin/trap/invoke USR1 を明示的に呼び出し
+        ているが、これは ble-edit/io/TRAPUSR1 の呼び出し元 (.handler) でも呼び
+        出しているので二重に処理されることにならないのか?
+
+    * https://lists.gnu.org/archive/html/bug-bash/2025-06/msg00000.html
+      これは M-{ の振る舞いに変更が必要になるのでは?
+
 2025-05-08
 
   * bind 経由で設定したコマンドは復元時の bind に追加するべきではないか? どうせ
@@ -7840,6 +7858,19 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2025-06-03
+
+  * util: Ubuntu で bash-builtins が検出できていない [#D2357]
+
+    #D2356 のテスト中に気づいた。Ubuntu 22.04 LTS の bash-builtins パッケージに
+    loadable builtins が含まれているが、ble/util/load-standard-builtins がそれ
+    に含まれている builtin を検出できていない。Ubuntu は /usr/bin/bash ではなく
+    て /bin/bash の方が実体になっている為、prefix= と判定されて
+    /lib/bash/<builtin> を見に行っているが実際には /usr/lib/bash/<builtin> を確
+    認しなければならない。然し、一方で /lib も存在している様だ。
+
+    /usr の下も確認する様に拡張する。また lib ではなくて lib64 にインストールさ
+    れている可能性についても考慮にいれる。というか bash-4.4 の
+    BASH_LOADABLE_PATHS も考慮に入れるべきなのではないか? → 実装した。
 
   * util: ble/fd#add-cloexec が正しく動かなくなっている (reported by xlei77) [#D2356]
     https://github.com/akinomyoga/ble.sh/issues/588#issuecomment-2932629707

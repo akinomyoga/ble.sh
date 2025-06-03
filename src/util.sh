@@ -3005,17 +3005,29 @@ fi
 function ble/util/load-standard-builtin {
   local ret; ble/util/readlink "$BASH"
   local bash_prefix=${ret%/*/*}
-  if [[ -s $bash_prefix/lib/bash/$1 ]] && (
-       enable -f "$bash_prefix/lib/bash/$1" "$1" &&
-         help "$1" &&
-         { [[ ! $2 ]] || builtin eval -- "$2"; }
-     ) &>/dev/null
-  then
-    enable -f "$bash_prefix/lib/bash/$1" "$1"
-    return 0
-  else
-    return 1
-  fi
+
+  # list possible paths of the loadable builtins
+  local -a loadable_paths=()
+  ((_ble_bash>=40400)) && [[ ${BASH_LOADABLE_PATHS-} ]] &&
+    ble/string#split loadable_paths : "$BASH_LOADABLES_PATH"
+  ble/array#push loadable_paths "$bash_prefix"/lib{,64}/bash
+  [[ ! $bash_prefix ]] &&
+    ble/array#push loadable_paths /usr/lib{,64}/bash
+
+  local loadable_path
+  for loadable_path in "${loadable_paths[@]}"; do
+    if [[ -s $loadable_path/$1 ]] && (
+         enable -f "$loadable_path/$1" "$1" &&
+           help "$1" &&
+           { [[ ! $2 ]] || builtin eval -- "$2"; }
+       ) &>/dev/null
+    then
+      enable -f "$bash_prefix/lib/bash/$1" "$1"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 ## @fn ble/util/is-stdin-ready [fd] [exit]
@@ -3322,6 +3334,10 @@ ble/fd#is-open/.upgrade
 
 ## @fn ble/fd#list
 if [[ -d /proc/$$/fd ]]; then
+  ## @fn ble/fd#list/.impl [pid]
+  ##   List the file descriptors opened for the specified process.  If PID is
+  ##   not specified, this returns the list for the current process.
+  ##   @arr[out] ret
   if ((_ble_bash>=50300)); then
     function ble/fd#list/.impl {
       local pid=$1

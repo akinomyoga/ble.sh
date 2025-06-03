@@ -183,7 +183,7 @@
   - util: detect Zellij heuristically `#D2219` 86034398
   - term: detect iTerm2 `#D2224` da6e71db
   - util: update the iTerm2 detection `#D2331` dde63fa3
-  - util: update the VTE detection `#D2335` xxxxxxxx
+  - util: update the VTE detection `#D2335` 3b4cdf2e
 - main: check `nawk` version explicitly `#D2037` 0ff7bca1
 - mandb: inject in bash-completion-2.12 interfaces `#D2041` dabc8553
 - complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` f16c0d80
@@ -240,6 +240,7 @@
 - main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, syuraj, seefood, arc279) `#D2348` cdda9f9b
 - main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` df6a4dad
 - util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` 8bea90d1
+- util (`ble/util/load-standard-builtins`): extend search paths `#D2357` xxxxxxxx
 
 ## Contrib
 
@@ -344,7 +345,7 @@
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
 - util: optimize `ble/fd#list` using `compgen -G` `#D2328` 6f34012d
   - util (`ble/fd#list`): fix a bug that `BASHPID` undefined in `bash < 4.3` is used (fixup 6f34012d) `#D2352` 8bea90d1
-  - util (`ble/fd#list`): fix `ble/fd#list` generating an internal fd and breaking `ble/fd#add-cloexec` (reported by xlei77) `#D2356` xxxxxxxx
+  - util (`ble/fd#list`): fix `ble/fd#list` generating an internal fd and breaking `ble/fd#add-cloexec` (reported by xlei77) `#D2356` 02ca0006
 - bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e c9cd95c4
 - decode: move key definitions into `lib/init-cmap.sh` `#D2341` fbdda841
 - complete: rename key `{auto_complete => ac}_enter` `#D2342` a30125c4
