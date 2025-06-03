@@ -7252,7 +7252,7 @@ function ble/term/DA2/initialize-term {
   ('1;'*)
     if ((4000<=da2r_vec[1]&&da2r_vec[1]<=4009&&3<=da2r_vec[2])); then
       _ble_term_TERM[depth]=kitty:$((da2r_vec[1]-4000))
-    elif ((2000<=da2r_vec[1]&&da2r_vec[1]<5400&&da2r_vec[2]==0)); then
+    elif ((803<=da2r_vec[1]&&da2r_vec[1]<5400&&da2r_vec[2]==0)); then
       local version=$((da2r_vec[1]))
       _ble_term_TERM[depth]=vte:$version
       if ((version<4000)); then
@@ -7263,8 +7263,16 @@ function ble/term/DA2/initialize-term {
         _ble_term_Ss=
       fi
     fi ;;
+  ('61;'*)
+    # VTE
+    # "1;ver;0"  0.8.3-1 <= VTE <= 0.53.0 (2002-08-22) https://gitlab.gnome.org/GNOME/vte/-/commit/3c6d81bf06becda3f9ab005c7310b2343588115e#24cb0c42588db6a1cc9a132b1257c457b6b09ca6_3382_3449
+    # "65;ver;1" 0.53.0  <= VTE <= 0.75.1 (2018-03-27) https://gitlab.gnome.org/GNOME/vte/-/commit/fde88ef7f9226a0849ca62663bc1eaa9862178b8
+    # "61;ver;1" 0.75.1  <= VTE           (2024-02-04) https://gitlab.gnome.org/GNOME/vte/-/commit/fe5b4c4ca43d78fa7cda012691a2837ba99a38f2
+    if ((7501<=da2r_vec[1]&&da2r_vec[2]==1)); then
+      _ble_term_TERM[depth]=vte:$((da2r_vec[1]))
+    fi ;;
   ('65;'*)
-    if ((5300<=da2r_vec[1]&&da2r_vec[2]==1)); then
+    if ((5300<=da2r_vec[1]&&da2r_vec[1]<=7501&&da2r_vec[2]==1)); then
       _ble_term_TERM[depth]=vte:$((da2r_vec[1]))
     elif ((da2r_vec[1]>=100)); then
       _ble_term_TERM[depth]=RLogin:$((da2r_vec[1]))

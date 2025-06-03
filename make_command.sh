@@ -1096,6 +1096,48 @@ function sub:first-defined/help {
   printf '  first-defined ERE...\n'
 }
 
+function sub:code-ages {
+  local file
+  for file in ble.pp $(git ls-files src lib); do echo "file=$file"; git blame -M -C "$file"; done | gawk '
+    BEGIN {
+      g_min_year = -1;
+      g_max_year = -1;
+    }
+
+    sub(/^file=/, "") { filename = $0; next; }
+    match($0, /\y2[0-9]{3}\y/, m) {
+      year = m[0];
+      if (g_min_year < 0 || year < g_min_year) g_min_year = year;
+      if (g_max_year < 0 || year > g_max_year) g_max_year = year;
+      g_histogram[year]++;
+      g_total_count++;
+    }
+
+    END {
+      for (year = g_min_year; year <= g_max_year; year++) {
+        count = g_histogram[year] + 0;
+        percentile = count / g_total_count * 100;
+        printf("%s %6d %.1f%%\n", year, count, percentile);
+      }
+    }
+  '
+
+  # どの程度古いコードが残っているのか?
+  #
+  # 2025-05-13
+  #   2015   4042 5.2%
+  #   2016    420 0.5%
+  #   2017  11524 14.7%
+  #   2018   7584 9.7%
+  #   2019  10787 13.8%
+  #   2020   7475 9.5%
+  #   2021  12249 15.6%
+  #   2022   7263 9.3%
+  #   2023   6729 8.6%
+  #   2024   9186 11.7%
+  #   2025   1031 1.3%
+}
+
 #------------------------------------------------------------------------------
 
 function sub:scan-words {

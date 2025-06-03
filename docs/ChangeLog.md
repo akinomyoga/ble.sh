@@ -15,7 +15,7 @@
   - main: update the startup message for debug versions of Bash `#D2222` afb29073
     - main: shorten the startup message for debug versions `#D2241` 0bc8610a
     - main: suppress `--bash-debug-version` in `ble-reload` `#D2275` ec422115
-    - main (`ble/base/check-bash-debug-version`): print messages to stderr `#D2239` xxxxxxxx
+    - main (`ble/base/check-bash-debug-version`): print messages to stderr `#D2239` 8904d588
   - decode(read-user-settings): read the colonless form of `bind -x` of Bash 5.3 `#D2233` 62b23b69
   - progcomp: use Bash 5.3 `compgen -V` for completions with newlines (motivated by RBT22) `#D2253` 0e8c388a
     - progcomp: fix a bug that `x` at the end of the last completion is trimmed `#D2308` d9faeb37
@@ -78,10 +78,10 @@
 - keymap/vi: add readline-compatible widgets for `vi_imap` and `vi_nmap` (requested by excited-bore) `#D2304` d7ec488a
 - edit: support bash-5.2 readline bindable function `vi-edit-and-execute-command` `#D2306` c395eb33 cc47acc2
 - edit: support readline bindable function `paste-from-clipboard` in more environments `#D2307` 17646524
-  - edit (`paste-from-clipboard`): fix wrong command names to freeze `#D2344` xxxxxxxx
+  - edit (`paste-from-clipboard`): fix wrong command names to freeze `#D2344` 262baf0e
 - keymap/vi: support `:marks` `#D2320` 01182d3b
 - cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` adf53ed3
-- decode: record timeout in keyboard macro `#D2343` xxxxxxxx
+- decode: record timeout in keyboard macro `#D2343` e8045741
 
 ## Changes
 
@@ -111,7 +111,7 @@
 - vi_nmap: fix cursor position after <kbd>C-o</kbd> `#D2302` c106239a
 - decode (`ble-bind`): initialize specified keymaps (motivated by quantumfrost) `#D2324` 66e450d7
 - edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` 2ff03257
-  - edit (`display-shell-version`): fix a bug that `WARNING` is never shown `#D2347` xxxxxxxx
+  - edit (`display-shell-version`): fix a bug that `WARNING` is never shown `#D2347` 8dfaa4e8
 - decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0 0379e034
 
 ## Fixes
@@ -172,13 +172,18 @@
 - util: fix the race condition of `ble/util/idle.clock` and the `TMOUT` initialization (reported by Anyborr, georglauterbach) `#D2314` 154386de
 - util (`ble/util/save-vars`): support saving sparse arrays to preserve undos and marks `#D2319` 486314c5
 - main (`connect_tty`): do not reject `connect_tty=inherit` by the initial check of `ble.pp` `#D2335` d6d69dad
-- decode: clear info panel when cmap cache is updated before attaching `#D2340` xxxxxxxx
-- edit (`display-shell-version`): fix a bug that `contrib/integration/bash-preexec` is not detected `#D2347` xxxxxxxx
-- util (`bleopt`): fix a bug that previous match result for `<pattern>=` affects `var:=` `#D2352` xxxxxxxx
-- syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` xxxxxxxx
+- decode: clear info panel when cmap cache is updated before attaching `#D2340` d7a16347
+- edit (`display-shell-version`): fix a bug that `contrib/integration/bash-preexec` is not detected `#D2347` 8dfaa4e8
+- util (`bleopt`): fix a bug that previous match result for `<pattern>=` affects `var:=` `#D2352` 8bea90d1
+- syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` 94109ea7
 
 ## Compatibility
 
+- Terminal detection
+  - util: detect Zellij heuristically `#D2219` 86034398
+  - term: detect iTerm2 `#D2224` da6e71db
+  - util: update the iTerm2 detection `#D2331` dde63fa3
+  - util: update the VTE detection `#D2335` xxxxxxxx
 - main: check `nawk` version explicitly `#D2037` 0ff7bca1
 - mandb: inject in bash-completion-2.12 interfaces `#D2041` dabc8553
 - complete: determine comp prefix from `COMPS` when `ble/syntax-raw` is specified (reported by teutat3s) `#D2049` f16c0d80
@@ -214,9 +219,7 @@
 - decode: fix the problem that key always timed out in bash-3 `#D2173` 0b176e76
 - term: adjust the result of `tput clear` for `ncurses >= 6.1` (reported by cmndrsp0ck) `#D2185` 18dd51ab
 - main: work around WSL's permission issue on `/run/user/1000` (reported by antonioetv and geoffreyvanwyk) `#D2195` fb826ab6
-- util: detect Zellij heuristically `#D2219` 86034398
 - decode: exclude `/etc/inputrc` in SUSE as well as in openSUSE (reported by Anyborr) `#D2220` 63be48df
-- term: detect iTerm2 `#D2224` da6e71db
 - mandb: support man page format of `rg` (requested by pallaswept) `#D2225` 063bf66b
 - mandb: restore ASCII hyphens from Unicode hyphens before analysis (reported by pallaswept) `#D2230` f160b8f0
 - main: work around the issue WSL clears `/tmp` after Bash starts (reported by LeonardoMor) `#D2235` fcbf1ed0
@@ -231,13 +234,12 @@
 - edit: adjust cursor position after `bind -x` in vi_nmap (requested by miltieIV2) `#D2317` 36ab934f
 - progcomp: update workaround for the dnf completion (reported by msr8) `#D2321` 2a0c6ba6
 - global: check `LC_COLLATE=C` for range expressions `#D2326` f507a1bc
-- util: update the iTerm2 detection `#D2331` dde63fa3
 - decode: fix unrecoginized <kbd>ESC O A</kbd> in `4.0 <= bash < 5.0` `#D2333` 6f4d0401
-- decode: verify cache consistency by embedded hash (reported by teutat3s, bigbruno, giggio, erfan-star-1999) `#D2345` xxxxxxxx
-- history: work around readonly `HISTSIZE` (reported by seefood) `#D2346` xxxxxxxx
-- main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, arc279) `#D2348` xxxxxxxx
-- main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` xxxxxxxx
-- util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` xxxxxxxx
+- decode: verify cache consistency by embedded hash (reported by teutat3s, bigbruno, giggio, erfan-star-1999) `#D2345` e63f6f67
+- history: work around readonly `HISTSIZE` (reported by seefood) `#D2346` 2d55928a
+- main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, syuraj, seefood, arc279) `#D2348` cdda9f9b
+- main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` df6a4dad
+- util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` 8bea90d1
 
 ## Contrib
 
@@ -273,7 +275,7 @@
 - integration: add `skim` integration for completion (reported by cmm) `#D2287` a36d13ce
 - integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` 430a1746
 - integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` 788dfd15
-- integration/fzf: suppress dynamic binding `#D2350` xxxxxxxx
+- integration/fzf: suppress dynamic binding `#D2350` e9d5ca26
 
 ## Documentation
 
@@ -341,12 +343,12 @@
 - main: show details of the loading time (motivated by tessus, Darukutsu) `#D2313` 3d8f6264
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
 - util: optimize `ble/fd#list` using `compgen -G` `#D2328` 6f34012d
-  - util (`ble/fd#list`): fix a bug that `BASHPID` undefined in `bash < 4.3` is used (fixup 6f34012d) `#D2352` xxxxxxxx
-- bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e xxxxxxxx
-- decode: move key definitions into `lib/init-cmap.sh` `#D2341` xxxxxxxx
-- complete: rename key `{auto_complete => ac}_enter` `#D2342` xxxxxxxx
-- color: change color representation for faithful 24-bit black (reported by seefood) `#D2351` xxxxxxxx
-- global: reduce the uses of `:`, `true`, and `false` `#D2353` xxxxxxxx
+  - util (`ble/fd#list`): fix a bug that `BASHPID` undefined in `bash < 4.3` is used (fixup 6f34012d) `#D2352` 8bea90d1
+- bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e c9cd95c4
+- decode: move key definitions into `lib/init-cmap.sh` `#D2341` fbdda841
+- complete: rename key `{auto_complete => ac}_enter` `#D2342` a30125c4
+- color: change color representation for faithful 24-bit black (reported by seefood) `#D2351` 9ea84456
+- global: reduce the uses of `:`, `true`, and `false` `#D2353` 61a46734
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

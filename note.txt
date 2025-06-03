@@ -1926,6 +1926,27 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2025-05-08
+
+  * bind 経由で設定したコマンドは復元時の bind に追加するべきではないか? どうせ
+    復元時の keybinding はセッションごとに記録している。
+
+  * と思ったが… bind.save が空の session が存在している。これは何だろう? 複数
+    あるので偶然という訳でもない気がする。何らかの拍子に空になるということ。実
+    際に bind -p を実行してみると何も binding が存在しない状態になっている。
+
+    恐らく ble-detach をすると操作できない状態になる気がする。
+
+    * bind.save が空の場合にそれを検出して既定の binding に置き換える。
+
+    例えば ble-update を実行した時に問題が発生する可能性? と思ったが chat 上で
+    ble-update を実行することはないのでそれは変だ。ble-reload を実行したらなる
+    という訳でもないだろう。
+
+    うーん。空の bind.save を持つ bash プロセスを調べてみると 1月04日に開始して
+    いるが、bind.save 自体は 5月13日になっている。つまり、ble-reload もしくは
+    source .bashrc をした時に殻になったという事ではないかという気がする。
+
 2025-05-03
 
   * complete: ble/cmdinfo/complete:cd はやはり消す? 或いは別の bind の仕方を考える。
@@ -7818,6 +7839,19 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-06-03
+
+  * 2025-05-28 util: VTE の DA2 応答がまた変化している [#D2355]
+    https://www.reddit.com/r/bash/comments/1kwbwmf/comment/muo988p/
+    Ref #D1620
+
+    GNOME terminal 3.50.1 VTE 0.74.2 では未だ以前の DA2 応答 (65;*;1) である。
+    一方で 3.52.0 VTE 0.76.0 では '61;*;1' に変わっている。更新した。
+
+    記録として、過去の VTE の変更に関連するリンクもコード中にコメントを残した。
+    また厳密な version についてもチェックする。meson.build の中にバージョンが記
+    録されている。どうやら autotools から meson に切り替えたようだ。
+
 2025-06-02
 
   * "echo <<[TAB]" では補完が開始されるが "<<[TAB]" で補完が開始されない [#D2354]
@@ -8032,10 +8066,11 @@ bash_tips
       ./ble.pp:1267:      if ! type "$cmd" &>/dev/null; then
       ./ble.pp:1413:    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
 
-  * main: workaround coreutils stty in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, arc279) [#D2348]
+  * main: workaround coreutils stty in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, syuraj, seefood, arc279) [#D2348]
+    https://github.com/akinomyoga/ble.sh/issues/63
+    https://github.com/akinomyoga/ble.sh/issues/380
     https://github.com/akinomyoga/ble.sh/issues/343#issuecomment-2857492599
     https://x.com/arc279/status/1920306857148649817
-    https://github.com/akinomyoga/ble.sh/issues/63
 
     余り多いし面倒なので検出して対策を入れる事にした。
 
