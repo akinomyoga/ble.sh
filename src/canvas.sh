@@ -1096,11 +1096,30 @@ function ble/canvas/attach {
 function ble/canvas/put.draw {
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$1
 }
+## @fn ble/canvas/put-ind.draw [count] [opts] [x]
+##   @param[opt] count
+##     Repeat count of IND.
+##   @param[opt] opts
+##     @opt true-ind
+##       This forces to use the true IND (ESC D) intead of the ind capability
+##       of terminfo/termcap.
+##   @param[opt] x
+##     This specifies the expected x position (0-based) of the current cursor.
+##     If this is specified, the x position of the cursor is preserved when
+##     _ble_term_ind is not actually IND.
 function ble/canvas/put-ind.draw {
-  local count=${1-1} ind=$_ble_term_ind
-  [[ :$2: == *:true-ind:* ]] && ind=$'\eD'
-  local ret; ble/string#repeat "$ind" "$count"
+  local count=${1-1} opts=${2-} x=${3-} ind=$_ble_term_ind
+  ((count>=1)) || return 0
+  [[ :$opts: == *:true-ind:* ]] && ind=$'\eD'
+
+  local ret=$ind
+  if ((count>=1)); then
+    ble/string#repeat "$ind" "$count"
+  fi
+
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
+  [[ $x && $ind != $'\eD' ]] &&
+    ble/canvas/put-hpa.draw "$((x+1))" # tput ind が唯の改行の時がある
 }
 function ble/canvas/put-ri.draw {
   local count=${1-1}
@@ -1294,8 +1313,25 @@ function ble/canvas/bflush.draw {
 function ble/canvas/put-clear-lines.draw {
   local old=${1:-1}
   local new=${2:-$old}
-  if ((old==1&&new==1)); then
+  if ((old>=1&&new>=1)); then
+    # Note (#D2358): When both "old" and "new" are positive, we emit EL(2) to
+    # erase the first line.  When DL is used at the top line of the terminal
+    # display, the removed lines will be sent to the scrollback buffer of the
+    # terminal in a typical terminal, which some users don't seem to like.
     ble/canvas/put.draw "$_ble_term_el2"
+    if ((old==1)); then
+      ble/canvas/put-il.draw "$((new-old))" "$3"
+    else
+      ble/canvas/put-ind.draw 1 '' "$_ble_canvas_x"
+      if ((old==2&&new>=2)); then
+        ble/canvas/put.draw "$_ble_term_el2"
+        ble/canvas/put-il.draw "$((new-2))" "$3"
+      else
+        ble/canvas/put-dl.draw "$((old-1))" "$3"
+        ble/canvas/put-il.draw "$((new-1))" "$3"
+      fi
+      ble/canvas/put-cuu.draw 1
+    fi
   else
     ble/canvas/put-dl.draw "$old" "$3"
     ble/canvas/put-il.draw "$new" "$3"
@@ -1993,9 +2029,7 @@ function ble/canvas/trace/.process-esc-sequence {
         ble/canvas/put-cud.draw 1
     else
       ((y++))
-      ble/canvas/put.draw "$_ble_term_ind"
-      [[ $_ble_term_ind != $'\eD' ]] &&
-        ble/canvas/put-hpa.draw "$((x+1))" # tput ind が唯の改行の時がある
+      ble/canvas/put-ind.draw 1 '' "$x"
     fi
     lc=-1 lg=0
     ble/canvas/trace/.measure-point
@@ -3417,9 +3451,7 @@ function ble/canvas/panel#clear-after.draw {
   ble/canvas/put.draw "$_ble_term_el"
   local rest_lines=$((height-(y+1)))
   if ((rest_lines)); then
-    ble/canvas/put.draw "$_ble_term_ind"
-    [[ $_ble_term_ind != $'\eD' ]] &&
-      ble/canvas/put-hpa.draw "$((x+1))"
+    ble/canvas/put-ind.draw 1 '' "$x"
     ble/canvas/put-clear-lines.draw "$rest_lines"
     ble/canvas/put-cuu.draw 1
   fi

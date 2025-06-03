@@ -9,30 +9,46 @@ elif [[ $(printf 'hello world' | contra test 5 2 2>/dev/null) == $' worl\nd    '
   _ble_test_canvas_contra=contra
 fi
 
-function ble/test:canvas/trace.contra {
-  [[ $_ble_test_canvas_contra ]] || return 0 # skip
-
-  local w=${1%%:*} h=${1#*:} esc=$2 opts=$3 test_opts=$4
+## @fn ble/test:canvas/.contra opts esc
+##   @var[in] test_display
+##
+function ble/test:canvas/.contra {
+  local opts=$1 esc=$2
   local expect=$(sed 's/\$$//')
 
-  local ret x=0 y=0 g=0 rex termw=$w termh=$h
-  rex=':x=([^:]+):'; [[ :$test_opts: =~ $rex ]] && ((x=BASH_REMATCH[1]))
-  rex=':y=([^:]+):'; [[ :$test_opts: =~ $rex ]] && ((y=BASH_REMATCH[1]))
-  rex=':termw=([^:]+):'; [[ :$test_opts: =~ $rex ]] && ((termw=BASH_REMATCH[1]))
-  rex=':termh=([^:]+):'; [[ :$test_opts: =~ $rex ]] && ((termh=BASH_REMATCH[1]))
+  local w=80 h=20 x=0 y=0
+  ble/string#match ":$opts:" ':w=([^:]+):' && ((w=BASH_REMATCH[1]))
+  ble/string#match ":$opts:" ':h=([^:]+):' && ((h=BASH_REMATCH[1]))
+  ble/string#match ":$opts:" ':x=([^:]+):' && ((x=BASH_REMATCH[1]))
+  ble/string#match ":$opts:" ':y=([^:]+):' && ((y=BASH_REMATCH[1]))
+  ble/test --depth=2 --display-code="$test_display" \
+           '{ printf "\e['"$((y+1))"';'"$((x+1))"'H"; ble/util/put "$esc";} | "$_ble_test_canvas_contra" test "$w" "$h"' \
+           stdout="$expect"
+}
 
-  local x0=$x y0=$y
+function ble/test:canvas/trace.contra {
+  [[ $_ble_test_canvas_contra ]] || return 0 # skip
+  local w=${1%%:*} h=${1#*:} esc=$2 opts=$3 contra_opts=$4
+
+  local termw=$w termh=$h termx=0 termy=0
+  ble/string#match ":$contra_opts:" ':w=([^:]+):' && ((termw=BASH_REMATCH[1]))
+  ble/string#match ":$contra_opts:" ':h=([^:]+):' && ((termh=BASH_REMATCH[1]))
+  ble/string#match ":$contra_opts:" ':x=([^:]+):' && ((termx=BASH_REMATCH[1]))
+  ble/string#match ":$contra_opts:" ':y=([^:]+):' && ((termy=BASH_REMATCH[1]))
+
+  local ret x=$termx y=$termy g=0
   LINES=$h COLUMNS=$w ble/canvas/trace "$esc" "$opts"
   local out=$ret
 
   ble/string#quote-word "$esc"; local q_esc=$ret
   ble/string#quote-word "$opts"; local q_opts=$ret
-  ble/test --depth=1 --display-code="trace $q_esc $q_opts" \
-           '{ printf "\e['$((y0+1))';'$((x0+1))'H"; ble/util/put "$out";} | "$_ble_test_canvas_contra" test "$termw" "$termh"' \
-           stdout="$expect"
+  local test_display="trace $q_esc $q_opts"
+
+  ble/test:canvas/.contra "w=$termw:h=$termh:x=$termx:y=$termy" "$out"
 }
 
-ble/test/start-section 'ble/canvas' 36
+#------------------------------------------------------------------------------
+ble/test/start-section 'ble/canvas' 52
 
 # ble/util/c2w
 (
@@ -75,6 +91,246 @@ ble/test/start-section 'ble/canvas' 36
   ble/test 'ble/util/c2w:emacs 31323' ret=2
 )
 
+# ble/canvas/put-clear-lines.draw
+(
+  esc_fill=$'0123456789\r
+abcdefghij\r
+klmnopqrst\r
+uvwxyz[|]_\r
+ABCDEFGHIJ\r
+KLMNOPQRST\r
+UVWXYZ{\\}?\r
+壱弐参肆伍\r
+陸柒捌玖拾\r
+あいうえお'
+
+  function ble/test:canvas/put-clear-lines.contra {
+    [[ $_ble_test_canvas_contra ]] || return 0 # skip
+    local y=$1 old=$2 new=$3
+
+    local -a DRAW_BUFF=()
+    ble/canvas/put.draw "$esc_fill"
+    ble/canvas/put-cup.draw "$((y+1))" 1
+    ble/canvas/put-clear-lines.draw "$old" "$new"
+    local esc
+    ble/canvas/sflush.draw -v esc
+
+    ble/string#quote-word "$esc"; local q_esc=$ret
+    ble/string#quote-word "$opts"; local q_opts=$ret
+    local test_display="put-clear-lines.draw: CUD($y)DL($old)IL($new)"
+
+    ble/test:canvas/.contra "w=10:h=10:x=0:y=0" "$esc"
+  }
+
+  ble/test:canvas/put-clear-lines.contra 1 0 0 <<EOF
+0123456789$
+abcdefghij$
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 0 1 <<EOF
+0123456789$
+          $
+abcdefghij$
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 0 2 <<EOF
+0123456789$
+          $
+          $
+abcdefghij$
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 0 4 <<EOF
+0123456789$
+          $
+          $
+          $
+          $
+abcdefghij$
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 1 0 <<EOF
+0123456789$
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+          $
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 1 1 <<EOF
+0123456789$
+          $
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 1 2 <<EOF
+0123456789$
+          $
+          $
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 1 4 <<EOF
+0123456789$
+          $
+          $
+          $
+          $
+klmnopqrst$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 2 0 <<EOF
+0123456789$
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+          $
+          $
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 2 1 <<EOF
+0123456789$
+          $
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+          $
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 2 2 <<EOF
+0123456789$
+          $
+          $
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 2 4 <<EOF
+0123456789$
+          $
+          $
+          $
+          $
+uvwxyz[|]_$
+ABCDEFGHIJ$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 4 0 <<EOF
+0123456789$
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+          $
+          $
+          $
+          $
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 4 1 <<EOF
+0123456789$
+          $
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+          $
+          $
+          $
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 4 2 <<EOF
+0123456789$
+          $
+          $
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+          $
+          $
+EOF
+
+  ble/test:canvas/put-clear-lines.contra 1 4 4 <<EOF
+0123456789$
+          $
+          $
+          $
+          $
+KLMNOPQRST$
+UVWXYZ{\}?$
+壱弐参肆伍$
+陸柒捌玖拾$
+あいうえお$
+EOF
+)
+
 #------------------------------------------------------------------------------
 # from lib/test-canvas.sh
 
@@ -82,7 +338,7 @@ ble/test/start-section 'ble/canvas/trace (relative:confine:measure-bbox)' 17
 
 # test1
 
-ble/test:canvas/trace.contra 10:10 'hello world this is a flow world' relative x=3:y=3:termw=20 << EOF
+ble/test:canvas/trace.contra 10:10 'hello world this is a flow world' relative x=3:y=3:w=20 << EOF
                     $
                     $
                     $
@@ -572,4 +828,5 @@ ble/test/start-section 'ble/canvas/GraphemeCluster/c2break (GraphemeBreakTest.tx
   fi
 )
 
+#------------------------------------------------------------------------------
 ble/test/end-section

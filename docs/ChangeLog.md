@@ -241,6 +241,7 @@
 - main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` df6a4dad
 - util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` 8bea90d1
 - util (`ble/util/load-standard-builtins`): extend search paths `#D2357` xxxxxxxx
+- canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` xxxxxxxx
 
 ## Contrib
 

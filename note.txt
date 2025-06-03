@@ -7859,6 +7859,45 @@ bash_tips
 
 2025-06-03
 
+  * 2025-05-28 canvas: 複数行プロンプトで startup 時に scrollback にごみが残る (reported by u/JustABro_2321) [#D2358]
+    https://www.reddit.com/r/bash/comments/1kwbwmf/ (github AB-boi)
+
+    初期化時にプロンプト再表示の際に前のプロンプトが scrollback buffer に送り込
+    まれて、それを気にする人がいる。端末上部での DL の振る舞いが GNOME terminal
+    の最近の version で変化している様である。3.44.0/vte:0.68.0 (Linux Mint 21),
+    3.50.1/vte:0.74.2 (Fedora 39) では発生しない。3.52.0/vte:0.76.0 (Linux Mint
+    22), 3.52.2?/vte:0.76.2? (openSUSE Tumbleweed) では振る舞いが再現する。
+
+    この振る舞いの変更は GNOME/vte #2663 [1] で議論され commit 306e74d9 で適用
+    された物と考えられる。この変更は 0.75.0 以降に影響を与えている。
+
+    [1] https://gitlab.gnome.org/GNOME/vte/-/issues/2663
+    [2] https://gitlab.gnome.org/GNOME/vte/-/commit/306e74d9d197d63a1ed45edae653a162881bd24d
+
+    これに対する workaround として何が考えられるか。
+
+    a reject: DECSTBM を使うとしても同様に削除された行が scrollback に送り込ま
+      れるのではないかと思われるし、そもそも初期化直後は未だ DA2R が返ってきて
+      いないので端末依存の手法は使えない。
+
+    b そもそも初期化直後に何故プロンプトの高さを短縮する必要があったのだろうか。
+      もし仮に高さを調節する必要があったとしても、0 に潰すのでない限りは 2 行目
+      以降で DL を実行すれば済む話なのではないか? 或いは実際に 0 に潰れているの
+      だろうか。然しそうだとすると 1 行プロンプトの時に問題が生じないのが不思議
+      である。
+
+    c というかそもそも何故プロンプトが同じであるはずなのに panel の高さ調整が走っ
+      ているのだろうか。panel の高さ調整自体が起こらない様に最適化できないのか?
+
+    実際の振る舞いを調べてみると高さの調節は起こっていない様に見える。最初のプ
+    ロンプトの表示で set-height で高さが 2 に設定されて、その後は高さは変更され
+    ていない。それより寧ろ panel の中身を消去する為に DL IL を実行しているのが
+    原因ではないかと思われる → ble/canvas/put-clear-lines.draw でそれを実行し
+    ていた。
+
+    ble/canvas/put-clear-lines.draw で新旧の高さが両方 1 以上の場合は最初の行は
+    必ず EL(2) にして、DL/IL は必ず2行目で行う様に修正した。
+
   * util: Ubuntu で bash-builtins が検出できていない [#D2357]
 
     #D2356 のテスト中に気づいた。Ubuntu 22.04 LTS の bash-builtins パッケージに
