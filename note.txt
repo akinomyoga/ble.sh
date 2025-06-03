@@ -7841,6 +7841,23 @@ bash_tips
 
 2025-06-03
 
+  * util: ble/fd#add-cloexec が正しく動かなくなっている (reported by xlei77) [#D2356]
+    https://github.com/akinomyoga/ble.sh/issues/588#issuecomment-2932629707
+    Ref #D2328
+
+    どうも #D2328 (6f34012d) 以降 fd search 方式による ble/fd#add-cloexec が正
+    しく動かなくなっている。古い ble.sh では問題は発生していない。
+
+    実際に出力する結果を見てみると新しい compgen -G 実装だと新しい fd が増えて
+    いる。この fd は ble/util/assign-array による redirection に伴う退避 fd で
+    ある。うーん。つまり、新しい fd を作らずに compgen -G の結果を取得しなけれ
+    ばならない。うーん。無理の気がする。つまり、compgen -G は使えない。
+
+    5.3 以降は compgen -V ret を使うから OK? 実際に手許で再現して動作確認する必
+    要がある → 手許で 5.2 で問題が再現することを確認して修正後にちゃんと動作す
+    る事を確認した。5.3 についても修正後にちゃんと動作しているという事を確認し
+    た。
+
   * 2025-05-28 util: VTE の DA2 応答がまた変化している [#D2355]
     https://www.reddit.com/r/bash/comments/1kwbwmf/comment/muo988p/
     Ref #D1620

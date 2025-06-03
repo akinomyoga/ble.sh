@@ -3329,10 +3329,45 @@ if [[ -d /proc/$$/fd ]]; then
       ret=("${ret[@]##*/}") # disable=#D2352 (bash >= 5.3 are unaffected)
     }
   else
+    # Note: In Bash < 5.3.0, we cannot rely on "compgen -G" because we need to
+    # redirect the output of "compgen -G" to capture the result, and this
+    # changes the list of the file descriptors.  We need to manually list the
+    # file descriptors using the pathname expansion.
+
+    ## @fn ble/fd#list/.adjust-glob
+    ##   @var[out] set shopt gignore
+    function ble/fd#list/.adjust-glob {
+      set=$- shopt= gignore=$GLOBIGNORE
+      ble/base/list-shopt failglob dotglob
+      shopt -u failglob
+      set +f
+      GLOBIGNORE=
+    }
+    ## @fn ble/fd#list/.restore-glob
+    ##   @var[in] set shopt gignore
+    function ble/fd#list/.restore-glob {
+      # Note: dotglob is changed by GLOBIGNORE
+      GLOBIGNORE=$gignore
+      if [[ :$shopt: == *:dotglob:* ]]; then shopt -s dotglob; else shopt -u dotglob; fi
+      [[ $set == *f* ]] && set -f
+      [[ :$shopt: == *:failglob:* ]] && shopt -s failglob
+    }
+
     function ble/fd#list/.impl {
+      ret=()
       local pid=$1
-      ble/util/assign-array ret 'builtin compgen -G "/proc/$pid/fd/[0-9]*"'
-      ret=("${ret[@]##*/}") # disable=#D2352 (the results are ensured to be non-empty)
+
+      local set shopt gignore
+      ble/fd#list/.adjust-glob
+
+      local fd
+      for fd in /proc/"$pid"/fd/[0-9]*; do
+        fd=${fd##*/}
+        [[ $fd && ! ${fd//[0-9]} ]] &&
+          ble/array#push ret "$fd"
+      done
+
+      ble/fd#list/.restore-glob
     }
   fi
 

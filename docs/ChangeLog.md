@@ -344,6 +344,7 @@
 - canvas: optimize binary search in tables `#D2325` d56c7d2f d4c812b7
 - util: optimize `ble/fd#list` using `compgen -G` `#D2328` 6f34012d
   - util (`ble/fd#list`): fix a bug that `BASHPID` undefined in `bash < 4.3` is used (fixup 6f34012d) `#D2352` 8bea90d1
+  - util (`ble/fd#list`): fix `ble/fd#list` generating an internal fd and breaking `ble/fd#add-cloexec` (reported by xlei77) `#D2356` xxxxxxxx
 - bind: clean up old codes to bind to <kbd>ESC</kbd> `#D2334` 514d177e c9cd95c4
 - decode: move key definitions into `lib/init-cmap.sh` `#D2341` fbdda841
 - complete: rename key `{auto_complete => ac}_enter` `#D2342` a30125c4
