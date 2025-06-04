@@ -10054,10 +10054,9 @@ function ble-edit/nsearch/.goto-match {
   _ble_edit_nsearch_match=$index
   _ble_edit_nsearch_index=$index
   _ble_edit_mark=$beg
-  local is_end_marker=
-  local rex=':point=([^:]*):'
-  [[ :$opts: =~ $rex ]]
-  case ${BASH_REMATCH[1]} in
+  local is_end_marker= ret=
+  ble/opts#extract-last-optarg "$opts" point
+  case $ret in
   (begin)       _ble_edit_ind=0 ;;
   (end)         _ble_edit_ind=${#line} is_end_marker=1 ;;
   (match-begin) _ble_edit_ind=$beg ;;
@@ -10344,8 +10343,7 @@ function ble/widget/history-search {
   # 検索文字列が空の時は別の動作を行う
   if [[ ! $_ble_edit_nsearch_needle ]]; then
     local empty=empty-search
-    local rex='.*:empty=([^:]*):'
-    [[ :$opts: =~ $rex ]] && empty=${BASH_REMATCH[1]}
+    ble/opts#extract-last-optarg "$opts" empty && empty=$ret
     case $empty in
     (history-move)
       if [[ :$opts: == *:forward:* ]]; then

@@ -7857,6 +7857,11 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-07-02
+
+  * global: use ble/opts#extract-last-optarg [#D2363]
+    類似コードが沢山あるので。
+
 2025-06-27
 
   * util (ble/util/is-stdin-ready): wt with Git Bash で画面の表示が全然同期しない [#D2362]

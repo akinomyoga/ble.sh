@@ -245,8 +245,7 @@ function bleopt/check:emoji_opts {
   _ble_unicode_EmojiStatus_xIsEmoji='ret'
   [[ :$value: != *:unqualified:* ]] &&
     _ble_unicode_EmojiStatus_xIsEmoji=$_ble_unicode_EmojiStatus_xIsEmoji'&&ret!=_ble_unicode_EmojiStatus_Unqualified'
-  local rex=':min=U\+([0-9a-fA-F]+):'
-  [[ :$value: =~ $rex ]] &&
+  ble/string#match ":$value:" ':min=^U\+([0-9a-fA-F]+):' &&
     _ble_unicode_EmojiStatus_xIsEmoji=$_ble_unicode_EmojiStatus_xIsEmoji'&&code>=0x'${BASH_REMATCH[1]}
   ((_ble_prompt_version++))
   ble/util/c2w/clear-cache
@@ -2098,7 +2097,7 @@ function ble/canvas/trace/.impl {
   [[ :$opts: == *:left-char:* ]] && trace_flags=L$trace_flags
   local opt_terminfo=; [[ :$opts: == *:terminfo:* ]] && opt_terminfo=1
 
-  if local rex=':(justify(=[^:]+)?|center|right):'; [[ :$opts: =~ $rex ]]; then
+  if ble/string#match ":$opts:" ':(justify(=[^:]+)?|center|right):'; then
     trace_flags=J$trace_flags
     local jx0=$x jy0=$y
     local justify_sep= justify_align=
@@ -2111,7 +2110,7 @@ function ble/canvas/trace/.impl {
     esac
   fi
 
-  if local rex=':clip=([0-9]*),([0-9]*)([-+])([0-9]*),([0-9]*):'; [[ :$opts: =~ $rex ]]; then
+  if ble/string#match ":$opts:" ':clip=([0-9]*),([0-9]*)([-+])([0-9]*),([0-9]*):'; then
     local cx1 cy1 cx2 cy2 cx cy cg
     trace_flags=C$trace_flags
     cx1=${BASH_REMATCH[1]} cy1=${BASH_REMATCH[2]}
@@ -2131,9 +2130,9 @@ function ble/canvas/trace/.impl {
     trace_g2sgr=ble/color/g2sgr-ansi
 
   local opt_g0= opt_sgr0=$_ble_term_sgr0
-  if rex=':g0=([^:]+):'; [[ :$opts: =~ $rex ]]; then
+  if ble/string#match ":$opts:" ':g0=([^:]+):'; then
     opt_g0=${BASH_REMATCH[1]}
-  elif rex=':face0=([^:]+):'; [[ :$opts: =~ $rex ]]; then
+  elif ble/string#match ":$opts:" ':face0=([^:]+):'; then
     ble/color/face2g "${BASH_REMATCH[1]}"; opt_g0=$ret
   fi
   if [[ $opt_g0 ]]; then

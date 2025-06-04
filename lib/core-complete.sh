@@ -699,8 +699,8 @@ function ble/complete/menu#construct {
   local hash=$nitem,$lines,$cols:$menu_style
 
   # 表示したい項目の指定
-  local scroll=0 rex=':scroll=([0-9]+):' use_cache=
-  if [[ :$menu_construct_opts: =~ $rex ]]; then
+  local scroll=0 use_cache=
+  if ble/string#match ":$menu_construct_opts:" ':scroll=([0-9]+):'; then
     scroll=${BASH_REMATCH[1]}
     ((nitem&&(scroll%=nitem)))
     [[ $hash == "$_ble_complete_menu_style_hash" ]] && use_cache=1
@@ -6325,8 +6325,8 @@ function ble/complete/source:hostname {
 function ble/complete/complete/determine-context-from-opts {
   local opts=$1
   context=syntax
-  if local rex=':context=([^:]+):'; [[ :$opts: =~ $rex ]]; then
-    local rematch1=${BASH_REMATCH[1]}
+  if local ret; ble/opts#extract-last-optarg "$opts" context; then
+    local rematch1=$ret
     if ble/is-function ble/complete/context:"$rematch1"/generate-sources; then
       context=$rematch1
     else

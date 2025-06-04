@@ -16,11 +16,11 @@ function ble/test:canvas/.contra {
   local opts=$1 esc=$2
   local expect=$(sed 's/\$$//')
 
-  local w=80 h=20 x=0 y=0
-  ble/string#match ":$opts:" ':w=([^:]+):' && ((w=BASH_REMATCH[1]))
-  ble/string#match ":$opts:" ':h=([^:]+):' && ((h=BASH_REMATCH[1]))
-  ble/string#match ":$opts:" ':x=([^:]+):' && ((x=BASH_REMATCH[1]))
-  ble/string#match ":$opts:" ':y=([^:]+):' && ((y=BASH_REMATCH[1]))
+  local w=80 h=20 x=0 y=0 ret
+  ble/opts#extract-last-optarg "$opts" w && w=$ret
+  ble/opts#extract-last-optarg "$opts" h && h=$ret
+  ble/opts#extract-last-optarg "$opts" x && x=$ret
+  ble/opts#extract-last-optarg "$opts" y && y=$ret
   ble/test --depth=2 --display-code="$test_display" \
            '{ printf "\e['"$((y+1))"';'"$((x+1))"'H"; ble/util/put "$esc";} | "$_ble_test_canvas_contra" test "$w" "$h"' \
            stdout="$expect"
@@ -30,11 +30,11 @@ function ble/test:canvas/trace.contra {
   [[ $_ble_test_canvas_contra ]] || return 0 # skip
   local w=${1%%:*} h=${1#*:} esc=$2 opts=$3 contra_opts=$4
 
-  local termw=$w termh=$h termx=0 termy=0
-  ble/string#match ":$contra_opts:" ':w=([^:]+):' && ((termw=BASH_REMATCH[1]))
-  ble/string#match ":$contra_opts:" ':h=([^:]+):' && ((termh=BASH_REMATCH[1]))
-  ble/string#match ":$contra_opts:" ':x=([^:]+):' && ((termx=BASH_REMATCH[1]))
-  ble/string#match ":$contra_opts:" ':y=([^:]+):' && ((termy=BASH_REMATCH[1]))
+  local termw=$w termh=$h termx=0 termy=0 ret
+  ble/opts#extract-last-optarg "$contra_opts" w && termw=$ret
+  ble/opts#extract-last-optarg "$contra_opts" h && termh=$ret
+  ble/opts#extract-last-optarg "$contra_opts" x && termx=$ret
+  ble/opts#extract-last-optarg "$contra_opts" y && termy=$ret
 
   local ret x=$termx y=$termy g=0
   LINES=$h COLUMNS=$w ble/canvas/trace "$esc" "$opts"

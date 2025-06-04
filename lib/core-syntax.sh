@@ -1460,7 +1460,7 @@ function ble/syntax:bash/simple-word/eval/.impl {
     local __ble_sync_timeout=$_ble_syntax_bash_simple_eval_timeout
     if [[ $_ble_syntax_bash_simple_eval_timeout_carry ]]; then
       __ble_sync_timeout=0
-    elif local __ble_rex=':timeout=([^:]*):'; [[ :$__ble_opts: =~ $__ble_rex ]]; then
+    elif ble/string#match ":$__ble_opts:" ':timeout=([^:]*):'; then
       __ble_sync_timeout=${BASH_REMATCH[1]}
     fi
     [[ $__ble_sync_timeout ]] &&

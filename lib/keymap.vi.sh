@@ -2330,8 +2330,8 @@ function ble/widget/vi-command/linewise-range.impl {
     local qbase=$q qline=0
   fi
 
-  local bolx=; local rex=':bolx=([0-9]+):'; [[ :$opts: =~ $rex ]] && bolx=${BASH_REMATCH[1]}
-  local nolx=; local rex=':nolx=([0-9]+):'; [[ :$opts: =~ $rex ]] && nolx=${BASH_REMATCH[1]}
+  local bolx=; ble/string#match ":$opts:" ':bolx=([0-9]+):' && bolx=${BASH_REMATCH[1]}
+  local nolx=; ble/string#match ":$opts:" ':nolx=([0-9]+):' && nolx=${BASH_REMATCH[1]}
 
   # 移動時 (オペレータが設定されていない時)
   if [[ ! $flag ]]; then

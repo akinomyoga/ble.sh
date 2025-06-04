@@ -4696,14 +4696,13 @@ function ble/util/conditional-sync {
   local __ble_weight=$3; ((__ble_weight<=0&&(__ble_weight=100)))
   local __ble_opts=$4
 
-  local __ble_timeout= __ble_rex=':timeout=([^:]+):'
-  [[ :$__ble_opts: =~ $__ble_rex ]] && ((__ble_timeout=BASH_REMATCH[1]))
+  local __ble_timeout= ret
+  ble/opts#extract-last-optarg "$__ble_opts" timeout && ((__ble_timeout=ret))
 
   [[ :$__ble_opts: == *:progressive-weight:* ]] &&
     local __ble_weight_max=$__ble_weight __ble_weight=1
 
   # read opt "pid=PID/-PGID"
-  local ret
   ble/opts#extract-last-optarg "$__ble_opts" pid
   local __ble_pid=$ret
   ble/util/unlocal ret

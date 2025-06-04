@@ -356,6 +356,7 @@
 - complete: rename key `{auto_complete => ac}_enter` `#D2342` a30125c4
 - color: change color representation for faithful 24-bit black (reported by seefood) `#D2351` 9ea84456
 - global: reduce the uses of `:`, `true`, and `false` `#D2353` 61a46734
+- global: use `ble/opts#extract-last-optarg` `#D2363` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

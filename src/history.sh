@@ -321,10 +321,9 @@ if ((_ble_bash>=40000)); then
       load_strategy=nlfix
     fi
 
-    local arg_count= arg_offset=0
-    [[ :$opts: == *:append:* ]] &&
-      arg_offset=${#_ble_history[@]}
-    local rex=':count=([0-9]+):'; [[ :$opts: =~ $rex ]] && arg_count=${BASH_REMATCH[1]}
+    local arg_count= arg_offset=0 ret
+    [[ :$opts: == *:append:* ]] && arg_offset=${#_ble_history[@]}
+    ble/opts#extract-last-optarg "$opts" count && arg_count=$ret
 
     local history_tmpfile=$_ble_base_run/$$.history.load
     local history_indfile=$_ble_base_run/$$.history.multiline-index
@@ -496,8 +495,8 @@ else
     local opt_append=
     [[ :$opts: == *:append:* ]] && opt_append=1
 
-    local arg_count= rex=':count=([0-9]+):'
-    [[ :$opts: =~ $rex ]] && arg_count=${BASH_REMATCH[1]}
+    local arg_count= ret
+    ble/opts#extract-last-optarg "$opts" count && arg_count=$ret
 
     blehook/invoke history_message "loading history..."
 
