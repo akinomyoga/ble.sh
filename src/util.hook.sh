@@ -763,12 +763,14 @@ _ble_builtin_trap_user_lastarg=
 _ble_builtin_trap_user_lastexit=
 ## @fn ble/builtin/trap/invoke.sandbox params...
 ##   @param[in] params...
+##   @var[in] _ble_trap_sig
 ##   @var[in] _ble_trap_handler
 ##   @var[out] _ble_trap_done
 ##   @var[in,out] _ble_trap_lastexit _ble_trap_lastarg
 function ble/builtin/trap/invoke.sandbox {
   local _ble_trap_count
   for ((_ble_trap_count=0;_ble_trap_count<1;_ble_trap_count++)); do
+    local BASH_TRAPSIG=$_ble_trap_sig
     _ble_trap_done=return
     # Note #D1757: そのまま制御を変更せずに trap handler の実行が終わっ
     # た時は $? $_ を保存する。同じ eval の中でないと $_ が eval を抜

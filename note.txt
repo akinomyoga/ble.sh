@@ -1928,21 +1928,19 @@ bash_tips
 
 2025-06-04
 
-  * bas-5.3: 再度チェック
+  * bash-5.3: 再度チェック
 
     * read -E: 対応するべき。言語は bash という事にする?
     * source -p PATH: 普通に source する時は -- を指定するべき。もしくは . を使う。
     * bind -pP の後の引数は解釈しない
     * compopt -o fullquote
-    * BASH_TRAPSIG が使えるかも? また自前でシグナルを発生させる時に
-      BASH_TRAPSIG を設定するべき?  ble/builtin/trap/invoke の中で。
-
-      * ble-edit/io/TRAPUSR1 で ble/builtin/trap/invoke USR1 を明示的に呼び出し
-        ているが、これは ble-edit/io/TRAPUSR1 の呼び出し元 (.handler) でも呼び
-        出しているので二重に処理されることにならないのか?
+    * ble-edit/io/TRAPUSR1 で ble/builtin/trap/invoke USR1 を明示的に呼び出し
+      ているが、これは ble-edit/io/TRAPUSR1 の呼び出し元 (.handler) でも呼び
+      出しているので二重に処理されることにならないのか?
 
     * https://lists.gnu.org/archive/html/bug-bash/2025-06/msg00000.html
-      これは M-{ の振る舞いに変更が必要になるのでは?
+      これは M-{ の振る舞いに変更が必要になるのでは? と思ったがその後の変更でま
+      た振る舞いが元に戻った?
 
 2025-05-08
 
@@ -7858,6 +7856,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2025-07-02
+
+  * 5.3: BASH_TRAPSIG 対応 [#D2364]
+
+    * reject: util.hook.sh の実装で BASH_TRAPSIG が使えるかも? 然し現状でどの
+      bash version でも動く様にしていて、bash 5.3 以降でだけ振る舞いを変えるの
+      は無駄な複雑化に繋がるし、カスタムの trap の場合にはやはり自前で
+      _ble_trap_sig を決定しなければならないので敢えて BASH_TRAPSIG を使う理由
+      もない。
+
+    * done: また自前でシグナルを発生させる時に BASH_TRAPSIG を設定するべき?
+      ble/builtin/trap/invoke の中で → これには対応した。
 
   * global: use ble/opts#extract-last-optarg [#D2363]
     類似コードが沢山あるので。
