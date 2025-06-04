@@ -7857,6 +7857,16 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-06-05
+
+  * complete: 補完結果に } が混入する (reported by cmndrsp0ck) [#D2359]
+    https://github.com/akinomyoga/ble.sh/issues/589
+    Ref #D2352
+
+    開発用の ble.sh セッションでは発生しないが新しいセッションで再現する。これ
+    は単に最近の変更で発生する様になっただけだった。8bea90d1 (#D2352) の書き換
+    えで失敗している。
+
 2025-06-03
 
   * 2025-05-28 canvas: 複数行プロンプトで startup 時に scrollback にごみが残る (reported by u/JustABro_2321) [#D2358]

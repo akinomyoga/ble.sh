@@ -4478,7 +4478,7 @@ function ble/complete/progcomp/process-compgen-output {
     [[ $has_desc ]] && bleopt complete_menu_style=desc
   else
     [[ $progcomp_prefix ]] &&
-      ble/array#map-prefix cands "$progcomp_prefix}"
+      ble/array#map-prefix cands "$progcomp_prefix"
   fi
   ble/complete/cand/yield.batch "$action" "$comp_opts"
 }
