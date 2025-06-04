@@ -273,7 +273,7 @@ function ble-decode/keymap:emacs/initialize {
   if [[ -s $fname_keymap_cache &&
           $fname_keymap_cache -nt $_ble_base/lib/keymap.emacs.sh &&
           $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
-    source "$fname_keymap_cache" && return 0
+    source -- "$fname_keymap_cache" && return 0
   fi
 
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."

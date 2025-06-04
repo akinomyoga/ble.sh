@@ -7397,9 +7397,9 @@ function ble/builtin/trap:DEBUG {
 ##     ら、rcfile かどうかをファイル名と行番号だけから判定しなければならない事
 ##     に由来する)
 ##
-##   - コマンドラインから source ~/.bashrc 等の様にして手動で bashrc を読み込ん
-##     だ時 (これは source が DEBUG trap を継承しないという Bash の制限に由来す
-##     る)
+##   - コマンドラインから source -- ~/.bashrc 等の様にして手動で bashrc を読み
+##     込んだ時 (これは source が DEBUG trap を継承しないという Bash の制限に由
+##     来する)
 ##
 ##   - rcfile から一旦別のファイルを source してそのファイルから ble.sh を
 ##     source した時。または関数内から ble.sh を source した時 (これも DEBUG

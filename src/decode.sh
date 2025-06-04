@@ -1606,7 +1606,7 @@ function ble/decode/keymap#.onload {
   local kmap=$1
   local delay=$_ble_base_run/$$.bind.delay.$kmap
   if [[ -s $delay ]]; then
-    source "$delay"
+    source -- "$delay"
     >| "$delay"
   fi
 }
@@ -2828,11 +2828,11 @@ function ble/decode/cmap/initialize {
   local dump=$_ble_base_cache/decode.cmap.$_ble_decode_kbd_ver.$TERM.dump
 #%$ echo "  local hash='$(./make_command.sh hash lib/init-cmap.sh)'"
   if [[ -s $dump && $dump -nt $init ]]; then
-    source "$dump"
+    source -- "$dump"
     [[ $_ble_decode_cmap_cache_hash == "$hash" ]] && return 0
   fi
 
-  source "$init"
+  source -- "$init"
 }
 
 function ble/decode/cmap/decode-chars.hook {
@@ -3087,11 +3087,11 @@ function ble/decode/readline/bind {
 
 #%$ echo "  local hash='$(./make_command.sh hash lib/init-bind.sh)'"
   local _ble_decode_bind_cache_hash=
-  [[ -s $file && $file -nt $_ble_base/lib/init-bind.sh ]] && source "$file"
+  [[ -s $file && $file -nt $_ble_base/lib/init-bind.sh ]] && source -- "$file"
 
   if [[ $_ble_decode_bind_cache_hash != "$hash" ]]; then
-    source "$_ble_base/lib/init-bind.sh"
-    source "$file"
+    source -- "$_ble_base/lib/init-bind.sh"
+    source -- "$file"
   fi
 
   _ble_decode_bind__uvwflag=
@@ -3099,7 +3099,7 @@ function ble/decode/readline/bind {
 }
 function ble/decode/readline/unbind {
   ble/function#try ble/encoding:"$bleopt_input_encoding"/clear
-  source "$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.unbind"
+  source -- "$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.unbind"
 }
 function ble/decode/readline/rebind {
   [[ $_ble_decode_bind_state == none ]] && return 0
@@ -4150,7 +4150,7 @@ function ble/builtin/bind/.process {
       # Note: サブシェル内でバインディングを復元してから出力
       ( ble/decode/readline/unbind
         [[ -s "$_ble_base_run/$$.bind.save" ]] &&
-          source "$_ble_base_run/$$.bind.save"
+          source -- "$_ble_base_run/$$.bind.save"
         [[ $opt_print ]] &&
           builtin bind ${opt_keymap:+-m "$opt_keymap"} -"$opt_print"
         declare rlfunc
@@ -4523,7 +4523,7 @@ function ble/decode/detach {
 
   # 元のキー割り当ての復元
   if [[ -s "$_ble_base_run/$$.bind.save" ]]; then
-    source "$_ble_base_run/$$.bind.save"
+    source -- "$_ble_base_run/$$.bind.save"
     >| "$_ble_base_run/$$.bind.save"
   fi
 

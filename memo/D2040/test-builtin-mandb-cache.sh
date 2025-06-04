@@ -12,7 +12,7 @@ if [[ ! -s $blesh ]]; then
   fi
 fi
 
-source "$blesh" --lib
+source -- "$blesh" --lib
 ble-import core-complete
 ble-import core-cmdspec
 

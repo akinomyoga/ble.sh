@@ -10,7 +10,7 @@ function ble-edit/bind/load-editing-mode:vi { return 0; }
 # 2021-04-26 force update (rename ble/decode/keymap#.register)
 # 2021-09-23 force update (change to nsearch and bind-history)
 
-source "$_ble_base/lib/keymap.vi_digraph.sh"
+source -- "$_ble_base/lib/keymap.vi_digraph.sh"
 
 ## @bleopt keymap_vi_macro_depth
 bleopt/declare -n keymap_vi_macro_depth 64
@@ -8641,7 +8641,7 @@ function ble-decode/keymap:vi/initialize {
   if [[ -s $fname_keymap_cache &&
           $fname_keymap_cache -nt $_ble_base/lib/keymap.vi.sh &&
           $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
-    source "$fname_keymap_cache" && return 0
+    source -- "$fname_keymap_cache" && return 0
   fi
 
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."

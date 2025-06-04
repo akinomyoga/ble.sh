@@ -359,6 +359,7 @@
 - color: change color representation for faithful 24-bit black (reported by seefood) `#D2351` 9ea84456
 - global: reduce the uses of `:`, `true`, and `false` `#D2353` 61a46734
 - global: use `ble/opts#extract-last-optarg` `#D2363` xxxxxxxx
+- global: use `source -- path` to source an arbitrary path `#D2366` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3

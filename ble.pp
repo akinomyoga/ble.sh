@@ -50,7 +50,7 @@ $"leakvar"=__t1wJltaP9nmow__
 #%%end.i
 function ble/bin/grep { command grep "$@"; }
 function ble/util/print { printf '%s\n' "$1"; }
-source "${BASH_SOURCE%/*}/lib/core-debug.sh"
+source -- "${BASH_SOURCE%/*}/lib/core-debug.sh"
 #%end
 #%define inc
 #%%[guard_name = "@_included".replace("[^_a-zA-Z0-9]", "_")]
@@ -2165,7 +2165,7 @@ function ble-reload {
   ble/array#push _ble_local_options '--bash-debug-version=ignore'
 
   builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_leave"
-  source "$_ble_base/ble.sh" "${_ble_local_options[@]}"
+  source -- "$_ble_base/ble.sh" "${_ble_local_options[@]}"
 }
 
 #%[quoted_repository   = "'" + getenv("PWD"               ).replace("'", "'\\''") + "'"]
@@ -2530,13 +2530,13 @@ function ble/base/check-bash-debug-version {
       "\`$sgr2--bash-debug-version=short$sgr0' or \`${sgr2}once$sgr0' or \`${sgr2}ignore$sgr0' to \`ble.sh':" \
       '' \
       "  ${sgrC}# Show a short version of the message$sgr0" \
-      "  ${sgr1}source /path/to/ble.sh $bold--bash-debug-version=short$sgr0" \
+      "  ${sgr1}source -- /path/to/ble.sh $bold--bash-debug-version=short$sgr0" \
       '' \
       "  ${sgrC}# Do not print the warning message more than once$sgr0" \
-      "  ${sgr1}source /path/to/ble.sh $bold--bash-debug-version=once$sgr0" \
+      "  ${sgr1}source -- /path/to/ble.sh $bold--bash-debug-version=once$sgr0" \
       '' \
       "  ${sgrC}# Show the warning message only once for each debug version of Bash$sgr0" \
-      "  ${sgr1}source /path/to/ble.sh $bold--bash-debug-version=ignore$sgr0" \
+      "  ${sgr1}source -- /path/to/ble.sh $bold--bash-debug-version=ignore$sgr0" \
       '' >&2
   fi
 }
@@ -2678,7 +2678,7 @@ function ble/base/load-rcfile {
       _ble_base_rcfile=$HOME/.blerc
   fi
   if [[ -s $_ble_base_rcfile ]]; then
-    source "$_ble_base_rcfile"
+    source -- "$_ble_base_rcfile"
     blehook/.compatibility-ble-0.3/check
   fi
 }
@@ -3182,7 +3182,7 @@ function ble/base/sub:test {
   for section; do
     local file=$_ble_base/lib/test-$section.sh
     if [[ -f $file ]]; then
-      source "$file"
+      source -- "$file"
     else
       ble/test/log "ERROR: Test '$section' is not defined."
       error=1

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 if [[ -s ~/.mwg/src/ble.sh/out/ble.sh ]]; then
-  source ~/.mwg/src/ble.sh/out/ble.sh --lib
+  source -- ~/.mwg/src/ble.sh/out/ble.sh --lib
 else
-  source ~/.local/share/blesh/ble.sh --lib
+  source -- ~/.local/share/blesh/ble.sh --lib
 fi
 ble-import core-complete
 ble-import core-cmdspec

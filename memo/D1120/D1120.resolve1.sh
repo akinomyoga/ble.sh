@@ -53,7 +53,7 @@ function ble/history:bash/resolve-multiline {
   echo "modification_count=$modification_count"
   if ((modification_count)); then
      local HISTCONTROL= HISTSIZE= HISTIGNORE=
-     time source "$foutput"
+     time source -- "$foutput"
   fi
 }
 ble/history:bash/resolve-multiline

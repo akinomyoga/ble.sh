@@ -379,7 +379,7 @@ if ((_ble_bash>=40000)); then
           if [[ $load_strategy == source ]]; then
             # Cygwin #D0701 #D1605
             #   620ms 99000項目 @ #D0701
-            source "$history_tmpfile"
+            source -- "$history_tmpfile"
           elif [[ $load_strategy == nlfix ]]; then
             builtin mapfile -O "$arg_offset" -t _ble_history < "$history_tmpfile"
           else
@@ -762,7 +762,7 @@ if ((_ble_bash>=30100)); then
     ble/history:bash/resolve-multiline/.is-HISTSIZE-unlimited || local HISTSIZE=
 
     local HISTCONTROL= HISTIGNORE=
-    source "$tmpfile_base.sh"
+    source -- "$tmpfile_base.sh"
     ble/history:bash/resolve-multiline/.cleanup
   }
 
@@ -863,7 +863,7 @@ if ((_ble_bash>=30100)); then
     local filename=$1
     local -x tmpfile_base=$_ble_base_run/$$.history.read
     ble/history:bash/resolve-multiline/.awk read < "$filename" &>/dev/null
-    source "$tmpfile_base.part"
+    source -- "$tmpfile_base.part"
     ble/history:bash/resolve-multiline/.cleanup
   }
 else

@@ -4541,7 +4541,7 @@ if ((_ble_bash>=40400)) && ble/util/load-standard-builtin sleep; then
     builtin eval -- "$_ble_bash_POSIXLY_CORRECT_local_return"
   }
 elif [[ -f $_ble_base/lib/init-msleep.sh ]] &&
-       source "$_ble_base/lib/init-msleep.sh" &&
+       source -- "$_ble_base/lib/init-msleep.sh" &&
        ble/util/msleep/.load-compiled-builtin
 then
   # 自前で sleep.so をコンパイルする。
@@ -5686,7 +5686,7 @@ function ble/util/import {
     local guard=ble/util/import/guard:$enc
     ble/is-function "$guard" && return 0
     [[ -e $file ]] || return 1
-    source "$file" || { ext=$?; continue; }
+    source -- "$file" || { ext=$?; continue; }
     builtin eval "function $guard { return 0; }"
     ble/array#push _ble_util_import_files "$file"
 
@@ -6553,9 +6553,9 @@ function ble/term/DA2R.hook {
 }
 function ble/term/.initialize {
   if [[ -s $_ble_base_cache/term.$TERM && $_ble_base_cache/term.$TERM -nt $_ble_base/lib/init-term.sh ]]; then
-    source "$_ble_base_cache/term.$TERM"
+    source -- "$_ble_base_cache/term.$TERM"
   else
-    source "$_ble_base/lib/init-term.sh"
+    source -- "$_ble_base/lib/init-term.sh"
   fi
 
   ble/string#reserve-prototype "$_ble_term_it"

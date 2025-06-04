@@ -822,6 +822,15 @@ function sub:scan {
       \Zble/cmdspec/opts .* : false trueZd
       g'
 
+  sub:scan/list-command 'source' --exclude-this |
+    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
+       \Zsource [["$`~?*]Z!d
+
+        \Ztries to source ~/\.bashrcZd
+        \Zsource = source " " \$i;Zd
+        \Z"usage: source \$Zd
+       g'
+
   sub:scan/a.txt
   sub:scan/check-todo-mark
   sub:scan/bash300bug

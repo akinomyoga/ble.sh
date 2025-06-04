@@ -44,7 +44,7 @@ source ble.sh/out/ble.sh
 
 git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
-echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+echo 'source -- ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 The build process integrates multiple Bash script files into a single Bash script `ble.sh` with pre-processing.
@@ -66,7 +66,7 @@ source ble-nightly/ble.sh
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 bash ble-nightly/ble.sh --install ~/.local/share
-echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+echo 'source -- ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 After the installation, the directory `ble-nightly` can be removed.
@@ -86,7 +86,7 @@ source ble-nightly/ble.sh
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 bash ble-nightly/ble.sh --install ~/.local/share
-echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+echo 'source -- ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 After the installation, the directory `ble-nightly` can be removed.
@@ -416,7 +416,7 @@ but a more reliable way is to add the following codes to your `.bashrc` file:
 # bashrc
 
 # Add this lines at the top of .bashrc:
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+[[ $- == *i* ]] && source -- /path/to/blesh/ble.sh --attach=none
 
 # your bashrc settings come here...
 
@@ -424,9 +424,9 @@ but a more reliable way is to add the following codes to your `.bashrc` file:
 [[ ! ${BLE_VERSION-} ]] || ble-attach
 ```
 
-Basically, when `source /path/to/ble.sh` and `ble-attach` are performed,
+Basically, when `source -- /path/to/ble.sh` and `ble-attach` are performed,
 standard streams (`stdin`, `stdout`, and `stderr`) should not be redirected but should be connected to the controlling TTY of the current session.
-Also, please avoid calling `source /path/to/ble.sh` in shell functions.
+Also, please avoid calling `source -- /path/to/ble.sh` in shell functions.
 The detailed conditions where the above *more reliable setup* is needed are explained in [an answer in Discussion #254](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757).
 
 ## 1.4 User settings `~/.blerc`
@@ -440,10 +440,10 @@ If you want to change the default path of the init script, you can add the optio
 # in bashrc
 
 # Example 1: ~/.blerc will be used by default
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+[[ $- == *i* ]] && source -- /path/to/blesh/ble.sh --attach=none
 
 # Example 2: /path/to/your/blerc will be used
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
+[[ $- == *i* ]] && source -- /path/to/blesh/ble.sh --attach=none --rcfile /path/to/your/blerc
 ```
 
 ## 1.5 Update

@@ -45,7 +45,7 @@ source ble.sh/out/ble.sh
 
 git clone --recursive --depth 1 --shallow-submodules https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
-echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+echo 'source -- ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 生成過程では、複数のBashスクリプトファイルを前処理・結合することで `ble.sh` を生成し、
@@ -68,7 +68,7 @@ source ble-nightly/ble.sh
 
 curl -L https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 bash ble-nightly/ble.sh --install ~/.local/share
-echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+echo 'source -- ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 インストール後はディレクトリ `ble-nightly` は削除して問題ありません。
@@ -88,7 +88,7 @@ source ble-nightly/ble.sh
 
 wget -O - https://github.com/akinomyoga/ble.sh/releases/download/nightly/ble-nightly.tar.xz | tar xJf -
 bash ble-nightly/ble.sh --install ~/.local/share
-echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+echo 'source -- ~/.local/share/blesh/ble.sh' >> ~/.bashrc
 ```
 
 インストール後はディレクトリ `ble-nightly` は削除して問題ありません。
@@ -375,7 +375,7 @@ GitHub Releases から `ble.sh` の tarball をダウンロードすることも
 # bashrc
 
 # .bashrc の先頭近くに以下を追加して下さい。
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+[[ $- == *i* ]] && source -- /path/to/blesh/ble.sh --attach=none
 
 # 間に通常の bashrc の内容を既述します。
 
@@ -383,9 +383,9 @@ GitHub Releases から `ble.sh` の tarball をダウンロードすることも
 [[ ! ${BLE_VERSION-} ]] || ble-attach
 ```
 
-`source /path/to/ble.sh` 及び `ble-attach` を呼び出す時は、
+`source -- /path/to/ble.sh` 及び `ble-attach` を呼び出す時は、
 標準ストリーム (`stdin`, `stdout`, `stderr`) が現在のセッションの制御端末とは別の物にリダイレクトされていない様にして下さい。
-`source /path/to/ble.sh` をシェル関数の中から実行するのは避けて下さい。
+`source -- /path/to/ble.sh` をシェル関数の中から実行するのは避けて下さい。
 この「より確実な設定」が必要になる詳細な条件については [Discussion #254 への回答 (英語)](https://github.com/akinomyoga/ble.sh/discussions/254#discussioncomment-4284757) で説明されています。
 
 ## 1.4 初期化スクリプト `~/.blerc`
@@ -399,10 +399,10 @@ GitHub Releases から `ble.sh` の tarball をダウンロードすることも
 # in bashrc
 
 # Example 1: ~/.blerc will be used by default
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+[[ $- == *i* ]] && source -- /path/to/blesh/ble.sh --attach=none
 
 # Example 2: /path/to/your/blerc will be used
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
+[[ $- == *i* ]] && source -- /path/to/blesh/ble.sh --attach=none --rcfile /path/to/your/blerc
 ```
 
 ## 1.5 アップデート

@@ -84,7 +84,7 @@ function ble/history:bash/resolve-multiline {
   eval -- $(ble/history:bash/resolve-multiline/.worker 2>/dev/null)
   if ((modification_count)); then
      local HISTCONTROL= HISTSIZE= HISTIGNORE=
-     time source "$TMPBASE.sh"
+     time source -- "$TMPBASE.sh"
   fi
 }
 ble/history:bash/resolve-multiline

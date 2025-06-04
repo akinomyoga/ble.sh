@@ -200,7 +200,7 @@ function ble/lib/vim-airline/convert-theme/convert {
   f=vim_airline_term_default    fg256[$f]=158 bg256[$f]=234 fg24[$f]='#9cffd3' bg24[$f]='#202020'
   f=vim_airline_warning_default fg256[$f]=16  bg256[$f]=166 fg24[$f]='#000000' bg24[$f]='#df5f00'
 
-  source "$_ble_vim_airline_dumpdir/$theme.bash"
+  source -- "$_ble_vim_airline_dumpdir/$theme.bash"
 
   [[ -d contrib/airline ]] || mkdir -p contrib/airline
   exec 5> "contrib/airline/$theme.bash"
