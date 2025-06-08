@@ -1294,7 +1294,7 @@ if ((_ble_bash>=40400)); then
 else
   function ble/string#quote-words {
     local q=\' Q="'\''" IFS=$_ble_term_IFS
-    if (($#===1)); then
+    if (($#==1)); then
       ret=("${1//$q/$Q}")    # WA for #D2352
       ret=("${ret[0]/%/$q}") # WA for #D2352 (disable=#D1738)
     else
