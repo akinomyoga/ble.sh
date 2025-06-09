@@ -130,14 +130,16 @@ time {
              '    Show this help and exit' \
              '  --version' \
              '    Show version and exit' \
-             '  --test' \
-             '    Run test and exit' \
-             '  --update' \
-             '    Update ble.sh and exit' \
              '  --clear-cache' \
              '    Clear ble.sh cache and exit' \
              '  --install PREFIX' \
              '    Install ble.sh and exit' \
+             '  --lib' \
+             '    Only load ble.sh and do nothing else' \
+             '  --test' \
+             '    Run test and exit' \
+             '  --update' \
+             '    Update ble.sh and exit' \
              '' \
              '  --rcfile=BLERC' \
              '  --init-file=BLERC' \

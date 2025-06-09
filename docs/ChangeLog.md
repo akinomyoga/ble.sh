@@ -177,6 +177,7 @@
 - decode: clear info panel when cmap cache is updated before attaching `#D2340` d7a16347
 - edit (`display-shell-version`): fix a bug that `contrib/integration/bash-preexec` is not detected `#D2347` 8dfaa4e8
 - util (`bleopt`): fix a bug that previous match result for `<pattern>=` affects `var:=` `#D2352` 8bea90d1
+  - util (`ble/string#quote-words`): correct the comparison operator (fixup 8bea90d1) (contributed by anoriqq)
 - syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` 94109ea7
 - syntax: fix infinite loop with `case a in \^J` `#D2361` xxxxxxxx
 
@@ -243,9 +244,9 @@
 - main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, syuraj, seefood, arc279) `#D2348` cdda9f9b
 - main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` df6a4dad
 - util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` 8bea90d1
-  - complete: fix stray `}` after the completion prefix (fixup 8bea90d1) (reported by cmndrsp0ck) `#D2359` xxxxxxxx
-- util (`ble/util/load-standard-builtins`): extend search paths `#D2357` xxxxxxxx
-- canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` xxxxxxxx
+  - complete: fix stray `}` after the completion prefix (fixup 8bea90d1) (reported by cmndrsp0ck) `#D2359` c6bcb824
+- util (`ble/util/load-standard-builtins`): extend search paths `#D2357` 044c016a
+- canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` f6a3a116
 - edit: fix bash-3.2 problems of receiving <kbd>C-d</kbd> through `SIGUSR1` `#D2365` xxxxxxxx
 
 ## Contrib
@@ -360,6 +361,7 @@
 - global: reduce the uses of `:`, `true`, and `false` `#D2353` 61a46734
 - global: use `ble/opts#extract-last-optarg` `#D2363` xxxxxxxx
 - global: use `source -- path` to source an arbitrary path `#D2366` xxxxxxxx
+- main: describe `--lib` in the output of `ble.sh --help` `#D2367` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
