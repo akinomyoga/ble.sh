@@ -2765,6 +2765,39 @@ function ble/complete/source:command {
   fi
 }
 
+# source:file, source:function
+
+function ble/complete/source:function/.print-raw {
+  local COMPS=$COMPS COMPV=$COMPV
+  ble/complete/source/reduce-compv-for-ambiguous-match
+  local q="'" Q="'\''"
+  local compv_quoted="'${COMPV//$q/$Q}'"
+  builtin compgen -A function -- "$compv_quoted"
+}
+function ble/complete/source:function/.print {
+  if [[ :$comp_type: != *:[maA]:* && $bleopt_complete_contract_function_names ]]; then
+    ble/complete/source:function/.print-raw |
+      ble/complete/source:command/.contract-by-slashes
+  else
+    ble/complete/source:function/.print-raw
+  fi
+}
+function ble/complete/source:function {
+  local compgen
+  ble/util/assign compgen 'ble/complete/source:function/.print'
+  [[ $compgen ]] || return 0
+
+  local cands
+  ble/util/assign-array cands 'ble/bin/sort -u <<< "$compgen"'
+  ((${#cands[@]})) || return 0
+
+  ble/complete/source/test-limit "${#cands[@]}" || return 1
+
+  local action=command "${_ble_complete_yield_varnames[@]/%/=}" # disable=#D1570
+  ble/complete/cand/yield.initialize "$action"
+  ble/complete/cand/yield.batch "$action"
+}
+
 # source:file, source:dir
 
 function ble/complete/util/eval-pathname-expansion/.print-def {

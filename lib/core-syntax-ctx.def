@@ -38,7 +38,6 @@ ATTR_QESC       81 # attr: \q
 ATTR_DEF        10 # attr: default (currently not used)
 ATTR_DEL        12 # attr: delimiters
 ATTR_HISTX      21 # 履歴展開 (!!$ など)
-ATTR_FUNCDEF    22 # 関数名 ( hoge() や function fuga など)
 CTX_PARAM       14 # (パラメータ展開) context,attr: inside of parameter expansion
 CTX_PWORD       15 # (パラメータ展開) context,attr: inside of parameter expansion
 CTX_PWORDE      73 # (パラメータ展開) ${!var@...} の ... に居る時
@@ -95,6 +94,10 @@ CTX_TARGX1      50
 CTX_TARGI1      51
 CTX_TARGX2      52
 CTX_TARGI2      53
+
+# function name ...
+CTX_FNAMEX      83
+CTX_FNAMEI      22 # 関数名 ( hoge() や function fuga など)
 
 # Here documents
 CTX_RDRH        44 # (redirection) ヒアドキュメント単語読み取り <<  word

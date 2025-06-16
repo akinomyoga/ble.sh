@@ -3589,6 +3589,9 @@ _ble_syntax_context_proc[CTX_TARGI1]=ble/syntax:bash/ctx-command
 _ble_syntax_context_proc[CTX_TARGI2]=ble/syntax:bash/ctx-command
 _ble_syntax_context_end[CTX_TARGI1]=ble/syntax:bash/ctx-command/check-word-end
 _ble_syntax_context_end[CTX_TARGI2]=ble/syntax:bash/ctx-command/check-word-end
+_ble_syntax_context_proc[CTX_FNAMEX]=ble/syntax:bash/ctx-command-function-expect
+_ble_syntax_context_proc[CTX_FNAMEI]=ble/syntax:bash/ctx-command
+_ble_syntax_context_end[CTX_FNAMEI]=ble/syntax:bash/ctx-command/check-word-end
 _ble_syntax_context_proc[CTX_COARGX]=ble/syntax:bash/ctx-command-compound-expect
 _ble_syntax_context_end[CTX_COARGI]=ble/syntax:bash/ctx-coproc/check-word-end
 
@@ -3754,6 +3757,7 @@ _ble_syntax_bash_command_EndCtx[CTX_CPATI]=$CTX_CPATX0
 _ble_syntax_bash_command_EndCtx[CTX_CPATQ]=$CTX_CPATX0
 _ble_syntax_bash_command_EndCtx[CTX_TARGI1]=$((_ble_bash>=40200?CTX_TARGX2:CTX_CMDXT)) #1
 _ble_syntax_bash_command_EndCtx[CTX_TARGI2]=$CTX_CMDXT
+_ble_syntax_bash_command_EndCtx[CTX_FNAMEI]=$CTX_CMDXC
 
 ## @arr _ble_syntax_bash_command_EndWtype[wtype]
 ##   実際に tree 登録する wtype を指定します。
@@ -3781,6 +3785,7 @@ _ble_syntax_bash_command_EndWtype[CTX_CPATX]=$CTX_CPATI
 _ble_syntax_bash_command_EndWtype[CTX_CPATX0]=$CTX_CPATI
 _ble_syntax_bash_command_EndWtype[CTX_TARGX1]=$CTX_ARGI # -p
 _ble_syntax_bash_command_EndWtype[CTX_TARGX2]=$CTX_ARGI # --
+_ble_syntax_bash_command_EndWtype[CTX_FNAMEX]=$CTX_FNAMEI # function NAME
 
 ## @arr _ble_syntax_bash_command_Expect
 ##
@@ -3864,6 +3869,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
         return 0 ;;
       ('time')               ((ctx=CTX_TARGX1)); processed=keyword ;;
       ('!')                  ((ctx=CTX_CMDXT)) ; processed=keyword ;;
+      ('function')           ((ctx=CTX_FNAMEX)); processed=keyword ;;
       ('if'|'while'|'until') ((ctx=CTX_CMDX1)) ; processed=begin ;;
       ('for')                ((ctx=CTX_FARGX1)); processed=begin ;;
       ('select')             ((ctx=CTX_SARGX1)); processed=begin ;;
@@ -3907,34 +3913,6 @@ function ble/syntax:bash/ctx-command/check-word-end {
           fi
           processed=keyword
         fi ;;
-      ('function')
-        ((ctx=CTX_ARGX))
-        local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
-        if rex="^$rex_space+" && [[ ${text:i} =~ $rex ]]; then
-          ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#BASH_REMATCH},ctx=CTX_ARGX))
-          if rex="^([^#$isfuncsymx][^$isfuncsymx]*)($rex_space*)(\(\(|\($rex_space*\)?)?" && [[ ${text:i} =~ $rex ]]; then
-            local rematch1=${BASH_REMATCH[1]}
-            local rematch2=${BASH_REMATCH[2]}
-            local rematch3=${BASH_REMATCH[3]}
-            ((_ble_syntax_attr[i]=ATTR_FUNCDEF,i+=${#rematch1},
-              ${#rematch2}&&(_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch2})))
-
-            if [[ $rematch3 == '('*')' ]]; then
-              ((_ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch3},ctx=CTX_CMDXC))
-            elif ((_ble_bash>=40200)) && [[ $rematch3 == '((' ]]; then
-              ble/syntax/parse/set-lookahead 2
-              ((ctx=CTX_CMDXC))
-            elif [[ $rematch3 == '('* ]]; then
-              ((_ble_syntax_attr[i]=ATTR_ERR,ctx=CTX_ARGX0))
-              ble/syntax/parse/nest-push "$CTX_CMDX1" '('
-              ((${#rematch3}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),i+=${#rematch3}))
-            else
-              ((ctx=CTX_CMDXC))
-            fi
-            processed=keyword
-          fi
-        fi
-        [[ $processed ]] || ((_ble_syntax_attr[i-1]=ATTR_ERR)) ;;
       esac
 
       if [[ $processed ]]; then
@@ -3965,12 +3943,21 @@ function ble/syntax:bash/ctx-command/check-word-end {
       if [[ $rematch2 == '('*')' ]]; then
         # case: /hoge ( *)/ 関数定義 (単語の種類 wtype を変更)
         #   上方の ble/syntax/parse/word-pop で設定した値を書き換え。
-        # Note: 単語の種類が CTX_CMDX0 の時はそのままにする。
-        ((tree_wt==CTX_CMDX0)) ||
-          _ble_syntax_tree[i-1]="$ATTR_FUNCDEF ${_ble_syntax_tree[i-1]#* }"
+
+        local attr=$ATTR_ERR
+        # Note: An arbitrary function name has been allowed in bash-5.3-alpha,
+        # but it has been postponed after bash-5.3-rc2 [1].  It will be enabled
+        # again at the same time as quote removal of the name of the function
+        # definition.  When it is supported, the following number 990000 should
+        # be updated to the actual version number.
+        # [1] https://lists.gnu.org/archive/html/bug-bash/2025-06/msg00005.html
+        if ((_ble_bash>=990000)) || [[ $word_expanded != *[\\\'\"\`\$\<\>\(\)]* ]]; then
+          _ble_syntax_tree[i-1]="$CTX_FNAMEI ${_ble_syntax_tree[i-1]#* }"
+          attr=$ATTR_DEL
+        fi
 
         ((_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch1},
-          _ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch2},
+          _ble_syntax_attr[i]=attr,i+=${#rematch2},
           ctx=CTX_CMDXC))
       elif [[ $rematch2 == '('* ]]; then
         # case: /hoge \( */ 括弧が閉じていない場合:
@@ -4009,13 +3996,57 @@ function ble/syntax:bash/ctx-command/check-word-end {
       ((ctx=CTX_CMDX1))
       return 0
     fi
-  fi
-
-  if ((ctx==CTX_FARGI2||ctx==CTX_CARGI2)); then
+  elif ((ctx==CTX_FARGI2||ctx==CTX_CARGI2)); then
     # for name in ... / case value in
     if [[ $word != in ]];  then
       ble/syntax/parse/touch-updated-attr "$wbeg"
       ((_ble_syntax_attr[wbeg]=ATTR_ERR))
+    fi
+  elif ((ctx==CTX_FNAMEI)); then
+    # Note: An arbitrary function name has been allowed in bash-5.3-alpha,
+    # but it has been postponed after bash-5.3-rc2 [1].  It will be enabled
+    # again at the same time as quote removal of the name of the function
+    # definition.  When it is supported, the following number 990000 should
+    # be updated to the actual version number.
+    # [1] https://lists.gnu.org/archive/html/bug-bash/2025-06/msg00005.html
+    if ((_ble_bash<990000)) && [[ $word == *[\\\'\"\`\$\<\>\(\)]* ]]; then
+      _ble_syntax_attr[i-1]=$ATTR_ERR
+    fi
+
+    local rex_space=$'[ \t]'
+    if ble/string#match "${text:i}" "^($rex_space*)(\(\(|\($rex_space*\)?)?"; then
+      local rematch1=${BASH_REMATCH[1]}
+      local rematch2=${BASH_REMATCH[2]}
+      ((${#rematch1})) && ((_ble_syntax_attr[i]=CTX_FNAMEX,i+=${#rematch1}))
+
+      if [[ $rematch2 == '('*')' ]]; then
+        ((_ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch2}))
+      elif [[ $rematch2 == '((' ]]; then
+        if ((_ble_bash>=40200)); then
+          ble/syntax/parse/set-lookahead 2
+        else
+          # Note: In Bash < 4.2, "function f ((expr))" becomes a syntax error.
+          # We proceed the analysis by interpret it as the arithmetic command
+          # (as in Bash >= 4.2), but we highlight the starting "((" with
+          # ATTR_ERR.  The following is a modified version of the code in
+          # ble/syntax:bash/ctx-command/.check-delimiter-or-redirect.
+          ((_ble_syntax_attr[i]=ATTR_ERR,ctx=_ble_bash>=50200?CTX_CMDXE:CTX_ARGX0))
+          ble/syntax/parse/nest-push "$CTX_EXPR" '(('
+          ((i+=2))
+        fi
+      else
+        if ((_ble_bash>=50100)) || [[ $rematch2 != '('* ]]; then
+          ble/syntax/parse/set-lookahead "$((${#rematch2}+1))"
+        else
+          # Note: In Bash < 5.1, "function f (echo)" becomes a syntax error.  We
+          # try to interpret it as if it is in Bash >= 5.1, but we highlight the
+          # opening "(" with ATTR_ERR.  The following is a modified version of
+          # the code in ble/syntax:bash/ctx-command/.check-delimiter-or-redirect.
+          ((_ble_syntax_attr[i]=ATTR_ERR,ctx=CTX_CMDXE))
+          ble/syntax/parse/nest-push "$CTX_CMDX1" '('
+          ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),i+=${#rematch2}))
+        fi
+      fi
     fi
   fi
 
@@ -4141,6 +4172,11 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
     # サブシェル (, 算術コマンド ((
     local m=${BASH_REMATCH[0]}
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC)); then
+      # Note: In the "ctx==CTX_FNAMEI" branch of
+      # ble/syntax:bash/ctx-command/check-word-end, we have modified copies of
+      # the following code.  When we modify the following code, the
+      # corresponding versions in ble/syntax:bash/ctx-command/check-word-end
+      # should also be updated.
       ((_ble_syntax_attr[i]=ATTR_DEL))
       ((ctx=_ble_bash>=50200||${#m}==1?CTX_CMDXE:CTX_ARGX0))
       [[ $_ble_syntax_bash_is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD0))
@@ -4207,6 +4243,7 @@ _ble_syntax_bash_command_BeginCtx[CTX_CPATX]=$CTX_CPATI
 _ble_syntax_bash_command_BeginCtx[CTX_CPATX0]=$CTX_CPATI
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX1]=$CTX_TARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX2]=$CTX_TARGI2
+_ble_syntax_bash_command_BeginCtx[CTX_FNAMEX]=$CTX_FNAMEI
 _ble_syntax_bash_command_BeginCtx[CTX_COARGX]=$CTX_COARGI
 
 #%if !release
@@ -4234,6 +4271,7 @@ _ble_syntax_bash_command_isARGI[CTX_CPATI]=1  # pattern
 _ble_syntax_bash_command_isARGI[CTX_CPATQ]=1  # pattern
 _ble_syntax_bash_command_isARGI[CTX_TARGI1]=1 # -p
 _ble_syntax_bash_command_isARGI[CTX_TARGI2]=1 # --
+_ble_syntax_bash_command_isARGI[CTX_FNAMEI]=1 # function NAME
 _ble_syntax_bash_command_isARGI[CTX_COARGI]=1 # var (coproc の後)
 #%end
 # Detect the end of ${ list; }
@@ -4464,6 +4502,32 @@ function ble/syntax:bash/ctx-command-case-pattern-expect {
       ((_ble_syntax_attr[i]=ATTR_ERR,i+=${#delimiter}))
     fi
     return "$?"
+  fi
+
+  # コメント禁止
+  local i0=$i
+  if ble/syntax:bash/check-comment; then
+    ((_ble_syntax_attr[i0]=ATTR_ERR))
+    return 0
+  fi
+
+  # 他は同じ
+  ble/syntax:bash/ctx-command
+}
+
+function ble/syntax:bash/ctx-command-function-expect {
+  ble/util/assert '((ctx==CTX_FNAMEX))'
+
+  if ble/syntax:bash/starts-with-delimiter-or-redirect; then
+    if [[ $tail =~ ^$_ble_syntax_bash_RexSpaces ]]; then
+      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+      return 0
+    else
+      local i0=$i
+      ble/syntax:bash/ctx-command/.check-delimiter-or-redirect &&
+        ((_ble_syntax_attr[i0]=ATTR_ERR))
+      return "$?"
+    fi
   fi
 
   # コメント禁止
@@ -5843,7 +5907,7 @@ function ble/syntax/completion-context/prefix:next-word {
     ble/syntax/completion-context/add "$source" "$istat"
   fi
 }
-## @fn ble/syntax/completion-context/prefix:time-argument {
+## @fn ble/syntax/completion-context/prefix:time-argument
 _ble_syntax_completion_context_check_prefix[CTX_TARGX1]=time-argument
 _ble_syntax_completion_context_check_prefix[CTX_TARGI1]=time-argument
 _ble_syntax_completion_context_check_prefix[CTX_TARGX2]=time-argument
@@ -5862,6 +5926,13 @@ function ble/syntax/completion-context/prefix:time-argument {
     [[ ${text:istat:index-istat} =~ $rex ]] &&
       ble/syntax/completion-context/add wordlist:--:'--' "$istat"
   fi
+}
+## @fn ble/syntax/completion-context/prefix:function-name
+_ble_syntax_completion_context_check_prefix[CTX_FNAMEX]=function-name
+_ble_syntax_completion_context_check_prefix[CTX_FNAMEI]=function-name
+function ble/syntax/completion-context/prefix:function-name {
+  ble/syntax/completion-context/.check/parameter-expansion
+  ble/syntax/completion-context/add function "$istat"
 }
 ## @fn ble/syntax/completion-context/prefix:quote
 _ble_syntax_completion_context_check_prefix[CTX_QUOT]=quote
@@ -6136,6 +6207,7 @@ _ble_syntax_completion_context_check_here[CTX_CPATI]='argument case-pattern'
 _ble_syntax_completion_context_check_here[CTX_FARGX2]='argument for2'
 _ble_syntax_completion_context_check_here[CTX_TARGX1]='argument time1'
 _ble_syntax_completion_context_check_here[CTX_TARGX2]='argument time2'
+_ble_syntax_completion_context_check_here[CTX_FNAMEX]='argument function'
 _ble_syntax_completion_context_check_here[CTX_COARGX]='argument coproc'
 _ble_syntax_completion_context_check_here[CTX_CONDX]='argument cond'
 function ble/syntax/completion-context/here:argument {
@@ -6174,6 +6246,9 @@ function ble/syntax/completion-context/here:argument {
     # time -p @
     ble/syntax/completion-context/add command "$index"
     ble/syntax/completion-context/add wordlist:--:'--' "$index" ;;
+  (function)
+    # function @
+    ble/syntax/completion-context/add function "$index" ;;
   (coproc)
     # coproc @
     ble/syntax/completion-context/add variable:w "$index"
@@ -6550,7 +6625,6 @@ function ble/syntax/attr2iface/color_defface.onload {
   ble/syntax/attr2iface/.define CTX_PWORDE   syntax_error
   ble/syntax/attr2iface/.define CTX_PWORDR   syntax_default
   ble/syntax/attr2iface/.define ATTR_HISTX   syntax_history_expansion
-  ble/syntax/attr2iface/.define ATTR_FUNCDEF syntax_function_name
   ble/syntax/attr2iface/.define CTX_VALX     syntax_default
   ble/syntax/attr2iface/.define CTX_VALI     syntax_default
   ble/syntax/attr2iface/.define CTX_VALR     syntax_default
@@ -6592,6 +6666,9 @@ function ble/syntax/attr2iface/color_defface.onload {
   ble/syntax/attr2iface/.define CTX_TARGX2   syntax_default
   ble/syntax/attr2iface/.define CTX_TARGI1   syntax_default
   ble/syntax/attr2iface/.define CTX_TARGI2   syntax_default
+
+  ble/syntax/attr2iface/.define CTX_FNAMEX   syntax_default
+  ble/syntax/attr2iface/.define CTX_FNAMEI   syntax_function_name
 
   ble/syntax/attr2iface/.define CTX_COARGX   syntax_default
   ble/syntax/attr2iface/.define CTX_COARGI   syntax_command
@@ -7482,12 +7559,24 @@ function ble/progcolor/word:default/.is-option {
 ##   @var[in] wtype wlen wbeg wend wattr
 ##   @var[in] ${_ble_syntax_progcolor_wattr_vars[@]}
 function ble/progcolor/word:default/impl.wattr {
-  if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
+  if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_ERR)); then
     # ヒアドキュメントのキーワード指定部分は、
     # 展開・コマンド置換などに従った解析が行われるが、
     # 実行は一切起こらないので一色で塗りつぶす。
     ble/progcolor/wattr#setattr "$wbeg" "$wtype"
 
+  elif ((wtype==CTX_FNAMEI)); then
+    # Note: An arbitrary function name has been allowed in bash-5.3-alpha, but
+    # it has been postponed after bash-5.3-rc2 [1].  It will be enabled again
+    # at the same time as quote removal of the name of the function definition.
+    # When it is supported, the following number 990000 should be updated to
+    # the actual version number.
+    # [1] https://lists.gnu.org/archive/html/bug-bash/2025-06/msg00005.html
+    if ((_ble_bash<990000)) && [[ ${text:wbeg:wlen} == *[\\\'\"\`\$\<\>\(\)]* ]]; then
+      ble/progcolor/wattr#setattr "$wbeg" "$ATTR_ERR"
+    else
+      ble/progcolor/wattr#setattr "$wbeg" "$wtype"
+    fi
   else
     # @var p0 p1
     #   文字列を切り出す範囲。
