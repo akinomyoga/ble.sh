@@ -177,6 +177,7 @@
 - edit (`display-shell-version`): fix a bug that `contrib/integration/bash-preexec` is not detected `#D2347` 8dfaa4e8
 - util (`bleopt`): fix a bug that previous match result for `<pattern>=` affects `var:=` `#D2352` 8bea90d1
 - syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` 94109ea7
+- syntax: fix infinite loop with `case a in \^J` `#D2361` xxxxxxxx
 
 ## Compatibility
 

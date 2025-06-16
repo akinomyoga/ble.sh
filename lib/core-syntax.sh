@@ -3604,10 +3604,14 @@ _ble_syntax_context_end[CTX_COARGI]=ble/syntax:bash/ctx-coproc/check-word-end
 ##   "{fd}" や "1" 等の列が一気に読み取られる限り先読みの問題は発生しないはず。
 ##   ブレース展開の解析は "{fd}" が一気に読み取られる様に注意深く実装する。
 ##
+##   @var[out] BASH_REMATCH
+##     When the function succeeds, BASH_REMATCH contains the matching delimiter
+##     or the redirection.
 function ble/syntax:bash/starts-with-delimiter-or-redirect {
   local delimiters=$_ble_syntax_bash_RexDelimiter
   local redirect=$_ble_syntax_bash_RexRedirect
-  [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect || $wbegin -lt 0 && $tail == $'\\\n'* ) && $tail != ['<>']'('* ]]
+  local cont='\\'$_ble_term_nl
+  [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect || $wbegin -lt 0 && $tail =~ ^$cont ) && $tail != ['<>']'('* ]]
 }
 function ble/syntax:bash/starts-with-delimiter {
   [[ $tail == ["$_ble_term_IFS;|&<>()"]* && $tail != ['<>']'('* ]]

@@ -7859,6 +7859,13 @@ bash_tips
 
 2025-06-16
 
+  * syntax: "case a in \[C-q][C-j]" を入力すると無限ループになる [#D2361]
+
+    ble/syntax:bash/ctx-command-case-pattern-expect の中で
+    ble/syntax:bash/starts-with-delimiter-or-redirect を呼び出した後に
+    BASH_REMATCH が設定されている前提になっているが、実際の実装はそうなっていな
+    かった。
+
   * syntax: function キーワードの後の関数名を単語として読み取る [#D2360]
 
     CTX_FNAMEX を追加した。ATTR_FUNCDEF を CTX_FNAMEI に改名した。
