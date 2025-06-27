@@ -3043,11 +3043,36 @@ function ble/util/load-standard-builtin {
 if ((_ble_bash>=40000)); then
   # #D1341 対策 変数代入形式だと組み込みコマンドにロケールが適用されない。
   function ble/util/is-stdin-ready {
-    local IFS= LC_ALL= LC_CTYPE=C
-    # Note: We use the explicit redirection "<&fd" instead of "-u fd" because
-    # it turned out that "builtin read -t 0 -u fd" is slower than "builtin read
-    # -t 0 <&fd".
-    builtin read -t 0 <&"${1:-${_ble_util_fd_tui_stdin:-0}}"
+    local IFS= LC_ALL= LC_CTYPE=C stdin=${1:-${_ble_util_fd_tui_stdin:-0}}
+
+    if ((stdin==0)) || { ((stdin==_ble_util_fd_tui_stdin)) && [[ -t $stdin && ! $_ble_edit_exec_inside_userspace ]]; }; then
+      # Note: When the specified file descriptor is 0 or
+      # _ble_util_fd_tui_stdin, we do not have to explicitly redirect the
+      # standard input of "builtin read".  However, we need to care about the
+      # case when fd 0 is redirected in the current context.  This is checked
+      # by [[ -t $stdin ]] assuming that fd 0 is not a TTY when it is
+      # temporarily redirected.  We also need to care about the case that the
+      # current fd 0 is replaced for the command execution (because ble.sh
+      # allows different sets of fds for the command execution).  This is
+      # checked by [[ !  $_ble_edit_exec_inside_userspace ]].
+      #
+      # This is for the performance, and also for a workaround for the problem
+      # with Cygwin and MSYS in Windows Terminal.  When we connect to Cygwin or
+      # MSYS from Windows Terminal, for some reason, "builtin read -t 0
+      # <redirection>" and "builtin read -t 0 -u fd" misbehave and causes
+      # problems.  This is likely to be an issue with Windows Terminal or
+      # Windows Pseudo Console API, but it seems difficult to identify the
+      # exact problem.  Fortunately, in our codebase, most calls of
+      # ble/util/is-stdin-ready does not seem to require the redirection, so we
+      # can significantly reduce the chances of the problems in Windows
+      # Terminal.
+      builtin read -t 0
+    else
+      # Note: We use the explicit redirection "<&fd" instead of "-u fd" because
+      # it turned out that "builtin read -t 0 -u fd" is slower than "builtin
+      # read -t 0 <&fd".
+      builtin read -t 0 <&"$stdin"
+    fi
   }
   # suppress locale error #D1440
   ble/function#suppress-stderr ble/util/is-stdin-ready

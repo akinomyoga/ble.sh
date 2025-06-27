@@ -7857,6 +7857,169 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-06-27
+
+  * util (ble/util/is-stdin-ready): wt with Git Bash で画面の表示が全然同期しない [#D2362]
+
+    * term_synchronized_update_mode を設定すると多少ましになるような気がする?
+      と思ったが、これを有効にしていても依然としてちらつくので気の所為のような
+      気がする。
+
+      或いはカーソル非表示にするとそもそも描画されなくなるというバグが存在して
+      いる可能性はあるだろうか。うーん。謎だ。
+
+      うーん。調べてみると MSYS2 でも発生している。最新の ble.sh では発生するが
+      昔の ble.sh では発生していない。という事はまた fd 周りの取り扱いによる問
+      題だろうか。
+
+      どうもこれは WSL では発生しない様だ。つまり wt の中ならば常に発生するとい
+      う訳ではない。やはり pcon が関係しているのだろうか。うーん。Cygwin でも何
+      か変な振る舞いが発生している様だ。
+
+      bisect すると 29c00fd が原因でこの現象が始まっている。確かに
+      ble/util/is-stdin-ready を明示的に変更している修正である。然しこれまでも
+      補完に関しては _ble_util_fd_tui_stdin に redirect していたので、これで新
+      しく明示的に _ble_util_fd_tui_stdin に redirect したとして何か変化はある
+      のだろうか。と思ったが、もしかすると補完以外の場所の
+      ble/util/is-stdin-ready が特に問題になっているのかもしれない。特に
+      auto_complete を発火するかどうかの判定をしている ble.sh が問題になってい
+      る。
+
+      ble/term/stty/enter
+      sleep 1
+      for i in {1..10}; do
+        ble/util/is-stdin-ready; echo "$?"
+        builtin read -t 1 x; echo "[$x]"
+      done
+      ble/term/stty/leave
+
+      これを実行して sleep 1 の間に文字を入力すると最初の
+      ble/util/is-stdin-ready の時だけは 0 になるが、それ以降の呼び出しでは常に
+      1 になってしまう。特に追加で文字を入力したとしても is-stdin-ready はずっ
+      と失敗したままになる。また $x には何も読み込まれない。但し、追加で文字を
+      入力すると今までに入力して消えたかに思われた内容も一緒に取得することがで
+      きる。
+
+      以下の様に /dev/tty を使っても問題が再現する。
+
+      ng$ (ble/term/stty/enter; sleep 1; for i in {1..10}; do builtin read -t 0 < /dev/tty; echo "$?"; done; ble/term/stty/leave)
+
+      明示的に redirection しない場合は問題は生じない。
+
+      ok$ (ble/term/stty/enter; sleep 1; for i in {1..10}; do builtin read -t 0; echo "$?"; done; ble/term/stty/leave)
+
+      dup でも駄目の様だ。
+
+      ng$ (ble/term/stty/enter; sleep 1; for i in {1..10}; do builtin read -t 0 <&9; echo "$?"; done; ble/term/stty/leave) 9<&0
+
+      何と外側で redirection しておけば問題は生じない。
+
+      ok$ (ble/term/stty/enter; sleep 1; for i in {1..10}; do builtin read -t 0; echo "$?"; done; ble/term/stty/leave) </dev/tty
+      ok$ (ble/term/stty/enter; sleep 1; for i in {1..10}; do builtin read -t 0; echo "$?"; done </dev/tty; ble/term/stty/leave)
+
+      これは駄目。
+
+      ng$ (ble/term/stty/enter; sleep 1; ff() { builtin read -t 0; } </dev/tty; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      ng$ (ble/term/stty/enter; sleep 1; ff() { for x in a; do builtin read -t 0; done } </dev/tty; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      ng$ (ble/term/stty/enter; sleep 1; ff() { for x in a; do builtin read -t 0; done </dev/tty; }; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+
+      何故か内部で echo -n "" すると OK? と思ったが常に成功する様になってしまう
+      ので判定には使えない。上の判定では動いていた。何が違う?
+
+      NG(0)$ (ble/term/stty/enter; sleep 1; ff() { for x in a; do builtin read -t 0; echo x; done </dev/tty; }; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      NG(0)$ (ble/term/stty/enter; sleep 1; ff() { for x in a; do builtin read -t 0; echo -n x; done </dev/tty; }; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      NG(0)$ (ble/term/stty/enter; sleep 1; ff() { for x in a; do builtin read -t 0; echo -n ""; done </dev/tty; }; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      NG(0)$ (ble/term/stty/enter; sleep 1; ff() { builtin read -t 0; echo -n ""; } </dev/tty; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      NG(0)$ (ble/term/stty/enter; sleep 1; ff() { builtin read -t 0; echo -n "" 1>&0 2>/dev/null; } </dev/tty; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      NG(0)$ (ble/term/stty/enter; sleep 1; ff() { builtin read -t 0 </dev/tty; echo -n "" 1>&0 2>/dev/null; }; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+      NG(0)$ (ble/term/stty/enter; sleep 1; ff() { builtin read -t 0 </dev/tty; echo -n "" 1>/dev/tty 2>/dev/null; }; for i in {1..10}; do ff; echo "$?"; done; ble/term/stty/leave)
+
+      途中で echo "$?" する事によって振る舞いが変わっている可能性? と思ったがそ
+      うでもない。依然として最初だけ成功してそれ以降は失敗している。
+
+      NG$ (ble/term/stty/enter; sleep 1; x=0; for i in {1..10}; do builtin read -t 0 < /dev/tty; ((x+=$?)); done; ble/term/stty/leave; echo "$x")
+
+      builtin read -u を使った場合には問題は生じていない。
+
+      OK$ (ble/term/stty/enter; sleep 1; x=0; for i in {1..10}; do builtin read -t 0 -u 9; ((x+=$?)); done; ble/term/stty/leave; echo "$x") 9<&0
+
+      と思って is-stdin-ready を -u を使う様に書き換えてみたら完全に応答しなく
+      なってしまった。何が起こっているのだろう。調べてみると -u を使うと
+      ble/util/is-stdin-ready は常に 0 しか返さなくなってしまう様だ。従って
+      ble.sh は次のユーザーの入力を待つために停止してしまう。一方で <& を使った
+      時には初回以外は常に 1 しか返さなくなってしまう。然し、上記の例の場合には
+      ちゃんと現在の状況に応じて 0 or 1 を返す様になっている。つまり更に別の要
+      素によって振る舞いが変化するということ。
+
+    * どうも簡単な場合でテストした結果を ble/util/is-stdin-ready に適用しても一
+      貫した振る舞いにならないようなので、ble/util/is-stdin-ready を直接弄って
+      振る舞いを観察する事にする。
+
+      予め exec 9<&0 で 9 に保存しておいて 9 にはそれ以降は全く触れないようにし
+      て read -u を使ってみたが常に 0 を返してしまって役に立たない。代わりに
+      <&9 を使ってみると結局元と振る舞いは同じで瞬間的には 0 になるがそれ以降は
+      1 を返す様になる。
+
+      うーん。現在の出力先が -t の時にはそのままそれを使って read -t 0 テストを
+      行う? 但し、tui tty が別の tty に繋がっている場合には問題が生じるのではな
+      いか???  そもそも internal state の時は 0 は何に繋がっているのだったか。
+
+      先ずコマンドを実行する時には { ...  } <fd_cmd redirections> の内部で実行
+      している。なので、通常は fd_tui に繋がっていると考えて良いのではないか。
+
+      問題は fd_cmd redirections が有効である時に is-stdin-ready を呼び出した時
+      に何を意図しているのかという事になるが…でも基本的には tui fd を対象とし
+      ていて敢えて違う物をテストしたい時には引数に何か指定している筈。
+      ble-attach において現在の fd を cmd fd に保存してからシェルの fd を全て
+      tui fd に置き換えている。
+
+      使用箇所を調べると殆どの場所で引数は指定していない。指定していたとしても
+      0 である。先ず引数が 0 の時には redirection は実行しないで良い。また、引
+      数が空の時には tui fd を使う事になるが… redirection によって 0 が tty 以
+      外で塞がっている時は仕方がないが、[[ -t 0 ]] の時は基本的に tui tty に繋
+      がっていると考えて良いのではないか?
+
+      但し、cmd の中にいる時には cmd fd ではなくて明示的に tui fd を指定する必
+      要がある? 一応 _ble_edit_exec_inside_userspace で判定を行う事にする。
+
+    どの様な状況で workaround が必要になるか。
+
+    ? ssh した先では問題は生じるのか? 間に ssh が挟まっているから問題は発生しな
+      いのではないか? という気がする。
+
+    ? 逆に他の OS から ssh でログインした時にはどうなるのだろうか? しかし
+      Windows では sshd にも色々あるだろうし微妙かもしれない。sshd によっては
+      pcon 経由で接続するかもしれない。その場合には wt でなくても問題が発生する
+      のでは?
+
+    ? というかそもそも wt でなくても別のコンソールなどから入ってその後で msys2
+      や git bash に接続した時にも問題が発生しないか確認する必要があるのではな
+      いか? うーん。色々と検証が難しい。
+
+    ? tmux の内部ではどうなるのだろう。tmux はインストールしてみたがどうやって
+      も 127 (command not found) で起動できない。何故だろう。/usr/bin/tmux
+      --help でも動かないので tmux の内部で他のコマンドが見つからないというより
+      は bash が tmux を起動するのに失敗しているという事だろう。同じディレクト
+      リにある /usr/bin/gawk --version はちゃんと動く。一方で screen はそもそも
+      パッケージが存在しない。contra をビルドする? とも思ったがそもそもコンパイ
+      ルできるのだろうか? またデバグが大変だろうからこれはやめる事にする。
+
+    取り敢えずの所は現在の環境が cygwin, msys でかつ一番外側の terminal が wt
+    の時に workaround を有効にするという形で良い気がする。もしかしたら tmux や
+    screen が間にはさまっている場合には大丈夫の可能性もある。もしくは tmux およ
+    び screen 自体が動作不審になってしまう可能性もなくはないが…。
+
+    * ok: 或いは wt でなくても pcon が関係していると遍く問題が発生する?
+      disable_pcon が入らない様に mintty を起動してその後で source out/ble.sh
+      --norc を実行してみたが特に問題は発生しない様である。なので恐らく wt だけ
+      で問題になっている? (しかし mintty 自体が disable_pcon をしている可能性も
+      実は捨てきれない。) contra でも問題が発生しないか確認したがやはり問題は発
+      生しない。つまり何故だか分からないが wt の中だけで発生する現象という事で
+      ある。
+
+    依然として補完関数が入力を食っている様な気がするがこれは別の問題の気がする
+    ので項目を分ける。
+
 2025-06-16
 
   * syntax: "case a in \[C-q][C-j]" を入力すると無限ループになる [#D2361]
