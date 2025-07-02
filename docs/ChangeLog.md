@@ -246,6 +246,7 @@
   - complete: fix stray `}` after the completion prefix (fixup 8bea90d1) (reported by cmndrsp0ck) `#D2359` xxxxxxxx
 - util (`ble/util/load-standard-builtins`): extend search paths `#D2357` xxxxxxxx
 - canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` xxxxxxxx
+- edit: fix bash-3.2 problems of receiving <kbd>C-d</kbd> through `SIGUSR1` `#D2365` xxxxxxxx
 
 ## Contrib
 

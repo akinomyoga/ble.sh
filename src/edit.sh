@@ -11640,12 +11640,14 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   if ((_ble_bash<40000)); then
     function ble-edit/io/TRAPUSR1 {
       [[ $_ble_term_state == internal ]] || return 1
+      _ble_decode_bind__uvwflag=
+      ble/decode/readline/adjust-uvw
 
       local FUNCNEST=
       local IFS=$_ble_term_IFS
       local file=$_ble_edit_io_fname2.proc
       if [[ -s $file ]]; then
-        local content cmd
+        local content cmd processed_eof=1
         ble/util/readfile content "$file"
         >| "$file"
         ble/string#split-words content "$content"
@@ -11654,11 +11656,18 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           (eof)
             # C-d
             _ble_decode_hook 4
-            builtin eval -- "$_ble_decode_bind_hook" ;;
+            builtin eval -- "$_ble_decode_bind_hook"
+            processed_eof=1 ;;
           esac
         done
+
+        if [[ $processed_eof ]]; then
+          # suppress processing of the subsequent USR1 trap by the user by
+          # returning the exit status 126.  This is processed by
+          # "ble/builtin/trap/.handler".
+          return 126
+        fi
       fi
-      ble/builtin/trap/invoke USR1
     }
     blehook/declare internal_USR1
     blehook internal_USR1!=ble-edit/io/TRAPUSR1
