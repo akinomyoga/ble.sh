@@ -51,12 +51,21 @@ bleopt/declare -v complete_ambiguous 1
 bleopt/declare -v complete_contract_function_names 1
 bleopt/declare -v complete_auto_complete 1
 bleopt/declare -v complete_auto_complete_opts ''
-bleopt/declare -v complete_auto_history 1
 bleopt/declare -n complete_auto_delay 1
 bleopt/declare -v complete_auto_wordbreaks "$_ble_term_IFS"
 bleopt/declare -v complete_auto_menu ''
 bleopt/declare -v complete_allow_reduction ''
 bleopt/declare -v complete_requote_threshold 0
+bleopt/declare -o complete_auto_history
+
+function bleopt/check:complete_auto_history {
+  if [[ $value ]]; then
+    bleopt complete_auto_complete_opts-=history-disabled
+  else
+    bleopt complete_auto_complete_opts+=history-disabled
+  fi
+  return 1
+}
 
 ## @bleopt complete_menu_style
 ##   補完候補のリスト表示のスタイルを指定します。

@@ -86,6 +86,9 @@
 - decode: record timeout in keyboard macro `#D2343` e8045741
 - edit: add keybindings <kbd>C-up</kbd> and <kbd>C-down</kbd> for history movements (requested by DJCrashdummy) `#D2370` d7afee00
 - util (`bleopt`): support `bleopt var+=value var-=value` for colon-separated lists `#D2381` xxxxxxxx
+- complete: support `bleopt complete_auto_complete_opts=syntax-unique` (motivated by David0tt) `#D2382` xxxxxxxx
+- complete: support `bleopt complete_auto_complete_opts={syntax,history}-disabled` (motivated by Diabochi) `#D2383` xxxxxxxx
+- complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` xxxxxxxx
 
 ## Changes
 

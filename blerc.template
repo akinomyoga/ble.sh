@@ -670,14 +670,22 @@
 
 
 ## The setting "complete_auto_complete_opts" is a colon-separated list of
-## options:
-##
-## - The option "suppress-after-complete" controls whether auto-complete is
-##   enabled after TAB completions.  If "suppress-after-complete" is included,
-##   auto-complete is enabled after TAB completions.  Otherwise, auto-complete
-##   is disabled after TAB completions.
+## options.  When the option "history-disabled" is specified, the auto-complete
+## source based on history is disabled.  When "suppress-after-complete" is
+## included, auto-complete is disabled after TAB completions.  When
+## "suppress-inside-line" is included, auto-complete is disabled when the
+## character at the current cursor position, if any, is not a newline.  When
+## "suppress-inside-word" is included, auto-complete is disabled when the
+## character at the current cursor position, if any, is not included in the
+## default COMP_WORDBREAKS.  When the option "syntax-disabled" is specified,
+## the auto-complete source based on the syntax and programmable completion is
+## disabled.  When "syntax-suppress-ambiguous" is specified, ambiguous
+## completion is not attempted.  When "syntax-suppress-empty" is specified,
+## sytax-based completion is suppressed for an empty word.  When the option
+## "syntax-unique" is specified, the auto-complete source based on the syntax
+## and programmable completion generates a candidate only when it is unique.
 
-#bleopt complete_auto_complete_opts=suppress-after-complete
+#bleopt complete_auto_complete_opts=
 
 
 ## The faces "menu_filter_fixed" and "menu_filter_input" can be used to specify

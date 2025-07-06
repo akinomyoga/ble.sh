@@ -7041,6 +7041,15 @@ function ble/complete/candidates/comp_type#read-rl-variables {
 ##   @var[in,out] cand_limit_reached
 function ble/complete/candidates/generate {
   local opts=$1
+
+  if [[ :$comp_type: == *:auto:* ]]; then
+    if [[ ! $COMPV && :$bleopt_complete_auto_complete_opts: == *:syntax-suppress-empty:* ]]; then
+      return 0
+    elif [[ :$bleopt_complete_auto_complete_opts: == *:syntax-suppress-ambiguous:* ]]; then
+      local bleopt_complete_ambiguous=
+    fi
+  fi
+
   local flag_force_fignore=
   local flag_source_filter=
   local -a comp_fignore=()
@@ -9134,7 +9143,7 @@ function ble/complete/auto-complete/source:history/.impl {
   ble/complete/auto-complete/enter h 0 "${command:${#_ble_edit_str}}" '' "$command"
 }
 function ble/complete/auto-complete/source:history {
-  [[ $bleopt_complete_auto_history ]] || return 1
+  [[ :$bleopt_complete_auto_complete_opts: != *:history-disabled:* ]] || return 1
   ble/complete/auto-complete/source:history/.impl light; local ext=$?
   ((ext==0||ext==148)) && return "$ext"
 
@@ -9146,6 +9155,8 @@ function ble/complete/auto-complete/source:history {
 ## @fn ble/complete/auto-complete/source:syntax
 ##   @var[in] comp_type comp_text comp_index
 function ble/complete/auto-complete/source:syntax {
+  [[ :$bleopt_complete_auto_complete_opts: != *:syntax-disabled:* ]] || return 1
+
   local sources
   ble/complete/context:syntax/generate-sources "$comp_text" "$comp_index" &&
     ble/complete/context/filter-prefix-sources || return 1
@@ -9163,7 +9174,11 @@ function ble/complete/auto-complete/source:syntax {
   [[ $COMPV ]] || return 1
   ((ext)) && return "$ext"
 
-  ((cand_count)) || return 1
+  if [[ :$bleopt_complete_auto_complete_opts: == *:syntax-unique:* ]]; then
+    ((cand_count==1))
+  else
+    ((cand_count))
+  fi || return 1
 
   local word=${cand_word[0]} cand=${cand_cand[0]}
   [[ $word == "$COMPS" ]] && return 1
@@ -9240,6 +9255,12 @@ function ble/complete/auto-complete.idle {
   esac
 
   [[ $_ble_edit_str ]] || return 0
+
+  if [[ :$bleopt_complete_auto_complete_opts: == *:suppress-inside-line:* ]]; then
+    [[ ${_ble_edit_str:_ble_edit_ind:1} == [!$'\n'] ]] && return 0
+  elif [[ :$bleopt_complete_auto_complete_opts: == *:suppress-inside-word:* ]]; then
+    [[ ${_ble_edit_str:_ble_edit_ind:1} == [!$' \t\n"'\'';&|<>()=:'] ]] && return 0
+  fi
 
   # bleopt_complete_auto_delay だけ経過してから処理
   ble/util/idle.sleep-until "$((_ble_idle_clock_start+bleopt_complete_auto_delay))" checked && return 0

@@ -8115,6 +8115,93 @@ bash_tips
 
 2025-10-19
 
+  * auto-complete: complete_auto_complete_opts=suppress-inside-word (requested by pallaswept) [#D2384]
+    https://github.com/akinomyoga/ble.sh/issues/642
+
+    * syntax-suppress-{ambiguous,dot,empty}: 特に syntax-suppress-dot に関して
+      はこんなに specific な物に対して一つの設定を与える意味があるかどうか怪し
+      いが、shopt -s dotglob みたいな物もあるし対応する事にした。うーん。でもそ
+      れよりは complete_auto_suppress とか complete_auto_ignore_compv とかでパ
+      ターンに一致した時に抑制する方式にするべきなのでは? 然し、パターンに一致
+      した時に抑制する方式だと complete_auto_ignore_compv= の時の振る舞いが分か
+      らない (抑制なし vs 空文字列の時に抑制)。また、syntax-suppress-empty との
+      棲み分けもよく分からない。だとしてもやはり syntax-suppress-dot は変な気が
+      するのでやはり削除することにする。
+
+  * auto-complete: complete_auto_complete_opts=syntax-disabled (motivated by Diabochi) [#D2383]
+    https://github.com/akinomyoga/ble.sh/issues/636
+
+    * done: syntax-disabled, history-disabled
+    * done: blerc.template
+    * done: wiki: new options
+
+  * 2025-07-15 auto-complete: complete_auto_complete_opts=syntax-unique (motivated by David0tt) [#D2382]
+    https://github.com/akinomyoga/ble.sh/issues/601
+
+    これは取り敢えず実装した。設定方法について色々考えたが結局既存の
+    complete_auto_complete_opts をそのまま使う事にした。
+
+    * reject: option の名称を変更したい。complete_auto_complete_opts は長い。
+
+      * 改名することによる影響はどれ程か。
+        https://github.com/akinomyoga/ble.sh/discussions/252#discussioncomment-4281955
+        でコメントしているが、警告を発する様にするか? 或いは暫くは警告を発さず
+        に静かにリダイレクトにするか。
+
+      a complete_auto_opts に改名する? と思ったが現在のオプション名はどうやら
+        complete_menu_complete_opts と対称になっている様だ。
+
+      b うーん。もしくは complete_auto_complete と統合してしまうという手もある。
+        その場合には、一旦無効化してしまうと色々の設定が消えてしまうという問題
+        があるが、それでも良い気がする。この場合の deprecation はより複雑になる
+        気がする。
+
+        或いは disabled が含まれている時に無効化するという事にすれば良い? でも
+        この場合には結局手動で disabled を追加したり消したりしなければならない。
+
+        bleopt に opts 形式の場合の値の追加削除を実装するとしても、やはり全体の
+        有効・無効と complete_auto_complete_opts を共通にするのは分かりにくい気
+        がする。然し、一方でもし opts としての使い方をしないのであれば、そもそ
+        も何故complete_auto_complete という設定項目を 1 か空文字列かで用意した
+        のか分からなくなる。と思ったが、うーん。将来的に考えるとやはり統合して
+        しまうのが良い気がする。
+
+        取り敢えず b で実装してみる事にする。
+
+        * done: disabled ではなくて enabled を使う
+
+          少し実装してみたがやはり微妙の気がしてきた。disabled で無効化にする方
+          式だと、opts 形式で編集するとしても bleopt
+          complete_auto_complete-=disabled とした時に、元が単に value=disabled
+          だった時に単に文字列が空になって value= になるが、これだと無効化され
+          てしまう。寧ろ enabled もしくは 1 に特別の意味を持たせるべきでは? と
+          いう事になる。
+
+        ? これだと互換性に問題があるのでは? 古い設定で complete_auto_complete=
+          もしくは complete_auto_complete=1 というものがあると opts 関連の設定
+          が完全に消滅してしまう。一方で、complete_auto_complete= もしくは
+          complete_auto_complete=1 の時だけ特別扱いすると、今度は本当に opts 関
+          連の設定も含めて消去したい時に動作しなくなってしまう。しかしそもそも
+          complete_auto_complete のような設定を作って将来の拡張性を考えていた時
+          点で complete_auto_complete= で全てを消去するみたいな使い方は想定して
+          いたはずだし、許容するべきでは? ということを考えたが余り説得力がない
+          気がする。
+
+          そもそも元々は 1 の代わりに別の種類の値が来ても良いかもしれないぐらい
+          の気持ちで、colon-separated list にするという事を想定していた訳ではな
+          いのでは? もしくは、disable にするという事 = 設定も全て消去するという
+          事だったのでは? 色々考えると、auto-complete を有効化・無効化するとい
+          うことと詳細は設定は混ぜるべきではないという気がしてきた。
+
+        実装中止: memo/D2382.merge-complete_auto_complete_opts.patch
+
+      c 或いは complete_auto_complete は飽くまで補完の有効化ということにして、
+        色々の値が使えるというのは、auto-complete の提供の仕方自体をまるっと変
+        えるなど排他的なオプションの選択に使うべきである。例えば、auto-complete
+        の表示方法の選択など。
+
+      取り敢えず c の態度で考えることにする。つまり現状維持にする。
+
   * util (bleopt): opts 形式の場合には +=, -= で設定を追加したり削除したりできる様にしたい [#D2381]
     段々とコロン区切りのオプションが増えてきたので。
 

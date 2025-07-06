@@ -1,0 +1,276 @@
+From 2d6a233588d9bf7345164090472fb88573431378 Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Tue, 15 Jul 2025 12:46:43 +0900
+Subject: [PATCH] [discard] merge "complete_auto_complete{_opts => }"
+
+---
+ blerc.template           | 51 ++++++++++++++++-----------------
+ lib/core-complete-def.sh | 62 ++++++++++++++++++++++++++++++++++------
+ lib/core-complete.sh     | 21 +++++++-------
+ 3 files changed, 88 insertions(+), 46 deletions(-)
+
+diff --git a/blerc.template b/blerc.template
+index f3f16397..5d0c8fac 100644
+--- a/blerc.template
++++ b/blerc.template
+@@ -601,12 +601,32 @@
+ ## Settings for completion
+ 
+ 
+-## The following settings turn on/off the corresponding functionalities. When
+-## non-empty strings are set, the functionality is enabled. Otherwise, the
+-## functionality is inactive.
++## The setting "complete_auto_complete" is a colon-separated list of options.
++## When the option "enabled" is specified, the auto-complete feature is
++## enabled.  The option "suppress-after-complete" controls whether
++## auto-complete is enabled after TAB completions.  If
++## "suppress-after-complete" is included, auto-complete is enabled after TAB
++## completions.  Otherwise, auto-complete is disabled after TAB completions.
++## The default is "enabled".
++
++#bleopt complete_auto_complete=enabled
++
++
++## The following setting controls the behavior of menu-complete with a
++## colon-separated list of options.  When the option "enabled" is specified,
++## the menu-complete feature is enabled.  When the option "insert-selection" is
++## specified, the currently selected menu item is temporarily inserted in the
++## command line.  When "hidden" is specified, "insert-selection" is enabled,
++## and additionally, the completion menu is hidden by default.  The default is
++## "enabled:insert-selection".
++
++#bleopt complete_menu_complete=enabled:insert-selection
++
++
++## The following settings turn on/off the menu-filter feature. When a non-empty
++## string is set, menu-filter is enabled. Otherwise, the menu-filter is
++## inactive.
+ 
+-#bleopt complete_auto_complete=1
+-#bleopt complete_menu_complete=1
+ #bleopt complete_menu_filter=1
+ 
+ 
+@@ -669,17 +689,6 @@
+ #bleopt complete_auto_wordbreaks=$' \t\n/'
+ 
+ 
+-## The setting "complete_auto_complete_opts" is a colon-separated list of
+-## options:
+-##
+-## - The option "suppress-after-complete" controls whether auto-complete is
+-##   enabled after TAB completions.  If "suppress-after-complete" is included,
+-##   auto-complete is enabled after TAB completions.  Otherwise, auto-complete
+-##   is disabled after TAB completions.
+-
+-#bleopt complete_auto_complete_opts=suppress-after-complete
+-
+-
+ ## The faces "menu_filter_fixed" and "menu_filter_input" can be used to specify
+ ## the graphic styles of the part of the text that is used to filter the menu
+ ## items by the menu-filter feature.
+@@ -758,16 +767,6 @@
+ #bleopt complete_skip_matched=on
+ 
+ 
+-## The following setting controls the detailed behavior of menu-complete with a
+-## colon-separated list of options.  When the option "insert-selection" is
+-## specified, the currently selected menu item is temporarily inserted in the
+-## command line.  When "hidden" is specified, "insert-selection" is enabled,
+-## and additionally, the completion menu is hidden by default.  The default is
+-## "insert-selection".
+-
+-#bleopt complete_menu_complete_opts=insert-selection
+-
+-
+ ## When a non-empty value is specified to this setting, the highlighting of the
+ ## menu items is enabled.  This setting is synchronized with the readline
+ ## variable "colored-stats".
+diff --git a/lib/core-complete-def.sh b/lib/core-complete-def.sh
+index 1249b351..f3eb5d21 100644
+--- a/lib/core-complete-def.sh
++++ b/lib/core-complete-def.sh
+@@ -39,7 +39,6 @@ fi
+ # 設定変数
+ 
+ bleopt/declare -n complete_polling_cycle 50
+-bleopt/declare -o complete_stdin_frequency complete_polling_cycle
+ 
+ bleopt/declare -v complete_limit ''
+ bleopt/declare -v complete_limit_auto 2000
+@@ -49,14 +48,49 @@ bleopt/declare -v complete_timeout_compvar 200
+ 
+ bleopt/declare -v complete_ambiguous 1
+ bleopt/declare -v complete_contract_function_names 1
+-bleopt/declare -v complete_auto_complete 1
+-bleopt/declare -v complete_auto_complete_opts ''
++bleopt/declare -v complete_auto_complete 'enabled'
+ bleopt/declare -v complete_auto_history 1
+ bleopt/declare -n complete_auto_delay 1
+ bleopt/declare -v complete_auto_wordbreaks "$_ble_term_IFS"
+ bleopt/declare -v complete_auto_menu ''
+ bleopt/declare -v complete_allow_reduction ''
+ bleopt/declare -v complete_requote_threshold 0
++function bleopt/check:complete_auto_complete {
++  case :$value: in
++  (*:1:* | *:true:* | *:on:* | *:yes:* | *:set:*)
++    ble/opts#remove value 1
++    ble/opts#append-unique value enabled ;;
++  esac
++
++  bleopt/check:complete_auto_complete_opts/.reflect complete_auto_complete_opts
++  return 0
++}
++
++# obsolete: complete_auto_complete_opts
++function bleopt/check:complete_auto_complete_opts/.update {
++  # We currently do not output any deprecation messages, but we will output
++  # it in the future.
++
++  local target_name=$1 old_value=bleopt_$1; old_value=${!old_value-}
++  if [[ :$old_value: == *:enabled:* ]]; then
++    bleopt "$target_name=$value:enabled"
++  else
++    bleopt "$target_name=$value"
++  fi
++  return 1
++}
++function bleopt/check:complete_auto_complete_opts/.reflect {
++  # Reflect the value to the deprecated opts option
++  local name=$1 opts=$value
++  ble/opts#remove opts enabled
++  ble/util/set "bleopt_$name" "$opts"
++}
++
++bleopt/declare -v complete_auto_complete_opts ''
++function bleopt/obsolete:complete_auto_complete_opts { return 0; }
++function bleopt/check:complete_auto_complete_opts { bleopt/check:complete_auto_complete_opts/.update complete_auto_complete; }
++
++bleopt/declare -o complete_stdin_frequency complete_polling_cycle
+ 
+ ## @bleopt complete_menu_style
+ ##   補完候補のリスト表示のスタイルを指定します。
+@@ -81,18 +115,28 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
+                   ble/complete/menu-style:linewise/construct-page \
+                   ble/complete/menu-style:desc{,-text,-raw}/construct-page
+ 
+-bleopt/declare -v complete_menu_complete 1
+-bleopt/declare -v complete_menu_complete_opts 'insert-selection'
++bleopt/declare -v complete_menu_complete 'enabled:insert-selection'
+ bleopt/declare -v complete_menu_filter 1
+ bleopt/declare -v complete_menu_maxlines '-1'
+-
+-function bleopt/check:complete_menu_complete_opts {
+-  if [[ :$value: == *:hidden:* && :$value: != *:insert-selection:* ]]; then
+-    value=$value:insert-selection
++function bleopt/check:complete_menu_complete {
++  if [[ :$value: == *:hidden:* ]]; then
++    ble/opts#append-unique value insert-selection
+   fi
++  case :$value: in
++  (*:1:* | *:true:* | *:on:* | *:yes:* | *:set:*)
++    ble/opts#remove value 1
++    ble/opts#append-unique value enabled ;;
++  esac
++
++  bleopt/check:complete_auto_complete_opts/.reflect complete_menu_complete_opts
+   return 0
+ }
+ 
++# obsolete: complete_menu_complete_opts
++bleopt/declare -v complete_menu_complete_opts 'insert-selection'
++function bleopt/obsolete:complete_menu_complete_opts { return 0; }
++function bleopt/check:complete_menu_complete_opts { bleopt/check:complete_auto_complete_opts/.update complete_menu_complete; }
++
+ bleopt/declare -v complete_skip_matched     on
+ bleopt/declare -v complete_menu_color       on
+ bleopt/declare -v complete_menu_color_match on
+diff --git a/lib/core-complete.sh b/lib/core-complete.sh
+index a1656544..3ede2ee5 100644
+--- a/lib/core-complete.sh
++++ b/lib/core-complete.sh
+@@ -7452,7 +7452,7 @@ function ble/complete/menu-complete.class/onselect {
+     insert=$INSERT
+   fi
+ 
+-  if [[ :$bleopt_complete_menu_complete_opts: == *:insert-selection:* ]]; then
++  if [[ :$bleopt_complete_menu_complete: == *:insert-selection:* ]]; then
+     ble-edit/content/replace-limited "$_ble_complete_menu0_beg" "$_ble_edit_ind" "$insert"
+     ((_ble_edit_ind=_ble_complete_menu0_beg+${#insert}))
+   fi
+@@ -7509,9 +7509,8 @@ function ble/complete/menu/get-footprint {
+ ##
+ ##       When this is specified, the menu style and opts are updated to be the
+ ##       one specified by bleopt complete_menu_style and "hidden" from
+-##       complete_menu_complete_opts, respectively.  Otherwise, the menu style
+-##       and opts are the one used in the previous call of
+-##       ble/complete/menu/show.
++##       complete_menu_complete, respectively.  Otherwise, the menu style and
++##       opts are the one used in the previous call of ble/complete/menu/show.
+ ##
+ ##       @var[out] _ble_complete_menu_style
+ ##       @var[out] _ble_complete_menu_opts
+@@ -7554,7 +7553,7 @@ function ble/complete/menu/show {
+   if [[ ! $_ble_complete_menu_style || :$opts: == *:init:* ]]; then
+     menu_style=$bleopt_complete_menu_style
+     menu_opts=
+-    [[ :$bleopt_complete_menu_complete_opts: == *:hidden:* && :$opts: != *:show_menu:* ]] &&
++    [[ :$bleopt_complete_menu_complete: == *:hidden:* && :$opts: != *:show_menu:* ]] &&
+       menu_opts=$menu_opts:hidden
+ 
+     _ble_complete_menu_style=$menu_style
+@@ -8418,7 +8417,7 @@ function ble/widget/complete {
+     [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
+       ble/complete/menu-complete/enter "$opts" && return 0 ;;
+   (*)
+-    if [[ $bleopt_complete_menu_complete ]]; then
++    if [[ :$bleopt_complete_menu_complete: == *:enabled:* ]]; then
+       if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]]; then
+         local footprint; ble/complete/menu/get-footprint
+         [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
+@@ -8511,7 +8510,7 @@ function ble/widget/menu-complete {
+ }
+ 
+ function ble/widget/complete/.select-menu-with-arg {
+-  [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active ]] || return 1
++  [[ :$bleopt_complete_menu_complete: == *:enabled:* && $_ble_complete_menu_active ]] || return 1
+ 
+   local footprint; ble/complete/menu/get-footprint
+   [[ $footprint == "$_ble_complete_menu_footprint" ]] || return 1
+@@ -8805,7 +8804,7 @@ function ble/widget/menu_complete/exit {
+   if ((_ble_complete_menu_selected>=0)); then
+     # 置換情報を再構成
+     local new=${_ble_edit_str:_ble_complete_menu0_beg:_ble_edit_ind-_ble_complete_menu0_beg}
+-    if [[ :$bleopt_complete_menu_complete_opts: != *:insert-selection:* ]]; then
++    if [[ :$bleopt_complete_menu_complete: != *:insert-selection:* ]]; then
+       local "${_ble_complete_cand_varnames[@]/%/=}" # WA #D1570 checked
+       ble/complete/cand/unpack "${_ble_complete_menu_items[_ble_complete_menu_selected]}"
+       new=$INSERT
+@@ -9194,7 +9193,7 @@ function ble/complete/auto-complete/source:syntax {
+   [[ $COMPV ]] || return 1
+   ((ext)) && return "$ext"
+ 
+-  if [[ :$bleopt_complete_auto_complete_opts: == *:syntax-unique:* ]]; then
++  if [[ :$bleopt_complete_auto_complete: == *:syntax-unique:* ]]; then
+     ((cand_count==1))
+   else
+     ((cand_count))
+@@ -9264,13 +9263,13 @@ function ble/complete/auto-complete.idle {
+   # ※特に上書きしなければ常に wait-user-input で抜ける。
+   ble/util/idle.wait-user-input
+ 
+-  [[ $bleopt_complete_auto_complete ]] || return 1
++  [[ :$bleopt_complete_auto_complete: == *:enabled:* ]] || return 1
+   [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]] || return 0
+ 
+   case $_ble_decode_widget_last in
+   (ble/widget/self-insert|ble/widget/magic-space|ble/widget/magic-slash) ;;
+   (ble/widget/complete|ble/widget/vi_imap/complete)
+-    [[ :$bleopt_complete_auto_complete_opts: == *:suppress-after-complete:* ]] && return 0 ;;
++    [[ :$bleopt_complete_auto_complete: == *:suppress-after-complete:* ]] && return 0 ;;
+   (*) return 0 ;;
+   esac
+ 
+-- 
+2.51.0
+
