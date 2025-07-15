@@ -2182,7 +2182,7 @@ function ble/util/writearray {
         if (IS_GAWK) {
           decl = gensub(/\[[0-9]+\]="(([^"\\]|\\.)*)" ?/, "\\1\001", "g", decl);
           sub(/\001$/, "", decl);
-          decl = gensub(/\\([\\$"`])/, "\\1", decl);
+          decl = gensub(/\\([\\$"`])/, "\\1", "g", decl);
         } else {
           # Convert to a ^A-separated list
           gsub(/\[[0-9]+\]="([^"\\]|\\.)*" /, "&\001", decl);

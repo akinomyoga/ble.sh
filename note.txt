@@ -7852,6 +7852,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-07-15
+
+  * BUG in ble/util/writearray with gawk (reported by allenap, LeonardoMor, aaronjamt, ionesculiviucristian, Gabryx64) [#D2368]
+    https://github.com/akinomyoga/ble.sh/issues/603
+
+    単純に gawk 用の awk スクリプトにミスがあった。今まで発現していなかったのが
+    不思議だ。後、エラーが起こった時に何も出力がないのではなく、代わりにそのま
+    ま内容を出力してしまうのも不思議だ。取り敢えず修正した。
+
 2025-07-02
 
   * main: --lib オプションの説明が --help の中になかった [#D2367]

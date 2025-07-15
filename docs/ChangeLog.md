@@ -180,6 +180,7 @@
   - util (`ble/string#quote-words`): correct the comparison operator (fixup 8bea90d1) (contributed by anoriqq)
 - syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` 94109ea7
 - syntax: fix infinite loop with `case a in \^J` `#D2361` xxxxxxxx
+- util (`ble/util/writearray`): fix a bug in use of gensub in gawk (reported by allenap, LeonardoMor, aaronjamt, ionesculiviucristian, Gabryx64) `#D2368`
 
 ## Compatibility
 
