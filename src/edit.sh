@@ -10624,6 +10624,8 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'M->'       'history-end'
   ble-decode/keymap:safe/.bind 'C-prior'   'history-beginning'
   ble-decode/keymap:safe/.bind 'C-next'    'history-end'
+  ble-decode/keymap:safe/.bind 'C-up'      'history-prev'
+  ble-decode/keymap:safe/.bind 'C-down'    'history-next'
   ble-decode/keymap:safe/.bind 'C-p'       'backward-line history'
   ble-decode/keymap:safe/.bind 'up'        'backward-line history'
   ble-decode/keymap:safe/.bind 'C-n'       'forward-line history'

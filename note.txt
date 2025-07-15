@@ -7854,6 +7854,13 @@ bash_tips
 
 2025-07-15
 
+  * keymap: C-up, C-down は使われていないから普通に history 移動に割り当てて良いのでは (requested by DJCrashdummy) [#D2370]
+    https://github.com/akinomyoga/ble.sh/discussions/440#discussioncomment-13615017
+
+    他の物に使う可能性はあるだろうか? history 移動は通常の履歴項目内移動よりも
+    大きい移動という意味で、C-up, C-down で呼び出せるようにするのは理に適ってい
+    る気がする。
+
   * complete: 補完候補の説明が混入する問題 (reported by allenap) [#D2369]
     https://github.com/akinomyoga/ble.sh/issues/603#issuecomment-3057271672
 
