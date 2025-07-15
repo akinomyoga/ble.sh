@@ -3886,6 +3886,12 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       # sort the items.
       c_sort=set
       awk=ble/bin/gawk
+    elif [[ $_ble_bin_awk_type == gawk ]]; then
+      # There seems to be systems where the command "awk" is gawk, but the
+      # command "gawk" is not found.  In this case, "_ble_bin_awk_type" is
+      # supposed to be "gawk" as long as the awk type is correctly detected,
+      # and we can use "asort(items)" with ble/bin/awk.
+      c_sort=set
     elif ((nlfix)); then
       # When we want to sort items that may contain newlines, we utilize the
       # nlfix representation to sort the items.  We first prefix "1:", "2:",
@@ -4127,6 +4133,7 @@ function ble/complete/progcomp/.filter-and-split-compgen {
       if (has_mandb) exit 10;
     }
   '
+  [[ $post_filter ]] && post_filter=$post_filter'; ble/util/setexit "${PIPESTATUS[0]}"'
   ble/util/assign out '"$awk" -F "$_ble_term_FS" -v nlfix="$nlfix" "$awk_script" "${args_mandb[@]}" mode=compgen - <<< "$out"'"$post_filter"
   (($?==10)) && flag_mandb=1
 

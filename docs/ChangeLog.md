@@ -181,6 +181,7 @@
 - syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` 94109ea7
 - syntax: fix infinite loop with `case a in \^J` `#D2361` xxxxxxxx
 - util (`ble/util/writearray`): fix a bug in use of gensub in gawk (reported by allenap, LeonardoMor, aaronjamt, ionesculiviucristian, Gabryx64) `#D2368`
+- complete: fix a bug that `mandb` record is generated as completions (reported by allenap) `#D2369` xxxxxxxx
 
 ## Compatibility
 

@@ -1355,7 +1355,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
   done
 
   a=(1 2 3)
-  ble/test 'ble/util/writearray --nlfix a' stdout:$'1\n2\n3'
+  ble/test 'ble/util/writearray --nlfix a; echo x' stdout:$'1\n2\n3\n\nx'
 )
 
 # ble/is-function

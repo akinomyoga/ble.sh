@@ -7854,7 +7854,19 @@ bash_tips
 
 2025-07-15
 
-  * BUG in ble/util/writearray with gawk (reported by allenap, LeonardoMor, aaronjamt, ionesculiviucristian, Gabryx64) [#D2368]
+  * complete: 補完候補の説明が混入する問題 (reported by allenap) [#D2369]
+    https://github.com/akinomyoga/ble.sh/issues/603#issuecomment-3057271672
+
+    これは gawk が見つからない (もしくは gawk が awk としてのみインストールされ
+    ている) 環境で起こる。この時、filter-and-split-compgen における awk の出力
+    を更に sort コマンドに繋げてソートを行う。一方で、mandb により説明を抽出し
+    た場合には、その事を調べるために awk が exit 10 することになっている。呼び
+    出し元で exit status を確認して説明の付加が実施された場合には、呼び出し元で
+    説明を分離することになっている。問題は、この exit 10 が | sort に繋げられて
+    いる時には呼び出し元で見えないという事にある。PIPESTATUS[0] から awk の終了
+    ステータスを拾うことにした。
+
+  * util: BUG in ble/util/writearray with gawk (reported by allenap, LeonardoMor, aaronjamt, ionesculiviucristian, Gabryx64) [#D2368]
     https://github.com/akinomyoga/ble.sh/issues/603
 
     単純に gawk 用の awk スクリプトにミスがあった。今まで発現していなかったのが
