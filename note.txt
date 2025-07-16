@@ -7854,6 +7854,35 @@ bash_tips
 
 2025-07-15
 
+  * termux: termux の為に locale check routine を更新する [#D2371]
+    https://github.com/akinomyoga/ble.sh/issues/507
+    https://github.com/akinomyoga/ble.sh/issues/596
+    https://github.com/termux/termux-packages/discussions/23010
+
+    また、termux のスレッドへの誘導を行う。
+
+    * done: USER が存在しない場合や LANG が存在しない場合にもどの様に修正するべ
+      きかをユーザーに指示する。
+
+    * termux: gawk の正規表現が壊れている。fatal: unbalanced ( という表示になる。
+      うーん。或いはこれは gawk のバグの可能性はあるだろうか?
+
+      $ echo | LC_ALL=C gawk $'/(\xEF\xBC\x9A)/'
+      $ echo | LC_ALL=C gawk $'/(\xEB\x8A\x8C)/'
+      $ echo | LANG=C gawk $'/(\xEB\x8A\x8C)/'
+      $ echo | LANG=C gawk $'/(\xE3\x81\x82)/'
+      $ echo | LANG=C gawk '/(あ)/'
+
+      平仮名を入力しても起こる筈。
+
+      Termux 上の gawk は 5.3.1 である。5.3.0 at Fedora 41 問題なし。5.3.2 at
+      Arch 問題なし。Fedora 41 上で 5.3.1 を自分でビルドした場合でも問題は発生
+      しない。つまり、Termux の上でだけ問題が生じるということ。
+
+      これはやはり Termux の環境が壊れているのがいけないという事にして ble.sh
+      の側では修正を入れない事にする。Termux で workaround を入れようとすると無
+      駄に複雑になる気がするので。少なくとも保留にする。
+
   * keymap: C-up, C-down は使われていないから普通に history 移動に割り当てて良いのでは (requested by DJCrashdummy) [#D2370]
     https://github.com/akinomyoga/ble.sh/discussions/440#discussioncomment-13615017
 

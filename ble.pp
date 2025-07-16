@@ -1298,7 +1298,9 @@ function ble/init/check-environment {
   fi
 
   if [[ ! ${USER-} ]]; then
-    ble/util/print "ble.sh: insane environment: \$USER is empty." >&2
+    ble/util/print-lines \
+      'ble.sh: insane environment: $USER is empty.  Please consider checking the' \
+      '  terminal'\''s settings or setting export USER=$(id -un) in your .bash_profile.' >&2
     if ble/util/assign USER 'id -un 2>/dev/null' && [[ $USER ]]; then
       export USER
       ble/util/print "ble.sh: modified USER=$USER" >&2
@@ -1307,7 +1309,10 @@ function ble/init/check-environment {
   _ble_base_env_USER=$USER
 
   if [[ ! ${HOSTNAME-} ]]; then
-    ble/util/print "ble.sh: suspicious environment: \$HOSTNAME is empty."
+    ble/util/print-lines \
+      'ble.sh: suspicious environment: $HOSTNAME is empty.  Please consider checking' \
+      '  the terminal'\''settings or setting export HOSTNAME=$(hostname), etc. in your' \
+      '  .bash_profile' >&2
     if ble/util/assign HOSTNAME 'uname -n 2>/dev/null' && [[ $HOSTNAME ]]; then
       export HOSTNAME
       ble/util/print "ble.sh: fixed HOSTNAME=$HOSTNAME" >&2
@@ -1316,7 +1321,9 @@ function ble/init/check-environment {
   _ble_base_env_HOSTNAME=$HOSTNAME
 
   if [[ ! ${HOME-} ]]; then
-    ble/util/print "ble.sh: insane environment: \$HOME is empty." >&2
+    ble/util/print-lines \
+      'ble.sh: insane environment: $HOME is empty.  Please consider checking' \
+      '  the terminal'\''s settings or setting export HOME=... in your .bash_profile.' >&2
     local home
     if ble/util/assign home 'getent passwd 2>/dev/null | awk -F : -v UID="$UID" '\''$3 == UID {print $6}'\''' && [[ $home && -d $home ]] ||
         { [[ $USER && -d /home/$USER && -O /home/$USER ]] && home=/home/$USER; } ||
@@ -1329,7 +1336,9 @@ function ble/init/check-environment {
   fi
 
   if [[ ! ${LANG-} ]]; then
-    ble/util/print "ble.sh: suspicious environment: \$LANG is empty." >&2
+    ble/util/print-lines \
+      'ble.sh: suspicious environment: $LANG is empty.  Please consider checking the' \
+      '  terminal'\''s settings or setting export LANG=... in your .bash_profile.' >&2
   fi
 
   # Check locale and work around `convert-meta on' in bash >= 5.2

@@ -251,6 +251,7 @@
 - util (`ble/util/load-standard-builtins`): extend search paths `#D2357` 044c016a
 - canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` f6a3a116
 - edit: fix bash-3.2 problems of receiving <kbd>C-d</kbd> through `SIGUSR1` `#D2365` xxxxxxxx
+- main: update messages for broken locale and environment `#D2370` xxxxxxxx
 
 ## Contrib
 

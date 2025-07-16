@@ -8071,16 +8071,26 @@ _ble_util_locale_triple=
 _ble_util_locale_ctype=
 _ble_util_locale_encoding=UTF-8
 _ble_util_locale_broken=
+function ble/util/.test-C-locale {
+  # Note: In Termux, even with the locale "C", the behavior appears to be that
+  # of UTF-8.  This makes it impossible to manipulate binary data in the shell.
+  local LC_ALL= LC_CTYPE= LANG=C
+  local s='あ'
+  ((${#s}==3)); local ext=$?
+  ble/util/unlocal LC_ALL LC_CTYPE LANG
+  return "$ext"
+} 2>/dev/null # suppress locale error #D1440
+## @fn ble/util/.test-utf8-locale
+##   @var[in] ctype
 function ble/util/.test-utf8-locale {
   # Note: To test the specified locale in WSL, it seems one needs to activate
   # the locale by setting the locale to another one at least once.  We first
   # set the locale to "C" and use it to obtain the number of bytes, 3, and then
   # check the target locale.
   local LC_ALL= LC_CTYPE= LANG=C
-  local s='あ' ext=0
-  ((${#s}==3)) || ext=1
+  local s='あ'
   LANG=$ctype
-  ((${#s}==1)) || ext=1
+  ((${#s}==1)); local ext=$?
   ble/util/unlocal LC_ALL LC_CTYPE LANG
   return "$ext"
 } 2>/dev/null # suppress locale error #D1440
@@ -8099,6 +8109,8 @@ function ble/util/.update-locale-cache {
 
     _ble_util_locale_encoding=C
     _ble_util_locale_broken=
+    ble/util/.test-C-locale || _ble_util_locale_broken=C
+
     if local rex='\.([^@]+)'; [[ $_ble_util_locale_ctype =~ $rex ]]; then
       local enc=${BASH_REMATCH[1]}
       if [[ $enc == utf-8 || $enc == utf8 ]]; then
@@ -8106,7 +8118,7 @@ function ble/util/.update-locale-cache {
       fi
 
       if [[ $enc == UTF-8 ]] && ! ble/util/.test-utf8-locale "$ctype"; then
-        _ble_util_locale_broken=1
+        _ble_util_locale_broken=${_ble_util_locale_broken:+$_ble_util_locale_broken$_ble_term_FS}$ctype
 
         # Note #D2281: In WSL, even when the current locale is broken, builtin
         # printf seems to produce the UTF-8 representation of the specified
@@ -8157,10 +8169,17 @@ function ble/util/notify-broken-locale {
 
   [[ $_ble_util_locale_broken ]] || return 0
 
-  local lc_ctype=${LC_ALL:-${LC_CTYPE:-$LANG}}
-  ble/gdict#has _ble_util_locale_broken_notified "$lc_ctype" && return 0
-  ble/gdict#set _ble_util_locale_broken_notified "$lc_ctype" 1
-  ble/util/print "ble.sh: The locale '$lc_ctype' (LC_CTYPE) seems broken. Please check that the locale exists in the system." >&2
+  local broken broken_locales
+  ble/string#split broken_locales "$_ble_term_FS" "$_ble_util_locale_broken"
+  for broken in "${broken_locales[@]}"; do
+    [[ $broken ]] || continue
+    ble/gdict#has _ble_util_locale_broken_notified "$broken" && continue
+    ble/gdict#set _ble_util_locale_broken_notified "$broken" 1
+    ble/util/print "ble.sh: The locale '$broken' (LC_CTYPE) seems broken. Please check that the locale exists in the system." >&2
+    if [[ $broken == C && $OSTYPE == linux-android && $HOME == */com.termux/* ]]; then
+      ble/util/print 'ble.sh: Termux has an issue with its locale "C", and the fix is discussed at https://github.com/termux/termux-packages/discussions/23010' >&2
+    fi
+  done
 }
 
 function ble/util/is-unicode-output {
