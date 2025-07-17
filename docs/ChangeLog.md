@@ -246,6 +246,7 @@
 - history: work around readonly `HISTSIZE` (reported by seefood) `#D2346` 2d55928a
 - main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, syuraj, seefood, arc279) `#D2348` cdda9f9b
 - main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` df6a4dad
+  - main: fix the list of missing POSIX utilities in the error message (reported by LecrisUT) `#D2372` xxxxxxxx
 - util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` 8bea90d1
   - complete: fix stray `}` after the completion prefix (fixup 8bea90d1) (reported by cmndrsp0ck) `#D2359` c6bcb824
 - util (`ble/util/load-standard-builtins`): extend search paths `#D2357` 044c016a

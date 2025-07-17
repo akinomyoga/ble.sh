@@ -1275,11 +1275,11 @@ function ble/init/check-environment {
   if ! ble/bin#has "${_ble_init_posix_command_list[@]}"; then
     local cmd commandMissing=
     for cmd in "${_ble_init_posix_command_list[@]}"; do
-      if ble/bin#has "$cmd"; then
+      if ! ble/bin#has "$cmd"; then
         commandMissing="$commandMissing\`$cmd', "
       fi
     done
-    ble/util/print "ble.sh: insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
+    ble/util/print "ble.sh: insane environment: The command(s), ${commandMissing}are not found. Check your environment variable PATH. If these commands are not available in your system, please install them." >&2
 
     # try to fix PATH
     local default_path

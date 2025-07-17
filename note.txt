@@ -7852,6 +7852,14 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-07-17
+
+  * main: fix the error message of environment check (reported by LecrisUT) [#D2372]
+    https://github.com/akinomyoga/ble.sh/issues/606
+    Ref #D2349 (df6a4dad)
+
+    最近の修正によるミスで見つからない POSIX コマンドの集合が反転していた。
+
 2025-07-15
 
   * termux: termux の為に locale check routine を更新する [#D2371]
