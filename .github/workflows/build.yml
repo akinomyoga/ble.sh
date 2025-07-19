@@ -45,24 +45,24 @@ jobs:
 
             Link kept updated for every nightly build:
 
-            ${{ github.event.repository.url }}/releases/download/nightly/ble-nightly.tar.xz
+            ${{ github.event.repository.html_url }}/releases/download/nightly/ble-nightly.tar.xz
 
             Permalink to the current nightly build:
 
-            ${{ github.event.repository.url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
+            ${{ github.event.repository.html_url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
 
             ```bash
             # DOWNLOAD with wget
-            wget ${{ github.event.repository.url }}/releases/download/nightly/ble-nightly.tar.xz
+            wget ${{ github.event.repository.html_url }}/releases/download/nightly/ble-nightly.tar.xz
 
             # DOWNLOAD with curl
-            curl -LO ${{ github.event.repository.url }}/releases/download/nightly/ble-nightly.tar.xz
+            curl -LO ${{ github.event.repository.html_url }}/releases/download/nightly/ble-nightly.tar.xz
 
             # DOWNLOAD with wget (this specific nightly build)
-            wget ${{ github.event.repository.url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
+            wget ${{ github.event.repository.html_url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
 
             # DOWNLOAD with curl (this specific nightly build)
-            curl -LO ${{ github.event.repository.url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
+            curl -LO ${{ github.event.repository.html_url }}/releases/download/nightly/ble-${{ env.blesh_build_pkgver }}.tar.xz
             ```
 
             **Trial & Install**
@@ -76,7 +76,7 @@ jobs:
             tar xJf ble-nightly.tar.xz
             bash ble-nightly/ble.sh --install ~/.local/share
             echo 'source ~/.local/share/blesh' >> ~/.bashrc
-            # Note: After installation, directory ble-${{ env.blesh_build_pkgver }} can be removed.
+            # Note: After installation, directory ble-nightly can be removed.
 
             # INSTALL (more robust)
             tar xJf ble-nightly.tar.xz
@@ -85,8 +85,10 @@ jobs:
             [[ $- == *i* ]] && source ~/.local/share/blesh/ble.sh --attach=none
             # Add the following line at the end of ~/.bashrc
             [[ ! ${BLE_VERSION-} ]] || ble-attach
-            # Note: After installation, directory ble-${{ env.blesh_build_pkgver }} can be removed.
+            # Note: After installation, directory ble-nightly can be removed.
             ```
+
+            If you try to install `ble-nightly-20240223+8f0dfe9` or an older version, please directly copy or rename the extracted directory to `~/.local/share/blesh`.  The option `--install` is not implemented.
   check:
     needs: build
     strategy:

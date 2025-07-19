@@ -113,7 +113,12 @@ time {
   #%end.i
   _ble_init_exit=
   _ble_init_command=
+  _ble_init_skip=
   for _ble_init_arg; do
+    if [ -n "$_ble_init_skip" ]; then
+      _ble_init_skip=
+      continue
+    fi
     case $_ble_init_arg in
     --version)
       _ble_init_exit=0
@@ -191,8 +196,13 @@ time {
              '    Internal settings for debugging' \
              '' ;;
     --test | --update | --clear-cache | --lib | --install) _ble_init_command=1 ;;
+    -o | --attach | --inputrc | --rcfile | --init-file | --bash-debug-version) _ble_init_skip=1 ;;
+    -o* | --attach=* | --inputrc=* | --rcfile=* | --init-file=* | --bash-debug-version=*) ;;
+    noattach | --noattach | --noinputrc | --norc | --keep-rlvars | --debug-bash-output) ;;
+    -*) _ble_init_command=error ;;
     esac
   done
+  unset _ble_init_skip
   unset _ble_init_arg
   if [ -n "$_ble_init_exit" ]; then
     unset _ble_init_exit
