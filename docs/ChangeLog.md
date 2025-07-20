@@ -304,6 +304,7 @@
 - github: update GitHub issue templates `#D2294` aa396f60
 - memo: fix syntax error in the testing code for #D1779 (reported by andychu) `#D2329`
 - github: fix URLs in the nightly description (reported by TheFozid) `#D2373` xxxxxxxx
+- history: include `HISTFILE` in the invalid timestamp mesasge (motivated by Strykar) `#D2374`
 
 ## Test
 

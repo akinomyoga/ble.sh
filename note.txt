@@ -1926,6 +1926,104 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2025-07-02
+
+  * [保留] 3.2: 複数行の履歴項目がある時に履歴初期化前に C-r で検索すると history の出力が dump される?
+    Ref #D2365
+
+    テストの途中で発生していたが再現できなくなったので取り敢えず保留にする。
+
+  * bug: 複数行コマンドがあると初回プロンプトで履歴展開が起こらない X20250702
+
+    コマンドを未だ実行していない状態で履歴展開を実行しようとしても何も発生しな
+    い (5.3)。もしくは変な項目に展開される (3.2)。これは最新の bash でも発生し
+    ている。
+
+    うーん。これは 5.3 bug の気がする。4.0..5.2 ではちゃんと動いている。それと
+    は別に 3.2 では別のコマンドがロードされてしまう問題が発生していた。うーん。
+    改めて実行してみたら 3.2 でもちゃんと動いている。不思議だ。
+
+    更に分かった事は、'!trap[SP]' は動かないが '!echo[SP]' は動くということ。更
+    に履歴ファイルを別の物にすると動く様になる。不思議だ…。分かった。trap の直
+    前のコマンドが複数行コマンドだと発生する。然し、bash 5.2 では発生しない。
+
+    resolve-multiline を実行しないようにすると問題は発生しなくなる。つまり
+    resolve-multiline の過程で何かが起こっている。
+
+    うーん。再現しようとすると 4.0..5.3 で再現する様なコードはできるが、5.2 で
+    は動いて 5.3 では動かないという構成は plain bash では難しい? stty が何か関
+    係しているのだろうか。もしこれが 5.3 で導入されたバグではないのだとしたら直
+    してもらうのは難しいのではないか?
+
+    * workaround として何が考えられるか? stty でも実行すると問題が解決するのだ
+      ろうか? それとも? そもそも何故コマンドを実行すると問題が発生しなくなる?
+
+      試しに stty を実行してみたが特に効果は無いようだ。不思議だ。
+
+    * 5.2 と 5.3 の両方で再現するコードにて、何故か history -r で読み取った時に
+      最初の項目が空になってしまっている。これは何故?
+
+2025-06-23
+
+  * termux: export A=/[TAB] や echo /[TAB] の補完に於いて / 以下のファイルでは
+    なくて、現在ディレクトリの下の */* を補完候補として生成している。これは他の
+    環境では発生していない。
+
+  * history: "history -a; history -n" in PROMPT_COMMAND causes a wrong record
+    https://github.com/akinomyoga/ble.sh/issues/595#issuecomment-3002209639
+
+    history -a; history -n が PROMPT_COMMAND に入っていると最初の読み取りの時に
+    壊れた history entry ができあがる。これは回避する必要がある。
+
+    ble.sh を使わずに bash で起動すると別に変な事は起こらない。各行一つずつ履歴
+    項目になる。特に何かをした後にそれが崩れるとう訳でもない様だ。普通に
+    builtin history -r としても特に問題は生じない。うーん? と思ったが、よく考え
+    たら複数行コマンドを読み取る時には ble.sh も history -r は使っていないのだっ
+    た。複数行コマンドだけは history -s を通じて読み取っていた筈である。という
+    事を考えると、builtin history -r や bash の初期化では常に各行一項目として読
+    み取ると考えて良い気がする。
+
+    問題は resolve-multiline にある様な気がする。と思ったが history-multiline
+    を呼び出さない様にしても問題は発生する。そもそも履歴が倍加しているという事
+    に注意しなければならない。うーん。誰が履歴を倍加しているのか?
+    history/initialize で最初に history が load された時点既に倍加している気が
+    する。と思ったが ble/history:bash/initialize が何故か複数回呼び出されている。
+    何故? もっと深い ble/history:bash/load でどうなっているか確認したが、これの
+    最初の呼び出しの時点で倍加は起こっている。また、この load は idle から呼び
+    出されていて、更に idle はキー入力に対して発生している。
+
+    PROMPT_COMMAND で history -a; history -n が設定されている時、ble-attach の
+    中で最初の履歴のロードが実施され、更に、その後で .bashrc が終わった後で次の
+    履歴のロードが実施されている様な気がする。そして .bashrc が終わった後に
+    bash がロードしている履歴は何故か行ごとに読み取られるのではなくて全部くっつ
+    いた状態で読み取られてしまう。
+
+    うーん。倍加する問題は実は知っていた問題の様な気がするが、履歴項目が全部くっ
+    ついてしまう問題については知らなかった。先ず、履歴項目が全部くっついてしま
+    う問題をどうにかできないだろうか。普通に eval "$PROMPT_COMMAND" を .bashrc
+    の中で実行するだけだと純粋に倍加するだけで履歴項目がくっついてしまう問題は
+    発生しない。
+
+    とにかく .bashrc の最後では大丈夫で、最初の bind -x 呼び出しで履歴項目が壊
+    れている。何故履歴が全部くっついてしまうのだろうか。
+
+  * history_share=1 でも初回コマンド実行時に固まるらしい。
+    https://github.com/akinomyoga/ble.sh/issues/595#issuecomment-3010266326
+
+  * github: exit status 3 の謎
+    https://github.com/akinomyoga/ble.sh/discussions/597#discussioncomment-13561325
+
+    kitty で試すしかない
+
+    * mingw (msys2) でシンボリックリンクを作成できないのでインストールできない。
+
+    * msys1 において PATH の自動修正ができていない。
+
+2025-06-16
+
+  * complete: for a^J[TAB] の補完が効いていない気がする。"d" と入力すると "do "
+    になってくれる。一方で "{" と入力しても認識していないようだ。
+
 2025-06-04
 
   * bash-5.3: 再度チェック
@@ -7853,6 +7951,12 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2025-07-20
+
+  * history: "!136 ...: invalid timestamp" (motivated by Strykar) [#D2374]
+    https://github.com/akinomyoga/ble.sh/discussions/597#discussioncomment-13561254
+
+    これはエラーメッセージをもっと親切にしても良いのではないか?
+    一応 HISTFILE へのパスを表示する様にした。動作確認もした。
 
   * 2025-06-20 github: nightly の URL が壊れている (reported by TheFozid) [#D2373]
     https://github.com/akinomyoga/ble.sh/discussions/593#discussioncomment-13517431

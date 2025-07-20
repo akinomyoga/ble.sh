@@ -224,6 +224,11 @@ if ((_ble_bash>=40000)); then
     local -x __ble_rawbytes=$_ble_util_writearray_rawbytes # used by _ble_bin_awk_libES
     local -x fname_stderr=${_ble_edit_io_fname2:-}
 
+    local -x invalid_timestamp_msg='invalid timestamp'
+    local histfile=${HISTFILE:-$HOME/.bash_history}
+    [[ -s $histfile ]] &&
+      invalid_timestamp_msg=$invalid_timestamp_msg". Please check your history file ($histfile)."
+
     local apos=\'
     # 482ms for 37002 entries
     ble/builtin/history/.dump ${arg_count:+"$arg_count"} | ble/bin/awk -v apos="$apos" -v arg_offset="$arg_offset" -v _ble_bash="$_ble_bash" '
@@ -240,6 +245,7 @@ if ((_ble_bash>=40000)); then
 
         fname_stderr = ENVIRON["fname_stderr"];
         fname_stderr_count = 0;
+        invalid_timestamp_msg = ENVIRON["invalid_timestamp_msg"];
 
         n = 0;
         hindex = arg_offset;
@@ -280,7 +286,7 @@ if ((_ble_bash>=40000)); then
       function check_invalid_timestamp(line) {
         if (line ~ /^ *[0-9]+\*? +.+: invalid timestamp/ && fname_stderr != "") {
           sub(/^ *0*/, "bash: history !", line);
-          sub(/: invalid timestamp.*$/, ": invalid timestamp", line);
+          sub(/: invalid timestamp.*$/, ": " invalid_timestamp_msg, line);
           if (fname_stderr_count++ == 0)
             print "" >> fname_stderr;
           print line >> fname_stderr;
