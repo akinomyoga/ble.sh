@@ -7950,6 +7950,46 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-07-22
+
+  * stty: bash out/ble.sh --install で stty を呼び出している (reported by LEI) [#D2376]
+    https://github.com/akinomyoga/ble.sh/issues/609
+
+    本来は単にコマンドを実行するだけなので stty 等を変更する必要はない筈。これ
+    は再現できたので修正する。
+
+    どうやら EXIT -> ble/util/unload -> ble/term/stty/TRAPEXIT と呼び出している
+    様である。そもそも ble/util/unload は実際に line editor として使っていた時
+    の unload 用の関数である。という事を考えると、コマンド実行の時には処理する
+    必要性はないのではないか? と思ったが諸々の fd の処理や run の cleanup の事
+    を考えるとやはり処理の一部は --lib モードであったとしても実行するべき?
+
+    a 一つの方法は --lib モードで読み込んだ場合には unload の処理はスキップする
+      という方針。然し
+
+    b もう一つの方法は --lib モードで読み込んだ場合には unload は実行するけれど
+      も ble/term/stty/TRAPEXIT は省略するという方針。然し、この場合 --lib で読
+      み込んだ後に attach したり、将来的に textarea を部品として用いた時に
+      ble/term/stty の設定が残留してしまう原因になる。
+
+    c 或いは、一度でも ble/term/stty で設定を変更した事があれば ble/term/stty
+      を使って元に戻す処理を実行する? これの場合には一度でも呼び出されたという
+      事を記録しておく必要がある。
+
+      現状はどうなっていただろうか。現在の状態は _ble_term_stty_state で状態を
+      管理している。但し、 1 か空文字列かで区別している為、external/internal の
+      区別しかなくて、一度でも stty を調整したかどうかについては現状では分から
+      ない。
+
+    d 或いは 0 が tty に繋がっていれば強制的に ble/term/stty/TRAPEXIT を実行す
+      る。しかし、これだと一度も stty で状態を変更していないのに bash
+      out/ble.sh ... を実行しただけで stty の状態が変更されるということになる。
+      これは余り好ましくない。stty に関係のない処理を実行するだけで stty を触っ
+      てしまうのは良くない。
+
+    取り敢えず c の方針で実装した。_ble_term_stty_state は既定では空文字列で、
+    一度でも stty に触れたら 0 または 1 の値を持つように変更する事にした。
+
 2025-07-20
 
   * util (is-stdin-ready): sudo cmd ... の補完が動かなくなっている (reported by Jai-JAP, darukutsu) [#D2375]
@@ -17302,7 +17342,7 @@ bash_tips
       ている様な気がする。或いは、stty sane を実行する必要があるのだろうか?
       stty echo では駄目?
 
-      そもそも問題のメッセージは ble/util/stty/TRAPEXIT の中から出力されている
+      そもそも問題のメッセージは ble/term/stty/TRAPEXIT の中から出力されている
       ので、この関数が呼び出されていないという事はないだろう。
 
       うーん。どうも stty sane をより上で実行しても効果がない様だ。つまり、何処

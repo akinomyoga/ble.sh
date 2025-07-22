@@ -183,6 +183,7 @@
 - syntax: fix infinite loop with `case a in \^J` `#D2361` 173ec27f
 - util (`ble/util/writearray`): fix a bug in use of gensub in gawk (reported by allenap, LeonardoMor, aaronjamt, ionesculiviucristian, Gabryx64) `#D2368`
 - complete: fix a bug that `mandb` record is generated as completions (reported by allenap) `#D2369` xxxxxxxx
+- stty: avoid adjusting the `stty` state if it has never been modified (reported by LEI) `#D2376` xxxxxxxx
 
 ## Compatibility
 

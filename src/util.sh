@@ -6878,7 +6878,11 @@ function bleopt/check:term_stty_restore {
 }
 
 ## @var _ble_term_stty_state
-##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
+##   This variable retains the current stty state, such as whether effects of
+##   special control characters are turned off.  When ble.sh has not modified
+##   the stty state, the variable is empty, "".  When ble.sh has modified the
+##   stty for the internal state, the variable is set to "1".  When ble.sh has
+##   modified the stty for the external state, the variable is set to "0".
 ##
 ## Note #D1238: arr=(...) の形式を用いると Bash 3.2 では勝手に ^? が ^A^? に化けてしまう
 ##   仕方がないので此処では ble/array#push を使って以下の配列を初期化する事にする。
@@ -6929,9 +6933,8 @@ function ble/term/stty/initialize {
   _ble_term_stty_state=1
 }
 function ble/term/stty/leave {
-  [[ ! $_ble_term_stty_state ]] && return 0
-  _ble_term_stty_state=
-
+  ((_ble_term_stty_state)) || return 0
+  _ble_term_stty_state=0
   if [[ $bleopt_term_stty_restore && $_ble_term_stty_save ]]; then
     ble/bin/stty "$_ble_term_stty_save"
   else
@@ -6943,7 +6946,7 @@ function ble/term/stty/enter {
   # around the problem that "checkwinsize" does not work in "bind -x" in Bash
   # 5.2.  The changes to this function needs to be also reflected in the later
   # overwriting version of "ble/term/stty/enter".
-  [[ $_ble_term_stty_state ]] && return 0
+  ((_ble_term_stty_state)) && return 0
   if [[ $bleopt_term_stty_restore ]]; then
     ble/term/stty/initialize
   else
@@ -6956,12 +6959,19 @@ function ble/term/stty/finalize {
   _ble_term_stty_save=
 }
 function ble/term/stty/TRAPEXIT {
+  if [[ ! $_ble_term_stty_state ]]; then
+    # Note: The empty "_ble_term_stty_state" means that the stty state has
+    # never been touched by ble.sh, so we do nothing in that case.
+    return 0
+  fi
+
   # exit の場合は echo
   if [[ $bleopt_term_stty_restore && $_ble_term_stty_save ]]; then
     ble/bin/stty "$_ble_term_stty_save"
   else
     ble/bin/stty echo -nl "${_ble_term_stty_flags_leave[@]}"
   fi
+  _ble_term_stty_state=0
 }
 
 function ble/term/update-winsize {
@@ -7074,7 +7084,7 @@ if ((50200<=_ble_bash&&_ble_bash<50300)); then
     then
       LINES=${ret[0]} COLUMNS=${ret[1]}
       function ble/term/stty/enter {
-        [[ $_ble_term_stty_state ]] && return 0
+        ((_ble_term_stty_state)) && return 0
         local ret
         if [[ $bleopt_term_stty_restore ]]; then
           ble/term/stty/initialize
