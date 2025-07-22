@@ -350,6 +350,7 @@
 - main: refactor initialization sequence `#D2231` cc9d7f39
 - util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
   - util (`ble/util/is-stdin-ready`): work around polling issue in Windows Terminal `#D2362` 622cb247
+  - util (`ble/util/is-stdin-ready`): fix the condition to use stdin (reported by Jai-JAP, darukutsu) `#D2375` xxxxxxxx
 - decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` 21b1bb3d
 - global: normalize quoting of function names of the form `prefix:$name` `#D2296` 3d7c98bb
 - global: use `[:blank:]` instead of `[:space:]` `#D2299` e2fd8f0f

@@ -3045,7 +3045,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/is-stdin-ready {
     local IFS= LC_ALL= LC_CTYPE=C stdin=${1:-${_ble_util_fd_tui_stdin:-0}}
 
-    if ((stdin==0)) || { ((stdin==_ble_util_fd_tui_stdin)) && [[ -t $stdin && ! $_ble_edit_exec_inside_userspace ]]; }; then
+    if ((stdin==0)) || { ((stdin==_ble_util_fd_tui_stdin)) && [[ -t 0 && ! $_ble_edit_exec_inside_userspace ]]; }; then
       # Note: When the specified file descriptor is 0 or
       # _ble_util_fd_tui_stdin, we do not have to explicitly redirect the
       # standard input of "builtin read".  However, we need to care about the

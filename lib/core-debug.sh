@@ -1,20 +1,5 @@
 # -*- mode: sh; mode: sh-bash -*-
 
-## @fn ble/debug/setdbg
-function ble/debug/setdbg {
-  ble/bin/rm -f "$_ble_base_run/dbgerr"
-  local ret
-  ble/util/readlink /proc/self/fd/3 3>&1
-  ln -s "$ret" "$_ble_base_run/dbgerr"
-}
-## @fn ble/debug/print text
-function ble/debug/print {
-  if [[ -e $_ble_base_run/dbgerr ]]; then
-    ble/util/print "$1" >> "$_ble_base_run/dbgerr"
-  else
-    ble/util/print "$1" >&2
-  fi
-}
 ## @fn ble/debug/leakvar#check
 ##   [デバグ用] 宣言忘れに依るグローバル変数の汚染位置を特定するための関数。
 ##
@@ -87,7 +72,7 @@ function ble/debug/print-variables {
     fi
     _ble_local_out=$_ble_local_out' '
   done
-  ble/debug/print "${_ble_local_out%' '}"
+  ble/util/print "${_ble_local_out%' '}"
 }
 
 _ble_debug_stopwatch=()
@@ -103,6 +88,8 @@ function ble/debug/stopwatch/stop {
     printf '[---.------ sec] %s\n' "$1"
   fi
 }
+
+#------------------------------------------------------------------------------
 
 _ble_debug_profiler_magic=__GdWfuwABAUmlg__
 _ble_debug_profiler_prefix=
@@ -878,4 +865,44 @@ function ble/debug/profiler/stop {
   fi
 
   ble/bin/rm -f "${files_to_remove[@]}"
+}
+
+#------------------------------------------------------------------------------
+
+function ble/debug/xtrace.advice {
+  local filename=$1 set=$-
+  if ((_ble_bash<40100)); then
+    set -x
+    ble/function#advice/do 2>> "$filename"
+    [[ $set == *x* ]] || set +x
+    return
+  fi
+
+  local old_xtracefd=
+  [[ ${BASH_XTRACEFD-} ]] && exec {old_xtracefd}>&"$BASH_XTRACEFD"
+  local PS4='+$FUNCNAME ($BASH_SOURCE:$LINENO): ' BASH_XTRACEFD
+  exec {BASH_XTRACEFD}>> "$filename"
+  {
+    printf '# start: %(%F %T %Z)T\n' -1
+    printf '# args:'
+    printf ' %q' "${ADVICE_WORDS[@]}"
+    printf '\n'
+    printf '# caller:'
+    printf ' %q' "${ADVICE_FUNCNAME[@]:1}"
+    printf '\n'
+  } >&"$BASH_XTRACEFD"
+
+  ((_ble_bash>=40400)) && local -
+  set -x
+  ble/function#advice/do
+  set +x
+
+  printf '# end: %(%F %T %Z)T\n' -1 >&"$BASH_XTRACEFD"
+  exec {BASH_XTRACEFD}>&-
+  ble/util/unlocal BASH_XTRACEFD
+  if [[ ${old_xtracefd-} ]]; then
+    builtin eval "exec $BASH_XTRACEFD>&$old_xtracefd"
+    exec {old_xtracefd}>&-
+  fi
+  [[ $set == *x* ]] && set -x
 }
