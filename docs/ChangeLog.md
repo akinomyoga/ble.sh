@@ -290,6 +290,7 @@
 - integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` 430a1746
 - integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` 788dfd15
 - integration/fzf: suppress dynamic binding `#D2350` e9d5ca26
+- integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` xxxxxxxx
 
 ## Documentation
 

@@ -875,7 +875,7 @@ function ble/debug/xtrace.advice {
     set -x
     ble/function#advice/do 2>> "$filename"
     [[ $set == *x* ]] || set +x
-    return
+    return 0
   fi
 
   local old_xtracefd=

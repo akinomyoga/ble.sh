@@ -5980,6 +5980,18 @@ function ble/complete/source:option/.is-option-context {
   return 0
 }
 
+## @fn ble/complete/source:option [opts]
+##   @param[in,opt] opts
+##     @opt empty
+##       Generate option names even when the current word is empty.  By
+##       default, the generation of the options is enabled only when the
+##       current word starts with - or +.
+##     @opt reuse-comp_words
+##       When this option is specified, use the externally-specified variables
+##       "comp_words", "comp_line", "comp_point", and "comp_cword" instead of
+##       extracting them by the syntax analysis on the current point.  This is
+##       used when the target command is intentionally different from the shell
+##       syntax, such as the case of "sudo command ...".
 function ble/complete/source:option {
   local opts=$1
   if [[ :$opts: == *:empty:* ]]; then
@@ -5995,8 +6007,10 @@ function ble/complete/source:option {
   ble/complete/source/reduce-compv-for-ambiguous-match
   [[ :$comp_type: == *:[maA]:* ]] && local COMP2=$COMP1
 
-  local comp_words comp_line comp_point comp_cword
-  ble/syntax:bash/extract-command "$COMP2" || return 1
+  if [[ :$opts: != *:reuse-comp_words:* ]]; then
+    local comp_words comp_line comp_point comp_cword
+    ble/syntax:bash/extract-command "$COMP2" || return 1
+  fi
 
   ble/complete/source:option/generate-for-command "${comp_words[@]::comp_cword}"
 }
@@ -6181,6 +6195,19 @@ function ble/complete/source:argument/generate {
   ble/complete/source:argument/.generate-user-defined-completion; local ext=$?
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
 
+  ble/complete/source:argument/fallback
+}
+
+## @fn ble/complete/source:argument/fallback
+##   @param[in] opts
+##     @opt reuse-comp_words
+##   @var[in] comp_opts
+##     @opt ble/default
+##     @opt dirnames
+##     @opt default
+function ble/complete/source:argument/fallback {
+  local opts=$1 old_cand_count=$cand_count
+
   # When no completions are generated, we attempt "ble/default" argument
   # completions in the following.  If "ble/default" completions are disabled,
   # we emulate Bash's behavior based on "-o default" and "-o dirnames".
@@ -6207,7 +6234,10 @@ function ble/complete/source:argument/generate {
   # 2. Attempt built-in argument completion
 
   # "-option" の時は complete options based on mandb
-  ble/complete/source:option; local ext=$?
+  local option_opts=
+  [[ :$opts: == *:reuse-comp_words:* ]] &&
+    option_opts=$option_opts:reuse-comp_words
+  ble/complete/source:option "$option_opts"; local ext=$?
   ((ext==148)) && return "$ext"
 
   # When "-o dirnames" is specified, the directory names are first attempted,
@@ -6225,7 +6255,7 @@ function ble/complete/source:argument/generate {
   fi
 
   # 空文字列に対するオプション生成はファイル名よりも後で試みる
-  ble/complete/source:option empty; local ext=$?
+  ble/complete/source:option "$option_opts:empty"; local ext=$?
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
 
   #----------------------------------------------------------------------------

@@ -7950,6 +7950,16 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-07-23
+
+  * integration/bash-completion: _comp_command_offset に対して fallback completion を適用する (motivated by Jai-JAP) [#D2377]
+    https://github.com/akinomyoga/ble.sh/discussions/551#discussioncomment-13847256
+
+    sudo に対して直接特別の実装することはないと言ったが、よく考えたら
+    bash-completion の _comp_command_offset に対して介入すれば、コマンド毎に対
+    応しなくても、sudo 等をつけずに直接補完を試みた時と同程度の振る舞いにはでき
+    る。
+
 2025-07-22
 
   * stty: bash out/ble.sh --install で stty を呼び出している (reported by LEI) [#D2376]
