@@ -14,7 +14,9 @@ jobs:
           submodules: recursive
       - name: Build
         run: |
+          date=$(date +'%Y-%m-%d %H:%M:%S')
           pkgver=nightly-$(date +'%Y%m%d')+$(git rev-parse --short HEAD)
+          echo "blesh_build_date=$date" >> "$GITHUB_ENV"
           echo "blesh_build_pkgver=$pkgver" >> "$GITHUB_ENV"
           make FULLVER="0.4.0-nightly"
           sed -i "s/^_ble_base_repository=.*/_ble_base_repository=release:$pkgver/" "out/ble.sh"
@@ -29,6 +31,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
+          name: nightly ${{ env.blesh_build_date }}
           files: |
             ble-nightly.tar.xz
             ble-${{ env.blesh_build_pkgver }}.tar.xz
@@ -41,7 +44,7 @@ jobs:
 
             Bash 3.0+ and basic POSIX utilities are required.
 
-            **Download ble-nightly.tar.xz**
+            **Download ble-nightly.tar.xz (${{ env.blesh_build_date }})**
 
             Link kept updated for every nightly build:
 
@@ -88,7 +91,8 @@ jobs:
             # Note: After installation, directory ble-nightly can be removed.
             ```
 
-            If you try to install `ble-nightly-20240223+8f0dfe9` or an older version, please directly copy or rename the extracted directory to `~/.local/share/blesh`.  The option `--install` is not implemented.
+            > [!NOTE]
+            > **Old versions**: If you try to install `ble-nightly-20240223+8f0dfe9` or an older version, please directly copy or rename the extracted directory to `~/.local/share/blesh`.  The option `--install` is not implemented.
   check:
     needs: build
     strategy:

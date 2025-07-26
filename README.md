@@ -26,7 +26,7 @@ See [Sec 1.3](#set-up-bashrc) for the details of the setup of your `~/.bashrc`.
 
 > [!NOTE]
 > If you want to **use fzf with `ble.sh`**, you need to check [Sec
-> 2.8](#fzf-integration).
+> 2.8](#fzf-integration) to avoid compatibility problems.
 
 <details open><summary><b>Download source using <code>git</code> and make <code>ble.sh</code></b></summary>
 
@@ -431,10 +431,16 @@ The detailed conditions where the above *more reliable setup* is needed are expl
 
 ## 1.4 User settings `~/.blerc`
 
-User settings can be placed in the init script `~/.blerc` (or `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh` if `~/.blerc` is not available)
-whose template is available as the file [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template) in the repository.
-The init script is a Bash script that is sourced during the load of `ble.sh`, so any shell commands can be used in `~/.blerc`.
-If you want to change the default path of the init script, you can add the option `--rcfile INITFILE` to `source ble.sh` as the following example:
+User settings can be placed in the init script `~/.blerc` (or
+`${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh` if `~/.blerc` is not
+available).  The init script is a Bash script that is sourced during the load
+of `ble.sh`, so any shell commands can be used in `~/.blerc`.  If you want to
+change the default path of the init script, you can add the option `--rcfile
+INITFILE` to `source ble.sh` as the following example: A template for the init
+script is available as the file
+[`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template)
+in the repository, but please note that you need to use the template in the
+commit corresponding to your copy of `ble.sh`.
 
 ```bash
 # in bashrc
@@ -541,8 +547,12 @@ For the vi/vim mode, check [the wiki page](https://github.com/akinomyoga/ble.sh/
 
 ## 2.2 Disable features
 
-One of frequently asked questions is the way to disable a specific feature that `ble.sh` adds.
-Here the settings for disabling features are summarized.
+One of frequently asked questions is the way to disable a specific feature that
+`ble.sh` adds.  Here the settings for disabling features are summarized.  See
+also the settings
+[`config/readline`](https://github.com/akinomyoga/blesh-contrib/blob/master/config/readline.bash),
+which can be loaded by `ble-import config/readline` to make `ble.sh`'s behavior
+similar to Readline.
 
 ```bash
 # Disable syntax highlighting
@@ -800,7 +810,7 @@ ble-bind -f C-t my/example1
 
 ## 2.8 fzf integration<sup><a id="fzf-integration" href="#fzf-integration">†</a></sup>
 
-If you would like to use `fzf` in combination with `ble.sh`, you need to configure `fzf` using [the `contrib/fzf` integration](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration).
+If you would like to use `fzf` in combination with `ble.sh`, you need to configure `fzf` using [the `contrib/fzf` integration](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration) to avoid compatibility issues.
 Please follow the instructions in the link for the detailed description.
 
 ```bash
@@ -911,6 +921,8 @@ For example, with the following settings, typing `~mybin/` expands it to e.g. `/
 
 ble-sabbrev "~mybin=$HOME/bin"
 ```
+
+See [the sabbrev section in Manual](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-sabbrev) for more usages.
 
 # 4 Contributors
 

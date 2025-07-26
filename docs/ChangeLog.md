@@ -84,7 +84,7 @@
 - keymap/vi: support `:marks` `#D2320` 01182d3b
 - cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` adf53ed3
 - decode: record timeout in keyboard macro `#D2343` e8045741
-- edit: add keybindings <kbd>C-up</kbd> and <kbd>C-down</kbd> for history movements (requested by DJCrashdummy) `#D2370` xxxxxxxx
+- edit: add keybindings <kbd>C-up</kbd> and <kbd>C-down</kbd> for history movements (requested by DJCrashdummy) `#D2370` d7afee00
 
 ## Changes
 
@@ -182,8 +182,10 @@
 - syntax: fix a bug that the completion does not start with `<<[TAB]` `#D2354` 94109ea7
 - syntax: fix infinite loop with `case a in \^J` `#D2361` 173ec27f
 - util (`ble/util/writearray`): fix a bug in use of gensub in gawk (reported by allenap, LeonardoMor, aaronjamt, ionesculiviucristian, Gabryx64) `#D2368`
-- complete: fix a bug that `mandb` record is generated as completions (reported by allenap) `#D2369` xxxxxxxx
-- stty: avoid adjusting the `stty` state if it has never been modified (reported by LEI) `#D2376` xxxxxxxx
+- complete: fix a bug that `mandb` record is generated as completions (reported by allenap) `#D2369` f1ccf771
+- stty: avoid adjusting the `stty` state if it has never been modified (reported by LEI) `#D2376` edb21da9
+- main: fix the initialization order of `ble/bin/awk` (contributed by yecho) `github#613` 8060b7ad
+- util (`ble/util/load-standard-builtin`): actually load from `$loadable_path` (fixup 044c016a) (contributed by xarblu) `github#611` 52c38977
 
 ## Compatibility
 
@@ -247,13 +249,13 @@
 - history: work around readonly `HISTSIZE` (reported by seefood) `#D2346` 2d55928a
 - main: workaround coreutils `stty` in macOS (reported by EmilyGraceSeville7cf, sshresthaEG, syuraj, seefood, arc279) `#D2348` cdda9f9b
 - main (`ble/bin#freeze-utility-path`): use `command` to call the command `#D2349` df6a4dad
-  - main: fix the list of missing POSIX utilities in the error message (reported by LecrisUT) `#D2372` xxxxxxxx
+  - main: fix the list of missing POSIX utilities in the error message (reported by LecrisUT) `#D2372` 5de739ef
 - util (`ble/array#fill-range`): work around bash-5.2 array bug for wrong syntax highlighting `#D2352` 8bea90d1
   - complete: fix stray `}` after the completion prefix (fixup 8bea90d1) (reported by cmndrsp0ck) `#D2359` c6bcb824
 - util (`ble/util/load-standard-builtins`): extend search paths `#D2357` 044c016a
 - canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` f6a3a116
 - edit: fix bash-3.2 problems of receiving <kbd>C-d</kbd> through `SIGUSR1` `#D2365` 38767afe
-- main: update messages for broken locale and environment `#D2370` xxxxxxxx
+- main: update messages for broken locale and environment `#D2370` ea1e547b
 - util (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` xxxxxxxx
 
 ## Contrib
@@ -292,6 +294,7 @@
 - integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` 788dfd15
 - integration/fzf: suppress dynamic binding `#D2350` e9d5ca26
 - integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` xxxxxxxx
+- contrib: add `readline` (motivated by thoughtsunificator) `#D2379` xxxxxxxx
 
 ## Documentation
 
@@ -305,9 +308,14 @@
 - docs(README): move disclaimers to a later section `#D2250` ad6f58b7
 - README: use `[[ ! ${BLE_VERSION-} ]] || ble-attach` `#D2264` ed11901a
 - github: update GitHub issue templates `#D2294` aa396f60
-- memo: fix syntax error in the testing code for #D1779 (reported by andychu) `#D2329`
-- github: fix URLs in the nightly description (reported by TheFozid) `#D2373` xxxxxxxx
-- history: include `HISTFILE` in the invalid timestamp mesasge (motivated by Strykar) `#D2374`
+- memo: fix syntax error in the testing code for #D1779 (reported by andychu) `#D2329` 8c387422
+- github: fix URLs in the nightly description (reported by TheFozid) `#D2373` 97c6caea
+- history: include `HISTFILE` in the invalid timestamp mesasge (motivated by Strykar) `#D2374` 5c088fe7
+- README: clarify small things `#D2379` xxxxxxxx
+  - workflows: show date on the nightly page
+  - README: clarify fzf compat issues
+  - README: link the sabbrev section in Manual
+  - README: clarify that blerc.template is prepared for the same version
 
 ## Test
 
@@ -353,7 +361,7 @@
 - main: refactor initialization sequence `#D2231` cc9d7f39
 - util (`ble/util/is-stdin-ready`): check `$_ble_util_fd_tui_stdin` by default `#D2254` 29c00fd8
   - util (`ble/util/is-stdin-ready`): work around polling issue in Windows Terminal `#D2362` 622cb247
-  - util (`ble/util/is-stdin-ready`): fix the condition to use stdin (reported by Jai-JAP, darukutsu) `#D2375` xxxxxxxx
+  - util (`ble/util/is-stdin-ready`): fix the condition to use stdin (reported by Jai-JAP, darukutsu) `#D2375` 38fe52b3
 - decode (`ble-decode-key/bind`): reference the argument to check the widget name (contributed by musou1500) `#D2279` 21b1bb3d
 - global: normalize quoting of function names of the form `prefix:$name` `#D2296` 3d7c98bb
 - global: use `[:blank:]` instead of `[:space:]` `#D2299` e2fd8f0f

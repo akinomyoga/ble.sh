@@ -1926,6 +1926,169 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2025-10-19
+
+  * edit: shell-expand-line で $_ 等を正しく展開するべきではないか?
+    https://github.com/akinomyoga/ble.sh/issues/644
+
+  * bleopt: bleopt_source, bleopt_lineno は設定されているが限定された場所でしか参照さ
+    れていない。bleopt 関連のエラーメッセージを表示する時には全体的にこれを参
+    照するべきなのでは? 後、bleopt_source 及び bleopt_lineno は bleopt
+    source, bleopt lineno を定義した時に conflict するから名前を変えた方が良
+    い。
+
+    これは実は bleopt 本体の実装の中で出力しているエラーメッセージも同様であ
+    る。一部で ANSI color code を直接指定しているが、これは _ble_term_setf 等
+    を参照するべきである。
+
+2025-09-28
+
+  * progcomp_alias: alias 名で既に補完設定がある時にどうするか
+    https://github.com/akinomyoga/ble.sh/discussions/633#discussioncomment-14520262
+
+    cat に関しては bash-completion がロード時に設定する補完だから単に complete
+    -r cat すれば良いが、動的にロードされるものの場合 _comp_load で検出すると消
+    してもそれがロードされてしまう。
+
+    * bash-completion の側でそもそもロード時に勝手に complete cat を設定しない
+      様にする。
+
+      そもそも、ユーザーが自分で保管ファイルを用意して completions/cat に準備し
+      たとしてもそれが使われないという問題がある。その上、ユーザーが自分で
+      alias 用の補完設定を作っていたとしてもそれが上書きされてしまうという問題
+      がある。
+
+      これは bash-completion の側で考える必要がある。先ず、cat 等についても
+      completions 経由で定義をロードする様にするという事。もしくは xspecs の様
+      に completions が見つからなかった時に初めて定義する様に変更する。次に
+      alias についての補完を completions からロードするかどうかという事だが、
+      alias mv='mv -i' 等の様な用途が一番基本的になるという事を考えるとやはり
+      completions から見つけるのが妥当である様に思われる。或いは、alias の中身
+      に応じてロードするという手もあるかもしれないが、それだと引数を無視する事
+      になるし、もしかしたら alias 専用に作った completions の設定をスキップす
+      る事になってしまうので問題がある。という事を考えると、余り複雑な事をして
+      だいたい動くけど時々変な振る舞いをするという状況になって、これは
+      workaround が複雑で不自然な物になるので避けたい。
+
+      空の completions/cat を置く事によって既定の completions を override して
+      無効化できる様にする仕組みというのがあるべきではないか?
+
+  * request: PS2
+    https://github.com/akinomyoga/ble.sh/issues/629
+
+    これの対応は原理的にはできるが面倒である。
+
+    * PS2 は既定で値が設定されているのでこれを使う事にするのかは微妙である。
+      emacs や vi の様に振る舞いたいのであれば PS2 は空にしたいが、source
+      ble.sh 時に勝手に PS2 を空にするのは違う。だからと言って既定の PS2 の時だ
+      け空にするという実装だとユーザーが実際に既定の PS2 を明示的に使いたい時に
+      できなくなるし、ユーザーが bash readline の PS2 を個別に設定したい時に困
+      る。問題は、ble.sh と readline で継続業の概念が全く異なるのに PS2 を同じ
+      用途に使おうとするのが問題なのである。というか readline でも C-vC-j を用
+      いて改行を明示的に挿入した場合には、PS2 は使われない。
+
+      もし同様の機能を実装するとしても別の名前をつけるべきである。或いは単に
+      bleopt prompt_ps2 とする? しかしこれだと PS2 と同じの様に思われてしまう。
+      しかし本当は違う。でも、類似していると言えば類似している。取り敢えずは
+      prompt_ps2 で良い気がする。
+
+    * LINENO と \# については現在の行番号に合わせて増やして表示する必要がある気
+      がする。それとは別に現在のコマンドラインの中での行番号を表示する機能も提
+      供したい気がするが可能だろうか? 或いは \q{} を通して提供する? 或いは特別
+      の変数名を用意する? BLE_LINENO や READLINE_POINT_LINE などのような感じで。
+
+    右端で折り返した時には prompt_ps2 を表示する必要はあるか? ない気がする。
+
+    * invalidate された時の事を考えると、実は、プロンプト更新チェックで現在表示し
+      ている全ての prompt_ps2 の更新チェックをしなければならない可能性?
+
+2025-09-21
+
+  * prompt 内容が dynamical に変化する時、前の prompt の内容が残る?
+    https://github.com/akinomyoga/ble.sh/issues/629#event-19822247487
+
+    初期化時に行数が変わる場合については問題が確認できているが、それ以外の時に
+    dynamical に変わった時に実際に問題が生じるのかについては確認していない。何
+    か適当な prompt sequence を作って確認する必要がある。或いは $PWD が
+    dynamical に変化したら prompt が再計算されるはずなので PWD が変わる設定を作っ
+    て試せば良い。
+
+    うーん。$PWD の場合には実は更新されないが \w が含まれている時には更新される
+    ようだ。しかし、 PS1='\w\n> ' として \w が長くなっても短くなっても別に問題
+    は生じないし、また、'${| test1; }\w>' として test1 の出力の先頭に改行が含ま
+    れたり含まれなかったりするようにしても特に問題は生じない。
+
+    という事はこれは初期化の時にのみ発生する問題なのだろうか?
+
+    もう一つ気になることは初期化時に三回 PS1 の評価が行われていることである。そ
+    んなに何度も行う必要があるだろうか? 先に表示しているのだとしたら、既に表示
+    している部分に関しては実は再表示しなくても良いのでは? 或いは再表示するとし
+    ても既に計算してある esc を単に出力するだけで良いのでは? 何故プロンプトの再
+    計算をしているのだろうか。更に再計算をする理由があるのだとしても何故 2 回で
+    はなくて 3 回なのだろうか。評価し過ぎの気がする。これが何故そうなっているの
+    かについては後で調査する。
+
+2025-09-10
+
+  * https://github.com/akinomyoga/ble.sh/issues/621#issuecomment-3274479273
+
+    ble/builtin/read -d '' xxxx をした時に ble/bash/read 経由で呼び出しているの
+    で勝手に -r が付加されている様な気がする? 或いは -r の backslash の処理は別
+    で行っている? 後で確認する必要がある。
+
+2025-08-04
+
+  * 5.3: set -o posix で DEBUG trap 等がエラーを発するようになる。
+    https://github.com/akinomyoga/ble.sh/issues/612#issuecomment-3148585644
+
+    これに対して対策をする為には handler だけでなく ble/util/setexit に対しても
+    / を含まない版を用意しなければならない。/ を動かなくする処理を通したことを
+    本当に後悔している。
+
+    * sleep 3[RET][C-c] を実行すると set -o posix の設定が失われてしまう。この
+      時 sleep は loadable builtin である。うーん。何故だろう。
+
+    * builtin sleep が C-c で中断できない。ble/bin/sleep に変更するべきでは?
+
+    * README: builtin trap を使わない様に呼びかけているが、POSIX mode では直接
+      trap を呼び出すと builtin trap が呼び出される事になる。POSIX mode では明
+      示的に ble/builtin/trap を呼び出す様に注意が必要なのではないか。
+
+2025-07-22
+
+  * menu-complete: vbell "menu: Page N" はメニューを閉じる時に消すべき?
+    https://github.com/akinomyoga/ble.sh/discussions/551#discussioncomment-13804502
+
+    これに対応する為には .Z で開いた vbell を後になって閉じる機能を実装する必要
+    がある。幸い .Z に記録は残す様にしている? という事からこの .Z がある時に消
+    すという様な機能にするべきの気がする。但し、.Z で開いた後で更に別の vbell
+    が開かれた時には .Z をクリアする必要がある。
+
+    * ok: うーん。一方で ble/util/visible-bell は term 及び canvas にしか対応し
+      ていないが panel を用いた表示形式にも対応していた様な気がする…と思ったら
+      それは ble/edit/visible-bell だった。ややこしい。menu はどちらを用いて表
+      示していたのだったか。実は menu も ble/edit/visible-bell を用いて表示する
+      べきなのでは。
+
+      と思ったが、改めて確認してみた所、実は ble/util/visible-bell から
+      ble/edit/visible-bell はちゃんと呼び出していた。vbell_align に panel を指
+      定していればちゃんとそれが使われるのだった。うーん。どうやら panel 3 が
+      vbell に割り当てられている様だ。なので基本的にインターフェイスは
+      ble/util/visible-bell の一つのみであり、menu も vbell_align=panel が設定
+      されていれば panel 内部に表示する様になっている。
+
+    ? no: 実は vbell_align=panel にしておけば menu を閉じた時に一緒に消える可能
+      性は?  と思ったが別に消えるという事はない様だ。なので、何れにしても消す操
+      作は実装する必要がある。
+
+    うーん。先ずは外から消去の操作を実行できる様にするという事。その時に注意し
+    なければならないのは現在 active になっている種類の vbell を消去する必要があ
+    るという事。複数の vbell の枠組みが混ざっているので、設定や状況が変わった時
+    に、前の種類の vbell が残留してしまう可能性がある。また panel については別
+    の理由で一時的に消去されている可能性もあって、その場合には、表にある物をそ
+    のまま削除するのではなく内部的に保持している情報を消去する必要がある (或い
+    は command-layout に移行した時に自動的に潰されるのだったか?)。
+
 2025-07-02
 
   * [保留] 3.2: 複数行の履歴項目がある時に履歴初期化前に C-r で検索すると history の出力が dump される?
@@ -7951,6 +8114,36 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2025-10-19
+
+  * README: 雑多のこと [#D2379]
+
+    * contrib: add config/readline (motivated by thoughtsunificator)
+      https://github.com/akinomyoga/ble.sh/discussions/638
+
+    * 2025-07-27 README: blerc.template はそのバージョンに対応して用意されている旨記述
+      https://github.com/akinomyoga/ble.sh/issues/602
+
+    * line sabbrev に等価な機能の request
+      https://github.com/akinomyoga/ble.sh/issues/643
+
+      done: README sabbrev の説明のところからより詳細な説明として Manual 7.5 へ
+      のリンクを作成する。
+
+      done: Manual edit_magic_accept, edit_magic_expand も sabbrev の章で言及す
+      る。
+
+    * 2025-09-10 fzf の対策が互換性の問題を避けるためであることを明記
+      https://github.com/akinomyoga/ble.sh/issues/621
+      https://github.com/akinomyoga/ble.sh/issues/625
+
+      有効にしないで使っている人がたくさん居すぎる。ただのオプションであって従
+      わなくても問題ないと考えているのかもしれない。取り敢えず README に問題で
+      あるということを明記する。
+
+    * 2025-09-10 nightly のページに日付を入れる
+
+      タグ自体が作成されたのが昔なので、nightly で配布されているものがちゃんと
+      細心であるということが分かりにくい。
 
   * util (ble/builtin/bind): bash <= 4.2 で builtin bind -x '"3byte以上": ...' を抑制 [#D2378]
 

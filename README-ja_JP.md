@@ -27,7 +27,7 @@
 `~/.bashrc` の設定の詳細に関しては [節1.3](#set-up-bashrc) を御覧ください。
 
 > [!NOTE]
-> `fzf` を `ble.sh` と組み合わせてお使いの場合は [節2.8](#fzf-integration) を必ず御覧ください。
+> `fzf` を `ble.sh` と組み合わせてお使いの場合は互換性の問題を避けるため [節2.8](#fzf-integration) を必ず御覧ください。
 
 <details open><summary><b><code>git</code> を用いてソースを取得し <code>ble.sh</code> を生成</b></summary>
 
@@ -391,9 +391,10 @@ GitHub Releases から `ble.sh` の tarball をダウンロードすることも
 ## 1.4 初期化スクリプト `~/.blerc`
 
 ユーザー設定は初期化スクリプト `~/.blerc` (またはもし `~/.blerc` が見つからなければ `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh`) に記述します。
-テンプレートとしてリポジトリの [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template) というファイルを利用できます。
 初期化スクリプトは `ble.sh` ロード時に自動で読み込まれる Bash スクリプトなので、Bash で使えるコマンドを初期化スクリプトの中で利用できます。
 初期化スクリプトの位置を変更する場合には、`source ble.sh` 時に `--rcfile INITFILE` を指定します。以下に例を挙げます。
+テンプレートとしてリポジトリの [`blerc.template`](https://github.com/akinomyoga/ble.sh/blob/master/blerc.template) というファイルを利用できます
+(お使いの `ble.sh` に対応する commit のテンプレートファイルを使う必要があることにご注意ください)。
 
 ```bash
 # in bashrc
@@ -499,6 +500,8 @@ Vim モードについては [Wiki の説明ページ](https://github.com/akinom
 
 よくお尋ね頂くご質問の一つにそれぞれの機能をどのように無効化すれば良いのかというものが御座います。
 各機能の無効化方法を以下にまとめます。
+`ble.sh` の振る舞いを Readline に近づける設定 [`config/readline`](https://github.com/akinomyoga/blesh-contrib/blob/master/config/readline.bash)
+(`ble-import config/readline` で読み込めます) も御覧ください。
 
 ```bash
 # 構文着色を無効化
@@ -754,7 +757,7 @@ ble-bind -f C-t my/example1
 
 ## 2.8 fzf との統合<sup><a id="fzf-integration" href="#fzf-integration">†</a></sup>
 
-`fzf` を `ble.sh` と一緒にお使いいただく場合には、[`contrib/fzf` 統合機能](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration) を用いて `fzf` を設定していただく必要があります。
+`fzf` を `ble.sh` と一緒にお使いいただく場合には、互換性の問題を避けるために、[`contrib/fzf` 統合機能](https://github.com/akinomyoga/blesh-contrib#pencil-fzf-integration) を用いて `fzf` を設定していただく必要があります。
 詳細についてはリンク先の説明を御覧ください。
 
 ```bash
@@ -863,6 +866,8 @@ ble-sabbrev '\L'='| less'
 
 ble-sabbrev "~mybin=$HOME/bin"
 ```
+
+その他の詳細については [マニュアルの静的略語展開の節](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A77-Completion#user-content-sec-sabbrev) を御覧ください。
 
 # 4 謝辞
 
