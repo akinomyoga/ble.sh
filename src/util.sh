@@ -3022,7 +3022,7 @@ function ble/util/load-standard-builtin {
            { [[ ! $2 ]] || builtin eval -- "$2"; }
        ) &>/dev/null
     then
-      enable -f "$bash_prefix/lib/bash/$1" "$1"
+      enable -f "$loadable_path/$1" "$1"
       return 0
     fi
   done
