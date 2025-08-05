@@ -2501,9 +2501,6 @@ else
 fi
 
 
-# ble/bin/awk の初期化に ble/util/assign を使うので
-ble/bin/awk/.instantiate
-
 #
 # functions
 #
@@ -2527,6 +2524,9 @@ else
     [[ $type == function ]]
   }
 fi
+
+# ble/bin/awk の初期化に ble/util/assign を使うので
+ble/bin/awk/.instantiate
 
 ## @fn ble/function#getdef function
 ##   @var[out] def
