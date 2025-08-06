@@ -1398,8 +1398,13 @@ if ! ble/init/check-environment; then
   return 1
 fi
 
-# Note: src/util.sh で ble/util/assign を定義した後に呼び出される。
 _ble_bin_awk_type=
+## @fn ble/bin/awk/.instantiate
+##   Select the mplementation of ble/bin/awk.
+##
+##   @remarks This function relies on ble/util/assign (used directly or through
+##   ble/bin#get-path) and ble/is-function, so this is called in src/util.sh
+##   after ble/util/assign and ble/is-function are defined.
 function ble/bin/awk/.instantiate {
   local path q=\' Q="'\''" ext=1
 

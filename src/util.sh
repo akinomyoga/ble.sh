@@ -2525,7 +2525,7 @@ else
   }
 fi
 
-# ble/bin/awk の初期化に ble/util/assign を使うので
+# ble/bin/awk の初期化に ble/util/assign と ble/is-function を使うので
 ble/bin/awk/.instantiate
 
 ## @fn ble/function#getdef function
