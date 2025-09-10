@@ -8262,7 +8262,7 @@ function ble/widget/edit-and-execute-command.edit {
   fi
 
   ble/term/leave
-  "$editor" "$file"; local ext=$?
+  builtin eval -- "$editor"' "$file"'; local ext=$?
   ble/term/enter
 
   if ((ext)); then

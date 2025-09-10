@@ -8115,6 +8115,11 @@ bash_tips
 
 2025-10-19
 
+  * edit: "bleopt editor" は eval で動かす [#D2380]
+
+    今までそのままコマンドとして動かしていたがこれだとオプションなど指定できな
+    い。しかしそれは変だ。eval で動かすべきである。
+
   * README: 雑多のこと [#D2379]
 
     * contrib: add config/readline (motivated by thoughtsunificator)
