@@ -3826,6 +3826,15 @@ function ble/builtin/bind/.initialize-kmap {
   return 0
 }
 ## @fn ble/builtin/bind/.initialize-keys-and-value spec [opts]
+##   @param[opt] opts
+##     @opt check-bindx-bash42bug
+##       When this option is specified, the function checks if the keybinding
+##       specification may break the internal data structure of Bash due to a
+##       bug in Bash <= 4.2.  If it is the case, the variable bindx_bash42bug
+##       is set to 1.
+##
+##       @var[ref] bindx_bash42bug
+##
 ##   @var[out] keys value
 function ble/builtin/bind/.initialize-keys-and-value {
   local spec=$1 opts=$2
@@ -3839,6 +3848,15 @@ function ble/builtin/bind/.initialize-keys-and-value {
     local ret; ble/util/keyseq2chars "${keyseq:1:${#keyseq}-2}"
     chars=("${ret[@]}")
     ((${#chars[@]})) || ble/builtin/bind/.print-error "warning: empty keyseq: $keyseq"
+
+    # When a key sequence with more than 2 bytes is specified to "builtin bind
+    # -x" in Bash < 4.3, the internal data structure of the keymap is broken
+    # and affect the subsequent keybindings by ble.sh.  We detect this case
+    # here to suppress the call of « builtin bind "$@" » by ble/builtin/bind.
+    ((_ble_bash<40300)) &&
+      [[ :$opts: == *:check-bindx-bash42bug:* ]] &&
+      ((${#chars[@]}>2)) &&
+      bindx_bash42bug=1
   else
     [[ :$opts: == *:nokeyname:* ]] &&
       ble/builtin/bind/.print-error "warning: readline \"bind -x\" does not support \"keyname\" spec"
@@ -3849,10 +3867,11 @@ function ble/builtin/bind/.initialize-keys-and-value {
 
 ## @fn ble/builtin/bind/option:x spec
 ##   @var[in] opt_keymap
+##   @var[ref] bindx_bash42bug
 function ble/builtin/bind/option:x {
   local q=\' Q="''\'"
   local keys value kmap
-  if ! ble/builtin/bind/.initialize-keys-and-value "$1" nokeyname:user-command; then
+  if ! ble/builtin/bind/.initialize-keys-and-value "$1" nokeyname:user-command:check-bindx-bash42bug; then
     ble/builtin/bind/.print-error "unrecognized user-command spec '${1//$q/$Q}'."
     flags=e$flags
     return 1
@@ -4074,6 +4093,9 @@ function ble/builtin/bind/option:- {
     return 1
   fi
 }
+## @fn ble/builtin/bind/.process args...
+##   @var[out] flags
+##   @var[ref] bindx_bash42bug
 function ble/builtin/bind/.process {
   flags=
   local IFS=$_ble_term_IFS
@@ -4392,10 +4414,12 @@ function ble/builtin/bind {
     ble/base/adjust-BASH_REMATCH
 
   ble/decode/initialize
-  local flags= ext=0
+  local flags= bindx_bash42bug= ext=0
   ble/builtin/bind/.process "$@"
   if [[ $_ble_decode_bind_state == none ]]; then
-    builtin bind "$@"; ext=$?
+    if [[ ! $bindx_bash42bug ]]; then
+      builtin bind "$@"; ext=$?
+    fi
   elif [[ $flags == *[eh]* ]]; then
     [[ $flags == *e* ]] &&
       builtin bind --usage 2>&1 1>/dev/null | ble/bin/grep ^bind >&2

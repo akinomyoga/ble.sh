@@ -7950,6 +7950,27 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-10-19
+
+  * util (ble/builtin/bind): bash <= 4.2 で builtin bind -x '"3byte以上": ...' を抑制 [#D2378]
+
+    bash < 4.3 の builtin bind -x で 2 byte を超える binding を作成すると内部的
+    なデータ構造が壊れて ble.sh 自体の binding に支障を来す。attach 前には
+    ble/builtin/bind の呼び出しに対して builtin bind "$@" も呼び出していたが、
+    Bash の内部データを破壊するようなものについては除外するべきではないか?
+
+    ? 影響範囲は? → 最初は bash-3.2 で振る舞いを確認したが bash-4.0, 4.1, 4.2
+      でも同様に問題が発生する。4.3 では問題は発生しない。3.1 でも問題が生じる
+      (即座に色々エラーメッセージが表示される)。
+
+    * もしくは readline macro を通して 2 byte seq から実行できる様に調整する?
+      しかしそうすると atuin の branch で実装している様にかなり複雑な事をする必
+      要が出てくる。そもそも ble.sh を detach した状態における振る舞いについて
+      其処まで面倒を見る必要があるのか、というか、勝手に介入して良いのかという
+      話でもある。
+
+    取り敢えずは単に処理をスキップする様に変更する。
+
 2025-07-23
 
   * integration/bash-completion: _comp_command_offset に対して fallback completion を適用する (motivated by Jai-JAP) [#D2377]

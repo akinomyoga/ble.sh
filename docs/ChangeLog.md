@@ -254,6 +254,7 @@
 - canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` f6a3a116
 - edit: fix bash-3.2 problems of receiving <kbd>C-d</kbd> through `SIGUSR1` `#D2365` 38767afe
 - main: update messages for broken locale and environment `#D2370` xxxxxxxx
+- util (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` xxxxxxxx
 
 ## Contrib
 
