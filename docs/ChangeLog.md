@@ -85,6 +85,7 @@
 - cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` adf53ed3
 - decode: record timeout in keyboard macro `#D2343` e8045741
 - edit: add keybindings <kbd>C-up</kbd> and <kbd>C-down</kbd> for history movements (requested by DJCrashdummy) `#D2370` d7afee00
+- util (`bleopt`): support `bleopt var+=value var-=value` for colon-separated lists `#D2381` xxxxxxxx
 
 ## Changes
 

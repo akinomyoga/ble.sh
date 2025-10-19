@@ -54,78 +54,87 @@ function bleopt/expand-variable-pattern {
 ##   @var[out] specs
 function bleopt/.read-arguments {
   flags= pvars=() specs=()
+  local stop_option=
   while (($#)); do
     local arg=$1; shift
-    case $arg in
-    (--)
-      ble/array#push specs "$@"
-      break ;;
-    (-)
-      ble/util/print "bleopt: unrecognized argument '$arg'." >&2
-      flags=E$flags ;;
-    (--*)
-      bleopt/.read-arguments/process-option "${arg:2}" ;;
-    (-*)
-      local i c
-      for ((i=1;i<${#arg};i++)); do
-        c=${arg:i:1}
-        case $c in
-        (r) bleopt/.read-arguments/process-option reset ;;
-        (u) bleopt/.read-arguments/process-option changed ;;
-        (I) bleopt/.read-arguments/process-option initialize ;;
-        (*)
-          ble/util/print "bleopt: unrecognized option '-$c'." >&2
-          flags=E$flags ;;
-        esac
-      done ;;
-    (*)
-      if local rex='^([_a-zA-Z0-9@*?]+)(:?=|$)(.*)'; [[ $arg =~ $rex ]]; then
-        local name=${BASH_REMATCH[1]#bleopt_}
-        local var
-        var=("bleopt_$name")
-        local op=${BASH_REMATCH[2]}
-        local value=${BASH_REMATCH[3]}
+    if [[ ! $stop_option && $arg == -?* ]]; then
+      case $arg in
+      (--)
+        stop_option=1 ;;
+      (--*)
+        bleopt/.read-arguments/process-option "${arg:2}" ;;
+      (*)
+        local i c
+        for ((i=1;i<${#arg};i++)); do
+          c=${arg:i:1}
+          case $c in
+          (r) bleopt/.read-arguments/process-option reset ;;
+          (u) bleopt/.read-arguments/process-option changed ;;
+          (I) bleopt/.read-arguments/process-option initialize ;;
+          (*)
+            ble/util/print "bleopt: unrecognized option '-$c'." >&2
+            flags=E$flags ;;
+          esac
+        done ;;
+      esac
+      continue
+    elif local rex='^([_a-zA-Z0-9@*?]+)([:+-]?=|$)(.*)'; [[ $arg =~ $rex ]]; then
+      local name=${BASH_REMATCH[1]#bleopt_}
+      local var
+      var=("bleopt_$name")
+      local op=${BASH_REMATCH[2]}
+      local value=${BASH_REMATCH[3]}
 
-        # check/expand variable names
-        if [[ $op == ':=' ]]; then
-          if [[ $var == *[@*?]* ]]; then
-            ble/util/print "bleopt: \`${var#bleopt_}': wildcard cannot be used in the definition." >&2
-            flags=E$flags
-            continue
-          fi
-        else
-          local ret; bleopt/expand-variable-pattern "$var"
-
-          # obsolete な物は除外
-          var=()
-          local v i=0
-          for v in "${ret[@]}"; do
-            ble/is-function "bleopt/obsolete:${v#bleopt_}" && continue
-            var[i++]=$v
-          done
-
-          # 表示目的で obsolete しかない時は obsolete でも表示
-          [[ ${#var[@]} == 0 ]] && var=("${ret[@]}")
-
-          # 適した物が見つからない場合は失敗
-          if ((${#var[@]}==0)); then
-            ble/util/print "bleopt: option \`$name' not found" >&2
-            flags=E$flags
-            continue
-          fi
-        fi
-
-        if [[ $op ]]; then
-          ble/array#map-suffix var "=$value"
-          ble/array#push specs "${var[@]}"
-        else
-          ble/array#push pvars "${var[@]}"
+      # check/expand variable names
+      if [[ $op == ':=' ]]; then
+        if [[ $var == *[@*?]* ]]; then
+          ble/util/print "bleopt: \`${var#bleopt_}': wildcard cannot be used in the definition." >&2
+          flags=E$flags
+          continue
         fi
       else
-        ble/util/print "bleopt: unrecognized argument '$arg'" >&2
-        flags=E$flags
-      fi ;;
-    esac
+        local ret; bleopt/expand-variable-pattern "$var"
+
+        # obsolete な物は除外
+        var=()
+        local v i=0
+        for v in "${ret[@]}"; do
+          ble/is-function "bleopt/obsolete:${v#bleopt_}" && continue
+          var[i++]=$v
+        done
+
+        # 表示目的で obsolete しかない時は obsolete でも表示。代入時も obsolete
+        # な名称を明示した場合、もしくは一致するものが obsolete な物のみの場合
+        # は obsolete に対しても作用する。
+        if ((${#var[@]} == 0 && ${#ret[*]})); then
+          if [[ $op == [+-]= ]]; then
+            # Since the operators += and -= need to read the original value,
+            # they cannot be applied to obsoleted options.
+            ble/util/print "bleopt: \`$op' cannot be applied to the obsolete option(s), \`$name'" >&2
+            flags=E$flags
+            continue
+          fi
+          var=("${ret[@]}")
+        fi
+
+        # 適した物が見つからない場合は失敗
+        if ((${#var[@]}==0)); then
+          ble/util/print "bleopt: option \`$name' not found" >&2
+          flags=E$flags
+          continue
+        fi
+      fi
+
+      if [[ $op ]]; then
+        ble/array#map-suffix var "${op#:}$value"
+        ble/array#push specs "${var[@]}"
+      else
+        ble/array#push pvars "${var[@]}"
+      fi
+    else
+      ble/util/print "bleopt: unrecognized argument '$arg'" >&2
+      flags=E$flags
+    fi
   done
 }
 
@@ -161,7 +170,7 @@ function bleopt {
     return 2
   elif [[ $flags == *H* ]]; then
     ble/util/print-lines \
-      'usage: bleopt [OPTION] [NAME|NAME=VALUE|NAME:=VALUE]...' \
+      'usage: bleopt [OPTION] [NAME|NAME=VALUE|NAME[:+-]=VALUE]...' \
       '    Set ble.sh options. Without arguments, this prints all the settings.' \
       '' \
       '  Options' \
@@ -176,6 +185,8 @@ function bleopt {
       '    NAME        Print the value of the option.' \
       '    NAME=VALUE  Set the value to the option.' \
       '    NAME:=VALUE Set or create the value to the option.' \
+      '    NAME+=VALUE Add the value to the colon-separated list.' \
+      '    NAME-=VALUE Remove the value to the colon-separated list.' \
       '' \
       '  NAME can contain "@", "*", and "?" as wildcards.' \
       ''
@@ -216,7 +227,21 @@ function bleopt {
   if ((${#specs[@]})); then
     local spec
     for spec in "${specs[@]}"; do
-      local var=${spec%%=*} value=${spec#*=}
+      if ! ble/string#match "$spec" '^([_a-zA-Z0-9]+)([+-]?=)(.*)$'; then
+        ble/util/print "bleopt: internal error: unrecognized assignment ($spec)." >&2
+        return 3
+      fi
+      local var=${BASH_REMATCH[1]} op=${BASH_REMATCH[2]} value=${BASH_REMATCH[3]}
+
+      if [[ $op == [+-]= ]]; then
+        local rhs=$value value=${!var}
+        if [[ $op == += ]]; then
+          ble/opts#append-unique value "$rhs"
+        else
+          ble/opts#remove value "$rhs"
+        fi
+      fi
+
       [[ ${!var+set} && ${!var} == "$value" ]] && continue
       if ble/is-function bleopt/check:"${var#bleopt_}"; then
         local bleopt_source=${BASH_SOURCE[1]}
@@ -273,11 +298,15 @@ function bleopt/declare/.check-renamed-option {
   return 0
 }
 function bleopt/declare {
-  local type=$1 name=bleopt_$2 default_value=$3
+  local type=$1 name=bleopt_$2 default_value=${3-}
   # local set=${!name+set} value=${!name-}
   case $type in
   (-o)
-    builtin eval -- "$name='[obsolete: renamed to $3]'"
+    if [[ ${3-} ]]; then
+      builtin eval -- "$name='[obsolete: renamed to $3]'"
+    else
+      builtin eval -- "$name='[obsolete]'"
+    fi
     builtin eval -- "function bleopt/check:$2 { bleopt/declare/.check-renamed-option $2 $3; }"
     builtin eval -- "function bleopt/obsolete:$2 { return 0; }" ;;
   (-n)
