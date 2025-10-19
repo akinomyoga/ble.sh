@@ -85,10 +85,10 @@
 - cmap: add <kbd>dsr0</kbd> for <kbd>ESC [ 0 n</kbd> `#D2338` adf53ed3
 - decode: record timeout in keyboard macro `#D2343` e8045741
 - edit: add keybindings <kbd>C-up</kbd> and <kbd>C-down</kbd> for history movements (requested by DJCrashdummy) `#D2370` d7afee00
-- util (`bleopt`): support `bleopt var+=value var-=value` for colon-separated lists `#D2381` xxxxxxxx
-- complete: support `bleopt complete_auto_complete_opts=syntax-unique` (motivated by David0tt) `#D2382` xxxxxxxx
-- complete: support `bleopt complete_auto_complete_opts={syntax,history}-disabled` (motivated by Diabochi) `#D2383` xxxxxxxx
-- complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` xxxxxxxx
+- util (`bleopt`): support `bleopt var+=value var-=value` for colon-separated lists `#D2381` 27816536
+- complete: support `bleopt complete_auto_complete_opts=syntax-unique` (motivated by David0tt) `#D2382` 2f564e63
+- complete: support `bleopt complete_auto_complete_opts={syntax,history}-disabled` (motivated by Diabochi) `#D2383` 2f564e63
+- complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` 2f564e63
 
 ## Changes
 
@@ -190,7 +190,7 @@
 - stty: avoid adjusting the `stty` state if it has never been modified (reported by LEI) `#D2376` edb21da9
 - main: fix the initialization order of `ble/bin/awk` (contributed by yecho) `github#613` 8060b7ad
 - util (`ble/util/load-standard-builtin`): actually load from `$loadable_path` (fixup 044c016a) (contributed by xarblu) `github#611` 52c38977
-- edit: run `bleopt editor` with `eval` `#D2380` xxxxxxxx
+- edit: run `bleopt editor` with `eval` `#D2380` eff10c4b
 
 ## Compatibility
 
@@ -261,7 +261,8 @@
 - canvas: avoid using <kbd>DL</kbd> at the top to clear lines (requeted by u/JustABro_2321 aka AB-boi) `#D2358` f6a3a116
 - edit: fix bash-3.2 problems of receiving <kbd>C-d</kbd> through `SIGUSR1` `#D2365` 38767afe
 - main: update messages for broken locale and environment `#D2370` ea1e547b
-- util (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` xxxxxxxx
+- decode (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` 41ee9aaa
+- decode (`ble/builtin/bind`): treat the last `\e` as an isolated ESC (reported by sharpchen) `#D2385` xxxxxxxx
 
 ## Contrib
 
@@ -298,8 +299,8 @@
 - integration/zoxide: fix the problem of unquoted filenames (reported by tessus) `#D2216` 430a1746
 - integration/{bash,fzf,skim}-completion: adjust dynamically loaded completion functions (motivated by tessus) `#D2327` 788dfd15
 - integration/fzf: suppress dynamic binding `#D2350` e9d5ca26
-- integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` xxxxxxxx
-- contrib: add `readline` (motivated by thoughtsunificator) `#D2379` xxxxxxxx
+- integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` 2ef5e483
+- contrib: add `readline` (motivated by thoughtsunificator) `#D2379` a985559a
 
 ## Documentation
 
@@ -316,7 +317,7 @@
 - memo: fix syntax error in the testing code for #D1779 (reported by andychu) `#D2329` 8c387422
 - github: fix URLs in the nightly description (reported by TheFozid) `#D2373` 97c6caea
 - history: include `HISTFILE` in the invalid timestamp mesasge (motivated by Strykar) `#D2374` 5c088fe7
-- README: clarify small things `#D2379` xxxxxxxx
+- README: clarify small things `#D2379` a985559a
   - workflows: show date on the nightly page
   - README: clarify fzf compat issues
   - README: link the sabbrev section in Manual

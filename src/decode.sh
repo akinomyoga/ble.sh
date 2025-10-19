@@ -2738,11 +2738,15 @@ function ble/widget/.MACRO {
     _ble_decode_macro_count=0
   fi
 
-  local -a chars=()
-  local char
-  for char; do
-    ble/array#push chars "$((char|_ble_decode_Macr))"
+  (($#)) || return 0
+
+  local chars i
+  chars=("$@")
+  ((chars[$#-1]==27)) && chars[$#-1]=$_ble_decode_IsolatedESC
+  for i in "${!chars[@]}"; do
+    ((chars[i]|=_ble_decode_Macr))
   done
+
   ble-decode-char "${chars[@]}"
 }
 
