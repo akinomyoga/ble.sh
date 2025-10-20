@@ -1294,8 +1294,8 @@ function ble/complete/check-cancel {
 ##   @var[in,out] insert_flags
 ##     以下のフラグ文字の組み合わせの文字列です。
 ##
-##     r   [in] 既存の部分を保持したまま補完が実行される事を表します。
-##         それ以外の時、既存の入力部分も含めて置換されます。
+##     r   [in] 既存部分を書き換えるような補完であることを表します。
+##         これが含まれない場合、既存部分を保持したまま追記する形で補完します。
 ##     m   [out] 候補一覧 (menu) の表示を要求する事を表します。
 ##     n   [out] 再度補完を試み (確定せずに) 候補一覧を表示する事を要求します。
 ##
@@ -1772,7 +1772,17 @@ function ble/complete/action/requote-final-insert {
         ble/syntax:bash/simple-word/safe-eval "$ins" limit=2 &&
         ((${#ret[@]}==1))
     then
-      ble/string#quote-word "$ret" quote-empty
+      if [[ $comps_flags == *[SEDI]* ]]; then
+        ble/complete/string#escape-for-completion-context "$ret"
+        case $comps_flags in
+        (*S*) ret=\'$ret ;;
+        (*E*) ret=\$\'$ret ;;
+        (*D*) ret=\"$ret ;;
+        (*I*) ret=\$\"$ret ;;
+        esac
+      else
+        ble/string#quote-word "$ret" quote-empty
+      fi
       ((${#ret}+threshold<=${#ins})) || return 0
       insert=$comps_prefix$ret
       [[ $insert == "$COMPS"* ]] || insert_flags=r$insert_flags # 遡って書き換えた

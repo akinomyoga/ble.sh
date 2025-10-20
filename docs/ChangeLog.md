@@ -191,6 +191,7 @@
 - main: fix the initialization order of `ble/bin/awk` (contributed by yecho) `github#613` 8060b7ad
 - util (`ble/util/load-standard-builtin`): actually load from `$loadable_path` (fixup 044c016a) (contributed by xarblu) `github#611` 52c38977
 - edit: run `bleopt editor` with `eval` `#D2380` eff10c4b
+- complete: fix extra quoting of requote with incomplete word `#D2386` xxxxxxxx
 
 ## Compatibility
 

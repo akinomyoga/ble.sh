@@ -8115,6 +8115,40 @@ bash_tips
 
 2025-10-20
 
+  * complete: -o noquote を指定している時 echo '[tab] で 'A B'' となる [#D2386]
+
+    以下に対応する為 bat の completion を修正してテストしている最中に気づいた事。
+
+    https://github.com/akinomyoga/ble.sh/discussions/648
+
+    振る舞いを調べた所 requote-final-insert をして '...' の形式になった後に、
+    complete.close-quotation が無条件に ' やら " やらを追加するのが原因である。
+    これはどの様に処理するべきだろうか? requote-final-insert をした時点でちゃん
+    と閉じた状態になる。
+
+    a 一つの方法は既存部分を書き換えるような場合 (insert_flags == *r*) は、改め
+      て simple-word を使って適切に単語を閉じること。
+
+    しかしそもそも今の実装で単に ' や " をつけるだけなのは正しい振る舞いなのか?
+    中身の quote は一体どうなっているのか? 例えば ' が含まれる様な候補でも正し
+    く '\'' になったり、或いは $ が含まれるような候補でも正しく \$ になったりす
+    るのだろうか? → うーん。これは
+    ble/complete/string#escape-for-completion-context で処理されている様だ。
+
+    さて、そもそも既存部分を書き換える様な候補の場合に
+    ble/complete/string#escape-for-completion-context は実行されるのだろうか?
+    うーん。既存部分を書き換えた場合にもこの関数が呼び出されるとするのであれば、
+    何か変なことになるのでは? と思ったが、どうやら既存部分を書き換える場合には
+    あたかも最初からその文脈であったように最初に引用符 (quote_trav_prefix) を追
+    加するようである。従って、この場合には依然として ' または " が閉じるための
+    suffix として期待されるという事になる。
+
+    うーん。という事を総合すると、実は comps_flags に SEDI が含まれる場合には
+    requote でもちゃんと consistent な状態になる様にする必要があるという事? うー
+    ん。requote の quote 形式は今までは ble/string#quote-word に任せていたが、
+    quote 形式が決まっている時にはそれを用いて quote する、というのが自然である。
+    なのでそのように変更した。
+
   * decode (ble/builtin/bind): string macros で最後の \e が M- になる (reported by sharpchen) [#D2385]
     https://github.com/akinomyoga/ble.sh/issues/640
 
