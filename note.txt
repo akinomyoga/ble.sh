@@ -8115,6 +8115,11 @@ bash_tips
 
 2025-10-25
 
+  * global: bleopt の出力で \' の着色が黒になっている。変では? [#D2388]
+
+    全般に quote-word で着色している部分を修正した。$'...' の中の \? は着色して
+    いないが面倒なのでこれは良いことにする。
+
   * cmdspec: declare chroma: setattr ... d が着色削除ではなく算術式評価されている (reported by LeonardoMor) [#D2387]
     https://github.com/akinomyoga/ble.sh/issues/646
 

@@ -89,6 +89,7 @@
 - complete: support `bleopt complete_auto_complete_opts=syntax-unique` (motivated by David0tt) `#D2382` 2f564e63
 - complete: support `bleopt complete_auto_complete_opts={syntax,history}-disabled` (motivated by Diabochi) `#D2383` 2f564e63
 - complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` 2f564e63
+- util (`bleopt`, etc.): highlight shell quoting by backslash `#D2388` xxxxxxxx
 
 ## Changes
 

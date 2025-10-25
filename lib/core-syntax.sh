@@ -656,6 +656,8 @@ function ble/syntax/print-layer-buffer.draw {
   ble/color/face2sgr command_builtin; local sgr1=$ret
   ble/color/face2sgr syntax_varname; local sgr2=$ret
   ble/color/face2sgr syntax_quoted; local sgr3=$ret
+  ble/color/face2sgr syntax_escape; local sgr4=$ret
+  local quote_word_opts=quote-empty:sgrq=$sgr3:sgre=$sgr4:sgr0=$_ble_term_sgr0
 
   ble/canvas/put.draw "${sgr1}buffer${sgr0} ${sgr2}$layer_name${sgr0}=("
   local i count=0
@@ -667,7 +669,7 @@ function ble/syntax/print-layer-buffer.draw {
     done
 
     ((count==1)) || ble/canvas/put.draw ' '
-    ble/string#quote-word "$val" quote-empty:sgrq="$sgr3"
+    ble/string#quote-word "$val" "$quote_word_opts"
     ble/canvas/put.draw "$ret"
   done
   ble/canvas/put.draw ")$_ble_term_nl"

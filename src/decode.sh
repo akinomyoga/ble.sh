@@ -787,9 +787,9 @@ _ble_decode_csimap_alpha=()
 _ble_decode_csimap_dict=()
 function ble/decode/csi/print/.print-csidef {
   local qalpha qkey ret q=\' Q="'\''"
-  if [[ $sgrq ]]; then
-    ble/string#quote-word "$1" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qalpha=$ret
-    ble/string#quote-word "$2" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qkey=$ret
+  if [[ $ble_bind_print ]]; then
+    ble/string#quote-word "$1" "$quote_word_opts"; qalpha=$ret
+    ble/string#quote-word "$2" "$quote_word_opts"; qkey=$ret
   else
     qalpha="'${1//$q/$Q}'"
     qkey="'${2//$q/$Q}'"
@@ -798,7 +798,7 @@ function ble/decode/csi/print/.print-csidef {
 
 }
 ## @fn ble/decode/csi/print
-##   @var[in] ble_bind_print sgr0 sgrf sgrq sgrc sgro
+##   @var[in] ble_bind_print quote_word_opts sgr0 sgrf sgrq sgrc sgro
 function ble/decode/csi/print {
   [[ $ble_bind_print ]] || local sgr0= sgrf= sgrq= sgrc= sgro=
   local num ret
@@ -1504,7 +1504,7 @@ function ble-decode-char/unbind {
   done
 }
 ## @fn ble-decode-char/print [tseq nseq...]
-##   @var[in] ble_bind_print sgr0 sgrf sgrq sgrc sgro
+##   @var[in] ble_bind_print quote_word_opts sgr0 sgrf sgrq sgrc sgro
 function ble-decode-char/print {
   [[ $ble_bind_print ]] || local sgr0= sgrf= sgrq= sgrc= sgro=
   local IFS=$_ble_term_IFS q=\' Q="'\''"
@@ -1521,10 +1521,10 @@ function ble-decode-char/print {
       local key=${ent%_} ret
 
       local qkspec qcnames
-      if [[ $sgrq ]]; then
+      if [[ $ble_bind_print ]]; then
         ble-decode-unkbd "$key"
-        ble/string#quote-word "$ret" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qkspec=$ret
-        ble/string#quote-word "${cnames[*]}" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qcnames=$ret
+        ble/string#quote-word "$ret" "$quote_word_opts"; qkspec=$ret
+        ble/string#quote-word "${cnames[*]}" "$quote_word_opts"; qcnames=$ret
       else
         ble-decode-unkbd "$key"
         qkspec="'${ret//$q/$Q}'"
@@ -1860,7 +1860,7 @@ function ble/decode/keymap#set-cursor {
 ## @fn ble/decode/keymap#print keymap [tseq nseq]
 ##   @param keymap
 ##   @param[in,internal] tseq nseq
-##   @var[in] ble_bind_print sgr0 sgrf sgrq sgrc sgro
+##   @var[in] ble_bind_print quote_word_opts sgr0 sgrf sgrq sgrc sgro
 function ble/decode/keymap#print {
   # 引数の無い場合: 全ての kmap を dump
   local kmap
@@ -1887,8 +1887,8 @@ function ble/decode/keymap#print {
     builtin eval "local ent=\${$dicthead$tseq[key]}"
 
     local qknames
-    if [[ $sgrq ]]; then
-      ble/string#quote-word "$knames" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qknames=$ret
+    if [[ $ble_bind_print ]]; then
+      ble/string#quote-word "$knames" "$quote_word_opts"; qknames=$ret
     else
       qknames="'${knames//$q/$Q}'"
     fi
@@ -1905,8 +1905,8 @@ function ble/decode/keymap#print {
       esac
 
       local qv
-      if [[ $sgrq ]]; then
-        ble/string#quote-word "$v" quote-empty:sgrq="$sgrq":sgr0="$sgr0"; qv=$ret
+      if [[ $ble_bind_print ]]; then
+        ble/string#quote-word "$v" "$quote_word_opts"; qv=$ret
       else
         qv="'${v//$q/$Q}'"
       fi
@@ -3265,14 +3265,16 @@ function ble/decode/bind/option:dump {
 ##   @var[in] flags
 function ble/decode/bind/option:print {
   local ble_bind_print=1
-  local sgr0= sgrf= sgrq= sgrc= sgro=
+  local quote_word_opts= sgr0= sgrf= sgrq= sgrc= sgro=
   if [[ $flags == *c* || $flags != *n* && -t 1 ]]; then
     local ret
     ble/color/face2sgr command_function; sgrf=$ret
     ble/color/face2sgr syntax_quoted; sgrq=$ret
+    ble/color/face2sgr syntax_escape; local sgre=$ret
     ble/color/face2sgr syntax_comment; sgrc=$ret
     ble/color/face2sgr argument_option; sgro=$ret
     sgr0=$_ble_term_sgr0
+    quote_word_opts=quote-empty:sgrq=$sgrq:sgre=$sgre:sgr0=$sgr0
   fi
 
   local keymap

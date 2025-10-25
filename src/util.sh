@@ -257,19 +257,20 @@ function bleopt {
 
   if ((${#pvars[@]})); then
     # 着色
-    local sgr0= sgr1= sgr2= sgr3=
+    local sgr0= sgr1= sgr2= sgr3= sgr4=
     if [[ $flags == *c* || $flags != *n* && -t 1 ]]; then
       local ret
       ble/color/face2sgr command_function; sgr1=$ret
       ble/color/face2sgr syntax_varname; sgr2=$ret
       ble/color/face2sgr syntax_quoted; sgr3=$ret
+      ble/color/face2sgr syntax_escape; sgr4=$ret
       sgr0=$_ble_term_sgr0
     fi
 
     local var
     for var in "${pvars[@]}"; do
       local ret
-      ble/string#quote-word "${!var}" sgrq="$sgr3":sgr0="$sgr0"
+      ble/string#quote-word "${!var}" sgrq="$sgr3":sgre="$sgr4":sgr0="$sgr0"
       ble/util/print "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$ret"
     done
   fi
@@ -1345,26 +1346,54 @@ else
   }
 fi
 ## @fn ble/string#quote-word text opts
+##   @param[in,opt] opts
+##     A colon-separated list of options.
+##
+##     @opt quote-empty
+##       Generate "''" when TEXT is empty.  By default, this function generates
+##       an empty string "" for an empty TEXT.
+##
+##     @opt sgrq=<esc>
+##       Specify an escape sequence to highlight parts quoted by quotations.
+##
+##     @opt sgre=<esc>
+##       Specify an escape sequence to highlight parts quoted by an escape.
+##
+##     @opt sgr0=<esc>
+##       Specify an escape sequence to clear the highlighting.
+##
+##     @opt ansi
+##       Use ANSI sequences instead of the current terminfo in automatically
+##       generate highlighting.
+##
 function ble/string#quote-word {
   ret=${1-}
 
-  local opts=${2-} sgrq= sgr0=
+  local opts=${2-} sgrq= sgre= sgrq0= sgre0=
   if [[ $opts ]]; then
     local rex_csi=$'\e\\[[ -?]*[@-~]' # disable=#D1440 (LC_COLLATE is set)
 
-    if ble/string#match-safe ":$opts:" ":sgrq=(($rex_csi|[^:])*):"; then
-      sgrq=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
-    fi
+    local sgr0
     if ble/string#match-safe ":$opts:" ":sgr0=(($rex_csi|[^:])*):"; then
       sgr0=${BASH_REMATCH[1]}
     elif [[ :$opts: == *:ansi:* ]]; then
       sgr0=$'\e[m'
+    else
+      sgr0=$_ble_term_sgr0
+    fi
+
+    if ble/string#match-safe ":$opts:" ":sgrq=(($rex_csi|[^:])*):"; then
+      sgrq=${BASH_REMATCH[1]} sgrq0=$sgr0
+    fi
+
+    if ble/string#match-safe ":$opts:" ":sgre=(($rex_csi|[^:])*):"; then
+      sgre=${BASH_REMATCH[1]} sgre0=$sgr0
     fi
   fi
 
   if [[ ! $ret ]]; then
     if [[ :$opts: == *:quote-empty:* ]]; then
-      ret=$sgrq\'\'$sgr0
+      ret=$sgrq\'\'$sgrq0
     fi
     return 0
   fi
@@ -1372,17 +1401,17 @@ function ble/string#quote-word {
   local chars=$'\a\b\e\f\n\r\t\v\001-\037\177'
   if [[ $ret == *[$chars]* ]]; then
     ble/string#escape-for-bash-escape-string "$ret"
-    ret=$sgrq\$\'$ret\'$sgr0
+    ret=$sgrq\$\'$ret\'$sgrq0
     return 0
   fi
 
   local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
   if [[ $ret == *["$chars"]* ]]; then
-    local Q="'$sgr0\'$sgrq'"
-    ret=$sgrq$q${ret//$q/$Q}$q$sgr0
-    ret=${ret#"$sgrq$q$q$sgr0"} ret=${ret%"$sgrq$q$q$sgr0"}
+    local Q="'$sgrq0$sgre\'$sgre0$sgrq'"
+    ret=$sgrq$q${ret//$q/$Q}$q$sgrq0
+    ret=${ret#"$sgrq$q$q$sgrq0"} ret=${ret%"$sgrq$q$q$sgrq0"}
   elif [[ $ret == *["$q"]* ]]; then
-    local Q="\'"
+    local Q="$sgre\'$sgre0"
     ret=${ret//$q/$Q}
   fi
 }

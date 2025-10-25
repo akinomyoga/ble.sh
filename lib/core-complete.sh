@@ -9570,12 +9570,13 @@ function ble-decode/keymap:auto_complete/define {
 # @var _ble_complete_sabbrev
 
 function ble/complete/sabbrev/.initialize-print {
-  sgr0= sgr1= sgr2= sgr3= sgro=
+  sgr0= sgr1= sgr2= sgr3= sgr4= sgro=
   if [[ $flags == *c* || $flags != *n* && -t 1 ]]; then
     local ret
     ble/color/face2sgr command_function; sgr1=$ret
     ble/color/face2sgr syntax_varname; sgr2=$ret
     ble/color/face2sgr syntax_quoted; sgr3=$ret
+    ble/color/face2sgr syntax_escape; sgr4=$ret
     ble/color/face2sgr argument_option; sgro=$ret
     sgr0=$_ble_term_sgr0
   fi
@@ -9586,9 +9587,9 @@ function ble/complete/sabbrev/.print-definition {
   [[ $type != w ]] && option=$sgro'-'$type$sgr0' '
 
   local ret
-  ble/string#quote-word "$key" quote-empty:sgrq="$sgr3":sgr0="$sgr2"
+  ble/string#quote-word "$key" quote-empty:sgrq="$sgr3":sgre="$sgr4":sgr0="$sgr2"
   key=$sgr2$ret$sgr0
-  ble/string#quote-word "$value" sgrq="$sgr3":sgr0="$sgr0"
+  ble/string#quote-word "$value" sgrq="$sgr3":sgre="$sgr4":sgr0="$sgr0"
   value=$ret
   ble/util/print "${sgr1}ble-sabbrev$sgr0 $option$key=$value"
 }
@@ -9636,7 +9637,7 @@ function ble/complete/sabbrev/list {
     ((${#keys[@]})) || return 0
   fi
 
-  local sgr0 sgr1 sgr2 sgr3 sgro
+  local sgr0 sgr1 sgr2 sgr3 sgr4 sgro
   ble/complete/sabbrev/.initialize-print
 
   local key ext=0

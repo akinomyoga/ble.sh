@@ -4406,7 +4406,8 @@ function ble/widget/display-shell-version {
   local set shopt
   [[ $_ble_bash_options_adjusted ]] || ble/base/.adjust-bash-options set shopt
 
-  local sgrC= sgrF= sgrV= sgrA= sgr2= sgr3= sgr0= bold=
+  local sgrC= sgrF= sgrV= sgrA= sgr2= sgr0= bold=
+  local quote_word_opts=quote-empty
   if [[ -t 1 ]]; then
     bold=$_ble_term_bold
     sgr0=$_ble_term_sgr0
@@ -4415,7 +4416,9 @@ function ble/widget/display-shell-version {
     ble/color/face2sgr syntax_expr; sgrV=$ret
     ble/color/face2sgr varname_readonly; sgrA=$ret
     ble/color/face2sgr syntax_varname; sgr2=$ret
-    ble/color/face2sgr syntax_quoted; sgr3=$ret
+    ble/color/face2sgr syntax_quoted; local sgr3=$ret
+    ble/color/face2sgr syntax_escape; local sgr4=$ret
+    quote_word_opts=$quote_word_opts:sgrq=$sgr3:sgre=$sgr4:sgr0=$sgr0
   fi
   local label_noarch=" (${sgrA}noarch$sgr0)"
   local label_integration=" $_ble_term_bold(integration: on)$sgr0"
@@ -4462,14 +4465,14 @@ function ble/widget/display-shell-version {
       [[ ${_ble_bash_LC_ALL-} ]] && continue ;;
     esac
     [[ ${!var+set} ]] || continue
-    ble/string#quote-word "${!var}" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
+    ble/string#quote-word "${!var}" "$quote_word_opts"
     line="$line $sgr2${var#_ble_bash_}$sgrV=$sgr0$ret"
   done
   lines[iline++]=$line
 
   # terminal
   ret='(unset)'
-  [[ ${TERM+set} ]] && ble/string#quote-word "$TERM" quote-empty:sgrq="$sgr3":sgr0="$sgr0"
+  [[ ${TERM+set} ]] && ble/string#quote-word "$TERM" "$quote_word_opts"
   local i line="${bold}terminal$sgr0: ${sgr2}TERM$sgrV=$sgr0$ret"
   line="$line ${sgr2}wcwidth$sgrV=$sgr0$bleopt_char_width_version-$bleopt_char_width_mode${bleopt_emoji_width:+/$bleopt_emoji_version-$bleopt_emoji_width+$bleopt_emoji_opts}"
   [[ ${MC_SID-} ]] && line="$line, ${sgrC}mc$sgr0 (${sgrV}MC_SID:$MC_SID$sgr0)"
