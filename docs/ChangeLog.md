@@ -192,6 +192,7 @@
 - util (`ble/util/load-standard-builtin`): actually load from `$loadable_path` (fixup 044c016a) (contributed by xarblu) `github#611` 52c38977
 - edit: run `bleopt editor` with `eval` `#D2380` eff10c4b
 - complete: fix extra quoting of requote with incomplete word `#D2386` xxxxxxxx
+- cmdspec (`declare/chroma`): fix a bug of evaluating global variable `d` (reported by LeonardoMor) `#D2387` xxxxxxxx
 
 ## Compatibility
 

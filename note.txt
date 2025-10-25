@@ -8113,6 +8113,16 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2025-10-25
+
+  * cmdspec: declare chroma: setattr ... d が着色削除ではなく算術式評価されている (reported by LeonardoMor) [#D2387]
+    https://github.com/akinomyoga/ble.sh/issues/646
+
+    wattr#setg p 'd' を呼び出すべきところを wattr#setattr p 'd' を呼び出してい
+    た。前者はそのまま 'd' を格納するので特別の値としての 'd' として扱われるが、
+    後者は一旦算術式評価を介するので期待通りに動かない。それどころか global 変
+    数に d があるとその中身を算術式評価してしまうので問題である。
+
 2025-10-20
 
   * complete: -o noquote を指定している時 echo '[tab] で 'A B'' となる [#D2386]

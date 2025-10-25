@@ -171,7 +171,7 @@ function ble/cmdinfo/cmd:declare/chroma.wattr {
       local varname=${BASH_REMATCH[1]}
       ble/syntax/highlight/vartype "$varname" global
       ble/progcolor/wattr#setattr "$wbeg" "$ret"
-      ble/progcolor/wattr#setattr "$((wbeg+${#varname}))" d
+      ble/progcolor/wattr#setg "$((wbeg+${#varname}))" d
     elif ble/string#match "$wval" '^[-+]' && ble/progcolor/is-option-context; then
       # ToDo: validate available options
       local ret; ble/color/face2g argument_option
