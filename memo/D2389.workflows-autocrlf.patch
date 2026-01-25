@@ -1,0 +1,41 @@
+From fa166daf447e6acd89bd3ff5ea4ccc9380bb0f9e Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Mon, 20 Oct 2025 07:56:48 +0900
+Subject: [PATCH] [stub] workflow: set core.autocrlf
+
+---
+ .github/workflows/build.yml | 3 +++
+ .github/workflows/test.yml  | 3 +++
+ 2 files changed, 6 insertions(+), 0 deletion(-)
+
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+index 10e9ccca..4a0f3afe 100644
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -100,6 +100,9 @@ jobs:
+         os: [macos-latest, windows-latest]
+     runs-on: ${{ matrix.os }}
+     steps:
++      - name: Set core.autocrlf=false
++        if: runner.os == 'Windows'
++        run: git config --global core.autocrlf false
+       - name: Check out
+         uses: actions/checkout@v4
+         with:
+diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml
+index ba1c0bca..6b01abb9 100644
+--- a/.github/workflows/test.yml
++++ b/.github/workflows/test.yml
+@@ -11,6 +11,9 @@ jobs:
+         os: [ubuntu-latest, macos-latest, windows-latest]
+     runs-on: ${{ matrix.os }}
+     steps:
++      - name: Set core.autocrlf=false
++        if: runner.os == 'Windows'
++        run: git config --global core.autocrlf false
+       - name: Check out
+         uses: actions/checkout@v4
+         with:
+-- 
+2.51.0
+

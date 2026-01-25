@@ -1926,6 +1926,37 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2025-12-29
+
+  * fzf advice 適用が駄目
+    https://github.com/notxart/dotfiles-template/issues/4
+
+  * fzf-menu が util-linux 2.39 を要求しているという事を記述する
+    https://github.com/akinomyoga/blesh-contrib/issues/28#issuecomment-2677922868
+
+  * wiki/Misc: ble-import -C についての記述がない。その他のオプションも?
+
+2025-10-20
+
+  * complete: _comp_compgen -P に対する介入 (prefix 抽出)
+  * complete: smartctl -v N,...:<tab> でファイル名が挿入された時の prefix
+    "N,...:" もファイル名の一部として生成されてエラー着色になっている。
+
+  * rg completion 位置計算ズレ (reported by Jai-JAP)
+
+  * doc: sytax が wiki にもある
+  * wiki: `COMP_WORDBREAKS` の装飾
+  * wiki: complete_auto_history の説明はどうなった?
+    これは deprecated ということで、complete_auto_complete_opts に統合する。
+  * wiki: complete_auto_complete_opts はやっぱり表にする。
+
+  * (reported by Jai-JAP)
+    https://github.com/akinomyoga/ble.sh/discussions/551#discussioncomment-14726157
+
+    sudo dnf [tab] でファイル名も一緒に生成されている。COMPREPLY を経由せずに直
+    接候補を生成したから? この場合は bash-completion がファイル名を生成するとい
+    うことだろうか。
+
 2025-10-19
 
   * edit: shell-expand-line で $_ 等を正しく展開するべきではないか?
@@ -8112,6 +8143,167 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2026-01-25
+
+  * decode: ble-bind -k 'DC4' '@ESC @ESC' [C-t] で syntax error になる [#D2392]
+
+    結論: これは使い方が間違っていただけ。ble-bind -k でチェックする様にした。
+
+    #D2391 のテスト中に発見したバグ どうもそもそも ble-bind -k は複数のキーに展
+    開される状況には対応していない様だ。コードを追っていくと実はそのまま処理さ
+    れて send-unmodified-key に到達する迄何も起こらない。
+
+    a 一つの修正方法は ble-bind -k の時点でチェックを行い複数文字 or key に展開
+      する設定が登録される事を阻止するということ。
+
+    b もう一つの修正方法は send-unmodified-key の側で複数 key に展開されう場合
+      に対応するという事。
+
+      しかし、複数キーに展開される様な物が複数あって曖昧の時には、さらにそれを
+      suffix とした配列に格納される事になって問題が生じるのでは? という事を考え
+      ると、やはりもっと前で処理するべきでは? それにこの様な変な値の key がある
+      時に csi の detection も壊れたりしないのかというのが気になる。うーん。そ
+      もそも変換後の値 ("1980 1980") は元々入力シーケンスにあった物ではないので、
+      一致の探索をする為の配列名などには使われていない。そのまま文字列として処
+      理されて send-unmodified-key まで到達する様である。
+
+
+      x send-unmodified-key で毎回チェックするという事はそれだけ overhead があ
+        るという事。一方で、実際にそのような使い方に有用性があるのかというと微
+        妙。取り敢えずは禁止ということで良いのではないか?
+
+        x しかし大量の入力は bracketed paste mode 経由で送信される事を要求すれ
+          ば、実際の所ユーザー入力で処理が重くなるような状況もないのではという
+          気もする。なので、send-unmodified-key で毎回チェックでも良いのではな
+          いだろうか。
+
+    取り敢えず需要がない割に overhead が増える気がするので ble-bind -k で明示的
+    に禁止する事にする。
+
+  * [bash-bug] decode: C-M-[ に bind しても ESC ESC を即座に受信できない [#D2391]
+    https://github.com/akinomyoga/ble.sh/issues/640#issuecomment-3552411793
+
+    ESC ESC に対して bind したいという話。恐らく emacs で動かしている? Windows
+    で M-ESC を実行しようとすると Windows の振る舞いになってしまうしうまく行か
+    ない?
+    
+    * テストの為に ble-bind -k DC4 '@ESC @ESC' として C-t を押したら syntax
+      error になる。何かバグがある。これは修正しなければならない。これは別項目
+      で議論する → #D2392
+
+    でもよく考えたらユーザーがやろうとしているのは M-ESC に対して何かを割り当て
+    るのではなくて ESC ESC に対して何かを割り当てようという話の気がする。という
+    事は本来は ESC ESC に bind するべきなのではないだろうか?
+
+    vi の場合には decode_isolated_esc=auto を介して ESC が認識されるので、恐ら
+    くユーザーは emacs を使っていると想定して良いだろう。
+
+    * bug-bash: どうもゆっくり入力すると C-M-[ が実行されるが、早く入力すると待
+      ち状態に入ってしまう。keymap-timeout を設定すれば変な事にはならない。
+
+      しかしそもそも何故素早く入力した時に keymap-timeout が必要な事態になって
+      いるのだろうか? うーん。ゆっくり入力すると @ESC @ESC になっているが、早く
+      入力すると ESC ESC になっている。ここで注目に値するべきは ESC ESC におい
+      て一番目が ESC になっているのは良いが二番目は @ESC であるべきではないかと
+      いうこと。
+
+      改めて確認すると実は元から \e\e はマクロで \xC0\x9B\e に変換しているので
+      二番目の \e に関しては readline の側で改めて dispatch されて欲しいところ、
+      どうも待ち状態に入ってしまう様である。うーん。bash の実装的に
+      keymap-timeout は最初に受信した物に対してしか有効でないという事なのだろう
+      か?
+
+      実際に設定を作って確かめてみた所そのようだ。つまり、これは bash のバグの
+      気がする。後で報告しても良い気がする。ただ、バグではなくて仕様だと主張さ
+      れる様な気がするので、これについては "改良" という体裁で報告するのが良い
+      気がする。
+
+  * [cache] decode: C-q ESC で変な文字が入力される [#D2390]
+
+    入力された文字のシーケンスは de bc である。printf %d '? を使ってコードを出
+    力してみると 1980 になっている。16進数で 7bc である。そしてこれは
+    _ble_decode_IsolatedESC に一致している。然し、_ble_decode_IsolatedESC に一
+    致している物については ble-decode-char の _ble_decode_char__hook の判定の箇
+    所でちゃんと比較して 27 に置き換えている。何故変換を bypass しているのだろ
+    うか? 或いは bracketed-paste-mode の時に bypass されている可能性?
+
+    と思って改めてテストしてみたが再現しない。現在メモリ上にロードされている
+    ble.sh だけで発生している? a3adbc71 という commit である。しかし、git tag
+    でタグを付けてみようとしたが既に消滅している様である。なので、どういう事に
+    なっているのかわからない。
+
+    メモリ上の ble-decode-char と現在の ble-decode-char を比較すると大分変更さ
+    れているので、結構古い実装が未だメモリ上に残っているということ? 然し昔のコー
+    ドでも其処まで問題がある様には見えない。また
+    ble-decode/widget/.call-async-read や ble/widget/self-insert/.get-code に関
+    しては完全に同じ実装になっている。不思議だ。ble/widget/quoted-insert.hook
+    も同じ実装である。
+
+    分かった。なんと $_ble_decode_IsolatedESC は 2044 なのに、実際に受信してい
+    るのは 1980 になっている。つまり、使っている ble.sh のコード自体は 2044 な
+    のに binding のキャッシュは 1980 用の物に置き換わっているということ? よく分
+    からないがそういう事も起こりそうではある。取り敢えずこれはキャッシュの同期
+    の問題の気がするので気にしない事にする。
+
+  * 2025-10-19 github: Windows で test が失敗する様になっている。行末に \r がついている? [#D2389]
+
+    keymap 関連のエラーメッセージに関しては autocrlf = false で解消した。しかし、
+    GraphemeCluster 関連のエラーは解消しない。ローカルの windows では問題は再現
+    しない。例えば以下で失敗している。
+
+    ble/unicode/GraphemeCluster/find-previous-boundary $'\U0020\U1F1E6' 3
+
+    うーん。dump して見る事にする。どうも文字列の長さが間違っている。
+    LANG=en_US.UTF-8 で間違っていたので LANG=C.UTF-8 に変更したがそれでも間違っ
+    ている。データの内容 (バイナリ) 的には同一の文字列なのに、長さが異なってい
+    る。更に一文字ずつ取り出してみる。
+
+      split: 20 | f0 9f 87 a6    (ubuntu)
+      split: 20 | f0 9f 87 | a6  (windows)
+
+    以上の様な具合になっている。何故だろう? UTF-8 としてありえない場所で切れて
+    いる。或いは、3-byte UTF-8 までしか受け付けないという事だろうか? surrogate
+    pair が絡む様な場合には文字列の切り出しすらできない? しかし Cygwin ではちゃ
+    んと動いているし、そもそも windows-latest でも今までは動いていた。今回突然
+    動かなくなったのは何故だろう? 最新の msys2 では同じ問題が起こるのだろうか?
+
+    取り敢えず 20250624 に更新した msys-2.0.dll の場合には問題は生じていない。
+    pacman -Syu してみる事にする。msys2-runtime-3.6.5-1 及び
+    msys2-runtime-devel-3.6.5-1 が新しくインストールされた。msys-2.0.dll が
+    20251010 の物に置き換わっている。しかし、それでも問題は生じていない。
+
+    % というか Cygwin でも実は同様の問題が発生していたりして…。最近 update し
+    % ていないから気づかないだけで … と思ったが msys2 の最新版でも問題が生じて
+    % いないということは、システム自体のバグという訳でもない?
+
+    手許の msys-2.0.dll FileVersion は 3.6.5-0eeda3e131b580df38367f3c71df2cea2c18ee50
+    CI 上の msys-2.0.dll FileVersion は 3.6.4-b9f03e965a96c2c7e2e091fb4f10d2eafa8bd3cf
+
+    これの違いで問題が生じている可能性はある? →
+    msys2-runtime-3.6.4-1-x86_64.pkg.tar.zst から 3.6.4 の msys-2.0.dll を取り
+    出して、一時的に dll を置き換えてみたがそれでも振る舞いは再現しない。という
+    事は locale データの方が壊れているという事なのだろうか? 結局何が原因か分か
+    らないし、修正・回避の方法も分からない。取り敢えず CI windows-latest 上では
+    GraphemeCluster のテストはしない?
+
+    2026-01-25 改めて振る舞いを確認したが msys2 でも変な振る舞いになっている。
+    但し、テストは普通に通過する。これが意味する所は何か? この間違った slicing
+    が問題の原因ではないということ? しかし、間違った slicing をしているのに何故
+    テストが通過するのだろうか? 謎だ。取り敢えず問題が発生するテストを改めて特
+    定する。blesh-test の branch に含まれていたテスト用のコマンド
+
+      ble/unicode/GraphemeCluster/find-previous-boundary $'\U0020\U1F1E6' 3
+
+    これに関しては実は cygwin でも msys2 でも ci でも同じ結果になってしまう。し
+    かし cygwin 及び msys2 上ではテストは成功しているの関係ないのではないか?
+
+    改めて ci 上で失敗するテストを特定する必要がある。
+
+    何と ble/canvas/GraphemeCluster/c2break (GraphemeBreakTest.txt) のテストは
+    ci 上でも完全に通っている。ということは別の部分? 改めて canvas のテストを走
+    らせる必要がある。全部通る。更に全テストを実行しても通る。うーん。問題が再
+    現しなくなっている。という事はどうにかして直ったという事だろうか。
 
 2025-10-25
 

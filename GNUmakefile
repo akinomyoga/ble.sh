@@ -126,6 +126,9 @@ outfiles += $(OUTDIR)/lib/vim-surround.sh
 outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
 outfiles += $(OUTDIR)/lib/vim-airline.sh
 
+# lib
+outfiles += $(OUTDIR)/lib/util.bgproc.sh
+
 # test
 outfiles += $(OUTDIR)/lib/test-bash.sh
 outfiles += $(OUTDIR)/lib/test-main.sh
@@ -136,7 +139,6 @@ outfiles += $(OUTDIR)/lib/test-edit.sh
 outfiles += $(OUTDIR)/lib/test-syntax.sh
 outfiles += $(OUTDIR)/lib/test-complete.sh
 outfiles += $(OUTDIR)/lib/test-keymap.vi.sh
-outfiles += $(OUTDIR)/lib/util.bgproc.sh
 
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	$(CP) $< $@

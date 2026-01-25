@@ -681,7 +681,7 @@
 ## the auto-complete source based on the syntax and programmable completion is
 ## disabled.  When "syntax-suppress-ambiguous" is specified, ambiguous
 ## completion is not attempted.  When "syntax-suppress-empty" is specified,
-## sytax-based completion is suppressed for an empty word.  When the option
+## syntax-based completion is suppressed for an empty word.  When the option
 ## "syntax-unique" is specified, the auto-complete source based on the syntax
 ## and programmable completion generates a candidate only when it is unique.
 
