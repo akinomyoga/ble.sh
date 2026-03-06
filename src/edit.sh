@@ -125,17 +125,51 @@ bleopt/declare -v undo_point auto
 ##
 bleopt/declare -n edit_forced_textmap 1
 
-bleopt/declare -v edit_magic_expand history:sabbrev
-bleopt/declare -v edit_magic_opts ''
-
-## @bleopt edit_magic_accept
+## @bleopt edit_magic_expand
 ##   @opt sabbrev
-##   @opt alias
+##     Perform the sabbrev expansion on magic-space.
+##
 ##   @opt history
 ##     These enable the corresponding expansions on accept-line.  The history
 ##     expansion is equivalent to the shell's history expansion and performed
 ##     when "history" is specified here, or the shell option `set -H` (or `set
 ##     -o histexpand`) is specified.
+##
+##   @opt alias
+##     Expand the alias on the left-hand side of the current cursor.
+##
+##   @opt autocd
+##     Expand the directory name on the left-hand side of the current cursor,
+##     when the current context is in the place where a command name appears.
+##
+##   @opt <user-defined-expansion>
+##     Perform the expansion defined by the shell function named
+##     "ble/complete/expand:<user-defined-expansion>".
+bleopt/declare -v edit_magic_expand history:sabbrev
+bleopt/declare -v edit_magic_opts ''
+
+function bleopt/check:edit_magic_expand {
+  local expand_typess expand_types exit=0
+  ble/string#split expand_typess : "$value"
+  for expand_types in "${expand_typess[@]}"; do
+    case $expand_types in
+    (history|sabbrev|'') ;;
+    (*)
+      if ! ble/is-function ble/complete/expand:"$expand_types"; then
+        ble/util/print "bleopt edit_magic_expand: '$value': Unrecognized expansion type '$expand_types'." >&2
+        exit=1
+      fi ;;
+    esac
+  done
+
+  return "$exit"
+}
+
+## @bleopt edit_magic_accept
+##   @opt <options-for-bleopt-edit_magic_expand>
+##     All options that can be specified to "bleopt edit_magic_expand" can be
+##     specified to "bleopt edit_magic_accept" too.  These enable the
+##     corresponding expansions on accept-line.
 ##
 ##   @opt history-inline
 ##     By default, the result of the history expansion is not applied to the
@@ -8070,10 +8104,11 @@ function ble/widget/default/accept-line {
   local orig_str=$_ble_edit_str orig_ind=$_ble_edit_ind
 
   # 静的略語展開
-  if [[ :$bleopt_edit_magic_accept: == *:sabbrev:* ]]; then
+  local expand_opts=$bleopt_edit_magic_accept
+  if [[ :$expand_opts: == *:sabbrev:* ]]; then
     local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
     if ble/complete/sabbrev/expand; then
-      if [[ :$bleopt_edit_magic_accept: == *:verify:* ]]; then
+      if [[ :$expand_opts: == *:verify:* ]]; then
         ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
         return 0
       fi
@@ -8085,23 +8120,26 @@ function ble/widget/default/accept-line {
   fi
 
   # エイリアス展開
-  local expand_type
-  for expand_type in alias autocd; do
-    if [[ :$bleopt_edit_magic_accept: == *:"$expand_type":* ]]; then
+  local expand_types expand_type
+  ble/string#split expand_types : "$expand_opts"
+  for expand_type in "${expand_types[@]}"; do
+    case $expand_type in
+    (''|sabbrev|history|history-inline|verify|verify-syntax) ;;
+    (*)
       local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
-      if ble/complete/expand:"$expand_type"; then
-        if [[ :$bleopt_edit_magic_accept: == *:verify:* ]]; then
+      if ble/function#try ble/complete/expand:"$expand_type"; then
+        if [[ :$expand_opts: == *:verify:* ]]; then
           ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
           return 0
         fi
         command=$_ble_edit_str
         is_line_expanded=1
-      fi
-    fi
+      fi ;;
+    esac
   done
 
   # 履歴展開
-  if [[ -o histexpand || :$bleopt_edit_magic_accept: == *:history:* ]]; then
+  if [[ -o histexpand || :$expand_opts: == *:history:* ]]; then
     local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
     if local ret; ble/edit/histexpand "$command"; then
       local expanded=$ret
@@ -8120,14 +8158,14 @@ function ble/widget/default/accept-line {
 
       is_line_expanded=1
       command=$expanded
-      if [[ :$bleopt_edit_magic_accept: == *:history-inline:* ]]; then
+      if [[ :$expand_opts: == *:history-inline:* ]]; then
         ble-edit/content/reset-and-check-dirty "$command"
         _ble_edit_ind=${#command}
       fi
     fi
   fi
 
-  if [[ $is_line_expanded && :$bleopt_edit_magic_accept: == *:verify-syntax:* ]]; then
+  if [[ $is_line_expanded && :$expand_opts: == *:verify-syntax:* ]]; then
     if [[ $command != "$_ble_edit_str" ]]; then
       ble-edit/content/reset-and-check-dirty "$command"
       _ble_edit_ind=${#command}
@@ -9138,15 +9176,15 @@ function ble/widget/magic-space/.expand {
     fi
   fi
 
-  # (3) alias expansion
-  if [[ :$type: == *:alias:* ]]; then
-    ble/complete/expand:alias && return 0
-  fi
-
-  # (4) autocd
-  if [[ :$type: == *:autocd:* ]]; then
-    ble/complete/expand:autocd && return 0
-  fi
+  # (3) Other expansions (including alias, autocd, and custom expansions)
+  local expand_typess expand_types
+  ble/string#split expand_typess : "$type"
+  for expand_types in "${expand_typess[@]}"; do
+    case $expand_types in
+    (history|sabbrev|'') ;;
+    (*) ble/function#try ble/complete/expand:"$expand_types" ;;
+    esac
+  done
 
   return 1
 }

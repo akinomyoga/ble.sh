@@ -8146,6 +8146,29 @@ bash_tips
 
 2026-03-06
 
+  * edit (edit_magic_{accept,expand}): allow user-defined expansion (motivated by Jai-JAP) [#D2395]
+    https://github.com/akinomyoga/ble.sh/discussions/678
+
+    前から何となく対応しようと思っていたので対応することにする。また、同時に実
+    装例として config/github678-expand-command-suffix を提供する。
+
+    * 或いは別の実装方法として PREEXEC もしくは ADDHISTORY に介入させるという手
+      もあるかもしれない、と思ったが、PREEXEC に関しては内部変数
+      "_ble_edit_exec_BASH_COMMAND{,_eval}" を修正しなければならないということ。
+      ADDHISTORY についても内部変数を修正しなければならないということ。更に、
+      ADDHISTORY の直前で結局 ble/complete/expand:... の処理を実行していること
+      から、現段階としては ble/complete/expand:... 経由の方法で提供する。
+
+    * 元々は適切な実行順序をこちら側で指定する様にしていたが、
+      ble/complete/expand:* に関しては edit_magic_{accept,expand} に指定されて
+      いる順番に適用することにした。
+
+      もう一つの可能性として別の配列で順序を定義しておいて、それとは別に何を on
+      にして何を off にするかを "edit_magic_{accept,expand}" で指定するというこ
+      とも考えたが、インターフェイスとして二箇所に登録しなければならないのは面
+      倒だし、また、実際に使う側で順序を変えたいという場合も生じてくる様に思う
+      ので、"edit_magic_{accept,expand}" で指定した順序に実行することにする。
+
   * main (ble/bin/awk): work around gawk-5.4.0 bug for gensub back-references (reported by 0xhtml, raeraex2, l0042158) [#D2394]
     https://github.com/akinomyoga/ble.sh/issues/674
     https://github.com/akinomyoga/ble.sh/issues/677
