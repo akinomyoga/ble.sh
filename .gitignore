@@ -4,8 +4,9 @@
 /dist
 /wiki
 /ext
-/a.func.txt
-/a.line.txt
+/*.func.txt
+/*.line.txt
+/*.tree.txt
 
 # edit files
 /COMMIT
@@ -43,11 +44,9 @@
 /make/*.o
 
 # files for unresolved GitHub Issues
-/gh???.*
-/gh????.*
 /X????.*
-/gh???/
-/gh????/
+/debug
+/gh[0-9][0-9][0-9][0-9]*
 
 # experiment
 /lib/*.so

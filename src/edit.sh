@@ -145,18 +145,17 @@ bleopt/declare -n edit_forced_textmap 1
 ##   @opt <user-defined-expansion>
 ##     Perform the expansion defined by the shell function named
 ##     "ble/complete/expand:<user-defined-expansion>".
+##
 bleopt/declare -v edit_magic_expand history:sabbrev
-bleopt/declare -v edit_magic_opts ''
-
 function bleopt/check:edit_magic_expand {
-  local expand_typess expand_types exit=0
-  ble/string#split expand_typess : "$value"
-  for expand_types in "${expand_typess[@]}"; do
-    case $expand_types in
-    (history|sabbrev|'') ;;
+  local expand_types expand_type exit=0
+  ble/string#split expand_types : "$value"
+  for expand_type in "${expand_types[@]}"; do
+    case $expand_type in
+    (''|history|sabbrev) ;;
     (*)
-      if ! ble/is-function ble/complete/expand:"$expand_types"; then
-        ble/util/print "bleopt edit_magic_expand: '$value': Unrecognized expansion type '$expand_types'." >&2
+      if ! ble/is-function ble/complete/expand:"$expand_type"; then
+        ble/util/print "bleopt edit_magic_expand: '$value': Unrecognized expansion type '$expand_type'." >&2
         exit=1
       fi ;;
     esac
@@ -164,6 +163,11 @@ function bleopt/check:edit_magic_expand {
 
   return "$exit"
 }
+
+## @bleopt edit_magaic_opts
+##   @opt inline-sabbrev-no-insert
+##
+bleopt/declare -v edit_magic_opts ''
 
 ## @bleopt edit_magic_accept
 ##   @opt <options-for-bleopt-edit_magic_expand>
@@ -192,6 +196,22 @@ function bleopt/check:edit_magic_expand {
 ##     "history-inline".
 ##
 bleopt/declare -v edit_magic_accept 'verify-syntax'
+function bleopt/check:edit_magic_accept {
+  local expand_types expand_type exit=0
+  ble/string#split expand_types : "$value"
+  for expand_type in "${expand_types[@]}"; do
+    case $expand_type in
+    (''|history|sabbrev|history-inline|verify|verify-syntax) ;;
+    (*)
+      if ! ble/is-function ble/complete/expand:"$expand_type"; then
+        ble/util/print "bleopt edit_magic_accept: '$value': Unrecognized expansion type '$expand_type'." >&2
+        exit=1
+      fi ;;
+    esac
+  done
+
+  return "$exit"
+}
 
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0

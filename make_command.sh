@@ -254,11 +254,11 @@ function sub:scan/.mark {
 }
 
 function sub:scan/grc-source {
-  local -a options=(--color --exclude=./{test,memo,ext,wiki,[TD]????.*} --exclude=\*.{md,awk} --exclude=./{GNUmakefile,make_command.sh})
+  local -a options=(--color --exclude=./{test,debug,memo,ext,wiki,[TD]????.*} --exclude=\*.{md,awk} --exclude=./{GNUmakefile,make_command.sh})
   grc "${options[@]}" "$@"
 }
 function sub:scan/list-command {
-  local -a options=(--color --exclude=./{test,memo,ext,wiki,[TD]????.*} --exclude=\*.{md,awk})
+  local -a options=(--color --exclude=./{test,debug,memo,ext,wiki,[TD]????.*} --exclude=\*.{md,awk})
 
   # read arguments
   local flag_exclude_this= flag_error=
@@ -311,7 +311,7 @@ function sub:scan/check-todo-mark {
 }
 function sub:scan/a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude={test,ext,./lib/test-\*.sh,./make_command.sh,\*.md} --exclude=check-mem.sh '[/[:blank:]<>"'\''][a-z]\.txt|/dev/(pts/|pty)[0-9]*|/dev/tty' |
+  grc --color --exclude={test,debug,ext,./lib/test-\*.sh,./make_command.sh,\*.md} --exclude=check-mem.sh '[/[:blank:]<>"'\''][a-z]\.txt|/dev/(pts/|pty)[0-9]*|/dev/tty' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g
       \Z^\./memo/Zd
       \Zgithub302-perlre-server\.bashZd
@@ -329,17 +329,17 @@ function sub:scan/bash300bug {
   echo "--- $FUNCNAME ---"
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
-  grc '(local|declare|typeset) [_a-zA-Z]+=\(' --exclude=./{test,ext} --exclude=./make_command.sh --exclude=ChangeLog.md --color |
+  grc '(local|declare|typeset) [_a-zA-Z]+=\(' --exclude=./{test,debug,ext} --exclude=./make_command.sh --exclude=ChangeLog.md --color |
     sub:scan/.mark '#D0184'
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
-  grc '(local|declare|typeset) -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,ext} --exclude=./make_command.sh --color |
+  grc '(local|declare|typeset) -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./{test,debug,ext} --exclude=./make_command.sh --color |
     sub:scan/.mark '#D0525'
 
   # bash-3.0 では "${scalar[@]/xxxx}" は全て空になる
   # bash-4.3 では "${scalar[@]/xxxx}" に内部エスケープ $'\001' が多数混入する。
-  grc '\$\{[_a-zA-Z0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./make_command.sh --exclude=\*.md --color |
+  grc '\$\{[_a-zA-Z0-9]+\[[*@]\]/' --exclude=./{text,ext} --exclude=./{debug,make_command.sh} --exclude=\*.md --color |
     sub:scan/.mark '#D1570'
 
   # bash-3.0 では "..${var-$'hello'}.." は (var が存在しない時) "..'hello'..." になる。
@@ -379,13 +379,13 @@ function sub:scan/bash400bug {
 
   # bash-3.0..4.0 で $'' 内に \' を入れていると '' の入れ子状態が反転して履歴展
   # 開が '' の内部で起こってしまう。
-  grc '\$'\''([^\'\'']|\\[^'\''])*\\'\''([^\'\'']|\\.|'\''([^\'\'']|\\*)'\'')*![^=[:blank:]]' --exclude={test,ChangeLog.md} --color |
+  grc '\$'\''([^\'\'']|\\[^'\''])*\\'\''([^\'\'']|\\.|'\''([^\'\'']|\\*)'\'')*![^=[:blank:]]' --exclude={test,debug,ChangeLog.md} --color |
     grep -v '9f0644470'
 }
 
 function sub:scan/bash401-histexpand-bgpid {
   echo "--- $FUNCNAME ---"
-  grc '"\$!"' --exclude={test,ChangeLog.md} --color |
+  grc '"\$!"' --exclude={test,debug,ChangeLog.md} --color |
     sub:scan/.mark '#D2028'
 }
 
@@ -393,7 +393,7 @@ function sub:scan/bash402-array-empty-element {
   echo "--- $FUNCNAME ---"
   # Note: bash-4.2 or bash-4.2..5.1 are affected depending on the detailed
   # construct.
-  grc --color '\$\{(@|[[:alnum:]_]+\[@])([#%]|/[#%]/"?[}$]|/[^}#%/]|//[^/}/])' --exclude={test,\*.md,lib/test-bash.sh,make_command.sh} |
+  grc --color '\$\{(@|[[:alnum:]_]+\[@])([#%]|/[#%]/"?[}$]|/[^}#%/]|//[^/}/])' --exclude={test,debug,\*.md,lib/test-bash.sh,make_command.sh} |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
 
       \Z"\$\{_ble_util_set_declare\[@\]//NAME/.+\}"Zd
@@ -405,7 +405,7 @@ function sub:scan/bash402-array-empty-element {
 
 function sub:scan/bash404-no-argument-return {
   echo "--- $FUNCNAME ---"
-  grc --color 'return[[:blank:]]*($|[;|&<>])' --exclude={test,wiki,ChangeLog.md,make,docs,make_command.sh} |
+  grc --color 'return[[:blank:]]*($|[;|&<>])' --exclude={test,debug,wiki,ChangeLog.md,make,docs,make_command.sh} |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
 
       \Z@returnZd
@@ -422,7 +422,7 @@ function sub:scan/bash404-no-argument-return {
 function sub:scan/bash501-arith-base {
   echo "--- $FUNCNAME ---"
   # bash-5.1 で $((10#)) の取り扱いが変わった。
-  grc '\b10#\$' --exclude={test,ChangeLog.md}
+  grc '\b10#\$' --exclude={test,debug,ChangeLog.md}
 }
 
 function sub:scan/bash502-patsub_replacement {
@@ -456,7 +456,7 @@ function sub:scan/bash502-patsub_replacement {
 
 function sub:scan/gawk402bug-regex-check {
   echo "--- $FUNCNAME ---"
-  grc --color '\[\^?\][^]]*\[:[^]]*:\].[^]]*\]' --exclude={test,ext,\*.md} | grep -Ev '#D1709 safe'
+  grc --color '\[\^?\][^]]*\[:[^]]*:\].[^]]*\]' --exclude={test,debug,ext,\*.md} | grep -Ev '#D1709 safe'
 }
 function sub:scan/nawk-bug {
   echo "--- $FUNCNAME ---"
@@ -464,7 +464,7 @@ function sub:scan/nawk-bug {
   # starting with "=" in the form /=.../.  This is probably because the lexer
   # in Solaris 2.11 nawk is confused with the division-assignment operator
   # "/=".
-  grc --color --exclude={test,ext,\*.md} '(g?sub|match)\(.*/=| !?~ /='
+  grc --color --exclude={test,debug,ext,\*.md} '(g?sub|match)\(.*/=| !?~ /='
 }
 
 function sub:scan/assign {
@@ -524,7 +524,7 @@ function sub:scan/unset-variable {
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
       \Zunset[[:blank:]]-[vf]Zd
       \Z^[[:blank:]]*#Zd
-      \Zunset _ble_init_(version|arg|exit|command)\bZd
+      \Zunset _ble_init_(version|arg|exit|command|skip)\bZd
       \Zbuiltins1=\(.* unset .*\)Zd
       \Zfunction unsetZd
       \Zreadonly -f unsetZd
@@ -566,8 +566,12 @@ function sub:scan/word-splitting-number {
   echo "--- $FUNCNAME ---"
   # #D1835 一般には IFS に整数が含まれるている場合もあるので ${#...} や
   # $((...)) や >&$fd であってもちゃんと quote する必要がある。
-  grc '[<>]&\$|([[:blank:]]|=\()\$(\(\(|\{#|\?)' --exclude={docs,mwg_pp.awk,memo} |
-    sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
+  grc '[<>]&\$|([[:blank:]]|=\()\$(\(\(|\{#|\?)' --exclude={docs,mwg_pp.awk,memo,debug} |
+    sed -E '
+      # remove lines without $ outside ((...)).
+      h;s/\(\([^()]*\)\)//g;/\$/!d;x
+
+    h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
       \Z^[^#]*(^|[[:blank:]])#Zd
       \Z^([^"]|"[^\#]*")*"[^"]*([& (]\$)Zd
       \Z^[^][]*\[\[[^][]*([& (]\$)Zd
@@ -584,7 +588,7 @@ function sub:scan/check-readonly-unsafe {
   echo "--- $FUNCNAME ---"
   local rex_varname='\b(_[_a-zA-Z0-9]+|[_A-Z][_A-Z0-9]+)\b'
   grc -Wg,-n -Wg,--color=always -o "$rex_varname"'\+?=\b|(/assign|/assign-array|#split) '"$rex_varname"'| -v '"$rex_varname"' ' \
-      --exclude={memo,wiki,test,make,'*.md',make_command.sh,GNUmakefile,'gh????.*.'{sh,bash}} |
+      --exclude={memo,wiki,test,debug,make,'*.md',make_command.sh,GNUmakefile,'gh????.*.'{sh,bash}} |
     sed -E 'h;s/'"$_make_rex_escseq"'//g
 
       # Exceptions in each file
@@ -597,6 +601,7 @@ function sub:scan/check-readonly-unsafe {
       /^\.\/src\/history.sh:[0-9]+:_history_index=$/d
       /^\.\/src\/util.sh:[0-9]+:(NAMEI|OPEN|TERM)=$/d
       /^\.\/lib\/core-cmdspec.sh:[0-9]+:OLD=$/d
+      /^\.\/contrib\/config\/readline.bash:[0-9]+:_abell=$/d
 
       # (extract only variable names)
       s/^[^:]*:[0-9]+:[[:blank:]]*//;
@@ -637,6 +642,9 @@ function sub:scan/check-readonly-unsafe {
       /^(COMP[12SV]|ACTION|CAND|DATA|INSERT|PREFIX_LEN)$/d
       /^(PRETTY_NAME|NAME|VERSION)$/d
       /^(OPTIND|OPTERR)$/d
+
+      # workaround for the Gawk-5.4.0 regex bug
+      /^GAWK_GNU_MATCHERS$/d
 
       # variables in awk/comments/etc
       /^AWKTYPE$/d
@@ -734,7 +742,7 @@ function sub:scan {
       g'
   sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$_make_rex_escseq"'//g;s/^[^:]*:[0-9]+:[[:blank:]]*//
-      \Zunset (-v )?_ble_init_(version|arg|exit|command)\bZd
+      \Zunset (-v )?_ble_init_(version|arg|exit|command|skip)\bZd
       \Zreadonly -f unsetZd
       \Zunset -f builtinZd
       \Z'\''\(unset\)'\''Zd
@@ -1150,17 +1158,17 @@ function sub:code-ages {
 #------------------------------------------------------------------------------
 
 function sub:scan-words {
-  # sed -E "s/'[^']*'//g;s/(^| )[[:blank:]]*#.*/ /g" $(findsrc --exclude={wiki,test,\*.md}) |
+  # sed -E "s/'[^']*'//g;s/(^| )[[:blank:]]*#.*/ /g" $(findsrc --exclude={wiki,test,debug,\*.md}) |
   #   grep -hoE '\$\{?[_a-zA-Z][_a-zA-Z0-9]*\b|\b[_a-zA-Z][-:._/a-zA-Z0-9]*\b' |
   #   sed -E 's/^\$\{?//g;s.^ble/widget/..;\./.!d;/:/d' |
   #   sort | uniq -c | sort -n
-  sed -E "s/(^| )[[:blank:]]*#.*/ /g" $(findsrc --exclude={memo,wiki,test,\*.md}) |
+  sed -E "s/(^| )[[:blank:]]*#.*/ /g" $(findsrc --exclude={memo,wiki,test,debug,\*.md}) |
     grep -hoE '\b[_a-zA-Z][_a-zA-Z0-9]{3,}\b' |
     sed -E 's/^bleopt_//' |
     sort | uniq -c | sort -n | less
 }
 function sub:scan-varnames {
-  sed -E "s/(^| )[[:blank:]]*#.*/ /g" $(findsrc --exclude={wiki,test,\*.md}) |
+  sed -E "s/(^| )[[:blank:]]*#.*/ /g" $(findsrc --exclude={wiki,test,debug,\*.md}) |
     grep -hoE '\$\{?[_a-zA-Z][_a-zA-Z0-9]*\b|\b[_a-zA-Z][_a-zA-Z0-9]*=' |
     sed -E 's/^\$\{?(.*)/\1$/g;s/[$=]//' |
     sort | uniq -c | sort -n | less

@@ -1928,9 +1928,6 @@ bash_tips
 
 2025-12-29
 
-  * fzf-menu が util-linux 2.39 を要求しているという事を記述する
-    https://github.com/akinomyoga/blesh-contrib/issues/28#issuecomment-2677922868
-
   * wiki/Misc: ble-import -C についての記述がない。その他のオプションも?
 
 2025-10-20
@@ -8143,6 +8140,51 @@ bash_tips
 
 2026-03-09
 
+  * 2025-12-29 fzf-menu が util-linux 2.39 を要求しているという事を記述する [#D2402]
+    https://github.com/akinomyoga/blesh-contrib/issues/28#issuecomment-2677922868
+    https://github.com/akinomyoga/ble.sh/issues/530
+
+    そもそも -c unlimited は必要ないのではないかという疑惑
+
+    色々試したが幅が短くても別に改行はされないようだ。-W を指定するとテーブルレ
+    イアウト (-t) でも幅が足りない時に改行がされる様になるという話だが、現在は
+    指定していない。
+
+    そもそも -c unlimited が新しく必要になった意味が分からない。
+
+    * テーブルレイアウトでなくて -c unlimited を指定するとそもそも全てを一行に
+      詰め込むだけになるのでわざわざ column を呼び出す意味がない気がする。強い
+      て言えば複数行あった物を一行にする効果があるが、これは単に tr とか echo
+      $(...) とかでもできる話である。
+    * テーブルレイアウトの時には -W を指定していたとしても -c unlimited を指定
+      すれば -W の効果がなくなるので、結局始めから -W を指定しなければいいだけ
+      の話である。ChatGPT によるとお気持ちを表明するために -W ... -c unlimited
+      が使えるとか色々言っているが、適当にそれっぽい事を言っているだけである。
+    * 元の -c unlimited を導入した issue は以下の様である。
+
+      https://github.com/util-linux/util-linux/issues/1618
+
+      これを見るに -R を指定した時に -c が足りていない時には右寄せが行われなく
+      なるという振る舞いだったみたいだ。なので、-R を指定している時には -c を指
+      定して目一杯気味に align される様にすることができるということの様だ。これ
+      は確かに単に -R を使わないだとかそういうので対処できる物ではない。
+
+    a 一つの手は -c unlimited を指定しないという物で、
+
+    b もう一つの手は -c に物凄く大きな値を指定するという物である。物凄く大きな
+      値というのは int か short か分からないが、整数表現で最も大きい物を選ぶの
+      が適当に思われる。とは言え、説明文字列の長さに理論的な上限はないのだから
+      適当に大きな値を指定するのだとどうしても原理的に問題が発生するケースが残っ
+      てしまう気がする。
+
+    ? 然し、そもそも最初に-c unlimited を指定しようと思ったのは何故だったか? 実
+      際の振る舞いを見て決めたという訳ではなかったのだろうか? 単に man column
+      の中を見て unlimited が使えると思っただけかもしれない。或いは一旦 -R を使っ
+      た時に問題になって -c unlimited を追加したのかもしれない。
+
+    * done: 何れにしても util-linux の column が使えるという事は README で記述
+      するべきの気がする。
+
   * fzf advice 適用時にエラーが発生している (reported by Funeralsawa) [#D2401]
     https://github.com/notxart/dotfiles-template/issues/4
 
@@ -8269,6 +8311,10 @@ bash_tips
       とも考えたが、インターフェイスとして二箇所に登録しなければならないのは面
       倒だし、また、実際に使う側で順序を変えたいという場合も生じてくる様に思う
       ので、"edit_magic_{accept,expand}" で指定した順序に実行することにする。
+
+    2026-03-09 edit_magic_expand は代入時の値のチェックを入れたのに、
+    edit_magic_accept の方はチェックが入っていなかった。edit_magic_accept も値
+    のチェックを行う様に修正する。
 
   * main (ble/bin/awk): work around gawk-5.4.0 bug for gensub back-references (reported by 0xhtml, raeraex2, l0042158) [#D2394]
     https://github.com/akinomyoga/ble.sh/issues/674

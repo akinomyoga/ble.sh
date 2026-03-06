@@ -49,6 +49,7 @@
   - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
   - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
   - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` b6344b3b
+  - edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676 xxxxxxxx
   - complete: apply `alias`/`autocd` expansions globally on `magic-accept` (motivated by Jai-JAP) `#D2399` xxxxxxxx
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
@@ -91,7 +92,6 @@
 - complete: support `bleopt complete_auto_complete_opts={syntax,history}-disabled` (motivated by Diabochi) `#D2383` 2f564e63
 - complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` 2f564e63
 - util (`bleopt`, etc.): highlight shell quoting by backslash `#D2388` 7cf13879
-- edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676
 - complete: introduce more stages to ambiguous pathname completions (reported by xuhdev) `#D2397` abb93e21
 
 ## Changes
@@ -298,7 +298,7 @@
 - contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
 - contrib/colorglass: fix fixed-point round `#D2239` b154058a
 - contrib: add `config/github48{1,3}` for elapsed-mark examples (motivated by paulzzy, TheFantasticWarrior) `#D2249` 67548656 ed5d451b
-- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3
+- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3 `#D2402` xxxxxxxx
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 - contrib/colorglass:  color: import themes from `Gogh-Co/Gogh` (motivated by d4rkb4sh8) `#D2274` d2eb75b5
 - contrib/integration/fzf-completion: suppress unexpected quoting by compgen in dynamic completions (reported by mcepl) `#D2284` 32f290df
