@@ -8146,6 +8146,10 @@ bash_tips
 
 2026-03-06
 
+  * main (ble/bin/awk): work around gawk-5.4.0 bug for gensub back-references (reported by 0xhtml, raeraex2, l0042158) [#D2394]
+    https://github.com/akinomyoga/ble.sh/issues/674
+    https://github.com/akinomyoga/ble.sh/issues/677
+
   * util (ble/string#quote-word): backslash escape を適切に着色する [#D2393]
 
 2026-01-25

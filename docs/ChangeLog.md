@@ -267,6 +267,7 @@
 - main: update messages for broken locale and environment `#D2370` ea1e547b
 - decode (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` 41ee9aaa
 - decode (`ble/builtin/bind`): treat the last `\e` as an isolated ESC (reported by sharpchen) `#D2385` cafef0c6
+- main (`ble/bin/awk`): work around `gawk-5.4.0` bug for `gensub` back-references (reported by 0xhtml, raeraex2, l0042158) `#D2394` xxxxxxxx
 
 ## Contrib
 

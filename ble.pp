@@ -1434,10 +1434,24 @@ function ble/bin/awk/.instantiate {
   fi
 
   if ble/bin#get-path gawk; then
-    builtin eval "function ble/bin/gawk { command '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
+    # * Note on GAWK_GNU_MATCHERS: Gawk 5.4.0 introduced a regression to gensub()
+    #   back-references when they switched the underlying regular expression
+    #   library to MinRX.  This was originally reported by Ref. [1,2].  I
+    #   reported the bug to the upstream in Ref. [3], and the "gawk-5.4-stable"
+    #   branch got a fix in Ref. [4].  Currently (2026-03-06), the fix does not
+    #   seem to be applied to a release version of Gawk 5.4.0.  This can be
+    #   worked around by specifying the environment variable GAWK_GNU_MATCHERS,
+    #   which forces Gawk to use the traditional GNU library for the regular
+    #   expressions.
+    #
+    #   [1] https://github.com/akinomyoga/ble.sh/issues/674
+    #   [2] https://github.com/akinomyoga/ble.sh/issues/677
+    #   [3] https://lists.gnu.org/archive/html/bug-gawk/2026-02/msg00036.html
+    #   [4] https://github.com/sailfishos-mirror/gawk/commit/00be99d6ceae1439fd73a15f37d20710dd5798a5
+    builtin eval "function ble/bin/gawk { GAWK_GNU_MATCHERS=yes command '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }"
     if [[ ! $_ble_bin_awk_type ]]; then
       _ble_bin_awk_type=gawk
-      builtin eval "function ble/bin/awk { command '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }" && ext=0
+      builtin eval "function ble/bin/awk { GAWK_GNU_MATCHERS=yes command '${path//$q/$Q}' -v AWKTYPE=gawk \"\$@\"; }" && ext=0
     fi
   fi
 
@@ -1447,19 +1461,23 @@ function ble/bin/awk/.instantiate {
       _ble_bin_awk_type=xpg4
       function ble/bin/awk { /usr/xpg4/bin/awk -v AWKTYPE=xpg4 "$@"; } && ext=0
     elif ble/bin#get-path awk; then
-      local version
+      local version awk_env=
       ble/util/assign version '"$path" -W version' 2>/dev/null </dev/null && [[ $version ]] ||
         ble/util/assign version '"$path" --version' 2>/dev/null </dev/null
       if [[ $version == *'GNU Awk'* ]]; then
         _ble_bin_awk_type=gawk
+        awk_env='GAWK_GNU_MATCHERS=yes '
       elif [[ $version == *mawk* ]]; then
         _ble_bin_awk_type=mawk
       elif [[ $version == 'awk version '[12][0-9][0-9][0-9][01][0-9][0-3][0-9] ]]; then
         _ble_bin_awk_type=nawk
       else
+        # Even if we cannot identify that the present awk is gawk, we specify
+        # GAWK_GNU_MATCHERS in case.
         _ble_bin_awk_type=unknown
+        awk_env='GAWK_GNU_MATCHERS=yes '
       fi
-      builtin eval "function ble/bin/awk { command '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }" && ext=0
+      builtin eval "function ble/bin/awk { ${awk_env}command '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }" && ext=0
       if [[ $OSTYPE == darwin* && $path == /usr/bin/awk && $_ble_bin_awk_type == nawk ]]; then
         # Note #D1974: macOS の awk-32 の multibyte character support が怪しい。
         #   問題は GitHub Actions の上では再現できていないが特別の入力で失敗す
@@ -1473,7 +1491,7 @@ function ble/bin/awk/.instantiate {
           return "$ext"
         }
       elif [[ $_ble_bin_awk_type == [gmn]awk ]] && ! ble/is-function ble/bin/"$_ble_bin_awk_type" ; then
-        builtin eval "function ble/bin/$_ble_bin_awk_type { command '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
+        builtin eval "function ble/bin/$_ble_bin_awk_type { ${awk_env}command '${path//$q/$Q}' -v AWKTYPE=$_ble_bin_awk_type \"\$@\"; }"
       fi
     fi
   fi
