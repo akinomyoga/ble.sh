@@ -89,7 +89,7 @@
 - complete: support `bleopt complete_auto_complete_opts=syntax-unique` (motivated by David0tt) `#D2382` 2f564e63
 - complete: support `bleopt complete_auto_complete_opts={syntax,history}-disabled` (motivated by Diabochi) `#D2383` 2f564e63
 - complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` 2f564e63
-- util (`bleopt`, etc.): highlight shell quoting by backslash `#D2388` xxxxxxxx
+- util (`bleopt`, etc.): highlight shell quoting by backslash `#D2388` 7cf13879
 
 ## Changes
 
@@ -121,6 +121,7 @@
 - edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` 2ff03257
   - edit (`display-shell-version`): fix a bug that `WARNING` is never shown `#D2347` 8dfaa4e8
 - decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0 0379e034
+- util (`ble/string#quote-word`): highlight backslash escapes `#D2393` xxxxxxxx
 
 ## Fixes
 
@@ -192,8 +193,8 @@
 - main: fix the initialization order of `ble/bin/awk` (contributed by yecho) `github#613` 8060b7ad
 - util (`ble/util/load-standard-builtin`): actually load from `$loadable_path` (fixup 044c016a) (contributed by xarblu) `github#611` 52c38977
 - edit: run `bleopt editor` with `eval` `#D2380` eff10c4b
-- complete: fix extra quoting of requote with incomplete word `#D2386` xxxxxxxx
-- cmdspec (`declare/chroma`): fix a bug of evaluating global variable `d` (reported by LeonardoMor) `#D2387` xxxxxxxx
+- complete: fix extra quoting of requote with incomplete word `#D2386` 8028fa45
+- cmdspec (`declare/chroma`): fix a bug of evaluating global variable `d` (reported by LeonardoMor) `#D2387` 57ad2bf5
 
 ## Compatibility
 
@@ -265,7 +266,7 @@
 - edit: fix bash-3.2 problems of receiving <kbd>C-d</kbd> through `SIGUSR1` `#D2365` 38767afe
 - main: update messages for broken locale and environment `#D2370` ea1e547b
 - decode (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` 41ee9aaa
-- decode (`ble/builtin/bind`): treat the last `\e` as an isolated ESC (reported by sharpchen) `#D2385` xxxxxxxx
+- decode (`ble/builtin/bind`): treat the last `\e` as an isolated ESC (reported by sharpchen) `#D2385` cafef0c6
 
 ## Contrib
 
@@ -2635,7 +2636,7 @@
 * ble.pp, ble-core.sh: Check and modify dependencies on external commands.
   - ble.pp (ble/.check-environment): Remove tput (POSIX UP option) which is not necessarily required.
   - ble-core.sh (ble-term/visible-bell): Add a function `ble/util/getmtime` to get modified time of files in a compatible way.
-  - ble-edit.sh (ble/widget/command-help): Select available pager from any of $PAGER, less, more, and cat.
+  - ble-edit.sh (ble/widget/command-help): Select available pager from any of `$PAGER`, less, more, and cat.
 * ble-syntax.sh: syntax: quotations in words in parameter expansion (shopt -u extquote, etc.).
   - ble-syntax.sh: support single quotation in parameter expansion.
   - ble-syntax.sh: support shopt -u extquote.

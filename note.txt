@@ -8144,6 +8144,10 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2026-03-06
+
+  * util (ble/string#quote-word): backslash escape を適切に着色する [#D2393]
+
 2026-01-25
 
   * decode: ble-bind -k 'DC4' '@ESC @ESC' [C-t] で syntax error になる [#D2392]

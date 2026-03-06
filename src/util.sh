@@ -1149,17 +1149,18 @@ if ((_ble_bash>=50200)); then
   function ble/string#escape-characters {
     ret=$1
     if [[ $ret == *["$2"]* ]]; then
+      local P=${4-}'\' S=${5-}
       if [[ ! $3 ]]; then
         local patsub_replacement=
         shopt -q patsub_replacement && patsub_replacement=1
         shopt -s patsub_replacement
-        ret=${ret//["$2"]/\\&} # #D1738 patsub_replacement
+        ret=${ret//["$2"]/"$P"&"$S"} # #D1738 patsub_replacement
         [[ $patsub_replacement ]] || shopt -u patsub_replacement
       else
         local chars1=$2 chars2=${3:-$2}
         local i n=${#chars1} a b
         for ((i=0;i<n;i++)); do
-          a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/"$b"}
+          a=${chars1:i:1} b=$P${chars2:i:1}$S ret=${ret//"$a"/"$b"}
         done
       fi
     fi
@@ -1168,10 +1169,10 @@ else
   function ble/string#escape-characters {
     ret=$1
     if [[ $ret == *["$2"]* ]]; then
-      local chars1=$2 chars2=${3:-$2}
+      local chars1=$2 chars2=${3:-$2} P=${4-}'\' S=${5-}
       local i n=${#chars1} a b
       for ((i=0;i<n;i++)); do
-        a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/"$b"}
+        a=${chars1:i:1} b=$P${chars2:i:1}$S ret=${ret//"$a"/"$b"}
       done
     fi
   }
@@ -1182,10 +1183,13 @@ fi
 ## @fn ble/string#escape-for-awk-regex text
 ## @fn ble/string#escape-for-extended-regex text
 ## @fn ble/string#escape-for-bash-glob text
-## @fn ble/string#escape-for-bash-single-quote text
+## @fn ble/string#escape-for-bash-single-quote text [sgr1 sgr0]
 ## @fn ble/string#escape-for-bash-double-quote text
-## @fn ble/string#escape-for-bash-escape-string text
+## @fn ble/string#escape-for-bash-escape-string text [sgr1 sgr0]
 ##   @param[in] text
+##   @param[in,opt] sgr1 sgr0
+##     Escape sequences used to highlight the escaped parts and the normal
+##     parts, respectively.
 ##   @var[out] ret
 function ble/string#escape-for-sed-regex {
   ble/string#escape-characters "$1" '\.[*^$/'
@@ -1200,7 +1204,7 @@ function ble/string#escape-for-bash-glob {
   ble/string#escape-characters "$1" '\*?[('
 }
 function ble/string#escape-for-bash-single-quote {
-  local q="'" Q="'\''"
+  local q="'" Q="'${2-}\'${3-}'"
   ret=${1//$q/$Q}
 }
 function ble/string#escape-for-bash-double-quote {
@@ -1217,11 +1221,11 @@ _ble_util_string_escape_string_pairs=(
   $'\035':'\035' $'\036':'\036' $'\037':'\037' $'\177':'\177'
 )
 function ble/string#escape-for-bash-escape-string {
-  ble/string#escape-characters "$1" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
+  ble/string#escape-characters "$1" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\' "$2" "$3"
   if [[ $ret == *[$'\001'-$'\037\177']* ]]; then
     local pair a b
     for pair in "${_ble_util_string_escape_string_pairs[@]}"; do
-      a=${pair%%:*} b=${pair#*:} ret=${ret//"$a"/"$b"}
+      a=${pair%%:*} b=$2${pair#*:}$3 ret=${ret//"$a"/"$b"}
     done
   fi
 }
@@ -1400,15 +1404,15 @@ function ble/string#quote-word {
 
   local chars=$'\a\b\e\f\n\r\t\v\001-\037\177'
   if [[ $ret == *[$chars]* ]]; then
-    ble/string#escape-for-bash-escape-string "$ret"
+    ble/string#escape-for-bash-escape-string "$ret" "$sgrq0$sgre" "$sgre0$sgrq"
     ret=$sgrq\$\'$ret\'$sgrq0
     return 0
   fi
 
   local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
   if [[ $ret == *["$chars"]* ]]; then
-    local Q="'$sgrq0$sgre\'$sgre0$sgrq'"
-    ret=$sgrq$q${ret//$q/$Q}$q$sgrq0
+    ble/string#escape-for-bash-single-quote "$ret" "$sgrq0$sgre" "$sgre0$sgrq"
+    ret=$sgrq$q$ret$q$sgrq0
     ret=${ret#"$sgrq$q$q$sgrq0"} ret=${ret%"$sgrq$q$q$sgrq0"}
   elif [[ $ret == *["$q"]* ]]; then
     local Q="$sgre\'$sgre0"
