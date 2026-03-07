@@ -1353,6 +1353,9 @@ fi
 ##   @param[in,opt] opts
 ##     A colon-separated list of options.
 ##
+##     @opt always
+##       Always quote the entire string with '...' or $'...'.
+##
 ##     @opt quote-empty
 ##       Generate "''" when TEXT is empty.  By default, this function generates
 ##       an empty string "" for an empty TEXT.
@@ -1396,7 +1399,7 @@ function ble/string#quote-word {
   fi
 
   if [[ ! $ret ]]; then
-    if [[ :$opts: == *:quote-empty:* ]]; then
+    if [[ :$opts: == *:quote-empty:* || :$opts: == *:always:* ]]; then
       ret=$sgrq\'\'$sgrq0
     fi
     return 0
@@ -1410,7 +1413,7 @@ function ble/string#quote-word {
   fi
 
   local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
-  if [[ $ret == *["$chars"]* ]]; then
+  if [[ :$opts: == *:always:* || $ret == *["$chars"]* ]]; then
     ble/string#escape-for-bash-single-quote "$ret" "$sgrq0$sgre" "$sgre0$sgrq"
     ret=$sgrq$q$ret$q$sgrq0
     ret=${ret#"$sgrq$q$q$sgrq0"} ret=${ret%"$sgrq$q$q$sgrq0"}
@@ -3033,8 +3036,31 @@ if ((_ble_bash>=40000)); then
     shopt -q expand_aliases && [[ $1 ]] &&
       ret=${BASH_ALIASES[$ret]-$ret}
   }
+  ## @fn ble/alias/list
+  ##   Get the list of active alias names.  When "shopt expand_aliases" is
+  ##   turned off, this returns an empty array.
+  ##   @arr[out] ret
   function ble/alias/list {
-    ret=("${!BASH_ALIASES[@]}")
+    if shopt -q expand_aliases; then
+      ret=("${!BASH_ALIASES[@]}")
+    else
+      ret=()
+    fi
+  }
+  ## @fn ble/alias/list-pairs
+  ##   Extract the definitions of the currently defined aliases and store the
+  ##   alias names and values to the arrays "names" and "values", respectively.
+  ##   @arr[out] names values
+  function ble/alias/list-pairs {
+    names=() values=()
+    shopt -q expand_aliases || return 0
+
+    local alias ret
+    for alias in "${!BASH_ALIASES[@]}"; do
+      ble/array#push names "$alias"
+      ble/string#ltrim "${BASH_ALIASES[$alias]}"
+      ble/array#push values "$ret"
+    done
   }
 else
   function ble/is-alias {
@@ -3053,12 +3079,29 @@ else
   }
   function ble/alias/list {
     ret=()
+    shopt -q expand_aliases || return 0
+
     local data iret=0
     ble/util/assign-array data 'alias -p'
     for data in "${data[@]}"; do
       [[ $data == 'alias '*=* ]] &&
         data=${data%%=*} &&
         builtin eval "ret[iret++]=${data#alias }"
+    done
+  }
+  function ble/alias/list-pairs {
+    names=() values=()
+    shopt -q expand_aliases || return 0
+
+    local lines line ret
+    ble/util/assign-array lines 'alias -p'
+    for line in "${lines[@]}"; do
+      [[ $line == 'alias '*=* ]] || continue
+      line=${line#'alias '}
+      ble/array#push names "${line%%=*}"
+      builtin eval -- "ret=${line#*=}"
+      ble/string#ltrim "$ret"
+      ble/array#push values "$ret"
     done
   }
 fi

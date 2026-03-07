@@ -90,7 +90,7 @@
 - complete: support `bleopt complete_auto_complete_opts={syntax,history}-disabled` (motivated by Diabochi) `#D2383` 2f564e63
 - complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` 2f564e63
 - util (`bleopt`, etc.): highlight shell quoting by backslash `#D2388` 7cf13879
-- edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` xxxxxxxx
+- edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676
 
 ## Changes
 
@@ -122,7 +122,7 @@
 - edit (`display-shell-version`): show `(integration: off)` for plugins with integration turned off `#D2330` 2ff03257
   - edit (`display-shell-version`): fix a bug that `WARNING` is never shown `#D2347` 8dfaa4e8
 - decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0 0379e034
-- util (`ble/string#quote-word`): highlight backslash escapes `#D2393` xxxxxxxx
+- util (`ble/string#quote-word`): highlight backslash escapes `#D2393` 36bedfbc
 
 ## Fixes
 
@@ -268,7 +268,7 @@
 - main: update messages for broken locale and environment `#D2370` ea1e547b
 - decode (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` 41ee9aaa
 - decode (`ble/builtin/bind`): treat the last `\e` as an isolated ESC (reported by sharpchen) `#D2385` cafef0c6
-- main (`ble/bin/awk`): work around `gawk-5.4.0` bug for `gensub` back-references (reported by 0xhtml, raeraex2, l0042158) `#D2394` xxxxxxxx
+- main (`ble/bin/awk`): work around `gawk-5.4.0` bug for `gensub` back-references (reported by 0xhtml, raeraex2, l0042158) `#D2394` 40cc5766
 
 ## Contrib
 
@@ -307,6 +307,7 @@
 - integration/fzf: suppress dynamic binding `#D2350` e9d5ca26
 - integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` 2ef5e483
 - contrib: add `readline` (motivated by thoughtsunificator) `#D2379` a985559a
+- contrib: add `alias-tips` (contributed by xuhdev) `#D2396` xxxxxxxx
 
 ## Documentation
 

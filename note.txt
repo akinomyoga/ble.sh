@@ -8144,6 +8144,17 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2026-03-07
+
+  * contrib: alias-tips の追加 (contributed by xuhdev) [#D2396]
+    https://github.com/akinomyoga/blesh-contrib/pull/35
+
+    設定の中で Bash version 毎にエイリアスの列挙を行うようにしたが、できるだけ
+    bash version dependent な処理は抽象化したい。util.sh で ble/alias/list とい
+    う関数は提供しているが、これは alias の名前のリストしか取得しない。一旦は
+    alias-tips.sh の側で関数を実装したが、これは util.sh の側に
+    ble/alias/list-pairs という名前で移動することにした。
+
 2026-03-06
 
   * edit (edit_magic_{accept,expand}): allow user-defined expansion (motivated by Jai-JAP) [#D2395]
