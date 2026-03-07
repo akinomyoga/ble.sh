@@ -91,6 +91,7 @@
 - complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` 2f564e63
 - util (`bleopt`, etc.): highlight shell quoting by backslash `#D2388` 7cf13879
 - edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676
+- complete: introduce more stages to ambiguous pathname completions (reported by xuhdev) `#D2396` xxxxxxxx
 
 ## Changes
 
@@ -307,7 +308,7 @@
 - integration/fzf: suppress dynamic binding `#D2350` e9d5ca26
 - integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` 2ef5e483
 - contrib: add `readline` (motivated by thoughtsunificator) `#D2379` a985559a
-- contrib: add `alias-tips` (contributed by xuhdev) `#D2396` xxxxxxxx
+- contrib: add `alias-tips` (contributed by xuhdev) `#D2396` ac6c003f
 
 ## Documentation
 

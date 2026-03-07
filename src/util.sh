@@ -1610,6 +1610,7 @@ function ble/opts#extract-first-optarg {
   return 0
 }
 ## @fn ble/opts#extract-last-optarg opts key [default_value]
+##   @var[out] ret
 function ble/opts#extract-last-optarg {
   ret=
   local rex='.*:'$2'(=[^:]*)?:'

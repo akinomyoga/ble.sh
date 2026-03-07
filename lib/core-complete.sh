@@ -2560,8 +2560,7 @@ function ble/complete/source:command/.print-command {
   # でここでは生成しない。
   if [[ $COMPV == */* && :$comp_type: == *:[maA]:* ]]; then
     local ret
-    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
+    ble/complete/source:file/generate "$COMPV"; (($?==148)) && return 148
     ble/complete/source/test-limit "${#ret[@]}" || return 1
     ble/array#filter ret '[[ ! -d $1 && -x $1 ]]'
     ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
@@ -2632,8 +2631,7 @@ function ble/complete/source:command/.print {
   local flags=$1
   if [[ $flags != *D* ]]; then
     local ret
-    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    ble/complete/util/eval-pathname-expansion "$ret/"; (($?==148)) && return 148
+    ble/complete/source:file/generate "$COMPV" suffix-slash; (($?==148)) && return 148
     ble/complete/source/test-limit "${#ret[@]}" || return 1
     ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
   fi
@@ -2899,12 +2897,15 @@ function ble/complete/util/eval-pathname-expansion {
   return 0
 }
 
-## @fn ble/complete/source:file/.construct-ambiguous-pathname-pattern path
+## @fn ble/complete/source:file/.construct-ambiguous-pathname-pattern path [fixlen] [opts]
 ##   指定された path に対応する曖昧一致パターンを生成します。
 ##   例えば alpha/beta/gamma に対して a*/b*/g* でファイル名を生成します。
 ##   但し "../" や "./" については (".*.*/" や ".*/" 等に変換せず) そのままにします。
 ##
 ##   @param[in] path
+##   @param[in,opt] fixlen
+##   @param[in,opt] opts
+##     @opt substr
 ##   @var[out] ret
 ##
 ##   @remarks
@@ -2912,7 +2913,7 @@ function ble/complete/util/eval-pathname-expansion {
 ##     従って、a*l*p*h*a*/b*e*t*a*/g*a*m*m*a* の様なパターンを生成する様に変更した。
 ##
 function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
-  local path=$1 fixlen=${2:-1}
+  local path=$1 fixlen=${2:-1} opts=${3:-}
   local pattern= i=0 j
   local names; ble/string#split names / "$1"
   local name
@@ -2920,7 +2921,15 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
     ((i++)) && pattern=$pattern/
     if [[ $name == .. || $name == . && i -lt ${#names[@]} ]]; then
       pattern=$pattern$name
-    elif [[ $name ]]; then
+      continue
+    fi
+
+    [[ $name ]] || continue
+
+    if [[ :$opts: == *:substr:* ]]; then
+      ble/string#quote-word "$name"
+      pattern=$pattern*$ret*
+    else
       ble/string#quote-word "${name::fixlen}"
       pattern=$pattern$ret*
       for ((j=fixlen;j<${#name};j++)); do
@@ -2938,16 +2947,48 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
 }
 ## @fn ble/complete/source:file/.construct-pathname-pattern path
 ##   @param[in] path
+##   @var[in] comp_type
 ##   @var[out] ret
 function ble/complete/source:file/.construct-pathname-pattern {
   local path=$1 pattern
   case :$comp_type: in
+  (*:m:*) ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path" '' substr; pattern=$ret ;;
   (*:a:*) ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path"; pattern=$ret ;;
   (*:A:*) ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path" 0; pattern=$ret ;;
-  (*:m:*) ble/string#quote-word "$path"; pattern=*$ret* ;;
   (*) ble/string#quote-word "$path"; pattern=$ret*
   esac
   ret=$pattern
+}
+
+## @fn ble/complete/source:file/generate path [opts] [prefix]
+##    @param[in] path
+##    @param[in,opt] opts
+##      @opt suffix-slash
+##      @opt ensure-slash
+##    @param[in,opt] prefix
+##    @var[in] comp_type
+##    @arr[out] ret
+function ble/complete/source:file/generate {
+  local path=$1 opts=${2-} prefix=${3-}
+
+  if [[ :$comp_type: == *:[maA]:* && $path == *[!/]*/* ]]; then
+    ble/complete/source:file/generate "${path##*/}" "$opts" "$prefix${path%/*}/"
+    (($?==148)) && return 148
+    ((${#ret[@]})) && return 0
+  fi
+
+  if [[ $prefix ]]; then
+    ble/string#quote-word "$prefix"
+    prefix=$ret
+  fi
+  ble/complete/source:file/.construct-pathname-pattern "$path"
+  local pattern=$prefix$ret
+  case :$opts: in
+  (*:suffix-slash:*) pattern=$pattern/ ;;
+  (*:ensure-slash:*) pattern=${pattern%/}/ ;;
+  esac
+
+  ble/complete/util/eval-pathname-expansion "$pattern"
 }
 
 ## @fn ble/complete/source:file opts
@@ -2983,10 +3024,9 @@ function ble/complete/source:file {
   ((ext==148||ext==0)) && return "$ext"
 
   local -a candidates=()
-  local ret
-  ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-  [[ :$opts: == *:directory:* ]] && ret=$ret/
-  ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
+  local ret pathgen_opts=
+  [[ :$opts: == *:directory:* ]] && pathgen_opts=$pathgen_opts:suffix-slash
+  ble/complete/source:file/generate "$COMPV" "$pathgen_opts"; (($?==148)) && return 148
   ble/complete/source/test-limit "${#ret[@]}" || return 1
 
   if [[ :$opts: == *:directory:* ]]; then
@@ -6279,8 +6319,7 @@ function ble/complete/source:argument/fallback {
       COMP_PREFIX=$prefix${BASH_REMATCH[0]}
 
     local ret cand "${_ble_complete_yield_varnames[@]/%/=}" # WA #D1570 checked
-    ble/complete/source:file/.construct-pathname-pattern "$value"
-    ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
+    ble/complete/source:file/generate "$value"; (($?==148)) && return 148
     ble/complete/source/test-limit "${#ret[@]}" || return 1
     ble/complete/cand/yield.initialize file_rhs
     for cand in "${ret[@]}"; do
@@ -10690,8 +10729,7 @@ function ble/cmdinfo/complete:cd/.impl {
 
     local -a candidates=()
     local ret cand
-    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    ble/complete/util/eval-pathname-expansion "$name$ret"; (($?==148)) && return 148
+    ble/complete/source:file/generate "$COMPV" '' "$name"; (($?==148)) && return 148
     ble/complete/source/test-limit "${#ret[@]}" || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
@@ -10720,8 +10758,7 @@ function ble/cmdinfo/complete:cd/.impl {
   if [[ ! $is_pwd_visited ]]; then
     local -a candidates=()
     local ret cand
-    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    ble/complete/util/eval-pathname-expansion "${ret%/}/"; (($?==148)) && return 148
+    ble/complete/source:file/generate "$COMPV" ensure-slash; (($?==148)) && return 148
     ble/complete/source/test-limit "${#ret[@]}" || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&

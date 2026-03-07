@@ -8146,6 +8146,48 @@ bash_tips
 
 2026-03-07
 
+  * complete: .construct-pathname-pattern が comp_type=m に対応していない件 (reported by xuhdev) [#D2396]
+    https://github.com/akinomyoga/ble.sh/issues/676
+
+    調べたところ現在の様な実装になっているのは元々 #D1404 で議論されている。
+    「construct-pathname-pattern を使用している箇所は複数存在する」一方で「同等
+    の候補が subseq, hsubseq で生成されるのだからsubstr の段階で候補を生成しな
+    くても良い」という判断だった様だ。つまり construct-pathname-pattern の呼び
+    出し元の一部で /*tmp*/*td*/*stl* の様な path の探索が不都合だったということ
+    だろうか? 呼び出し元を改めて調査する必要がある。
+
+    $ grc ble/complete/source:file/.construct-pathname-pattern
+    ./lib/core-complete.sh:2563:    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+      これはコマンド名で既に / を含んでいる場合に曖昧補完をしたい時に使っている。OK
+    ./lib/core-complete.sh:2635:    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+      これはコマンド名を補完する文脈におけるディレクトリ名の列挙。
+    ./lib/core-complete.sh:2987:  ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+      これが元々のメインの呼び出し元のはず。
+    ./lib/core-complete.sh:6282:    ble/complete/source:file/.construct-pathname-pattern "$value"
+      これはオプションの右辺だとかのファイル名の補完。
+    ./lib/core-complete.sh:10693:    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+      これは cd completion の実装で CDPATH 以下のディレクトリを列挙するのに使っている。
+    ./lib/core-complete.sh:10723:    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+      これは cd completion の通常生成。
+
+    * fixed: ble/cmdinfo/complete:cd/.impl の "$name$ret" を eval している所で
+      $name に空白などが含まれていると駄目の気がする。これは修正する。
+
+    * done: .construct-pathname-pattern & eval-pathname-expansion は定型になっ
+      ている。これからこれらの動作を一括して変更するに当たってもこれらの二つの
+      関数の組み合わせは統合するべきの気がする。また、現時点で
+      .construct-pathname-pattern という . で始まる関数を外部から呼び出している
+      のも気になる。
+
+      どの様な関数名が良いだろうか。取り敢えず source:file の下に飽くまで置いて
+      おくとして、generate-pathname-completions ぐらいだろうか。もしくは
+      compgen-pathname とか、compgen-filename とか、generate-pathnames とか。
+
+      取り敢えずその様に変更した。
+
+    * <ambiguous>/<ambiguous>/<ambiguous> の前に <fixed>/<fixed>/<ambiguous> を
+      試すかどうかについて。返事がないし面倒なのでもう実装することにする。
+
   * contrib: alias-tips の追加 (contributed by xuhdev) [#D2396]
     https://github.com/akinomyoga/blesh-contrib/pull/35
 
