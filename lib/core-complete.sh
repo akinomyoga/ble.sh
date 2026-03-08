@@ -5209,11 +5209,23 @@ function ble/complete/mandb/.generate-cache-from-man {
       }
     }
 
-    function fmt5_flush() {
+    function fmt5_flush(_, key, desc) {
       if (fmt5_state == "desc") {
         stage_key(fmt5_key);
         stage_desc(fmt5_desc);
         stage_flush();
+
+      } else if (fmt5_state == "key" && fmt5_key ~ /^[^[:space:]][^\n]*(\n[[:space:]][[:space:]][^\n]*|\n[[:space:]]*)+$/) {
+        # This is a special rule for the man page of "docker".  It doesn'\''t
+        # have any separator or indentation instruction for the description of
+        # options.  It manually inserts whitespaces to indent descriptions.
+        key = fmt5_key;
+        sub(/\n.*/, "", key);
+        desc = substr(fmt5_key, length(key) + 1);
+        stage_key(key);
+        stage_desc(desc);
+        stage_flush();
+
       }
       fmt5_state = "";
     }

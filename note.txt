@@ -8144,6 +8144,25 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2026-03-09
+
+  * complete: docker の man parsing ができていない [#D2397]
+    https://github.com/akinomyoga/ble.sh/discussions/680
+
+    docker.1.gz の中身は以下の様になっている。ただのテキストファイルをそのまま
+    フォーマッティング無しで man page にした様な形をしている。仕方がないので特
+    別のルールを入れる事にする。既存の Format 5 の失敗ケースを修正するのが良さ
+    そう。
+
+    | .SH OPTIONS
+    | .PP
+    | \fB--help\fP
+    |   Print usage statement
+    |
+    | .PP
+    | \fB--config\fP=""
+    |   Specifies the location of the Docker client configuration files. The default is '~/.docker'.
+
 2026-03-07
 
   * complete: .construct-pathname-pattern が comp_type=m に対応していない件 (reported by xuhdev) [#D2396]
@@ -8271,7 +8290,7 @@ bash_tips
     ESC ESC に対して bind したいという話。恐らく emacs で動かしている? Windows
     で M-ESC を実行しようとすると Windows の振る舞いになってしまうしうまく行か
     ない?
-    
+
     * テストの為に ble-bind -k DC4 '@ESC @ESC' として C-t を押したら syntax
       error になる。何かバグがある。これは修正しなければならない。これは別項目
       で議論する → #D2392
