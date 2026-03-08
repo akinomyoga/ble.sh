@@ -8127,7 +8127,7 @@ function ble/widget/default/accept-line {
     (''|sabbrev|history|history-inline|verify|verify-syntax) ;;
     (*)
       local old_str=$_ble_edit_str old_ind=$_ble_edit_ind
-      if ble/function#try ble/complete/expand:"$expand_type"; then
+      if ble/function#try ble/complete/expand:"$expand_type" accept; then
         if [[ :$expand_opts: == *:verify:* ]]; then
           ble/widget/default/accept-line/.prepare-verify "$_ble_edit_str" "$_ble_edit_ind"
           return 0
@@ -8381,24 +8381,29 @@ function ble/widget/insert-comment {
   ble/widget/accept-line
 }
 
-function ble/widget/alias-expand-line.proc {
+function ble-edit/content/expand-command-name.proc {
   if ((tchild>=0)); then
     ble/syntax/tree-enumerate-children \
       ble/widget/alias-expand-line.proc
   elif [[ $wtype && ! ${wtype//[0-9]} ]] && ((wtype==_ble_ctx_CMDI)); then
     local word=${_ble_edit_str:wbegin:wlen}
-    local ret; ble/alias#expand "$word"
-    [[ $word == "$ret" ]] && return 0
+    local ret
+    "$_ble_expand_command_name_map" "$word" && [[ $ret != "$word" ]] || return 0
     changed=1
     ble/widget/.replace-range "$wbegin" "$((wbegin+wlen))" "$ret"
   fi
 }
-function ble/widget/alias-expand-line {
-  ble-edit/content/clear-arg
+function ble-edit/content/expand-command-name {
+  local _ble_expand_command_name_map=$1
   ble-edit/content/update-syntax
   local iN= changed=
-  ble/syntax/tree-enumerate ble/widget/alias-expand-line.proc
+  ble/syntax/tree-enumerate ble-edit/content/expand-command-name.proc
   [[ $changed ]] && _ble_edit_mark_active=
+}
+
+function ble/widget/alias-expand-line {
+  ble-edit/content/clear-arg
+  ble-edit/content/expand-command-name 'ble/alias#expand'
 }
 
 function ble/widget/tilde-expand {

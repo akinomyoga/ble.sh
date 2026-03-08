@@ -49,6 +49,7 @@
   - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
   - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
   - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` b6344b3b
+  - complete: apply `alias`/`autocd` expansions globally on `magic-accept` (motivated by Jai-JAP) `#D2399` xxxxxxxx
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 - complete(cd): complete variable names for `cdable_vars` `#D2190` 10527901
@@ -91,7 +92,7 @@
 - complete: support `bleopt complete_auto_complete_opts=suppress-inside-{line,word}:syntax-suppress-{ambiguous,empty}` (requested by pallaswept) `#D2384` 2f564e63
 - util (`bleopt`, etc.): highlight shell quoting by backslash `#D2388` 7cf13879
 - edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676
-- complete: introduce more stages to ambiguous pathname completions (reported by xuhdev) `#D2396` abb93e21
+- complete: introduce more stages to ambiguous pathname completions (reported by xuhdev) `#D2397` abb93e21
 
 ## Changes
 
@@ -270,7 +271,7 @@
 - decode (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` 41ee9aaa
 - decode (`ble/builtin/bind`): treat the last `\e` as an isolated ESC (reported by sharpchen) `#D2385` cafef0c6
 - main (`ble/bin/awk`): work around `gawk-5.4.0` bug for `gensub` back-references (reported by 0xhtml, raeraex2, l0042158) `#D2394` 40cc5766
-- mandb: support the man-page format of `docker` (reported by NecRaul) `#D2397` xxxxxxxx
+- mandb: support the man-page format of `docker` (reported by NecRaul) `#D2398` xxxxxxxx
 
 ## Contrib
 

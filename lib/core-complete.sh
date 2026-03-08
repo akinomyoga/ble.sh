@@ -10208,36 +10208,56 @@ function ble/complete/source:sabbrev {
   done
 }
 
-function ble/complete/expand:alias {
+function ble/complete/expand/expand-command-name {
+  local map=$1 opts=${2-}
+
+  # magic-accept
+  if [[ :$opts: == *:accept:* ]]; then
+    ble-edit/content/expand-command-name "$map"
+    return "$?"
+  fi
+
   local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
   ble/complete/sabbrev/locate-key 'command'
   ((pos<comp_index)) || return 1
 
   local word=${_ble_edit_str:pos:comp_index-pos}
-  local ret; ble/alias#expand "$word"
-  [[ $ret != "$word" ]] || return 1
+  local ret
+  "$map" "$word" && [[ $ret != "$word" ]] || return 1
   ble/widget/.replace-range "$pos" "$comp_index" "$ret"
   return 0
 }
 
-function ble/complete/expand:autocd {
-  local pos comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
-  ble/complete/sabbrev/locate-key 'command'
-  ((pos<comp_index)) || return 1
+## @fn ble/complete/expand:NAME [opts]
+##   @param[in] opts
+##     @opt accept
+##       This is specified when the expansion is called from the accept-line
+##       widget for the magic-accept feature.  When this is specified, one can
+##       attempt the global expansion regardless of the current cursor
+##       position.  This is not specified when the expansion is called from
+##       magic-space, where only the expansion before the current cursor
+##       position should be attempted.
 
-  local word=${_ble_edit_str:pos:comp_index-pos} ret
-  ble/syntax:bash/simple-word/safe-eval "$word" nonull || return 1
+function ble/complete/expand:alias {
+  ble/complete/expand/expand-command-name 'ble/alias#expand' "$1"
+}
 
-  local dir=$ret
-  [[ $dir && -d $dir ]] && ! ble/bin#has "$dir" || return 1
+## @fn ble/complete/expand:autocd/.map word
+##   @var[out] ret
+function ble/complete/expand:autocd/.map {
+  ble/syntax:bash/simple-word/safe-eval "$1" nonull || return 1
+
+  [[ $ret && -d $ret ]] && ! ble/bin#has "$dir" || return 1
 
   if [[ $dir == -* ]]; then
-    dir="cd -- $word"
+    ret="cd -- $1"
   else
-    dir="cd $word"
+    ret="cd $1"
   fi
-  ble/widget/.replace-range "$pos" "$comp_index" "$dir"
-  return 0
+}
+
+function ble/complete/expand:autocd {
+  ble/complete/expand/expand-command-name 'ble/complete/expand:autocd/.map' "$1"
 }
 
 #------------------------------------------------------------------------------

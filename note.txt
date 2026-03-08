@@ -8146,7 +8146,19 @@ bash_tips
 
 2026-03-09
 
-  * complete: docker の man parsing ができていない [#D2397]
+  * complete: `alias`/`autocd` 等の `magic-accept` 展開は現在のカーソル位置だけでなく全体に適用する (motivated by Jai-JAP) [#D2399]
+    https://github.com/akinomyoga/ble.sh/discussions/678#discussioncomment-16039395
+
+    現在は autocd もカーソル位置だけに対して適用しているが、一方で bash の
+    autocd の振る舞いを確認すると、どうやらどの位置にディレクトリ名が来ても展開
+    する様だ (というか実際には展開ではなくて実際にコマンドを実行する段階で判定
+    しているのかもしれないが)。
+
+    実際には alias 展開についても同様の問題があるだろう。一方で
+    ble/widget/alias-expand-line で alias に関しては全体に対する展開が実装され
+    ている。この実装を再利用できる様に抽象化するべきの気がする。
+
+  * complete: docker の man parsing ができていない (reported by NecRaul) [#D2398]
     https://github.com/akinomyoga/ble.sh/discussions/680
 
     docker.1.gz の中身は以下の様になっている。ただのテキストファイルをそのまま
@@ -8165,7 +8177,7 @@ bash_tips
 
 2026-03-07
 
-  * complete: .construct-pathname-pattern が comp_type=m に対応していない件 (reported by xuhdev) [#D2396]
+  * complete: .construct-pathname-pattern が comp_type=m に対応していない件 (reported by xuhdev) [#D2397]
     https://github.com/akinomyoga/ble.sh/issues/676
 
     調べたところ現在の様な実装になっているのは元々 #D1404 で議論されている。
