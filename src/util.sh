@@ -2794,9 +2794,11 @@ function ble/function#advice {
     case $t in
     (builtin|file) builtin eval "function $name { : ZBe85Oe28nBdg; command $name \"\$@\"; }" ;;
     (*)
-      if [[ $flags == *f* ]]; then
+      if [[ $flags != *f* ]]; then
         ble/util/print "ble/function#advice: $name is not a function." >&2
         return 1
+      else
+        return 0
       fi ;;
     esac
   fi

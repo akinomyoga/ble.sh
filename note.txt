@@ -1928,9 +1928,6 @@ bash_tips
 
 2025-12-29
 
-  * fzf advice 適用が駄目
-    https://github.com/notxart/dotfiles-template/issues/4
-
   * fzf-menu が util-linux 2.39 を要求しているという事を記述する
     https://github.com/akinomyoga/blesh-contrib/issues/28#issuecomment-2677922868
 
@@ -8145,6 +8142,26 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2026-03-09
+
+  * fzf advice 適用時にエラーが発生している (reported by Funeralsawa) [#D2401]
+    https://github.com/notxart/dotfiles-template/issues/4
+
+    関数が存在しない時に ble/function#advice がスキップする様に -f を指定すれば
+    良い…と思ったが、ble/function#advice には既に -f を指定している。手元で
+    ble/function#advice の振る舞いを調べたところ -f を指定しても以下のエラーメッ
+    セージが表示される様だ。
+
+    ble/function#advice: <name> is not a function.
+
+    というより、寧ろ -f を指定した時にこのエラーメッセージが出て、-f を指定して
+    いない時にはもっとバグった形で失敗する。何か変だ。これは明らかなバグだった。
+
+  * integration/bash-completion: dnf advice が固まる (reported by xuhdev) [#D2400]
+    https://github.com/akinomyoga/ble.sh/issues/679
+
+    dnf 自体が遅い問題に対する対策はしていたが、dnf が生成した補完のフィルタリ
+    ング処理について中断判定を入れていなかった。大量に候補が生成された時に固ま
+    る問題はそのまま。
 
   * complete: `alias`/`autocd` 等の `magic-accept` 展開は現在のカーソル位置だけでなく全体に適用する (motivated by Jai-JAP) [#D2399]
     https://github.com/akinomyoga/ble.sh/discussions/678#discussioncomment-16039395

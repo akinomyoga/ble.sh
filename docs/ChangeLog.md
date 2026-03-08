@@ -198,6 +198,7 @@
 - edit: run `bleopt editor` with `eval` `#D2380` eff10c4b
 - complete: fix extra quoting of requote with incomplete word `#D2386` 8028fa45
 - cmdspec (`declare/chroma`): fix a bug of evaluating global variable `d` (reported by LeonardoMor) `#D2387` 57ad2bf5
+- util (`ble/function#advice`): fix `-f` doing the opposite (reported by Funeralsawa) `#D2401` xxxxxxxx
 
 ## Compatibility
 
@@ -311,6 +312,7 @@
 - integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` 2ef5e483
 - contrib: add `readline` (motivated by thoughtsunificator) `#D2379` a985559a
 - contrib: add `alias-tips` (contributed by xuhdev) `#D2396` ac6c003f
+- integration/bash-completion: check cancellation in the post process of the dnf completion () `#D2400` xxxxxxxx
 
 ## Documentation
 
