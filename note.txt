@@ -8382,6 +8382,9 @@ bash_tips
     2026-03-09 alias-expand-line の一般化の書き換えで失敗している。修正する。
     https://github.com/akinomyoga/ble.sh/discussions/678#discussioncomment-16048735
 
+    2026-03-11 未だ失敗がある。
+    https://github.com/akinomyoga/ble.sh/discussions/678#discussioncomment-16073595
+
   * complete: docker の man parsing ができていない (reported by NecRaul) [#D2398]
     https://github.com/akinomyoga/ble.sh/discussions/680
 

@@ -10247,9 +10247,9 @@ function ble/complete/expand:alias {
 function ble/complete/expand:autocd/.map {
   ble/syntax:bash/simple-word/safe-eval "$1" nonull || return 1
 
-  [[ $ret && -d $ret ]] && ! ble/bin#has "$dir" || return 1
+  [[ $ret && -d $ret ]] && ! ble/bin#has "$ret" || return 1
 
-  if [[ $dir == -* ]]; then
+  if [[ $ret == -* ]]; then
     ret="cd -- $1"
   else
     ret="cd $1"

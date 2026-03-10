@@ -50,7 +50,7 @@
   - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
   - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` b6344b3b
   - edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676 eb349ea6
-  - complete: apply `alias`/`autocd` expansions globally on `magic-accept` (motivated by Jai-JAP) `#D2399` a34b177a xxxxxxxx
+  - complete: apply `alias`/`autocd` expansions globally on `magic-accept` (motivated by Jai-JAP) `#D2399` a34b177a e7dbf375 xxxxxxxx
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 - complete(cd): complete variable names for `cdable_vars` `#D2190` 10527901
@@ -125,7 +125,7 @@
   - edit (`display-shell-version`): fix a bug that `WARNING` is never shown `#D2347` 8dfaa4e8
 - decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0 0379e034
 - util (`ble/string#quote-word`): highlight backslash escapes `#D2393` 36bedfbc
-- util (`ble/function#call-top`): allow calling from impl function of pushed logic `#D2403` xxxxxxxx
+- util (`ble/function#call-top`): allow calling from impl function of pushed logic `#D2403` 4706cb29
 
 ## Fixes
 
