@@ -2850,6 +2850,9 @@ function ble/function#push {
     done
 
     ble/function#.copy-primitive "$name" "ble/function#push/$index:$name"
+  else
+    builtin eval "function ble/function#push/0:$name { command $name \"\$@\"; }"
+    builtin eval "function ble/function#push/empty:$name { return 0; }"
   fi
 
   if [[ $proc ]]; then
@@ -2869,39 +2872,38 @@ function ble/function#pop {
   done
 
   if ((index<0)); then
-    if ble/is-function "$name"; then
-      builtin unset -f "$name"
-      return 0
-    elif ble/bin#has "$name"; then
-      ble/util/print "ble/function#pop: $name is not a function." >&2
-      return 1
-    else
-      return 0
-    fi
+    ble/util/print "ble/function#pop: $name is not a pushed function." >&2
+    return 1
   else
-    ble/function#.copy-primitive "ble/function#push/$index:$name" "$name"
+    if ((index==0)) && ble/is-function "ble/function#push/empty:$name"; then
+      builtin unset -f "$name"
+      builtin unset -f "ble/function#push/empty:$name"
+    else
+      ble/function#.copy-primitive "ble/function#push/$index:$name" "$name"
+    fi
     builtin unset -f "ble/function#push/$index:$name"
     return 0
   fi
 }
 function ble/function#push/call-top {
-  local func=${FUNCNAME[1]}
-  if ! ble/is-function "$func"; then
-    ble/util/print "ble/function#push/call-top: This function should be called from a function" >&2
-    return 1
-  fi
-  local index=0
-  if [[ $func == ble/function#push/?*:?* ]]; then
-    index=${func#*/*/}; index=${index%%:*}
-    func=${func#*:}
-  else
-    while ble/is-function "ble/function#push/$index:$func"; do ((index++)); done
-  fi
-  if ((index==0)); then
-    command "$func" "$@"
-  else
-    "ble/function#push/$((index-1)):$func" "$@"
-  fi
+  local level
+  for ((level=1;level<${#FUNCNAME[@]}&&level<=2;level++)); do
+    local func=${FUNCNAME[level]} index=0
+    if [[ $func == ble/function#push/[0-9]*:?* ]]; then
+      index=${func#*/*/}; index=${index%%:*}
+      func=${func#*:}
+    else
+      while ble/is-function "ble/function#push/$index:$func"; do ((index++)); done
+    fi
+
+    if ((index)); then
+      "ble/function#push/$((index-1)):$func" "$@"
+      return "$?"
+    fi
+  done
+
+  ble/util/print "error(ble/function#push/call-top): called outside a pushed function" >&2
+  return 2
 }
 ble/function#trace ble/function#push/call-top
 

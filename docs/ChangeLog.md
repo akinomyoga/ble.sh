@@ -125,6 +125,7 @@
   - edit (`display-shell-version`): fix a bug that `WARNING` is never shown `#D2347` 8dfaa4e8
 - decode (`ble/debug/keylog`): exclude duplicate characters due to backtracking `#D2332` 355d1dc0 0379e034
 - util (`ble/string#quote-word`): highlight backslash escapes `#D2393` 36bedfbc
+- util (`ble/function#call-top`): allow calling from impl function of pushed logic `#D2403` xxxxxxxx
 
 ## Fixes
 

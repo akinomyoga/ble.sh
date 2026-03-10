@@ -8138,6 +8138,168 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2026-03-10
+
+  * util (ble/function#call-top): push の実装関数からも呼び出せる様にする [#D2403]
+
+    ble/function#call-top: 呼び出し元の関数だけでなくその更に呼び出し元が
+    function stack の適用対象かもしれない。その様な場合にも対応したい。というよ
+    り、ble/function#push funcname FuncBody という場合には其処で call-top を呼
+    び出せば良いが、ble/function#push funcname AltFuncName みたいにしている場合
+    には AltFuncName の中で call-top を呼び出したくても呼び出せなくなっている。
+    なので、呼び出し元の何処かのレベルの function stack の top を呼び出す様にし
+    たい。
+
+    * 然し非自明なのは command に対して ble/function#push を行った時である。こ
+      の場合には、明示的に ble/function#push/0:cmd に元のコマンドが退避されてい
+      る訳ではないのでそもそも push していないのか単に override しているのか見
+      分けが付かない。代わりに ble/function#push/0:cmd に元のコマンドを wrap し
+      た関数を定義する (function ble/function#push/0:cmd { command cmd "$@"; })
+      とすると今度は pop して行った時に最後に "function cmd { command cmd "$@";
+      }" というのが残ってしまう。これが元の状態にちゃんと戻る様にする為に今の実
+      装になっている気がする。
+
+      然し現在の実装の問題は普通に function cmd { .... } として override した時
+      にもそれが push であるかの様に取り扱われてしまうという事である。これが良
+      い事なのかどうかは非自明だが、実際に overriding function をその形で定義し
+      ている側としては cmd を "push" しているという意識はないはずで、わざわざ
+      call-top を用いて元のコマンドを呼び出そうという事も考えることは無いように
+      思われる (というか普通に command cmd "$@" として呼び出せば良いだけの話で
+      ある)。
+
+      これについては call-top の振る舞いに関係なく修正するべきの気がするので修
+      正する。
+
+      [修正]
+
+      通常コマンドに対して push する時は ble/function#push/0:cmd という関数を生
+      成する。また、元々その様な関数は存在しなかったという事を表す marker とな
+      る関数として、例えば ble/function#push/empty:cmd 等のダミーの関数を定義す
+      る。
+
+      この書き換えの影響範囲について調べる。まず ble/function#pop によって push
+      した事のない物を除去しようという試みがあるかについて確認する必要がある。
+      また ble/function#call-top の呼び出し元も確認する。
+
+      ./contrib/histdb.bash:1009:    ble/function#pop "$header"
+      ./contrib/integration/bash-completion.bash:261:    ble/function#pop "${ADVICE_WORDS[1]}"
+      ./contrib/integration/fzf-completion.bash:97:  ble/function#pop _comp_load
+      ./contrib/integration/fzf-key-bindings.bash:15:  ble/function#pop bind
+      ./contrib/integration/fzf.common.bash:102:    ble/function#pop caller
+      ./contrib/integration/fzf.common.bash:129:  ble/function#pop caller
+      ./contrib/integration/fzf.common.bash:130:  ble/function#pop printf
+      ./contrib/integration/fzf.common.bash:131:  ble/function#pop bind
+      ./contrib/integration/nix-completion.bash:14:    ble/function#pop "$_ble_nix_cmd"
+      ./contrib/integration/skim-key-bindings.bash:13:  ble/function#pop bind
+      ./lib/core-complete.sh:3742:  ble/function#pop command_not_found_handle
+      ./lib/core-complete.sh:3743:  ble/function#pop ssh
+      ./lib/core-complete.sh:3744:  ble/function#pop compopt
+      ./lib/core-complete.sh:4659:    ble/function#pop command_not_found_handle
+      ./lib/core-complete.sh:4663:    ble/function#pop command_not_found_handle
+      ./lib/test-keymap.vi.sh:190:  ble/function#pop ble/util/is-stdin-ready
+      ./lib/test-main.sh:77:    ble/function#pop ble/bin/readlink
+
+      何れも #push と対になっている事を確認した。
+
+      ./contrib/integration/fzf-menu.bash:81:    ble/function#push/call-top "$@"
+      ./lib/core-complete.sh:3733:      ble/function#push/call-top "$@"
+      ./src/util.sh:5447:      proc_original='ble/function#push/call-top "$@" || return "$?"'
+
+      これらは新しく追加した fzf-menu での呼び出し以外については
+      ble/function#push で置き換える関数の本体の中から呼び出されるコードなので
+      問題ない筈。
+
+    ? 遡る様にしたがよく考えたら遡った先で更に遡ろうとした時に何が起こるのかちゃ
+      んと考えないと行けない。無限ループになってしまう可能性はないのか? 実際に
+      実験してみた限りで無限ループの様になってしまっている。ただし、何故か12回
+      ループで終わっている。これは何故だろう? 何れにしてもこれについてはちゃん
+      と考える必要がある。
+
+      取り敢えず既に call-top 経由で呼び出されている関数についてはその関数の呼
+      び出し元を探索する必要はないということ? いや、そういう事ではない。
+
+      level2 -> call-top -> level1 -> call-top -> level0 となっている時に
+      level0 から呼び出した call-top は何を意味しているのかという話になる。これ
+      は level2 よりも更に前の呼び出し元を探すという事に他ならない。取り敢えず
+      level0 に対応する top-level まで探索を skip する必要があるという事。
+
+      これは一旦は実装したが最終的に任意に遡ることはできない仕様にすることにし
+      たのでなかった事になる。取り敢えずの実装は以下に残す。
+
+      memo/D2403.function-call-top.stack-traversal.patch
+
+    | 然しどのレベルからでも call-top を呼び出せる様にしてしまうと push で置き
+    | 換える為に用意した関数自体が更に別の場所から push された時に、call-top の
+    | 意味が元々意図していたのとは異なる物に置き換わってしまうのではないか? し
+    | かし、その場合でも元々の call-top というのは bottom level から呼び出され
+    | る事になるから検出は可能? つまり bottom level から呼び出された call-top
+    | というのは実際には更に呼び出し元の push された関数の top を呼び出そうとし
+    | ていると解釈するべきである。
+    |
+    | しかしこの解釈だと既存の overriding function (中で call-top を呼んでいる)
+    | 更に置き換えて、call-top の呼び出し方を変更しようと思っても元の
+    | overriding function を呼び出す事になってしまう。つまり、
+    |
+    |   function ov1 { echo ov1; call-top; }
+    |   function ov2 { echo ov2; call-top; }
+    |   push fn1 ov1
+    |   push ov1 ov2
+    |
+    | の状況で ov2 の call-top が意図しているのが fn1 かもしれないし、或いは
+    | ov1 かもしれないし曖昧である。今は常に ov1 を意図するという解釈にしようと
+    | していたが、よく考えてみるとそれだと fn1 を ov2 から呼び出すことが不可能
+    | になってしまう。
+    |
+    | a 或いは call-top により詳細な引数を指定する様に変更する?  然し、現在の設
+    |   計で既に任意の引数を受け取れる様にしてしまっているので、引数経由でレベ
+    |   ルを指定する事はできない。
+    |
+    | b 或いは変数経由でそれを指定することもできるかもしれないがまどろっこしい。
+    |
+    | c 或いは現在の文脈でない場合には明示的にレベルを指定して呼び出せる様な関
+    |   数を新しく作成する?
+    |
+    |   但し、その様な関数を定義するとしても既に call-top 等が走った事によって
+    |   複雑になっているのをちゃんと解決する必要がある事には変わりない。複雑に
+    |   なる。
+    |
+    |   また実際にその様なものが必要になるのか? という需要の問題もある。
+    |
+    | d 現実的には ble/function#push name CustomFuncName という形で使って
+    |   CustomFuncName の中でのみ call-top を許し (1 level)、そして更に
+    |   CustomFuncName 自体は push/pop の対象とはならないという制限を付けるのが
+    |   現実的の気がする。
+    |
+    | e 或いは ble/function#push name CustomFuncName とした時には CustomFunName
+    |   を呼び出すのではなくて、CustomFuncName を関数として name にコピーしてし
+    |   まうという実装にする?
+    |
+    |   →しかしそれだと CustomFuncName が巨大な関数であって実装を他と共有した
+    |   いという様な場合に、意図せず巨大な関数のコピーを幾つも作るという事になっ
+    |   てしまう
+    |
+    |   o 或いはオプションで指定した時にのみ CustomFuncName の中身を展開すると
+    |     いう事も考えられる → それでも CustomFuncName が巨大で、かつ中で
+    |     call-top を呼び出したいという場合が考えられる。
+
+    結局 call-top は呼び出し元もしくは呼び出し元の呼び出し元しかチェックしない
+    事にした。また、呼び出し元の呼び出し元についての call-top を意図する場合に
+    は、呼び出し元については push/pop の対象とならないと想定する。つまり、push
+    name Overriding の "Overriding" に指定する関数名は push の対象となってはな
+    らない。
+
+    さて、fzf-menu.bash でのミスを修正せずに何とかできると思って call-top の振
+    る舞いを拡張してみた物の、そもそも push する時に引数を指定していなかったの
+    で動かないのであった。
+
+    * reject: うーん。追加で更に、関数名を指定した時には自動的に "$@" もつける
+      様にする?  しかし意図的に引数を殺して呼び出したいという場合もあるだろうか
+      らこれを勝手に実施する様にすると問題になるだろう。
+
+      その様な機能は便利かもしれないが、それは明示的に push に対してオプション
+      で指示した時にのみ実行する事にする。取り敢えずは "$@" を手動で指定する様
+      にする。
+
 2026-03-09
 
   * 2025-12-29 fzf-menu が util-linux 2.39 を要求しているという事を記述する [#D2402]

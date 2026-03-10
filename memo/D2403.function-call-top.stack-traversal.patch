@@ -1,0 +1,62 @@
+From 0aaa383390da2856ffdfb506b87e274d5dfbbc32 Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Tue, 10 Mar 2026 16:36:40 +0900
+Subject: [PATCH] D2403: ble/function#push/call-top: call-stack traversal
+
+---
+ lib/test-util.sh |  2 ++
+ src/util.sh      | 18 ++++++++++++++++--
+ 2 files changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/lib/test-util.sh b/lib/test-util.sh
+index 6f3e78aa..645cf3ce 100644
+--- a/lib/test-util.sh
++++ b/lib/test-util.sh
+@@ -1466,6 +1466,8 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
+   ble/test 'echo "1 2 3"' stdout='[myecho1: [myecho2: 1 2 3]]'
+   ble/function#pop echo
+   ble/test 'echo "1 2 3"' stdout='[myecho1: 1 2 3]'
++  ble/function#push myecho1 'myecho2 "$@"'
++  ble/test 'echo "1 2 3"' stdout='[myecho1: [myecho2: 1 2 3]]'
+ )
+ 
+ # ToDo
+diff --git a/src/util.sh b/src/util.sh
+index b001577e..279bbfaa 100644
+--- a/src/util.sh
++++ b/src/util.sh
+@@ -2886,8 +2886,8 @@ function ble/function#pop {
+   fi
+ }
+ function ble/function#push/call-top {
+-  local level
+-  for ((level=1;level<${#FUNCNAME[@]}&&level<=2;level++)); do
++  local level=1 depth=${#FUNCNAME[@]}
++  for ((level=1;level<depth;level++)); do
+     local func=${FUNCNAME[level]} index=0
+     if [[ $func == ble/function#push/[0-9]*:?* ]]; then
+       index=${func#*/*/}; index=${index%%:*}
+@@ -2899,6 +2899,20 @@ function ble/function#push/call-top {
+     if ((index)); then
+       "ble/function#push/$((index-1)):$func" "$@"
+       return "$?"
++    else
++      # When the current level is the bottom level (i.e.,
++      # ble/function#push/0:$func), skip levels until the corresponding caller
++      # level.
++      local nest=0
++      while
++        case ${FUNCNAME[level]} in
++        (ble/function#push/0:"$func")
++          ((nest++)) ;;
++        ("$func")
++          ((nest--)) ;;
++        esac
++        ((nest>0&&++level<depth))
++      do builtin true; done
+     fi
+   done
+ 
+-- 
+2.51.0
+

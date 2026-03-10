@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'ble/util' 1275
+ble/test/start-section 'ble/util' 1278
 
 # bleopt
 
@@ -1457,6 +1457,15 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
   ble/test 'echo 1 2 3' stdout='1 2 3'
   ble/test 'ble/function#pop echo' exit=1
   ble/test 'echo 1 2 3' stdout='1 2 3'
+
+  function myecho1 { ble/function#push/call-top "[myecho1: $1]"; }
+  function myecho2 { ble/function#push/call-top "[myecho2: $1]"; }
+  ble/function#push echo 'myecho1 "$@"'
+  ble/test 'echo "1 2 3"' stdout='[myecho1: 1 2 3]'
+  ble/function#push echo 'myecho2 "$@"'
+  ble/test 'echo "1 2 3"' stdout='[myecho1: [myecho2: 1 2 3]]'
+  ble/function#pop echo
+  ble/test 'echo "1 2 3"' stdout='[myecho1: 1 2 3]'
 )
 
 # ToDo
