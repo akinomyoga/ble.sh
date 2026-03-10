@@ -8404,7 +8404,7 @@ function ble/widget/insert-comment {
 function ble-edit/content/expand-command-name.proc {
   if ((tchild>=0)); then
     ble/syntax/tree-enumerate-children \
-      ble/widget/alias-expand-line.proc
+      ble-edit/content/expand-command-name.proc
   elif [[ $wtype && ! ${wtype//[0-9]} ]] && ((wtype==_ble_ctx_CMDI)); then
     local word=${_ble_edit_str:wbegin:wlen}
     local ret

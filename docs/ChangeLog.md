@@ -49,8 +49,8 @@
   - edit: support `bleopt edit_magic_accept` (requested by pl643, bkerin) `#D2175` 3e9d8907
   - edit: support `bleopt edit_magic_accept=verify-syntax` `#D2178` ac84c153
   - edit: support `bleopt edit_magic_{expand,accept}=autocd` (motivated by Jai-JAP) `#D2187` b6344b3b
-  - edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676 xxxxxxxx
-  - complete: apply `alias`/`autocd` expansions globally on `magic-accept` (motivated by Jai-JAP) `#D2399` xxxxxxxx
+  - edit (`edit_magic_{accept,expand}`): support user-defined expansion (motivated by Jai-JAP) `#D2395` aa5bd676 eb349ea6
+  - complete: apply `alias`/`autocd` expansions globally on `magic-accept` (motivated by Jai-JAP) `#D2399` a34b177a xxxxxxxx
 - main: support shell variable `BLE_VER` `#D2177` a12dedab
 - util(bleopt, blehook, ble-face): support wildcards `*` and `?` and change `@` to match an empty string `#D2182` bf595293
 - complete(cd): complete variable names for `cdable_vars` `#D2190` 10527901
@@ -198,7 +198,7 @@
 - edit: run `bleopt editor` with `eval` `#D2380` eff10c4b
 - complete: fix extra quoting of requote with incomplete word `#D2386` 8028fa45
 - cmdspec (`declare/chroma`): fix a bug of evaluating global variable `d` (reported by LeonardoMor) `#D2387` 57ad2bf5
-- util (`ble/function#advice`): fix `-f` doing the opposite (reported by Funeralsawa) `#D2401` xxxxxxxx
+- util (`ble/function#advice`): fix `-f` doing the opposite (reported by Funeralsawa) `#D2401` 801cc1c8
 
 ## Compatibility
 
@@ -272,7 +272,7 @@
 - decode (`ble/builtin/bind`): suppress `builtin bind -x` with more-than-2-byte keyseq `#D2378` 41ee9aaa
 - decode (`ble/builtin/bind`): treat the last `\e` as an isolated ESC (reported by sharpchen) `#D2385` cafef0c6
 - main (`ble/bin/awk`): work around `gawk-5.4.0` bug for `gensub` back-references (reported by 0xhtml, raeraex2, l0042158) `#D2394` 40cc5766
-- mandb: support the man-page format of `docker` (reported by NecRaul) `#D2398` xxxxxxxx
+- mandb: support the man-page format of `docker` (reported by NecRaul) `#D2398` a34b177a
 
 ## Contrib
 
@@ -298,7 +298,7 @@
 - contrib/bash-preexec: support `__bp_set_ret_value` (requested by Comnenus) `#D2238` b154058a
 - contrib/colorglass: fix fixed-point round `#D2239` b154058a
 - contrib: add `config/github48{1,3}` for elapsed-mark examples (motivated by paulzzy, TheFantasticWarrior) `#D2249` 67548656 ed5d451b
-- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3 `#D2402` xxxxxxxx
+- contrib: add `integration/fzf-menu` (motivated by pallaswept) `#D2251` ad6f58b7 `#D2259` 5b9d9ab3 `#D2402` eb349ea6
 - contrib/integration/fzf-completion: add `ble/widget/fzf-complete` (motivated by 3ximus) `#D2252` ad6f58b7
 - contrib/colorglass:  color: import themes from `Gogh-Co/Gogh` (motivated by d4rkb4sh8) `#D2274` d2eb75b5
 - contrib/integration/fzf-completion: suppress unexpected quoting by compgen in dynamic completions (reported by mcepl) `#D2284` 32f290df
@@ -312,7 +312,7 @@
 - integration/bash-completion (`_comp_command_offset`): perform fallback completion based on the given context (motivated by Jai-JAP) `#D2377` 2ef5e483
 - contrib: add `readline` (motivated by thoughtsunificator) `#D2379` a985559a
 - contrib: add `alias-tips` (contributed by xuhdev) `#D2396` ac6c003f
-- integration/bash-completion: check cancellation in the post process of the dnf completion () `#D2400` xxxxxxxx
+- integration/bash-completion: check cancellation in the post process of the dnf completion (reported by xuhdev) `#D2400` 801cc1c8
 
 ## Documentation
 
