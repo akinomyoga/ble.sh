@@ -7635,6 +7635,210 @@ function ble/progcolor/default {
   done
 }
 
+# wrapper コマンド (sudo, doas, command, nohup, env など)
+#   "sudo CMD ARGS..." の様にラッパーコマンドの引数として渡される CMD に対し、
+#   コマンドラインの先頭の単語と同様に種類別の着色 (built-in / function /
+#   file / error) を適用する為のロジックである。
+
+## @fn ble/progcolor/wrapper/.skip-options name
+##   ラッパーコマンド固有のオプション部分を読み飛ばす。
+##   @param[in] name
+##     ラッパーコマンド名。オプションの種類はこれを基に決定する。
+##   @var[in] comp_words tree_words
+##   @var[in,out] iword
+##     呼び出し時点で先頭オプションの位置 (1 から始まる)。
+##     復帰時には最初の非オプション語の位置を指す。
+##     非オプション語が存在しない時は ${#comp_words[@]} を返す。
+##   @var[in] progcolor_iword
+##   @var[in] "${_ble_syntax_progcolor_vars[@]}"
+function ble/progcolor/wrapper/.skip-options {
+  # ラッパー毎のオプション仕様
+  #   rex_optarg: 単独で引数を取るオプションに合致する正規表現
+  #   rex_assign: env における VAR=value 形式に合致する正規表現
+  local rex_optarg= rex_assign=
+  case $1 in
+  (sudo)
+    rex_optarg='^(-[uUgprtCRADh]|--user|--group|--prompt|--role|--type|--close-from|--chroot|--chdir|--askpass|--host|--other-user)$' ;;
+  (doas)
+    rex_optarg='^-[Cua]$' ;;
+  (env)
+    rex_optarg='^(-[uSC]|--unset|--split-string|--chdir)$'
+    rex_assign='^[_a-zA-Z][_a-zA-Z0-9]*=' ;;
+  (xargs)
+    rex_optarg='^(-[adEeILnPs]|--arg-file|--delimiter|--eof|--replace|--max-lines|--max-args|--max-procs|--max-chars|--process-slot-var)$' ;;
+  (nohup|command)
+    : ;;
+  esac
+
+  local n=${#comp_words[@]}
+  while ((iword<n)); do
+    local wtxt=${comp_words[iword]}
+
+    if [[ $wtxt == '--' ]]; then
+      # "--" 以降は全てコマンド側
+      ((iword++))
+      return 0
+    elif [[ $wtxt == -?* ]]; then
+      # オプション語
+      if [[ $rex_optarg && $wtxt =~ $rex_optarg ]]; then
+        # 引数を一語消費する
+        ((iword+=2))
+      else
+        ((iword++))
+      fi
+    elif [[ $rex_assign && $wtxt =~ $rex_assign ]]; then
+      # env VAR=value
+      ((iword++))
+    else
+      return 0
+    fi
+  done
+  return 0
+}
+
+## @fn ble/progcolor/wrapper/.cmd.wattr
+##   ラッパーコマンドの内側にあるコマンド単語に対してコマンド種類の着色を行う。
+##   @var[in] node TE_i TE_nofs wtype wlen wbeg wend wattr
+##   @var[in] "${_ble_syntax_progcolor_wattr_vars[@]}"
+function ble/progcolor/wrapper/.cmd.wattr {
+  local p0=$wbeg p1=$wend wtxt=${text:wbeg:wlen}
+
+  # alias は展開前に判定する
+  if ble/alias#active "$wtxt"; then
+    ble/progcolor/wattr#setattr "$p0" "$ATTR_CMD_ALIAS"
+    return 0
+  fi
+
+  local ret path spec ext value count
+  ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "count:after-sep:$highlight_eval_opts"; ext=$? value=("${ret[@]}")
+  ((ext==148)) && return 148
+  if ((ext)); then
+    # 展開に失敗
+    ble/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
+    return 0
+  fi
+
+  local type=
+  ble/syntax/highlight/cmdtype "$value" "$wtxt"
+  if ((type==ATTR_CMD_FILE||type==ATTR_ERR)); then
+    # ファイル名としての着色も適用する (ble/progcolor/highlight-filename と同様)
+    local wtype_save=$wtype
+    wtype=$CTX_CMDI
+    ble/progcolor/highlight-filename/.pathspec-with-attr.wattr "$type"
+    wtype=$wtype_save
+  elif [[ $type ]]; then
+    ble/progcolor/wattr#setattr "$p0" "$type"
+  fi
+  return 0
+}
+
+## @fn ble/progcolor/wrapper/.is-wrapper word
+##   word がラッパーコマンドの一つかどうかを判定する。
+function ble/progcolor/wrapper/.is-wrapper {
+  local w=$1
+  [[ $w == */?* ]] && w=${w##*/}
+  local name
+  for name in "${_ble_syntax_command_wrappers[@]}"; do
+    [[ $w == "$name" ]] && return 0
+  done
+  return 1
+}
+
+## @fn ble/progcolor/wrapper/.chroma name
+##   ラッパーコマンドの引数を順次走査し、コマンド単語を見つけて着色する。
+##   入れ子のラッパー (sudo env ls など) は内側に向かって辿る。
+##   @param[in] name
+##     ラッパーコマンド名 (sudo, env など)。
+##   @var[in] comp_words comp_cword comp_line comp_point
+##   @var[in] tree_words
+function ble/progcolor/wrapper/.chroma {
+  local n=${#comp_words[@]}
+
+  local i "${_ble_syntax_progcolor_vars[@]/%/=}" # WA #D1570 checked
+
+  # ラッパーの入れ子を辿る (例: "sudo env ls")
+  local iword=1 cur=$1
+  local i_inner=
+  while :; do
+    local i_opts_begin=$iword
+    ble/progcolor/wrapper/.skip-options "$cur"
+    local i_opts_end=$iword
+
+    # 中間オプションを既定の着色で塗る
+    for ((i=i_opts_begin;i<i_opts_end&&i<n;i++)); do
+      local ref=${tree_words[i]}
+      [[ $ref ]] || continue
+      local progcolor_iword=$i
+      ble/progcolor/load-word-data "$ref"
+      ble/progcolor/word:default
+    done
+
+    ((i_opts_end>=n)) && break
+    i_inner=$i_opts_end
+
+    # 内側コマンドが更なるラッパーなら継続して辿る
+    if ble/progcolor/wrapper/.is-wrapper "${comp_words[i_inner]}"; then
+      # 当該コマンド語をコマンド種類で着色しておく
+      local ref=${tree_words[i_inner]}
+      if [[ $ref ]]; then
+        local progcolor_iword=$i_inner
+        ble/progcolor/load-word-data "$ref"
+        [[ $wattr == - ]] &&
+          ble/progcolor/@wattr ble/progcolor/wrapper/.cmd.wattr
+      fi
+      cur=${comp_words[i_inner]}
+      [[ $cur == */?* ]] && cur=${cur##*/}
+      ((iword=i_inner+1))
+      continue
+    fi
+    break
+  done
+
+  # 最も内側のコマンド単語をコマンド種類で着色し、残りは既定の引数着色
+  if [[ $i_inner ]]; then
+    local ref=${tree_words[i_inner]}
+    if [[ $ref ]]; then
+      local progcolor_iword=$i_inner
+      ble/progcolor/load-word-data "$ref"
+      [[ $wattr == - ]] &&
+        ble/progcolor/@wattr ble/progcolor/wrapper/.cmd.wattr
+    fi
+    for ((i=i_inner+1;i<n;i++)); do
+      ref=${tree_words[i]}
+      [[ $ref ]] || continue
+      local progcolor_iword=$i
+      ble/progcolor/load-word-data "$ref"
+      ble/progcolor/word:default
+    done
+  fi
+}
+
+## @fn bleopt/check:command_wrappers
+##   command_wrappers の値が変わった際に内部辞書を更新し、対応する
+##   cmdinfo/cmd:NAME/chroma を再定義する。
+_ble_syntax_command_wrappers=()
+function bleopt/check:command_wrappers {
+  local name body
+  # 既存設定で登録した chroma を削除する (ユーザー定義の chroma は保護する)
+  for name in "${_ble_syntax_command_wrappers[@]}"; do
+    ble/is-function ble/cmdinfo/cmd:"$name"/chroma || continue
+    body=$(declare -f ble/cmdinfo/cmd:"$name"/chroma)
+    [[ $body == *"ble/progcolor/wrapper/.chroma $name"* ]] || continue
+    unset -f ble/cmdinfo/cmd:"$name"/chroma
+  done
+
+  local -a names=()
+  ble/string#split-words names "$value"
+  _ble_syntax_command_wrappers=("${names[@]}")
+
+  for name in "${names[@]}"; do
+    ble/is-function ble/cmdinfo/cmd:"$name"/chroma && continue
+    builtin eval "function ble/cmdinfo/cmd:$name/chroma { ble/progcolor/wrapper/.chroma $name; }"
+  done
+}
+# 既定値で初回の登録を行う
+value=$bleopt_command_wrappers bleopt/check:command_wrappers
+
 ## @fn ble/progcolor/.compline-rewrite-command command [args...]
 ##   @var[in,out] comp_words comp_cword comp_line comp_point
 function ble/progcolor/.compline-rewrite-command {
