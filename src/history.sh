@@ -1120,12 +1120,13 @@ function ble/builtin/history/.write {
 
   if [[ :$opts: != *:fetch:* && -s $histapp ]]; then
     local apos=\'
-    < "$histapp" ble/bin/awk '
+    local awk_script='
       BEGIN {
         file = ENVIRON["file"];
         flag_timestamp = ENVIRON["flag_timestamp"];
         timestamp = "";
         mode = 0;
+        nline = 0;
       }
       function flush_line() {
         if (!mode) return;
@@ -1137,9 +1138,12 @@ function ble/builtin/history/.write {
           text = "eval -- $'"$apos"'" text "'"$apos"'"
         }
 
-        if (timestamp != "")
+        if (timestamp != "") {
           print timestamp >> file;
+          nline++;
+        }
         print text >> file;
+        nline++;
       }
 
       function extract_timestamp(line) {
@@ -1163,9 +1167,12 @@ function ble/builtin/history/.write {
         sub(/^ *[0-9]+\*? +(__ble_time_[0-9]*__|\?\?|.+: invalid timestamp)?/, "", $0);
       }
       { text = text != "" ? text "\n" $0 : $0; }
-      END { flush_line(); }
+      END { flush_line(); print nline; }
     '
-    ble/builtin/history/.add-rskip "$file" "$_ble_builtin_history_histapp_count"
+    # Note: rskip counts lines, and an entry takes two lines with HISTTIMEFORMAT.
+    local nline
+    ble/util/assign nline '< "$histapp" ble/bin/awk "$awk_script"'
+    ble/builtin/history/.add-rskip "$file" "$nline"
     >| "$histapp"
     _ble_builtin_history_histapp_count=0
   fi
