@@ -79,18 +79,16 @@ else
 fi
 
 ## @fn ble/builtin/history/.dump args...
-##   #D1831: timestamp に不正な値が含まれていた時のメッセージを検出する為、一時
-##   的に LC_MESSAGES を設定して builtin history を呼び出します。更にこの状況で、
-##   bash-3.2 以下で無限ループになる問題を回避する為に、bash-3.2 以下では
-##   conditional-sync 経由で呼び出します。
 if ((_ble_bash<40000)); then
-  # Note (#D1831): bash-3.2 以下では不正な timestamp が history に含まれている
-  #   と無限ループになるので timeout=3000 で強制終了する。然し、実際に確認して
-  #   みると、conditional-sync 経由で呼び出した時には無限ループにならずに
-  #   timeout する前に SIGSEGV になる様である
+  # Note (#D1831): To work around an infinite loop in Bash 3.2 that is
+  # trigerred by an invalid timestamp in the existing command history, we
+  # forcibly terminates the processing with timeout=3000 using
+  # conditional-sync.  However, Bash 3.2 seems to crash with SIGSEGV before
+  # entering an infinite loop, when it encounters an invalid timestamp inside a
+  # subshell for conditional-sync.
   function ble/builtin/history/.dump.proc {
     local LC_ALL= LC_MESSAGES=C 2>/dev/null
-    builtin history "${args[@]}"
+    TZ= builtin history "${args[@]}"
     ble/util/unlocal LC_ALL LC_MESSAGES 2>/dev/null
   }
   function ble/builtin/history/.dump {
@@ -110,8 +108,20 @@ if ((_ble_bash<40000)); then
   }
 else
   function ble/builtin/history/.dump {
+    # Note (#D1831): To detect Bash's message that are printed when the
+    # timestamp has an invalid value, we set LC_MESSAGES=C during the call of
+    # "builtin history".
     local LC_ALL= LC_MESSAGES=C 2>/dev/null
-    builtin history "$@"
+
+    # Note (GitHub #722): The tempenv "TZ=" is a workaround for macOS.  With
+    # HISTTIMEFORMAT set, "builtin history" calls localtime(3) for every entry.
+    # On macOS, a forked child re-reads the zoneinfo file on every call,
+    # because Apple's libc uses libnotify to detect time-zone changes and
+    # libnotify is not fork-safe.  This costs ~100us per entry (~1s per 10k
+    # entries).  The format %s used by ble.sh does not depend on the time zone,
+    # so we export an empty TZ (UTC without a zoneinfo file) while dumping.
+    TZ= builtin history "$@"
+
     ble/util/unlocal LC_ALL LC_MESSAGES 2>/dev/null
   }
 fi
