@@ -3208,7 +3208,7 @@ function ble/base/sub:test {
   ble-import lib/core-test
 
   if (($#==0)); then
-    set -- bash main util canvas decode edit syntax complete keymap.vi
+    set -- bash main util canvas decode edit syntax complete keymap.vi history
     local timestamp
     ble/util/strftime -v timestamp '%Y%m%d.%H%M%S'
     logfile=$_ble_base_cache/test.$timestamp.log
