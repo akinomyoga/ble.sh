@@ -10262,7 +10262,7 @@ function ble-edit/nsearch/.search.fib {
     ble-edit/nsearch/.show-status.fib
     if [[ $opt_forward ]]; then
       local count; ble/history/get-count
-      ((_ble_edit_nsearch_index=count-1))
+      ((_ble_edit_nsearch_index=count))
     else
       ((_ble_edit_nsearch_index=0))
     fi
