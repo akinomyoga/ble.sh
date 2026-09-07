@@ -1,5 +1,8 @@
 #!/bin/bash
 
+## @var[in] ble_term_cache
+##   The filename to write the cache for the present TERM.
+
 # 2020-02-07 #D12MSYS2 の CR 対策のため更新の必要あり
 
 _ble_term_tput=
@@ -339,7 +342,8 @@ function ble/init:term/initialize {
   ble/init:term/register-varname "_ble_term_sgr_ab"
 
   # save
-  ble/util/declare-print-definitions "${varnames[@]}" >| "$_ble_base_cache/term.$TERM"
+  ble/util/declare-print-definitions "${varnames[@]}" >| "$ble_term_cache.$$.part" &&
+    ble/bin/mv -f "$ble_term_cache"{".$$.part",}
 }
 
 ble/util/put "ble/term.sh: updating tput cache for TERM=$TERM... " >&2

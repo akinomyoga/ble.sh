@@ -1,5 +1,8 @@
 #!/bin/bash
 
+## @var[in] ble_decode_cmap_cache
+##   The filename to write the cache
+
 #
 # 以下は ble-decode.sh にて既定で定義される特殊キー
 #
@@ -494,10 +497,8 @@ function ble/init:cmap/initialize-keys {
 }
 
 ## @fn ble/init:cmap/initialize
-##   @var[in] dump
-##     The filename to write the cache
 function ble/init:cmap/initialize {
-  ble/edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
+  ble/edit/info/immediate-show text 'ble.sh: generating "'"$ble_decode_cmap_cache"'"...'
   ble/init:cmap/initialize-kbd
   ble/init:cmap/initialize-keys
 #%$ hash=$(bash ./make_command.sh hash lib/init-cmap.sh) && [ -n "$hash" ] && echo "  local hash='$hash'"
@@ -514,7 +515,8 @@ function ble/init:cmap/initialize {
     END {
       print "_ble_decode_cmap_cache_hash='\''" hash "'\''";
     }
-  ' >| "$dump"
+  ' >| "$ble_decode_cmap_cache.$$.part" &&
+    ble/bin/mv -f "$ble_decode_cmap_cache"{".$$.part",}
 
   # If ble.sh has not yet attached, we want to clear the processing message.
   [[ $_ble_attached ]] || ble/edit/info/immediate-clear

@@ -2844,11 +2844,11 @@ function ble/decode/cmap/initialize {
   function ble/decode/cmap/initialize { return 0; }
 
   local init=$_ble_base/lib/init-cmap.sh
-  local dump=$_ble_base_cache/decode.cmap.$_ble_decode_kbd_ver.$TERM.dump
+  local ble_decode_cmap_cache=$_ble_base_cache/decode.cmap.$_ble_decode_kbd_ver.$TERM.dump
 #%$ hash=$(bash ./make_command.sh hash lib/init-cmap.sh) && [ -n "$hash" ] && echo "  local hash='$hash'"
-  if [[ -s $dump && $dump -nt $init ]]; then
+  if [[ -s $ble_decode_cmap_cache && $ble_decode_cmap_cache -nt $init ]]; then
     local _ble_decode_cmap_cache_hash=__uninitialized__
-    source -- "$dump"
+    source -- "$ble_decode_cmap_cache"
     [[ $_ble_decode_cmap_cache_hash == "$hash" ]] && return 0
   fi
 
@@ -3091,7 +3091,6 @@ _ble_decode_bind_encoding=
 
 function ble/decode/readline/bind {
   _ble_decode_bind_encoding=$bleopt_input_encoding
-  local file=$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.bind
 
   # * 一時的に 'set convert-meta off' にする。
   #
@@ -3105,21 +3104,25 @@ function ble/decode/readline/bind {
   #
   ble/term/rl-convert-meta/enter
 
+  local ble_decode_bind_cache=$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.bind
+  local ble_decode_unbind_cache=$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.unbind
 #%$ hash=$(bash ./make_command.sh hash lib/init-bind.sh) && [ -n "$hash" ] && echo "  local hash='$hash'"
   local _ble_decode_bind_cache_hash=__uninitialized__
-  [[ -s $file && $file -nt $_ble_base/lib/init-bind.sh ]] && source -- "$file"
+  [[ -s $ble_decode_bind_cache && $ble_decode_bind_cache -nt $_ble_base/lib/init-bind.sh ]] &&
+    source -- "$ble_decode_bind_cache"
 
   if [[ $_ble_decode_bind_cache_hash != "$hash" ]]; then
     source -- "$_ble_base/lib/init-bind.sh"
-    source -- "$file"
+    source -- "$ble_decode_bind_cache"
   fi
 
   _ble_decode_bind__uvwflag=
   ble/util/assign _ble_decode_bind_bindp 'builtin bind -p' # TERM 変更検出用
 }
 function ble/decode/readline/unbind {
+  local ble_decode_unbind_cache=$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.unbind
   ble/function#try ble/encoding:"$bleopt_input_encoding"/clear
-  source -- "$_ble_base_cache/decode.bind.$_ble_bash.$_ble_decode_bind_encoding.unbind"
+  source -- "$ble_decode_unbind_cache"
 }
 function ble/decode/readline/rebind {
   [[ $_ble_decode_bind_state == none ]] && return 0
@@ -4235,8 +4238,8 @@ function ble/builtin/bind/read-user-settings/.collect {
     local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
     if ! [[ -s $cache && $cache -nt $_ble_base/ble.sh ]]; then
       INPUTRC=/dev/null "$BASH" --noprofile --norc -i -c "builtin bind -m $map -p" 2>/dev/null |
-        LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' >| "$cache.part" &&
-        ble/bin/mv "$cache.part" "$cache" || continue
+        LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' >| "$cache.$$.part" &&
+        ble/bin/mv -f "$cache"{".$$.part",} || continue
     fi
     local cache_content
     ble/util/readfile cache_content "$cache"
@@ -4385,16 +4388,18 @@ function ble/builtin/bind/read-user-settings/.cache-alive {
 ##   @var[in] delay_prefix
 ##   @var[in] cache_prefix
 function ble/builtin/bind/read-user-settings/.cache-save {
-  local keymap content fail=
+  local keymap fail=
   for keymap in emacs vi_imap vi_nmap; do
     if [[ -s $delay_prefix.$keymap ]]; then
-      ble/util/copyfile "$delay_prefix.$keymap" "$cache_prefix.$keymap"
+      ble/util/copyfile "$delay_prefix.$keymap" "$cache_prefix.$keymap.$$.part" &&
+        ble/bin/mv -f "$cache_prefix.$keymap"{".$$.part",}
     else
       >| "$cache_prefix.$keymap"
     fi || fail=1
   done
   [[ $fail ]] && return 1
-  ble/util/print "$settings" >| "$cache_prefix.settings"
+  ble/util/print "$settings" >| "$cache_prefix.settings.$$.part" &&
+    ble/bin/mv -f "$cache_prefix.settings"{".$$.part",}
 }
 ## @fn ble/builtin/bind/read-user-settings/.cache-load
 ##   @var[in] delay_prefix

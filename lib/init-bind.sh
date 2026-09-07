@@ -1,5 +1,9 @@
 #!/bin/bash
 
+## @var[in] ble_decode_bind_cache
+## @var[in] ble_decode_unbind_cache
+##   The filenames to write the caches for bind/unbind the ble.sh keybindings.
+
 # 現在の bash の version に従って以下の二つのファイルを生成します:
 #
 #   $_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.bind
@@ -205,12 +209,14 @@ function ble/init:bind/.generate {
 }
 
 function ble/init:bind/generate-binder {
-  local fbind1=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.bind
-  local fbind2=$_ble_base_cache/decode.bind.$_ble_bash.$bleopt_input_encoding.unbind
+  local fbind1=$ble_decode_bind_cache
+  local fbind2=$ble_decode_unbind_cache
 
   ble/edit/info/show text "ble.sh: updating binders..."
 
-  ble/init:bind/.generate 3>| "$fbind1" 4>| "$fbind2"
+  ble/init:bind/.generate 3>| "$fbind1.$$.part" 4>| "$fbind2.$$.part" &&
+    ble/bin/mv -f "$fbind1"{".$$.part",} &&
+    ble/bin/mv -f "$fbind2"{".$$.part",}
 
   ble/edit/info/immediate-show text "ble.sh: updating binders... done"
 }

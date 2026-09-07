@@ -282,7 +282,8 @@ function ble-decode/keymap:emacs/initialize {
     ble/decode/keymap#load isearch dump
     ble/decode/keymap#load nsearch dump
     ble/decode/keymap#load emacs   dump
-  } 3>| "$fname_keymap_cache"
+  } 3>| "$fname_keymap_cache.$$.part" &&
+    ble/bin/mv -f "$fname_keymap_cache"{".$$.part",}
 
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs... done"
 }

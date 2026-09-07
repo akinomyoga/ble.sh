@@ -214,6 +214,7 @@
 - import (`ble/util/import/is-loaded`): skip the file existence check for an absolute path `#D2423` d8ad40e7
   - util (`ble/path#canonicalize`): fix infinite loops (fixup d8ad40e7) (reported by chill-nemesis) `#D2426` 63c23e99
 - nsearch: fix the search position after a forward mismatch (reported by NitramO-YT, fixed by dfherr) `#D2430` 5fe06d62
+- global: generate cache atomically (reported by RakibFiha, fixed by vnz) `#D2432` xxxxxxxx
 
 ## Compatibility
 

@@ -2000,11 +2000,17 @@ function ble/base/clean-up-runtime-directory {
   [[ :$opts: == *:finalize:* ]] && alive[$$]=0
 
   local file pid iremoved=0 ibgpid=0
-  for file in "$_ble_base_run"/[1-9]*.*; do
+  for file in "$_ble_base_run"/[1-9]*.* "$_ble_base_cache"/*.[1-9]*.part; do
     [[ -e $file || -h $file ]] || continue
 
     # extract pid (skip if it is not a number)
-    pid=${file##*/}; pid=${pid%%.*}
+    pid=${file##*/}
+    if [[ $file == "$_ble_base_cache"/*.part ]]; then
+      pid=${pid%.part}
+      pid=${pid##*.}
+    else
+      pid=${pid%%.*}
+    fi
     [[ $pid && ! ${pid//[0-9]} ]] || continue
 
     if [[ ! ${alive[pid]+set} ]]; then

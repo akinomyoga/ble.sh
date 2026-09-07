@@ -8662,7 +8662,8 @@ function ble-decode/keymap:vi/initialize {
     ble/decode/keymap#load vi_omap dump
     ble/decode/keymap#load vi_xmap dump
     ble/decode/keymap#load vi_cmap dump
-  } 3>| "$fname_keymap_cache"
+  } 3>| "$fname_keymap_cache.$$.part" &&
+    ble/bin/mv -f "$fname_keymap_cache"{".$$.part",}
 
   ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi... done"
 }
