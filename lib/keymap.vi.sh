@@ -904,6 +904,14 @@ function ble/widget/vi-command/edit-and-execute-command {
     ble/widget/vi_nmap/record-register
   ble/widget/edit-and-execute-command vi
 }
+function ble/widget/vi_nmap/accept-and-next {
+  ble/keymap:vi/clear-arg
+  ble/widget/vi_nmap/.insert-mode
+  ble/keymap:vi/repeat/clear-insert
+  [[ $_ble_keymap_vi_reg_record ]] &&
+    ble/widget/vi_nmap/record-register
+  ble/widget/accept-and-next
+}
 
 #------------------------------------------------------------------------------
 # args

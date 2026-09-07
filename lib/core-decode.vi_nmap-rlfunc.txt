@@ -79,7 +79,7 @@ non-incremental-forward-search-history-again  history-nsearch-forward-again
 non-incremental-reverse-search-history        history-nsearch-backward
 non-incremental-reverse-search-history-again  history-nsearch-backward-again
 old-menu-complete                 -
-operate-and-get-next              -
+operate-and-get-next              vi_nmap/accept-and-next
 overwrite-mode                    vi_nmap/replace-mode
 possible-command-completions      vi_nmap/complete show_menu:context=command
 possible-completions              vi_nmap/complete show_menu

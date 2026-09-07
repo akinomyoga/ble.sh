@@ -8229,7 +8229,73 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2026-09-07
+
+  * keymap.vi: support vi_nmap/accept-and-next (requested by sharpchen) [#D2431]
+    https://github.com/akinomyoga/ble.sh/discussions/726
+
+    Readline の振る舞い的には operate-and-get-next は command mode から insert
+    mode に入る。accept-line と同じである。既に accept-line でそのようにしてい
+    るので特に command から insert に落ちても問題ないだろう。また実装的にも
+    accept-line や edit-and-execute-command など既にある widget と同様に振る舞
+    えば問題ない。command mode の中に留まるのであれば色々とカーソル位置の調整な
+    どが必要になったかもしれないが。簡単に動作確認した。変な事もない。単に
+    accept-line + 文字列挿入だと思ったらそんなに変な事はない筈である。
+
+2026-09-06
+
+  * nsearch: 検索失敗時の再開位置の修正 (reported by NitramO-YT, fixed by dfherr) [#D2430]
+    https://github.com/akinomyoga/ble.sh/issues/531#issuecomment-2499092693
+    https://github.com/akinomyoga/ble.sh/pull/725
+
+    検索でこれ以上見つからなかった場合の次の検索開始点の設定を変更している。然
+    し、これが他にどの様な影響を及ぼしうるかについては考える必要がある。先ず第
+    一に検索開始点を末端にしているのに何故元の検索対象が二回一致するという事態
+    にならないのかということ。
+
+    $ echo one[RET]
+    $ echo two[RET]
+    $ [up][home][right x4][next]
+
+    この時点で検索失敗が起こる。_ble_history_nsearch_index=[echo two の後] にな
+    る筈である。実際に問題の行が実行されている。そしてそのように
+    _ble_history_nsearch_index が設定されている。然し、次に検索を実行開始する時
+    にはちゃんと [echo two の前] の位置から検索が開始されている様だ。何故?
+
+    →どうやら index0 があるので index0 よりも後に設定されていたら其処に戻すと
+    いう操作が行われる様である。これならば幾ら後ろに設定したとしても問題は原理
+    的に発生しない筈なのである。
+
+    forward に行く場合には index0 より後に設置されても index は修正されない事に
+    なるが、寧ろ [echo two の前] に設定されると何度も検索が起こってしまう。
+
+    * というかこれは history-search で「無限に次に行くことができる」というバグ
+      とも関係あるのではないか。うーん。master で無限に次に行くことができる問題
+      が発生するか確認し、それも一緒に直っているかを確認する事にする。
+
+      → 先ず問題が再現する事は確認した。厳密に言うと、"もう次に行けません" と
+      いうのと "一致しました" というのが交互に発生するので、2回押す毎に stack
+      に新しい要素が追加されるという形になる。恐らく一致している時には正しく
+      index が設定されて、一致しなかった時に問題の行によって1行戻るというのを繰
+      り返しているのだろう
+
+      → 実際にこの問題が pr725 によって修正されている事も確認した。
+
+      変更に見覚えがあると思ったのは多分 #531 のコメントを受けてこの行を疑って
+      いたけれどちゃんと考察まで行けていなかったからという事かもしれない。
+
 2026-09-05
+
+  * history: work around slow macOS timestamps (fixed by dfherr) [#D2429]
+    https://github.com/akinomyoga/ble.sh/pull/722
+
+    macOS の builtin history を subshell の中で実行すると内部で timezone ファイ
+    ルを一行毎に読み込みまくって滅茶苦茶遅くなるらしい。これまで macOS で物凄く
+    遅いとか悪評だったのはこれが原因なのかもしれない。background での初期化に時
+    間がかかっているとコマンドを実行する度に初期化がリセットされてしまって、最
+    初から初期化がやり直しになって、結局いつまで経っても初期化が終わらないとい
+    う悪循環にも陥る? この修正で殆ど気にならなくなったということだそうだ。大き
+    な履歴で物凄く問題だったのかもしれない。
 
   * decode: /usr/bin/env がない環境で lib/init-bind.sh の hash 計算に失敗している (reported by kingfirewxm) [#D2428]
     https://github.com/akinomyoga/ble.sh/issues/718

@@ -97,6 +97,7 @@
 - complete: introduce more stages to ambiguous pathname completions (reported by xuhdev) `#D2397` abb93e21
 - color: support color aliases `#D2416` d69e4d54
 - complete: support `bleopt complete_source_command_opts=apropos` (requested by alicealysia) `#D2418` 40f50e3e
+- keymap/vi: support readline bindable function `operate-and-get-next` in `vi-command` (requested by sharpchen) `#D2431` xxxxxxxx
 
 ## Changes
 
@@ -207,11 +208,12 @@
 - make: fix a race condition (reported by sanvila) `#2406` c92dddbe
 - syntax (completion-context): fix an infinite loop caused by nested braces (fixed by dlyongemallo) `#D2407` f38850cb
 - make: detect `./make_command.sh` failure in `mwg_pp.awk` (reported by giggio, hibiday) `#D2415` 88266b9f
-  - make: check all `./make_command.sh` failures in `mwg_pp.awk` (reported by kingfirewxm) `#D2428` xxxxxxxx
+  - make: check all `./make_command.sh` failures in `mwg_pp.awk` (reported by kingfirewxm) `#D2428` 1a879302
 - base: suppress error message in attempt at mkdir `$_ble_base/run` (reported by hibiday) `#D2414` 88266b9f 5d39ebe6
 - complete: use the latest `bash-completion` help/usage caceh (reported by dezza) `#D2422` d62098c8
 - import (`ble/util/import/is-loaded`): skip the file existence check for an absolute path `#D2423` d8ad40e7
   - util (`ble/path#canonicalize`): fix infinite loops (fixup d8ad40e7) (reported by chill-nemesis) `#D2426` 63c23e99
+- nsearch: fix the search position after a forward mismatch (reported by NitramO-YT, fixed by dfherr) `#D2430` 5fe06d62
 
 ## Compatibility
 
@@ -296,6 +298,7 @@
 - term: use the kitty keyboard protocol in Ghostty and Zellij (reported by Okeanos, allpan3) `#D2413` 6cffa910
   - decode: fix incomplete support of the kitty-keyboard-protocol support in Ghostty and Zellij (reported by dfherr) `#D2427` 9b63b11a
 - make: work around gawk-5.4.1-nompfr bug (reported by tessus) `#D2424` f4261e4e
+- history: work around slow macOS timestamps (fixed by dfherr) `#D2429` 69ee0587
 
 ## Contrib
 
