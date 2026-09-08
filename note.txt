@@ -8231,6 +8231,62 @@ bash_tips
 
 2026-09-07
 
+  * global: generate cache atomically (reported by RakibFiha, fixed by vnz) [#D2432]
+    https://github.com/akinomyoga/ble.sh/issues/109
+    https://github.com/akinomyoga/ble.sh/pull/727
+
+    > The cache files under $_ble_base_cache were written in place with ">|".
+    > When many shells start at the same time with a stale cache (e.g. a
+    > terminal session restore right after "ble-update" or a bash upgrade), one
+    > shell truncates and rewrites a cache file while others already pass the
+    > "-s"/"-nt" checks and source it.  A shell that sources a half-written
+    > "keymap.emacs" fails with "ble.sh: The keymap 'emacs' is empty." and
+    > ble-attach aborts; a half-written "decode.bind.*" fails with a Bash
+    > syntax error.
+    >
+    > Write every attach-time cache to "<file>.$$.part" first and rename it
+    > into place with "ble/bin/mv -f", so readers only ever see complete files.
+    > "decode.readline.*" already used a temporary file but with a name shared
+    > by all shells; use the per-process name there as well.
+
+    同時にシェルを複数人の手で立ち上げる様な事はないと想定していたが、
+    tmux-concurrent の様な物は同時に複数のシェルを立ち上げるという事の様だ。確
+    かに、それで全ての説明が付く。
+
+    init-*.sh に関しては全部呼び出し元からキャッシュファイルの書き込み先のファ
+    イル名を指定することにした。変数名は一様に ble_*_cache という事にする。
+
+    元々現在の様な設計になっていた一つの理由には外部プロセスの立ち上げを抑制し
+    て起動速度を可能な限り短くするという物だった。然し、結局 mv を呼び出さなけ
+    ればならないのだとしたらもっと別の方法はあるだろうか。取り敢えず何れの実行
+    パスもキャッシュが存在しない時にのみ実行されるところだという所は確認した。
+    なので、少なくとも毎回実行されるという訳でもない。
+
+    * reject: 例えば何らかの方法で mutex か何かを取得して同期をするなど。しかし、
+      その様な事をする方がやはり時間がかかるだろう。mkdir による方法を用いると
+      しても、少なくとも mkdir のコストは存在する事になるし例えば NFS 上でうま
+      くその様な処理が動くのかも分からない。
+
+    * done: 毎回 ble/bin/mv || ble/bin/rm を実行しているのは汚い。
+
+      a 毎回 ble/bin/rm を呼び出しているのはコストがかかるし、これは
+        $_ble_base_run/$$.* と同様に終了時に一発 rm で cleanup すれば良い。
+        cache は少なくとも in-memory filesystem に置くつもりはないので、中身の
+        消去も即座にしなくても大丈夫だろう。
+
+      b ble/bin/mv || ble/bin/rm もしくは ble/bin/mv "$file"{".$$.part",} || >|
+        "$file.$$.part"を行う様な関数を作ってもいいのかもしれないが今のところは
+        其処までして即座に削除しなくても良い様な気がする。
+
+    * done: 孤立リダイレクション >| "$cache" によって中身を空にする操作は
+      atomic ではないか? と思ったが、どうだろうか。例えば他の人がそのファイルに
+      書き込みをしている間に >| をすると、>| する事自体は atomic であったとして
+      も、他の人が続きを書き込むに従ってファイルの前半が NUL 埋めされてしまうの
+      ではないか? と思ったが、そもそも有限の大きさの内容を書き込む場合には
+      in-place ではなく .$$.part で行っているのでその様な事は起こらないはずであ
+      る。mv と >| が前後したり重なったりしても別に変な内容のファイルにはならな
+      い筈である。
+
   * keymap.vi: support vi_nmap/accept-and-next (requested by sharpchen) [#D2431]
     https://github.com/akinomyoga/ble.sh/discussions/726
 
