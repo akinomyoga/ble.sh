@@ -757,6 +757,7 @@ if ((_ble_bash>=30100)); then
       ble/util/print : >| "$tmpfile_base.sh"
     fi
   }
+
   function ble/history:bash/resolve-multiline/.is-HISTSIZE-unlimited {
     [[ ${HISTSIZE+set} ]] || return 1
 
@@ -766,9 +767,18 @@ if ((_ble_bash>=30100)); then
     # value in Bash <= 4.2.  In Bash >= 4.3, the interpretatiion of negative
     # numbers (in 32-bit representation) has been changed to mean the unlimited
     # history size.
-    ble/string#match "$HISTSIZE" '^[[:space:]]([-+]?[0-9]+)[[:space:]]*$' || return 0
+    # FIXME: Three typos have been fixed here.  The regex lacked "*" after the
+    # leading [[:space:]], so a plain number (e.g., HISTSIZE=500) never matched
+    # and was reported as unlimited; the negative check read an undefined
+    # variable "histize"; and the sign bit of the 32-bit representation is
+    # 0x80000000, not 0x10000000.  As a consequence, .load now really sets
+    # "local HISTSIZE=" for numeric values, as originally intended.  This has a
+    # visible effect for "readonly HISTSIZE=<n>": the assignment fails with
+    # "readonly variable" on every rebuild, where it used to be skipped by
+    # accident.  A "ble/is-readonly HISTSIZE" guard in .load would avoid that
+    ble/string#match "$HISTSIZE" '^[[:space:]]*([-+]?[0-9]+)[[:space:]]*$' || return 0
     local histsize=$((BASH_REMATCH[1]))
-    ((_ble_bash>=40300&&(histize&0x10000000)))
+    ((_ble_bash>=40300&&(histsize&0x80000000)))
   }
   function ble/history:bash/resolve-multiline/.load {
     local tmpfile_base=$_ble_base_run/$$.history.mlfix
@@ -944,6 +954,13 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   ##
   ## 以下の関数は各ファイルに関して何処まで読み取ったかを記録します。
   ##
+  ## Note: rskip is the number of entries of the file that have already been
+  ##   read into the history list (either by Bash on startup or by
+  ##   ble/builtin/history/.read).  It counts entries, not lines: a timestamp
+  ##   line (#<epoch>) belongs to the entry, and every other line is
+  ##   one entry, which is how .read loads the file.  This makes rskip
+  ##   consistent with wskip and with HISTSIZE and HISTFILESIZE counting
+  ##
   ## @fn ble/builtin/history/.get-rskip file
   ##   @param[in] file
   ##   @var[out] rskip
@@ -973,6 +990,53 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   }
 fi
 
+## @fn ble/builtin/history/.count-entries file
+##   Counts the entries in a file of the "history -w" format. Timestamp lines
+##   (#<epoch>) are not counted, and every other line counts as one entry.
+##   /^#[0-9]/ matches bash history behavior (#digit -> timestamp line)
+##   @var[out] ret
+function ble/builtin/history/.count-entries {
+  local file=$1
+  ble/util/assign ret 'ble/bin/awk '\''!/^#[0-9]/ { n++; } END { print n + 0; }'\'' "$file"'
+}
+
+## @fn ble/builtin/history/.is-HISTSIZE-reached count
+##   Checks whether Bash's in-memory history (the entries printed by "builtin
+##   history"), which currently holds "count" entries, has reached the limit
+##   given by HISTSIZE.  When this is the case, Bash may already have dropped
+##   the oldest entries, so "count" does not tell how many entries Bash has
+##   read from HISTFILE.
+##
+##   Bash applies the limit only when HISTSIZE holds an integer.  It parses the
+##   value with legal_number(), i.e., strtoimax() with trailing whitespace
+##   allowed: optional leading whitespace, an optional sign, decimal digits,
+##   optional trailing whitespace.  An unset or empty HISTSIZE removes the
+##   limit, and any other value (e.g., "5x" or "0x10") is ignored by Bash, which
+##   in practice also means no limit.  The value is therefore validated against
+##   that format before it is used in arithmetic; evaluating an arbitrary
+##   string with $((...)) would be wrong for such values and unsafe.
+##   @param[in] count
+function ble/builtin/history/.is-HISTSIZE-reached {
+  local count=$1
+  # HISTSIZE unset: unlimited
+  [[ ${HISTSIZE+set} ]] || return 1
+  # HISTSIZE empty or not a number: unlimited
+  ble/string#match "$HISTSIZE" '^[[:space:]]*([-+]?[0-9]+)[[:space:]]*$' || return 1
+  local histsize=$((BASH_REMATCH[1]))
+  if ((histsize<0)); then
+    # Note: A negative HISTSIZE means the unlimited size in Bash >= 4.3.  In
+    #   older versions it limits the in-memory history (Bash 3.2 keeps nothing),
+    #   so we conservatively treat it as truncated there.
+    ((_ble_bash<40300))
+  else
+    # Note: When the in-memory history is full, entries may already have been
+    #   dropped.  "Exactly full" cannot be distinguished from "truncated", so it
+    #   is treated as truncated, which only means that .initialize skips the
+    #   clamp of rskip.
+    ((count>=histsize))
+  fi
+}
+
 ## @fn ble/builtin/history/.initialize opts
 ##   @param[in] opts
 ##     skip0 ... Bash 初期化処理 (bashrc) を抜け出ていると判定できない状態で、
@@ -986,13 +1050,30 @@ function ble/builtin/history/.initialize {
   local histnew=$_ble_base_run/$$.history.new
   >| "$histnew"
 
+  local nsession=0
   if [[ $line ]]; then
     # Note: #D1126 ble.sh ロード前に追加された履歴項目があれば保存する。
     local histini=$_ble_base_run/$$.history.ini
-    local histapp=$_ble_base_run/$$.history.app
+    local -x histapp=$_ble_base_run/$$.history.app
     HISTTIMEFORMAT=1 builtin history -a "$histini"
     if [[ -s $histini ]]; then
-      ble/bin/sed '/^#\([0-9].*\)/{s//    0  __ble_time_\1__/;N;s/\n//;}' "$histini" >> "$histapp"
+      # Note: Convert the "history -w" format of histini (a "#<epoch>" line
+      #   followed by the command) to the "builtin history" format of histapp,
+      #   and count the entries added in this session (i.e., not read from
+      #   HISTFILE) on the way: one timestamp line per entry, while an entry
+      #   may span multiple lines.
+      ble/util/assign nsession 'ble/bin/awk '\''
+        BEGIN { histapp = ENVIRON["histapp"]; }
+        /^#[0-9]/ {
+          t++;
+          line = "    0  __ble_time_" substr($0, 2) "__";
+          if ((getline cmd) > 0) line = line cmd;
+          print line >> histapp;
+          next;
+        }
+        { c++; print $0 >> histapp; }
+        END { print (t ? t : c) + 0; }
+      '\'' "$histini"'
       >| "$histini"
     fi
   else
@@ -1000,12 +1081,27 @@ function ble/builtin/history/.initialize {
     ble/builtin/history/option:r
   fi
 
-  local histfile=${HISTFILE-} rskip=0
-  [[ -e $histfile ]] && ble/util/assign rskip 'ble/bin/wc -l "$histfile" 2>/dev/null'
-  ble/string#split-words rskip "$rskip"
+  # Note: rskip is the number of entries of HISTFILE that have already been
+  #   read into the history list.  Bash reads the whole file on startup, so this
+  #   is normally the number of entries in the file.
+  local histfile=${HISTFILE-} rskip=0 ret
+  [[ -s $histfile ]] && ble/builtin/history/.count-entries "$histfile" && rskip=$ret
   local min; ble/builtin/history/.get-min
   local max; ble/builtin/history/.get-max
-  ((max&&max-min+1<rskip&&(rskip=max-min+1)))
+  # Note: HISTFILE may have grown after Bash read it because this function is
+  #   called lazily and other sessions may append to HISTFILE in the meantime.
+  #   When the list is not truncated by HISTSIZE, Bash holds exactly the
+  #   entries read from HISTFILE plus the entries added in this session, so the
+  #   remaining entries in HISTFILE are new and should be picked up by the next
+  #   "history -n".  When the list is truncated by HISTSIZE, its size does not
+  #   tell how many entries have been read, and Bash has read the whole file
+  #   anyway, so rskip must not be clamped (that would re-read the file).
+  #   Both rskip and max-min+1 count entries, not lines; with HISTTIMEFORMAT
+  #   each entry occupies two lines in HISTFILE.
+  if ((max&&rskip)) && ! ble/builtin/history/.is-HISTSIZE-reached "$((max-min+1))"; then
+    local nread=$((max-min+1-nsession))
+    ((0<=nread&&nread<rskip)) && rskip=$nread
+  fi
   _ble_builtin_history_wskip=$max
   _ble_builtin_history_prevmax=$max
   ble/builtin/history/.set-rskip "$histfile" "$rskip"
@@ -1073,16 +1169,29 @@ function ble/builtin/history/.load-recent-entries {
   blehook/invoke history_change insert "$ocount" "$delta"
 }
 ## @fn ble/builtin/history/.read file [skip [fetch]]
+##   @param[in] file
+##   @param[in] skip
+##     The number of entries at the beginning of the file to skip.
+##   @param[in] fetch
 function ble/builtin/history/.read {
   local file=$1 skip=${2:-0} fetch=$3
   local -x histnew=$_ble_base_run/$$.history.new
   if [[ -s $file ]]; then
+    # Note: Entries are counted in the same way as .count-entries: a timestamp
+    #   line belongs to the following entry, and every other line is an entry.
     local awk_script='
-      BEGIN { histnew = ENVIRON["histnew"]; count = 0; }
-      NR <= skip { next; }
-      { print $0 >> histnew; count++; }
+      BEGIN { histnew = ENVIRON["histnew"]; count = 0; nentry = 0; }
+      /^#[0-9]/ {
+        if (nentry >= skip) print $0 >> histnew;
+        next;
+      }
+      {
+        if (nentry++ < skip) next;
+        print $0 >> histnew;
+        count++;
+      }
       END {
-        print "ble/builtin/history/.set-rskip \"$file\" " NR;
+        print "ble/builtin/history/.set-rskip \"$file\" " nentry;
         print "((_ble_builtin_history_histnew_count+=" count "))";
       }'
     ble/util/eval-stdout 'ble/bin/awk -v skip="$skip" "$awk_script" "$file"'
@@ -1090,11 +1199,11 @@ function ble/builtin/history/.read {
     ble/builtin/history/.set-rskip "$file" 0
   fi
   if [[ ! $fetch && -s $histnew ]]; then
-    local nline=$_ble_builtin_history_histnew_count
+    local nentry=$_ble_builtin_history_histnew_count
     ble/history:bash/resolve-multiline/readfile "$histnew"
     >| "$histnew"
     _ble_builtin_history_histnew_count=0
-    ble/builtin/history/.load-recent-entries "$nline"
+    ble/builtin/history/.load-recent-entries "$nentry"
     local max; ble/builtin/history/.get-max
     _ble_builtin_history_wskip=$max
     _ble_builtin_history_prevmax=$max
@@ -1130,16 +1239,18 @@ function ble/builtin/history/.write {
 
   if [[ :$opts: != *:fetch:* && -s $histapp ]]; then
     local apos=\'
-    < "$histapp" ble/bin/awk '
+    local awk_script='
       BEGIN {
         file = ENVIRON["file"];
         flag_timestamp = ENVIRON["flag_timestamp"];
         timestamp = "";
         mode = 0;
+        nentry = 0;
       }
       function flush_line() {
         if (!mode) return;
         mode = 0;
+        nentry++;
         if (text ~ /\n/) {
           gsub(/['"$apos"'\\]/, "\\\\&", text);
           gsub(/\n/, "\\n", text);
@@ -1173,11 +1284,24 @@ function ble/builtin/history/.write {
         sub(/^ *[0-9]+\*? +(__ble_time_[0-9]*__|\?\?|.+: invalid timestamp)?/, "", $0);
       }
       { text = text != "" ? text "\n" $0 : $0; }
-      END { flush_line(); }
+      END { flush_line(); print nentry; }
     '
-    ble/builtin/history/.add-rskip "$file" "$_ble_builtin_history_histapp_count"
+    # Note: The entries written to the file are now "read" entries, so rskip is
+    #   advanced by their number.  The awk counts them because histapp may also
+    #   contain the entries collected by .initialize, which are not counted in
+    #   _ble_builtin_history_histapp_count.  When the file is rewritten from
+    #   scratch (history -w), it contains exactly these entries.
+    local nentry
+    ble/util/assign nentry '< "$histapp" ble/bin/awk "$awk_script"'
+    if [[ :$opts: == *:append:* ]]; then
+      ble/builtin/history/.add-rskip "$file" "$nentry"
+    else
+      ble/builtin/history/.set-rskip "$file" "$nentry"
+    fi
     >| "$histapp"
     _ble_builtin_history_histapp_count=0
+  elif [[ :$opts: != *:append:* ]]; then
+    ble/builtin/history/.set-rskip "$file" 0
   fi
   _ble_builtin_history_wskip=$max
   _ble_builtin_history_prevmax=$max
