@@ -778,7 +778,18 @@ if ((_ble_bash>=30100)); then
     ble/history:bash/resolve-multiline/.is-HISTSIZE-unlimited || local HISTSIZE=
 
     local HISTCONTROL= HISTIGNORE=
+    # Note: The rebuilt list is renumbered and may contain a different number
+    #   of entries, so keep the number of entries not yet written to HISTFILE.
+    local max unwritten=
+    if [[ $_ble_builtin_history_initialized ]]; then
+      ble/builtin/history/.get-max
+      ((unwritten=max-_ble_builtin_history_wskip))
+    fi
     source -- "$tmpfile_base.sh"
+    if [[ $unwritten ]]; then
+      ble/builtin/history/.get-max
+      ((_ble_builtin_history_wskip=max-unwritten,_ble_builtin_history_prevmax=max))
+    fi
     ble/history:bash/resolve-multiline/.cleanup
   }
 
