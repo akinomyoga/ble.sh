@@ -4246,6 +4246,38 @@ function ble/edit/display-version/git-hash-object {
 function ble/edit/display-version/add-line {
   lines[iline++]=$1
 }
+## @fn ble/widget/display-version/determine-os_release
+##   @var[out] os_release
+function ble/widget/display-version/determine-os_release {
+  os_release=
+  if [[ -s /etc/os-release ]]; then
+    ble/util/assign os_release '(
+      builtin unset -v PRETTY_NAME NAME VERSION
+      source /etc/os-release
+      ble/util/print "${PRETTY_NAME:-${NAME:+$NAME${VERSION:+ $VERSION}}}")' 2>/dev/null
+    [[ $os_release ]] && return 0
+  fi
+
+  if [[ -s /etc/release ]]; then
+    local ret
+    ble/util/mapfile ret < /etc/release
+    ble/string#trim "$ret"
+    os_release=$ret
+    [[ $os_relase ]] && return 0
+  fi
+
+  if ble/base/is-msys; then
+    os_release=msys2
+    if local file=/etc/package-versions.txt; [[ -s $file ]]; then
+      local -a ret=()
+      ble/util/assign-array ret 'ble/bin/grep msys2 "$file"'
+      [[ ${ret[0]-} ]] && os_release=${ret[0]}
+    fi
+    return 0
+  fi
+
+  return 1
+}
 function ble/edit/display-version/check:bash-completion {
   [[ ${BASH_COMPLETION_VERSINFO[0]-} ]] || return 1
 
@@ -4495,19 +4527,8 @@ function ble/widget/display-shell-version {
   local label_integration_off=" $_ble_term_bold(integration: off)$sgr0"
   local label_warning="${bold}WARNING$sgr0"
 
-  local os_release=
-  if [[ -s /etc/os-release ]]; then
-    ble/util/assign os_release '(
-      builtin unset -v PRETTY_NAME NAME VERSION
-      source /etc/os-release
-      ble/util/print "${PRETTY_NAME:-${NAME:+$NAME${VERSION:+ $VERSION}}}")' 2>/dev/null
-  fi
-  if [[ ! $os_release && -s /etc/release ]]; then
-    local ret
-    ble/util/mapfile ret < /etc/release
-    ble/string#trim "$ret"
-    os_release=$ret
-  fi
+  local os_release
+  ble/widget/display-version/determine-os_release
 
   local lines="${sgrC}GNU bash$sgr0, version $sgrV$BASH_VERSION$sgr0 ($sgrA$MACHTYPE$sgr0)${os_release:+ [$os_release]}" iline=1
   local ble_build_info="${_ble_base_build_git_version/#git version/git}, $_ble_base_build_make_version, $_ble_base_build_gawk_version"

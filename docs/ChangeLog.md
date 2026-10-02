@@ -300,6 +300,7 @@
   - decode: fix incomplete support of the kitty-keyboard-protocol support in Ghostty and Zellij (reported by dfherr) `#D2427` 9b63b11a
 - make: work around gawk-5.4.1-nompfr bug (reported by tessus) `#D2424` f4261e4e
 - history: work around slow macOS timestamps (fixed by dfherr) `#D2429` 69ee0587
+- edit (`display-shell-version`): extract the MSYS2 version from `/etc/package-versions.txt` in Git for Windows `#D2433` xxxxxxxx
 
 ## Contrib
 

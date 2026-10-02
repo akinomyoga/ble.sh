@@ -8229,6 +8229,17 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2026-10-02
+
+  * ble-summary: msys の時に cygwin となってしまっているが msys であるの事も検出して出力するべきでは [#D2433]
+
+    ? no: と思ったが os_release にその情報が既に入っているのではないか? 実際に
+      確認した所ちゃんと [MSYS2] という具合に既に出力されているので改めて出力す
+      る必要はない。と思ったがこれは MSYS2 だけだった。
+
+    * Git for Windows の Git Bash では何も表示されない。なのでやはり os_release
+      が決定できない時には os-release を観察するべき。
+
 2026-09-07
 
   * global: generate cache atomically (reported by RakibFiha, fixed by vnz) [#D2432]
