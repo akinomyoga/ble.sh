@@ -888,6 +888,7 @@ For details, please check [the wiki page](https://github.com/akinomyoga/ble.sh/w
 ## 3.3 Use `auto-complete`
 
 The feature `auto-complete` is available in Bash 4.0 or later. `auto-complete` automatically suggests a possible completion on user input.
+In Bash < 4, a limited history-based version can be enabled with `bleopt complete_auto_complete_opts+=bash3-sync`.
 The suggested contents can be inserted by typing <kbd>S-RET</kbd>
 (when the cursor is at the end of the command line, you can also use <kbd>right</kbd>, <kbd>C-f</kbd>, or <kbd>end</kbd> to insert the suggestion).
 If you want to insert only the first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
