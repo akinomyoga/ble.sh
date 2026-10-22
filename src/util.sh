@@ -4596,7 +4596,12 @@ fi
 
 function ble/util/msleep/.check-sleep-decimal-support {
   local version; ble/util/assign version 'LC_ALL=C ble/bin/sleep --version 2>&1' 2>/dev/null # suppress locale error #D1440
-  [[ $version == *'GNU coreutils'* || $OSTYPE == darwin* && $version == 'usage: sleep seconds' ]]
+
+  # Note: The macOS sleep(1) rejects --version and prints its usage.  Older
+  # versions print "usage: sleep seconds", while newer versions (e.g. macOS 15)
+  # print an "illegal option" error followed by "usage: sleep number[unit]
+  # [...]".  Both accept fractional seconds.
+  [[ $version == *'GNU coreutils'* || $OSTYPE == darwin* && $version == *'usage: sleep '* ]]
 }
 
 _ble_util_msleep_delay=2000 # [usec]
