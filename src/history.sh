@@ -149,8 +149,23 @@ elif ((_ble_bash>=40000)); then
     min=${min/'*'}
   }
 else
+  # Note: This is called after every command while the history is not loaded
+  # yet and HISTCONTROL is set.  We only need the number of the first entry, so
+  # we do not need to go through ble/builtin/history/.dump, which runs
+  # "builtin history" in a background job of conditional-sync and polls it.
+  # The conditional-sync is needed to protect against the infinite loop of
+  # Bash 3.2 for invalid timestamps (#D1831), but Bash 3.2 only enters the
+  # loop when it formats timestamps.  With an empty HISTTIMEFORMAT, no
+  # timestamp is formatted, so we can safely run "builtin history" in the
+  # current shell.  Formatting timestamps in a subshell is also slow on macOS
+  # with Bash 3.2 (~0.5s per 1k entries even with TZ=; cf GitHub #722).
   function ble/builtin/history/.get-min {
-    ble/util/assign-words min 'ble/builtin/history/.dump | ble/bin/sed -n "1{p;q;}"'
+    local _ble_local_tmpfile; ble/util/assign/mktmp
+    local HISTTIMEFORMAT= _ble_local_line=
+    builtin history >| "$_ble_local_tmpfile"
+    IFS= ble/bash/read _ble_local_line < "$_ble_local_tmpfile"
+    ble/util/assign/rmtmp
+    ble/string#split-words min "$_ble_local_line"
     min=${min/'*'}
   }
 fi

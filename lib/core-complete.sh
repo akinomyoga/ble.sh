@@ -9538,6 +9538,28 @@ function ble/complete/auto-menu.idle {
   ble/widget/complete auto_menu:show_menu:no-empty:no-bell
 }
 
+## @fn ble/complete/auto-complete.sync
+##   Bash < 4 does not support ble/util/idle (it cannot poll the user input
+##   with "read -t 0"), so ble/complete/auto-complete.idle never runs there.
+##   When "bash3-sync" is specified in bleopt complete_auto_complete_opts, this
+##   function is called from ble-edit/bind/.tail after each input in Bash < 4.
+##   Because this processing cannot be interrupted by the next user input, only
+##   the light history source (which uses Bash's history expansion) is tried.
+function ble/complete/auto-complete.sync {
+  [[ $bleopt_complete_auto_complete ]] || return 1
+  [[ :$bleopt_complete_auto_complete_opts: != *:history-disabled:* ]] || return 1
+  [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]] || return 1
+
+  case $_ble_decode_widget_last in
+  (ble/widget/self-insert|ble/widget/magic-space|ble/widget/magic-slash) ;;
+  (*) return 1 ;;
+  esac
+
+  [[ $_ble_edit_str && ! $_ble_history_prefix ]] || return 1
+  ble/complete/auto-complete/source:history/.impl light || return 1
+  ble/application/render
+}
+
 ble/function#try ble/util/idle.push-background ble/complete/auto-complete.idle
 ble/function#try ble/util/idle.push-background ble/complete/auto-menu.idle
 

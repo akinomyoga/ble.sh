@@ -11969,6 +11969,10 @@ else
   function ble-edit/bind/.tail {
     ble/application/render
     ble/util/idle.do
+    # Note: ble/util/idle is unavailable in bash-3, so auto-complete is only
+    # performed synchronously when it is explicitly requested.
+    [[ :$bleopt_complete_auto_complete_opts: == *:bash3-sync:* ]] &&
+      ble/complete/auto-complete.sync
     # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     ble-edit/bind/stdout.off
   }

@@ -688,6 +688,10 @@
 ## syntax-based completion is suppressed for an empty word.  When the option
 ## "syntax-unique" is specified, the auto-complete source based on the syntax
 ## and programmable completion generates a candidate only when it is unique.
+## In Bash < 4, auto-complete is normally unavailable because it requires the
+## idle processing of Bash 4.0+.  When "bash3-sync" is specified, a limited
+## auto-complete based only on the history is performed synchronously after
+## each character input in Bash < 4.
 
 #bleopt complete_auto_complete_opts=
 

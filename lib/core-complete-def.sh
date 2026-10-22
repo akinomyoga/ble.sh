@@ -9,6 +9,7 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/widget/complete \
                   ble/widget/menu-complete \
                   ble/widget/auto-complete-enter \
+                  ble/complete/auto-complete.sync \
                   ble/widget/sabbrev-expand \
                   ble/widget/dabbrev-expand
 
