@@ -10,8 +10,8 @@ ble/test/start-section 'ble/edit' 7
 )
 
 (
-  # #D2436: Bash >= 4.0 has a bug that "${array[@]}" is wrongly split by
-  # #IFS=$'\001'.
+  # Bash >= 4.0 has a bug that "${array[@]}" is wrongly split by IFS=$'\001'
+  # (#D2436).
   function ble/test:ble/builtin/read {
     local vIFS=$IFS input=$1 expect=$2 IFS=$_ble_term_IFS
     shift 2
