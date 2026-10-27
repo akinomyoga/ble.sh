@@ -11221,7 +11221,6 @@ function ble/builtin/read/.loop {
 }
 
 function ble/builtin/read/.impl {
-  local IFS=$_ble_term_IFS ret
   local -a opts=() vars=() opts_in=()
   # opt_flags ... E: error, H: help (--help), r: readline (-e)
   local opt_flags= opt_prompt= opt_default= opt_timeout= opt_fd=0
@@ -11244,8 +11243,8 @@ function ble/builtin/read/.impl {
     # "-e オプションが指定されてかつ端末からの読み取り" のとき以外は builtin read する。
     [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
     [[ $opt_timeout ]] && ble/array#push opts -t "$opt_timeout"
-    ble/string#quote-words "${opts[@]}" "${opts_in[@]}" -- "${vars[@]}"
-    __ble_command="ble/bash/read $ret"
+    __ble_args=("${opts[@]}" "${opts_in[@]}" -- "${vars[@]}")
+    __ble_command='ble/bash/read "${__ble_args[@]}"'
     return 0
   fi
 
@@ -11264,8 +11263,8 @@ function ble/builtin/read/.impl {
 
   if ((ext==0)); then
     builtin eval -- "$result"
-    ble/string#quote-words "${opts[@]}" -- "${vars[@]}"
-    __ble_command="ble/bash/read $ret"' <<< "$__ble_input"'
+    __ble_args=("${opts[@]}" -- "${vars[@]}")
+    __ble_command='ble/bash/read "${__ble_args[@]}" <<< "$__ble_input"'
   fi
   return "$ext"
 }
@@ -11288,7 +11287,7 @@ function ble/builtin/read {
   [[ $_ble_builtin_read_hook ]] &&
     builtin eval -- "$_ble_builtin_read_hook"
 
-  local __ble_command= __ble_input=
+  local __ble_command= __ble_args= __ble_input=
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble/base/adjust-BASH_REMATCH
   ble/builtin/read/.impl "$@"; local __ble_ext=$?
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] && ble/base/restore-BASH_REMATCH
