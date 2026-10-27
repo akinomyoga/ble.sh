@@ -93,6 +93,13 @@ if ((_ble_bash<40000)); then
   }
   function ble/builtin/history/.dump {
     local -a args; args=("$@")
+    if [[ ! ${HISTTIMEFORMAT-} ]]; then
+      # When HISTTIMEFORMAT is empty, the issue with the infinite loop doesn't
+      # happen, so we do not have to use conditional-sync to kill the process.
+      ble/builtin/history/.dump.proc
+      return "$?"
+    fi
+
     ble/util/conditional-sync \
       ble/builtin/history/.dump.proc \
       'builtin true' 100 progressive-weight:timeout=3000:SIGKILL
@@ -126,8 +133,16 @@ else
   }
 fi
 
+
+# Note on HISTTIMEFORMAT (#D2435, #D1831): In Bash <= 3.2, an invalid timestamp
+# may cause an infinite loop.  We can set an empty string to HISTTIMEFORMAT
+# (instead of conditional-sync through ble/builtin/history/.dump) as an
+# efficient workaround.  Even in Bash >= 4.0, builtin history becomes extremely
+# slow with a non-empty HISTTIMEFORMAT in macOS, so we anyway set
+# HISTTIMEFORMAT.
 if ((_ble_bash>=50200)); then
   function ble/builtin/history/.get-min {
+    local HISTTIMEFORMAT=
     if ((${_ble_trap_sig-0}==_ble_builtin_trap_EXIT)); then
       # Note (#D2153; cf #D2046, #D2118): In Bash >= 5.2, the final TTY state
       # after EXIT is affected by `set_tty_state` by Bash.  When any process in
@@ -143,21 +158,19 @@ if ((_ble_bash>=50200)); then
     fi
     min=${min/'*'}
   }
-elif ((_ble_bash>=40000)); then
-  function ble/builtin/history/.get-min {
-    ble/util/assign-words min 'builtin history | ble/bin/sed -n "1{p;q;}"'
-    min=${min/'*'}
-  }
 else
   function ble/builtin/history/.get-min {
-    ble/util/assign-words min 'ble/builtin/history/.dump | ble/bin/sed -n "1{p;q;}"'
+    local HISTTIMEFORMAT=
+    ble/util/assign-words min 'builtin history | ble/bin/sed -n "1{p;q;}"'
     min=${min/'*'}
   }
 fi
 function ble/builtin/history/.get-max {
+  local HISTTIMEFORMAT=
   ble/util/assign-words max 'builtin history 1'
   max=${max/'*'}
 }
+
 
 #------------------------------------------------------------------------------
 # initialize _ble_history                                    @history.bash.load

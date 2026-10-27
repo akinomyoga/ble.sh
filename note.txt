@@ -8231,7 +8231,41 @@ bash_tips
 
 2026-10-27
 
-  * util (msleep): macOS の sleep が認識されていない (reported by digitalguy99/Claude) [#D2434]
+  * history: get-min が未だ遅い。速くできる余地がある (reported by digitalguy99) [#D2435]
+    https://github.com/akinomyoga/ble.sh/pull/737
+    https://github.com/akinomyoga/ble.sh/issues/202#issuecomment-1171860974
+
+    Ref: #D1831
+
+    Claude の提案によると HISTTIMEFORMAT= を設定してから builtin history を自前
+    で読み出す様にしている。しかし、問題の解決は HISTTIMEFORMAT= の方であって、
+    何故自前で読み出す部分まで新しく実装しているのか謎である。
+
+    ? そもそも HISTTIMEFORMAT= を指定していさえすれば問題は発生しないのだろうか?
+      conditional-sync を呼び出すように変更したきっかけとなったのは #D1831 の様
+      である。#D1831 を見てもそもそもの問題の再現方法がよく分からなかったが、
+      Ref. [1] の方に問題の再現状況が書かれている。取り敢えずこれに倣って振る舞
+      いを確認すれば良い。
+
+      [1] https://github.com/akinomyoga/ble.sh/issues/202#issuecomment-1171860974
+
+      というか memo/D1831.bashrc にちゃんと再現コードが残っていた。これを確認す
+      れば良い。
+
+      OK 無限ループを確認した。次に HISTTIMEFORMAT を空にして確認してみる。OK。
+      HISTTIMEFORMAT を空にしたら無限ループにはならなかった。また、同じセッショ
+      ンで HISTTIMEFORMAT を改めて %s に設定してみたらやはり無限ループが生じる。
+      つまり、HISTTIMEFORMAT を空にする事で問題を回避することができるということ。
+
+      というか GitHub#737 を見たら Claude は無限ループの振る舞いまでちゃんと
+      bash-3.2 で確認している様である。というかどうやって具体的な #999...999 と
+      いう問題を起こす timestamp を知ったのだろうか? memo/done.txt まで読んで知っ
+      たのだろうか? 或いは、 memo/D1831.history から知ったのだろうか? 或いは、
+      web に残っている議論から知ったのだろうか? referecens が全くないのでよく分
+      からない。それが Claude PR の問題である。書かれていることの確かめようがな
+      い。
+
+  * util (msleep): macOS の sleep が認識されていない (reported by digitalguy99) [#D2434]
     https://github.com/akinomyoga/ble.sh/pull/737
 
     Ref: #D1194 6ff4d2b5 846f2841

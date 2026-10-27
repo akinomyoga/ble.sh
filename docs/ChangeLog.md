@@ -97,7 +97,7 @@
 - complete: introduce more stages to ambiguous pathname completions (reported by xuhdev) `#D2397` abb93e21
 - color: support color aliases `#D2416` d69e4d54
 - complete: support `bleopt complete_source_command_opts=apropos` (requested by alicealysia) `#D2418` 40f50e3e
-- keymap/vi: support readline bindable function `operate-and-get-next` in `vi-command` (requested by sharpchen) `#D2431` xxxxxxxx
+- keymap/vi: support readline bindable function `operate-and-get-next` in `vi-command` (requested by sharpchen) `#D2431` 690b3152
 
 ## Changes
 
@@ -214,7 +214,7 @@
 - import (`ble/util/import/is-loaded`): skip the file existence check for an absolute path `#D2423` d8ad40e7
   - util (`ble/path#canonicalize`): fix infinite loops (fixup d8ad40e7) (reported by chill-nemesis) `#D2426` 63c23e99
 - nsearch: fix the search position after a forward mismatch (reported by NitramO-YT, fixed by dfherr) `#D2430` 5fe06d62
-- global: generate cache atomically (reported by RakibFiha, fixed by vnz) `#D2432` xxxxxxxx
+- global: generate cache atomically (reported by RakibFiha, fixed by vnz) `#D2432` d81fd54f
 
 ## Compatibility
 
@@ -300,8 +300,8 @@
   - decode: fix incomplete support of the kitty-keyboard-protocol support in Ghostty and Zellij (reported by dfherr) `#D2427` 9b63b11a
 - make: work around gawk-5.4.1-nompfr bug (reported by tessus) `#D2424` f4261e4e
 - history: work around slow macOS timestamps (fixed by dfherr) `#D2429` 69ee0587
-- edit (`display-shell-version`): extract the MSYS2 version from `/etc/package-versions.txt` in Git for Windows `#D2433` xxxxxxxx
-- util (`ble/util/msleep`): update the macOS sleep detection (reported by digitalguy99) `#2434` xxxxxxxx
+- edit (`display-shell-version`): extract the MSYS2 version from `/etc/package-versions.txt` in Git for Windows `#D2433` a7eda61d
+- util (`ble/util/msleep`): update the macOS sleep detection (reported by digitalguy99) `#2434` c70c0e45
 
 ## Contrib
 
@@ -434,6 +434,7 @@
 - util (`ble/adict`): re-implement by the AVL tree `#D2419` 88314e2c
 - util: work around slow `${!var@}` with many variables `#D2420` 3dce1c53
 - exec: record exec start/end times by file timestamps `#D2421` dc8ca316
+- history: optimize history dumps in Bash 3.2  (reported by digitalguy99) `#D2435` xxxxxxxx
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel3
