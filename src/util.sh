@@ -4596,7 +4596,27 @@ fi
 
 function ble/util/msleep/.check-sleep-decimal-support {
   local version; ble/util/assign version 'LC_ALL=C ble/bin/sleep --version 2>&1' 2>/dev/null # suppress locale error #D1440
-  [[ $version == *'GNU coreutils'* || $OSTYPE == darwin* && $version == 'usage: sleep seconds' ]]
+
+  if [[ $OSTYPE == darwin* ]]; then
+    # Although it is unlikely to reach this fallback in Bash >= 4.0, Bash 3.2
+    # is still shipped with macOS by default, so we want to specifically check
+    # macOS sleep.
+    #
+    # Note: This string is based on the report in Ref. [1] on 2020-01-04.
+    #
+    # [1] https://github.com/akinomyoga/ble.sh/issues/33
+    [[ $version == 'usage: sleep seconds' ]] && return 0
+
+    # Note: According to the Claude analysis in PR 737 [2], "sleep" in recent
+    # versions of macOS (at least in macOS 15 / Darwin 24) prints "usage: sleep
+    # number[unit] [...]" on the first line, and the new version of "sleep"
+    # still supports fractional seconds.
+    #
+    # [2] https://github.com/akinomyoga/ble.sh/pull/737
+    [[ $version == *'usage: sleep number[unit]'* ]] && return 0
+  fi
+
+  [[ $version == *'GNU coreutils'* ]]
 }
 
 _ble_util_msleep_delay=2000 # [usec]

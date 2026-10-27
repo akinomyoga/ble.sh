@@ -301,6 +301,7 @@
 - make: work around gawk-5.4.1-nompfr bug (reported by tessus) `#D2424` f4261e4e
 - history: work around slow macOS timestamps (fixed by dfherr) `#D2429` 69ee0587
 - edit (`display-shell-version`): extract the MSYS2 version from `/etc/package-versions.txt` in Git for Windows `#D2433` xxxxxxxx
+- util (`ble/util/msleep`): update the macOS sleep detection (reported by digitalguy99) `#2434` xxxxxxxx
 
 ## Contrib
 
