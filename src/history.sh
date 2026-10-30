@@ -241,7 +241,7 @@ if ((_ble_bash>=40000)); then
 
     # from ble/util/writearray
     if [[ ! $_ble_util_writearray_rawbytes ]]; then
-      local IFS=$_ble_term_IFS __ble_tmp; __ble_tmp=('\'{2,3}{0..7}{0..7})
+      local __ble_tmp; __ble_tmp=('\'{2,3}{0..7}{0..7})
       builtin eval "local _ble_util_writearray_rawbytes=\$'${__ble_tmp[*]}'"
     fi
     local -x __ble_rawbytes=$_ble_util_writearray_rawbytes # used by _ble_bin_awk_libES
@@ -1820,6 +1820,7 @@ function ble/builtin/history/option:s {
 }
 function ble/builtin/history {
   local set shopt; ble/base/.adjust-bash-options set shopt
+  local IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local opt_d= flag_error=
   local opt_c= opt_p= opt_s=
   local opt_a= flags=

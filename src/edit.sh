@@ -2982,7 +2982,6 @@ function ble-edit/content/push-kill-ring {
 ##   実際のコマンド実行の回数を保持します。
 ##   PS0 の評価後に増加します。
 ## @var _ble_edit_PS1
-## @var _ble_edit_IFS
 ## @var _ble_edit_IGNOREEOF_adjusted
 ## @var _ble_edit_IGNOREEOF
 ## @arr _ble_edit_READLINE
@@ -3137,7 +3136,6 @@ function ble-edit/attach/.attach {
   ble-edit/adjust-PS1
   ble-edit/adjust-READLINE
   ble-edit/adjust-IGNOREEOF
-  [[ $bleopt_internal_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
 
 function ble-edit/attach/.detach {
@@ -3145,7 +3143,6 @@ function ble-edit/attach/.detach {
   ble-edit/restore-PS1
   ble-edit/restore-READLINE
   ble-edit/restore-IGNOREEOF
-  [[ $bleopt_internal_exec_type == exec ]] && IFS=$_ble_edit_IFS
   _ble_edit_attached=0
 }
 
@@ -6885,6 +6882,7 @@ function ble/builtin/exit {
   fi
 
   local set shopt; ble/base/.adjust-bash-options set shopt
+  local IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local opt_flags=
   local -a opt_args=()
   ble/builtin/exit/.read-arguments "$@"
@@ -6952,7 +6950,7 @@ function ble/builtin/exit {
   if ((40400<=_ble_bash&&_ble_bash<50200)); then
     # TIMEFORMAT の値の保存
     local global_TIMEFORMAT local_TIMEFORMAT
-    ble/util/assign global_TIMEFORMAT 'ble/util/print-global-definitions TIMEFORMAT'
+    ble/util/assign global_TIMEFORMAT 'ble/variable#print-global-definitions TIMEFORMAT'
     if [[ $global_TIMEFORMAT == 'declare TIMEFORMAT; builtin unset -v TIMEFORMAT' ]]; then
       global_TIMEFORMAT='declare -g TIMEFORMAT=$'\''\nreal\t%3lR\nuser\t%3lU\nsys %3lS'\'
     else
@@ -7770,7 +7768,6 @@ function _ble_edit_exec_gexec__epilogue {
     _ble_edit_exec_TRAPDEBUG_INT=
   fi
 
-  local IFS=$_ble_term_IFS
   # Note: builtin trap -- - DEBUG は此処では何故か効かない
   builtin trap -- - DEBUG
 
@@ -11148,18 +11145,18 @@ function ble/builtin/read/.loop {
   local _ble_edit_read_accept=
   local _ble_edit_read_result=
   while [[ ! $_ble_edit_read_accept ]]; do
-    local timeout_option=
+    local -a timeout_option=()
     if [[ $timeout ]]; then
       if ((_ble_bash>=40000)); then
         local timeout_frac=000$((timeout%1000))
-        timeout_option="-t $((timeout/1000)).${timeout_frac:${#timeout_frac}-3}"
+        timeout_option=(-t "$((timeout/1000)).${timeout_frac:${#timeout_frac}-3}")
       else
-        timeout_option="-t $((timeout/1000))"
+        timeout_option=(-t "$((timeout/1000))")
       fi
     fi
 
     # read 1 character
-    IFS= ble/bash/read -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
+    IFS= ble/bash/read -d '' -n 1 "${timeout_option[@]}" char "${opts_in[@]}"; local ext=$?
     if ((ext>128)); then
       # timeout
       #   Note: #D1467 Cygwin/Linux では read の timeout は 142 だが、これはシステム依存。
@@ -11244,7 +11241,7 @@ function ble/builtin/read/.impl {
     [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
     [[ $opt_timeout ]] && ble/array#push opts -t "$opt_timeout"
     __ble_args=("${opts[@]}" "${opts_in[@]}" -- "${vars[@]}")
-    __ble_command='ble/bash/read "${__ble_args[@]}"'
+    __ble_command='IFS=$_ble_local_IFS ble/bash/read "${__ble_args[@]}"'
     return 0
   fi
 
@@ -11264,7 +11261,7 @@ function ble/builtin/read/.impl {
   if ((ext==0)); then
     builtin eval -- "$result"
     __ble_args=("${opts[@]}" -- "${vars[@]}")
-    __ble_command='ble/bash/read "${__ble_args[@]}" <<< "$__ble_input"'
+    __ble_command='IFS=$_ble_local_IFS ble/bash/read "${__ble_args[@]}" <<< "$__ble_input"'
   fi
   return "$ext"
 }
@@ -11280,6 +11277,7 @@ function ble/builtin/read {
     return "$?"
   fi
 
+  local _ble_local_IFS=$IFS IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local _ble_local_set _ble_local_shopt
   ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
 

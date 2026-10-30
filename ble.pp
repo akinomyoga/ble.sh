@@ -688,9 +688,10 @@ function ble/base/.restore-bash-options {
   : "${_ble_bash_options_adjusted=}"
   _ble_bash_set=$-
   _ble_bash_shopt=${BASHOPTS-}
+  _ble_term_IFS=$' \t\n'
 } 2>/dev/null # set -x 対策
 function ble/base/adjust-bash-options {
-  [[ $_ble_bash_options_adjusted ]] && return 1 || ((1)) # set -e 対策
+  [[ ! $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=1
 
   ble/base/.adjust-bash-options _ble_bash_set _ble_bash_shopt
@@ -721,6 +722,14 @@ function ble/base/adjust-bash-options {
   ble/variable#copy-state LC_COLLATE _ble_bash_LC_COLLATE
   LC_COLLATE=C
 
+  # Note (#D2436): It turned out that "${arr[@]}" (and "${!arr[@]}", etc.) are
+  # all broken with IFS=$'\001' due to a bug of Bash 4.0..5.3.  The impact is
+  # too large as the construct "${arr[@]}"is used everywhere.  We give up a
+  # workaround for each occurrence of "${arr[@]}", and instead changes the
+  # global state of IFS in the internal state.
+  ble/variable#copy-state IFS _ble_bash_IFS
+  IFS=$_ble_term_IFS
+
   # TMOUT 確認 #D1630 WA readonly TMOUT
   if local TMOUT= 2>/dev/null; then # #D1630 WA
     _ble_bash_tmout_wa=()
@@ -742,6 +751,7 @@ function ble/base/restore-bash-options {
     ble/variable#copy-state _ble_bash_LANG        LANG
   fi
   ble/variable#copy-state _ble_bash_LC_ALL LC_ALL
+  ble/variable#copy-state _ble_bash_IFS IFS
 
   [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
 
@@ -756,7 +766,7 @@ function ble/base/recover-bash-options {
   fi
 }
 
-function ble/variable#load-user-state/variable:LC_ALL/.impl {
+function ble/base/adjust-bash-options/.load-user-state {
   local __ble_save=_ble_bash_$1
   __ble_var_set=${!__ble_save+set}
   __ble_var_val=${!__ble_save-}
@@ -764,25 +774,28 @@ function ble/variable#load-user-state/variable:LC_ALL/.impl {
   return 0
 }
 function ble/variable#load-user-state/variable:LC_COLLATE {
-  ble/variable#load-user-state/variable:LC_ALL/.impl LC_COLLATE
+  ble/base/adjust-bash-options/.load-user-state LC_COLLATE
 }
 function ble/variable#load-user-state/variable:LC_ALL {
-  ble/variable#load-user-state/variable:LC_ALL/.impl LC_ALL
+  ble/base/adjust-bash-options/.load-user-state LC_ALL
 }
 function ble/variable#load-user-state/variable:LC_CTYPE {
-  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_CTYPE
+  [[ $_ble_bash_LC_ALL ]] && ble/base/adjust-bash-options/.load-user-state LC_CTYPE
 }
 function ble/variable#load-user-state/variable:LC_MESSAGES {
-  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_MESSAGES
+  [[ $_ble_bash_LC_ALL ]] && ble/base/adjust-bash-options/.load-user-state LC_MESSAGES
 }
 function ble/variable#load-user-state/variable:LC_NUMERIC {
-  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_NUMERIC
+  [[ $_ble_bash_LC_ALL ]] && ble/base/adjust-bash-options/.load-user-state LC_NUMERIC
 }
 function ble/variable#load-user-state/variable:LC_TIME {
-  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LC_TIME
+  [[ $_ble_bash_LC_ALL ]] && ble/base/adjust-bash-options/.load-user-state LC_TIME
 }
 function ble/variable#load-user-state/variable:LANG {
-  [[ $_ble_bash_LC_ALL ]] && ble/variable#load-user-state/variable:LC_ALL/.impl LANG
+  [[ $_ble_bash_LC_ALL ]] && ble/base/adjust-bash-options/.load-user-state LANG
+}
+function ble/variable#load-user-state/variable:IFS {
+  ble/base/adjust-bash-options/.load-user-state IFS
 }
 
 { ble/base/adjust-bash-options; } &>/dev/null # set -x 対策 #D0930
@@ -835,29 +848,7 @@ if shopt -q restricted_shell; then
 fi
 
 #--------------------------------------
-# save IFS / BASH_REMATCH
-
-function ble/init/adjust-IFS {
-  _ble_init_original_IFS_set=${IFS+set}
-  _ble_init_original_IFS=$IFS
-  IFS=$' \t\n'
-}
-function ble/init/restore-IFS {
-  if [[ $_ble_init_original_IFS_set ]]; then
-    IFS=$_ble_init_original_IFS
-  else
-    builtin unset -v IFS
-  fi
-  builtin unset -v _ble_init_original_IFS_set
-  builtin unset -v _ble_init_original_IFS
-}
-
-function ble/variable#load-user-state/variable:IFS {
-  __ble_var_set=${_ble_init_original_IFS_set-}
-  __ble_var_val=${_ble_init_original_IFS-}
-  ble/variable#get-attr -v __ble_var_att IFS
-  return 0
-}
+# save BASH_REMATCH
 
 if ((_ble_bash>=50100)); then
   _ble_bash_BASH_REMATCH_level=0
@@ -979,7 +970,6 @@ function ble/variable#load-user-state/variable:BASH_REMATCH {
   fi
 }
 
-ble/init/adjust-IFS
 ble/base/adjust-BASH_REMATCH
 
 ## @fn ble/init/clean-up [opts]
@@ -994,7 +984,6 @@ function ble/init/clean-up {
 
   # 状態復元
   ble/base/restore-BASH_REMATCH
-  ble/init/restore-IFS
   if [[ :$opts: != *:check-attach:* || ! $_ble_attached ]]; then
     ble/base/restore-bash-options
     ble/base/restore-POSIXLY_CORRECT
@@ -1200,7 +1189,8 @@ ble/base/initialize-version-variables
 
 function ble/bash/read {
   local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-  builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"
+  local _ble_local_IFS=$IFS IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
+  IFS=$_ble_local_IFS builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"
 }
 function ble/bash/read-timeout { builtin read -t "$@"; }
 
@@ -2885,7 +2875,6 @@ ble/debug/leakvar#check $"leakvar" A6-edit
 #%end.i
 
   # keymap 初期化
-  local IFS=$_ble_term_IFS
   ble/decode/initialize # 7ms
   ble/decode/reset-default-keymap # 264ms (keymap/vi.sh)
 #%if leakvar
@@ -2995,7 +2984,6 @@ function ble/base/unload {
   ble/util/is-running-in-subshell && return 1
 
   # Adjust environment
-  local IFS=$_ble_term_IFS
   builtin eval -- "$_ble_bash_POSIXLY_CORRECT_adjust"
   ble/base/adjust-builtin-wrappers
   ble/base/adjust-bash-options

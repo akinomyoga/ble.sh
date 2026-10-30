@@ -4441,6 +4441,7 @@ function ble/builtin/bind/read-user-settings {
 
 function ble/builtin/bind {
   local set shopt; ble/base/.adjust-bash-options set shopt
+  local IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
 
   [[ ! $_ble_attached || $_ble_edit_exec_inside_userspace ]] &&
     ble/base/adjust-BASH_REMATCH

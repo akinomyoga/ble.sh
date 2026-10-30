@@ -193,6 +193,8 @@ _ble_test_item_name=(stdout stderr exit ret)
 ## @fn ble/test [--depth=NUM|--display-code=CODE] CODE [[code|stdout|stderr|exit|ret]=VALUE]... '# title'
 ##   @var[out] stdout stderr exit ret
 function ble/test {
+  local _ble_local_IFS=$IFS IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
+
   local _ble_test_code
   local _ble_test_title
   local _ble_test_caller_depth=0
@@ -207,7 +209,7 @@ function ble/test {
 
   # run
   ble/util/assign stderr '
-    ble/util/assign stdout "$_ble_test_code" 2>&1'; exit=$?
+    ble/util/assign stdout "local IFS=\$_ble_local_IFS; $_ble_test_code" 2>&1'; exit=$?
   local -a item_result=()
   item_result[0]=$stdout
   item_result[1]=$stderr

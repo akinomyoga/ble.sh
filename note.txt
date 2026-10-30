@@ -8231,6 +8231,272 @@ bash_tips
 
 2026-10-27
 
+  * global: work around Bash-4.0..5.3 IFS=$'\001' bug (reported by NireBryce, simonsteiner) [#D2436]
+    https://github.com/akinomyoga/ble.sh/issues/735
+    https://github.com/akinomyoga/ble.sh/pull/738
+    https://github.com/NireBryce/nixos-configs/issues/72
+
+    問題の原因は bash >= 4.0 で IFS=$'\001' の時に配列が滅茶苦茶な振る舞いをす
+    ることにあるらしい。要するに IFS=$'\001' の時はあらゆる "${a[@]}" が問題を
+    受ける。
+
+    $ bash --norc -c 'IFS='$'\001''; b=(ab); a=("${b[@]}"); declare -p a'
+    declare -a a=([0]="" [1]="" [2]="a" [3]="" [4]="b")
+
+    $ bash --norc -c 'IFS='$'\001''; b=(ab); printf "<%s>\n" "${b[@]}"'
+    $ bash --norc -c 'IFS='$'\001''; printf "<%s>" "${BASH_VERSINFO[@]}"'
+
+    * carapace で問題が起こっているということを Claude と議論している人が以前に
+      いて、その時の結論と違う気がする。
+
+      その時の結論は "ユーザーが入力した時に ble.sh が read を勝手に中断する様
+      にしているが、それによって carapace の中の read が予期せず失敗して空のデー
+      タを読み取ってしまい、更にその空のデータを変数名だと思って代入を実行しよ
+      うとすることによって失敗する" という様な事だった。
+
+      確かに ble.sh が補完関数の中のループを中断する為に read の振る舞いを変更
+      するのは行儀が悪いというかこの様な変なことが起こっても仕方がない、とは思っ
+      ていたが、具体的にその振る舞い変更が global に変更になっているのかについ
+      てなど確認をしていなかった。
+
+      しかし今回の報告はそれとはまた別の問題で、IFS=$'\001' を設定している時の
+      Bash 配列のバグによって同じエラーメッセージが発生しているということだった。
+
+    * done: 後で workaround の方法について調査しようと思っていたら GitHub #738
+      が出てきた。この PR では IFS= を設定した状態で quote-command を使って一旦
+      コマンドの文字列を構築して、それを eval することによって問題が回避できる
+      という物である。
+
+      たしかにそうすれば振る舞いは正しくなるが大袈裟すぎる。
+
+      ? でも、単に IFS= を設定した状態で配列に普通に代入して、それからその後で
+        IFS をまた元に戻せばいいのでは…。
+
+        → と思ったが、問題は配列に代入する時の話ではなくて、配列を展開する時の
+        問題の様である。
+
+        printf "<%s>\n" "${b[@]}"
+
+        の時点で変な振る舞いをしている。IFS=$'\001' に変える前に b を代入してい
+        ても関係ない。要するに IFS=$'\001' の時には "${b[@]}" は一切動かないと
+        いうことのようだ。これは "${BASH_VERSINFO[@]}" の様な bash に組み込みの
+        配列でも同様である。
+
+        ちなみに "$@" だと大丈夫の様である。従って一つの解決方法は一旦 IFS を設
+        定して set -- "${a[@]}" としてから IFS を戻して、その上で "$@" を実行す
+        ることである。
+
+      ? でもそうだとしても IFS= builtin read ... だったら問題ないのでは。。。
+
+      →取り敢えずもっと簡単な修正で read については修正できることが分かったの
+      で、その事を説明してテストケースだけもらって merge する事にした。
+
+    * done: ble/builtin/read/.loop の中の裸の $timeout_option も本当は問題の気
+      がする。これは IFS に変な値が入っていた時に壊れてしまう。read -e で IFS
+      に変な値を設定する事がないから問題が今まで露呈していないだけで。これは配
+      列にするべきでは? adjust-bash-options を外側の ble/builtin/read で呼び出
+      しているので bash 4.2 nounset の問題も生じない → これは書き換えた。
+
+    * done: 更に ble/test を使っている時にも問題が生じた。ble/test も対策が必要
+      だろうか? 面倒だ。ble/test は IFS=$'\001' には対応していません、というの
+      でもいいのかもしれないが、テストに使う枠組み自体に穴があるというのは将来
+      的にも混乱の元である。やはり ble/test は IFS=$'\001' に対応するべきの気が
+      する。
+
+      その折にはまた test-bash の該当するテストを書き換えて tmpenv で IFS を指
+      定する様に書き換える。
+
+    ? ok: 呼び出されている ble/bash/read の中でも更に
+      "${_ble_bash_tmout_wa[@]}" を使っているが何故こちらに対する対策をしなくて
+      良いのか? というかちゃんと AIはテストしているのか? と思ったがテストケース
+      も追加していることだしちゃんとテストは通している筈である。ということは、
+      ble/bash/read の中では問題が発生しない理由がある? 不思議だ。振る舞いにつ
+      いてチェックする必要がある。
+
+      →これは _ble_bash_tmout_wa が空配列だったのが理由である。誰かが readonly
+      TMOUT 等を実行すると、その時点で _ble_bash_tmout_wa が空でなくなるので問
+      題が生じる様になるだろう。なので、bash version に関係なく ble/bash/read
+      の方にも修正が必要である。
+
+    * done: 更に言うと IFS=$'\001' によって全ての "${a[@]}" の形の展開が壊れる
+      のだとしたら、個別に対応することが良い対策なのかどうか怪しい所である。と
+      はいえ、取り敢えず、ble/builtin/* については対策をしておく必要があるとい
+      う事の気がする。
+
+      ble/builtin/history については IFS によって振る舞いが変わることもないよう
+      な気がするので、単に IFS を上書きする事にする。因みに history は実際にそ
+      の処理の途中で "${array[@]}" を使っている事は確認した。
+
+      bind, exit, sleep, trap についても同様に関係ない様な気がする。
+
+      readonly については代入時に何か変換か評価が起こるのだとしたらその瞬間にだ
+      け外側の IFS を復元するべき? 具体的にそのような状況が発生するのかについて
+      は確認していないが。
+
+      * fixed: 代入に ble/util/sprintf を使っていたが単に ble/util/set を使うべ
+        きところではないか? 右辺に % が入っていたりすると変な事になってしまう。
+        というか、escape などについても勝手に処理されてしまう。問題だ。
+
+      * ok: builtin readonly "${array[@]}" の瞬間は変数名に対する readonly 付与
+        しかしていなくて、値の代入はしていないので IFS は関係なかった。
+
+      本来は影響範囲はもっと大きいはずだが、ble.sh の関数を IFS=$'\001' の環境
+      で呼び出さない様にするという形でお願いするしかない。
+
+    * ok: うーん。そもそも現在の実装だと readonly -i a=b などとした時の振る舞い
+      が変わってしまうのではないか? と思ったが、実は readonly では readonly -i
+      等の conversion は指定できない? と思ったがそもそも readonly は -i 等には
+      対応していなかった。
+
+      * fixed: 但し、readonly -f だとかには対応している。というより readonly -f
+        については普通に通過して良いのでは? warning は発しなくて良い → 色々修
+        正した。
+
+    ? ユーザーが IFS=$'\001' を指定した時にはどうなるだろうか。IFS の退避などは
+      していただろうか。うーん。ble/init/restore-IFS とかはあるがそれ以外の場所
+      では退避などしていない?
+
+      うーん。IFS=$_ble_term_IFS で検索してみると、local なしでこれを実行してい
+      る箇所は存在しない様だ。つまり、IFS の退避は全く行っていないという事にな
+      る? 寧ろ adjust-options で退避まで実行してしまうべきかもしれない。
+
+      一方で、単語の着色とか simple-word eval を実行する時に使う IFS というのは
+      外側のユーザーの IFS を復元するとかその様な事をする必要があるだろうか。そ
+      れについても確認が必要になる。
+
+      ? resolved: そういえばユーザーの値を復元するための枠組みみたいなのがあっ
+        たような気がする。それは何処で使われているのだったか。
+        "ble/variable#load-user-state/variable:$var" という関数を通して値を取得
+        できる様になっていた。うーん。これを使っているのは
+        ble/syntax/highlight/vartype だけの様である。
+
+        一方で simple-word/eval は print-global-definitions を用いている。つま
+        り simple-word/eval 等は待避された変数の値を正しく復元できていない。
+
+        print-global-definitions を print-user-definitions という新しい関数で
+        wrap して使う事にした。print-user-defintions では load-user-state に対
+        応している関数についてはそれを使って状態をロードする事にした。
+
+        他の場所も同様に修正する必要があるだろうかと思ったが、
+        print-global-definitions を使っている箇所は simple-word/eval だけだった。
+
+      ? resolved: edit: _ble_edit_IFS に待避したり復元したりしている。これは何
+        だろうか。そもそも IFS を調整している訳でもない。.attach と .detach だ
+        けで実行しているから、ユーザーコマンドを実行する時に復元する訳でもな
+        い。.detach した時にまた元に戻すための仕組み?
+
+        或いは実行する場所で何かしている? と思ったが、そもそも
+        ble-edit/exec:exec は今は存在していないのだった。検索して当たったのは古
+        い ble.sh (ble-0.1, 0.2) を検出する時にチェックしているものだけだった。
+
+        恐らく、元々は ble-edit/exec:exec でコマンドを実行する時に一時的に復元
+        する IFS を _ble_edit_IFS に保管していたのだろう。しかし、今となっては
+        使われていないので保管しておく必要もない。
+
+        .detach 後に IFS を復元するという機能についても現在は
+        adjust-bash-options に入れたので、個別に対応する必要はないはずである。
+
+      * done: ble/init/adjust-IFS, ble/init/restore-IFS は adjust-bash-options
+        の内側にあったのでこれは完全に不要である。削除した。
+
+      * ble/base/adjust-bash-options が local IFS=... の内側にあったりすると誤っ
+        た値をユーザーの値として確保するなどのことになって問題になる。また、同
+        様に ble/base/restore-bash-options が local IFS= の内側にあると global
+        state の復元に失敗する。これは一つずつチェックする必要がある。
+
+        | * ./ble.pp:801:{ ble/base/adjust-bash-options; } &>/dev/null # set -x 対策 #D0930
+        | * ./ble.pp:832:  ble/base/restore-bash-options
+        | * ./ble.pp:842:  ble/base/restore-bash-options
+        |   これらは全て top-level で呼び出されているので OK
+        |
+        | * ./ble.pp:988:    ble/base/restore-bash-options
+        |   これは ble/init/clean-up で呼び出されている。ble/init/clean-up は
+        |   local IFS などしていないし、ble/init/clean-up は全て top-level で呼
+        |   び出されている。
+        |
+        | * ./ble.pp:2816:  ble/base/adjust-bash-options
+        | * ./ble.pp:2828:    ble/base/restore-bash-options
+        | * ./ble.pp:2889:    ble/base/restore-bash-options
+        |   これらは ble-attach からの呼び出し。ble-attach 自体は local IFS は
+        |   していない。ble-attach の呼び出し元は以下の通り。意外と ble.pp だけ
+        |   からしか呼び出されていないのだった。
+        |
+        |   * ./ble.pp:2657:  (attach)  ble-attach "$@" ;;
+        |     ble/dispatch から。これはユーザーインターフェイス ble からなので
+        |     余り気にしなくて良い。ユーザーが local IFS=... な環境から ble
+        |     attach したのだったら、global が後でその時の IFS に変わってしまっ
+        |     ても仕方がない。
+        |   * ./ble.pp:3145:  ble-attach force; local ext=$?
+        |     ble/base/attach-from-PROMPT_COMMAND から。これは複雑だが、関係す
+        |     るコードでは IFS は設定していない。というより、実際には
+        |     PROMPT_COMMAND で IFS が設定されていなければ OK なので余り気にし
+        |     なくて良い気がする。
+        |   * ./ble.pp:3190:  (attach) ble-attach ;;
+        |     ble/base/process-blesh-arguments から。これは top-level からしか
+        |     呼び出されていないので OK.
+        |   * ./ble.pp:3322:  [[ $_ble_init_attached ]] && ble-attach
+        |     これは top-level の呼び出し。
+        |
+        | * ./ble.pp:2990:  ble/base/adjust-bash-options
+        |   これは ble/base/unload で adjust を呼び出す前に local
+        |   IFS=$_ble_term_IFS を実行していた。これは不要である。元々の意図は
+        |   ble/base/adjust-bash-options による IFS の調整と同じの気がするので、
+        |   これは adjust-bash-options に吸収されたと思えば良い。
+        |
+        | * ./src/edit.sh:7689:  ble/base/restore-bash-options
+        | * ./src/edit.sh:7726:  ble/base/adjust-bash-options
+        |   これらは ble-edit/exec:gexec/.restore-lastarg,
+        |   _ble_edit_exec_gexec__save_lastarg の組である。何れも top-level で
+        |   呼び出される事になっているので問題ないはず。
+        |
+        | * ./src/edit.sh:7775:  ble/base/adjust-bash-options
+        |   これは _ble_edit_exec_gexec__epilogue から。
+        |   _ble_edit_exec_gexec__save_lastarg の呼び出しに失敗した時用。直前で
+        |   local IFS=$_ble_term_IFS を呼び出していたが、
+        |   ble/base/adjust-bash-options に吸収ということで削除した。
+        |
+        | * ./src/edit.sh:11916:      ble/base/restore-bash-options
+        |   これは ble-edit/bind/.check-detach から。
+        |
+        |   * ./src/edit.sh:7597:      ble-edit/bind/.check-detach && return 1
+        |
+        |   * ./src/edit.sh:7644:  ble-edit/bind/.check-detach && return 0
+        |     それぞれ ble-edit/exec:gexec/TERM/enter と
+        |     ble-edit/exec:gexec/.end から。前者は後者から呼び出されている。
+        |     detach が予約されている時に処理される。何れも IFS は設定していな
+        |     い。
+        |
+        |   * ./src/edit.sh:11938:        ble-edit/bind/.check-detach # 改めて終了処理
+        |     これは自身を再度呼び直しているだけ。
+
+        取り敢えず ble/base/{adjust,restore}-bash-options の呼び出し元はチェッ
+        クしたと思う。幾つか修正した。
+
+        と思ったが、依然としてユーザー側で設定した IFS=12345 が次の実行では失わ
+        れてしまっている。何故だろうか。確認の為に、
+        ble/base/adjust-bash-options の中で IFS がちゃんとグローバルである事の
+        確認をしたが、それは大丈夫の様である。ということは別の場所で書き換わっ
+        てしまっている?
+
+        と思ったら普通に ble/base/restore-bash-options の復元で逆方向に実装して
+        いた。つまり新しく待避していた。これを直したらちゃんと動く様になった。
+
+      * 他に IFS を待避するような枠組みがあったら干渉してしまうが、それは
+        attach の時だけの問題ではなく、一般に問題になることなのでここで気にする
+        ことではない気がする。
+
+        或いは、IFS を bind -x や PROMPT_COMMAND などで参照して振る舞いを変更す
+        る枠組みがあっても何か変な事になる気がするが、取り敢えずは気にしない事
+        にする。もしユーザーがそれらを書き換えたいという事があれば、PS1 等と同
+        じ様に一旦待避をやめてそれからまた待避し直すという形にすれば良い。
+
+        wiki の Internals.md の internal states で IFS も言及しようかと思ったら
+        既に言及されていた。恐らく edit.sh の古い _ble_edit_IFS のコードやコメ
+        ントを元にしたものだろう。exec:exec の為の枠組みだったので現在は待避し
+        ていなかったが、残っていたコメントの所為で誤って列挙されていたのだろう。
+        何れにしても、記述はしたのだから、意図しないバグという訳ではないという
+        態度は示したことになっているはずである。
+
   * history: get-min が未だ遅い。速くできる余地がある (reported by digitalguy99) [#D2435]
     https://github.com/akinomyoga/ble.sh/pull/737
     https://github.com/akinomyoga/ble.sh/issues/202#issuecomment-1171860974

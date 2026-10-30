@@ -1733,13 +1733,13 @@ ble/test ble/util/is-running-in-subshell exit=1
   done
 )
 
-# ble/util/print-global-definitions
+# ble/variable#print-global-definitions
 (
   function status { builtin eval 'ble/util/print "${#'$1'[*]}:(""${'$1'[*]}"")"'; }
   v1=123 v2=(1 2 3) v3=bbb v4=ccc
   function f2 {
     local v3=x v4=y
-    builtin eval -- "$(ble/util/print-global-definitions v{0..4})"
+    builtin eval -- "$(ble/variable#print-global-definitions v{0..4})"
     ble/test '[[ ! ${v0+set} ]]'
     ble/test 'status v1' stdout='1:(123)'
     ble/test 'status v2' stdout='3:(1 2 3)'
@@ -1756,7 +1756,7 @@ ble/test ble/util/is-running-in-subshell exit=1
   f1
 
   value="hello 'world'"
-  ble/test 'ble/util/print-global-definitions value' stdout="declare value='hello '\''world'\'''"
+  ble/test 'ble/variable#print-global-definitions value' stdout="declare value='hello '\''world'\'''"
 )
 
 # ble/util/has-glob-pattern

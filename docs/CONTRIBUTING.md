@@ -285,7 +285,7 @@ local -a v=()
 ```
 
 Defining local readonly variables should be avoided
-because they will hide global variables from the utilities `ble/variable#is-global`, `ble/util/print-global-definitions`, etc.
+because they will hide global variables from the utilities `ble/variable#is-global`, `ble/variable#print-global-definitions`, etc.
 Global readonly variables should never be defined.
 The background is described in the Limitation section of README.
 

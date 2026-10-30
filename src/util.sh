@@ -2398,7 +2398,7 @@ function ble/util/writearray {
   # Note: gawk の内部では $'\302' 等から現在のコードにないバイトを生成できない
   # ので外部から与える。
   if [[ ! $_ble_util_writearray_rawbytes ]]; then
-    local IFS=$_ble_term_IFS __ble_tmp; __ble_tmp=('\'{2,3}{0..7}{0..7})
+    local __ble_tmp; __ble_tmp=('\'{2,3}{0..7}{0..7})
     builtin eval "local _ble_util_writearray_rawbytes=\$'${__ble_tmp[*]}'"
   fi
   local -x __ble_rawbytes=$_ble_util_writearray_rawbytes
@@ -4254,7 +4254,7 @@ function ble/util/declare-print-definitions {
   '
 }
 
-## @fn ble/util/print-global-definitions/.print-decl name opts
+## @fn ble/variable#print-global-definitions/.print-decl name opts
 ##   指定された変数の宣言を出力します。
 ##   @param[in] name
 ##     処理対象の変数名を指定します。
@@ -4263,9 +4263,11 @@ function ble/util/declare-print-definitions {
 ##   @stdout
 ##     変数宣言を出力します。指定した名前の変数が見つからない時は unset 状態に
 ##     するコマンドを出力します。
-function ble/util/print-global-definitions/.print-decl {
+function ble/variable#print-global-definitions/.print-decl {
   local __ble_name=$1 __ble_decl=
   if [[ ! ${!__ble_name+set} || :$2: == *:unset:* ]]; then
+    # Note: There is a similar code in ble/variable#print-user-definitions
+    # (lib/core-syntax.sh).  These should be updated together.
     __ble_decl="declare $__ble_name; builtin unset -v $__ble_name"
   elif ble/variable#has-attr "$__ble_name" aA; then
     if ((_ble_bash>=40000)); then
@@ -4286,7 +4288,7 @@ function ble/util/print-global-definitions/.print-decl {
   ble/util/print "$__ble_decl"
 }
 
-## @fn ble/util/print-global-definitions varnames...
+## @fn ble/variable#print-global-definitions [--hidden-only] varnames...
 ##   @var[in] varnames
 ##
 ##   指定した変数のグローバル変数としての定義を出力します。
@@ -4302,13 +4304,13 @@ function ble/util/print-global-definitions/.print-decl {
 ##   declare -g -r var とすると、ローカルに新しく読み取り専用の var 変数が作られる。
 ##   現在の実装では問題にならない。
 ##
-function ble/util/print-global-definitions {
+function ble/variable#print-global-definitions {
   local __ble_opts=
   [[ $1 == --hidden-only ]] && { __ble_opts=hidden-only; shift; }
-  ble/util/for-global-variables ble/util/print-global-definitions/.print-decl "$__ble_opts" "$@"
+  ble/variable#for-global-variables ble/variable#print-global-definitions/.print-decl "$__ble_opts" "$@"
 }
 
-## @fn ble/util/for-global-variables proc opts varnames...
+## @fn ble/variable#for-global-variables proc opts varnames...
 ##   @fn proc name opts
 ##     @param[in] name
 ##       処理対象の変数名を指定します。
@@ -4319,7 +4321,7 @@ function ble/util/print-global-definitions {
 ##     被覆されている時にのみ proc を呼び出します。
 ##   @param[in] varnames...
 ##     処理対象の変数名の集合を指定します。
-function ble/util/for-global-variables {
+function ble/variable#for-global-variables {
   local __ble_proc=$1 __ble_opts=$2; shift 2
   local __ble_hidden_only=
   [[ :$__ble_opts: == *:hidden-only:* ]] && __ble_hidden_only=1
@@ -4870,6 +4872,7 @@ if ((_ble_bash>=40400)) && ble/util/load-standard-builtin sleep; then
 
   function ble/builtin/sleep {
     local set shopt; ble/base/.adjust-bash-options set shopt
+    local IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
     local frac_scale=100000000000000
     local a=0 b=0 flags=
     if (($#==0)); then
@@ -6539,7 +6542,6 @@ if ((_ble_bash>=40000)); then
   ##     何も実行しなかった時に失敗 (1) を返します。
   ##
   function ble/util/idle.do {
-    local IFS=$_ble_term_IFS
     ble/util/idle/IS_IDLE || return 1
     ((${#_ble_util_idle_task[@]}==0)) && return 1
     ble/util/buffer.flush
@@ -7984,7 +7986,7 @@ _ble_term_modifyOtherKeys_current=
 _ble_term_modifyOtherKeys_current_method=
 _ble_term_modifyOtherKeys_current_TERM=
 function ble/term/modifyOtherKeys/.update {
-  local IFS=$_ble_term_IFS state=${1%%:*}
+  local state=${1%%:*}
   [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] &&
     [[ $state != 2 || "${_ble_term_TERM[*]}" == "$_ble_term_modifyOtherKeys_current_TERM" ]] &&
     return 0
@@ -8964,17 +8966,30 @@ function ble/builtin/readonly/.print-warning {
 function ble/builtin/readonly {
   local _ble_local_set _ble_local_shopt
   ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
+  local _ble_local_IFS=$IFS IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local LC_ALL= LC_COLLATE=C 2>/dev/null # suppress locale error #D1440
 
+  # "_ble_local_flags" contains flag characters.  The meanings of the
+  # characters are as follow: aAf: readonly options, v: has variable spec, r:
+  # has readonly variables, w: has warning.
   local _ble_local_flags=
   local -a _ble_local_options=()
   local _ble_local_caller= # used by print-warning
+
+  while (($#)) && [[ $1 == -* && $1 != -- ]]; do
+    [[ $1 == *a* ]] && _ble_local_flags=a$_ble_local_flags
+    [[ $1 == *A* ]] && _ble_local_flags=A$_ble_local_flags
+    [[ $1 == *f* ]] && _ble_local_flags=f$_ble_local_flags
+    ble/array#push _ble_local_options "$1"
+    shift
+  done
+
   while (($#)); do
-    if ble/string#match "$1" '^([_a-zA-Z][_a-zA-Z0-9]*)($|=)'; then
+    if [[ $_ble_local_flags != *f* ]] && ble/string#match "$1" '^([_a-zA-Z][_a-zA-Z0-9]*)($|=)'; then
       _ble_local_flags=v$_ble_local_flags
       local _ble_local_var=${BASH_REMATCH[1]}
       if [[ ${BASH_REMATCH[2]} == = ]]; then
-        ble/util/sprintf "$_ble_local_var" "${1#*=}"
+        IFS=$_ble_local_IFS ble/util/set "$_ble_local_var" "${1#*=}"
       fi
 
       if ble/builtin/readonly/.check-variable-name "$_ble_local_var"; then

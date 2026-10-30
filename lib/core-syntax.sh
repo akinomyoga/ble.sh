@@ -1368,6 +1368,9 @@ function ble/syntax:bash/simple-word/eval/.print-result {
 ## @fn ble/syntax:bash/simple-word/eval/.eval-set
 ## @fn ble/syntax:bash/simple-word/eval/.eval-print
 ##   Evaluate the specified word and set or print the results.
+##   @var[in] __ble_user_vdefs
+##     This contains the declarations of global variables in the user's
+##     environment.
 ##   @var[in] __ble_simple_word
 ##     This variable specifies the target word to evalaute.
 ##   @remarks #D2246: These functions are needed to evaluate the word in a
@@ -1384,6 +1387,7 @@ function ble/syntax:bash/simple-word/eval/.eval-set {
     set --
   fi
   local ext=0
+  builtin eval -- "$__ble_user_vdefs" &>/dev/null # 読み取り専用の変数のこともある
   builtin eval -- "ble/syntax:bash/simple-word/eval/.set-result $__ble_simple_word" &>/dev/null; ext=$?
   builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
   return "$ext"
@@ -1394,6 +1398,7 @@ function ble/syntax:bash/simple-word/eval/.eval-print {
   else
     set --
   fi
+  builtin eval -- "$__ble_user_vdefs" &>/dev/null # 読み取り専用の変数のこともある
   builtin eval -- "ble/syntax:bash/simple-word/eval/.print-result $__ble_simple_word"
 }
 ## @fn ble/syntax:bash/simple-word/eval/.impl word opts
@@ -1402,15 +1407,6 @@ function ble/syntax:bash/simple-word/eval/.eval-print {
 ##   @var[out] __ble_ret
 function ble/syntax:bash/simple-word/eval/.impl {
   local __ble_word=$1 __ble_opts=$2 __ble_flags=
-
-  # グローバル変数の復元
-  local -a ret=()
-  ble/syntax:bash/simple-word/extract-parameter-names "$__ble_word"
-  if ((${#ret[@]})); then
-    local __ble_defs
-    ble/util/assign __ble_defs 'ble/util/print-global-definitions --hidden-only "${ret[@]}"'
-    builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
-  fi
 
   local __ble_word_limit=
   ble/string#match ":$__ble_opts:" ':limit=([^:]*):' &&
@@ -1448,6 +1444,20 @@ function ble/syntax:bash/simple-word/eval/.impl {
       fi
     fi
   fi
+
+  # @var __ble_user_vdefs
+  #   The states of variables in the user space is obtained in this variable.
+  #   We basically restore the states of the variables used in the variable
+  #   expansions.
+  #
+  #   Note (#D2436): In addition, IFS (which is adjusted to avoid #D2436, the
+  #   IFS=$'\001' bug of Bash 4.0..5.3) is also restored because it affects the
+  #   expansion behavior.  This variable needs to be evaluated immediately
+  #   before performing the expansion of the simple word to avoid #D2436.
+  local __ble_user_vdefs=
+  local -a ret=()
+  ble/syntax:bash/simple-word/extract-parameter-names "$__ble_word"
+  ble/util/assign __ble_user_vdefs 'ble/variable#print-user-definitions --hidden-only IFS "${ret[@]}"'
 
   # Note: failglob 時に一致がないと実行されないので予め __ble_ret=() をする。
   #   また、エラーメッセージが生じるので /dev/null に繋ぐ。
@@ -1944,7 +1954,7 @@ function ble/syntax:bash/initialize-vars {
 # 共通の字句の一致判定
 
 function ble/variable#load-user-state/.print-global-state {
-  # This function is a callback for "ble/util/for-global-variables"
+  # This function is a callback for "ble/variable#for-global-variables"
   local __ble_set= __ble_val= __ble_att=
   if [[ :$2: == *:unset:* ]]; then
     # This branch is selected when the global variable is hidden by a local
@@ -1960,7 +1970,7 @@ function ble/variable#load-user-state/.print-global-state {
     ble/variable#get-attr -v __ble_att "$1"
 
     # Note: We remove the readonly attribute "r" because
-    # "ble/util/for-global-variables" uses the readonly attribute to access the
+    # "ble/variable#for-global-variables" uses the readonly attribute to access the
     # global variable so we cannot correctly test the readonly attribute.
     # Anyway, since we know that the global variable is hidden by a local
     # variable, it is natural to consider the global variable is not readonly
@@ -1972,7 +1982,7 @@ function ble/variable#load-user-state/.print-global-state {
   declare -p __ble_set __ble_val __ble_att
 }
 
-## @fn ble/variable#load-user-state
+## @fn ble/variable#load-user-state varname
 ##   @var[out] __ble_var_set __ble_var_val __ble_var_att
 function ble/variable#load-user-state {
   __ble_var_set= __ble_var_val= __ble_var_att=
@@ -2004,7 +2014,7 @@ function ble/variable#load-user-state {
   if [[ :$2: == *:global:* ]] && ! ble/variable#is-global "$1"; then
     local _ble_highlight_vartype_name=$1
     local __ble_var_state
-    ble/util/assign __ble_var_state 'ble/util/for-global-variables ble/variable#load-user-state/.print-global-state "" "$_ble_highlight_vartype_name"'
+    ble/util/assign __ble_var_state 'ble/variable#for-global-variables ble/variable#load-user-state/.print-global-state "" "$_ble_highlight_vartype_name"'
     if [[ $__ble_var_state ]]; then
       local __ble_set __ble_val __ble_att
       builtin eval -- "$__ble_var_state"
@@ -2018,6 +2028,26 @@ function ble/variable#load-user-state {
   __ble_var_set=${!1+set}
   __ble_var_val=${!1-}
   ble/variable#get-attr -v __ble_var_att "$1"
+}
+
+## @fn ble/variable#print-user-definitions [--hidden-only] varnames...
+function ble/variable#print-user-definitions {
+  local -a args=()
+  local var q=\' Q="'\''"
+  local __ble_var_set __ble_var_val __ble_var_att
+  for var; do
+    if [[ $var != -* ]] && ble/function#try ble/variable#load-user-state/variable:"$var"; then
+      if [[ $__ble_var_set ]]; then
+        printf 'declare %s=%s\n' "$var" "'${__ble_var_val//$q/$Q}'" # disable=#D2352
+      else
+        printf 'declare %s; builtin unset -v %s\n' "$var" "$var"
+      fi
+      continue
+    fi
+
+    ble/array#push args "$var"
+  done
+  ((${#args[@]}==0)) || ble/variable#print-global-definitions "${args[@]}"
 }
 
 ## @fn ble/syntax/highlight/vartype varname [opts [tail]]

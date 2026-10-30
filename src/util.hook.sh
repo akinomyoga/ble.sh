@@ -616,6 +616,7 @@ function ble/builtin/trap/finalize {
 }
 function ble/builtin/trap {
   local set shopt; ble/base/.adjust-bash-options set shopt
+  local IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local flags command sigspecs
   ble/builtin/trap/.read-arguments "$@"
 

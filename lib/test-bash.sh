@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 117
+ble/test/start-section 'bash' 119
 
 # case $word を quote する必要がある条件は?
 
@@ -200,6 +200,17 @@ ble/test/start-section 'bash' 117
     builtin eval -- "b=($generator)"
     ble/test --depth=1 --display-code="$generator (# of words)" code:'ret=${#b[@]}' ret="$expected"
   }
+
+  # BUG bash-4.0 [Ref #D2436]
+  #   IFS=$'\001' で array が非空の配列の時、"${array[@]}" が一文字ずつに空文字
+  #   列を挟んで分割されてしまう。
+  if ((_ble_bash>=40000)); then
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${a[@]}"' stdout:'<><><a><><b><><c>'
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${!a[@]}"' stdout:'<><><0>'
+  else
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${a[@]}"' stdout:'<abc>'
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${!a[@]}"' stdout:'<0>'
+  fi
 
   # BUG bash-4.2..5.1 [Ref #D2352]
   #   a=(""); b=("${a[@]#$empty}") で要素が消滅する。これは以下の bash-4.2 のバ
