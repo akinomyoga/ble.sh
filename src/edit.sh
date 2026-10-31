@@ -11277,7 +11277,7 @@ function ble/builtin/read {
     return "$?"
   fi
 
-  local _ble_local_IFS=$IFS IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
+  local _ble_local_IFS="$IFS" IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local _ble_local_set _ble_local_shopt
   ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
 

@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 119
+ble/test/start-section 'bash' 144
 
 # case $word を quote する必要がある条件は?
 
@@ -73,6 +73,41 @@ ble/test/start-section 'bash' 119
 
 # Variable bugs
 (
+  # COMPAT bash-5.3+ (#D2221)
+  #   Bash 5.3 以降ではスラッシュを名前に含む関数は POSIX mode で呼び出せない。
+  function f1/sub { return 0; }
+  if ((_ble_bash<50300)); then
+    ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=0
+  else
+    ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=127
+  fi
+
+  # BUG bash-3.0..4.3 (#D2221)
+  #   関数内で local POSIXLY_CORRECT; unset -v POSIXLY_CORRECT とすると寧ろ
+  #   posix mode は有効になる。
+  function f1 { local POSIXLY_CORRECT; builtin unset -v POSIXLY_CORRECT; [[ ! -o posix ]]; }
+  if ((_ble_bash<40400)); then
+    ble/test '! f1'
+  else
+    ble/test 'f1'
+  fi
+  set +o posix
+
+  # COMPAT bash-3.0..4.2 (#D2436)
+  #   4.3 以降では ble/util/unlocal IFS はその関数に紐づいた tmpenv も一括で削
+  #   除するが、4.2 以前では tmpenv までは削除しない。
+  function f1 {
+    local a=3
+    ble/util/unlocal a
+    if ((_ble_bash<40300)); then
+      ble/test '[[ $a == 2 ]]'
+    else
+      ble/test '[[ $a == 1 ]]'
+    fi
+  }
+  a=1
+  a=2 f1
+
   # BUG bash-3.1
   #   a=(""); echo "a${a[*]}b" | cat -A とするとa^?b となって謎の文字が入る。
   #   echo "a""${a[*]}""b" 等とすれば大丈夫。
@@ -128,26 +163,6 @@ ble/test/start-section 'bash' 119
   ble/test '[[ ! -o posix ]]'
   set +o posix
 
-  # BUG bash-3.0..4.3 (#D2221)
-  #   関数内で local POSIXLY_CORRECT; unset -v POSIXLY_CORRECT とすると寧ろ
-  #   posix mode は有効になる。
-  function f1 { local POSIXLY_CORRECT; builtin unset -v POSIXLY_CORRECT; [[ ! -o posix ]]; }
-  if ((_ble_bash<40400)); then
-    ble/test '! f1'
-  else
-    ble/test 'f1'
-  fi
-  set +o posix
-
-  # COMPAT bash-5.3+ (#D2221)
-  #   Bash 5.3 以降ではスラッシュを名前に含む関数は POSIX mode で呼び出せない。
-  function f1/sub { return 0; }
-  if ((_ble_bash<50300)); then
-    ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=0
-  else
-    ble/test 'set -o posix; f1/sub; ret=$?; set +o posix' ret=127
-  fi
-
   # BUG bash-3.0
   #   ${#param} は文字数ではなくバイト数を返す、という事になっているらしいが、
   #   実際に試してみると文字数になっている (bash-3.0.22)。何処かで patch が当たっ
@@ -190,6 +205,68 @@ ble/test/start-section 'bash' 119
   fi
 )
 
+# IFS=$'\001' bugs
+(
+  # BUG bash-4.0..devel [Ref #D2436]
+  #   IFS=$'\001' で array が非空の配列の時、"${array[@]}" が一文字ずつに空文字
+  #   列を挟んで分割されてしまう。
+  ble/test code:'a=(abc); printf "<%s>" "${a[@]}"' stdout:'<abc>'
+  ble/test code:'a=(abc); printf "<%s>" "${!a[@]}"' stdout:'<0>'
+  ble/test code:'(set -- abc; printf "<%s>" "$@")' stdout:'<abc>'
+  if ((_ble_bash>=40000)); then
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${a[@]}"' stdout:'<><><a><><b><><c>'
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${!a[@]}"' stdout:'<><><0>'
+  else
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${a[@]}"' stdout:'<abc>'
+    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${!a[@]}"' stdout:'<0>'
+  fi
+
+  # BUG bash-3.0..4.3 [Ref #D2436]
+  #   "$@" も 4.0..4.3 で同様の問題があった様だ。
+  if ((_ble_bash<40000)); then
+    IFS=$'\001' ble/test code:'(set -- abc def; printf "<%s>" "$@")' stdout:$'<abc\001def>'
+  elif ((_ble_bash<40400)); then
+    IFS=$'\001' ble/test code:'(set -- abc def; printf "<%s>" "$@")' stdout:$'<><><a><><b><><c\177><><d><><e><><f>'
+  else
+    IFS=$'\001' ble/test code:'(set -- abc def; printf "<%s>" "$@")' stdout:'<abc><def>'
+  fi
+
+  # BUG bash-4.0..5.2 with IFS=$'\001' [Ref #D2436]
+  #   IFS=$'\001' が設定されていると様々な文脈で変数展開の中の $'\001' が消滅し
+  #   てしまう。例えば、
+  #   * [[ $var == ... ]] (4.0..4.3)
+  #   * ret=$var          (4.0..4.3)
+  #   * local ret=$var    (4.0..5.2)
+  a=$'\001'
+  for IFS in "$_ble_term_IFS" $'\001'; do
+    bug43_expect=$'\001'
+    bug52_expect=$'\001'
+    if [[ "$IFS" == $'\001' ]]; then
+      ((40000<=_ble_bash&&_ble_bash<40400)) && bug43_expect=''
+      ((40000<=_ble_bash&&_ble_bash<50300)) && bug52_expect=''
+    fi
+
+    # [[ $a == ... ]] (4.0..4.3)
+    ble/test '[[ $a == "$bug43_expect" ]]'
+
+    # ret=$a (4.0..4.3)
+    ble/test code:'ret=$a'                     ret:"$bug43_expect"
+    ble/test code:'ret="$a"'                   ret:"$a"
+    ble/test 'for ret in "$a"; do ((1)); done' ret:"$a"
+    if ((_ble_bash>=30100)); then
+      ble/test 'printf -v ret %s "$a"'         ret:"$a"
+    fi
+    ble/test 'ble/util/set ret "$a"'           ret:"$a"
+    debug=1 ble/test 'ble/util/sprintf ret %s "$a"'    ret:"$a"
+    ble/test 'ble/variable#copy-state a ret'   ret:"$a"
+
+    # local ret=$a (4.0..5.2)
+    ble/test 'local b=$a; ret="$b"'            ret:"$bug52_expect"
+    ble/test 'local b="$a"; ret="$b"'          ret:"$a"
+  done
+  IFS=$_ble_term_IFS
+)
+
 # Array bugs
 (
   ## @fn ble/test:bash/count-words generated expected [args...]
@@ -200,17 +277,6 @@ ble/test/start-section 'bash' 119
     builtin eval -- "b=($generator)"
     ble/test --depth=1 --display-code="$generator (# of words)" code:'ret=${#b[@]}' ret="$expected"
   }
-
-  # BUG bash-4.0 [Ref #D2436]
-  #   IFS=$'\001' で array が非空の配列の時、"${array[@]}" が一文字ずつに空文字
-  #   列を挟んで分割されてしまう。
-  if ((_ble_bash>=40000)); then
-    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${a[@]}"' stdout:'<><><a><><b><><c>'
-    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${!a[@]}"' stdout:'<><><0>'
-  else
-    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${a[@]}"' stdout:'<abc>'
-    IFS=$'\001' ble/test code:'a=(abc); printf "<%s>" "${!a[@]}"' stdout:'<0>'
-  fi
 
   # BUG bash-4.2..5.1 [Ref #D2352]
   #   a=(""); b=("${a[@]#$empty}") で要素が消滅する。これは以下の bash-4.2 のバ

@@ -836,7 +836,7 @@ function ble/decode/csi/.translate-kitty-csi-u {
   # protocol and ble.sh's keyboard protocol are not necessarily synchronized
   # due to TTY buffering and network delays.
   [[ $_ble_term_modifyOtherKeys_current_method == kitty_keyboard_protocol ]] ||
-    case $_ble_term_TERM in (kitty:*|ghostty:*|zellij:*) true ;; (*) false ;; esac ||
+    case $_ble_term_TERM in (kitty:*|ghostty:*|zellij:*) ((1)) ;; (*) ((0)) ;; esac ||
     return 0
 
   local name=${_ble_decode_csimap_kitty_u[key]}

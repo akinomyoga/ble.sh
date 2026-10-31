@@ -1189,7 +1189,7 @@ ble/base/initialize-version-variables
 
 function ble/bash/read {
   local TMOUT= 2>/dev/null # #D1630 WA readonly TMOUT
-  local _ble_local_IFS=$IFS IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
+  local _ble_local_IFS="$IFS" IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   IFS=$_ble_local_IFS builtin read "${_ble_bash_tmout_wa[@]}" -r "$@"
 }
 function ble/bash/read-timeout { builtin read -t "$@"; }

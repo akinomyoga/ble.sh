@@ -4457,9 +4457,9 @@ function ble/complete/progcomp/.compgen {
     # WA #D1682: libvirt の virsh 用の補完が勝手に変数 IFS 及び word を書き換え
     # てそのまま放置して抜けてしまう。仕方がないので tmpenv で変数の内容を復元
     # する事にする。
-    IFS=$IFS word= builtin compgen -V compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null
+    IFS=$_ble_term_IFS word= builtin compgen -V compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null
   else
-    IFS=$IFS word= ble/util/assign compgen 'builtin compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
+    IFS=$_ble_term_IFS word= ble/util/assign compgen 'builtin compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
   fi
 
   # Note #D0534: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始

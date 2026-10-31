@@ -13,7 +13,7 @@ ble/test/start-section 'ble/edit' 7
   # Bash >= 4.0 has a bug that "${array[@]}" is wrongly split by IFS=$'\001'
   # (#D2436).
   function ble/test:ble/builtin/read {
-    local vIFS=$IFS input=$1 expect=$2 IFS=$_ble_term_IFS
+    local vIFS="$IFS" input="$1" expect=$2 IFS=$_ble_term_IFS
     shift 2
 
     # To forcibly make "ble/builtin/read" use its own processing, we need to
@@ -22,7 +22,7 @@ ble/test/start-section 'ble/edit' 7
     local _ble_decode_bind_state=emacs
 
     local a= b=
-    IFS=$vIFS ble/builtin/read -r "$@" a b <<< "$input"
+    IFS="$vIFS" ble/builtin/read -r "$@" a b <<< "$input"
     local ext=$?
 
     local ret
@@ -33,11 +33,17 @@ ble/test/start-section 'ble/edit' 7
     ble/test code:'ret=$a/$b; ble/util/setexit "$ext"' ret:"$expect" \
       --depth=1 --display-code="$title"
   }
-  IFS=$'\001' ble/test:ble/builtin/read $'x\001y'      x/y
-  IFS=','     ble/test:ble/builtin/read 'x,y'          x/y
   IFS=' '     ble/test:ble/builtin/read 'x y'          x/y
-  IFS=$'\001' ble/test:ble/builtin/read $'x\001y;tail' x/y -d ';'
+  IFS=','     ble/test:ble/builtin/read 'x,y'          x/y
   IFS=','     ble/test:ble/builtin/read $'x,y\001tail' x/y -d $'\001'
+  if ((_ble_bash<40000)); then
+    # In Bash 3.2, builtin read has a bug, so the behavior is different.
+    IFS=$'\001' ble/test:ble/builtin/read $'x\001y'      $'x\001y/'
+    IFS=$'\001' ble/test:ble/builtin/read $'x\001y;tail' $'x\001y/' -d ';'
+  else
+    IFS=$'\001' ble/test:ble/builtin/read $'x\001y'      x/y
+    IFS=$'\001' ble/test:ble/builtin/read $'x\001y;tail' x/y -d ';'
+  fi
 )
 
 ble/test/end-section

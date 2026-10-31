@@ -302,7 +302,9 @@
 - history: work around slow macOS timestamps (fixed by dfherr) `#D2429` 69ee0587
 - edit (`display-shell-version`): extract the MSYS2 version from `/etc/package-versions.txt` in Git for Windows `#D2433` a7eda61d
 - util (`ble/util/msleep`): update the macOS sleep detection (reported by digitalguy99) `#2434` c70c0e45
-- global: work around the `IFS=$'\001'` bug in Bash >= 4.0 (reported by NireBryce, simonsteiner) `#D2436` xxxxxxxx
+- global: work around the `IFS=$'\001'` bug in Bash >= 4.0 (reported by NireBryce, simonsteiner) `#D2436` fb1811ea xxxxxxxx
+- test: work around a Bash-5.2 bug for spawn in eval in subshell `#D2437` xxxxxxxx
+- util (`ble/adict#set`): work around a Bash-5.2 arithmetic bug for the index of a dynamic array name `#D2438` xxxxxxxx
 
 ## Contrib
 

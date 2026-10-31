@@ -507,7 +507,7 @@ function ble/variable#is-global {
 function ble/variable#copy-state {
   local src=$1 dst=$2
   if [[ ${!src+set} ]]; then
-    builtin eval -- "$dst=\${$src}"
+    ble/util/set "$dst" "${!src}"
   else
     builtin unset -v "$dst[0]" 2>/dev/null || builtin unset -v "$dst"
   fi
@@ -3230,9 +3230,15 @@ if ((_ble_bash>=40100)); then
   function ble/util/set {
     builtin printf -v "$1" %s "$2"
   }
-else
+elif ((_ble_bash>=40000)); then
+  # Note (#D2436): Bash 4.0..4.3 has a bug in a=$b with IFS=$'\001'.  The
+  # characters $'\001' in $b are going to be lost.
   function ble/util/set {
     builtin eval -- "$1=\"\$2\""
+  }
+else
+  function ble/util/set {
+    builtin eval -- "$1=\$2"
   }
 fi
 
@@ -3242,7 +3248,9 @@ if ((_ble_bash>=30100)); then
   }
 else
   function ble/util/sprintf {
-    local -a args; args=("${@:2}")
+    # Note (#D0525): Bash-3.0 args=("$@") has a bug with custom IFS
+    local IFS=$_ble_term_IFS
+    local -a args; args=("${@:2}") # disable=#D0525
     ble/util/assign "$1" 'builtin printf "${args[@]}"'
   }
 fi
@@ -8964,9 +8972,9 @@ function ble/builtin/readonly/.print-warning {
   return 0
 }
 function ble/builtin/readonly {
+  local _ble_local_IFS="$IFS" IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local _ble_local_set _ble_local_shopt
   ble/base/.adjust-bash-options _ble_local_set _ble_local_shopt
-  local _ble_local_IFS=$IFS IFS=$_ble_term_IFS # WA #D2436 IFS=$'\001'
   local LC_ALL= LC_COLLATE=C 2>/dev/null # suppress locale error #D1440
 
   # "_ble_local_flags" contains flag characters.  The meanings of the

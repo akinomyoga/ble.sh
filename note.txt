@@ -8231,7 +8231,7 @@ bash_tips
 
 2026-10-27
 
-  * global: work around Bash-4.0..5.3 IFS=$'\001' bug (reported by NireBryce, simonsteiner) [#D2436]
+  * global: work around the IFS=$'\001' bug in Bash >= 4.0 (reported by NireBryce, simonsteiner) [#D2436]
     https://github.com/akinomyoga/ble.sh/issues/735
     https://github.com/akinomyoga/ble.sh/pull/738
     https://github.com/NireBryce/nixos-configs/issues/72
@@ -8496,6 +8496,70 @@ bash_tips
         ていなかったが、残っていたコメントの所為で誤って列挙されていたのだろう。
         何れにしても、記述はしたのだから、意図しないバグという訳ではないという
         態度は示したことになっているはずである。
+
+    2026-10-31 macos-latest で失敗している。つまり、直っていない。謎だ。
+
+    * fixed: テストして動く様になった気になっていたが、実は直っていなかった。
+      test bash は走らせていたが、test edit を走らせ忘れていた。結局これは
+      IFS=$'\001' の時に、test-edit.sh で使っている helper function での引数の
+      受け渡し時に $'\001' が消滅しているのが原因だった。テスト自体が別の
+      $'\001' bug の影響を受けて壊れていたという事。
+
+    更に手元で色々の bash version で確認したら bash-4.0..4.4 で test-bash.sh が
+    失敗している。
+
+    ? no: バグは bash >= 4.0 で起こっているのかと思っていたが、改めて確認した所
+      bash-5.0 以上?
+
+      でも改めて一番最初のコマンドを実行したらやはり bash-4.0 でも問題は発生す
+      る。つまり、条件によって問題が発生したりしなかったりが変化するという事。
+
+      * reject: と思ったが、ble/test が tmpenv 消失バグを踏んでいた。それにより
+        テスト自体が正しく動いていなかった。これはまた別のバグである。→うーん。
+        そういう訳でもなかった。
+
+      _ble_local_IFS=$IFS とした瞬間に IFS の中身を正しく _ble_local_IFS に継承
+      する事ができていないという事が分かった。これによりテスト自体が正しく動い
+      ていなかった。
+
+      うーん。困った。つまり、正しく変数の値をコピーできないという事
+
+    * 更に色々実験した結果、bash-4.0 では "$@" ですら滅茶苦茶な結果になってしま
+      う? → bash-4.0..4.3 でのバグの様だ。
+
+    * ok: そもそも bash (devel) の時点で ble/util/unlocal IFS が変な振る舞いを
+      している気がする。調べてみると 4.3 以降で ble/util/unlocal IFS が正しく動
+      作していない。不思議だ。
+
+      と思ったが、単にble/util/unlocal が tmpenv まで削除するかどうかという話だっ
+      た。これは別にバグではない。ただ、4.2 以前で振る舞いが違ったというのは注
+      意が必要である。
+
+      この事を考えると ble/test の実装で直前に ble/util/unlocal IFS をする事に
+      よってテストに使われている IFS を復元しようという試みは使えないという事に
+      なる。直接コピーも使えないし、ble/util/unlocal も使えないとしたらどうした
+      ら良いのだろうか?
+
+      → 結局 _ble_local_IFS="$IFS" とすれば回避できるという事が分かった。
+
+    * done: CI で一つの環境で失敗した時に他もキャンセルするのは不便である →
+      fail-fast: false を指定すれば良いみたいなので指定することにする。
+
+    * fixed: ble/util/sprintf はまた別の bash-3.0 bug で壊れている様だ。
+
+    更に bash-3.2 でも直っていない。
+
+    * bash-3.2 ではそもそもテスト用の関数が正しく IFS を受け取る事ができていな
+      い気がする。と思ったがそういう話でもなかった。中でちゃんと IFS や vIFS や
+      wIFS の値を declare -p | cat -v で観察したら ^A が含まれていた。単に端末
+      にそのまま出力されてしまって端末が描画していないだけだった。
+
+    * と思ったらそもそも bash-3.2 では builtin read でも失敗するということが分
+      かった。なので、ble.sh の側で対策をする必要はない気がする。
+
+      $ a=$'\001' bash-3.2 --norc -c 'IFS="$a"; read -r a b; declare -p a b | cat -v' <<< $'a\001b'
+      declare -x a="a^A^Ab"
+      declare -- b=""
 
   * history: get-min が未だ遅い。速くできる余地がある (reported by digitalguy99) [#D2435]
     https://github.com/akinomyoga/ble.sh/pull/737
