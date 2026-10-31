@@ -1763,7 +1763,14 @@ function ble/prompt/.instantiate {
       (vi_[noxs]map) ble/util/rlvar#read vi-cmd-mode-string '(cmd)' ;; # Note: bash-4.3 では ':'
       (emacs)        ble/util/rlvar#read emacs-mode-string  '@'     ;;
       esac
-      [[ $ret ]] && expanded=$ret$expanded
+      # Note: Readline は複数行プロンプトの最終行の先頭にモード文字列を挿入する。
+      if [[ $ret ]]; then
+        if [[ $expanded == *$'\n'* ]]; then
+          expanded=${expanded%$'\n'*}$'\n'$ret${expanded##*$'\n'}
+        else
+          expanded=$ret$expanded
+        fi
+      fi
     fi
   fi
 
