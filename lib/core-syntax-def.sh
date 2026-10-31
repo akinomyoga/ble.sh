@@ -93,6 +93,14 @@ bleopt/declare -v highlight_timeout_async 5000
 bleopt/declare -v highlight_eval_word_limit 200
 bleopt/declare -v syntax_eval_polling_interval 50
 
+## @bleopt command_wrappers
+##   The space-separated list of commands that wrap another command (e.g.
+##   "sudo CMD ..." runs CMD).  The command word that follows the wrapper
+##   (after wrapper-specific options) is highlighted with the command-type
+##   coloring (built-in / function / file / error) just like the head of
+##   the command line.  Set to an empty string to disable.
+bleopt/declare -v command_wrappers 'sudo doas command nohup env xargs'
+
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_filetype}"
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_lscolors_ext}"
 builtin eval -- "${_ble_util_gdict_declare//NAME/_ble_syntax_highlight_lscolors_suffix}"
