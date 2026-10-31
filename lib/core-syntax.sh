@@ -5,8 +5,8 @@
 function ble/syntax/util/is-directory {
   local path=$1
   # Note: #D1168 Cygwin では // で始まるパスの判定は遅い
-  if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $path == //* ]]; then
-    [[ $path == // ]]
+  if ble/util/is-slow-path "$path"; then
+    ble/util/is-slow-directory "$path"
   else
     [[ -d $path ]]
   fi
@@ -1419,7 +1419,7 @@ function ble/syntax:bash/simple-word/eval/.impl {
     if [[ :$__ble_opts: == *:noglob:* ]]; then
       set -f
       __ble_flags=f
-    elif ble/util/is-cygwin-slow-glob "$1"; then # Note: #D1168
+    elif ble/util/is-slow-glob "$1"; then # Note: #D1168
       if shopt -q failglob &>/dev/null; then
         __ble_ret=()
         return 1
@@ -1787,8 +1787,8 @@ function ble/syntax:bash/simple-word/locate-filename/.exists {
   ble/syntax:bash/simple-word/eval "$word" "$eval_opts" || return "$?"
   local path=$ret
   # Note: #D1168 Cygwin では // で始まるパスの判定は遅いので直接文字列で判定する
-  if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $path == //* ]]; then
-    [[ $path == // ]]
+  if ble/util/is-slow-path "$path"; then
+    ble/util/is-slow-directory "$path"
   else
     [[ -e $path || -h $path ]]
   fi || [[ :$opts: == *:url:* ]] && ble/string#match-safe "$path" "$rex_url"
@@ -6911,8 +6911,8 @@ function ble/syntax/highlight/filetype {
   local file=$1
 
   # Note: #D1168 Cygwin では // で始まるパスはとても遅い
-  if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $file == //* ]]; then
-    [[ $file == // ]] && ((type=ATTR_FILE_DIR))
+  if ble/util/is-slow-path "$file"; then
+    ble/util/is-slow-directory "$file" && ((type=ATTR_FILE_DIR))
     [[ $type ]]; return "$?"
   fi
 

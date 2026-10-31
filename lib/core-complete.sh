@@ -2871,7 +2871,7 @@ function ble/complete/util/eval-pathname-expansion {
     fi
   fi
 
-  if ble/util/is-cygwin-slow-glob "$pattern"; then # Note: #D1168
+  if ble/util/is-slow-glob "$pattern"; then # Note: #D1168
     if shopt -q failglob &>/dev/null || shopt -q nullglob &>/dev/null; then
       pattern=
     else

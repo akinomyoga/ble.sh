@@ -958,6 +958,17 @@
 #bleopt highlight_variable=
 
 
+## The following setting specifies colon-separated glob patterns of the
+## directory paths that should be excluded from the filename detection and
+## highlighting by the file type.  The default value is empty.  The paths to
+## slow network filesystems and other slow paths can be specified.  The
+## directories specified to this setting is assumed to exist without actually
+## checking the existence.  The paths to subdirectories and files under the
+## specified paths are also treated as slow paths.
+
+#bleopt slow_path=/mnt/smb:/mnt/samba:/run/user/*/gvfs/smb-share*
+
+
 ## The following settings control the timeout and user-input cancellation of
 ## the pathname expansions performed in the syntax highlighting.  When the word
 ## contains a glob pattern that takes a long time to evaluate the pathname

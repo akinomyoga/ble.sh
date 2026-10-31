@@ -4394,6 +4394,62 @@ function ble/variable#for-global-variables {
   ) 2>/dev/null
 }
 
+bleopt/declare -v slow_path ''
+_ble_util_slow_path=()
+_ble_util_slow_root=()
+function bleopt/check:slow_path {
+  _ble_util_slow_path=()
+  _ble_util_slow_root=()
+  if [[ $value ]]; then
+    local ret pattern is_dir
+    ble/string#split ret : "$value"
+    for pattern in "${ret[@]}"; do
+      [[ $pattern ]] || continue
+
+      # Canonicalize the directory name.
+      if [[ $pattern == */ ]]; then
+        [[ $pattern == ^/+$ ]] || pattern=${pattern%/}
+      fi
+
+      ble/array#push _ble_util_slow_path "$pattern"
+
+      # We register the root path also to _ble_util_slow_root, but we exclude
+      # the ones ending with '*' because it would also match any files under
+      # the path. [ XXX---We may instead replace '*' with '!(*/*)', but I
+      # haven't yet carefully considered possible side effects. ]
+      [[ $pattern == *'*' ]] ||
+        ble/array#push _ble_util_slow_root "$pattern"
+
+      # Add a pattern for subdirectories and files inside the path.  If the
+      # original pattern does not end with a slash, we are not sure whether the
+      # path is a directory.  Even then, if another path has the pattern
+      # "$pattern/*", we want to treat it as a slow path.
+      [[ $pattern == *'*' ]] ||
+        ble/array#push _ble_util_slow_path "${pattern%/}/*"
+    done
+  fi
+  return 0
+}
+
+## @fn ble/util/is-slow-path word
+##   Cygwin では // で始まるパスの展開は遅い (#D1168) のでその判定を行う。
+function ble/util/is-slow-path {
+  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $1 == //* ]] && return 0
+  local pattern
+  for pattern in "${_ble_util_slow_path[@]}"; do
+    [[ $1 == $pattern ]] && return 0
+  done
+  return 1
+}
+function ble/util/is-slow-directory {
+  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $1 == // ]] && return 0
+  local pattern
+  for pattern in "${_ble_util_slow_root[@]}"; do
+    [[ $1 == $pattern ]] && return 0
+  done
+  return 1
+}
+
 ## @fn ble/util/has-glob-pattern pattern
 ##   指定したパターンがグロブパターンを含むかどうかを判定します。
 ##
@@ -4420,12 +4476,13 @@ function ble/util/has-glob-pattern {
   [[ ! $ret ]]
 }
 
-## @fn ble/util/is-cygwin-slow-glob word
-##   Cygwin では // で始まるパスの展開は遅い (#D1168) のでその判定を行う。
-function ble/util/is-cygwin-slow-glob {
+## @fn ble/util/is-slow-glob word
+##   遅い path に対する glob は避ける。
+function ble/util/is-slow-glob {
   # Note: core-complete.sh ではエスケープを行うので
   #   "'//...'" 等の様な文字列が "$1" に渡される。
-  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && ${1#\'} == //* && ! -o noglob ]] &&
+  [[ ! -o noglob ]] &&
+    ble/util/is-slow-path "${1#\'}" &&
     ble/util/has-glob-pattern "$1"
 }
 
@@ -4433,7 +4490,7 @@ function ble/util/is-cygwin-slow-glob {
 ##   @var[out] ret
 function ble/util/eval-pathname-expansion {
   ret=()
-  if ble/util/is-cygwin-slow-glob; then # Note: #D1168
+  if ble/util/is-slow-glob; then # Note: #D1168
     if shopt -q failglob &>/dev/null; then
       return 1
     elif shopt -q nullglob &>/dev/null; then

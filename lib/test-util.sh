@@ -1786,7 +1786,7 @@ ble/test ble/util/is-running-in-subshell exit=1
   ble/test 'ble/util/has-glob-pattern "\[xyz\]"' exit=1
 )
 
-# ble/util/is-cygwin-slow-glob
+# ble/util/is-slow-glob
 # ble/util/eval-pathname-expansion
 (
   shopt -s failglob

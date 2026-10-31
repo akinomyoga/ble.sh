@@ -1926,6 +1926,17 @@ bash_tips
   - make_command.sh の整理 (scan 分離, char_width 分離)
   - note.txt -> memo.txt
 
+2026-10-30
+
+  * make の target がキャッシュされている? という謎? (reported by dezza)
+    https://github.com/akinomyoga/ble.sh/issues/740#issuecomment-6506275493
+
+    でも補完候補のキャッシュは mandb しかない気がする。なのに target が cache
+    されるという事があるだろうか。不思議だ。或いは、bash-completion の方でキャッ
+    シュされている? 或いは、コマンドラインをそのままにして keybinding からディ
+    レクトリを移動したりすると、現在補完中の候補の再生成は行われないので前の
+    target のままになってしまうが。
+
 2026-07-16
 
   * menu-complete: 何故か tab で末尾まで移動すると先頭に戻ってきてしまう。これはバグでは。
@@ -8230,6 +8241,23 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2026-10-31
+
+  * highlighting: slow paths を除外する機能 (motivated by dezza) [#2440]
+    https://github.com/akinomyoga/ble.sh/issues/740
+
+    最初は bleopt highlight_filename_ignore として対応しようと思ったが、既存の
+    is-cygwin-slow-glob は util に定義されていて、complete と syntax の両方から
+    参照されている。従って、この設定の名称は特定の機能に紐づけるのではなくて、
+    一般の遅い path の処理に使うものとして取り扱うのが良い様に思われる。
+
+    なので bleopt slow_path ということにする。最初はもっと specific に何かの
+    prefix の下にしようかとも思ったが既に import_path などもあって同じ形式なの
+    で、これで良い気がしてきた。
+
+    blerc.template は関係するものが近い highlight_filename の下に追加したが、こ
+    れは実際の内部的取り扱いとは離れている。後で場所を変更するかもしれない。た
+    だ、今の段階ではユーザー的には highlight_filename の近くにあった方が見つけ
+    やすいと思うので、この場所にする。
 
   * bash-3.1: ble/array#map-prefix test failure [#D2439]
 
