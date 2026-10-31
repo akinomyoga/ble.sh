@@ -339,7 +339,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/array#unshift
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=()
   ble/array#unshift a
   ble/test status stdout='0:()'
@@ -358,7 +358,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/array#reverse
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=(); ble/array#reverse a
   ble/test status stdout='0:()'
   a=(1); ble/array#reverse a
@@ -375,7 +375,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/array#insert-at
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=(); ble/array#insert-at a 0 A B C
   ble/test status stdout='3:(A B C)'
   a=(); ble/array#insert-at a 1 A B C
@@ -402,7 +402,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/array#insert-after
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=(hello world hello world)
   ble/array#insert-after a hello 1 2 3
   ble/test status stdout='7:(hello 1 2 3 world hello world)'
@@ -416,7 +416,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/array#insert-before
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=(hello world this)
   ble/array#insert-before a this with check
   ble/test status stdout='5:(hello world with check this)'
@@ -427,7 +427,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/array#remove
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=(xxx yyy xxx yyy yyy xxx fdsa fdsa)
   ble/array#remove a xxx
   ble/test status stdout='5:(yyy yyy yyy fdsa fdsa)'
@@ -462,7 +462,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/array#remove-at
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=()
   ble/test 'ble/array#remove-at a 0; status' stdout='0:()'
   ble/test 'ble/array#remove-at a 10; status' stdout='0:()'
@@ -479,7 +479,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 )
 # ble/array#map-prefix
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=(); ble/test 'ble/array#map-prefix a hello; status' stdout='0:()'
   a=(); ble/test 'ble/array#map-suffix a hello; status' stdout='0:()'
   a=(); ble/test 'ble/array#map-prefix a ""; status' stdout='0:()'
@@ -507,7 +507,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 )
 # ble/array#fill-range
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   a=(1 2 3 4 5)
   ble/test 'ble/array#fill-range a 2 4 x; status' stdout='5:(1 2 x x 5)'
   a=(1 2 3 4 5)
@@ -623,7 +623,7 @@ function is-global { (builtin readonly "$1"; ! local "$1" 2>/dev/null); }
 
 # ble/string#split-words
 (
-  function status { ble/util/print "${#a[@]}:(${a[*]})"; }
+  function status { ble/util/print "${#a[@]}:(""${a[*]}"")"; }
   nl=$'\n' ht=$'\t'
   ble/test 'ble/string#split-words a ""  ; status' stdout='0:()'
   ble/test 'ble/string#split-words a "1"  ; status' stdout='1:(1)'
@@ -1684,7 +1684,7 @@ ble/test ble/util/is-running-in-subshell exit=1
   if ((_ble_bash/100!=301)); then
     # bash-3.1 はバグがあって一度開いた fd を閉じれない。
     ble/test 'ble/fd#close fd; echo test >&"$fd"' exit=1
-    ble/test 'cat a.txt' stdout={hello,world}
+    ble/test 'ble/bin/cat a.txt' stdout={hello,world}
   fi
   ble/test/rmdir
 )

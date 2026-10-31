@@ -1880,6 +1880,14 @@ function ble/adict#set {
     return 0
   fi
 
+  # Note (#D2438): Bash 5.2 seems to have a bug that one cannot use an array
+  # reference in the form "arr[path[d]]" in arithmetic expansions.  It reports
+  # an invalid math operator « \[d\] » for the string « "path\[d\]" ».  The
+  # problem doesn't arise with Bash 5.1 and 5.3.  Here, we avoid directly write
+  # arr[path[d]] but access path[d] through nested arithmetic evaluation
+  # through a variable "bash52wa". TODO add demonstration code
+  local bash52wa=path[d]
+
   local path d kref=${dict}_keys[i]
   for ((d = 0; ; d++)); do
     path[d]=$i
@@ -1891,14 +1899,14 @@ function ble/adict#set {
       i=$((${dict}_lptrs[i]))
       if ((i < 0)); then
         ble/adict/.alloc "$2" "$3"
-        ((${dict}_lptrs[path[d]]=ret))
+        ((${dict}_lptrs[bash52wa]=ret))
         break
       fi
     else
       i=$((${dict}_rptrs[i]))
       if ((i < 0)); then
         ble/adict/.alloc "$2" "$3"
-        ((${dict}_rptrs[path[d]]=ret))
+        ((${dict}_rptrs[bash52wa]=ret))
         break
       fi
     fi

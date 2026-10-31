@@ -8229,6 +8229,58 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2026-10-31
+
+  * bash-3.1: ble/array#map-prefix test failure [#D2439]
+
+    今度は ble/array#map-prefix で問題が生じている。更に crash もしている気がす
+    る。
+
+    最初は ${a[@]/#} の問題なのかと思って、それを避けるために、以下のように
+    replacement が空の場合には nop にする様にしていた。
+
+    # Note (#D2439): Bash 3.1 has a bug that "${a[@]/#}" and "${a[@]/%}" (with
+    # empty suffix/prefix) inserts $'\177' to an empty element.  We can avoid
+    # this by returning earlier for an empty suffix/prefix.  It would also be
+    # useful to skip the processing in other Bash versions, which is more
+    # efficient.
+    [[ $2 ]] || return 0
+
+    しかしテストが失敗するままである。どうも prerix/suffix を付加した時点で問題
+    が生じているのではなくて、結果を検証する為に配列の中身を一つの文字列に連結
+    して "${a[*]}" としている所で、a=("") だと勝手に $'\177' が入ってしまうとい
+    う事のようだ。
+
+    対策でテスト用の status を真面目に実装しようと思っている所で、既に対策され
+    ているコードがあることで気づいた。既に対策されているコードに倣って修正する
+    ことにした。
+
+  * bash-5.2: テストで ble/adict#set がエラーになる [#D2438]
+
+    bash-5.1, 5.3 では発生しないエラー。
+
+    > out/ble.sh: 行 4429: path\[d\]: 構文エラー: 無効な計算演算子です (エラーのあるトークンは "\[d\]")
+    >  99.9% [section] ble/util: 1284/1285 (0 fail, 1 crash, 46 skip)
+
+    | @ function ble/adict#set
+    |       i=$((${dict}_rptrs[i]))
+    |       if ((i < 0)); then
+    |         ble/adict/.alloc "$2" "$3"
+    |*        ((${dict}_rptrs[path[d]]=ret))
+    |         break
+    |       fi
+
+  * bash-5.2: subshell の中で builtin eval ':; /bin/true' [#D2437]
+
+    実行するとその場で subshell が終了してしまう。再現コード:
+
+    $ bash-5.2 -c '(builtin eval ":;/bin/true"; echo done)'
+
+    恐らく、subshell 最後のコマンドを勘違いして fork せずに exec しているのだろ
+    う。これはどうしようもないような…。取り敢えず、直接 cat を呼び出さずに
+    ble/bin/cat 経由で呼び出している限りは問題は生じない様だが…。なので、
+    ble.sh 本体では基本的に直接呼び出すことはないので気にしなくて良い。
+
 2026-10-27
 
   * global: work around the IFS=$'\001' bug in Bash >= 4.0 (reported by NireBryce, simonsteiner) [#D2436]

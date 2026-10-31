@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'bash' 144
+ble/test/start-section 'bash' 151
 
 # case $word を quote する必要がある条件は?
 
@@ -107,23 +107,6 @@ ble/test/start-section 'bash' 144
   }
   a=1
   a=2 f1
-
-  # BUG bash-3.1
-  #   a=(""); echo "a${a[*]}b" | cat -A とするとa^?b となって謎の文字が入る。
-  #   echo "a""${a[*]}""b" 等とすれば大丈夫。
-  a=("")
-  function f1 { ret=$1; }
-  if ((30100<=_ble_bash&&_ble_bash<30200)); then
-    ble/test 'f1 "a${a[*]}b"' ret=$'a\177b'
-    ble/test code:'ret="a${a[*]}b"' ret=$'a\177b'
-    ble/test 'case "a${a[*]}b" in ($'\''a\177b'\'') true ;; (*) false ;; esac'
-    ble/test 'read -r ret <<< "a${a[*]}b"' ret=$'a\177b'
-  else
-    ble/test 'f1 "a${a[*]}b"' ret='ab'
-    ble/test code:'ret="a${a[*]}b"' ret='ab'
-    ble/test 'case "a${a[*]}b" in (ab) true ;; (*) false ;; esac'
-    ble/test 'read -r ret <<< "a${a[*]}b"' ret=ab
-  fi
 
   # BUG bash-3.0..3.1
   #   "${var//%d/123}" は動かない。"${var//'%d'/123}" 等とすればOK。
@@ -277,6 +260,25 @@ ble/test/start-section 'bash' 144
     builtin eval -- "b=($generator)"
     ble/test --depth=1 --display-code="$generator (# of words)" code:'ret=${#b[@]}' ret="$expected"
   }
+
+  # BUG bash-5.2 [Ref #D2437]
+  #   subshell の中の eval の中の最後のコマンドで spawn すると、fork せずに
+  #   exec してしまい、subshell の続きが実行されない。
+  if ((50200<=_ble_bash&&_ble_bash<50300)); then
+    ble/test '(builtin eval ":;/bin/true"; echo done)' stdout=
+  else
+    ble/test '(builtin eval ":;/bin/true"; echo done)' stdout=done
+  fi
+
+  # BUG bash-5.2 [Ref #D2438]
+  #   ((${p}a[k[i]])) の様な構造を算術式で使おうとすると構文エラーになってシェ
+  #   ルが終了してしまう。bash-5.1 や 5.3 ではこの様な事にはならない。
+  #   bash: k\[i\]: syntax error: invalid arithmetic operator (error token is "\[i\]")
+  if ((50200<=_ble_bash&&_ble_bash<50300)); then
+    ble/test '(i=0;k=(1);p=a;aa=(x y); ((${p}a[k[i]]=1)); echo done)' stdout=
+  else
+    ble/test '(i=0;k=(1);p=a;aa=(x y); ((${p}a[k[i]]=1)); echo done)' stdout=done
+  fi
 
   # BUG bash-4.2..5.1 [Ref #D2352]
   #   a=(""); b=("${a[@]#$empty}") で要素が消滅する。これは以下の bash-4.2 のバ
@@ -498,6 +500,28 @@ ble/test/start-section 'bash' 144
   else
     ble/test 'function f1 { local -a alpha=() beta=(); }'
   fi
+
+  # BUG bash-3.1 [Ref #D2439]
+  #   a=(""); echo "a${a[*]}b" | cat -A とするとa^?b となって謎の文字が入る。
+  #   echo "a""${a[*]}""b" 等とすれば大丈夫。
+  #
+  #   Note (#D2439): a=("") の時 "...${a[*]}..." が $'...\177...' になってしま
+  #   う。a=() や a=("" "") ではこの問題は発生しない。また "${a[*]}" の様に、左
+  #   右に文字列がない時にも問題は発生しない。従って、workaround は文字列を途中
+  #   で切って "...""${a[*]}""..." とすることである。
+  bash31=
+  ((30100<=_ble_bash&&_ble_bash<30200)) && bash31=$'\177'
+  a=("")
+  function f1 { ret=$1; }
+  ble/test 'f1 "a${a[*]}b"' ret="a${bash31}b"
+  ble/test code:'ret="a${a[*]}b"' ret="a${bash31}b"
+  ble/test 'case "a${a[*]}b" in ("a${bash31}b") true ;; (*) false ;; esac'
+  ble/test 'read -r ret <<< "a${a[*]}b"' ret="a${bash31}b"
+  ble/test code:'a=(""); ret="${#a[@]}:(${a[*]})"' ret:"1:(${bash31})"
+  ble/test code:'a=(x); ret="${#a[@]}:(${a[*]})"' ret:"1:(x)"
+  ble/test code:'a=(); ret="${#a[@]}:(${a[*]})"' ret:"0:()"
+  ble/test code:'a=("" ""); ret="${#a[@]}:(${a[*]})"' ret:"2:( )"
+  ble/test code:'a=(""); ret="${#a[@]}:(""${a[*]}"")"' ret:"1:()"
 
   # BUG bash-3.0..3.1 [Ref #D0182]
   #   ${#arr[n]} が文字数ではなくバイト数を返す
