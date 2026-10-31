@@ -140,6 +140,7 @@ outfiles += $(OUTDIR)/lib/test-edit.sh
 outfiles += $(OUTDIR)/lib/test-syntax.sh
 outfiles += $(OUTDIR)/lib/test-complete.sh
 outfiles += $(OUTDIR)/lib/test-keymap.vi.sh
+outfiles += $(OUTDIR)/lib/test-history.sh
 
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	$(CP) $< $@
